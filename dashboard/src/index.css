@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sardis-green: #22c55e;
+  --sardis-dark: #0f172a;
+}
+
+body {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3),
+              0 0 20px rgba(34, 197, 94, 0.2),
+              0 0 30px rgba(34, 197, 94, 0.1);
+}
+
+.glow-green-hover:hover {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.4),
+              0 0 30px rgba(34, 197, 94, 0.3),
+              0 0 45px rgba(34, 197, 94, 0.2);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #86efac 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card styles */
+.card {
+  @apply bg-dark-200/50 backdrop-blur-sm border border-dark-100 rounded-xl;
+}
+
+.card-hover {
+  @apply transition-all duration-300 hover:border-sardis-500/30 hover:shadow-lg hover:shadow-sardis-500/10;
+}
+
+/* Status indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.status-dot.success {
+  @apply bg-green-500 shadow-lg shadow-green-500/50;
+}
+
+.status-dot.error {
+  @apply bg-red-500 shadow-lg shadow-red-500/50;
+}
+
+.status-dot.pending {
+  @apply bg-yellow-500 shadow-lg shadow-yellow-500/50 animate-pulse;
+}
+
+/* Number displays */
+.mono-numbers {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-dark-100 rounded;
+}
+
