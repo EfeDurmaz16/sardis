@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from sardis_core.config import settings
-from sardis_core.api.routes import agents, payments, merchants, catalog
+from sardis_core.api.routes import agents, payments, merchants, catalog, webhooks
 from sardis_core.api.dependencies import get_container
 
 
@@ -14,24 +14,35 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Sardis API",
         description="""
-        Sardis Payment Infrastructure for AI Agents.
+        # Sardis - Programmable Stablecoin Payment Network for AI Agents
         
         Sardis provides a payment layer that enables AI agents to pay for 
         things online using stablecoins with strict spending limits.
         
         ## Features
         
-        - **Agent Management**: Register AI agents with wallets and spending limits
-        - **Payment Processing**: Execute payments with automatic fee handling
-        - **Merchant Integration**: Register merchants to receive payments
+        - **Agent Wallets**: Create wallets with multiple stablecoin support (USDC, USDT, PYUSD, EURC)
+        - **Multi-Chain**: Support for Base, Ethereum, Polygon, and Solana
+        - **Spending Limits**: Per-transaction and total spending limits
+        - **Webhooks**: Real-time event notifications
+        - **Risk Scoring**: Basic fraud prevention
         - **Transaction History**: Full audit trail of all payments
+        
+        ## Supported Tokens
+        
+        | Token | Description |
+        |-------|-------------|
+        | USDC | USD Coin by Circle |
+        | USDT | Tether USD |
+        | PYUSD | PayPal USD |
+        | EURC | Euro Coin by Circle |
         
         ## Authentication
         
         This MVP uses simple API access. In production, implement proper 
         API key authentication.
         """,
-        version="0.1.0",
+        version="0.2.0",
         docs_url="/docs",
         redoc_url="/redoc"
     )
@@ -50,14 +61,16 @@ def create_app() -> FastAPI:
     app.include_router(payments.router, prefix=settings.api_prefix)
     app.include_router(merchants.router, prefix=settings.api_prefix)
     app.include_router(catalog.router, prefix=settings.api_prefix)
+    app.include_router(webhooks.router, prefix=settings.api_prefix)
     
     @app.get("/", tags=["health"])
     async def root():
         """Health check endpoint."""
         return {
             "service": "Sardis API",
-            "version": "0.1.0",
-            "status": "healthy"
+            "version": "0.2.0",
+            "status": "healthy",
+            "description": "Programmable stablecoin payment network for AI agents"
         }
     
     @app.get("/health", tags=["health"])
@@ -67,7 +80,14 @@ def create_app() -> FastAPI:
             "status": "healthy",
             "components": {
                 "api": "up",
-                "ledger": "up"
+                "ledger": "up",
+                "webhooks": "up",
+                "chains": {
+                    "base": "ready",
+                    "ethereum": "ready",
+                    "polygon": "ready",
+                    "solana": "ready"
+                }
             }
         }
     
@@ -110,4 +130,3 @@ if __name__ == "__main__":
         port=settings.api_port,
         reload=True
     )
-
