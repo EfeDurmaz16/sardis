@@ -1,11 +1,22 @@
 """Configuration for Sardis Core."""
 
-from pydantic_settings import BaseSettings
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
+    
+    # Use Pydantic v2 model_config instead of nested Config class
+    # 'extra=ignore' allows extra environment variables without raising errors
+    model_config = ConfigDict(
+        env_prefix="SARDIS_",
+        env_file=".env",
+        extra="ignore",
+    )
     
     # API Settings
     api_host: str = "0.0.0.0"
@@ -26,9 +37,14 @@ class Settings(BaseSettings):
     # System Settings
     system_wallet_id: str = "sardis_system"
     
-    class Config:
-        env_prefix = "SARDIS_"
-        env_file = ".env"
+    # Optional integrations (loaded from environment)
+    openai_api_key: Optional[str] = None
+    
+    # Blockchain settings
+    settlement_mode: str = "internal_ledger_only"  # internal_ledger_only, chain_write_per_tx, batched_chain_settlement
+    
+    # Database settings (for future use)
+    database_url: Optional[str] = None
 
 
 # Global settings instance

@@ -18,6 +18,12 @@ class EventType(str, Enum):
     PAYMENT_FAILED = "payment.failed"
     PAYMENT_REFUNDED = "payment.refunded"
     
+    # Pre-authorization (hold) events
+    HOLD_CREATED = "hold.created"
+    HOLD_CAPTURED = "hold.captured"
+    HOLD_VOIDED = "hold.voided"
+    HOLD_EXPIRED = "hold.expired"
+    
     # Wallet events
     WALLET_CREATED = "wallet.created"
     WALLET_FUNDED = "wallet.funded"
@@ -41,6 +47,12 @@ class EventType(str, Enum):
     # Service authorization events
     SERVICE_AUTHORIZED = "service.authorized"
     SERVICE_REVOKED = "service.revoked"
+    
+    # Merchant events
+    MERCHANT_CREATED = "merchant.created"
+    MERCHANT_PAYOUT = "merchant.payout"
+    INVOICE_CREATED = "invoice.created"
+    INVOICE_PAID = "invoice.paid"
 
 
 @dataclass

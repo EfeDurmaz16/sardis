@@ -2,6 +2,33 @@
 
 from .base import BaseLedger
 from .memory import InMemoryLedger
+from .models import (
+    LedgerEntry,
+    LedgerTransaction,
+    LedgerCheckpoint,
+    BalanceProof,
+    EntryType,
+    EntryStatus,
+)
+from .ledger_service import LedgerService, get_ledger_service
+from .reconciliation import ReconciliationService, ReconciliationResult
 
-__all__ = ["BaseLedger", "InMemoryLedger"]
+__all__ = [
+    # Original exports
+    "BaseLedger",
+    "InMemoryLedger",
+    # New ledger models
+    "LedgerEntry",
+    "LedgerTransaction",
+    "LedgerCheckpoint",
+    "BalanceProof",
+    "EntryType",
+    "EntryStatus",
+    # Ledger service
+    "LedgerService",
+    "get_ledger_service",
+    # Reconciliation
+    "ReconciliationService",
+    "ReconciliationResult",
+]
 
