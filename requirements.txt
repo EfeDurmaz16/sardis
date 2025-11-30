@@ -18,5 +18,8 @@ openai>=1.50.0
 pytest>=7.4.4
 pytest-asyncio>=0.23.3
 
+# Blockchain utilities
+base58>=2.1.0
+
 # Utilities
 python-dotenv>=1.0.0
