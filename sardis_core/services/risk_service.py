@@ -265,7 +265,7 @@ class RiskService:
             total_volume=profile.total_volume,
             average_transaction=profile.average_transaction_amount,
             recent_transaction_amounts=[],  # Would come from history
-            recent_recipients=profile.unique_recipients[:10] if hasattr(profile, 'unique_recipients') else [],
+            recent_recipients=[],  # Would come from transaction history
         )
         
         # Run all rules

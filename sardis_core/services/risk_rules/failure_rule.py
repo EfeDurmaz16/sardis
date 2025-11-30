@@ -5,6 +5,7 @@ Detects suspicious patterns in failed transactions.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
 
 from .base import RiskRule, RuleResult, PaymentContext, RiskAction
