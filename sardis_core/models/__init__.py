@@ -4,6 +4,7 @@ from .agent import Agent
 from .wallet import Wallet
 from .transaction import Transaction, TransactionStatus
 from .virtual_card import VirtualCard
+from .merchant import Merchant
 
 __all__ = [
     "Agent",
@@ -11,5 +12,6 @@ __all__ = [
     "Transaction",
     "TransactionStatus",
     "VirtualCard",
+    "Merchant",
 ]
 
