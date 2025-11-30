@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Optional
 
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import SystemMessage
 from langgraph.prebuilt import create_react_agent
 
 from sardis_sdk import SardisClient
@@ -104,10 +104,11 @@ Be helpful, efficient, and transparent about all financial operations."""
         self.tools = create_shopping_tools(self.sardis_client, agent_id)
         
         # Create agent using LangGraph's prebuilt ReAct agent
+        # Use prompt parameter instead of state_modifier
         self.agent = create_react_agent(
             model=self.llm,
             tools=self.tools,
-            state_modifier=self.SYSTEM_PROMPT
+            prompt=self.SYSTEM_PROMPT
         )
     
     def shop(self, goal: str) -> str:
