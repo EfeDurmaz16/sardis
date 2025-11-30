@@ -75,6 +75,25 @@ def create_app() -> FastAPI:
             "description": "Programmable stablecoin payment network for AI agents"
         }
     
+    @app.get(f"{settings.api_prefix}/", tags=["health"])
+    async def api_root():
+        """API root endpoint with version info."""
+        return {
+            "service": "Sardis API",
+            "version": "0.3.0",
+            "status": "healthy",
+            "endpoints": {
+                "agents": f"{settings.api_prefix}/agents",
+                "payments": f"{settings.api_prefix}/payments",
+                "merchants": f"{settings.api_prefix}/merchants",
+                "catalog": f"{settings.api_prefix}/catalog",
+                "webhooks": f"{settings.api_prefix}/webhooks",
+                "risk": f"{settings.api_prefix}/risk",
+                "marketplace": f"{settings.api_prefix}/marketplace",
+            },
+            "docs": "/docs"
+        }
+    
     @app.get("/health", tags=["health"])
     async def health_check():
         """Detailed health check."""

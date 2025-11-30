@@ -2,7 +2,7 @@
 
 from .agent import Agent
 from .wallet import Wallet, TokenType, TokenBalance, TOKEN_INFO
-from .transaction import Transaction, TransactionStatus
+from .transaction import Transaction, TransactionStatus, OnChainRecord
 from .virtual_card import VirtualCard
 from .merchant import Merchant
 from .token import (
@@ -31,6 +31,7 @@ __all__ = [
     "TOKEN_INFO",
     "Transaction",
     "TransactionStatus",
+    "OnChainRecord",
     "VirtualCard",
     "Merchant",
     # Token registry

@@ -43,6 +43,22 @@ class Settings(BaseSettings):
     # Blockchain settings
     settlement_mode: str = "internal_ledger_only"  # internal_ledger_only, chain_write_per_tx, batched_chain_settlement
     
+    # Chain RPC endpoints (testnet defaults)
+    base_sepolia_rpc: str = "https://sepolia.base.org"
+    ethereum_sepolia_rpc: str = "https://ethereum-sepolia.publicnode.com"
+    polygon_amoy_rpc: str = "https://rpc-amoy.polygon.technology"
+    
+    # USDC contract addresses (testnet)
+    base_sepolia_usdc: str = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"  # Base Sepolia USDC
+    ethereum_sepolia_usdc: str = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"  # Sepolia USDC
+    polygon_amoy_usdc: str = "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582"  # Amoy USDC
+    
+    # Private key for gas pool wallet (ONLY for testnet - never commit real keys)
+    gas_pool_private_key: Optional[str] = None
+    
+    # Enable real blockchain transactions (False = simulation mode)
+    enable_real_blockchain: bool = False
+    
     # Database settings (for future use)
     database_url: Optional[str] = None
 

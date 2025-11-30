@@ -7,7 +7,9 @@ import {
   Webhook, 
   Settings,
   Wallet,
-  Activity
+  Activity,
+  Lock,
+  FileText
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -20,6 +22,8 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
+  { name: 'Holds', href: '/holds', icon: Lock },
+  { name: 'Invoices', href: '/invoices', icon: FileText },
   { name: 'Webhooks', href: '/webhooks', icon: Webhook },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
