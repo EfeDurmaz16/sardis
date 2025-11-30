@@ -5,8 +5,8 @@ from decimal import Decimal
 from typing import Optional
 
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langgraph.prebuilt import create_react_agent
 
 from sardis_sdk import SardisClient
 from .tools import create_shopping_tools
@@ -103,27 +103,11 @@ Be helpful, efficient, and transparent about all financial operations."""
         # Create tools
         self.tools = create_shopping_tools(self.sardis_client, agent_id)
         
-        # Create prompt
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.SYSTEM_PROMPT),
-            ("human", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ])
-        
-        # Create agent
-        agent = create_openai_functions_agent(
-            llm=self.llm,
+        # Create agent using LangGraph's prebuilt ReAct agent
+        self.agent = create_react_agent(
+            model=self.llm,
             tools=self.tools,
-            prompt=self.prompt
-        )
-        
-        # Create executor
-        self.executor = AgentExecutor(
-            agent=agent,
-            tools=self.tools,
-            verbose=verbose,
-            handle_parsing_errors=True,
-            max_iterations=10
+            state_modifier=self.SYSTEM_PROMPT
         )
     
     def shop(self, goal: str) -> str:
@@ -137,8 +121,18 @@ Be helpful, efficient, and transparent about all financial operations."""
         Returns:
             Agent's response with shopping results
         """
-        result = self.executor.invoke({"input": goal})
-        return result.get("output", "No response from agent")
+        # Run the agent
+        result = self.agent.invoke({"messages": [("human", goal)]})
+        
+        # Extract the final response
+        messages = result.get("messages", [])
+        if messages:
+            # Get the last AI message
+            for msg in reversed(messages):
+                if hasattr(msg, 'content') and msg.content:
+                    return msg.content
+        
+        return "No response from agent"
     
     def check_balance(self) -> str:
         """Quick helper to check current wallet balance."""
@@ -184,12 +178,12 @@ def run_demo():
             if health.status_code != 200:
                 print("ERROR: Sardis API is not running!")
                 print("Please start the API server first:")
-                print("  cd sardis && uvicorn sardis_core.api.main:app --reload")
+                print("  cd sardis && ./venv/bin/uvicorn sardis_core.api.main:app --reload")
                 return
         except httpx.ConnectError:
             print("ERROR: Cannot connect to Sardis API!")
             print("Please start the API server first:")
-            print("  cd sardis && uvicorn sardis_core.api.main:app --reload")
+            print("  cd sardis && ./venv/bin/uvicorn sardis_core.api.main:app --reload")
             return
         
         print("\n2. Registering agent with Sardis...")
@@ -258,4 +252,3 @@ def run_demo():
 
 if __name__ == "__main__":
     run_demo()
-
