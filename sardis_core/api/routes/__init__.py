@@ -1,5 +1,5 @@
 """API route handlers."""
 
-from . import agents, payments, merchants, catalog, webhooks
+from . import agents, payments, merchants, catalog, webhooks, risk
 
-__all__ = ["agents", "payments", "merchants", "catalog", "webhooks"]
+__all__ = ["agents", "payments", "merchants", "catalog", "webhooks", "risk"]

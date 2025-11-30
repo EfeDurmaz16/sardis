@@ -1,10 +1,15 @@
 """Payment API routes."""
 
+from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+import uuid
 
 from sardis_core.services import PaymentService
-from sardis_core.api.dependencies import get_payment_service
+from sardis_core.api.dependencies import get_payment_service, get_wallet_service
+from sardis_core.services.wallet_service import WalletService
 from sardis_core.api.schemas import (
     PaymentRequest,
     PaymentResponse,
@@ -13,6 +18,37 @@ from sardis_core.api.schemas import (
 )
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+# ========== Additional Schemas ==========
+
+class PaymentRequestCreate(BaseModel):
+    """Request to create a payment request (invoice)."""
+    requester_agent_id: str = Field(..., description="Agent requesting the payment")
+    payer_agent_id: str = Field(..., description="Agent expected to pay")
+    amount: Decimal = Field(..., gt=0)
+    currency: str = Field(default="USDC")
+    description: Optional[str] = Field(None, max_length=500)
+    expires_in_hours: int = Field(default=24, ge=1, le=168)  # 1 hour to 1 week
+
+
+class PaymentRequestResponse(BaseModel):
+    """Response for a payment request."""
+    request_id: str
+    requester_agent_id: str
+    payer_agent_id: str
+    amount: str
+    currency: str
+    description: Optional[str]
+    status: str  # pending, paid, expired, cancelled
+    created_at: datetime
+    expires_at: datetime
+    paid_at: Optional[datetime] = None
+    transaction_id: Optional[str] = None
+
+
+# In-memory storage for payment requests (in production, use database)
+_payment_requests: dict[str, dict] = {}
 
 
 def transaction_to_response(tx) -> TransactionResponse:
@@ -82,6 +118,189 @@ async def create_payment(
     )
 
 
+@router.post(
+    "/request",
+    response_model=PaymentRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create payment request",
+    description="Create a payment request (invoice) that another agent can pay."
+)
+async def create_payment_request(
+    request: PaymentRequestCreate,
+    wallet_service: WalletService = Depends(get_wallet_service)
+) -> PaymentRequestResponse:
+    """Create a payment request for another agent to pay."""
+    
+    # Verify requester exists
+    requester = wallet_service.get_agent(request.requester_agent_id)
+    if not requester:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Requester agent {request.requester_agent_id} not found"
+        )
+    
+    # Verify payer exists
+    payer = wallet_service.get_agent(request.payer_agent_id)
+    if not payer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payer agent {request.payer_agent_id} not found"
+        )
+    
+    # Create payment request
+    now = datetime.now(timezone.utc)
+    from datetime import timedelta
+    
+    request_id = f"preq_{uuid.uuid4().hex[:16]}"
+    payment_req = {
+        "request_id": request_id,
+        "requester_agent_id": request.requester_agent_id,
+        "requester_wallet_id": requester.wallet_id,
+        "payer_agent_id": request.payer_agent_id,
+        "amount": request.amount,
+        "currency": request.currency,
+        "description": request.description,
+        "status": "pending",
+        "created_at": now,
+        "expires_at": now + timedelta(hours=request.expires_in_hours),
+        "paid_at": None,
+        "transaction_id": None,
+    }
+    
+    _payment_requests[request_id] = payment_req
+    
+    return PaymentRequestResponse(
+        request_id=request_id,
+        requester_agent_id=payment_req["requester_agent_id"],
+        payer_agent_id=payment_req["payer_agent_id"],
+        amount=str(payment_req["amount"]),
+        currency=payment_req["currency"],
+        description=payment_req["description"],
+        status=payment_req["status"],
+        created_at=payment_req["created_at"],
+        expires_at=payment_req["expires_at"]
+    )
+
+
+@router.get(
+    "/request/{request_id}",
+    response_model=PaymentRequestResponse,
+    summary="Get payment request",
+    description="Get details of a payment request."
+)
+async def get_payment_request(request_id: str) -> PaymentRequestResponse:
+    """Get a payment request by ID."""
+    
+    payment_req = _payment_requests.get(request_id)
+    if not payment_req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment request {request_id} not found"
+        )
+    
+    # Check if expired
+    if payment_req["status"] == "pending" and datetime.now(timezone.utc) > payment_req["expires_at"]:
+        payment_req["status"] = "expired"
+    
+    return PaymentRequestResponse(
+        request_id=payment_req["request_id"],
+        requester_agent_id=payment_req["requester_agent_id"],
+        payer_agent_id=payment_req["payer_agent_id"],
+        amount=str(payment_req["amount"]),
+        currency=payment_req["currency"],
+        description=payment_req["description"],
+        status=payment_req["status"],
+        created_at=payment_req["created_at"],
+        expires_at=payment_req["expires_at"],
+        paid_at=payment_req["paid_at"],
+        transaction_id=payment_req["transaction_id"]
+    )
+
+
+@router.post(
+    "/request/{request_id}/pay",
+    response_model=PaymentResponse,
+    summary="Pay a payment request",
+    description="Pay a pending payment request."
+)
+async def pay_payment_request(
+    request_id: str,
+    payment_service: PaymentService = Depends(get_payment_service)
+) -> PaymentResponse:
+    """Pay a payment request."""
+    
+    payment_req = _payment_requests.get(request_id)
+    if not payment_req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment request {request_id} not found"
+        )
+    
+    # Check status
+    if payment_req["status"] != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Payment request is {payment_req['status']}, cannot pay"
+        )
+    
+    # Check expiry
+    if datetime.now(timezone.utc) > payment_req["expires_at"]:
+        payment_req["status"] = "expired"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment request has expired"
+        )
+    
+    # Process payment
+    result = payment_service.pay(
+        agent_id=payment_req["payer_agent_id"],
+        amount=payment_req["amount"],
+        recipient_wallet_id=payment_req["requester_wallet_id"],
+        currency=payment_req["currency"],
+        purpose=payment_req["description"] or f"Payment for request {request_id}"
+    )
+    
+    if result.success:
+        payment_req["status"] = "paid"
+        payment_req["paid_at"] = datetime.now(timezone.utc)
+        payment_req["transaction_id"] = result.transaction.tx_id
+    
+    tx_response = None
+    if result.transaction:
+        tx_response = transaction_to_response(result.transaction)
+    
+    return PaymentResponse(
+        success=result.success,
+        transaction=tx_response,
+        error=result.error
+    )
+
+
+@router.delete(
+    "/request/{request_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cancel payment request",
+    description="Cancel a pending payment request."
+)
+async def cancel_payment_request(request_id: str):
+    """Cancel a payment request."""
+    
+    payment_req = _payment_requests.get(request_id)
+    if not payment_req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment request {request_id} not found"
+        )
+    
+    if payment_req["status"] != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel request with status {payment_req['status']}"
+        )
+    
+    payment_req["status"] = "cancelled"
+
+
 @router.get(
     "/estimate",
     response_model=EstimateResponse,
@@ -137,4 +356,3 @@ async def list_agent_transactions(
         offset=offset
     )
     return [transaction_to_response(tx) for tx in transactions]
-
