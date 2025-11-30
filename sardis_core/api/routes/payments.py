@@ -375,7 +375,8 @@ async def create_hold(
             detail="Agent wallet not found"
         )
     
-    available = wallet.get("available_balance", wallet.get("balance", Decimal("0")))
+    # Access wallet balance (Wallet is a Pydantic model)
+    available = getattr(wallet, 'available_balance', wallet.balance)
     if available < request.amount:
         return HoldResponse(
             success=False,

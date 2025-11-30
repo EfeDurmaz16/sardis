@@ -43,10 +43,10 @@ def setup_test_agents(client):
     import httpx
     
     agents_to_create = [
-        {"name": "Compute Agent", "agent_id": "agent_compute_demo"},
-        {"name": "Data Fetcher", "agent_id": "agent_data_demo"},
-        {"name": "Provider Agent", "agent_id": "agent_provider"},
-        {"name": "Buyer Agent", "agent_id": "agent_buyer"},
+        {"name": "Compute Agent", "agent_id": "agent_compute_demo", "owner_id": "demo_owner"},
+        {"name": "Data Fetcher", "agent_id": "agent_data_demo", "owner_id": "demo_owner"},
+        {"name": "Provider Agent", "agent_id": "agent_provider", "owner_id": "demo_owner"},
+        {"name": "Buyer Agent", "agent_id": "agent_buyer", "owner_id": "demo_owner"},
     ]
     
     created = []
@@ -66,8 +66,11 @@ def setup_test_agents(client):
                 "http://localhost:8000/api/v1/agents",
                 json={
                     "name": agent_data["name"],
-                    "spending_limit": 1000.0,
-                    "description": f"Demo agent for testing"
+                    "owner_id": agent_data["owner_id"],
+                    "description": "Demo agent for testing",
+                    "initial_balance": 500.0,  # Fund with 500 USDC for demos
+                    "limit_per_tx": 100.0,
+                    "limit_total": 1000.0
                 }
             )
             if response.status_code == 201:
@@ -82,28 +85,22 @@ def setup_test_agents(client):
     return created
 
 
+# Global storage for created merchant IDs
+_created_merchants = {}
+
 def setup_test_merchants(client):
     """Create test merchants for demos."""
     import httpx
+    global _created_merchants
     
     merchants_to_create = [
-        {"name": "GPU Provider", "merchant_id": "gpu_provider_1", "category": "compute"},
-        {"name": "Weather API", "merchant_id": "weather_provider", "category": "data"},
-        {"name": "Stock Data", "merchant_id": "stock_provider", "category": "data"},
-        {"name": "News Feed", "merchant_id": "news_provider", "category": "data"},
+        {"name": "GPU Provider", "key": "gpu_provider", "category": "compute"},
+        {"name": "Weather API", "key": "weather_provider", "category": "data"},
+        {"name": "Stock Data", "key": "stock_provider", "category": "data"},
+        {"name": "News Feed", "key": "news_provider", "category": "data"},
     ]
     
-    created = []
     for merchant_data in merchants_to_create:
-        try:
-            response = httpx.get(f"http://localhost:8000/api/v1/merchants/{merchant_data['merchant_id']}")
-            if response.status_code == 200:
-                print(f"  ✓ Merchant {merchant_data['merchant_id']} already exists")
-                created.append(merchant_data['merchant_id'])
-                continue
-        except:
-            pass
-        
         try:
             response = httpx.post(
                 "http://localhost:8000/api/v1/merchants",
@@ -115,14 +112,15 @@ def setup_test_merchants(client):
             )
             if response.status_code == 201:
                 data = response.json()
-                print(f"  ✓ Created merchant: {data.get('merchant_id', merchant_data['name'])}")
-                created.append(data.get('merchant_id'))
+                merchant_id = data.get('merchant_id')
+                _created_merchants[merchant_data["key"]] = merchant_id
+                print(f"  ✓ Created {merchant_data['name']}: {merchant_id}")
             else:
                 print(f"  ✗ Failed to create {merchant_data['name']}: {response.text}")
         except Exception as e:
             print(f"  ✗ Error creating {merchant_data['name']}: {e}")
     
-    return created
+    return _created_merchants
 
 
 # ==================== Demo Functions ====================
@@ -130,13 +128,36 @@ def setup_test_merchants(client):
 def run_compute_demo():
     """Run the compute agent demo."""
     from sardis_sdk import SardisClient
+    import httpx
     
     print_header("Compute Agent Demo")
     print("This demo shows an AI agent paying for GPU/compute resources")
     print("using pre-authorization holds.\n")
     
     with SardisClient(base_url="http://localhost:8000") as client:
-        agent_id = "agent_compute_demo"
+        # First create the agent
+        try:
+            response = httpx.post(
+                "http://localhost:8000/api/v1/agents",
+                json={
+                    "name": "Compute Demo Agent",
+                    "owner_id": "compute_demo",
+                    "description": "Demo agent for GPU compute",
+                    "initial_balance": 100.0,
+                    "limit_per_tx": 50.0,
+                    "limit_total": 500.0
+                }
+            )
+            if response.status_code == 201:
+                data = response.json()
+                agent_id = data["agent"]["agent_id"]
+                print(f"Created demo agent: {agent_id}")
+            else:
+                print(f"Could not create agent: {response.text}")
+                return
+        except Exception as e:
+            print(f"Error creating agent: {e}")
+            return
         
         try:
             # Check wallet
@@ -153,9 +174,10 @@ def run_compute_demo():
             
             # Create hold
             print_section("Creating Pre-Authorization Hold")
+            gpu_merchant = _created_merchants.get("gpu_provider", "gpu_provider")
             hold_result = client.create_hold(
                 agent_id=agent_id,
-                merchant_id="gpu_provider_1",
+                merchant_id=gpu_merchant,
                 amount=estimated_cost,
                 purpose="GPU job: LLM inference"
             )
@@ -199,13 +221,36 @@ def run_compute_demo():
 def run_data_demo():
     """Run the data fetcher demo."""
     from sardis_sdk import SardisClient
+    import httpx
     
     print_header("Data Fetcher Agent Demo")
     print("This demo shows an AI agent paying for API/data access")
     print("using micropayments.\n")
     
     with SardisClient(base_url="http://localhost:8000") as client:
-        agent_id = "agent_data_demo"
+        # First create the agent
+        try:
+            response = httpx.post(
+                "http://localhost:8000/api/v1/agents",
+                json={
+                    "name": "Data Fetcher Agent",
+                    "owner_id": "data_demo",
+                    "description": "Demo agent for API data access",
+                    "initial_balance": 50.0,
+                    "limit_per_tx": 10.0,
+                    "limit_total": 100.0
+                }
+            )
+            if response.status_code == 201:
+                data = response.json()
+                agent_id = data["agent"]["agent_id"]
+                print(f"Created demo agent: {agent_id}")
+            else:
+                print(f"Could not create agent: {response.text}")
+                return
+        except Exception as e:
+            print(f"Error creating agent: {e}")
+            return
         
         try:
             # Check wallet
@@ -219,10 +264,11 @@ def run_data_demo():
             print("  API: Weather Data API")
             print("  Cost per request: $0.01")
             
+            weather_merchant = _created_merchants.get("weather_provider")
             result = client.pay(
                 agent_id=agent_id,
                 amount=Decimal("0.01"),
-                merchant_id="weather_provider",
+                merchant_id=weather_merchant,
                 purpose="Weather API: NYC forecast"
             )
             
@@ -238,10 +284,11 @@ def run_data_demo():
             print("  Records: 10")
             print("  Cost: $0.05")
             
+            stock_merchant = _created_merchants.get("stock_provider")
             result = client.pay(
                 agent_id=agent_id,
                 amount=Decimal("0.05"),
-                merchant_id="stock_provider",
+                merchant_id=stock_merchant,
                 purpose="Stock data: AAPL, GOOG, MSFT..."
             )
             
@@ -269,13 +316,59 @@ def run_data_demo():
 def run_marketplace_demo():
     """Run the agent-to-agent marketplace demo."""
     from sardis_sdk import SardisClient
+    import httpx
     
     print_header("Agent-to-Agent Marketplace Demo")
     print("This demo shows agents buying and selling services from each other.\n")
     
     with SardisClient(base_url="http://localhost:8000") as client:
-        provider_agent = "agent_provider"
-        buyer_agent = "agent_buyer"
+        # Create provider agent
+        try:
+            response = httpx.post(
+                "http://localhost:8000/api/v1/agents",
+                json={
+                    "name": "Service Provider Agent",
+                    "owner_id": "marketplace_demo",
+                    "description": "Provides document analysis services",
+                    "initial_balance": 0.0,  # Provider starts with 0
+                    "limit_per_tx": 100.0,
+                    "limit_total": 1000.0
+                }
+            )
+            if response.status_code == 201:
+                data = response.json()
+                provider_agent = data["agent"]["agent_id"]
+                print(f"Created provider agent: {provider_agent}")
+            else:
+                print(f"Could not create provider: {response.text}")
+                return
+        except Exception as e:
+            print(f"Error creating provider: {e}")
+            return
+        
+        # Create buyer agent
+        try:
+            response = httpx.post(
+                "http://localhost:8000/api/v1/agents",
+                json={
+                    "name": "Buyer Agent",
+                    "owner_id": "marketplace_demo",
+                    "description": "Buys services from other agents",
+                    "initial_balance": 100.0,  # Buyer starts with funds
+                    "limit_per_tx": 50.0,
+                    "limit_total": 500.0
+                }
+            )
+            if response.status_code == 201:
+                data = response.json()
+                buyer_agent = data["agent"]["agent_id"]
+                print(f"Created buyer agent: {buyer_agent}")
+            else:
+                print(f"Could not create buyer: {response.text}")
+                return
+        except Exception as e:
+            print(f"Error creating buyer: {e}")
+            return
         
         try:
             # Check wallets
@@ -342,6 +435,8 @@ def main():
         response = httpx.get("http://localhost:8000/api/v1/")
         if response.status_code == 200:
             print("✓ API server is running")
+            data = response.json()
+            print(f"  Version: {data.get('version', 'unknown')}")
         else:
             print(f"✗ API returned status {response.status_code}")
             return
@@ -351,10 +446,7 @@ def main():
         print("  uvicorn sardis_core.api.main:app --reload")
         return
     
-    # Setup
-    print_section("Setting Up Demo Agents")
-    setup_test_agents(None)
-    
+    # Setup merchants
     print_section("Setting Up Demo Merchants")
     setup_test_merchants(None)
     
