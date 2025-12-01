@@ -3,17 +3,26 @@ from __future__ import annotations
 
 import base64
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from typing import Any, Dict, Type
 
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.identity import AgentIdentity
-from sardis_v2_core.mandates import PaymentMandate
+from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, MandateChain, PaymentMandate, VCProof
+from .schemas import AP2PaymentExecuteRequest
 
 
 @dataclass
 class VerificationResult:
     accepted: bool
     reason: str | None = None
+
+
+@dataclass
+class MandateChainVerification:
+    accepted: bool
+    reason: str | None = None
+    chain: MandateChain | None = None
 
 
 class ReplayCache:
@@ -55,6 +64,44 @@ class MandateVerifier:
         if not agent.verify(payload, signature=signature, domain=mandate.domain, nonce=mandate.nonce, purpose="checkout"):
             return VerificationResult(False, "signature_invalid")
         return VerificationResult(True)
+
+    def verify_chain(self, bundle: AP2PaymentExecuteRequest) -> MandateChainVerification:
+        try:
+            intent = self._parse_mandate(bundle.intent, IntentMandate)
+            cart = self._parse_mandate(bundle.cart, CartMandate)
+            payment = self._parse_mandate(bundle.payment, PaymentMandate)
+        except (KeyError, TypeError, ValueError) as exc:
+            return MandateChainVerification(False, f"invalid_payload: {exc}")
+
+        if intent.mandate_type != "intent" or intent.purpose != "intent":
+            return MandateChainVerification(False, "intent_invalid_type")
+        if cart.mandate_type != "cart" or cart.purpose != "cart":
+            return MandateChainVerification(False, "cart_invalid_type")
+        if payment.mandate_type != "payment" or payment.purpose != "checkout":
+            return MandateChainVerification(False, "payment_invalid_type")
+
+        for mandate in (intent, cart, payment):
+            if mandate.is_expired():
+                return MandateChainVerification(False, "mandate_expired")
+
+        if len({intent.subject, cart.subject, payment.subject}) != 1:
+            return MandateChainVerification(False, "subject_mismatch")
+        if cart.merchant_domain != payment.domain:
+            return MandateChainVerification(False, "merchant_domain_mismatch")
+
+        payment_result = self.verify(payment)
+        if not payment_result.accepted:
+            return MandateChainVerification(False, payment_result.reason)
+
+        return MandateChainVerification(True, chain=MandateChain(intent=intent, cart=cart, payment=payment))
+
+    def _parse_mandate(self, data: Dict[str, Any], model: Type[MandateBase]) -> MandateBase:
+        proof_payload = data.get("proof")
+        if not isinstance(proof_payload, dict):
+            raise ValueError("mandate_missing_proof")
+        proof = VCProof(**proof_payload)
+        init_values = {field.name: data[field.name] for field in fields(model) if field.name != "proof"}
+        return model(proof=proof, **init_values)
 
     def _identity_from_proof(self, mandate: PaymentMandate) -> AgentIdentity | None:
         method = mandate.proof.verification_method

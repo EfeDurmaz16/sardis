@@ -58,9 +58,19 @@ class PaymentMandate(MandateBase):
     audit_hash: str
 
 
+@dataclass(slots=True)
+class MandateChain:
+    """Verified AP2 mandate chain linking Intent -> Cart -> Payment."""
+
+    intent: IntentMandate
+    cart: CartMandate
+    payment: PaymentMandate
+
+
 __all__ = [
     "IntentMandate",
     "CartMandate",
     "PaymentMandate",
     "VCProof",
+    "MandateChain",
 ]

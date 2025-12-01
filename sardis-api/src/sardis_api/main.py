@@ -9,7 +9,8 @@ from sardis_protocol.verifier import MandateVerifier
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_compliance.checks import ComplianceEngine
-from .routers import mandates
+from sardis_v2_core.orchestrator import PaymentOrchestrator
+from .routers import mandates, ap2
 
 
 def create_app(settings: SardisSettings | None = None) -> FastAPI:
@@ -26,6 +27,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     ledger = LedgerStore(dsn=settings.ledger_dsn)
     compliance = ComplianceEngine(settings=settings)
     verifier = MandateVerifier(settings=settings)
+    orchestrator = PaymentOrchestrator(
+        wallet_manager=wallet_mgr,
+        compliance=compliance,
+        chain_executor=chain_exec,
+        ledger=ledger,
+    )
 
     app.dependency_overrides[mandates.get_deps] = lambda: mandates.Dependencies(  # type: ignore[arg-type]
         wallet_manager=wallet_mgr,
@@ -35,5 +42,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance=compliance,
     )
     app.include_router(mandates.router, prefix="/api/v2/mandates")
+
+    app.dependency_overrides[ap2.get_deps] = lambda: ap2.Dependencies(  # type: ignore[arg-type]
+        verifier=verifier,
+        orchestrator=orchestrator,
+    )
+    app.include_router(ap2.router, prefix="/api/v2/ap2")
 
     return app

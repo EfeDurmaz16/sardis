@@ -29,6 +29,8 @@ class SardisSettings(BaseSettings):
     allowed_domains: List[str] = Field(default_factory=list)
     mandate_ttl_seconds: int = 300
     ledger_dsn: str = "postgresql://localhost/sardis"
+    mandate_archive_dsn: str = "sqlite:///./data/mandates.db"
+    replay_cache_dsn: str = "sqlite:///./data/replay_cache.db"
     chains: List[ChainConfig]
     mpc: MPCProvider
 
