@@ -3,15 +3,17 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from sardis_core.services import WalletService
-from sardis_core.api.dependencies import get_wallet_service
 from sardis_core.api.schemas import (
     CreateAgentRequest,
     AgentResponse,
     AgentWithWalletResponse,
     WalletResponse,
     VirtualCardResponse,
+    AgentInstructionRequest,
+    AgentInstructionResponse,
 )
+from sardis_core.services import WalletService, AgentService
+from sardis_core.api.dependencies import get_wallet_service, get_agent_service
 
 from sardis_core.api.auth import get_api_key
 
@@ -147,3 +149,28 @@ async def get_agent_wallet(
         )
     return wallet_to_response(wallet)
 
+
+@router.post(
+    "/{agent_id}/instruct",
+    response_model=AgentInstructionResponse,
+    summary="Instruct agent",
+    description="Send a natural language instruction to the agent."
+)
+async def instruct_agent(
+    agent_id: str,
+    request: AgentInstructionRequest,
+    agent_service: AgentService = Depends(get_agent_service)
+) -> AgentInstructionResponse:
+    """Process natural language instruction."""
+    result = await agent_service.process_instruction(agent_id, request.instruction)
+    
+    if "error" in result:
+        # If it's a user error (e.g. insufficient funds), we might want 400
+        # But for now, let's return 200 with error field to let client handle it
+        return AgentInstructionResponse(error=result["error"])
+        
+    return AgentInstructionResponse(
+        response=result.get("response"),
+        tool_call=result.get("tool_call"),
+        tx_id=result.get("tx_id")
+    )

@@ -57,6 +57,19 @@ class AgentWithWalletResponse(BaseModel):
     wallet: WalletResponse
 
 
+class AgentInstructionRequest(BaseModel):
+    """Request to instruct an agent."""
+    instruction: str = Field(..., min_length=1, max_length=1000)
+
+
+class AgentInstructionResponse(BaseModel):
+    """Response from agent instruction."""
+    response: Optional[str] = None
+    tool_call: Optional[dict] = None
+    error: Optional[str] = None
+    tx_id: Optional[str] = None
+
+
 # ========== Merchant Schemas ==========
 
 class CreateMerchantRequest(BaseModel):

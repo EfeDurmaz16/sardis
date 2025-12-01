@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from sardis_core.config import settings
 from sardis_core.ledger import BaseLedger, InMemoryLedger, PostgresLedger
-from sardis_core.services import WalletService, PaymentService, FeeService
+from sardis_core.services import WalletService, PaymentService, FeeService, AgentService
 
 
 class Container:
@@ -31,6 +31,10 @@ class Container:
             self._ledger,
             self._wallet_service,
             self._fee_service
+        )
+        self._agent_service = AgentService(
+            self._wallet_service,
+            self._payment_service
         )
     
     @classmethod
@@ -61,6 +65,10 @@ class Container:
     def fee_service(self) -> FeeService:
         return self._fee_service
 
+    @property
+    def agent_service(self) -> "AgentService":
+        return self._agent_service
+
 
 @lru_cache()
 def get_container() -> Container:
@@ -86,4 +94,9 @@ def get_fee_service() -> FeeService:
 def get_ledger() -> BaseLedger:
     """Dependency for ledger."""
     return get_container().ledger
+
+
+def get_agent_service() -> "AgentService":
+    """Dependency for agent service."""
+    return get_container().agent_service
 

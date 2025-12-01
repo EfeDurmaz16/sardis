@@ -2,6 +2,7 @@
 
 from .wallet_service import WalletService
 from .payment_service import PaymentService, PaymentResult, HoldResult, RefundResult
+from .agent_service import AgentService
 from .fee_service import FeeService
 from .risk_service import RiskService, get_risk_service, RiskEvaluation, RiskDecision
 from .stablecoin_service import StablecoinService, get_stablecoin_service
