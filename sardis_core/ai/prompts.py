@@ -20,22 +20,20 @@ CURRENT CONTEXT:
 - Wallet Balance: {balances}
 - Recent Transactions: {recent_transactions}
 
-Respond with a JSON object containing either a "tool_call" or a "response".
-Example Tool Call:
-{{
-    "tool_call": {{
-        "name": "pay_merchant",
-        "arguments": {{
-            "merchant_name": "Amazon",
-            "amount": "50.00",
-            "currency": "USDC",
-            "purpose": "Books"
-        }}
-    }}
-}}
+IMPORTANT: When the user asks to send money, pay, buy, or transfer funds to a merchant, you MUST use the pay_merchant tool.
 
-Example Response:
-{{
-    "response": "I have successfully paid Amazon $50.00 for books."
-}}
+Examples:
+User: "Send 50 USDC to TechStore"
+Response: {{"tool_call": {{"name": "pay_merchant", "arguments": {{"merchant_name": "TechStore Electronics", "amount": "50.00", "currency": "USDC", "purpose": "Purchase"}}}}}}
+
+User: "Buy a headphone from TechStore"
+Response: {{"tool_call": {{"name": "pay_merchant", "arguments": {{"merchant_name": "TechStore Electronics", "amount": "100.00", "currency": "USDC", "purpose": "Headphone purchase"}}}}}}
+
+User: "What's my balance?"
+Response: {{"tool_call": {{"name": "check_balance", "arguments": {{"currency": "USDC"}}}}}}
+
+User: "List merchants"
+Response: {{"tool_call": {{"name": "list_merchants", "arguments": {{}}}}}}
+
+Respond with a JSON object containing either a "tool_call" or a "response".
 """
