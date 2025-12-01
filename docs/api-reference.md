@@ -11,13 +11,91 @@ The Sardis API is organized around REST. It accepts JSON-encoded request bodies,
 ---
 
 ## Authentication
-
-The current MVP uses open access. In production, authenticate using API keys:
-
+ 
+Sardis uses two types of authentication:
+ 
+1. **API Keys**: For programmatic access by agents and services.
+2. **JWT (JSON Web Tokens)**: For administrative access (dashboard, key management).
+ 
+### API Keys
+ 
+Pass the API key in the `X-API-Key` header:
+ 
 ```http
-Authorization: Bearer sk_live_xxxxxxxxxxxxx
+X-API-Key: sk_key_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
-
+ 
+### JWT (Admin)
+ 
+Pass the JWT in the `Authorization` header:
+ 
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+ 
+---
+ 
+## Auth API
+ 
+### Admin Login
+ 
+Login to obtain a JWT for administrative tasks (like creating API keys).
+ 
+```http
+POST /auth/login
+```
+ 
+**Request Body (Form Data):**
+ 
+- `username`: "admin"
+- `password`: [admin_password]
+ 
+**Response:** `200 OK`
+ 
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+ 
+### Create API Key
+ 
+Generate a new API key. Requires JWT authentication.
+ 
+```http
+POST /auth/keys
+```
+ 
+**Headers:**
+ 
+```http
+Authorization: Bearer [jwt_token]
+```
+ 
+**Request Body:**
+ 
+```json
+{
+  "name": "Production Key",
+  "owner_id": "client_123"
+}
+```
+ 
+**Response:** `201 Created`
+ 
+```json
+{
+  "key_id": "key_12345678",
+  "api_key": "sk_key_12345678_secret...",
+  "name": "Production Key",
+  "owner_id": "client_123"
+}
+```
+ 
+> [!IMPORTANT]
+> The `api_key` is only shown once. Store it securely.
+ 
 ---
 
 ## Agents

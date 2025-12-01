@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_prefix: str = "/api/v1"
     
+    # Security
+    secret_key: str = "insecure-secret-key-change-me"  # Change in production
+    admin_password: str = "admin"  # Change in production
+    
     # Stablecoin Settings
     default_currency: str = "USDC"
     

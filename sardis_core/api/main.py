@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from sardis_core.config import settings
-from sardis_core.api.routes import agents, payments, merchants, catalog, webhooks, risk, marketplace
+from sardis_core.api.routes import agents, payments, merchants, catalog, webhooks, risk, marketplace, auth
 from sardis_core.api.dependencies import get_container
 
 
@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(webhooks.router, prefix=settings.api_prefix)
     app.include_router(risk.router, prefix=settings.api_prefix)
     app.include_router(marketplace.router, prefix=settings.api_prefix)
+    app.include_router(auth.router, prefix=settings.api_prefix)
     
     @app.get("/", tags=["health"])
     async def root():

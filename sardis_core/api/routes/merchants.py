@@ -11,7 +11,13 @@ from sardis_core.api.schemas import (
 )
 from sardis_core.api.routes.agents import wallet_to_response
 
-router = APIRouter(prefix="/merchants", tags=["merchants"])
+from sardis_core.api.auth import get_api_key
+
+router = APIRouter(
+    prefix="/merchants", 
+    tags=["Merchants"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 def merchant_to_response(merchant) -> MerchantResponse:

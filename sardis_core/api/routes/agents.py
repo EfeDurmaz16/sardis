@@ -13,7 +13,13 @@ from sardis_core.api.schemas import (
     VirtualCardResponse,
 )
 
-router = APIRouter(prefix="/agents", tags=["agents"])
+from sardis_core.api.auth import get_api_key
+
+router = APIRouter(
+    prefix="/agents", 
+    tags=["Agents"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 def wallet_to_response(wallet) -> WalletResponse:

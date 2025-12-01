@@ -6,8 +6,13 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from sardis_core.webhooks import WebhookManager, EventType, get_webhook_manager
 
+from sardis_core.api.auth import get_api_key
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(
+    prefix="/webhooks", 
+    tags=["Webhooks"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 # ========== Schemas ==========

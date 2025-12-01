@@ -93,3 +93,19 @@ class DBTransaction(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DBApiKey(Base):
+    """API Key database model."""
+    __tablename__ = "api_keys"
+
+    key_id: Mapped[str] = mapped_column(String, primary_key=True)
+    key_hash: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    owner_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    permissions: Mapped[List[str]] = mapped_column(JSON, default=list)
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -17,7 +17,13 @@ from sardis_core.api.schemas import (
     EstimateResponse,
 )
 
-router = APIRouter(prefix="/payments", tags=["payments"])
+from sardis_core.api.auth import get_api_key
+
+router = APIRouter(
+    prefix="/payments", 
+    tags=["payments"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 # ========== Additional Schemas ==========

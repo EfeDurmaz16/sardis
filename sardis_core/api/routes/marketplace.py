@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import List, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from pydantic import BaseModel, Field
 
 from sardis_core.marketplace.registry import (
@@ -20,7 +20,13 @@ from sardis_core.marketplace.protocol import (
 )
 
 
-router = APIRouter(prefix="/marketplace", tags=["marketplace"])
+from sardis_core.api.auth import get_api_key
+
+router = APIRouter(
+    prefix="/marketplace", 
+    tags=["Marketplace"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 # ========== Request/Response Models ==========

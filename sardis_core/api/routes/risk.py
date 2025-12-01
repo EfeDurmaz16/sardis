@@ -10,7 +10,13 @@ from sardis_core.services.wallet_service import WalletService
 from sardis_core.api.dependencies import get_wallet_service
 
 
-router = APIRouter(prefix="/risk", tags=["risk"])
+from sardis_core.api.auth import get_api_key
+
+router = APIRouter(
+    prefix="/risk", 
+    tags=["Risk"],
+    dependencies=[Depends(get_api_key)]
+)
 
 
 # ========== Schemas ==========
