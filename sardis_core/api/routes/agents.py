@@ -113,7 +113,8 @@ async def list_agents(
     wallet_service: WalletService = Depends(get_wallet_service)
 ) -> list[AgentResponse]:
     """List registered agents."""
-    agents = wallet_service.list_agents(owner_id=owner_id)
+    # Get agents directly from the ledger (database) instead of in-memory cache
+    agents = await wallet_service._ledger.list_agents(owner_id=owner_id)
     return [agent_to_response(a) for a in agents]
 
 

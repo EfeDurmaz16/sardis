@@ -149,7 +149,10 @@ function AgentCard({ agent, onChat }: { agent: any, onChat: () => void }) {
           >
             Chat
           </button>
-          <button className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">
+          <button
+            onClick={() => alert(`Agent Details:\n\nID: ${agent.agent_id}\nName: ${agent.name}\nOwner: ${agent.owner_id}\nStatus: ${agent.is_active ? 'Active' : 'Inactive'}`)}
+            className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
+          >
             View <ArrowRight className="w-4 h-4" />
           </button>
         </div>
