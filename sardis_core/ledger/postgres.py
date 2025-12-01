@@ -83,6 +83,27 @@ class PostgresLedger(BaseLedger):
                 agents.append(agent)
             
             return agents
+    
+    async def get_agent(self, agent_id: str) -> Optional["Agent"]:
+        """Get a single agent by ID."""
+        from sardis_core.models.agent import Agent
+        
+        async with async_session_factory() as session:
+            stmt = select(DBAgent).where(DBAgent.agent_id == agent_id)
+            result = await session.execute(stmt)
+            db_agent = result.scalar_one_or_none()
+            
+            if not db_agent:
+                return None
+            
+            return Agent(
+                agent_id=db_agent.agent_id,
+                name=db_agent.name,
+                owner_id=db_agent.owner_id,
+                description=db_agent.description,
+                is_active=db_agent.is_active,
+                created_at=db_agent.created_at
+            )
 
     async def create_wallet(self, wallet: Wallet) -> Wallet:
         """Register a new wallet on the ledger."""

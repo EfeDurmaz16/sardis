@@ -87,7 +87,8 @@ class AgentService:
 
     async def _build_context(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Gather context for the agent."""
-        agent = self._wallet_service.get_agent(agent_id)
+        # Get agent from database via ledger
+        agent = await self._wallet_service._ledger.get_agent(agent_id)
         if not agent:
             return None
             
