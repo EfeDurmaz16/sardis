@@ -63,6 +63,21 @@ class PostgresLedger(BaseLedger):
                     raise ValueError(f"Wallet {wallet.wallet_id} already exists")
                 
                 # Create DB model
+                # Convert virtual_card to dict with string values for JSON serialization
+                virtual_card_data = None
+                if wallet.virtual_card:
+                    vc_dict = wallet.virtual_card.model_dump()
+                    # Convert any Decimal values to strings
+                    for key, value in vc_dict.items():
+                        if isinstance(value, Decimal):
+                            vc_dict[key] = str(value)
+                        elif isinstance(value, dict):
+                            # Handle nested dicts (like balances)
+                            for k, v in value.items():
+                                if isinstance(v, Decimal):
+                                    value[k] = str(v)
+                    virtual_card_data = vc_dict
+                
                 db_wallet = DBWallet(
                     wallet_id=wallet.wallet_id,
                     agent_id=wallet.agent_id,
@@ -71,7 +86,7 @@ class PostgresLedger(BaseLedger):
                     limit_per_tx=wallet.limit_per_tx,
                     limit_total=wallet.limit_total,
                     spent_total=wallet.spent_total,
-                    virtual_card=wallet.virtual_card.model_dump() if wallet.virtual_card else None,
+                    virtual_card=virtual_card_data,
                     is_active=wallet.is_active,
                     created_at=wallet.created_at,
                     updated_at=wallet.updated_at
