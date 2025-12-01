@@ -63,19 +63,23 @@ class PostgresLedger(BaseLedger):
                     raise ValueError(f"Wallet {wallet.wallet_id} already exists")
                 
                 # Create DB model
-                # Convert virtual_card to dict with string values for JSON serialization
+                # Convert virtual_card to dict with JSON-serializable values
                 virtual_card_data = None
                 if wallet.virtual_card:
                     vc_dict = wallet.virtual_card.model_dump()
-                    # Convert any Decimal values to strings
+                    # Convert any Decimal and datetime values to strings
                     for key, value in vc_dict.items():
                         if isinstance(value, Decimal):
                             vc_dict[key] = str(value)
+                        elif isinstance(value, datetime):
+                            vc_dict[key] = value.isoformat()
                         elif isinstance(value, dict):
                             # Handle nested dicts (like balances)
                             for k, v in value.items():
                                 if isinstance(v, Decimal):
                                     value[k] = str(v)
+                                elif isinstance(v, datetime):
+                                    value[k] = v.isoformat()
                     virtual_card_data = vc_dict
                 
                 db_wallet = DBWallet(
