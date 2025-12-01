@@ -76,6 +76,7 @@ class WalletService:
             wallet.virtual_card = virtual_card
             
             # Register on ledger
+            await self._ledger.create_agent(agent)
             await self._ledger.create_wallet(wallet)
             
             # Fund wallet if initial balance > 0
@@ -162,12 +163,17 @@ class WalletService:
                 category=category
             )
             
-            # Create wallet for merchant
-            wallet = Wallet(
-                agent_id=f"merchant_{merchant.merchant_id}",  # Pseudo-agent ID for merchant
-                limit_per_tx=Decimal("999999999.00"),
-                limit_total=Decimal("999999999.00")
+            # Create a pseudo-agent for the merchant to satisfy FK constraints
+            merchant_agent_id = f"merchant_{merchant.merchant_id}"
+            merchant_agent = Agent(
+                agent_id=merchant_agent_id,
+                name=f"Merchant: {name}",
+                owner_id="system_merchants",
+                description=f"System agent for merchant {name}"
             )
+            
+            # Register agent on ledger (if using PostgresLedger this might be needed)
+            await self._ledger.create_agent(merchant_agent)
             
             # Register on ledger
             await self._ledger.create_wallet(wallet)

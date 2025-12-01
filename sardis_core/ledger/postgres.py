@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sardis_core.models import Wallet, Transaction, TransactionStatus, TokenType
+from sardis_core.models.agent import Agent
 from sardis_core.database.models import DBWallet, DBTransaction, DBAgent
 from sardis_core.database.session import async_session_factory
 from sardis_core.config import settings
@@ -26,6 +27,30 @@ class PostgresLedger(BaseLedger):
     async def _get_session(self) -> AsyncSession:
         """Get a new async session."""
         return async_session_factory()
+
+    async def create_agent(self, agent: "Agent") -> "Agent":
+        """Register a new agent on the ledger."""
+        async with async_session_factory() as session:
+            async with session.begin():
+                # Check if exists
+                stmt = select(DBAgent).where(DBAgent.agent_id == agent.agent_id)
+                result = await session.execute(stmt)
+                if result.scalar_one_or_none():
+                    # If exists, just return (idempotent for merchants)
+                    return agent
+                
+                # Create DB model
+                db_agent = DBAgent(
+                    agent_id=agent.agent_id,
+                    name=agent.name,
+                    owner_id=agent.owner_id,
+                    description=agent.description,
+                    is_active=True,
+                    created_at=datetime.utcnow()
+                )
+                session.add(db_agent)
+            
+            return agent
 
     async def create_wallet(self, wallet: Wallet) -> Wallet:
         """Register a new wallet on the ledger."""

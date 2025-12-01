@@ -17,6 +17,19 @@ class BaseLedger(ABC):
     """
     
     @abstractmethod
+    async def create_agent(self, agent: "Agent") -> "Agent":
+        """
+        Register a new agent on the ledger.
+        
+        Args:
+            agent: The agent to create
+            
+        Returns:
+            The created agent
+        """
+        pass
+
+    @abstractmethod
     async def create_wallet(self, wallet: Wallet) -> Wallet:
         """
         Register a new wallet on the ledger.

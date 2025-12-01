@@ -47,7 +47,9 @@ class Settings(BaseSettings):
     default_limit_total: Decimal = Decimal("1000.00")
     
     # System Settings
-    system_wallet_id: str = "sardis_system"
+    system_wallet_id: str = "wallet_system_treasury"
+    fee_pool_wallet_id: str = "wallet_system_fees"
+    settlement_wallet_id: str = "wallet_system_settlement"
     
     # Optional integrations (loaded from environment)
     openai_api_key: Optional[str] = None

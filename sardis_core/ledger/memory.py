@@ -7,6 +7,7 @@ import asyncio
 
 from sardis_core.config import settings
 from sardis_core.models import Transaction, TransactionStatus, Wallet
+from sardis_core.models.agent import Agent
 from .base import BaseLedger
 
 
@@ -32,7 +33,31 @@ class InMemoryLedger(BaseLedger):
             is_active=True
         )
         self._wallets[system_wallet.wallet_id] = system_wallet
+        
+        # Create fee pool wallet
+        fee_wallet = Wallet(
+            wallet_id=settings.fee_pool_wallet_id,
+            agent_id="system_fees",
+            balance=Decimal("0.00"),
+            is_active=True
+        )
+        self._wallets[fee_wallet.wallet_id] = fee_wallet
+        
+        # Create settlement wallet
+        settlement_wallet = Wallet(
+            wallet_id=settings.settlement_wallet_id,
+            agent_id="system_settlement",
+            balance=Decimal("0.00"),
+            is_active=True
+        )
+        self._wallets[settlement_wallet.wallet_id] = settlement_wallet
     
+    async def create_agent(self, agent: "Agent") -> "Agent":
+        """Register a new agent on the ledger."""
+        # In memory ledger doesn't track agents separately in this implementation,
+        # but we implement the interface for consistency.
+        return agent
+
     async def create_wallet(self, wallet: Wallet) -> Wallet:
         """Register a new wallet on the ledger."""
         async with self._lock:

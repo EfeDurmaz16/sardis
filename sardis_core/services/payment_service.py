@@ -8,10 +8,11 @@ import asyncio # Changed from threading
 import uuid
 
 from sardis_core.config import settings
-from sardis_core.models import Transaction, TransactionStatus
+from sardis_core.models import Transaction, TransactionStatus, OnChainRecord
 from sardis_core.ledger import InMemoryLedger
 from .wallet_service import WalletService
 from .fee_service import FeeService
+from .blockchain_service import blockchain_service
 
 
 @dataclass
@@ -159,7 +160,9 @@ class PaymentService:
         recipient_wallet_id: str,
         currency: str = "USDC",
         purpose: Optional[str] = None,
-        idempotency_key: Optional[str] = None
+        idempotency_key: Optional[str] = None,
+        execute_on_chain: bool = False,
+        chain: str = "base"
     ) -> PaymentResult:
         """
         Process a payment from an agent to a recipient.
@@ -208,17 +211,57 @@ class PaymentService:
             self._emit_payment_event("payment.failed", None, error=reason)
             return result
         
+        # Determine actual recipient for ledger transfer
+        ledger_recipient_id = recipient_wallet_id
+        if execute_on_chain:
+            # If on-chain, we move funds to settlement wallet
+            ledger_recipient_id = settings.settlement_wallet_id
+            
+            # Validate recipient_wallet_id is an address
+            if not recipient_wallet_id.startswith("0x"):
+                 return PaymentResult.failed("Recipient must be a valid 0x address for on-chain payment")
+
         # Execute transfer on ledger
         try:
             transaction = await self._ledger.transfer(
                 from_wallet_id=wallet.wallet_id,
-                to_wallet_id=recipient_wallet_id,
+                to_wallet_id=ledger_recipient_id,
                 amount=amount,
                 fee=fee,
                 currency=currency,
                 purpose=purpose
             )
             
+            # If on-chain, execute blockchain tx
+            if execute_on_chain:
+                try:
+                    # TODO: Get token address from config based on currency/chain
+                    # For MVP, assuming USDC on Base Sepolia
+                    token_address = "0x036CbD53842c5426634e7929541eC2318f3dCF7e" # Base Sepolia USDC
+                    
+                    tx_hash = await blockchain_service.transfer_token(
+                        chain=chain,
+                        token_address=token_address,
+                        to_address=recipient_wallet_id,
+                        amount_units=int(amount * 10**6), # USDC has 6 decimals
+                        private_key=settings.relayer_private_key
+                    )
+                    
+                    # Update transaction with hash
+                    record = OnChainRecord(
+                        chain=chain,
+                        tx_hash=tx_hash,
+                        from_address="relayer", # TODO: Use actual relayer address
+                        to_address=recipient_wallet_id,
+                        status="pending"
+                    )
+                    transaction.add_on_chain_record(record)
+                    
+                except Exception as e:
+                    # TODO: Refund the ledger transfer if blockchain fails
+                    # await self.refund(transaction.tx_id, reason="Blockchain failure")
+                    raise e
+
             result = PaymentResult.succeeded(transaction, idempotency_key)
             
             # Cache idempotency result
