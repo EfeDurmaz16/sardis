@@ -131,7 +131,7 @@ async def create_payment(
     
     # Process payment
     if request.merchant_id:
-        result = payment_service.pay_merchant(
+        result = await payment_service.pay_merchant(
             agent_id=request.agent_id,
             merchant_id=request.merchant_id,
             amount=request.amount,
@@ -139,7 +139,7 @@ async def create_payment(
             purpose=request.purpose
         )
     else:
-        result = payment_service.pay(
+        result = await payment_service.pay(
             agent_id=request.agent_id,
             amount=request.amount,
             recipient_wallet_id=request.recipient_wallet_id,
@@ -151,6 +151,12 @@ async def create_payment(
     tx_response = None
     if result.transaction:
         tx_response = transaction_to_response(result.transaction)
+    
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.error or "Payment failed"
+        )
     
     return PaymentResponse(
         success=result.success,
@@ -293,7 +299,7 @@ async def pay_payment_request(
         )
     
     # Process payment
-    result = payment_service.pay(
+    result = await payment_service.pay(
         agent_id=payment_req["payer_agent_id"],
         amount=payment_req["amount"],
         recipient_wallet_id=payment_req["requester_wallet_id"],
@@ -368,7 +374,7 @@ async def create_hold(
         )
     
     # Check balance
-    wallet = wallet_service.get_wallet(agent.wallet_id)
+    wallet = await wallet_service.get_wallet(agent.wallet_id)
     if not wallet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -491,7 +497,7 @@ async def capture_hold(
         )
     
     # Process payment
-    result = payment_service.pay_merchant(
+    result = await payment_service.pay_merchant(
         agent_id=hold["agent_id"],
         merchant_id=hold["merchant_id"] or "system",
         amount=capture_amount,
@@ -600,7 +606,7 @@ async def refund_transaction(
     """Refund a transaction."""
     
     # Get original transaction
-    tx = payment_service.get_transaction(tx_id)
+    tx = await payment_service.get_transaction(tx_id)
     if not tx:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -617,7 +623,7 @@ async def refund_transaction(
         )
     
     # Process refund
-    result = payment_service.refund(
+    result = await payment_service.refund(
         tx_id=tx_id,
         amount=refund_amount,
         reason=request.reason if request else None
@@ -665,7 +671,7 @@ async def get_transaction(
     payment_service: PaymentService = Depends(get_payment_service)
 ) -> TransactionResponse:
     """Get transaction details."""
-    tx = payment_service.get_transaction(tx_id)
+    tx = await payment_service.get_transaction(tx_id)
     if not tx:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -687,7 +693,7 @@ async def list_agent_transactions(
     payment_service: PaymentService = Depends(get_payment_service)
 ) -> list[TransactionResponse]:
     """List transactions for an agent."""
-    transactions = payment_service.list_agent_transactions(
+    transactions = await payment_service.list_agent_transactions(
         agent_id=agent_id,
         limit=limit,
         offset=offset
@@ -739,7 +745,7 @@ async def verify_transaction(
     internal Sardis transaction, allowing third parties to verify
     the payment independently on block explorers.
     """
-    tx = payment_service.get_transaction(tx_id)
+    tx = await payment_service.get_transaction(tx_id)
     if not tx:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

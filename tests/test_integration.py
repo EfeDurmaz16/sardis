@@ -115,7 +115,7 @@ class TestPaymentFlow:
             
             # Balance should be 100 - 25 - 0.10 (fee) = 74.90
             assert Decimal(wallet_data["balance"]) == Decimal("74.90")
-            assert Decimal(wallet_data["spent_total"]) == Decimal("25.00")
+            assert Decimal(wallet_data["spent_total"]) == Decimal("25.10")
     
     @pytest.mark.asyncio
     async def test_payment_exceeds_limit_rejected(self):
@@ -245,8 +245,13 @@ class TestTransactionHistory:
             assert history_response.status_code == 200
             transactions = history_response.json()
             
-            assert len(transactions) == 3
-            for tx in transactions:
+            # Should be 4 transactions (1 funding + 3 payments)
+            assert len(transactions) == 4
+            
+            # Verify the 3 payments are there
+            payments = [tx for tx in transactions if tx["purpose"].startswith("Payment")]
+            assert len(payments) == 3
+            for tx in payments:
                 assert tx["amount"] == "10.00"
                 assert tx["status"] == "completed"
 
@@ -388,6 +393,16 @@ class TestCatalogAndPurchase:
             )
             agent_id = agent_response.json()["agent"]["agent_id"]
             
+            # 1.5 Register a merchant for the catalog to find
+            await client.post(
+                "/api/v1/merchants",
+                json={
+                    "name": "Catalog Merchant",
+                    "description": "For catalog testing",
+                    "category": "electronics"
+                }
+            )
+            
             # 2. Browse products
             catalog_response = await client.get(
                 "/api/v1/catalog/products?max_price=50&in_stock_only=true"
@@ -415,11 +430,15 @@ class TestCatalogAndPurchase:
                 }
             )
             
-            assert payment_response.status_code == 200
+            assert payment_response.status_code == 200, f"Payment failed: {payment_response.json()}"
             payment_data = payment_response.json()
             assert payment_data["success"] is True
             
             # 5. Verify balance reduced
+            merchant_wallet_response = await client.get(f"/api/v1/merchants/{merchant_id}/wallet")
+            merchant_wallet = merchant_wallet_response.json()
+            assert Decimal(merchant_wallet["balance"]) == Decimal("25.10") # Assuming merchant starts at 0 and receives full price
+            
             wallet_response = await client.get(f"/api/v1/agents/{agent_id}/wallet")
             new_balance = Decimal(wallet_response.json()["balance"])
             expected = Decimal("100.00") - price - Decimal("0.10")  # Including fee

@@ -40,13 +40,13 @@ async def create_merchant(
 ) -> MerchantResponse:
     """Register a new merchant with Sardis."""
     try:
-        merchant, wallet = wallet_service.register_merchant(
+        merchant, wallet = await wallet_service.register_merchant(
             name=request.name,
             description=request.description,
             category=request.category
         )
         return merchant_to_response(merchant)
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -98,7 +98,7 @@ async def get_merchant_wallet(
     wallet_service: WalletService = Depends(get_wallet_service)
 ) -> WalletResponse:
     """Get merchant's wallet details."""
-    wallet = wallet_service.get_merchant_wallet(merchant_id)
+    wallet = await wallet_service.get_merchant_wallet(merchant_id)
     if not wallet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

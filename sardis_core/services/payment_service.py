@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Optional
-import threading
+import asyncio # Changed from threading
 import uuid
 
 from sardis_core.config import settings
@@ -141,7 +141,7 @@ class PaymentService:
         self._wallet_service = wallet_service
         self._fee_service = fee_service or FeeService()
         self._webhook_manager = webhook_manager
-        self._lock = threading.RLock()
+        self._lock = asyncio.Lock()
         
         # Idempotency cache: key -> (result, timestamp)
         self._idempotency_cache: dict[str, tuple[PaymentResult, datetime]] = {}
@@ -152,7 +152,7 @@ class PaymentService:
         # Refund tracking: original_tx_id -> list of refund amounts
         self._refunds: dict[str, list[Decimal]] = {}
     
-    def pay(
+    async def pay(
         self,
         agent_id: str,
         amount: Decimal,
@@ -194,7 +194,7 @@ class PaymentService:
             return PaymentResult.failed("Amount must be positive")
         
         # Get agent wallet
-        wallet = self._wallet_service.get_agent_wallet(agent_id)
+        wallet = await self._wallet_service.get_agent_wallet(agent_id)
         if not wallet:
             return PaymentResult.failed(f"Wallet not found for agent {agent_id}")
         
@@ -210,7 +210,7 @@ class PaymentService:
         
         # Execute transfer on ledger
         try:
-            transaction = self._ledger.transfer(
+            transaction = await self._ledger.transfer(
                 from_wallet_id=wallet.wallet_id,
                 to_wallet_id=recipient_wallet_id,
                 amount=amount,
@@ -239,7 +239,7 @@ class PaymentService:
             self._emit_payment_event("payment.failed", None, error=str(e))
             return result
     
-    def pay_merchant(
+    async def pay_merchant(
         self,
         agent_id: str,
         merchant_id: str,
@@ -269,7 +269,7 @@ class PaymentService:
         if not merchant.wallet_id:
             return PaymentResult.failed(f"Merchant {merchant_id} has no wallet")
         
-        return self.pay(
+        return await self.pay(
             agent_id=agent_id,
             amount=amount,
             recipient_wallet_id=merchant.wallet_id,
@@ -277,11 +277,11 @@ class PaymentService:
             purpose=purpose or f"Payment to {merchant.name}"
         )
     
-    def get_transaction(self, tx_id: str) -> Optional[Transaction]:
+    async def get_transaction(self, tx_id: str) -> Optional[Transaction]:
         """Get a transaction by ID."""
-        return self._ledger.get_transaction(tx_id)
+        return await self._ledger.get_transaction(tx_id)
     
-    def list_agent_transactions(
+    async def list_agent_transactions(
         self,
         agent_id: str,
         limit: int = 50,
@@ -298,11 +298,11 @@ class PaymentService:
         Returns:
             List of transactions
         """
-        wallet = self._wallet_service.get_agent_wallet(agent_id)
+        wallet = await self._wallet_service.get_agent_wallet(agent_id)
         if not wallet:
             return []
         
-        return self._ledger.list_transactions(wallet.wallet_id, limit, offset)
+        return await self._ledger.list_transactions(wallet.wallet_id, limit, offset)
     
     def estimate_payment(
         self,
@@ -329,7 +329,7 @@ class PaymentService:
     
     # ==================== Pre-Authorization (Hold/Capture/Void) ====================
     
-    def create_hold(
+    async def create_hold(
         self,
         agent_id: str,
         merchant_id: str,
@@ -359,7 +359,7 @@ class PaymentService:
             return HoldResult.failed("Amount must be positive")
         
         # Get agent wallet
-        wallet = self._wallet_service.get_agent_wallet(agent_id)
+        wallet = await self._wallet_service.get_agent_wallet(agent_id)
         if not wallet:
             return HoldResult.failed(f"Wallet not found for agent {agent_id}")
         
@@ -384,7 +384,7 @@ class PaymentService:
         # Create the hold
         hold_id = f"hold_{uuid.uuid4().hex[:16]}"
         
-        with self._lock:
+        async with self._lock:
             hold = PaymentHold(
                 hold_id=hold_id,
                 agent_id=agent_id,
@@ -400,7 +400,7 @@ class PaymentService:
             # Reserve funds (increase spent_total to reduce available)
             # This doesn't actually transfer, just reserves
             wallet.spent_total += amount
-            self._ledger.update_wallet(wallet)
+            await self._ledger.update_wallet(wallet)
         
         self._emit_payment_event("hold.created", None, hold=hold)
         
@@ -413,7 +413,7 @@ class PaymentService:
             expires_at=expires_at,
         )
     
-    def capture_hold(
+    async def capture_hold(
         self,
         hold_id: str,
         amount: Optional[Decimal] = None,
@@ -433,7 +433,7 @@ class PaymentService:
         Returns:
             PaymentResult with the completed transaction
         """
-        with self._lock:
+        async with self._lock:
             hold = self._holds.get(hold_id)
             if not hold:
                 return PaymentResult.failed(f"Hold {hold_id} not found")
@@ -458,13 +458,13 @@ class PaymentService:
                 return PaymentResult.failed(f"Merchant wallet not found")
             
             # Release the hold reservation
-            wallet = self._wallet_service.get_agent_wallet(hold.agent_id)
+            wallet = await self._wallet_service.get_agent_wallet(hold.agent_id)
             if wallet:
                 wallet.spent_total -= hold.amount
-                self._ledger.update_wallet(wallet)
+                await self._ledger.update_wallet(wallet)
             
             # Execute the actual payment
-            result = self.pay(
+            result = await self.pay(
                 agent_id=hold.agent_id,
                 amount=capture_amount,
                 recipient_wallet_id=merchant.wallet_id,
@@ -481,11 +481,11 @@ class PaymentService:
                 # Restore the hold if capture failed
                 if wallet:
                     wallet.spent_total += hold.amount
-                    self._ledger.update_wallet(wallet)
+                    await self._ledger.update_wallet(wallet)
             
             return result
     
-    def void_hold(self, hold_id: str) -> HoldResult:
+    async def void_hold(self, hold_id: str) -> HoldResult:
         """
         Void (cancel) a pre-authorization hold.
         
@@ -497,7 +497,7 @@ class PaymentService:
         Returns:
             HoldResult indicating success
         """
-        with self._lock:
+        async with self._lock:
             hold = self._holds.get(hold_id)
             if not hold:
                 return HoldResult.failed(f"Hold {hold_id} not found")
@@ -506,10 +506,10 @@ class PaymentService:
                 return HoldResult.failed(f"Hold is {hold.status}, cannot void")
             
             # Release the hold reservation
-            wallet = self._wallet_service.get_agent_wallet(hold.agent_id)
+            wallet = await self._wallet_service.get_agent_wallet(hold.agent_id)
             if wallet:
                 wallet.spent_total -= hold.amount
-                self._ledger.update_wallet(wallet)
+                await self._ledger.update_wallet(wallet)
             
             hold.status = "voided"
             hold.voided_at = datetime.now(timezone.utc)
@@ -549,7 +549,7 @@ class PaymentService:
     
     # ==================== Refunds ====================
     
-    def refund(
+    async def refund(
         self,
         tx_id: str,
         amount: Optional[Decimal] = None,
@@ -570,7 +570,7 @@ class PaymentService:
             RefundResult with refund details
         """
         # Get original transaction
-        original_tx = self._ledger.get_transaction(tx_id)
+        original_tx = await self._ledger.get_transaction(tx_id)
         if not original_tx:
             return RefundResult.failed(f"Transaction {tx_id} not found")
         
@@ -586,7 +586,7 @@ class PaymentService:
             return RefundResult.failed("Refund amount must be positive")
         
         # Check total refunds don't exceed original
-        with self._lock:
+        async with self._lock:
             previous_refunds = sum(self._refunds.get(tx_id, []))
             available_to_refund = original_amount - previous_refunds
             
@@ -597,7 +597,7 @@ class PaymentService:
             
             # Execute refund (reverse transfer)
             try:
-                refund_tx = self._ledger.transfer(
+                refund_tx = await self._ledger.transfer(
                     from_wallet_id=original_tx.to_wallet,
                     to_wallet_id=original_tx.from_wallet,
                     amount=refund_amount,
@@ -636,9 +636,9 @@ class PaymentService:
         """Get total amount refunded for a transaction."""
         return sum(self._refunds.get(tx_id, []))
     
-    def get_refundable_amount(self, tx_id: str) -> Optional[Decimal]:
+    async def get_refundable_amount(self, tx_id: str) -> Optional[Decimal]:
         """Get amount available for refund on a transaction."""
-        tx = self._ledger.get_transaction(tx_id)
+        tx = await self._ledger.get_transaction(tx_id)
         if not tx:
             return None
         return tx.amount - self.get_refund_total(tx_id)

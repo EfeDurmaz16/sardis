@@ -45,3 +45,7 @@ htmlcov/
 # Logs
 *.log
 
+
+# Test Output
+test_output_*.txt
+test_output.txt

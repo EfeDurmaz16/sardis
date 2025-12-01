@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-import threading
+import asyncio
 
 from sardis_core.config import settings
 from sardis_core.models import Transaction, TransactionStatus, Wallet
@@ -22,52 +22,34 @@ class InMemoryLedger(BaseLedger):
     def __init__(self):
         self._wallets: dict[str, Wallet] = {}
         self._transactions: dict[str, Transaction] = {}
-        self._lock = threading.RLock()
+        self._lock = asyncio.Lock()
         
-        # Initialize system wallets
-        self._init_system_wallets()
-    
-    def _init_system_wallets(self) -> None:
-        """Create system wallets for fees and treasury."""
-        # Fee pool wallet - collects transaction fees
-        fee_pool = Wallet(
-            wallet_id=settings.fee_pool_wallet_id,
-            agent_id="system",
-            balance=Decimal("0.00"),
-            currency=settings.default_currency,
-            limit_per_tx=Decimal("999999999.00"),
-            limit_total=Decimal("999999999.00"),
-        )
-        self._wallets[fee_pool.wallet_id] = fee_pool
-        
-        # System wallet - for minting/burning (treasury)
+        # Create system wallet
         system_wallet = Wallet(
             wallet_id=settings.system_wallet_id,
             agent_id="system",
-            balance=Decimal("999999999.00"),  # Unlimited for minting
-            currency=settings.default_currency,
-            limit_per_tx=Decimal("999999999.00"),
-            limit_total=Decimal("999999999.00"),
+            balance=Decimal("1000000000.00"),  # Initial treasury
+            is_active=True
         )
         self._wallets[system_wallet.wallet_id] = system_wallet
     
-    def create_wallet(self, wallet: Wallet) -> Wallet:
+    async def create_wallet(self, wallet: Wallet) -> Wallet:
         """Register a new wallet on the ledger."""
-        with self._lock:
+        async with self._lock:
             if wallet.wallet_id in self._wallets:
                 raise ValueError(f"Wallet {wallet.wallet_id} already exists")
             
             self._wallets[wallet.wallet_id] = wallet
             return wallet
     
-    def get_wallet(self, wallet_id: str) -> Optional[Wallet]:
+    async def get_wallet(self, wallet_id: str) -> Optional[Wallet]:
         """Retrieve a wallet by ID."""
-        with self._lock:
+        async with self._lock:
             return self._wallets.get(wallet_id)
     
-    def update_wallet(self, wallet: Wallet) -> Wallet:
+    async def update_wallet(self, wallet: Wallet) -> Wallet:
         """Update a wallet's state."""
-        with self._lock:
+        async with self._lock:
             if wallet.wallet_id not in self._wallets:
                 raise ValueError(f"Wallet {wallet.wallet_id} not found")
             
@@ -75,7 +57,7 @@ class InMemoryLedger(BaseLedger):
             self._wallets[wallet.wallet_id] = wallet
             return wallet
     
-    def transfer(
+    async def transfer(
         self,
         from_wallet_id: str,
         to_wallet_id: str,
@@ -85,20 +67,44 @@ class InMemoryLedger(BaseLedger):
         purpose: Optional[str] = None
     ) -> Transaction:
         """Execute a transfer between wallets."""
-        with self._lock:
-            # Get wallets
-            from_wallet = self._wallets.get(from_wallet_id)
-            to_wallet = self._wallets.get(to_wallet_id)
-            fee_pool = self._wallets.get(settings.fee_pool_wallet_id)
+        async with self._lock:
+            # 1. Validate
+            sender = self._wallets.get(from_wallet_id)
+            recipient = self._wallets.get(to_wallet_id)
             
-            if not from_wallet:
-                raise ValueError(f"Source wallet {from_wallet_id} not found")
-            if not to_wallet:
-                raise ValueError(f"Destination wallet {to_wallet_id} not found")
-            if not fee_pool:
-                raise ValueError("Fee pool wallet not initialized")
+            if not sender:
+                raise ValueError(f"Sender wallet {from_wallet_id} not found")
+            if not recipient:
+                raise ValueError(f"Recipient wallet {to_wallet_id} not found")
             
-            # Create transaction record
+            total_deduction = amount + fee
+            
+            # Check balance
+            sender_balance = sender.get_balance(currency)
+            if sender_balance < total_deduction:
+                raise ValueError(f"Insufficient balance: have {sender_balance}, need {total_deduction}")
+            
+            # 2. Execute Transfer
+            # Deduct from sender
+            from sardis_core.models.wallet import TokenType
+            token_type = TokenType(currency)
+            sender.set_token_balance(token_type, sender_balance - total_deduction)
+            sender.spent_total += total_deduction
+            sender.updated_at = datetime.utcnow()
+            
+            # Credit to recipient
+            recipient_balance = recipient.get_balance(currency)
+            recipient.set_token_balance(token_type, recipient_balance + amount)
+            recipient.updated_at = datetime.utcnow()
+            
+            # Credit fee to system (if not system itself)
+            if fee > 0 and to_wallet_id != settings.system_wallet_id:
+                system = self._wallets.get(settings.system_wallet_id)
+                if system:
+                    system_balance = system.get_balance(currency)
+                    system.set_token_balance(token_type, system_balance + fee)
+            
+            # 3. Record Transaction
             tx = Transaction(
                 from_wallet=from_wallet_id,
                 to_wallet=to_wallet_id,
@@ -106,89 +112,56 @@ class InMemoryLedger(BaseLedger):
                 fee=fee,
                 currency=currency,
                 purpose=purpose,
-                status=TransactionStatus.PENDING
+                status=TransactionStatus.COMPLETED,
+                completed_at=datetime.utcnow()
             )
             
-            # Validate transfer
-            total_cost = amount + fee
-            if from_wallet.balance < total_cost:
-                tx.mark_failed(f"Insufficient balance: have {from_wallet.balance}, need {total_cost}")
-                self._transactions[tx.tx_id] = tx
-                raise ValueError(tx.error_message)
+            self._transactions[tx.tx_id] = tx
             
-            # Execute the transfer atomically
-            try:
-                # Deduct from source
-                from_wallet.balance -= total_cost
-                from_wallet.spent_total += amount
-                from_wallet.updated_at = datetime.utcnow()
-                
-                # Credit to destination
-                to_wallet.balance += amount
-                to_wallet.updated_at = datetime.utcnow()
-                
-                # Credit fee to fee pool
-                if fee > Decimal("0"):
-                    fee_pool.balance += fee
-                    fee_pool.updated_at = datetime.utcnow()
-                
-                # Mark transaction complete
-                tx.mark_completed()
-                
-                # Store updated state
-                self._wallets[from_wallet_id] = from_wallet
-                self._wallets[to_wallet_id] = to_wallet
-                self._wallets[settings.fee_pool_wallet_id] = fee_pool
-                self._transactions[tx.tx_id] = tx
-                
-                return tx
-                
-            except Exception as e:
-                tx.mark_failed(str(e))
-                self._transactions[tx.tx_id] = tx
-                raise
-    
-    def get_transaction(self, tx_id: str) -> Optional[Transaction]:
+            return tx
+            
+    async def get_transaction(self, tx_id: str) -> Optional[Transaction]:
         """Retrieve a transaction by ID."""
-        with self._lock:
+        async with self._lock:
             return self._transactions.get(tx_id)
     
-    def list_transactions(
+    async def list_transactions(
         self,
         wallet_id: str,
         limit: int = 50,
         offset: int = 0
     ) -> list[Transaction]:
         """List transactions for a wallet."""
-        with self._lock:
-            # Get all transactions involving this wallet
+        async with self._lock:
+            # Filter transactions involving this wallet
             wallet_txs = [
                 tx for tx in self._transactions.values()
                 if tx.from_wallet == wallet_id or tx.to_wallet == wallet_id
             ]
             
-            # Sort by created_at descending
+            # Sort by date desc
             wallet_txs.sort(key=lambda x: x.created_at, reverse=True)
             
             # Apply pagination
             return wallet_txs[offset:offset + limit]
     
-    def get_balance(self, wallet_id: str) -> Decimal:
-        """Get the current balance of a wallet."""
-        with self._lock:
+    async def get_balance(self, wallet_id: str, currency: str = settings.default_currency) -> Decimal:
+        """Get the current balance of a wallet for a specific currency."""
+        async with self._lock:
             wallet = self._wallets.get(wallet_id)
             if not wallet:
                 raise ValueError(f"Wallet {wallet_id} not found")
-            return wallet.balance
+            return wallet.get_balance(currency)
     
-    def fund_wallet(self, wallet_id: str, amount: Decimal) -> Transaction:
+    async def fund_wallet(self, wallet_id: str, amount: Decimal) -> Transaction:
         """
         Fund a wallet from the system treasury.
         
-        This is a convenience method for the MVP to add
-        initial balance to agent wallets.
+        Used for testing and initial setup. In production, this would be
+        replaced by actual fiat/crypto on-ramps.
         """
-        return self.transfer(
+        # No lock needed here as it calls transfer which locks
+        return await self.transfer(
             from_wallet_id=settings.system_wallet_id,
             to_wallet_id=wallet_id,
             amount=amount,

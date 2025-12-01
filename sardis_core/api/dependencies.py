@@ -2,7 +2,8 @@
 
 from functools import lru_cache
 
-from sardis_core.ledger import InMemoryLedger
+from sardis_core.config import settings
+from sardis_core.ledger import BaseLedger, InMemoryLedger, PostgresLedger
 from sardis_core.services import WalletService, PaymentService, FeeService
 
 
@@ -17,8 +18,11 @@ class Container:
     _instance = None
     
     def __init__(self):
-        # Initialize the ledger
-        self._ledger = InMemoryLedger()
+        # Initialize the ledger based on config
+        if settings.database_url and "postgresql" in settings.database_url:
+            self._ledger: BaseLedger = PostgresLedger()
+        else:
+            self._ledger: BaseLedger = InMemoryLedger()
         
         # Initialize services
         self._fee_service = FeeService()
@@ -42,7 +46,7 @@ class Container:
         cls._instance = None
     
     @property
-    def ledger(self) -> InMemoryLedger:
+    def ledger(self) -> BaseLedger:
         return self._ledger
     
     @property
@@ -79,7 +83,7 @@ def get_fee_service() -> FeeService:
     return get_container().fee_service
 
 
-def get_ledger() -> InMemoryLedger:
+def get_ledger() -> BaseLedger:
     """Dependency for ledger."""
     return get_container().ledger
 

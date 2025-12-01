@@ -2,6 +2,7 @@
 
 from .base import BaseLedger
 from .memory import InMemoryLedger
+from .postgres import PostgresLedger
 from .models import (
     LedgerEntry,
     LedgerTransaction,
@@ -17,6 +18,7 @@ __all__ = [
     # Original exports
     "BaseLedger",
     "InMemoryLedger",
+    "PostgresLedger",
     # New ledger models
     "LedgerEntry",
     "LedgerTransaction",

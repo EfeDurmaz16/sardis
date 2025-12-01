@@ -17,7 +17,7 @@ class BaseLedger(ABC):
     """
     
     @abstractmethod
-    def create_wallet(self, wallet: Wallet) -> Wallet:
+    async def create_wallet(self, wallet: Wallet) -> Wallet:
         """
         Register a new wallet on the ledger.
         
@@ -30,7 +30,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def get_wallet(self, wallet_id: str) -> Optional[Wallet]:
+    async def get_wallet(self, wallet_id: str) -> Optional[Wallet]:
         """
         Retrieve a wallet by ID.
         
@@ -43,7 +43,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def update_wallet(self, wallet: Wallet) -> Wallet:
+    async def update_wallet(self, wallet: Wallet) -> Wallet:
         """
         Update a wallet's state.
         
@@ -56,7 +56,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def transfer(
+    async def transfer(
         self,
         from_wallet_id: str,
         to_wallet_id: str,
@@ -92,7 +92,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def get_transaction(self, tx_id: str) -> Optional[Transaction]:
+    async def get_transaction(self, tx_id: str) -> Optional[Transaction]:
         """
         Retrieve a transaction by ID.
         
@@ -105,7 +105,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def list_transactions(
+    async def list_transactions(
         self,
         wallet_id: str,
         limit: int = 50,
@@ -125,7 +125,7 @@ class BaseLedger(ABC):
         pass
     
     @abstractmethod
-    def get_balance(self, wallet_id: str) -> Decimal:
+    async def get_balance(self, wallet_id: str) -> Decimal:
         """
         Get the current balance of a wallet.
         

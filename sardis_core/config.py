@@ -69,7 +69,8 @@ class Settings(BaseSettings):
     default_chain: str = "base_sepolia"
     
     # Database settings (for future use)
-    database_url: Optional[str] = None
+    # Database settings
+    database_url: str = "postgresql+asyncpg://efebarandurmaz@localhost:5432/sardis"
     
     # Stripe/Marqeta for virtual cards (future)
     stripe_api_key: Optional[str] = None

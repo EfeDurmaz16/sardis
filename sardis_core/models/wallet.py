@@ -72,6 +72,10 @@ class Wallet(BaseModel):
         
         token_data = self.token_balances.get(token.value)
         return token_data.balance if token_data else Decimal("0.00")
+
+    def get_balance(self, currency: str) -> Decimal:
+        """Get balance for a specific currency string."""
+        return self.get_token_balance(TokenType(currency))
     
     def set_token_balance(self, token: TokenType, amount: Decimal):
         """Set balance for a specific token."""
@@ -153,7 +157,7 @@ class Wallet(BaseModel):
             return False, "Wallet is inactive"
         
         if total_cost > balance:
-            return False, f"Insufficient {token.value} balance: have {balance}, need {total_cost}"
+            return False, f"Insufficient balance ({token.value}): have {balance}, need {total_cost}"
         
         if amount > limit_per_tx:
             return False, f"Amount {amount} exceeds per-transaction limit of {limit_per_tx}"

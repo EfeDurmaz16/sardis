@@ -67,7 +67,7 @@ async def create_agent(
 ) -> AgentWithWalletResponse:
     """Register a new agent with Sardis."""
     try:
-        agent, wallet = wallet_service.register_agent(
+        agent, wallet = await wallet_service.register_agent(
             name=request.name,
             owner_id=request.owner_id,
             initial_balance=request.initial_balance,
@@ -80,7 +80,7 @@ async def create_agent(
             agent=agent_to_response(agent),
             wallet=wallet_to_response(wallet)
         )
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -133,7 +133,7 @@ async def get_agent_wallet(
     wallet_service: WalletService = Depends(get_wallet_service)
 ) -> WalletResponse:
     """Get agent's wallet details."""
-    wallet = wallet_service.get_agent_wallet(agent_id)
+    wallet = await wallet_service.get_agent_wallet(agent_id)
     if not wallet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
