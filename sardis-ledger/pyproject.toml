@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-ledger"
+version = "0.1.0"
+description = "Append-only ledger + receipt engine for Sardis"
+authors = [{name = "Sardis"}]
+requires-python = ">=3.11"
+dependencies = [
+    "sardis-core @ file://../sardis-core",
+    "sqlalchemy>=2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sardis_ledger"]

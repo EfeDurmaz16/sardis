@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-compliance"
+version = "0.1.0"
+description = "Compliance and monitoring services for Sardis"
+authors = [{name = "Sardis"}]
+requires-python = ">=3.11"
+dependencies = [
+    "sardis-core @ file://../sardis-core",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sardis_compliance"]

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-chain"
+version = "0.1.0"
+description = "Multi-chain stablecoin executor for Sardis"
+authors = [{name = "Sardis"}]
+requires-python = ">=3.11"
+dependencies = [
+    "web3>=6.0",
+    "pydantic>=2.6",
+    "sardis-core @ file://../sardis-core",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sardis_chain"]

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-protocol"
+version = "0.1.0"
+description = "AP2/TAP mandate schemas and verifiers"
+authors = [{name = "Sardis"}]
+requires-python = ">=3.11"
+dependencies = [
+    "sardis-core @ file://../sardis-core",
+    "pydantic>=2.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sardis_protocol"]

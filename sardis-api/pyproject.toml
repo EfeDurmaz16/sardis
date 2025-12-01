@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-api"
+version = "0.1.0"
+description = "FastAPI gateway for Sardis stablecoin execution"
+authors = [{name = "Sardis"}]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109",
+    "uvicorn>=0.23",
+    "sardis-core @ file://../sardis-core",
+    "sardis-wallet @ file://../sardis-wallet",
+    "sardis-ledger @ file://../sardis-ledger",
+    "sardis-protocol @ file://../sardis-protocol",
+    "sardis-chain @ file://../sardis-chain",
+    "sardis-compliance @ file://../sardis-compliance",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sardis_api"]
