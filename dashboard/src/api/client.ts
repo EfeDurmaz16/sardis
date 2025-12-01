@@ -7,29 +7,33 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`
-  
+
+  // Get API key from localStorage (set by Settings page)
+  const apiKey = localStorage.getItem('sardis_api_key') || 'sk_sardis_demo_abc123xyz789'
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
       ...options.headers,
     },
     ...options,
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
     throw new Error(error.detail || `HTTP ${response.status}`)
   }
-  
+
   return response.json()
 }
 
 // Agent APIs
 export const agentApi = {
   list: () => request<any[]>('/agents'),
-  
+
   get: (agentId: string) => request<any>(`/agents/${agentId}`),
-  
+
   create: (data: {
     name: string
     owner_id: string
@@ -41,9 +45,9 @@ export const agentApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  
+
   getWallet: (agentId: string) => request<any>(`/agents/${agentId}/wallet`),
-  
+
   getTransactions: (agentId: string, limit = 50) =>
     request<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
 }
@@ -52,7 +56,7 @@ export const agentApi = {
 export const paymentApi = {
   estimate: (amount: string, currency = 'USDC') =>
     request<any>(`/payments/estimate?amount=${amount}&currency=${currency}`),
-  
+
   create: (data: {
     agent_id: string
     amount: string
@@ -64,14 +68,14 @@ export const paymentApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  
+
   getHistory: (limit = 100) => request<any[]>(`/payments?limit=${limit}`),
 }
 
 // Merchant APIs
 export const merchantApi = {
   list: () => request<any[]>('/merchants'),
-  
+
   create: (data: {
     name: string
     description?: string
@@ -85,7 +89,7 @@ export const merchantApi = {
 // Webhook APIs
 export const webhookApi = {
   list: () => request<any[]>('/webhooks'),
-  
+
   create: (data: {
     url: string
     events: string[]
@@ -93,7 +97,7 @@ export const webhookApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  
+
   update: (subscriptionId: string, data: Partial<{
     url: string
     events: string[]
@@ -102,7 +106,7 @@ export const webhookApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  
+
   delete: (subscriptionId: string) => request<void>(`/webhooks/${subscriptionId}`, {
     method: 'DELETE',
   }),
@@ -111,7 +115,7 @@ export const webhookApi = {
 // Risk APIs
 export const riskApi = {
   getScore: (agentId: string) => request<any>(`/risk/agents/${agentId}/score`),
-  
+
   authorize: (agentId: string, serviceId: string) =>
     request<any>(`/risk/agents/${agentId}/authorize`, {
       method: 'POST',

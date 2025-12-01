@@ -124,14 +124,14 @@ def create_app() -> FastAPI:
         
         # Check if merchants already exist
         if not wallet_service.get_merchant("mock_merchant_electronics"):
-            wallet_service.register_merchant(
+            await wallet_service.register_merchant(
                 name="TechStore Electronics",
                 description="Electronics and gadgets",
                 category="electronics"
             )
         
         if not wallet_service.get_merchant("mock_merchant_office"):
-            wallet_service.register_merchant(
+            await wallet_service.register_merchant(
                 name="Office Supplies Co",
                 description="Office supplies and accessories",
                 category="office"

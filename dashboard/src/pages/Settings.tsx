@@ -1,26 +1,65 @@
+
 import { useState } from 'react'
-import { 
-  Key, 
-  Shield, 
-  DollarSign, 
-  Bell, 
+import {
+  Key,
+  Shield,
+  DollarSign,
+  Bell,
   Globe,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  Plus
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useAuth } from '../auth/AuthContext'
 
 export default function SettingsPage() {
   const [copied, setCopied] = useState(false)
-  const apiKey = 'sk_sardis_demo_abc123xyz789'
-  
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null)
+  const [keyName, setKeyName] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [activeKey, setActiveKey] = useState(localStorage.getItem('sardis_api_key') || '')
+  const { token } = useAuth()
+
   const copyApiKey = () => {
-    navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (generatedKey) {
+      navigator.clipboard.writeText(generatedKey)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
-  
+
+  const generateKey = async () => {
+    if (!keyName) return;
+    setIsGenerating(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/auth/keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: keyName,
+          owner_id: 'admin_dashboard' // In a real app, this would be the logged-in user's ID
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGeneratedKey(data.api_key);
+        // Automatically set as active key for the dashboard
+        localStorage.setItem('sardis_api_key', data.api_key);
+        setActiveKey(data.api_key);
+      }
+    } catch (error) {
+      console.error('Failed to generate key', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -30,7 +69,7 @@ export default function SettingsPage() {
           Configure your Sardis integration
         </p>
       </div>
-      
+
       {/* API Keys */}
       <section className="card p-6">
         <div className="flex items-center gap-3 mb-6">
@@ -42,34 +81,76 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-400">Manage your API access</p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Production API Key
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1 px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg font-mono text-sm text-gray-300">
-                {apiKey.slice(0, 20)}...
+          {activeKey && (
+            <div className="mb-6 p-4 bg-sardis-500/10 border border-sardis-500/20 rounded-lg">
+              <label className="block text-sm font-medium text-sardis-400 mb-1">
+                Active Dashboard Key
+              </label>
+              <div className="font-mono text-sm text-white break-all">
+                {activeKey}
+              </div>
+            </div>
+          )}
+
+          {!generatedKey ? (
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Key Name
+                </label>
+                <input
+                  type="text"
+                  value={keyName}
+                  onChange={(e) => setKeyName(e.target.value)}
+                  placeholder="e.g. Production Key"
+                  className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50"
+                />
               </div>
               <button
-                onClick={copyApiKey}
-                className="px-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-gray-400 hover:text-white transition-colors"
+                onClick={generateKey}
+                disabled={!keyName || isGenerating}
+                className="px-6 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-              </button>
-              <button className="px-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-gray-400 hover:text-white transition-colors">
-                <RefreshCw className="w-5 h-5" />
+                {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                Generate Key
               </button>
             </div>
-          </div>
-          
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                New API Key (Copy now, it won't be shown again)
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg font-mono text-sm text-green-400 break-all">
+                  {generatedKey}
+                </div>
+                <button
+                  onClick={copyApiKey}
+                  className="px-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-gray-400 hover:text-white transition-colors"
+                >
+                  {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setGeneratedKey(null);
+                    setKeyName('');
+                  }}
+                  className="px-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-gray-400 hover:text-white transition-colors"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="text-xs text-gray-500">
             Keep your API key secret. Do not share it or expose it in client-side code.
           </p>
         </div>
       </section>
-      
+
       {/* Fee Configuration */}
       <section className="card p-6">
         <div className="flex items-center gap-3 mb-6">
@@ -81,7 +162,7 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-400">Transaction fee settings</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
@@ -115,7 +196,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Risk Thresholds */}
       <section className="card p-6">
         <div className="flex items-center gap-3 mb-6">
@@ -127,7 +208,7 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-400">Configure fraud prevention</p>
           </div>
         </div>
-        
+
         <div className="space-y-6">
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -147,7 +228,7 @@ export default function SettingsPage() {
               Transactions with risk score above this will be blocked
             </p>
           </div>
-          
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-400">
@@ -168,7 +249,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Notifications */}
       <section className="card p-6">
         <div className="flex items-center gap-3 mb-6">
@@ -180,7 +261,7 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-400">Email and alert preferences</p>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           {[
             { label: 'Transaction alerts', description: 'Get notified of high-value transactions', enabled: true },
@@ -208,7 +289,7 @@ export default function SettingsPage() {
           ))}
         </div>
       </section>
-      
+
       {/* Supported Chains */}
       <section className="card p-6">
         <div className="flex items-center gap-3 mb-6">
@@ -220,7 +301,7 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-400">Blockchain network configuration</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { name: 'Base', status: 'active', color: '#0052FF' },
@@ -232,13 +313,13 @@ export default function SettingsPage() {
               key={chain.name}
               className={clsx(
                 'p-4 rounded-lg border',
-                chain.status === 'active' 
-                  ? 'border-sardis-500/30 bg-sardis-500/5' 
+                chain.status === 'active'
+                  ? 'border-sardis-500/30 bg-sardis-500/5'
                   : 'border-dark-100 bg-dark-300'
               )}
             >
               <div className="flex items-center gap-2 mb-2">
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: chain.color }}
                 />
@@ -254,7 +335,7 @@ export default function SettingsPage() {
           ))}
         </div>
       </section>
-      
+
       {/* Save Button */}
       <div className="flex justify-end">
         <button className="px-6 py-3 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover">
@@ -264,4 +345,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

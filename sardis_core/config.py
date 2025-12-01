@@ -25,7 +25,15 @@ class Settings(BaseSettings):
     
     # Security
     secret_key: str = "insecure-secret-key-change-me"  # Change in production
-    admin_password: str = "admin"  # Change in production
+    admin_password: str = "admin"
+    
+    # Blockchain
+    base_rpc_url: str = "https://sepolia.base.org"
+    polygon_rpc_url: str = "https://rpc-amoy.polygon.technology"
+    ethereum_rpc_url: str = "https://rpc.sepolia.org"
+    
+    # Relayer (for gas/testing)
+    relayer_private_key: str = "0x0000000000000000000000000000000000000000000000000000000000000000"  # Change in production
     
     # Stablecoin Settings
     default_currency: str = "USDC"
