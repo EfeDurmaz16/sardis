@@ -756,7 +756,13 @@ const { agent, wallet } = await response.json();
 
 ## Changelog
 
-### v0.2.0 (Current)
+### v0.3.0 (Current)
+- **PostgreSQL Ledger**: Persistent, ACID-compliant transaction storage
+- **Async Architecture**: High-performance asynchronous service layer
+- **Database Migrations**: Alembic integration for schema management
+- Improved test coverage and reliability
+
+### v0.2.0
 - Multi-chain support (Base, Ethereum, Polygon, Solana)
 - Multi-token support (USDC, USDT, PYUSD, EURC)
 - Webhook system

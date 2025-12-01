@@ -180,9 +180,10 @@ class PostgresLedger(BaseLedger):
                 try:
                     # Deduct from source
                     new_from_balance = current_balance - total_cost
-                    from_wallet.balances[currency] = str(new_from_balance)
-                    # Force update of JSON field
-                    from_wallet.balances = dict(from_wallet.balances)
+                    # Create new dict to ensure SQLAlchemy detects change
+                    new_balances_from = dict(from_wallet.balances)
+                    new_balances_from[currency] = str(new_from_balance)
+                    from_wallet.balances = new_balances_from
                     
                     from_wallet.spent_total = Decimal(from_wallet.spent_total) + amount
                     from_wallet.updated_at = datetime.utcnow()
@@ -190,9 +191,10 @@ class PostgresLedger(BaseLedger):
                     # Credit to destination
                     current_to_balance = Decimal(to_wallet.balances.get(currency, "0.00"))
                     new_to_balance = current_to_balance + amount
-                    to_wallet.balances[currency] = str(new_to_balance)
-                    # Force update of JSON field
-                    to_wallet.balances = dict(to_wallet.balances)
+                    
+                    new_balances_to = dict(to_wallet.balances)
+                    new_balances_to[currency] = str(new_to_balance)
+                    to_wallet.balances = new_balances_to
                     
                     to_wallet.updated_at = datetime.utcnow()
                     
@@ -204,8 +206,9 @@ class PostgresLedger(BaseLedger):
                         
                         if fee_wallet:
                             current_fee_balance = Decimal(fee_wallet.balances.get(currency, "0.00"))
-                            fee_wallet.balances[currency] = str(current_fee_balance + fee)
-                            fee_wallet.balances = dict(fee_wallet.balances)
+                            new_balances_fee = dict(fee_wallet.balances)
+                            new_balances_fee[currency] = str(current_fee_balance + fee)
+                            fee_wallet.balances = new_balances_fee
                             fee_wallet.updated_at = datetime.utcnow()
                     
                     # Mark complete

@@ -17,8 +17,8 @@ class DBOrganization(Base):
     admin_ids: Mapped[List[str]] = mapped_column(JSON, default=list)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     agents: Mapped[List["DBAgent"]] = relationship(back_populates="organization")
@@ -35,8 +35,8 @@ class DBAgent(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     wallet_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Linked manually or via relationship
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     organization: Mapped[Optional["DBOrganization"]] = relationship(back_populates="agents")
@@ -66,8 +66,8 @@ class DBWallet(Base):
     virtual_card: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     agent: Mapped["DBAgent"] = relationship(back_populates="wallet")
@@ -91,5 +91,5 @@ class DBTransaction(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
