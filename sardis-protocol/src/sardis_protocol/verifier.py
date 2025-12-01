@@ -10,6 +10,7 @@ from sardis_v2_core import SardisSettings
 from sardis_v2_core.identity import AgentIdentity
 from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, MandateChain, PaymentMandate, VCProof
 from .schemas import AP2PaymentExecuteRequest
+from .storage import MandateArchive, ReplayCache
 
 
 @dataclass
@@ -25,23 +26,16 @@ class MandateChainVerification:
     chain: MandateChain | None = None
 
 
-class ReplayCache:
-    def __init__(self):
-        self._seen: dict[str, int] = {}
-
-    def check_and_store(self, mandate_id: str, expires_at: int) -> bool:
-        deadline = self._seen.get(mandate_id)
-        now = int(time.time())
-        if deadline and deadline > now:
-            return False
-        self._seen[mandate_id] = expires_at
-        return True
-
-
 class MandateVerifier:
-    def __init__(self, settings: SardisSettings, replay_cache: ReplayCache | None = None):
+    def __init__(
+        self,
+        settings: SardisSettings,
+        replay_cache: ReplayCache | None = None,
+        archive: MandateArchive | None = None,
+    ):
         self._settings = settings
         self._replay_cache = replay_cache or ReplayCache()
+        self._archive = archive
 
     def verify(self, mandate: PaymentMandate) -> VerificationResult:
         if mandate.is_expired():
@@ -92,8 +86,10 @@ class MandateVerifier:
         payment_result = self.verify(payment)
         if not payment_result.accepted:
             return MandateChainVerification(False, payment_result.reason)
-
-        return MandateChainVerification(True, chain=MandateChain(intent=intent, cart=cart, payment=payment))
+        chain = MandateChain(intent=intent, cart=cart, payment=payment)
+        if self._archive:
+            self._archive.store(chain)
+        return MandateChainVerification(True, chain=chain)
 
     def _parse_mandate(self, data: Dict[str, Any], model: Type[MandateBase]) -> MandateBase:
         proof_payload = data.get("proof")

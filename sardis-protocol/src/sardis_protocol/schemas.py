@@ -37,3 +37,5 @@ class AP2PaymentExecuteResponse(BaseModel):
     chain: str
     audit_anchor: str
     status: str
+    compliance_provider: str | None = None
+    compliance_rule: str | None = None

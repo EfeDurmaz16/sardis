@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_wallet.manager import WalletManager
 from sardis_protocol.verifier import MandateVerifier
+from sardis_protocol.storage import MandateArchive, SqliteReplayCache, ReplayCache
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_compliance.checks import ComplianceEngine
@@ -26,7 +27,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     chain_exec = ChainExecutor(settings=settings)
     ledger = LedgerStore(dsn=settings.ledger_dsn)
     compliance = ComplianceEngine(settings=settings)
-    verifier = MandateVerifier(settings=settings)
+    archive = MandateArchive(settings.mandate_archive_dsn)
+    replay_cache = (
+        SqliteReplayCache(settings.replay_cache_dsn)
+        if settings.replay_cache_dsn.startswith("sqlite:///")
+        else ReplayCache()
+    )
+    verifier = MandateVerifier(settings=settings, replay_cache=replay_cache, archive=archive)
     orchestrator = PaymentOrchestrator(
         wallet_manager=wallet_mgr,
         compliance=compliance,

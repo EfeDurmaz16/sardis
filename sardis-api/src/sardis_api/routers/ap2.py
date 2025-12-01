@@ -44,4 +44,6 @@ async def execute_ap2_payment(payload: AP2PaymentExecuteRequest, deps: Dependenc
         chain=result.chain,
         audit_anchor=result.audit_anchor,
         status=result.status,
+        compliance_provider=result.compliance_provider,
+        compliance_rule=result.compliance_rule,
     )

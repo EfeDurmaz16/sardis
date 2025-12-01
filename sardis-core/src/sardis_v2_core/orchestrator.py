@@ -15,6 +15,8 @@ class PaymentResult:
     chain: str
     audit_anchor: str
     status: str = "submitted"
+    compliance_provider: str | None = None
+    compliance_rule: str | None = None
 
 
 class PaymentExecutionError(Exception):
@@ -72,4 +74,6 @@ class PaymentOrchestrator:
             chain_tx_hash=receipt.tx_hash,
             chain=receipt.chain,
             audit_anchor=receipt.audit_anchor,
+            compliance_provider=compliance.provider,
+            compliance_rule=compliance.rule_id,
         )
