@@ -59,8 +59,21 @@ class Settings(BaseSettings):
     # Enable real blockchain transactions (False = simulation mode)
     enable_real_blockchain: bool = False
     
+    # Smart contract addresses (deployed by Sardis)
+    wallet_factory_base: Optional[str] = None
+    wallet_factory_polygon: Optional[str] = None
+    escrow_base: Optional[str] = None
+    escrow_polygon: Optional[str] = None
+    
+    # Default chain for new wallets
+    default_chain: str = "base_sepolia"
+    
     # Database settings (for future use)
     database_url: Optional[str] = None
+    
+    # Stripe/Marqeta for virtual cards (future)
+    stripe_api_key: Optional[str] = None
+    marqeta_api_key: Optional[str] = None
 
 
 # Global settings instance
