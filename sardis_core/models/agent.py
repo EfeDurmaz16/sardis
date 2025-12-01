@@ -17,6 +17,7 @@ class Agent(BaseModel):
     agent_id: str = Field(default_factory=lambda: f"agent_{uuid.uuid4().hex[:16]}")
     name: str
     owner_id: str  # Developer or company that owns this agent
+    organization_id: Optional[str] = None  # Organization this agent belongs to
     
     # Optional description of what this agent does
     description: Optional[str] = None

@@ -1,116 +1,44 @@
 # Sardis
 
-**Programmable stablecoin payment network for AI agents.**
+# Sardis
 
-Sardis is a global payment infrastructure that enables AI agents to pay each other, API providers, data vendors, and automation systems. Think of it as the **Stripe + Wallet standard for AI agents**.
+**The Money Pipes of the AI Economy.**
 
----
-
-## The Problem
-
-AI agents are now executing tasks like e-commerce, automation, data processing, and content generation. They collaborate, divide labor, and handle economic transactions.
-
-**But agents have no real mechanism to spend money.**
-
-Today, agent payments rely on user-side credit cards or traditional banking. These methods are:
-
-- Not global
-- Slow (days for settlement)
-- Expensive (3%+ fees)
-- Not programmable
-- Not suitable for micropayments
-- Not designed for AI agents
-
-Meanwhile, stablecoin usage is surging, enabling instant, global, programmable money flows.
-
-**The agent economy has no payment layer. Sardis fills that gap.**
+Sardis is the universal payment infrastructure for AI agents, enabling them to transition from planning tools to economic actors that transact in the real world.
 
 ---
 
-## What is Sardis?
+## Core Value Proposition
 
-Sardis is a payment network designed specifically for AI agents. It provides:
+### 1. Universal Payment Infrastructure for AI Agents
+Sardis is the foundational layer that enables all autonomous agents to make payments in a secure and controlled manner.
 
-### Agent Wallet Infrastructure
+### 2. Built-in Wallet for Every Agent
+Developers can create stablecoin-backed wallets for their agents with a single line of code, managing balances and spending limits effortlessly.
 
-Secure, limited, programmable wallets created in seconds for each agent.
+### 3. Real Economy Integration
+Enables agents to pay for real-world services such as SaaS, APIs, datasets, cloud services, or e-commerce products.
 
-- Automatic wallet creation per agent
-- Multi-token balances (USDC, USDT, PYUSD, EURC)
-- Spending rules and daily limits
-- Per-service authorization
-- Virtual card abstraction
-- Full audit trails
+### 4. Secure Transaction Flows and Spending Guardrails
+All spending is automatically audited against limits, permission policies, and risk rules. Unauthorized spending is blocked.
 
-### Instant Stablecoin Payment Engine
+### 5. Virtual Card and Transaction Authorization Layer
+Manages both on-chain and off-chain payments under one roof by issuing virtual cards to agents.
 
-Low-fee, multi-chain transaction processing.
+### 6. Onchain Settlement and Traceability
+Every transaction is recorded. Companies and developers can fully track spending history.
 
-| Chain | Settlement | Avg Fee |
-|-------|------------|---------|
-| Base | ~2 seconds | ~$0.001 |
-| Solana | ~1 second | ~$0.0001 |
-| Polygon | ~5 seconds | ~$0.01 |
-| Ethereum | ~3 minutes | ~$1-5 |
+### 7. Developer-Focused Integration
+Add payment capabilities to agents in minutes via a simple SDK and API. Solves complex fintech integrations in one place.
 
-### Developer-First API
+### 8. Cross-Platform and Ecosystem Compatibility
+Different agent frameworks, LLMs, and orchestrator platforms can use Sardis's standard budgeting and payment interface.
 
-Everything you need to give your agent payment capabilities:
+### 9. Full Control for Enterprise
+Companies can centrally manage spending limits, permissions, and budget allocation for hundreds of agents via Sardis.
 
-```python
-from sardis_sdk import SardisClient
-
-client = SardisClient()
-
-# Create an agent with a wallet
-agent = client.register_agent(
-    name="shopping_agent",
-    owner_id="dev_123",
-    initial_balance=Decimal("100.00"),
-    limit_per_tx=Decimal("20.00"),
-    limit_total=Decimal("100.00")
-)
-
-# Make a payment
-result = client.pay(
-    agent_id=agent.agent.agent_id,
-    amount=Decimal("15.99"),
-    merchant_id="merchant_xyz",
-    purpose="Product purchase"
-)
-
-print(f"Transaction: {result.transaction.tx_id}")
-```
-
-**10 lines of code. Your AI agent can now pay for things.**
-
----
-
-## Use Cases
-
-### Shopping Agents
-
-AI agents that browse products, compare prices, and make purchases autonomously.
-
-### Data Purchasing
-
-Agents that buy API access, datasets, or compute resources on demand.
-
-### Agent Marketplaces
-
-Agent A hires Agent B to complete a task and pays with stablecoins.
-
-### Per-Token Inference
-
-Pay for GPU compute or model inference on a per-request basis.
-
-### Automation Payments
-
-Zapier-like automations where agents pay third-party tools per action.
-
-### SaaS Agent Features
-
-Add "Let the agent pay" functionality to any application.
+### 10. The Money Pipes of the AI Economy
+Sardis enables agents to become true economic actors.
 
 ---
 
@@ -159,6 +87,7 @@ Add "Let the agent pay" functionality to any application.
 - [x] Service authorization (whitelist recipients)
 - [x] Risk scoring and fraud prevention
 - [x] Virtual card abstraction
+- [x] **Enterprise Organization Management** (New)
 
 ### Developer Experience
 - [x] RESTful API with OpenAPI docs
