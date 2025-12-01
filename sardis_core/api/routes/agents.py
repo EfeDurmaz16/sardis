@@ -89,9 +89,16 @@ async def create_agent(
             wallet=wallet_to_response(wallet)
         )
     except ValueError as e:
+        print(f"ValueError creating agent: {e}")  # Debug logging
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except Exception as e:
+        print(f"Unexpected error creating agent: {type(e).__name__}: {e}")  # Debug logging
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
         )
 
 
