@@ -60,6 +60,12 @@ class PostgresLedger(BaseLedger):
             stmt = select(DBAgent)
             if owner_id:
                 stmt = stmt.where(DBAgent.owner_id == owner_id)
+            else:
+                # Exclude system agents (merchants, treasury, fees, settlement)
+                stmt = stmt.where(
+                    DBAgent.owner_id != "system",
+                    DBAgent.owner_id != "system_merchants"
+                )
             
             result = await session.execute(stmt)
             db_agents = result.scalars().all()
