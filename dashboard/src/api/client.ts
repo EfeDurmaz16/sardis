@@ -50,6 +50,11 @@ export const agentApi = {
 
   getTransactions: (agentId: string, limit = 50) =>
     request<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
+
+  instruct: (agentId: string, instruction: string) => request<any>(`/agents/${agentId}/instruct`, {
+    method: 'POST',
+    body: JSON.stringify({ instruction }),
+  }),
 }
 
 // Payment APIs

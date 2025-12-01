@@ -35,11 +35,25 @@ export function useAgentTransactions(agentId: string) {
 
 export function useCreateAgent() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: agentApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+    },
+  })
+}
+
+export function useInstructAgent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ agentId, instruction }: { agentId: string; instruction: string }) =>
+      agentApi.instruct(agentId, instruction),
+    onSuccess: (_, variables) => {
+      // Invalidate wallet and transactions to show updates after instruction
+      queryClient.invalidateQueries({ queryKey: ['agent-wallet', variables.agentId] })
+      queryClient.invalidateQueries({ queryKey: ['agent-transactions', variables.agentId] })
     },
   })
 }
@@ -54,7 +68,7 @@ export function useMerchants() {
 
 export function useCreateMerchant() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: merchantApi.create,
     onSuccess: () => {
@@ -73,7 +87,7 @@ export function useWebhooks() {
 
 export function useCreateWebhook() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: webhookApi.create,
     onSuccess: () => {
@@ -84,7 +98,7 @@ export function useCreateWebhook() {
 
 export function useUpdateWebhook() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => webhookApi.update(id, data),
     onSuccess: () => {
@@ -95,7 +109,7 @@ export function useUpdateWebhook() {
 
 export function useDeleteWebhook() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: webhookApi.delete,
     onSuccess: () => {
@@ -115,7 +129,7 @@ export function usePaymentEstimate(amount: string, currency = 'USDC') {
 
 export function useCreatePayment() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: paymentApi.create,
     onSuccess: () => {

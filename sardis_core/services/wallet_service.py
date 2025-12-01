@@ -175,6 +175,13 @@ class WalletService:
             # Register agent on ledger (if using PostgresLedger this might be needed)
             await self._ledger.create_agent(merchant_agent)
             
+            # Create wallet for merchant
+            wallet = Wallet(
+                agent_id=merchant_agent_id,
+                limit_per_tx=Decimal("999999999.00"),
+                limit_total=Decimal("999999999.00")
+            )
+            
             # Register on ledger
             await self._ledger.create_wallet(wallet)
             

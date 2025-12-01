@@ -2,18 +2,20 @@ import { useState } from 'react'
 import { Plus, Search, User, Wallet, ArrowRight } from 'lucide-react'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '../hooks/useApi'
+import ChatInterface from '../components/ChatInterface'
 
 export default function AgentsPage() {
   const { data: agents = [], isLoading } = useAgents()
   const createAgent = useCreateAgent()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
-  
+  const [activeChatAgent, setActiveChatAgent] = useState<any>(null)
+
   const filteredAgents = agents.filter((agent: any) =>
     agent.name?.toLowerCase().includes(search.toLowerCase()) ||
     agent.agent_id?.toLowerCase().includes(search.toLowerCase())
   )
-  
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -32,7 +34,7 @@ export default function AgentsPage() {
           New Agent
         </button>
       </div>
-      
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -44,7 +46,7 @@ export default function AgentsPage() {
           className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
         />
       </div>
-      
+
       {/* Agents List */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -76,11 +78,15 @@ export default function AgentsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAgents.map((agent: any) => (
-            <AgentCard key={agent.agent_id} agent={agent} />
+            <AgentCard
+              key={agent.agent_id}
+              agent={agent}
+              onChat={() => setActiveChatAgent(agent)}
+            />
           ))}
         </div>
       )}
-      
+
       {/* Create Modal */}
       {showCreate && (
         <CreateAgentModal
@@ -92,11 +98,20 @@ export default function AgentsPage() {
           isLoading={createAgent.isPending}
         />
       )}
+
+      {/* Chat Modal */}
+      {activeChatAgent && (
+        <ChatInterface
+          agentId={activeChatAgent.agent_id}
+          agentName={activeChatAgent.name}
+          onClose={() => setActiveChatAgent(null)}
+        />
+      )}
     </div>
   )
 }
 
-function AgentCard({ agent }: { agent: any }) {
+function AgentCard({ agent, onChat }: { agent: any, onChat: () => void }) {
   return (
     <div className="card card-hover p-6">
       <div className="flex items-start justify-between mb-4">
@@ -114,31 +129,40 @@ function AgentCard({ agent }: { agent: any }) {
           agent.is_active ? 'success' : 'error'
         )} />
       </div>
-      
+
       {agent.description && (
         <p className="text-sm text-gray-400 mb-4 line-clamp-2">
           {agent.description}
         </p>
       )}
-      
+
       <div className="flex items-center justify-between pt-4 border-t border-dark-100">
         <div className="flex items-center gap-2 text-gray-400">
           <Wallet className="w-4 h-4" />
           <span className="text-sm">Wallet</span>
         </div>
-        <button className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors">
-          View <ArrowRight className="w-4 h-4" />
-        </button>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onChat}
+            className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20"
+          >
+            Chat
+          </button>
+          <button className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">
+            View <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-function CreateAgentModal({ 
-  onClose, 
+function CreateAgentModal({
+  onClose,
   onSubmit,
-  isLoading 
-}: { 
+  isLoading
+}: {
   onClose: () => void
   onSubmit: (data: any) => Promise<void>
   isLoading: boolean
@@ -151,13 +175,13 @@ function CreateAgentModal({
     limit_per_tx: '50.00',
     limit_total: '100.00'
   })
-  
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="card max-w-md w-full mx-4 p-6">
         <h2 className="text-xl font-bold text-white mb-6">Create New Agent</h2>
-        
-        <form 
+
+        <form
           onSubmit={async (e) => {
             e.preventDefault()
             await onSubmit(formData)
@@ -177,7 +201,7 @@ function CreateAgentModal({
               placeholder="shopping_agent_001"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">
               Description
@@ -190,7 +214,7 @@ function CreateAgentModal({
               placeholder="Optional description..."
             />
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -229,7 +253,7 @@ function CreateAgentModal({
               />
             </div>
           </div>
-          
+
           <div className="flex gap-4 pt-4">
             <button
               type="button"
