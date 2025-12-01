@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ========== Agent Schemas ==========
@@ -16,6 +16,16 @@ class CreateAgentRequest(BaseModel):
     initial_balance: Decimal = Field(default=Decimal("0.00"), ge=0)
     limit_per_tx: Optional[Decimal] = Field(None, ge=0)
     limit_total: Optional[Decimal] = Field(None, ge=0)
+    
+    @field_validator('initial_balance', 'limit_per_tx', 'limit_total', mode='before')
+    @classmethod
+    def convert_to_decimal(cls, v):
+        """Convert string values to Decimal."""
+        if v is None or v == '':
+            return None
+        if isinstance(v, str):
+            return Decimal(v)
+        return v
 
 
 class VirtualCardResponse(BaseModel):
