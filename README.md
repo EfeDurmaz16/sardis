@@ -109,7 +109,27 @@ curl -X POST http://localhost:8000/api/v2/ap2/payments/execute \
 The response includes `ledger_tx_id`, `chain_tx_hash`, and `compliance_provider/rule` metadata for auditing.
 See [docs/ap2-payment-flow.md](docs/ap2-payment-flow.md) for the full Intent → Cart → Payment walkthrough and SDK usage tips.
 
+## Project Status
+
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for detailed progress.
+
+### Completed ✅
+- Production ChainExecutor with Turnkey MPC integration
+- PostgreSQL persistence for all services
+- Webhook delivery system with retries
+- A2A Marketplace for service discovery
+- Rate limiting and structured logging
+- API key authentication
+- Operations runbook
+
+### In Progress 🚧
+- Security audit (external)
+- Smart contract audit (external)
+- KYC integration (Persona)
+- Sanctions screening (Elliptic)
+
 ## Next Steps
-- Flesh out MPC connectors and storage (Turnkey/Fireblocks) inside `sardis-chain`
-- Implement real database migrations for `sardis-ledger`
-- Extend compliance adapters to integrate Persona/Elliptic + SAR exports
+1. **External Audits** - Security and smart contract audits before mainnet
+2. **Compliance Integrations** - Persona KYC, Elliptic sanctions screening
+3. **Mainnet Deployment** - Deploy to Base and Polygon mainnet after audits
+4. **SDK Documentation** - Complete Python and TypeScript SDK docs
