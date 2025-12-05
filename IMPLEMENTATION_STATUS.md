@@ -1,4 +1,23 @@
-# Sardis Implementation Status
+# Sardis V2 Implementation Status
+
+> **Last Updated**: December 6, 2025
+
+## Critical Issues Status (from NEWPLAN.md)
+
+| # | Issue | Status | Resolution |
+|---|-------|--------|------------|
+| 1 | No real blockchain execution | ✅ Fixed | `ChainExecutor` with Turnkey MPC |
+| 2 | Private keys in code/env | ✅ Fixed | MPC signing, no keys in code |
+| 3 | CORS allows all origins | ✅ Fixed | Whitelist in `SardisSettings` |
+| 4 | No rate limiting | ✅ Fixed | `RateLimitMiddleware` |
+| 5 | Holds not persisted | ✅ Fixed | `HoldsRepository` with PostgreSQL |
+| 6 | No security audit | ⏳ Pending | External audit required |
+| 7 | No KYC integration | ⏳ Pending | Persona integration planned |
+| 8 | No sanctions screening | ⏳ Pending | Elliptic integration planned |
+| 9 | Smart contracts not audited | ⏳ Pending | External audit required |
+| 10 | No disaster recovery plan | ✅ Fixed | `RUNBOOK.md` created |
+
+---
 
 ## Completed Tasks (P0 - Day 1-2)
 
