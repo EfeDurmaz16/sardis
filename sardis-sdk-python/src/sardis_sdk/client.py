@@ -21,3 +21,9 @@ class SardisClient:
         resp = await self._client.post("/api/v2/mandates/execute", json=payload)
         resp.raise_for_status()
         return resp.json()
+
+    async def execute_ap2_payment(self, bundle: dict[str, Any]) -> dict[str, Any]:
+        """Execute a full AP2 mandate bundle via Sardis."""
+        resp = await self._client.post("/api/v2/ap2/payments/execute", json=bundle)
+        resp.raise_for_status()
+        return resp.json()

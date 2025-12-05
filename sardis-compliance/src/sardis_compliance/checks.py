@@ -1,7 +1,7 @@
 """Compliance pre-flight engine."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -15,7 +15,7 @@ class ComplianceResult:
     reason: str | None = None
     provider: str | None = None
     rule_id: str | None = None
-    reviewed_at: datetime = datetime.now(timezone.utc)
+    reviewed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ComplianceProvider(Protocol):

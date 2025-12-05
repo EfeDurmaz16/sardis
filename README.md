@@ -78,15 +78,36 @@ Intent VC --> Cart VC --> Payment VC --> Ledger Entry --> Merkle Root --> VC Pro
    cd ../sardis-wallet && pip install -e .
    # repeat for protocol/ledger/chain/compliance
    ```
-3. **Run FastAPI service**
+3. **Install dev tooling (tests/AP2 helpers)**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements-dev.txt  # includes PyNaCl + pytest
+   ```
+4. **Run FastAPI service**
    ```bash
    cd ../sardis-api
    pip install -e .
    uvicorn sardis_api.main:create_app --factory --reload
    ```
-4. **Use SDKs**
+5. **Use SDKs**
    - Python: `pip install -e sardis-sdk-python`
    - JS: `npm install && npm run build` inside `sardis-sdk-js` then import `SardisClient`
+
+### AP2 Payment Flow (DX quick test)
+```bash
+source .venv/bin/activate
+pytest tests/test_ap2_payment_api.py -q
+```
+The test builds a signed Intent+Cart+Payment bundle, hits `/api/v2/ap2/payments/execute`, and asserts the ledger + mandate archives persist to `./data/`. To hit the API manually:
+
+```bash
+curl -X POST http://localhost:8000/api/v2/ap2/payments/execute \
+  -H 'content-type: application/json' \
+  -d @./docs/examples/ap2_bundle.json
+```
+The response includes `ledger_tx_id`, `chain_tx_hash`, and `compliance_provider/rule` metadata for auditing.
+See [docs/ap2-payment-flow.md](docs/ap2-payment-flow.md) for the full Intent → Cart → Payment walkthrough and SDK usage tips.
 
 ## Next Steps
 - Flesh out MPC connectors and storage (Turnkey/Fireblocks) inside `sardis-chain`
