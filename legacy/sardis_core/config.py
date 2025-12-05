@@ -1,9 +1,9 @@
 """Configuration for Sardis Core."""
 
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -23,17 +23,50 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_prefix: str = "/api/v1"
     
-    # Security
-    secret_key: str = "insecure-secret-key-change-me"  # Change in production
-    admin_password: str = "admin"
+    # CORS - allowed origins (comma-separated in env)
+    allowed_origins: List[str] = []
+    
+    # Security - NO DEFAULTS for sensitive values
+    secret_key: str = ""
+    admin_password: str = ""
+    
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        if not v or v == "insecure-secret-key-change-me":
+            import os
+            if os.getenv("SARDIS_ENVIRONMENT", "dev") != "dev":
+                raise ValueError(
+                    "SECRET_KEY must be set in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            # Allow empty in dev mode, use a dev-only default
+            return "dev-only-secret-key-not-for-production"
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters")
+        return v
     
     # Blockchain
     base_rpc_url: str = "https://sepolia.base.org"
     polygon_rpc_url: str = "https://rpc-amoy.polygon.technology"
     ethereum_rpc_url: str = "https://rpc.sepolia.org"
     
-    # Relayer (for gas/testing)
-    relayer_private_key: str = "0x0000000000000000000000000000000000000000000000000000000000000000"  # Change in production
+    # Relayer (for gas/testing) - MUST be set via environment variable
+    relayer_private_key: str = ""
+    
+    @field_validator("relayer_private_key")
+    @classmethod
+    def validate_relayer_key(cls, v: str) -> str:
+        import os
+        if os.getenv("SARDIS_ENVIRONMENT", "dev") == "dev":
+            # In dev mode, allow empty (simulated chain)
+            return v or ""
+        if not v or v == "0x0000000000000000000000000000000000000000000000000000000000000000":
+            raise ValueError(
+                "RELAYER_PRIVATE_KEY must be set in production. "
+                "Never commit real private keys to code."
+            )
+        return v
     
     # Stablecoin Settings
     default_currency: str = "USDC"

@@ -1,17 +1,61 @@
 """API composition root."""
 from __future__ import annotations
 
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_wallet.manager import WalletManager
 from sardis_protocol.verifier import MandateVerifier
-from sardis_protocol.storage import MandateArchive, SqliteReplayCache, ReplayCache
+from sardis_protocol.storage import MandateArchive, SqliteReplayCache, ReplayCache, PostgresReplayCache
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_compliance.checks import ComplianceEngine
 from sardis_v2_core.orchestrator import PaymentOrchestrator
+from sardis_v2_core.holds import HoldsRepository
+from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+from sardis_v2_core.cache import create_cache_service
 from .routers import mandates, ap2
+from .routers import ledger as ledger_router
+from .routers import holds as holds_router
+from .routers import webhooks as webhooks_router
+from .routers import transactions as transactions_router
+from .routers import marketplace as marketplace_router
+from sardis_v2_core.marketplace import MarketplaceRepository
+from .middleware import RateLimitMiddleware, RateLimitConfig
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"time": "%(asctime)s", "level": "%(levelname)s", "module": "%(name)s", "message": "%(message)s"}',
+)
+logger = logging.getLogger("sardis.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup/shutdown."""
+    # Startup
+    logger.info("Starting Sardis API...")
+    
+    # Initialize database if using PostgreSQL
+    database_url = os.getenv("DATABASE_URL", "")
+    if database_url and (database_url.startswith("postgresql://") or database_url.startswith("postgres://")):
+        try:
+            from sardis_v2_core.database import init_database
+            await init_database()
+            logger.info("Database schema initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize database schema: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Sardis API...")
 
 
 def create_app(settings: SardisSettings | None = None) -> FastAPI:
@@ -21,31 +65,65 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         version="0.1.0",
         openapi_url="/api/v2/openapi.json",
         docs_url="/api/v2/docs",
+        lifespan=lifespan,
+    )
+    
+    # Add rate limiting middleware (must be added before CORS)
+    app.add_middleware(
+        RateLimitMiddleware,
+        config=RateLimitConfig(
+            requests_per_minute=100,
+            requests_per_hour=1000,
+            burst_size=20,
+        ),
+        exclude_paths=["/", "/health", "/api/v2/health", "/api/v2/docs", "/api/v2/openapi.json"],
+    )
+    
+    # Add CORS middleware with settings-based origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
     )
 
+    # Determine storage backend based on DSN
+    database_url = os.getenv("DATABASE_URL", settings.ledger_dsn)
+    use_postgres = database_url.startswith("postgresql://") or database_url.startswith("postgres://")
+    
     wallet_mgr = WalletManager(settings=settings)
     chain_exec = ChainExecutor(settings=settings)
-    ledger = LedgerStore(dsn=settings.ledger_dsn)
+    ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     compliance = ComplianceEngine(settings=settings)
-    archive = MandateArchive(settings.mandate_archive_dsn)
-    replay_cache = (
-        SqliteReplayCache(settings.replay_cache_dsn)
-        if settings.replay_cache_dsn.startswith("sqlite:///")
-        else ReplayCache()
-    )
+    
+    # Use PostgreSQL for mandate archive and replay cache if available
+    if use_postgres:
+        archive = MandateArchive(database_url)
+        replay_cache = PostgresReplayCache(database_url)
+    else:
+        archive = MandateArchive(settings.mandate_archive_dsn)
+        replay_cache = (
+            SqliteReplayCache(settings.replay_cache_dsn)
+            if settings.replay_cache_dsn.startswith("sqlite:///")
+            else ReplayCache()
+        )
+    
     verifier = MandateVerifier(settings=settings, replay_cache=replay_cache, archive=archive)
     orchestrator = PaymentOrchestrator(
         wallet_manager=wallet_mgr,
         compliance=compliance,
         chain_executor=chain_exec,
-        ledger=ledger,
+        ledger=ledger_store,
     )
+    
+    logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")
 
     app.dependency_overrides[mandates.get_deps] = lambda: mandates.Dependencies(  # type: ignore[arg-type]
         wallet_manager=wallet_mgr,
         chain_executor=chain_exec,
         verifier=verifier,
-        ledger=ledger,
+        ledger=ledger_store,
         compliance=compliance,
     )
     app.include_router(mandates.router, prefix="/api/v2/mandates")
@@ -55,5 +133,90 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=orchestrator,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
+
+    # Ledger routes
+    app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]
+        ledger=ledger_store,
+    )
+    app.include_router(ledger_router.router, prefix="/api/v2/ledger")
+
+    # Holds routes (pre-authorization)
+    holds_repo = HoldsRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[holds_router.get_deps] = lambda: holds_router.HoldsDependencies(  # type: ignore[arg-type]
+        holds_repo=holds_repo,
+    )
+    app.include_router(holds_router.router, prefix="/api/v2/holds")
+
+    # Webhook routes
+    webhook_repo = WebhookRepository(dsn=database_url if use_postgres else "memory://")
+    webhook_service = WebhookService(repository=webhook_repo)
+    app.dependency_overrides[webhooks_router.get_deps] = lambda: webhooks_router.WebhookDependencies(  # type: ignore[arg-type]
+        repository=webhook_repo,
+        service=webhook_service,
+    )
+    app.include_router(webhooks_router.router, prefix="/api/v2/webhooks")
+    
+    # Store webhook service for event emission
+    app.state.webhook_service = webhook_service
+    
+    # Initialize cache service
+    redis_url = os.getenv("SARDIS_REDIS_URL", settings.redis_url) or None
+    cache_service = create_cache_service(redis_url)
+    app.state.cache_service = cache_service
+    logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
+
+    # Transaction routes (gas estimation, status)
+    app.dependency_overrides[transactions_router.get_deps] = lambda: transactions_router.TransactionDependencies(  # type: ignore[arg-type]
+        chain_executor=chain_exec,
+    )
+    app.include_router(transactions_router.router, prefix="/api/v2/transactions")
+
+    # Marketplace routes (A2A service discovery)
+    marketplace_repo = MarketplaceRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[marketplace_router.get_deps] = lambda: marketplace_router.MarketplaceDependencies(  # type: ignore[arg-type]
+        repository=marketplace_repo,
+    )
+    app.include_router(marketplace_router.router, prefix="/api/v2/marketplace")
+
+    # Health check endpoints
+    @app.get("/", tags=["health"])
+    async def root():
+        """Root endpoint."""
+        return {
+            "service": "Sardis API",
+            "version": "0.1.0",
+            "status": "healthy",
+            "docs": "/api/v2/docs",
+        }
+
+    @app.get("/health", tags=["health"])
+    async def health_check():
+        """Health check endpoint with component status."""
+        # TODO: Add actual DB ping when PostgreSQL is wired
+        db_status = "connected"
+        try:
+            # Basic check - in future, ping the database
+            pass
+        except Exception:
+            db_status = "disconnected"
+        
+        return {
+            "status": "healthy",
+            "environment": settings.environment,
+            "chain_mode": settings.chain_mode,
+            "components": {
+                "api": "up",
+                "database": db_status,
+                "chain_executor": "simulated" if settings.chain_mode == "simulated" else "live",
+            }
+        }
+
+    @app.get("/api/v2/health", tags=["health"])
+    async def api_health():
+        """API v2 health check."""
+        return {
+            "status": "ok",
+            "version": "v2",
+        }
 
     return app

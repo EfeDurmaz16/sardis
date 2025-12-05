@@ -9,6 +9,19 @@ from .spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, Trus
 from .transactions import Transaction, TransactionStatus, OnChainRecord
 from .virtual_card import VirtualCard, CardStatus, CardType
 from .orchestrator import PaymentOrchestrator, PaymentResult, PaymentExecutionError
+from .database import Database, init_database, SCHEMA_SQL
+from .holds import Hold, HoldResult, HoldsRepository
+from .webhooks import (
+    EventType,
+    WebhookEvent,
+    WebhookSubscription,
+    DeliveryAttempt,
+    WebhookRepository,
+    WebhookService,
+    create_payment_event,
+    create_hold_event,
+)
+from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
 
 __all__ = [
     "SardisSettings",
@@ -37,4 +50,23 @@ __all__ = [
     "PaymentOrchestrator",
     "PaymentResult",
     "PaymentExecutionError",
+    "Database",
+    "init_database",
+    "SCHEMA_SQL",
+    "Hold",
+    "HoldResult",
+    "HoldsRepository",
+    "EventType",
+    "WebhookEvent",
+    "WebhookSubscription",
+    "DeliveryAttempt",
+    "WebhookRepository",
+    "WebhookService",
+    "create_payment_event",
+    "create_hold_event",
+    "CacheService",
+    "CacheBackend",
+    "InMemoryCache",
+    "RedisCache",
+    "create_cache_service",
 ]

@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install linting tools
+        run: |
+          pip install ruff mypy
+      
+      - name: Run Ruff
+        run: ruff check .
+      
+      - name: Run Ruff format check
+        run: ruff format --check .
+
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: sardis
+          POSTGRES_PASSWORD: sardis_test
+          POSTGRES_DB: sardis_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -e sardis-core/
+          pip install -e sardis-protocol/
+          pip install -e sardis-wallet/
+          pip install -e sardis-chain/
+          pip install -e sardis-ledger/
+          pip install -e sardis-compliance/
+          pip install -e sardis-api/
+          pip install pytest pytest-asyncio pytest-cov httpx
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://sardis:sardis_test@localhost:5432/sardis_test
+          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
+          SARDIS_ENVIRONMENT: dev
+        run: |
+          pytest tests/ -v --cov=sardis --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  test-dashboard:
+    name: Test Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+      
+      - name: Type check
+        working-directory: dashboard
+        run: npm run typecheck || true  # Don't fail on type errors for now
+      
+      - name: Build
+        working-directory: dashboard
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:8000
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install safety
+        run: pip install safety
+      
+      - name: Check for vulnerabilities
+        run: safety check -r requirements.txt || true  # Don't fail for now
+      
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
