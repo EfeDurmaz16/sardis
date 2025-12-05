@@ -1,4 +1,4 @@
-# Sardis MVP Dependencies
+# Sardis V2 Dependencies
 
 # Web Framework
 fastapi>=0.109.0
@@ -9,30 +9,22 @@ pydantic-settings>=2.1.0
 # HTTP Client
 httpx>=0.26.0
 
-# Agent Framework (updated for Python 3.13 compatibility)
-langchain>=0.3.0
-langchain-openai>=0.2.0
-openai>=1.50.0
+# Database
+asyncpg>=0.29.0
+
+# Caching
+redis>=5.0.0
 
 # Testing
 pytest>=7.4.4
 pytest-asyncio>=0.23.3
-
-# Blockchain utilities
-base58>=2.1.0
+anyio>=4.0.0
 
 # Utilities
 python-dotenv>=1.0.0
-
-# Database
-sqlalchemy>=2.0.0
-asyncpg>=0.29.0
-alembic>=1.13.0
-greenlet>=3.0.0
-
-# Security
-passlib[bcrypt]>=1.7.4
-python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.9
-web3>=6.0.0
-openai>=1.0.0
+
+# Optional: Agent Framework
+# langchain>=0.3.0
+# langchain-openai>=0.2.0
+# openai>=1.50.0

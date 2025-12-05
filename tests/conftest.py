@@ -1,14 +1,92 @@
-import pytest
-from sardis_core.api.dependencies import Container, get_container
+"""Pytest configuration for Sardis V2 API tests."""
+from __future__ import annotations
 
-@pytest.fixture(autouse=True)
-def reset_container():
-    """Reset the dependency container before each test."""
-    # Force InMemoryLedger for tests
-    from sardis_core.config import settings
-    settings.database_url = None
+import os
+import pytest
+from typing import AsyncGenerator
+
+# Set test environment
+os.environ["SARDIS_ENVIRONMENT"] = "dev"
+os.environ["SARDIS_SECRET_KEY"] = "test-secret-key-for-testing-only"
+
+
+@pytest.fixture(scope="session")
+def anyio_backend():
+    """Use asyncio for async tests."""
+    return "asyncio"
+
+
+@pytest.fixture
+def test_settings():
+    """Get test settings."""
+    from sardis_v2_core import load_settings
+    return load_settings()
+
+
+@pytest.fixture
+async def test_client():
+    """Create a test client for the API."""
+    from httpx import AsyncClient, ASGITransport
+    from sardis_api.main import create_app
     
-    Container.reset()
-    # Clear lru_cache of get_container
-    get_container.cache_clear()
-    yield
+    app = create_app()
+    
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+def sample_mandate():
+    """Create a sample payment mandate for testing."""
+    import time
+    from sardis_v2_core.mandates import PaymentMandate
+    
+    return PaymentMandate(
+        mandate_id="test_mandate_001",
+        issuer="test_issuer",
+        subject="test_wallet",
+        destination="0x1234567890123456789012345678901234567890",
+        amount_minor=10000,  # $100.00
+        token="USDC",
+        chain="base_sepolia",
+        expires_at=int(time.time()) + 300,
+    )
+
+
+@pytest.fixture
+def sample_hold_request():
+    """Create a sample hold request for testing."""
+    return {
+        "wallet_id": "test_wallet_001",
+        "amount": "1000",
+        "token": "USDC",
+        "merchant_id": "test_merchant",
+        "purpose": "Test hold",
+        "expiration_hours": 24,
+    }
+
+
+@pytest.fixture
+def sample_webhook_request():
+    """Create a sample webhook subscription request."""
+    return {
+        "url": "https://example.com/webhook",
+        "events": ["payment.completed", "hold.created"],
+    }
+
+
+@pytest.fixture
+def sample_service_request():
+    """Create a sample marketplace service request."""
+    return {
+        "name": "Test AI Service",
+        "description": "A test AI service for automated tasks",
+        "category": "ai",
+        "tags": ["ai", "automation", "test"],
+        "price_amount": "100.00",
+        "price_token": "USDC",
+        "price_type": "fixed",
+    }

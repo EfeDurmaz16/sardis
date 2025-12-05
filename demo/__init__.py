@@ -1,2 +1,0 @@
-"""Sardis demonstration package."""
-

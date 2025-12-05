@@ -36,16 +36,35 @@ env/
 # Environment
 .env
 .env.local
+.env.production
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
 
 # Logs
 *.log
-
+logs/
 
 # Test Output
 test_output_*.txt
 test_output.txt
+
+# Node
+node_modules/
+.next/
+.turbo/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Vercel
+.vercel/
+
+# Load test results
+load_test_*.json

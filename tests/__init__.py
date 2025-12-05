@@ -1,2 +1,1 @@
-"""Tests for Sardis MVP."""
-
+"""Sardis V2 API Tests."""
