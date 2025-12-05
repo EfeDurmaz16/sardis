@@ -26,12 +26,19 @@ from .routers import webhooks as webhooks_router
 from .routers import transactions as transactions_router
 from .routers import marketplace as marketplace_router
 from sardis_v2_core.marketplace import MarketplaceRepository
-from .middleware import RateLimitMiddleware, RateLimitConfig
+from .middleware import (
+    RateLimitMiddleware,
+    RateLimitConfig,
+    StructuredLoggingMiddleware,
+    setup_logging,
+    APIKeyManager,
+    set_api_key_manager,
+)
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='{"time": "%(asctime)s", "level": "%(levelname)s", "module": "%(name)s", "message": "%(message)s"}',
+# Configure structured logging
+setup_logging(
+    json_format=os.getenv("SARDIS_ENVIRONMENT", "dev") != "dev",
+    level=os.getenv("LOG_LEVEL", "INFO"),
 )
 logger = logging.getLogger("sardis.api")
 
@@ -68,7 +75,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     
-    # Add rate limiting middleware (must be added before CORS)
+    # Add structured logging middleware (outermost - runs first)
+    app.add_middleware(
+        StructuredLoggingMiddleware,
+        exclude_paths=["/", "/health", "/api/v2/health", "/api/v2/docs", "/api/v2/openapi.json"],
+    )
+    
+    # Add rate limiting middleware
     app.add_middleware(
         RateLimitMiddleware,
         config=RateLimitConfig(
@@ -164,6 +177,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     cache_service = create_cache_service(redis_url)
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
+
+    # Initialize API key manager
+    api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
+    set_api_key_manager(api_key_manager)
+    app.state.api_key_manager = api_key_manager
 
     # Transaction routes (gas estimation, status)
     app.dependency_overrides[transactions_router.get_deps] = lambda: transactions_router.TransactionDependencies(  # type: ignore[arg-type]

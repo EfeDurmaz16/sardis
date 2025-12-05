@@ -177,7 +177,48 @@
   - `POST /api/v2/marketplace/offers/{id}/complete` - Complete offer
   - `POST /api/v2/marketplace/offers/{id}/review` - Create review
 
-### 11. ✅ API Improvements
+### 12. ✅ Production Readiness (Phase 5)
+
+#### Structured Logging
+- **File Created**: `sardis-api/src/sardis_api/middleware/logging.py`
+- **Features**:
+  - Correlation ID generation and propagation
+  - JSON log format for production
+  - Request/response timing
+  - X-Request-ID header support
+  - X-Response-Time header
+
+#### API Key Authentication
+- **File Created**: `sardis-api/src/sardis_api/middleware/auth.py`
+- **Features**:
+  - API key generation with secure hashing
+  - Key validation with expiration
+  - Scope-based authorization
+  - Rate limit per key
+  - PostgreSQL and in-memory backends
+
+#### Operations Runbook
+- **File Created**: `RUNBOOK.md`
+- **Sections**:
+  - Service overview and architecture
+  - Health check procedures
+  - Common issues and resolutions
+  - Deployment procedures
+  - Database operations
+  - Monitoring and alerts
+  - Incident response
+  - Rollback procedures
+
+#### Load Testing
+- **File Created**: `scripts/load_test.py`
+- **Features**:
+  - Configurable duration and concurrency
+  - Multiple endpoint testing
+  - Latency percentiles (p50, p95, p99)
+  - Per-endpoint statistics
+  - JSON output for CI/CD
+
+### 13. ✅ API Improvements
 
 #### Health Check Endpoints
 - **File**: `sardis-api/src/sardis_api/main.py`
@@ -317,3 +358,7 @@ SARDIS_ENVIRONMENT=prod
 | `sardis-api/src/sardis_api/routers/transactions.py` | NEW | Transactions API routes |
 | `sardis-core/src/sardis_v2_core/marketplace.py` | NEW | A2A marketplace |
 | `sardis-api/src/sardis_api/routers/marketplace.py` | NEW | Marketplace API routes |
+| `sardis-api/src/sardis_api/middleware/logging.py` | NEW | Structured logging |
+| `sardis-api/src/sardis_api/middleware/auth.py` | NEW | API key authentication |
+| `RUNBOOK.md` | NEW | Operations runbook |
+| `scripts/load_test.py` | NEW | Load testing script |
