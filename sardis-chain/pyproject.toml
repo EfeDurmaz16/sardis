@@ -11,8 +11,11 @@ requires-python = ">=3.11"
 dependencies = [
     "web3>=6.0",
     "pydantic>=2.6",
-    "sardis-core @ file://../sardis-core",
+    "sardis-core",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_chain"]

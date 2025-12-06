@@ -28,7 +28,7 @@
   - `legacy/sardis_core/api/main.py`
   - `sardis-api/src/sardis_api/main.py`
 - **Changes**: Replaced `allow_origins=["*"]` with settings-based whitelist
-- **Default Origins**: `http://localhost:3000`, `http://localhost:5173`
+- **Default Origins**: `http://localhost:3005`, `http://localhost:5173`
 
 #### Secret Key Validation
 - **Files Modified**: 

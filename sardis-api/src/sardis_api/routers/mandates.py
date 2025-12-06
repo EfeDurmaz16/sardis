@@ -27,8 +27,8 @@ class Dependencies:
     compliance: "ComplianceEngine"
 
 
-def get_deps(dep: Dependencies = Depends()) -> Dependencies:
-    return dep
+def get_deps() -> Dependencies:
+    raise NotImplementedError("Dependency override required")
 
 
 @router.post("/execute", response_model=MandateExecutionResponse)

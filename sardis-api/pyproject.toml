@@ -12,13 +12,16 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.109",
     "uvicorn>=0.23",
-    "sardis-core @ file://../sardis-core",
-    "sardis-wallet @ file://../sardis-wallet",
-    "sardis-ledger @ file://../sardis-ledger",
-    "sardis-protocol @ file://../sardis-protocol",
-    "sardis-chain @ file://../sardis-chain",
-    "sardis-compliance @ file://../sardis-compliance",
+    "sardis-core",
+    "sardis-wallet",
+    "sardis-ledger",
+    "sardis-protocol",
+    "sardis-chain",
+    "sardis-compliance",
 ]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_api"]

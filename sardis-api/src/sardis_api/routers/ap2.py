@@ -22,8 +22,8 @@ class Dependencies:
     orchestrator: "PaymentOrchestrator"
 
 
-def get_deps(dep: Dependencies = Depends()) -> Dependencies:
-    return dep
+def get_deps() -> Dependencies:
+    raise NotImplementedError("Dependency override required")
 
 
 @router.post("/payments/execute", response_model=AP2PaymentExecuteResponse)

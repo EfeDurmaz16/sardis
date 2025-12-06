@@ -68,7 +68,7 @@ cd dashboard
 npm run dev
 ```
 
-Open http://localhost:3000 in your browser.
+Open http://localhost:3005 in your browser.
 
 ## 5. Test the API
 

@@ -36,7 +36,7 @@ class SardisSettings(BaseSettings):
     
     # CORS - allowed origins for API
     allowed_origins: List[str] = Field(default_factory=lambda: [
-        "http://localhost:3000",
+        "http://localhost:3005",
         "http://localhost:5173",
     ])
     
