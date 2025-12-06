@@ -1,15 +1,50 @@
 {
-  "name": "sardis-sdk-js",
+  "name": "@sardis/sdk",
   "version": "0.1.0",
+  "description": "Official TypeScript SDK for the Sardis stablecoin execution layer",
   "type": "module",
   "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "sardis",
+    "stablecoin",
+    "payments",
+    "ai-agents",
+    "blockchain",
+    "usdc",
+    "web3"
+  ],
+  "author": "Sardis",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sardis-network/sardis-sdk-js"
+  },
+  "homepage": "https://sardis.network",
   "dependencies": {
     "axios": "^1.6.7"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -1,51 +1,81 @@
-import axios, { AxiosInstance } from "axios";
+/**
+ * Sardis TypeScript SDK
+ *
+ * Official SDK for the Sardis stablecoin execution layer.
+ * Enables AI agents to execute programmable payments using stablecoins.
+ *
+ * @example
+ * ```typescript
+ * import { SardisClient } from '@sardis/sdk';
+ *
+ * const client = new SardisClient({
+ *   apiKey: 'your-api-key',
+ * });
+ *
+ * // Execute a payment
+ * const result = await client.payments.executeMandate(mandate);
+ *
+ * // Create a hold
+ * const hold = await client.holds.create({
+ *   wallet_id: 'wallet_123',
+ *   amount: '100.00',
+ * });
+ * ```
+ */
 
-export interface MandateExecutionResponse {
-  mandate_id: string;
-  status: string;
-  tx_hash: string;
-  chain: string;
-  audit_anchor: string;
-}
+// Main client
+export { SardisClient } from './client.js';
 
-export interface ExecutePaymentInput {
-  mandate: Record<string, unknown>;
-}
+// Errors
+export {
+  SardisError,
+  APIError,
+  AuthenticationError,
+  RateLimitError,
+  ValidationError,
+  InsufficientBalanceError,
+  NotFoundError,
+} from './errors.js';
 
-export interface ExecuteAp2PaymentInput {
-  intent: Record<string, unknown>;
-  cart: Record<string, unknown>;
-  payment: Record<string, unknown>;
-}
-
-export interface ExecuteAp2PaymentResponse {
-  mandate_id: string;
-  ledger_tx_id: string;
-  chain_tx_hash: string;
-  chain: string;
-  audit_anchor: string;
-  status: string;
-  compliance_provider?: string;
-  compliance_rule?: string;
-}
-
-export class SardisClient {
-  private http: AxiosInstance;
-
-  constructor(baseUrl: string, apiKey: string) {
-    this.http = axios.create({
-      baseURL: baseUrl.replace(/\/$/, ""),
-      headers: { "x-api-key": apiKey },
-    });
-  }
-
-  async executePayment(input: ExecutePaymentInput): Promise<MandateExecutionResponse> {
-    const { data } = await this.http.post<MandateExecutionResponse>("/api/v2/mandates/execute", input);
-    return data;
-  }
-
-  async executeAp2Payment(input: ExecuteAp2PaymentInput): Promise<ExecuteAp2PaymentResponse> {
-    const { data } = await this.http.post<ExecuteAp2PaymentResponse>("/api/v2/ap2/payments/execute", input);
-    return data;
-  }
-}
+// Types
+export type {
+  // Common
+  Chain,
+  Token,
+  SardisClientOptions,
+  // Payments
+  Payment,
+  PaymentStatus,
+  ExecutePaymentInput,
+  ExecuteAP2Input,
+  ExecutePaymentResponse,
+  ExecuteAP2Response,
+  // Holds
+  Hold,
+  HoldStatus,
+  CreateHoldInput,
+  CaptureHoldInput,
+  CreateHoldResponse,
+  // Webhooks
+  Webhook,
+  WebhookDelivery,
+  WebhookEventType,
+  CreateWebhookInput,
+  UpdateWebhookInput,
+  // Marketplace
+  Service,
+  ServiceOffer,
+  ServiceReview,
+  ServiceCategory,
+  ServiceStatus,
+  OfferStatus,
+  CreateServiceInput,
+  CreateOfferInput,
+  SearchServicesInput,
+  // Transactions
+  GasEstimate,
+  TransactionStatus,
+  ChainInfo,
+  // Ledger
+  LedgerEntry,
+} from './types.js';

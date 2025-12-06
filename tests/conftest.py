@@ -2,8 +2,18 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 import pytest
 from typing import AsyncGenerator
+
+# Add package paths for testing
+root_dir = Path(__file__).parent.parent
+for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol", 
+            "sardis-chain", "sardis-ledger", "sardis-compliance"]:
+    pkg_path = root_dir / pkg / "src"
+    if pkg_path.exists():
+        sys.path.insert(0, str(pkg_path))
 
 # Set test environment
 os.environ["SARDIS_ENVIRONMENT"] = "dev"

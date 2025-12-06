@@ -15,6 +15,9 @@ asyncpg>=0.29.0
 # Caching
 redis>=5.0.0
 
+# Cryptography
+pynacl>=1.5.0
+
 # Testing
 pytest>=7.4.4
 pytest-asyncio>=0.23.3
