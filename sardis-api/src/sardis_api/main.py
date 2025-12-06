@@ -19,13 +19,17 @@ from sardis_v2_core.orchestrator import PaymentOrchestrator
 from sardis_v2_core.holds import HoldsRepository
 from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 from sardis_v2_core.cache import create_cache_service
-from .routers import mandates, ap2
+from .routers import mandates, ap2, auth
 from .routers import ledger as ledger_router
 from .routers import holds as holds_router
 from .routers import webhooks as webhooks_router
 from .routers import transactions as transactions_router
 from .routers import marketplace as marketplace_router
+from .routers import wallets as wallets_router
+from .routers import agents as agents_router
 from sardis_v2_core.marketplace import MarketplaceRepository
+from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core.wallet_repository import WalletRepository
 from .middleware import (
     RateLimitMiddleware,
     RateLimitConfig,
@@ -195,6 +199,25 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         repository=marketplace_repo,
     )
     app.include_router(marketplace_router.router, prefix="/api/v2/marketplace")
+
+    # Auth routes (for dashboard login)
+    app.include_router(auth.router, prefix="/api/v1/auth")
+    app.include_router(auth.router, prefix="/api/v2/auth")
+
+    # Wallet routes
+    wallet_repo = WalletRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
+        wallet_repo=wallet_repo,
+    )
+    app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+    # Agent routes
+    agent_repo = AgentRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
+        agent_repo=agent_repo,
+        wallet_repo=wallet_repo,
+    )
+    app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
 
     # Health check endpoints
     @app.get("/", tags=["health"])

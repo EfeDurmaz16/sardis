@@ -22,6 +22,8 @@ from .webhooks import (
     create_hold_event,
 )
 from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
+from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
+from .wallet_repository import WalletRepository
 
 __all__ = [
     "SardisSettings",
@@ -69,4 +71,9 @@ __all__ = [
     "InMemoryCache",
     "RedisCache",
     "create_cache_service",
+    "Agent",
+    "AgentPolicy",
+    "SpendingLimits",
+    "AgentRepository",
+    "WalletRepository",
 ]
