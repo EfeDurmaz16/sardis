@@ -243,6 +243,68 @@ class APIKeyManager:
                 return True
             return False
 
+    async def list_keys(self, organization_id: str) -> List[APIKey]:
+        """List all API keys for an organization."""
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM api_keys
+                    WHERE organization_id = $1
+                    ORDER BY created_at DESC
+                    """,
+                    organization_id,
+                )
+                return [
+                    APIKey(
+                        key_id=str(row["id"]),
+                        key_prefix=row["key_prefix"],
+                        key_hash=row["key_hash"],
+                        organization_id=str(row["organization_id"]),
+                        name=row["name"],
+                        scopes=row["scopes"],
+                        rate_limit=row["rate_limit"],
+                        is_active=row["is_active"],
+                        expires_at=row["expires_at"],
+                        created_at=row["created_at"],
+                        last_used_at=row["last_used_at"],
+                    )
+                    for row in rows
+                ]
+        else:
+            return [
+                key for key in self._keys.values()
+                if key.organization_id == organization_id
+            ]
+
+    async def get_key(self, key_id: str) -> Optional[APIKey]:
+        """Get an API key by ID."""
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM api_keys WHERE id = $1",
+                    key_id,
+                )
+                if not row:
+                    return None
+                return APIKey(
+                    key_id=str(row["id"]),
+                    key_prefix=row["key_prefix"],
+                    key_hash=row["key_hash"],
+                    organization_id=str(row["organization_id"]),
+                    name=row["name"],
+                    scopes=row["scopes"],
+                    rate_limit=row["rate_limit"],
+                    is_active=row["is_active"],
+                    expires_at=row["expires_at"],
+                    created_at=row["created_at"],
+                    last_used_at=row["last_used_at"],
+                )
+        else:
+            return self._keys.get(key_id)
+
 
 # Global API key manager instance (set during app initialization)
 _api_key_manager: Optional[APIKeyManager] = None

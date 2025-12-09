@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Chain configurations
 CHAIN_CONFIGS = {
+    # Base
     "base_sepolia": {
         "chain_id": 84532,
         "rpc_url": "https://sepolia.base.org",
@@ -35,6 +36,7 @@ CHAIN_CONFIGS = {
         "native_token": "ETH",
         "block_time": 2,
     },
+    # Polygon
     "polygon_amoy": {
         "chain_id": 80002,
         "rpc_url": "https://rpc-amoy.polygon.technology",
@@ -49,6 +51,7 @@ CHAIN_CONFIGS = {
         "native_token": "MATIC",
         "block_time": 2,
     },
+    # Ethereum
     "ethereum_sepolia": {
         "chain_id": 11155111,
         "rpc_url": "https://rpc.sepolia.org",
@@ -56,28 +59,123 @@ CHAIN_CONFIGS = {
         "native_token": "ETH",
         "block_time": 12,
     },
+    "ethereum": {
+        "chain_id": 1,
+        "rpc_url": "https://eth.llamarpc.com",
+        "explorer": "https://etherscan.io",
+        "native_token": "ETH",
+        "block_time": 12,
+    },
+    # Arbitrum
+    "arbitrum_sepolia": {
+        "chain_id": 421614,
+        "rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "explorer": "https://sepolia.arbiscan.io",
+        "native_token": "ETH",
+        "block_time": 1,
+    },
+    "arbitrum": {
+        "chain_id": 42161,
+        "rpc_url": "https://arb1.arbitrum.io/rpc",
+        "explorer": "https://arbiscan.io",
+        "native_token": "ETH",
+        "block_time": 1,
+    },
+    # Optimism
+    "optimism_sepolia": {
+        "chain_id": 11155420,
+        "rpc_url": "https://sepolia.optimism.io",
+        "explorer": "https://sepolia-optimism.etherscan.io",
+        "native_token": "ETH",
+        "block_time": 2,
+    },
+    "optimism": {
+        "chain_id": 10,
+        "rpc_url": "https://mainnet.optimism.io",
+        "explorer": "https://optimistic.etherscan.io",
+        "native_token": "ETH",
+        "block_time": 2,
+    },
+    # Solana (different architecture - requires separate handling)
+    "solana_devnet": {
+        "chain_id": 0,  # Solana doesn't use chain IDs like EVM
+        "rpc_url": "https://api.devnet.solana.com",
+        "explorer": "https://explorer.solana.com/?cluster=devnet",
+        "native_token": "SOL",
+        "block_time": 0.4,
+        "is_solana": True,
+    },
+    "solana": {
+        "chain_id": 0,
+        "rpc_url": "https://api.mainnet-beta.solana.com",
+        "explorer": "https://explorer.solana.com",
+        "native_token": "SOL",
+        "block_time": 0.4,
+        "is_solana": True,
+    },
 }
 
 # Stablecoin contract addresses by chain
 STABLECOIN_ADDRESSES = {
+    # Base
     "base_sepolia": {
         "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     },
     "base": {
         "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "EURC": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
     },
+    # Polygon
     "polygon_amoy": {
         "USDC": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     },
     "polygon": {
         "USDC": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
         "USDT": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+        "EURC": "0x9912af6da4F87Fc2b0Ae0B77A124e9B1B7Ba2F70",
+    },
+    # Ethereum
+    "ethereum_sepolia": {
+        "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    },
+    "ethereum": {
+        "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "PYUSD": "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
+        "EURC": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
+    },
+    # Arbitrum
+    "arbitrum_sepolia": {
+        "USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    },
+    "arbitrum": {
+        "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+        "EURC": "0x6BEF5a51a3f4e5E5F5F0C3F2F5E5A5D5B5C5E5F5",  # Placeholder - verify actual address
+    },
+    # Optimism
+    "optimism_sepolia": {
+        "USDC": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+    },
+    "optimism": {
+        "USDC": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+        "USDT": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
+    },
+    # Solana (SPL token addresses - different format)
+    "solana_devnet": {
+        "USDC": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",  # Devnet USDC
+    },
+    "solana": {
+        "USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # Mainnet USDC
+        "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # Mainnet USDT
+        "PYUSD": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",  # PYUSD on Solana
     },
 }
 
 # Sardis contract addresses by chain (populated after deployment)
 # See docs/contracts-deployment.md for deployment instructions
 SARDIS_CONTRACTS = {
+    # Testnets
     "base_sepolia": {
         "wallet_factory": "",  # Deploy with: forge script Deploy.s.sol --rpc-url base_sepolia
         "escrow": "",          # Contract addresses will be output after deployment
@@ -86,13 +184,47 @@ SARDIS_CONTRACTS = {
         "wallet_factory": "",
         "escrow": "",
     },
+    "ethereum_sepolia": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    "arbitrum_sepolia": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    "optimism_sepolia": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    # Mainnets - requires audit before deployment
     "base": {
-        "wallet_factory": "",  # Mainnet - requires audit before deployment
+        "wallet_factory": "",
         "escrow": "",
     },
     "polygon": {
         "wallet_factory": "",
         "escrow": "",
+    },
+    "ethereum": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    "arbitrum": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    "optimism": {
+        "wallet_factory": "",
+        "escrow": "",
+    },
+    # Solana - requires different contract architecture (Anchor programs)
+    "solana_devnet": {
+        "wallet_program": "",  # Solana uses programs, not contracts
+        "escrow_program": "",
+    },
+    "solana": {
+        "wallet_program": "",
+        "escrow_program": "",
     },
 }
 

@@ -84,6 +84,52 @@ class TestChainConfigs:
         assert config["chain_id"] == 11155111
         assert config["block_time"] == 12
 
+    def test_arbitrum_sepolia_config(self):
+        """Test Arbitrum Sepolia configuration."""
+        config = CHAIN_CONFIGS["arbitrum_sepolia"]
+        
+        assert config["chain_id"] == 421614
+        assert "arbitrum" in config["rpc_url"]
+        assert config["native_token"] == "ETH"
+        assert config["block_time"] == 1
+
+    def test_arbitrum_mainnet_config(self):
+        """Test Arbitrum mainnet configuration."""
+        config = CHAIN_CONFIGS["arbitrum"]
+        
+        assert config["chain_id"] == 42161
+        assert config["native_token"] == "ETH"
+
+    def test_optimism_sepolia_config(self):
+        """Test Optimism Sepolia configuration."""
+        config = CHAIN_CONFIGS["optimism_sepolia"]
+        
+        assert config["chain_id"] == 11155420
+        assert "optimism" in config["rpc_url"]
+        assert config["native_token"] == "ETH"
+
+    def test_optimism_mainnet_config(self):
+        """Test Optimism mainnet configuration."""
+        config = CHAIN_CONFIGS["optimism"]
+        
+        assert config["chain_id"] == 10
+        assert config["native_token"] == "ETH"
+
+    def test_solana_devnet_config(self):
+        """Test Solana devnet configuration."""
+        config = CHAIN_CONFIGS["solana_devnet"]
+        
+        assert "solana" in config["rpc_url"]
+        assert config["native_token"] == "SOL"
+        assert config.get("is_solana") is True
+
+    def test_solana_mainnet_config(self):
+        """Test Solana mainnet configuration."""
+        config = CHAIN_CONFIGS["solana"]
+        
+        assert "solana" in config["rpc_url"]
+        assert config["native_token"] == "SOL"
+
 
 class TestStablecoinAddresses:
     """Tests for stablecoin contract addresses."""
@@ -95,6 +141,42 @@ class TestStablecoinAddresses:
         assert "USDC" in addresses
         assert addresses["USDC"].startswith("0x")
         assert len(addresses["USDC"]) == 42
+
+    def test_arbitrum_sepolia_usdc(self):
+        """Test USDC address on Arbitrum Sepolia."""
+        addresses = STABLECOIN_ADDRESSES["arbitrum_sepolia"]
+        
+        assert "USDC" in addresses
+        assert addresses["USDC"].startswith("0x")
+
+    def test_arbitrum_has_multiple_stablecoins(self):
+        """Test Arbitrum mainnet has multiple stablecoins."""
+        addresses = STABLECOIN_ADDRESSES["arbitrum"]
+        
+        assert "USDC" in addresses
+        assert "USDT" in addresses
+
+    def test_optimism_has_stablecoins(self):
+        """Test Optimism has stablecoins."""
+        addresses = STABLECOIN_ADDRESSES["optimism"]
+        
+        assert "USDC" in addresses
+        assert "USDT" in addresses
+
+    def test_solana_usdc(self):
+        """Test USDC address on Solana."""
+        addresses = STABLECOIN_ADDRESSES["solana"]
+        
+        assert "USDC" in addresses
+        # Solana addresses are base58, not hex
+        assert not addresses["USDC"].startswith("0x")
+
+    def test_ethereum_has_eurc_pyusd(self):
+        """Test Ethereum has EURC and PYUSD."""
+        addresses = STABLECOIN_ADDRESSES["ethereum"]
+        
+        assert "EURC" in addresses
+        assert "PYUSD" in addresses
 
     def test_polygon_has_multiple_stablecoins(self):
         """Test Polygon has multiple stablecoins."""

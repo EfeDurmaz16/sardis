@@ -27,6 +27,7 @@ from .routers import transactions as transactions_router
 from .routers import marketplace as marketplace_router
 from .routers import wallets as wallets_router
 from .routers import agents as agents_router
+from .routers import api_keys as api_keys_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -218,6 +219,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
+
+    # API Key management routes
+    api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
+    set_api_key_manager(api_key_manager)
+    app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
 
     # Health check endpoints
     @app.get("/", tags=["health"])
