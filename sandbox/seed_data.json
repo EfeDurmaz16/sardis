@@ -1,0 +1,128 @@
+{
+  "organization": {
+    "external_id": "org_sandbox_demo",
+    "name": "Sandbox Demo Organization",
+    "settings": {
+      "max_agents": 10,
+      "max_wallets_per_agent": 5,
+      "environment": "sandbox"
+    }
+  },
+  "agents": [
+    {
+      "external_id": "agent_alice",
+      "name": "Alice Agent",
+      "description": "Shopping agent for e-commerce tasks",
+      "is_active": true
+    },
+    {
+      "external_id": "agent_bob",
+      "name": "Bob Agent",
+      "description": "Merchant agent accepting payments",
+      "is_active": true
+    },
+    {
+      "external_id": "agent_charlie",
+      "name": "Charlie Agent",
+      "description": "Service provider agent",
+      "is_active": true
+    }
+  ],
+  "wallets": [
+    {
+      "external_id": "wallet_alice",
+      "agent_id": "agent_alice",
+      "currency": "USDC",
+      "balance": "1000.00",
+      "limit_per_tx": "500.00",
+      "limit_total": "5000.00"
+    },
+    {
+      "external_id": "wallet_bob",
+      "agent_id": "agent_bob",
+      "currency": "USDC",
+      "balance": "500.00",
+      "limit_per_tx": "1000.00",
+      "limit_total": "10000.00"
+    },
+    {
+      "external_id": "wallet_charlie",
+      "agent_id": "agent_charlie",
+      "currency": "USDC",
+      "balance": "2000.00",
+      "limit_per_tx": "2000.00",
+      "limit_total": "20000.00"
+    }
+  ],
+  "spending_policies": [
+    {
+      "agent_id": "agent_alice",
+      "trust_level": "medium",
+      "limit_per_tx": "500.00",
+      "limit_total": "5000.00",
+      "allowed_scopes": ["all"]
+    },
+    {
+      "agent_id": "agent_bob",
+      "trust_level": "high",
+      "limit_per_tx": "1000.00",
+      "limit_total": "10000.00",
+      "allowed_scopes": ["all"]
+    },
+    {
+      "agent_id": "agent_charlie",
+      "trust_level": "high",
+      "limit_per_tx": "2000.00",
+      "limit_total": "20000.00",
+      "allowed_scopes": ["all", "agent_to_agent"]
+    }
+  ],
+  "api_keys": [
+    {
+      "key_prefix": "sk_sandb",
+      "key_hash": "demo_hash_for_sandbox",
+      "name": "Sandbox Demo Key",
+      "scopes": ["read", "write", "admin"],
+      "rate_limit": 1000
+    }
+  ],
+  "sample_transactions": [
+    {
+      "from_wallet": "wallet_alice",
+      "to_wallet": "wallet_bob",
+      "amount": "25.00",
+      "currency": "USDC",
+      "purpose": "Sample payment 1"
+    },
+    {
+      "from_wallet": "wallet_bob",
+      "to_wallet": "wallet_charlie",
+      "amount": "100.00",
+      "currency": "USDC",
+      "purpose": "Service payment"
+    }
+  ],
+  "marketplace_services": [
+    {
+      "external_id": "service_code_review",
+      "provider_agent_id": "agent_charlie",
+      "name": "AI Code Review",
+      "description": "Automated code review by AI agent",
+      "category": "compute",
+      "price_amount": "50.00",
+      "price_token": "USDC",
+      "status": "active"
+    },
+    {
+      "external_id": "service_data_analysis",
+      "provider_agent_id": "agent_charlie",
+      "name": "Data Analysis Service",
+      "description": "Comprehensive data analysis",
+      "category": "data",
+      "price_amount": "100.00",
+      "price_token": "USDC",
+      "status": "active"
+    }
+  ]
+}
+

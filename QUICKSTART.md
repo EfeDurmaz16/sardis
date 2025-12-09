@@ -1,189 +1,146 @@
-# Sardis Quick Start Guide
+# Quick Start Guide
 
-Get Sardis running locally in 5 minutes.
+Get Sardis running in under 2 minutes.
 
-## Prerequisites
+---
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL (optional, SQLite works for dev)
-
-## 1. Clone and Setup
+## Option 1: Run the Demo (30 seconds)
 
 ```bash
-# Clone the repository
+# Clone the repo
 git clone https://github.com/your-org/sardis.git
 cd sardis
 
-# Create Python virtual environment
+# Run the demo
+python examples/simple_payment.py
+```
+
+**Expected output:**
+```
+==================================================
+Sardis Payment Protocol - Simple Demo
+==================================================
+
+1. Creating wallet with $50 USDC...
+   Wallet ID: wallet_abc123
+   Balance: $50 USDC
+
+2. Executing payment of $2 to OpenAI API...
+   Transaction ID: tx_def456
+   Status: executed
+   TX Hash: 0x...
+
+3. Checking wallet balance...
+   New Balance: $48 USDC
+   Total Spent: $2
+
+✓ Demo completed successfully!
+```
+
+---
+
+## Option 2: Full Installation (2 minutes)
+
+### Step 1: Clone and Install
+
+```bash
+git clone https://github.com/your-org/sardis.git
+cd sardis
+
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install Python packages
-pip install -e sardis-core/
-pip install -e sardis-protocol/
-pip install -e sardis-wallet/
-pip install -e sardis-chain/
-pip install -e sardis-ledger/
-pip install -e sardis-compliance/
-pip install -e sardis-api/
-
-# Install dashboard dependencies
-cd dashboard
-npm install
-cd ..
+# Install the SDK
+pip install -e .
 ```
 
-## 2. Configure Environment
+### Step 2: Run Examples
 
 ```bash
-# Copy environment template
-cp .env.example .env
+# Simple payment
+python examples/simple_payment.py
 
-# Edit .env with your settings (optional for dev)
-# For local dev, defaults work fine
+# Agent-to-agent transactions
+python examples/agent_to_agent.py
 ```
 
-## 3. Start the API
+### Step 3: Start the API (Optional)
 
 ```bash
-# Terminal 1: Start the API server
-cd sardis-api
-uvicorn sardis_api.main:create_app --factory --reload --port 8000
-```
+# Install API dependencies
+pip install -e packages/sardis-api
 
-You should see:
-```
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000
-```
+# Start server
+uvicorn sardis_api.main:create_app --factory --port 8000
 
-## 4. Start the Dashboard
-
-```bash
-# Terminal 2: Start the dashboard
-cd dashboard
-npm run dev
-```
-
-Open http://localhost:3005 in your browser.
-
-## 5. Test the API
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# API docs
+# Open API docs
 open http://localhost:8000/api/v2/docs
 ```
 
-## Using PostgreSQL (Production)
+---
 
-### Option A: Neon (Recommended for demo)
+## Your First Payment in Python
 
-1. Create a free account at https://neon.tech
-2. Create a new project
-3. Copy the connection string
-4. Set in `.env`:
-   ```
-   DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/sardis?sslmode=require
-   ```
+```python
+from sardis import Wallet, Transaction
 
-### Option B: Local PostgreSQL
+# Create a wallet
+wallet = Wallet(initial_balance=100)
 
-```bash
-# Create database
-createdb sardis
+# Make a payment
+tx = Transaction(
+    from_wallet=wallet,
+    to="merchant:example",
+    amount=10
+)
+result = tx.execute()
 
-# Set in .env
-DATABASE_URL=postgresql://localhost/sardis
+# Check the result
+print(f"Success: {result.success}")
+print(f"New Balance: ${wallet.balance}")
 ```
 
-### Initialize and Seed
+---
 
-```bash
-# Initialize schema and seed demo data
-python scripts/seed_demo.py --init-schema
+## Your First Agent
 
-# Output will include a demo API key - save it!
+```python
+from sardis import Agent, Policy
+
+# Create an agent with a spending policy
+agent = Agent(
+    name="My AI Assistant",
+    policy=Policy(max_per_tx=50, max_total=500)
+)
+
+# Create a wallet
+agent.create_wallet(initial_balance=200)
+
+# Make a payment
+result = agent.pay(
+    to="openai:api",
+    amount=5,
+    purpose="GPT-4 API call"
+)
+
+print(f"Success: {result.success}")
+print(f"Balance: ${agent.total_balance}")
 ```
 
-## Deploy to Vercel
-
-### Dashboard Only
-
-```bash
-cd dashboard
-vercel
-```
-
-### Full Stack (Dashboard + API)
-
-```bash
-# From project root
-vercel
-
-# Set environment variables in Vercel dashboard:
-# - DATABASE_URL
-# - SARDIS_SECRET_KEY
-# - SARDIS_ALLOWED_ORIGINS
-```
-
-## Common Issues
-
-### "Module not found" errors
-
-Make sure all packages are installed in editable mode:
-```bash
-pip install -e sardis-core/ -e sardis-protocol/ -e sardis-wallet/ -e sardis-chain/ -e sardis-ledger/ -e sardis-compliance/ -e sardis-api/
-```
-
-### CORS errors in browser
-
-Check that your frontend URL is in `SARDIS_ALLOWED_ORIGINS`:
-```
-SARDIS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
-```
-
-### Database connection errors
-
-For local dev without PostgreSQL, the API will use SQLite automatically.
+---
 
 ## Next Steps
 
-1. **Explore the API**: http://localhost:8000/api/v2/docs
-2. **Create an agent**: Use the dashboard or API
-3. **Execute a payment**: Try the AP2 payment flow
-4. **Set up webhooks**: Configure event notifications
+1. **Explore the API** — Start the server and check `/api/v2/docs`
+2. **Read the Docs** — See `docs/` for architecture and integration guides
+3. **Run Tests** — `pytest tests/` to verify everything works
+4. **Deploy** — See `DEPLOYMENT_PLAN.md` for production setup
 
-## Architecture Overview
+---
 
-```
-┌─────────────────┐     ┌─────────────────┐
-│    Dashboard    │────▶│   Sardis API    │
-│   (React/Vite)  │     │   (FastAPI)     │
-└─────────────────┘     └────────┬────────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    ▼            ▼            ▼
-              ┌──────────┐ ┌──────────┐ ┌──────────┐
-              │ Wallet   │ │ Protocol │ │  Chain   │
-              │ Manager  │ │ Verifier │ │ Executor │
-              └──────────┘ └──────────┘ └──────────┘
-                    │            │            │
-                    └────────────┼────────────┘
-                                 ▼
-                         ┌──────────────┐
-                         │  PostgreSQL  │
-                         │   (Ledger)   │
-                         └──────────────┘
-```
+## Need Help?
 
-## Support
-
-- Documentation: See `NEWPLAN.md` for architecture details
-- Issues: GitHub Issues
-- Status: See `IMPLEMENTATION_STATUS.md`
+- **Docs**: `docs/` folder
+- **Examples**: `examples/` folder
+- **Issues**: GitHub Issues

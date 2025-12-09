@@ -9,11 +9,15 @@ from typing import AsyncGenerator
 
 # Add package paths for testing
 root_dir = Path(__file__).parent.parent
+packages_dir = root_dir / "packages"
 for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol", 
             "sardis-chain", "sardis-ledger", "sardis-compliance"]:
-    pkg_path = root_dir / pkg / "src"
+    pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
+
+# Also add the root sardis package
+sys.path.insert(0, str(root_dir))
 
 # Set test environment
 os.environ["SARDIS_ENVIRONMENT"] = "dev"

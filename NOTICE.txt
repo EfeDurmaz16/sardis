@@ -1,0 +1,2 @@
+Sardis - Programmable Payment Rails for AI Agents
+Copyright (c) 2025 Efe Baran Durmaz
