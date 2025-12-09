@@ -199,10 +199,16 @@ uvicorn sardis_api.main:create_app --factory --port 8000
 
 ## License
 
-MIT License - see [LICENSE](LICENSE.txt)
+**Proprietary License** - All rights reserved.
+
+This software and all related intellectual property are the exclusive property of **Efe Baran Durmaz**. The source code is provided for viewing and evaluation purposes only. No rights are granted to use, copy, modify, or distribute without explicit written permission.
+
+See [LICENSE.txt](LICENSE.txt) for full terms.
 
 ---
 
 <p align="center">
   <b>Sardis</b> — The payment protocol for the agent economy
+  <br>
+  © 2025 Efe Baran Durmaz. All rights reserved.
 </p>
