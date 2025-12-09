@@ -1,9 +1,17 @@
 """Integration tests for A2A marketplace flow."""
 from __future__ import annotations
 
+import os
 import time
 import pytest
 from httpx import AsyncClient
+
+# All tests in this module require a PostgreSQL database
+pytestmark = pytest.mark.skipif(
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+         os.environ.get("DATABASE_URL", "").startswith("postgres://")),
+    reason="Requires PostgreSQL database (set DATABASE_URL env var)"
+)
 
 
 def create_service_request(

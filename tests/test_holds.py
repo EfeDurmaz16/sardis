@@ -1,7 +1,15 @@
 """Holds API endpoint tests."""
 from __future__ import annotations
 
+import os
 import pytest
+
+# Skip all tests in this file if no PostgreSQL database
+pytestmark = pytest.mark.skipif(
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+         os.environ.get("DATABASE_URL", "").startswith("postgres://")),
+    reason="Requires PostgreSQL database (set DATABASE_URL env var)"
+)
 
 
 @pytest.mark.anyio

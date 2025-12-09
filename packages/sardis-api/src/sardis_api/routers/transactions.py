@@ -114,15 +114,30 @@ async def estimate_gas(
         )
     
     # Create a mock mandate for gas estimation
+    from sardis_v2_core.mandates import VCProof
+    import time
+    
+    proof = VCProof(
+        verification_method="did:key:system#key-1",
+        created="2025-01-01T00:00:00Z",
+        proof_value="mock_signature",
+    )
+    
     mandate = PaymentMandate(
         mandate_id="gas_estimate",
+        mandate_type="payment",
         issuer="system",
         subject="system",
+        expires_at=int(time.time()) + 300,
+        nonce="gas_estimate_nonce",
+        proof=proof,
+        domain="sardis.network",
+        purpose="checkout",
         destination=request.destination,
         amount_minor=int(request.amount),
         token=request.token,
         chain=request.chain,
-        expires_at=0,
+        audit_hash="gas_estimate_hash",
     )
     
     try:

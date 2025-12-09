@@ -1,7 +1,15 @@
 """Webhooks API endpoint tests."""
 from __future__ import annotations
 
+import os
 import pytest
+
+# Skip database-dependent tests if no PostgreSQL database
+_requires_db = pytest.mark.skipif(
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+         os.environ.get("DATABASE_URL", "").startswith("postgres://")),
+    reason="Requires PostgreSQL database (set DATABASE_URL env var)"
+)
 
 
 @pytest.mark.anyio
@@ -16,6 +24,7 @@ async def test_list_event_types(test_client):
     assert "payment.completed" in data["event_types"]
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_create_webhook(test_client, sample_webhook_request):
     """Test creating a webhook subscription."""
@@ -32,6 +41,7 @@ async def test_create_webhook(test_client, sample_webhook_request):
     assert data["is_active"] is True
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_list_webhooks(test_client, sample_webhook_request):
     """Test listing webhook subscriptions."""
@@ -46,6 +56,7 @@ async def test_list_webhooks(test_client, sample_webhook_request):
     assert isinstance(data, list)
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_get_webhook(test_client, sample_webhook_request):
     """Test getting a webhook by ID."""
@@ -64,6 +75,7 @@ async def test_get_webhook(test_client, sample_webhook_request):
     assert data["subscription_id"] == subscription_id
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_update_webhook(test_client, sample_webhook_request):
     """Test updating a webhook subscription."""
@@ -85,6 +97,7 @@ async def test_update_webhook(test_client, sample_webhook_request):
     assert data["is_active"] is False
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_delete_webhook(test_client, sample_webhook_request):
     """Test deleting a webhook subscription."""
@@ -105,6 +118,7 @@ async def test_delete_webhook(test_client, sample_webhook_request):
     assert get_response.status_code == 404
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_webhook_not_found(test_client):
     """Test getting a non-existent webhook."""

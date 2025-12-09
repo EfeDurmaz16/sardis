@@ -24,8 +24,8 @@ async def test_health_endpoint(test_client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert "database" in data
-    assert "cache" in data
+    assert "components" in data
+    assert "database" in data["components"]
 
 
 @pytest.mark.anyio
@@ -35,4 +35,5 @@ async def test_api_v2_health(test_client):
     
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "healthy"
+    assert data["status"] == "ok"
+    assert data["version"] == "v2"

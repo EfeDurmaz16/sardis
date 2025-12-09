@@ -6,8 +6,9 @@ import sys
 from pathlib import Path
 import pytest
 from typing import AsyncGenerator
+from unittest.mock import patch
 
-# Add package paths for testing
+# Add package paths for testing FIRST
 root_dir = Path(__file__).parent.parent
 packages_dir = root_dir / "packages"
 for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol", 
@@ -19,9 +20,26 @@ for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol",
 # Also add the root sardis package
 sys.path.insert(0, str(root_dir))
 
-# Set test environment
+# Clear any cached settings and set clean test environment
+# Remove problematic env vars that might be read from .env
+for key in list(os.environ.keys()):
+    if key.startswith("SARDIS_") and key != "SARDIS_ENVIRONMENT":
+        del os.environ[key]
+
 os.environ["SARDIS_ENVIRONMENT"] = "dev"
 os.environ["SARDIS_SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["SARDIS_CHAIN_MODE"] = "simulated"
+
+# Clear the settings cache so tests get fresh settings
+from sardis_v2_core.config import load_settings
+load_settings.cache_clear()
+
+
+# Check if PostgreSQL database is available
+def has_postgres_db():
+    """Check if PostgreSQL database is available for testing."""
+    db_url = os.environ.get("DATABASE_URL", "")
+    return db_url.startswith("postgresql://") or db_url.startswith("postgres://")
 
 
 @pytest.fixture(scope="session")

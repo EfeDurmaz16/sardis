@@ -1,10 +1,18 @@
 """Integration tests for hold (pre-authorization) lifecycle."""
 from __future__ import annotations
 
+import os
 import time
 import pytest
 from decimal import Decimal
 from httpx import AsyncClient
+
+# All tests in this module require a PostgreSQL database
+pytestmark = pytest.mark.skipif(
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+         os.environ.get("DATABASE_URL", "").startswith("postgres://")),
+    reason="Requires PostgreSQL database (set DATABASE_URL env var)"
+)
 
 
 class TestHoldCreation:

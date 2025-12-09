@@ -1,7 +1,15 @@
 """Marketplace API endpoint tests."""
 from __future__ import annotations
 
+import os
 import pytest
+
+# Skip database-dependent tests if no PostgreSQL database
+_requires_db = pytest.mark.skipif(
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+         os.environ.get("DATABASE_URL", "").startswith("postgres://")),
+    reason="Requires PostgreSQL database (set DATABASE_URL env var)"
+)
 
 
 @pytest.mark.anyio
@@ -15,6 +23,7 @@ async def test_list_categories(test_client):
     assert len(data["categories"]) > 0
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_create_service(test_client, sample_service_request):
     """Test creating a service listing."""
@@ -30,6 +39,7 @@ async def test_create_service(test_client, sample_service_request):
     assert data["status"] == "active"
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_list_services(test_client, sample_service_request):
     """Test listing services."""
@@ -47,6 +57,7 @@ async def test_list_services(test_client, sample_service_request):
     assert isinstance(data, list)
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_get_service(test_client, sample_service_request):
     """Test getting a service by ID."""
@@ -65,6 +76,7 @@ async def test_get_service(test_client, sample_service_request):
     assert data["service_id"] == service_id
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_search_services(test_client, sample_service_request):
     """Test searching for services."""
@@ -85,6 +97,7 @@ async def test_search_services(test_client, sample_service_request):
     assert isinstance(data, list)
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_create_offer(test_client, sample_service_request):
     """Test creating a service offer."""
@@ -111,6 +124,7 @@ async def test_create_offer(test_client, sample_service_request):
     assert data["status"] == "pending"
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_accept_offer(test_client, sample_service_request):
     """Test accepting an offer."""
@@ -139,6 +153,7 @@ async def test_accept_offer(test_client, sample_service_request):
     assert data["status"] == "accepted"
 
 
+@_requires_db
 @pytest.mark.anyio
 async def test_service_not_found(test_client):
     """Test getting a non-existent service."""

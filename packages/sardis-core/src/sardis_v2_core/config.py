@@ -34,11 +34,15 @@ class SardisSettings(BaseSettings):
     # API
     api_base_url: str = "http://localhost:8000"
     
-    # CORS - allowed origins for API
-    allowed_origins: List[str] = Field(default_factory=lambda: [
-        "http://localhost:3005",
-        "http://localhost:5173",
-    ])
+    # CORS - allowed origins for API (use str to handle comma-separated env vars)
+    allowed_origins: str = "http://localhost:3005,http://localhost:5173"
+    
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        """Return allowed origins as a list."""
+        if not self.allowed_origins:
+            return ["http://localhost:3005", "http://localhost:5173"]
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
     
     # Security
     secret_key: str = ""
@@ -77,14 +81,6 @@ class SardisSettings(BaseSettings):
         env_nested_delimiter = "__"
         env_file = ".env"
         extra = "ignore"
-
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_origins(cls, v):
-        """Parse comma-separated origins from env var."""
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
 
     @field_validator("secret_key")
     @classmethod

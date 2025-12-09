@@ -99,7 +99,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Add CORS middleware with settings-based origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
