@@ -89,3 +89,114 @@ body {
   @apply animate-pulse bg-dark-100 rounded;
 }
 
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .card {
+    @apply rounded-lg;
+  }
+  
+  /* Better touch targets on mobile */
+  button, a {
+    min-height: 44px;
+  }
+  
+  /* Stack stat cards on mobile */
+  .stats-grid {
+    @apply grid-cols-2;
+  }
+  
+  /* Hide less important columns on mobile */
+  .hide-mobile {
+    @apply hidden sm:table-cell;
+  }
+  
+  /* Smaller charts on mobile */
+  .chart-container {
+    @apply h-48;
+  }
+}
+
+/* Better tablet layout */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .stats-grid {
+    @apply grid-cols-2;
+  }
+}
+
+/* Custom scrollbar for live feed */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 94, 0.3);
+  border-radius: 2px;
+}
+
+/* Animated border for new items */
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(34, 197, 94, 0.3); }
+  50% { border-color: rgba(34, 197, 94, 0.6); }
+}
+
+.new-item-glow {
+  animation: border-glow 2s ease-in-out;
+}
+
+/* Smooth chart animations */
+.recharts-wrapper {
+  transition: all 0.3s ease;
+}
+
+/* Better focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  @apply outline-none ring-2 ring-sardis-500 ring-offset-2 ring-offset-dark-300;
+}
+
+/* Loading state for buttons */
+.btn-loading {
+  @apply relative pointer-events-none opacity-70;
+}
+
+.btn-loading::after {
+  content: '';
+  @apply absolute inset-0 flex items-center justify-center;
+  background: inherit;
+}
+
+/* Tooltip improvements */
+.tooltip {
+  @apply bg-dark-300 text-white text-xs px-2 py-1 rounded shadow-lg;
+  z-index: 9999;
+}
+
+/* Quick action buttons */
+.quick-action {
+  @apply flex items-center gap-2 px-4 py-2 bg-dark-200 hover:bg-dark-100 
+         border border-dark-100 hover:border-sardis-500/50 
+         rounded-lg transition-all duration-200;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-green-500/10 text-green-500;
+}
+
+.badge-warning {
+  @apply bg-yellow-500/10 text-yellow-500;
+}
+
+.badge-error {
+  @apply bg-red-500/10 text-red-500;
+}
+
+.badge-info {
+  @apply bg-blue-500/10 text-blue-500;
+}
+

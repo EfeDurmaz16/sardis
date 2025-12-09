@@ -43,6 +43,8 @@ const volumeData = [
 const transactionsByChain = [
   { chain: 'Base', count: 450, color: '#0052FF' },
   { chain: 'Polygon', count: 320, color: '#8247E5' },
+  { chain: 'Arbitrum', count: 280, color: '#28A0F0' },
+  { chain: 'Optimism', count: 210, color: '#FF0420' },
   { chain: 'Ethereum', count: 180, color: '#627EEA' },
   { chain: 'Solana', count: 150, color: '#14F195' },
 ]
@@ -56,10 +58,11 @@ const paymentTypes = [
 
 // Simulated live transactions for demo
 const generateLiveTransaction = () => {
-  const agents = ['shopping_agent', 'data_buyer', 'compute_agent', 'research_ai', 'trading_bot']
-  const merchants = ['GPU Cloud', 'Data API', 'Weather Service', 'Stock Feed', 'News API']
-  const amounts = ['0.01', '0.05', '0.25', '1.00', '5.00', '10.00', '25.00']
-  const statuses = ['completed', 'completed', 'completed', 'pending'] as const
+  const agents = ['shopping_agent', 'data_buyer', 'compute_agent', 'research_ai', 'trading_bot', 'analytics_ai']
+  const merchants = ['GPU Cloud', 'Data API', 'Weather Service', 'Stock Feed', 'News API', 'Compute Hub']
+  const amounts = ['0.01', '0.05', '0.25', '1.00', '5.00', '10.00', '25.00', '50.00']
+  const statuses = ['completed', 'completed', 'completed', 'completed', 'pending'] as const
+  const chains = ['Base', 'Polygon', 'Arbitrum', 'Optimism', 'Ethereum', 'Solana']
   
   return {
     id: `tx_${Math.random().toString(36).substring(7)}`,
@@ -68,7 +71,7 @@ const generateLiveTransaction = () => {
     amount: amounts[Math.floor(Math.random() * amounts.length)],
     status: statuses[Math.floor(Math.random() * statuses.length)],
     time: new Date().toLocaleTimeString(),
-    chain: ['Base', 'Polygon', 'Ethereum'][Math.floor(Math.random() * 3)],
+    chain: chains[Math.floor(Math.random() * chains.length)],
   }
 }
 
@@ -246,34 +249,29 @@ export default function DashboardPage() {
           {/* Network Health */}
           <div className="card p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-4">Network Health</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-300">Base</span>
+            <div className="space-y-2.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+              {[
+                { name: 'Base', status: 'healthy' },
+                { name: 'Polygon', status: 'healthy' },
+                { name: 'Arbitrum', status: 'healthy' },
+                { name: 'Optimism', status: 'healthy' },
+                { name: 'Ethereum', status: 'healthy' },
+                { name: 'Solana', status: 'healthy' },
+              ].map((chain) => (
+                <div key={chain.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-gray-300">{chain.name}</span>
+                  </div>
+                  <span className="badge badge-success">Healthy</span>
                 </div>
-                <span className="text-xs text-green-500">Healthy</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-300">Polygon</span>
-                </div>
-                <span className="text-xs text-green-500">Healthy</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-300">Ethereum</span>
-                </div>
-                <span className="text-xs text-green-500">Healthy</span>
-              </div>
-              <div className="flex items-center justify-between">
+              ))}
+              <div className="flex items-center justify-between pt-2 border-t border-dark-100">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-blue-500" />
                   <span className="text-sm text-gray-300">Risk Engine</span>
                 </div>
-                <span className="text-xs text-blue-500">Active</span>
+                <span className="badge badge-info">Active</span>
               </div>
             </div>
           </div>
