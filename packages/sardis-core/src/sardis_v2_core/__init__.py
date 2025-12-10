@@ -7,7 +7,7 @@ from .tokens import TokenType, TokenMetadata
 from .wallets import Wallet, TokenBalance
 from .spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel, SpendingScope, create_default_policy
 from .transactions import Transaction, TransactionStatus, OnChainRecord
-from .virtual_card import VirtualCard, CardStatus, CardType
+from .virtual_card import VirtualCard, CardStatus, CardType, FundingSource
 from .orchestrator import PaymentOrchestrator, PaymentResult, PaymentExecutionError
 from .database import Database, init_database, SCHEMA_SQL
 from .holds import Hold, HoldResult, HoldsRepository
@@ -49,6 +49,7 @@ __all__ = [
     "VirtualCard",
     "CardStatus",
     "CardType",
+    "FundingSource",
     "PaymentOrchestrator",
     "PaymentResult",
     "PaymentExecutionError",

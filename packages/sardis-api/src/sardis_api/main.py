@@ -28,6 +28,7 @@ from .routers import marketplace as marketplace_router
 from .routers import wallets as wallets_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
+from .routers import cards as cards_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -211,6 +212,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+    # Virtual Card routes (pre-loaded cards for fiat on-ramp)
+    app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
     # Agent routes
     agent_repo = AgentRepository(dsn=database_url if use_postgres else "memory://")

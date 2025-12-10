@@ -4,7 +4,13 @@
 
 ## Executive Summary
 
-Sardis is an **agent-first stablecoin payment rail** designed to enable AI agents to execute programmable payments using stablecoins (USDC, USDT, PYUSD, EURC) across multiple chains (Base, Ethereum, Polygon, Solana). The project implements the **AP2 (Agent Payment Protocol)** and **TAP (Trust Anchor Protocol)** standards for mandate-based, cryptographically-signed payment flows.
+Sardis is an **agent-first multi-payment execution layer** designed to enable AI agents to execute programmable payments across multiple payment methods and chains. The project implements the **AP2 (Agent Payment Protocol)** and **TAP (Trust Anchor Protocol)** standards for mandate-based, cryptographically-signed payment flows.
+
+**Supported Payment Methods:**
+- **Stablecoins** (USDC, USDT, PYUSD, EURC) — Crypto-native payments
+- **Pre-loaded Virtual Cards** (Lithic) — Fiat on-ramp for traditional merchants
+- **x402 Micropayments** — Pay-per-API-call use cases
+- **Future:** ACH/SEPA bank transfers
 
 ---
 
@@ -1273,12 +1279,13 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 
 ---
 
-## Phase 2: Wallet Engine V2 (Weeks 4-6)
+## Phase 2: Wallet Engine V2 + Virtual Cards (Weeks 4-6)
 
 ### Objectives
 - Persist all wallet state to PostgreSQL
 - Implement holds in database
 - Add conversation memory for AI agents
+- **Integrate virtual card provider (Lithic)**
 
 ### Tasks
 
@@ -1294,6 +1301,12 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 | Implement conversation memory in AgentService | P1 | 2d | Backend |
 | Add wallet balance caching (Redis) | P2 | 1d | Backend |
 | Write migration scripts | P1 | 1d | Backend |
+| **Create sardis-cards package** | P0 | 2d | Backend |
+| **Integrate Lithic SDK** | P0 | 3d | Backend |
+| **Add virtual_cards table** | P0 | 1d | Backend |
+| **Implement card issuance API** | P0 | 2d | Backend |
+| **Add card funding from stablecoin** | P1 | 2d | Backend |
+| **Implement card transaction webhooks** | P1 | 2d | Backend |
 
 ### Acceptance Criteria
 - [ ] All wallet operations persist to PostgreSQL
@@ -1301,6 +1314,9 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 - [ ] Spending policies queryable via API
 - [ ] AI agents remember last 10 messages
 - [ ] Zero data loss during migration
+- [ ] **Virtual cards can be issued via API**
+- [ ] **Cards can be funded from stablecoin balance**
+- [ ] **Card transactions appear in real-time via webhooks**
 
 ### Risks
 | Risk | Likelihood | Impact | Mitigation |
@@ -1315,12 +1331,13 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 
 ---
 
-## Phase 3: Programmable Rails (Weeks 7-9)
+## Phase 3: Programmable Rails + x402 Support (Weeks 7-9)
 
 ### Objectives
 - Real blockchain execution
 - MPC wallet integration
 - Webhook delivery system
+- **x402 micropayment support**
 
 ### Tasks
 
@@ -1336,6 +1353,10 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 | Add webhook signature verification | P1 | 1d | Backend |
 | Deploy chain executor to Cloud Run | P0 | 2d | DevOps |
 | Add on-chain verification endpoint | P2 | 1d | Backend |
+| **Add PaymentMethod enum (stablecoin, virtual_card, x402)** | P0 | 1d | Backend |
+| **Implement x402 mandate parsing** | P1 | 2d | Backend |
+| **Add x402 payment execution** | P1 | 3d | Backend |
+| **Reference google-agentic-commerce/a2a-x402 for compatibility** | P1 | 1d | Backend |
 
 ### Acceptance Criteria
 - [ ] Payments execute on Base Sepolia testnet
@@ -1343,6 +1364,8 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 - [ ] Webhooks delivered with <5s latency
 - [ ] Failed webhooks retried 3x with backoff
 - [ ] On-chain transactions verifiable via API
+- [ ] **x402 micropayments can be executed**
+- [ ] **PaymentMethod enum supports all payment types**
 
 ### Risks
 | Risk | Likelihood | Impact | Mitigation |
@@ -1475,8 +1498,8 @@ CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
 | Phase | Duration | Key Deliverables |
 |-------|----------|------------------|
 | Phase 1: Stabilization | 3 weeks | Unified codebase, CI/CD, security fixes |
-| Phase 2: Wallet Engine V2 | 3 weeks | PostgreSQL migration, holds persistence |
-| Phase 3: Programmable Rails | 3 weeks | Real chain execution, webhooks |
+| Phase 2: Wallet Engine V2 + Virtual Cards | 3 weeks | PostgreSQL migration, holds persistence, **Lithic integration** |
+| Phase 3: Programmable Rails + x402 | 3 weeks | Real chain execution, webhooks, **x402 micropayments** |
 | Phase 4: A2A Marketplace | 3 weeks | Escrow, service discovery |
 | Phase 5: Production | 4 weeks | Audits, mainnet, compliance |
 
@@ -1531,6 +1554,17 @@ sardis/
 │   │
 │   ├── compliance/             # Compliance checks
 │   │   ├── src/sardis_compliance/
+│   │   └── pyproject.toml
+│   │
+│   ├── cards/                  # Virtual card integration (NEW)
+│   │   ├── src/sardis_cards/
+│   │   │   ├── providers/
+│   │   │   │   ├── base.py     # Abstract provider interface
+│   │   │   │   ├── lithic.py   # Lithic implementation
+│   │   │   │   └── mock.py     # Mock for testing
+│   │   │   ├── models.py
+│   │   │   ├── service.py
+│   │   │   └── webhooks.py
 │   │   └── pyproject.toml
 │   │
 │   └── webhooks/               # Webhook system
@@ -1593,11 +1627,12 @@ sardis/
 |---|------|---------------------|
 | 1 | Mainnet deployment | Requires security audit |
 | 2 | Solana integration | Lower priority than EVM chains |
-| 3 | Virtual card issuance (Marqeta) | Requires partnership |
+| 3 | Additional card providers (Marqeta, Stripe Issuing) | Lithic first, expand later |
 | 4 | Mobile SDK | Web-first approach |
 | 5 | Multi-tenant SaaS mode | Single-tenant sufficient for MVP |
 | 6 | GraphQL API | REST sufficient for now |
 | 7 | Real-time WebSocket updates | Polling acceptable initially |
+| 8 | ACH/SEPA bank transfers | Focus on crypto + cards first |
 
 ## 8.7 Critical Issues Before Go-Live
 

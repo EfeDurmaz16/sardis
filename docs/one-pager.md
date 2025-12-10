@@ -1,12 +1,18 @@
 # Sardis: One-Page Strategic Summary
 
-**Date:** December 2, 2025 | **Vision:** The Stripe for AI Agents | **Status:** Foundation Complete, Scaling to Production
+**Date:** December 10, 2025 | **Vision:** Payment Execution Layer for AI Agents | **Status:** Foundation Complete, Scaling to Production
 
 ---
 
 ## 🎯 The Opportunity
 
-The **agentic economy** is emerging as AI agents transition from planning tools to economic actors. Google (AP2), Visa (TAP), OpenAI (ACP), and Stripe are racing to define payment infrastructure for this **$1T+ market**. Sardis positions itself as the **execution layer**.
+The **agentic economy** is emerging as AI agents transition from planning tools to economic actors. Google (AP2), Visa (TAP), OpenAI (ACP), and Stripe are racing to define payment infrastructure for this **$1T+ market**. Sardis positions itself as the **multi-payment execution layer**.
+
+**AP2 is payment-method-agnostic. Sardis executes all payment methods:**
+- Stablecoins (USDC, USDT, PYUSD, EURC)
+- Pre-loaded Virtual Cards (fiat on-ramp)
+- x402 Micropayments
+- Future: ACH/SEPA bank transfers
 
 ---
 
@@ -17,37 +23,38 @@ The **agentic economy** is emerging as AI agents transition from planning tools 
 | **Compliance** | ❌ No KYC/AML | ✅ MSB licensed, SOC 2 certified |
 | **Security** | ❌ No crypto identity | ✅ TAP/AP2 compliant |
 | **Blockchain** | ⚠️ Simulated | ✅ Real settlement, 6+ chains |
-| **Products** | ❌ No catalog | ✅ Full shopping experience |
+| **Virtual Cards** | ❌ None | ✅ Lithic integrated (fiat on-ramp) |
+| **x402 Support** | ❌ None | ✅ Full x402 compliance |
 | **Developer Tools** | ❌ None | ✅ SDKs in 5+ languages |
-| **Revenue** | ❌ Undefined | ✅ $1.2M ARR (Year 1) |
+| **Revenue** | ❌ Undefined | ✅ $1.35M ARR (Year 1) |
 
 ---
 
 ## 🗺️ 18-Month Roadmap
 
 ### Q1 2026: Foundation (Months 1-3)
-**Focus:** Security, Compliance, Products  
-**Deliverables:** Cryptographic identity (TAP), KYC/AML integration, product catalog, mandate system (AP2)  
+**Focus:** Security, Compliance, Identity  
+**Deliverables:** Cryptographic identity (TAP), KYC/AML integration, mandate system (AP2)  
 **Investment:** $250K
 
-### Q2 2026: Features & Blockchain (Months 4-6)
-**Focus:** Real Settlement, Developer Tools  
-**Deliverables:** On-chain transactions (Turnkey MPC), Python/JS SDKs, analytics dashboard  
-**Investment:** $250K
+### Q2 2026: Multi-Payment Execution (Months 4-6)
+**Focus:** Real Settlement, Developer Tools, **Multi-Payment Rails**  
+**Deliverables:** On-chain transactions (Turnkey MPC), **Virtual card integration (Lithic)**, **x402 support**, Python/JS SDKs  
+**Investment:** $275K
 
 ### Q3 2026: Scale & Ecosystem (Months 7-9)
-**Focus:** Marketplace, Cross-Chain  
-**Deliverables:** Agent marketplace, 6+ chains, subscription billing, loyalty programs  
+**Focus:** Multi-Chain, Card Controls  
+**Deliverables:** 6+ chains, **card spending controls & webhooks**, subscription billing  
 **Investment:** $250K
 
 ### Q4 2026: Enterprise & Compliance (Months 10-12)
-**Focus:** Licensing, Certification  
+**Focus:** Licensing, Certification, **Full x402 Compliance**  
 **Deliverables:** MSB license, SOC 2 Type II, multi-tenancy, SLA guarantees  
 **Investment:** $200K
 
 ### Q1-Q2 2027: Expansion (Months 13-18)
-**Focus:** Protocols, International  
-**Deliverables:** Full AP2/TAP/ACP integration, EU license, multi-currency, AI personalization  
+**Focus:** Protocols, International, **Additional Card Providers**  
+**Deliverables:** Full AP2/TAP/ACP integration, EU license, **Marqeta/Stripe Issuing options**  
 **Investment:** Funded by revenue
 
 ---
@@ -55,41 +62,54 @@ The **agentic economy** is emerging as AI agents transition from planning tools 
 ## 💰 Financial Projections
 
 ### Revenue Model
-- **Transaction Fees:** 0.3-1% (vs. Stripe's 2.9%)
+- **Stablecoin Execution Fees:** 0.25-0.75% (vs. Stripe's 2.9%)
+- **Virtual Card Issuance:** $0.50-2.00 per card
+- **Card Interchange Share:** 0.5-1.5% of card spend
+- **x402 Micropayment Fees:** 0.1-0.3% per payment
 - **Subscriptions:** $99-$499/month
-- **Marketplace:** 10% commission
-- **Additional:** Bridging, gas optimization, float interest
+- **Additional:** Bridging, gas optimization, MPC custody
 
 ### 3-Year Forecast
 
 | Metric | Year 1 | Year 2 | Year 3 |
 |--------|--------|--------|--------|
-| **Customers** | 600 | 2,000 | 5,000 |
-| **ARR** | $1.2M | $5.3M | $14.5M |
-| **Transaction Volume** | $10M | $100M | $500M |
+| **Customers** | 500 | 2,000 | 5,000 |
+| **Stablecoin Fees** | $250K | $2M | $6M |
+| **Card Revenue** | $75K | $500K | $1.8M |
+| **x402 Fees** | $25K | $150K | $500K |
+| **Subscriptions** | $850K | $4.8M | $14M |
+| **Total ARR** | **$1.35M** | **$8.45M** | **$28.3M** |
+| **Transaction Volume** | $50M | $500M | $2B |
 | **Break-even** | Month 9 | ✓ | ✓ |
 
-### Year 1 Budget: $950K
-- Engineering (3 FTE): $600K
-- Infrastructure: $50K
-- Sales & Marketing: $200K
-- Legal & Compliance: $100K
+### Year 1 Budget: $975K
+- Engineering (3-6 FTE): $600K
+- Infrastructure (AWS, MPC, Lithic): $125K
+- Sales & Marketing: $100K
+- Legal & Compliance: $150K
 
 ---
 
 ## 🏆 Competitive Advantages
 
 ### vs. Stripe/PayPal
-✅ **3x cheaper** (0.3-1% vs 2.9%)  
+✅ **3-10x cheaper** (0.25-0.75% vs 2.9%)  
 ✅ **AI-native** (built for agents)  
 ✅ **Crypto-native** (stablecoins, multi-chain)  
-✅ **Cryptographic identity** (TAP/AP2)
+✅ **Cryptographic identity** (TAP/AP2)  
+✅ **Multi-payment-method** (crypto + cards + x402)
 
-### vs. Circle/Chimoney
-✅ **Agent marketplace** (ecosystem moat)  
+### vs. Circle/Coinbase Commerce
+✅ **Virtual cards** (fiat on-ramp)  
 ✅ **Protocol interoperability** (AP2/TAP/ACP)  
-✅ **Developer experience** (best-in-class SDKs)  
-✅ **AI personalization** (conversation memory)
+✅ **x402 micropayments** (API payments)  
+✅ **Developer experience** (best-in-class SDKs)
+
+### vs. x402 Providers (Orthogonal, etc.)
+✅ **Multi-payment-method** (not just x402)  
+✅ **Full AP2 compliance** (complete protocol stack)  
+✅ **Fiat on-ramp** (virtual cards)  
+✅ **Multi-chain routing** (6+ chains)
 
 ---
 
@@ -107,17 +127,17 @@ The **agentic economy** is emerging as AI agents transition from planning tools 
 - ✅ Build mandate system (Month 1)
 - ✅ Deploy fraud detection (Month 4)
 
-### 3. Developer Experience
+### 3. Multi-Payment Rails
+- ✅ Enable on-chain settlement (Month 4)
+- ✅ **Integrate Lithic virtual cards (Month 4-5)**
+- ✅ **Add x402 payment method (Month 5)**
+- ✅ Support 6+ chains (Month 8)
+
+### 4. Developer Experience
 - ✅ Launch Python/JS SDKs (Month 5)
 - ✅ Create sandbox (Month 5)
 - ✅ Build comprehensive docs (Month 6)
 - ✅ CLI tool (Month 5)
-
-### 4. Real Commerce
-- ✅ Enable on-chain settlement (Month 4)
-- ✅ Launch product catalog (Month 3)
-- ✅ Support 6+ chains (Month 8)
-- ✅ Add subscription billing (Month 9)
 
 ---
 
@@ -198,6 +218,7 @@ The **agentic economy** is emerging as AI agents transition from planning tools 
 **Legal:** Cooley LLP, Fenwick & West, Perkins Coie  
 **KYC/AML:** Persona, Onfido, Chainalysis, Elliptic  
 **MPC Wallets:** Turnkey, Fireblocks, Coinbase Prime  
+**Virtual Cards:** Lithic, Marqeta, Stripe Issuing  
 **Industry:** Blockchain Association, Chamber of Digital Commerce
 
 ---
@@ -217,6 +238,7 @@ The **agentic economy** is emerging as AI agents transition from planning tools 
 
 ### Month 4 Decisions
 - [ ] Select MPC wallet provider (Recommendation: **Turnkey**)
+- [ ] Select virtual card provider (Recommendation: **Lithic**)
 - [ ] Choose cloud provider (AWS or GCP)
 - [ ] Select monitoring tools (Datadog or New Relic)
 

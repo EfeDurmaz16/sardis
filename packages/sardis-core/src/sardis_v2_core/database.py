@@ -250,6 +250,62 @@ CREATE TABLE IF NOT EXISTS holds (
 CREATE INDEX IF NOT EXISTS idx_holds_wallet ON holds(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_holds_status ON holds(status);
 
+-- Virtual Cards (pre-loaded cards for fiat on-ramp)
+CREATE TABLE IF NOT EXISTS virtual_cards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id VARCHAR(64) UNIQUE NOT NULL,
+    wallet_id UUID REFERENCES wallets(id) NOT NULL,
+    provider VARCHAR(20) NOT NULL DEFAULT 'internal',
+    provider_card_id VARCHAR(64),
+    card_number_last4 VARCHAR(4),
+    expiry_month INTEGER,
+    expiry_year INTEGER,
+    card_type VARCHAR(20) DEFAULT 'multi_use',
+    status VARCHAR(20) DEFAULT 'pending',
+    locked_merchant_id VARCHAR(64),
+    funding_source VARCHAR(20) DEFAULT 'stablecoin',
+    funded_amount NUMERIC(20,6) DEFAULT 0,
+    pending_funds NUMERIC(20,6) DEFAULT 0,
+    limit_per_tx NUMERIC(20,6) DEFAULT 500,
+    limit_daily NUMERIC(20,6) DEFAULT 2000,
+    limit_monthly NUMERIC(20,6) DEFAULT 10000,
+    spent_today NUMERIC(20,6) DEFAULT 0,
+    spent_this_month NUMERIC(20,6) DEFAULT 0,
+    total_spent NUMERIC(20,6) DEFAULT 0,
+    pending_authorizations NUMERIC(20,6) DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    activated_at TIMESTAMPTZ,
+    frozen_at TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_virtual_cards_wallet ON virtual_cards(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_virtual_cards_provider ON virtual_cards(provider, provider_card_id);
+CREATE INDEX IF NOT EXISTS idx_virtual_cards_status ON virtual_cards(status);
+
+-- Card Transactions (transaction log from card providers)
+CREATE TABLE IF NOT EXISTS card_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id VARCHAR(64) UNIQUE NOT NULL,
+    card_id UUID REFERENCES virtual_cards(id) NOT NULL,
+    provider_tx_id VARCHAR(64),
+    amount NUMERIC(20,6) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'USD',
+    merchant_name VARCHAR(255),
+    merchant_category VARCHAR(10),
+    merchant_id VARCHAR(64),
+    status VARCHAR(20) NOT NULL,
+    decline_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    settled_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_tx_card ON card_transactions(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_tx_status ON card_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_card_tx_created ON card_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_card_tx_provider ON card_transactions(provider_tx_id);
+
 -- Mandates (AP2)
 CREATE TABLE IF NOT EXISTS mandates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
