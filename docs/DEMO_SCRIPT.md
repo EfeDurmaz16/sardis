@@ -174,3 +174,5 @@ python examples/api_demo.py
 - **Terminal**: iTerm2 with oh-my-zsh
 - **Resolution**: 1920x1080 minimum
 - **Export**: MP4, H.264, 30fps
+
+

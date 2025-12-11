@@ -1,0 +1,34 @@
+---
+title: Authentication
+---
+
+# Authentication
+
+Sardis API currently uses API keys for service-to-service access. In production, scope keys and enable request signing between internal services.
+
+## API Keys
+- Provide `x-api-key` header on requests.
+- Create separate keys per environment (dev/sandbox/prod).
+- Scope keys to least privilege (read | write | admin).
+
+## Internal Service Signing
+For production hardening, sign internal requests:
+- Compute HMAC over body + timestamp; include `x-signature` and `x-timestamp` headers.
+- Reject requests older than 5 minutes.
+
+## Rate Limits
+- Per-agent mandate verification is rate limited (configurable in `sardis_protocol.rate_limiter`).
+- Configure limits via environment or pass `RateLimitConfig` to `MandateVerifier`.
+
+## Recommended Headers
+- `x-api-key`: required for external callers
+- `x-request-id`: traceability
+- `x-client`: client identifier
+
+## Examples
+```bash
+curl -H "x-api-key: $SARDIS_API_KEY" \
+     http://localhost:8000/api/v2/cards
+```
+
+

@@ -318,3 +318,5 @@ class TestVCProof:
         assert proof.type == "DataIntegrityProof"
         assert proof.proof_purpose == "assertionMethod"
 
+
+

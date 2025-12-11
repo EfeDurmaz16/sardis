@@ -8,7 +8,7 @@ from .schemas import (
     X402PaymentExecuteRequest,
     X402PaymentExecuteResponse,
 )
-from .verifier import MandateVerifier
+from .verifier import MandateVerifier, VerificationResult, MandateChainVerification
 from .storage import MandateArchive, SqliteReplayCache, ReplayCache
 from .payment_methods import (
     PaymentMethod,
@@ -18,6 +18,12 @@ from .payment_methods import (
     X402PaymentResponse,
     get_default_payment_methods,
     parse_payment_method_from_mandate,
+)
+from .rate_limiter import (
+    AgentRateLimiter,
+    RateLimitConfig,
+    RateLimitResult,
+    get_rate_limiter,
 )
 
 __all__ = [
@@ -30,6 +36,8 @@ __all__ = [
     "X402PaymentExecuteResponse",
     # Verification
     "MandateVerifier",
+    "VerificationResult",
+    "MandateChainVerification",
     # Storage
     "MandateArchive",
     "SqliteReplayCache",
@@ -42,4 +50,9 @@ __all__ = [
     "X402PaymentResponse",
     "get_default_payment_methods",
     "parse_payment_method_from_mandate",
+    # Rate Limiting
+    "AgentRateLimiter",
+    "RateLimitConfig",
+    "RateLimitResult",
+    "get_rate_limiter",
 ]

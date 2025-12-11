@@ -415,3 +415,5 @@ class TestWalletSnapshot:
         assert snapshot.balances["USDT"] == Decimal("50.00")
         assert snapshot.captured_at is not None
 
+
+

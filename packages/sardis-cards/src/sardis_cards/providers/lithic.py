@@ -216,13 +216,106 @@ class LithicProvider(CardProvider):
         self,
         provider_card_id: str,
         amount: Decimal,
+        funding_account_token: Optional[str] = None,
     ) -> Card:
-        # Lithic funding is typically done at the account level
-        # For now, we just return the card with updated funded_amount
+        """
+        Fund a card via Lithic's funding mechanism.
+        
+        Lithic uses account-level funding. Cards draw from their associated 
+        funding source (typically an account or external bank).
+        
+        For Sardis, the flow is:
+        1. User deposits stablecoin to Sardis
+        2. Sardis off-ramps to fiat via Bridge/Zero Hash
+        3. Fiat settles to Lithic funding account
+        4. Card spending limit is updated
+        
+        This method handles step 4: updating the card's available balance.
+        
+        Args:
+            provider_card_id: The Lithic card token
+            amount: Amount in USD to add to available balance
+            funding_account_token: Optional funding account token
+        """
+        # Get current card state
         card = await self.get_card(provider_card_id)
-        if card:
-            card.funded_amount += amount
-        return card
+        if not card:
+            raise ValueError(f"Card not found: {provider_card_id}")
+        
+        # Convert to cents
+        amount_cents = int(amount * 100)
+        
+        # In Lithic's model, we increase the spend limit to reflect available funds
+        # The actual funding happens at the account level
+        current_limit = int(card.limit_daily * 100)
+        new_limit = current_limit + amount_cents
+        
+        try:
+            lithic_card = self._client.cards.update(
+                provider_card_id,
+                spend_limit=new_limit,
+            )
+            
+            updated_card = self._lithic_card_to_model(lithic_card)
+            updated_card.funded_amount = card.funded_amount + amount
+            updated_card.last_funded_at = datetime.now(timezone.utc)
+            
+            return updated_card
+            
+        except Exception as e:
+            # Log funding failure for reconciliation
+            import logging
+            logging.error(f"Card funding failed for {provider_card_id}: {e}")
+            raise
+    
+    async def simulate_authorization(
+        self,
+        provider_card_id: str,
+        amount_cents: int,
+        merchant_descriptor: str = "TEST MERCHANT",
+    ) -> CardTransaction:
+        """
+        Simulate a card authorization (sandbox only).
+        
+        Useful for testing card functionality without real transactions.
+        """
+        if self._environment != "sandbox":
+            raise ValueError("Simulations only available in sandbox")
+        
+        result = self._client.transactions.simulate_authorization(
+            amount=amount_cents,
+            card_token=provider_card_id,
+            descriptor=merchant_descriptor,
+        )
+        
+        return CardTransaction(
+            transaction_id=f"ctx_{result.token[:16]}",
+            card_id=provider_card_id,
+            provider_tx_id=result.token,
+            amount=Decimal(str(amount_cents / 100)),
+            currency="USD",
+            merchant_name=merchant_descriptor,
+            status=TransactionStatus.PENDING,
+            created_at=datetime.now(timezone.utc),
+        )
+    
+    async def get_account_balance(
+        self,
+        account_token: Optional[str] = None,
+    ) -> Decimal:
+        """
+        Get the available balance for a Lithic account.
+        
+        Used for reconciliation and balance monitoring.
+        """
+        try:
+            balance = self._client.balance.list()
+            if balance:
+                # Return first balance (usually the main account)
+                return Decimal(str(balance[0].available_amount / 100))
+            return Decimal("0")
+        except Exception:
+            return Decimal("0")
     
     async def list_transactions(
         self,

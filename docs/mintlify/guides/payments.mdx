@@ -1,0 +1,52 @@
+---
+title: Payments
+---
+
+# Payments
+
+Bu rehber, AP2 mandate zincirini doğrulayıp on-chain ödeme çalıştırmayı gösterir.
+
+## Akış
+1) Mandate zinciri oluştur (Intent → Cart → Payment)
+2) `POST /api/v2/payments/execute` çağır
+3) Zincir doğrulama (imza, süre, domain, amount ≤ cart)
+4) Compliance kontrolleri (KYC, sanctions)
+5) Chain executor on-chain ödeme gönderir
+
+## Örnek İstek
+```bash
+curl -X POST http://localhost:8000/api/v2/payments/execute \
+  -H "Content-Type: application/json" \
+  -d @examples/ap2_bundle.json
+```
+
+`examples/ap2_bundle.json` içeriği:
+```json
+{
+  "intent": { "...": "..." },
+  "cart": { "...": "..." },
+  "payment": { "...": "..." }
+}
+```
+
+## Zorunlu Alanlar (Payment Mandate)
+- `amount_minor` (USDC 6 decimals)
+- `token` (USDC, USDT, PYUSD, EURC chain'e bağlı)
+- `chain` (örn. base_sepolia)
+- `destination` (alıcı adresi)
+- `proof` (VC imzası)
+
+## İpuçları
+- `amount_minor` ≤ `cart.subtotal_minor + cart.taxes_minor` olmalı
+- `domain` ve `merchant_domain` eşleşmeli
+- Aynı `subject` üç mandate'te de aynı olmalı
+
+## Yanıt
+Başarılı çağrı `AP2PaymentExecuteResponse` döner:
+- `chain_tx_hash`
+- `audit_anchor`
+- `status` (submitted/confirmed)
+
+Detaylı şema için: [API Reference](../reference/openapi.mdx).
+
+

@@ -316,7 +316,25 @@ class SimulatedMPCSigner(MPCSignerPort):
 
 
 class TurnkeyMPCSigner(MPCSignerPort):
-    """Turnkey MPC signing integration."""
+    """
+    Turnkey MPC signing integration with proper Ed25519 API authentication.
+    
+    Turnkey uses a stamp-based authentication where each request is signed
+    with the API private key (Ed25519) and includes the public key + timestamp + signature.
+    
+    Environment variables required:
+    - TURNKEY_ORGANIZATION_ID: Your Turnkey organization ID
+    - TURNKEY_API_PUBLIC_KEY: Hex-encoded Ed25519 public key
+    - TURNKEY_API_PRIVATE_KEY: Hex-encoded Ed25519 private key (or path to PEM file)
+    """
+    
+    # Retry configuration
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1.0  # seconds
+    
+    # Activity polling configuration
+    ACTIVITY_POLL_INTERVAL = 0.5  # seconds
+    ACTIVITY_TIMEOUT = 30  # seconds
 
     def __init__(
         self,
@@ -330,27 +348,203 @@ class TurnkeyMPCSigner(MPCSignerPort):
         self._api_public_key = api_public_key
         self._api_private_key = api_private_key
         self._http_client = None
+        self._signing_key = None
+        
+        # Initialize signing key
+        self._init_signing_key()
+    
+    def _init_signing_key(self):
+        """Initialize Ed25519 signing key from private key material."""
+        if not self._api_private_key:
+            logger.warning("No Turnkey API private key provided")
+            return
+        
+        try:
+            from nacl.signing import SigningKey
+            from nacl import encoding
+            
+            private_key_bytes = None
+            
+            # Check if it's a file path
+            if self._api_private_key.startswith("/") or self._api_private_key.endswith(".pem"):
+                import os
+                if os.path.exists(self._api_private_key):
+                    with open(self._api_private_key, "r") as f:
+                        pem_content = f.read()
+                    # Parse PEM and extract key bytes
+                    private_key_bytes = self._parse_pem_private_key(pem_content)
+            else:
+                # Assume hex-encoded private key
+                try:
+                    private_key_bytes = bytes.fromhex(self._api_private_key)
+                except ValueError:
+                    # Try base64
+                    import base64
+                    private_key_bytes = base64.b64decode(self._api_private_key)
+            
+            if private_key_bytes and len(private_key_bytes) >= 32:
+                # Ed25519 private key is 32 bytes
+                self._signing_key = SigningKey(private_key_bytes[:32])
+                logger.info("Turnkey signing key initialized successfully")
+            else:
+                logger.error("Invalid private key format or length")
+                
+        except ImportError:
+            logger.error("PyNaCl not installed. Install with: pip install pynacl")
+        except Exception as e:
+            logger.error(f"Failed to initialize Turnkey signing key: {e}")
+    
+    def _parse_pem_private_key(self, pem_content: str) -> Optional[bytes]:
+        """Parse PEM-encoded private key and extract raw bytes."""
+        import base64
+        import re
+        
+        # Remove PEM headers and decode
+        pem_lines = pem_content.strip().split("\n")
+        key_data = ""
+        in_key = False
+        
+        for line in pem_lines:
+            if "BEGIN" in line and "PRIVATE KEY" in line:
+                in_key = True
+                continue
+            if "END" in line and "PRIVATE KEY" in line:
+                break
+            if in_key:
+                key_data += line.strip()
+        
+        if not key_data:
+            return None
+        
+        try:
+            # Decode base64
+            der_bytes = base64.b64decode(key_data)
+            
+            # For Ed25519, the actual key is typically at the end
+            # PKCS#8 DER structure for Ed25519 has the 32-byte key at offset -32
+            if len(der_bytes) >= 32:
+                # Try to find the key bytes (usually last 32 bytes for Ed25519)
+                return der_bytes[-32:]
+            return der_bytes
+        except Exception:
+            return None
 
     async def _get_client(self):
-        """Get or create HTTP client."""
+        """Get or create HTTP client with retry configuration."""
         if self._http_client is None:
             import httpx
-            self._http_client = httpx.AsyncClient(timeout=30)
+            self._http_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
         return self._http_client
 
-    async def _sign_request(self, body: str) -> Dict[str, str]:
-        """Sign API request with Turnkey stamp."""
+    def _create_stamp(self, body: str) -> str:
+        """
+        Create Turnkey API stamp for request authentication.
+        
+        Stamp format: base64(json({publicKey, signature, scheme}))
+        The signature is over: SHA256(body)
+        """
+        import base64
+        import json
+        
+        if not self._signing_key:
+            raise ValueError("Turnkey signing key not initialized")
+        
+        # Create message hash
+        body_bytes = body.encode("utf-8")
+        body_hash = hashlib.sha256(body_bytes).digest()
+        
+        # Sign the hash with Ed25519
+        signed = self._signing_key.sign(body_hash)
+        signature = signed.signature
+        
+        # Create stamp payload
+        stamp_payload = {
+            "publicKey": self._api_public_key,
+            "signature": signature.hex(),
+            "scheme": "SIGNATURE_SCHEME_TK_API_P256",  # Turnkey uses this scheme name
+        }
+        
+        # Base64 encode the stamp
+        stamp_json = json.dumps(stamp_payload, separators=(",", ":"))
+        stamp_b64 = base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
+        
+        return stamp_b64
+
+    async def _make_request(
+        self,
+        method: str,
+        path: str,
+        body: Dict[str, Any],
+        retry_count: int = 0,
+    ) -> Dict[str, Any]:
+        """Make authenticated request to Turnkey API with retry logic."""
+        import json
+        
+        body_str = json.dumps(body, separators=(",", ":"))
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Stamp": self._create_stamp(body_str),
+        }
+        
+        client = await self._get_client()
+        url = f"{self._api_base}{path}"
+        
+        try:
+            if method.upper() == "POST":
+                response = await client.post(url, content=body_str, headers=headers)
+            else:
+                response = await client.get(url, headers=headers)
+            
+            if response.status_code == 429:  # Rate limited
+                if retry_count < self.MAX_RETRIES:
+                    await asyncio.sleep(self.RETRY_DELAY * (retry_count + 1))
+                    return await self._make_request(method, path, body, retry_count + 1)
+                raise Exception("Rate limited by Turnkey API")
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except Exception as e:
+            if retry_count < self.MAX_RETRIES:
+                logger.warning(f"Turnkey request failed (attempt {retry_count + 1}): {e}")
+                await asyncio.sleep(self.RETRY_DELAY * (retry_count + 1))
+                return await self._make_request(method, path, body, retry_count + 1)
+            raise
+
+    async def _poll_activity(self, activity_id: str) -> Dict[str, Any]:
+        """Poll for activity completion."""
         import time
         
-        timestamp = str(int(time.time() * 1000))
-        message = f"{timestamp}.{body}"
+        start_time = time.time()
         
-        # In production, use proper Ed25519 signing
-        # For now, return placeholder headers
-        return {
-            "X-Stamp": f"{self._api_public_key}.{timestamp}.signature",
-            "Content-Type": "application/json",
-        }
+        while time.time() - start_time < self.ACTIVITY_TIMEOUT:
+            result = await self._make_request(
+                "POST",
+                "/public/v1/query/get_activity",
+                {
+                    "organizationId": self._org_id,
+                    "activityId": activity_id,
+                },
+            )
+            
+            activity = result.get("activity", {})
+            status = activity.get("status", "")
+            
+            if status == "ACTIVITY_STATUS_COMPLETED":
+                return activity
+            elif status == "ACTIVITY_STATUS_FAILED":
+                failure_reason = activity.get("result", {}).get("failureReason", "Unknown")
+                raise Exception(f"Turnkey activity failed: {failure_reason}")
+            elif status == "ACTIVITY_STATUS_REJECTED":
+                raise Exception("Turnkey activity was rejected")
+            
+            await asyncio.sleep(self.ACTIVITY_POLL_INTERVAL)
+        
+        raise TimeoutError(f"Turnkey activity {activity_id} timed out")
 
     async def sign_transaction(
         self,
@@ -363,10 +557,11 @@ class TurnkeyMPCSigner(MPCSignerPort):
         chain_config = CHAIN_CONFIGS.get(tx.chain, {})
         chain_id = chain_config.get("chain_id", 1)
         
-        # Build unsigned transaction
+        # Build unsigned transaction in Turnkey format
         unsigned_tx = {
-            "type": "eip1559",
+            "type": "02",  # EIP-1559 type
             "chainId": hex(chain_id),
+            "nonce": hex(tx.nonce) if tx.nonce is not None else "0x0",
             "to": tx.to_address,
             "value": hex(tx.value),
             "data": "0x" + tx.data.hex() if tx.data else "0x",
@@ -375,73 +570,128 @@ class TurnkeyMPCSigner(MPCSignerPort):
             "maxPriorityFeePerGas": hex(tx.max_priority_fee_per_gas or 1_000_000_000),
         }
         
-        if tx.nonce is not None:
-            unsigned_tx["nonce"] = hex(tx.nonce)
-        
-        body = json.dumps({
-            "type": "ACTIVITY_TYPE_SIGN_TRANSACTION",
+        # Create sign transaction activity
+        activity_body = {
+            "type": "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
             "organizationId": self._org_id,
+            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
             "parameters": {
                 "signWith": wallet_id,
+                "type": "TRANSACTION_TYPE_ETHEREUM",
                 "unsignedTransaction": json.dumps(unsigned_tx),
             },
-            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
-        })
+        }
         
-        client = await self._get_client()
-        headers = await self._sign_request(body)
+        logger.info(f"Submitting sign transaction activity for wallet {wallet_id}")
         
-        try:
-            response = await client.post(
-                f"{self._api_base}/public/v1/submit/sign_transaction",
-                content=body,
-                headers=headers,
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            # Extract signed transaction from response
-            activity = result.get("activity", {})
-            signed_tx = activity.get("result", {}).get("signedTransaction", "")
-            
-            return signed_tx
-            
-        except Exception as e:
-            logger.error(f"Turnkey signing failed: {e}")
-            raise
+        # Submit the activity
+        result = await self._make_request(
+            "POST",
+            "/public/v1/submit/sign_transaction",
+            activity_body,
+        )
+        
+        activity = result.get("activity", {})
+        activity_id = activity.get("id", "")
+        status = activity.get("status", "")
+        
+        # If not immediately completed, poll for completion
+        if status != "ACTIVITY_STATUS_COMPLETED":
+            logger.info(f"Polling for activity {activity_id} completion")
+            activity = await self._poll_activity(activity_id)
+        
+        # Extract signed transaction
+        signed_tx = activity.get("result", {}).get("signedTransaction", "")
+        
+        if not signed_tx:
+            raise Exception("No signed transaction returned from Turnkey")
+        
+        logger.info(f"Transaction signed successfully")
+        return signed_tx
 
     async def get_address(self, wallet_id: str, chain: str) -> str:
         """Get wallet address from Turnkey."""
-        import json
+        result = await self._make_request(
+            "POST",
+            "/public/v1/query/get_wallet",
+            {
+                "organizationId": self._org_id,
+                "walletId": wallet_id,
+            },
+        )
         
-        body = json.dumps({
+        # Extract address from wallet accounts
+        accounts = result.get("wallet", {}).get("accounts", [])
+        for account in accounts:
+            address_format = account.get("addressFormat", "")
+            if address_format in ("ADDRESS_FORMAT_ETHEREUM", "ADDRESS_FORMAT_UNCOMPRESSED"):
+                return account.get("address", "")
+        
+        raise ValueError(f"No Ethereum address found for wallet {wallet_id}")
+
+    async def create_wallet(self, wallet_name: str) -> Dict[str, str]:
+        """
+        Create a new wallet in Turnkey.
+        
+        Returns:
+            Dict with 'wallet_id' and 'address' keys
+        """
+        activity_body = {
+            "type": "ACTIVITY_TYPE_CREATE_WALLET",
             "organizationId": self._org_id,
-            "walletId": wallet_id,
-        })
+            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+            "parameters": {
+                "walletName": wallet_name,
+                "accounts": [
+                    {
+                        "curve": "CURVE_SECP256K1",
+                        "pathFormat": "PATH_FORMAT_BIP32",
+                        "path": "m/44'/60'/0'/0/0",
+                        "addressFormat": "ADDRESS_FORMAT_ETHEREUM",
+                    }
+                ],
+            },
+        }
         
-        client = await self._get_client()
-        headers = await self._sign_request(body)
+        logger.info(f"Creating new Turnkey wallet: {wallet_name}")
         
-        try:
-            response = await client.post(
-                f"{self._api_base}/public/v1/query/get_wallet",
-                content=body,
-                headers=headers,
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            # Extract address from wallet accounts
-            accounts = result.get("wallet", {}).get("accounts", [])
-            for account in accounts:
-                if account.get("addressFormat") == "ADDRESS_FORMAT_ETHEREUM":
-                    return account.get("address", "")
-            
-            return ""
-            
-        except Exception as e:
-            logger.error(f"Turnkey get_address failed: {e}")
-            raise
+        result = await self._make_request(
+            "POST",
+            "/public/v1/submit/create_wallet",
+            activity_body,
+        )
+        
+        activity = result.get("activity", {})
+        activity_id = activity.get("id", "")
+        status = activity.get("status", "")
+        
+        if status != "ACTIVITY_STATUS_COMPLETED":
+            activity = await self._poll_activity(activity_id)
+        
+        wallet_result = activity.get("result", {}).get("createWalletResult", {})
+        wallet_id = wallet_result.get("walletId", "")
+        addresses = wallet_result.get("addresses", [])
+        
+        address = addresses[0] if addresses else ""
+        
+        logger.info(f"Created wallet {wallet_id} with address {address}")
+        
+        return {
+            "wallet_id": wallet_id,
+            "address": address,
+        }
+
+    async def list_wallets(self) -> List[Dict[str, Any]]:
+        """List all wallets in the organization."""
+        result = await self._make_request(
+            "POST",
+            "/public/v1/query/list_wallets",
+            {
+                "organizationId": self._org_id,
+            },
+        )
+        
+        return result.get("wallets", [])
 
     async def close(self):
         """Close HTTP client."""
@@ -450,13 +700,110 @@ class TurnkeyMPCSigner(MPCSignerPort):
             self._http_client = None
 
 
-class ChainRPCClient:
-    """JSON-RPC client for blockchain interaction."""
+@dataclass
+class RPCEndpoint:
+    """An RPC endpoint with health tracking."""
+    url: str
+    priority: int = 0  # Lower is higher priority
+    healthy: bool = True
+    last_check: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    failure_count: int = 0
+    latency_ms: float = 0.0
+    
+    # Health thresholds
+    MAX_FAILURES = 3
+    HEALTH_CHECK_INTERVAL = 60  # seconds
+    
+    def mark_success(self, latency_ms: float) -> None:
+        """Mark endpoint as healthy after successful call."""
+        self.healthy = True
+        self.failure_count = 0
+        self.latency_ms = latency_ms
+        self.last_check = datetime.now(timezone.utc)
+    
+    def mark_failure(self) -> None:
+        """Mark endpoint as potentially unhealthy after failure."""
+        self.failure_count += 1
+        if self.failure_count >= self.MAX_FAILURES:
+            self.healthy = False
+        self.last_check = datetime.now(timezone.utc)
+    
+    def needs_health_check(self) -> bool:
+        """Check if this endpoint needs a health check."""
+        if self.healthy:
+            return False
+        elapsed = (datetime.now(timezone.utc) - self.last_check).total_seconds()
+        return elapsed >= self.HEALTH_CHECK_INTERVAL
 
-    def __init__(self, rpc_url: str):
-        self._rpc_url = rpc_url
-        self._http_client = None
+
+# Additional fallback RPC URLs for each chain
+FALLBACK_RPC_URLS = {
+    "base_sepolia": [
+        "https://sepolia.base.org",
+        "https://base-sepolia-rpc.publicnode.com",
+    ],
+    "base": [
+        "https://mainnet.base.org",
+        "https://base-mainnet.public.blastapi.io",
+    ],
+    "polygon": [
+        "https://polygon-rpc.com",
+        "https://polygon-mainnet.public.blastapi.io",
+    ],
+    "polygon_amoy": [
+        "https://rpc-amoy.polygon.technology",
+    ],
+    "ethereum": [
+        "https://eth.llamarpc.com",
+        "https://ethereum-rpc.publicnode.com",
+    ],
+    "ethereum_sepolia": [
+        "https://rpc.sepolia.org",
+        "https://ethereum-sepolia-rpc.publicnode.com",
+    ],
+    "arbitrum": [
+        "https://arb1.arbitrum.io/rpc",
+        "https://arbitrum-one-rpc.publicnode.com",
+    ],
+    "arbitrum_sepolia": [
+        "https://sepolia-rollup.arbitrum.io/rpc",
+    ],
+    "optimism": [
+        "https://mainnet.optimism.io",
+        "https://optimism-rpc.publicnode.com",
+    ],
+    "optimism_sepolia": [
+        "https://sepolia.optimism.io",
+    ],
+}
+
+
+class ChainRPCClient:
+    """
+    JSON-RPC client with fallback RPC providers and health checking.
+    
+    Features:
+    - Multiple RPC endpoints per chain
+    - Automatic failover on errors
+    - Health-based endpoint selection
+    - Latency-based prioritization
+    """
+
+    def __init__(self, rpc_url: str, chain: str = ""):
+        self._chain = chain
         self._request_id = 0
+        self._http_client = None
+        
+        # Initialize endpoints with primary and fallbacks
+        self._endpoints: List[RPCEndpoint] = [
+            RPCEndpoint(url=rpc_url, priority=0)
+        ]
+        
+        # Add fallback endpoints
+        if chain in FALLBACK_RPC_URLS:
+            for i, url in enumerate(FALLBACK_RPC_URLS[chain]):
+                if url != rpc_url:  # Don't duplicate primary
+                    self._endpoints.append(RPCEndpoint(url=url, priority=i + 1))
 
     async def _get_client(self):
         """Get or create HTTP client."""
@@ -464,10 +811,20 @@ class ChainRPCClient:
             import httpx
             self._http_client = httpx.AsyncClient(timeout=30)
         return self._http_client
+    
+    def _get_healthy_endpoint(self) -> RPCEndpoint:
+        """Get the best healthy endpoint based on priority and latency."""
+        healthy = [e for e in self._endpoints if e.healthy]
+        if not healthy:
+            # All unhealthy, return lowest priority one and hope for the best
+            return min(self._endpoints, key=lambda e: e.priority)
+        
+        # Sort by priority, then by latency
+        return min(healthy, key=lambda e: (e.priority, e.latency_ms))
 
     async def _call(self, method: str, params: List[Any] = None) -> Any:
-        """Make JSON-RPC call."""
-        import json
+        """Make JSON-RPC call with automatic failover."""
+        import time
         
         self._request_id += 1
         payload = {
@@ -477,9 +834,85 @@ class ChainRPCClient:
             "params": params or [],
         }
         
+        # Try endpoints in order of health/priority
+        last_error = None
+        tried_endpoints = set()
+        
+        for attempt in range(len(self._endpoints)):
+            endpoint = self._get_healthy_endpoint()
+            
+            # Skip if we've already tried this endpoint
+            if endpoint.url in tried_endpoints:
+                # Try any untried endpoint
+                untried = [e for e in self._endpoints if e.url not in tried_endpoints]
+                if not untried:
+                    break
+                endpoint = untried[0]
+            
+            tried_endpoints.add(endpoint.url)
+            
+            try:
+                client = await self._get_client()
+                start_time = time.time()
+                
+                response = await client.post(
+                    endpoint.url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                
+                latency_ms = (time.time() - start_time) * 1000
+                response.raise_for_status()
+                result = response.json()
+                
+                if "error" in result:
+                    endpoint.mark_failure()
+                    last_error = Exception(f"RPC error: {result['error']}")
+                    continue
+                
+                # Success!
+                endpoint.mark_success(latency_ms)
+                return result.get("result")
+                
+            except Exception as e:
+                endpoint.mark_failure()
+                last_error = e
+                logger.warning(f"RPC call to {endpoint.url} failed: {e}")
+                continue
+        
+        # All endpoints failed
+        raise last_error or Exception("All RPC endpoints failed")
+    
+    async def health_check(self) -> Dict[str, bool]:
+        """Perform health check on all endpoints."""
+        results = {}
+        
+        for endpoint in self._endpoints:
+            try:
+                # Simple block number check
+                await self._call_endpoint(endpoint, "eth_blockNumber", [])
+                endpoint.healthy = True
+                endpoint.failure_count = 0
+                results[endpoint.url] = True
+            except Exception:
+                endpoint.healthy = False
+                results[endpoint.url] = False
+        
+        return results
+    
+    async def _call_endpoint(self, endpoint: RPCEndpoint, method: str, params: List[Any]) -> Any:
+        """Make a call to a specific endpoint."""
+        self._request_id += 1
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._request_id,
+            "method": method,
+            "params": params,
+        }
+        
         client = await self._get_client()
         response = await client.post(
-            self._rpc_url,
+            endpoint.url,
             json=payload,
             headers={"Content-Type": "application/json"},
         )
@@ -490,6 +923,19 @@ class ChainRPCClient:
             raise Exception(f"RPC error: {result['error']}")
         
         return result.get("result")
+    
+    def get_endpoint_stats(self) -> List[Dict[str, Any]]:
+        """Get stats for all endpoints."""
+        return [
+            {
+                "url": e.url,
+                "priority": e.priority,
+                "healthy": e.healthy,
+                "failure_count": e.failure_count,
+                "latency_ms": e.latency_ms,
+            }
+            for e in self._endpoints
+        ]
 
     async def get_gas_price(self) -> int:
         """Get current gas price in wei."""
@@ -610,7 +1056,7 @@ class ChainExecutor:
                     rpc_url = chain_config.rpc_url
                     break
             
-            self._rpc_clients[chain] = ChainRPCClient(rpc_url)
+            self._rpc_clients[chain] = ChainRPCClient(rpc_url, chain=chain)
         
         return self._rpc_clients[chain]
 

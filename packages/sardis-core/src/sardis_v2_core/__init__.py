@@ -1,6 +1,6 @@
 """Core domain primitives shared across Sardis services."""
 
-from .config import SardisSettings, load_settings
+from .config import SardisSettings, load_settings, TurnkeyConfig, MPCProvider, ChainConfig
 from .identity import AgentIdentity
 from .mandates import IntentMandate, CartMandate, PaymentMandate, MandateChain
 from .tokens import TokenType, TokenMetadata
@@ -27,6 +27,9 @@ from .wallet_repository import WalletRepository
 
 __all__ = [
     "SardisSettings",
+    "TurnkeyConfig",
+    "MPCProvider",
+    "ChainConfig",
     "AgentIdentity",
     "IntentMandate",
     "CartMandate",

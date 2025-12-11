@@ -1,0 +1,49 @@
+---
+title: Virtual Cards
+---
+
+# Virtual Cards
+
+Sardis, Lithic ile sanal kart oluşturma ve funding akışını destekler (sandbox ve prod).
+
+## Kart Oluşturma
+```bash
+curl -X POST http://localhost:8000/api/v2/cards \
+  -H "Content-Type: application/json" \
+  -d '{
+        "wallet_id": "agent-wallet-1",
+        "card_type": "MULTI_USE",
+        "limit_per_tx": 500,
+        "limit_daily": 2000
+      }'
+```
+
+Yanıt: `card_id`, `last_four`, `status` (PENDING/ACTIVE/FROZEN/CANCELLED).
+
+## Kart Bilgisi
+```bash
+curl http://localhost:8000/api/v2/cards/{card_id}
+```
+
+## Limit Güncelleme
+```bash
+curl -X POST http://localhost:8000/api/v2/cards/{card_id}/limits \
+  -H "Content-Type: application/json" \
+  -d '{"limit_per_tx": 800, "limit_daily": 3000}'
+```
+
+## Funding Akışı (özet)
+1) Agent USDC yatırır (deposit monitor yakalar)
+2) Off-ramp (Bridge/Zero Hash) fiat'a çevirir
+3) Lithic funding account'a fiat geçer
+4) `fund_card` ile spend limit artırılır
+
+Sandbox için `simulate_authorization` ile test edebilirsiniz.
+
+## Güvenlik
+- Kart verileri tokenized; yalnızca last4/logical ID döner
+- `fund_card` account-level funding ile entegredir
+
+Daha fazla endpoint için: [API Reference](../reference/openapi.mdx).
+
+

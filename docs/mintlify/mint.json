@@ -1,0 +1,45 @@
+{
+  "name": "Sardis API",
+  "logo": {
+    "light": "/logo-light.png",
+    "dark": "/logo-dark.png"
+  },
+  "colors": {
+    "primary": "#0B5FFF"
+  },
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": [
+        "index",
+        "getting-started",
+        "environments"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "guides/auth",
+        "guides/payments",
+        "guides/cards",
+        "guides/mandates"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "reference/openapi"
+      ]
+    }
+  ],
+  "social": {
+    "github": "https://github.com/EfeDurmaz16/sardis"
+  },
+  "favicon": "/favicon.ico",
+  "seo": {
+    "title": "Sardis API Docs",
+    "description": "Payment execution layer for AP2/TAP agents: stablecoins, virtual cards, compliance."
+  }
+}
+
+

@@ -1,0 +1,43 @@
+---
+title: Mandates
+---
+
+# Mandates (AP2/TAP)
+
+Mandate zinciri üç parçadan oluşur:
+- **Intent Mandate**: Kullanıcının niyeti, domain bağlamı
+- **Cart Mandate**: Sepet ve vergi toplamı
+- **Payment Mandate**: Ödeme yetkilendirmesi (amount, chain, destination)
+
+## Gereklilikler
+- `intent.subject == cart.subject == payment.subject`
+- `cart.merchant_domain == payment.domain`
+- `payment.amount_minor <= cart.subtotal_minor + cart.taxes_minor`
+- Tüm mandate'ler süresi dolmamış olmalı
+- Replay koruması için `nonce` ve `mandate_id` benzersiz olmalı
+
+## İmzalar
+`proof.verification_method` TAP tarzı DID fragment içerir:
+```
+{agent_id}#{algorithm}:{public_key_hex}
+```
+- algorithm: `ed25519` veya `ecdsa-p256`
+- proof_value: base64-encoded imza
+
+## Doğrulama
+`POST /api/v2/payments/execute` çağrısı aşağıdaki kontrolleri yapar:
+- Zaman / süre sonu
+- Domain yetkisi (allowed_domains)
+- Replay cache
+- İmza doğrulama
+- Amount vs cart total
+- Compliance (KYC/Sanctions)
+
+## Geliştirici İpuçları
+- Test için `SARDIS_CHAIN_MODE=simulated` kullanın
+- Domain whitelist: `settings.allowed_domains`
+- Rate limit: `RateLimitConfig` ile ayarlanabilir
+
+Detaylı şema: [API Reference](../reference/openapi.mdx).
+
+

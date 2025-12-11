@@ -156,3 +156,5 @@ class Agent:
         wallet_count = len(self.wallets)
         balance = self.total_balance
         return f"Agent({self.name}, {wallet_count} wallets, balance={balance})"
+
+

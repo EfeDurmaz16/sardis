@@ -368,3 +368,5 @@ class TestComplianceProviderProtocol:
         result = provider.evaluate(mandate)
         assert isinstance(result, ComplianceResult)
 
+
+

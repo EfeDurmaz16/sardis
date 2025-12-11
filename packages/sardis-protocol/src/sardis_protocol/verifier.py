@@ -4,13 +4,14 @@ from __future__ import annotations
 import base64
 import time
 from dataclasses import dataclass, fields
-from typing import Any, Dict, Type
+from typing import Any, Dict, Optional, Type
 
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.identity import AgentIdentity
 from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, MandateChain, PaymentMandate, VCProof
 from .schemas import AP2PaymentExecuteRequest
 from .storage import MandateArchive, ReplayCache
+from .rate_limiter import AgentRateLimiter, RateLimitConfig, get_rate_limiter
 
 
 @dataclass
@@ -32,10 +33,13 @@ class MandateVerifier:
         settings: SardisSettings,
         replay_cache: ReplayCache | None = None,
         archive: MandateArchive | None = None,
+        rate_limiter: AgentRateLimiter | None = None,
+        rate_limit_config: RateLimitConfig | None = None,
     ):
         self._settings = settings
         self._replay_cache = replay_cache or ReplayCache()
         self._archive = archive
+        self._rate_limiter = rate_limiter or get_rate_limiter(rate_limit_config)
 
     def verify(self, mandate: PaymentMandate) -> VerificationResult:
         if mandate.is_expired():
@@ -66,6 +70,12 @@ class MandateVerifier:
             payment = self._parse_mandate(bundle.payment, PaymentMandate)
         except (KeyError, TypeError, ValueError) as exc:
             return MandateChainVerification(False, f"invalid_payload: {exc}")
+        
+        # Check agent rate limits
+        agent_id = payment.subject
+        rate_result = self._rate_limiter.check_and_increment(agent_id)
+        if not rate_result.allowed:
+            return MandateChainVerification(False, rate_result.reason)
 
         if intent.mandate_type != "intent" or intent.purpose != "intent":
             return MandateChainVerification(False, "intent_invalid_type")
@@ -82,6 +92,15 @@ class MandateVerifier:
             return MandateChainVerification(False, "subject_mismatch")
         if cart.merchant_domain != payment.domain:
             return MandateChainVerification(False, "merchant_domain_mismatch")
+
+        # Validate payment amount does not exceed cart total
+        cart_total = cart.subtotal_minor + cart.taxes_minor
+        if payment.amount_minor > cart_total:
+            return MandateChainVerification(False, "payment_exceeds_cart_total")
+        
+        # Validate intent amount bounds if specified
+        if intent.requested_amount is not None and payment.amount_minor > intent.requested_amount:
+            return MandateChainVerification(False, "payment_exceeds_intent_amount")
 
         payment_result = self.verify(payment)
         if not payment_result.accepted:

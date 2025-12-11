@@ -9,11 +9,23 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
+class TurnkeyConfig(BaseSettings):
+    """Turnkey MPC provider configuration."""
+    organization_id: str = ""
+    api_public_key: str = ""
+    api_private_key: str = ""  # Can be hex-encoded key or path to PEM file
+    default_wallet_id: str = ""
+    api_base: str = "https://api.turnkey.com"
+    
+    class Config:
+        env_prefix = "TURNKEY_"
+
+
 class MPCProvider(BaseSettings):
     """MPC provider configuration (Turnkey or Fireblocks)."""
     name: Literal["turnkey", "fireblocks", "simulated"] = "simulated"
     api_base: str = ""
-    credential_id: str = ""
+    credential_id: str = ""  # Organization ID for Turnkey
 
 
 class ChainConfig(BaseSettings):
@@ -73,8 +85,20 @@ class SardisSettings(BaseSettings):
     # MPC provider - simulated by default for demo
     mpc: MPCProvider = Field(default_factory=MPCProvider)
     
+    # Turnkey configuration (loaded from TURNKEY_* env vars)
+    turnkey: TurnkeyConfig = Field(default_factory=TurnkeyConfig)
+    
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
+    
+    @property
+    def turnkey_configured(self) -> bool:
+        """Check if Turnkey is properly configured."""
+        return bool(
+            self.turnkey.organization_id
+            and self.turnkey.api_public_key
+            and self.turnkey.api_private_key
+        )
 
     class Config:
         env_prefix = "SARDIS_"

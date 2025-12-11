@@ -234,3 +234,5 @@ class TestAgent:
         # Exceeds limit
         result2 = agent.pay(to="merchant:test", amount=60)
         assert result2.success is False
+
+

@@ -108,3 +108,5 @@ class Wallet:
     
     def __repr__(self) -> str:
         return f"Wallet({self.wallet_id}, balance={self.balance} {self.currency})"
+
+
