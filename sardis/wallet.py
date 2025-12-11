@@ -110,3 +110,4 @@ class Wallet:
         return f"Wallet({self.wallet_id}, balance={self.balance} {self.currency})"
 
 
+

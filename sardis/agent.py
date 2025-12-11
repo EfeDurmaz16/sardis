@@ -158,3 +158,4 @@ class Agent:
         return f"Agent({self.name}, {wallet_count} wallets, balance={balance})"
 
 
+
