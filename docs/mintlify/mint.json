@@ -1,8 +1,8 @@
 {
   "name": "Sardis API",
   "logo": {
-    "light": "/logo-light.png",
-    "dark": "/logo-dark.png"
+    "light": "/sardis-logo.png",
+    "dark": "/sardis-logo.png"
   },
   "colors": {
     "primary": "#0B5FFF"
@@ -41,6 +41,7 @@
     "description": "Payment execution layer for AP2/TAP agents: stablecoins, virtual cards, compliance."
   }
 }
+
 
 
 

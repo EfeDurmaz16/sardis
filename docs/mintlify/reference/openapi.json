@@ -373,6 +373,192 @@
         }
       }
     },
+    "/api/v2/mvp/tap/issue": {
+      "post": {
+        "tags": [
+          "mvp"
+        ],
+        "summary": "Issue Identity",
+        "description": "Issue a TAP identity with domain binding. In-memory for MVP.",
+        "operationId": "issue_identity_api_v2_mvp_tap_issue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueIdentityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueIdentityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/mvp/mandates/validate": {
+      "post": {
+        "tags": [
+          "mvp"
+        ],
+        "summary": "Validate Mandate",
+        "description": "Validate AP2 payment mandate: signature, domain binding, replay, TTL, policy.",
+        "operationId": "validate_mandate_api_v2_mvp_mandates_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MandatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MandateValidationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/mvp/payments/execute": {
+      "post": {
+        "tags": [
+          "mvp"
+        ],
+        "summary": "Execute Payment",
+        "description": "Validate + execute a single-rail Base Sepolia USDC payment.\nRequires SARDIS_CHAIN_MODE=live and SARDIS_EOA_PRIVATE_KEY configured.",
+        "operationId": "execute_payment_api_v2_mvp_payments_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MandatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/mvp/receipts/{receipt_id}": {
+      "get": {
+        "tags": [
+          "mvp"
+        ],
+        "summary": "Get Receipt",
+        "operationId": "get_receipt_api_v2_mvp_receipts__receipt_id__get",
+        "parameters": [
+          {
+            "name": "receipt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Receipt Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/mvp/metrics": {
+      "get": {
+        "tags": [
+          "mvp"
+        ],
+        "summary": "Metrics",
+        "description": "Lightweight counters + safety limits for MVP.",
+        "operationId": "metrics_api_v2_mvp_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/ledger/recent": {
       "get": {
         "tags": [
@@ -5069,6 +5255,40 @@
         "title": "EventTypesResponse",
         "description": "List of available event types."
       },
+      "ExecuteResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "tx_hash": {
+            "type": "string",
+            "title": "Tx Hash"
+          },
+          "chain": {
+            "type": "string",
+            "title": "Chain"
+          },
+          "block_number": {
+            "type": "integer",
+            "title": "Block Number"
+          },
+          "receipt": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Receipt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "tx_hash",
+          "chain",
+          "block_number",
+          "receipt"
+        ],
+        "title": "ExecuteResponse"
+      },
       "FundCardRequest": {
         "properties": {
           "amount": {
@@ -5439,6 +5659,110 @@
         "title": "IssueCardRequest",
         "description": "Request to issue a new virtual card."
       },
+      "IssueIdentityRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "title": "Domain",
+            "description": "Domain binding for the agent"
+          },
+          "algorithm": {
+            "type": "string",
+            "pattern": "^(ed25519|ecdsa-p256)$",
+            "title": "Algorithm",
+            "default": "ed25519"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id",
+            "description": "Optional agent ID (hex-encoded pubkey). If omitted, generated."
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "description": "Optional hex seed for deterministic testing (do not use in prod)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain"
+        ],
+        "title": "IssueIdentityRequest"
+      },
+      "IssueIdentityResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "algorithm": {
+            "type": "string",
+            "title": "Algorithm"
+          },
+          "public_key": {
+            "type": "string",
+            "title": "Public Key"
+          },
+          "verification_method": {
+            "type": "string",
+            "title": "Verification Method"
+          },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint"
+          },
+          "created_at": {
+            "type": "integer",
+            "title": "Created At"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "private_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Private Key",
+            "description": "Sandbox-only hex private key (omitted if provided by caller)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "domain",
+          "algorithm",
+          "public_key",
+          "verification_method",
+          "fingerprint",
+          "created_at",
+          "version"
+        ],
+        "title": "IssueIdentityResponse"
+      },
       "ListAPIKeysResponse": {
         "properties": {
           "keys": {
@@ -5500,6 +5824,20 @@
         "title": "MandateExecutionResponse",
         "description": "Response from mandate execution."
       },
+      "MandatePayload": {
+        "properties": {
+          "mandate": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Mandate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mandate"
+        ],
+        "title": "MandatePayload"
+      },
       "MandateResponse": {
         "properties": {
           "mandate_id": {
@@ -5557,6 +5895,40 @@
           "updated_at"
         ],
         "title": "MandateResponse"
+      },
+      "MandateValidationResponse": {
+        "properties": {
+          "mandate_id": {
+            "type": "string",
+            "title": "Mandate Id"
+          },
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mandate_id",
+          "accepted"
+        ],
+        "title": "MandateValidationResponse"
       },
       "OfferResponse": {
         "properties": {

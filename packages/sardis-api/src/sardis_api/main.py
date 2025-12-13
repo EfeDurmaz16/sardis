@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from sardis_v2_core import SardisSettings, load_settings
+from sardis_v2_core.identity import IdentityRegistry
 from sardis_wallet.manager import WalletManager
 from sardis_protocol.verifier import MandateVerifier
 from sardis_protocol.storage import MandateArchive, SqliteReplayCache, ReplayCache, PostgresReplayCache
@@ -20,6 +21,7 @@ from sardis_v2_core.holds import HoldsRepository
 from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 from sardis_v2_core.cache import create_cache_service
 from .routers import mandates, ap2, auth
+from .routers import mvp
 from .routers import ledger as ledger_router
 from .routers import holds as holds_router
 from .routers import webhooks as webhooks_router
@@ -115,6 +117,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     chain_exec = ChainExecutor(settings=settings)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     compliance = ComplianceEngine(settings=settings)
+    identity_registry = IdentityRegistry()
     
     # Use PostgreSQL for mandate archive and replay cache if available
     if use_postgres:
@@ -128,7 +131,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             else ReplayCache()
         )
     
-    verifier = MandateVerifier(settings=settings, replay_cache=replay_cache, archive=archive)
+    verifier = MandateVerifier(
+        settings=settings,
+        replay_cache=replay_cache,
+        archive=archive,
+        identity_registry=identity_registry,
+    )
     orchestrator = PaymentOrchestrator(
         wallet_manager=wallet_mgr,
         compliance=compliance,
@@ -152,6 +160,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=orchestrator,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
+
+    # MVP router (TAP issuance, mandate validation, execution, receipts)
+    app.dependency_overrides[mvp.get_deps] = lambda: mvp.Dependencies(  # type: ignore[arg-type]
+        verifier=verifier,
+        chain_executor=chain_exec,
+        ledger=ledger_store,
+        identity_registry=identity_registry,
+        settings=settings,
+    )
+    app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
     # Ledger routes
     app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]

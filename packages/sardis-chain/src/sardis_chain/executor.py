@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import secrets
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -700,6 +701,38 @@ class TurnkeyMPCSigner(MPCSignerPort):
             self._http_client = None
 
 
+class LocalAccountSigner(MPCSignerPort):
+    """Local EOA signer for MVP/demo without MPC."""
+
+    def __init__(self, private_key: str, address: str | None = None):
+        from web3 import Web3
+        from eth_account import Account
+
+        if not private_key:
+            raise ValueError("SARDIS_EOA_PRIVATE_KEY is required for local signer")
+        self._w3 = Web3()
+        self._account = Account.from_key(private_key)
+        self._address = address or self._account.address
+
+    async def sign_transaction(self, wallet_id: str, tx: TransactionRequest) -> str:
+        tx_dict = {
+            "to": tx.to_address,
+            "value": tx.value,
+            "data": tx.data if isinstance(tx.data, bytes) else bytes(tx.data or b""),
+            "gas": tx.gas_limit or 120000,
+            "maxFeePerGas": tx.max_fee_per_gas or 50_000_000_000,
+            "maxPriorityFeePerGas": tx.max_priority_fee_per_gas or 1_000_000_000,
+            "nonce": tx.nonce or 0,
+            "chainId": CHAIN_CONFIGS.get(tx.chain, {}).get("chain_id", 84532),
+            "type": 2,
+        }
+        signed = self._w3.eth.account.sign_transaction(tx_dict, self._account.key)
+        return signed.rawTransaction.hex()
+
+    async def get_address(self, wallet_id: str, chain: str) -> str:  # noqa: ARG002
+        return self._address
+
+
 @dataclass
 class RPCEndpoint:
     """An RPC endpoint with health tracking."""
@@ -1026,9 +1059,19 @@ class ChainExecutor:
     def _init_mpc_signer(self):
         """Initialize MPC signer based on configuration."""
         mpc_config = self._settings.mpc
-        
+
+        # Local EOA signer for MVP (no MPC dependency)
+        eoa_private_key = os.getenv("SARDIS_EOA_PRIVATE_KEY", "")
+        eoa_address = os.getenv("SARDIS_EOA_ADDRESS", "")
+        if mpc_config.name == "local" or eoa_private_key:
+            try:
+                self._mpc_signer = LocalAccountSigner(private_key=eoa_private_key, address=eoa_address)
+                logger.info("Initialized local EOA signer for chain execution")
+                return
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Local signer initialization failed, falling back to simulated: {exc}")
+
         if mpc_config.name == "turnkey":
-            import os
             self._mpc_signer = TurnkeyMPCSigner(
                 api_base=mpc_config.api_base or "https://api.turnkey.com",
                 organization_id=mpc_config.credential_id,
@@ -1064,6 +1107,12 @@ class ChainExecutor:
         """Estimate gas for a payment mandate."""
         chain = mandate.chain or "base_sepolia"
         rpc = self._get_rpc_client(chain)
+        from_address = None
+        if not self._simulated and self._mpc_signer:
+            try:
+                from_address = await self._mpc_signer.get_address(mandate.subject, chain)
+            except Exception:  # noqa: BLE001
+                from_address = None
         
         # Get token contract address
         token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
@@ -1081,6 +1130,8 @@ class ChainExecutor:
             "to": token_address,
             "data": "0x" + transfer_data.hex(),
         }
+        if from_address:
+            tx_params["from"] = from_address
         
         try:
             gas_limit = await rpc.estimate_gas(tx_params)
@@ -1136,6 +1187,8 @@ class ChainExecutor:
     ) -> ChainReceipt:
         """Execute a live payment on-chain."""
         rpc = self._get_rpc_client(chain)
+        if not self._mpc_signer:
+            raise RuntimeError("No signer configured. Provide SARDIS_EOA_PRIVATE_KEY or configure MPC.")
         
         # Get token contract address
         token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
@@ -1184,7 +1237,7 @@ class ChainExecutor:
         return ChainReceipt(
             tx_hash=tx_hash,
             chain=chain,
-            block_number=receipt.get("blockNumber", 0),
+            block_number=int(receipt.get("blockNumber", "0x0"), 16) if isinstance(receipt.get("blockNumber"), str) else receipt.get("blockNumber", 0),
             audit_anchor=audit_anchor,
         )
 

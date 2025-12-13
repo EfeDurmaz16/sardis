@@ -7,7 +7,7 @@ from dataclasses import dataclass, fields
 from typing import Any, Dict, Optional, Type
 
 from sardis_v2_core import SardisSettings
-from sardis_v2_core.identity import AgentIdentity
+from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
 from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, MandateChain, PaymentMandate, VCProof
 from .schemas import AP2PaymentExecuteRequest
 from .storage import MandateArchive, ReplayCache
@@ -35,11 +35,13 @@ class MandateVerifier:
         archive: MandateArchive | None = None,
         rate_limiter: AgentRateLimiter | None = None,
         rate_limit_config: RateLimitConfig | None = None,
+        identity_registry: IdentityRegistry | None = None,
     ):
         self._settings = settings
         self._replay_cache = replay_cache or ReplayCache()
         self._archive = archive
         self._rate_limiter = rate_limiter or get_rate_limiter(rate_limit_config)
+        self._identity_registry = identity_registry
 
     def verify(self, mandate: PaymentMandate) -> VerificationResult:
         if mandate.is_expired():
@@ -120,24 +122,25 @@ class MandateVerifier:
 
     def _identity_from_proof(self, mandate: PaymentMandate) -> AgentIdentity | None:
         method = mandate.proof.verification_method
-        if "#" not in method:
-            return None
-        _, fragment = method.split("#", 1)
         try:
-            algorithm, key_material = fragment.split(":", 1)
+            algorithm, public_key = IdentityRegistry.parse_verification_method(method)
         except ValueError:
             return None
-        if algorithm not in {"ed25519", "ecdsa-p256"}:
-            return None
-        try:
-            public_key = bytes.fromhex(key_material)
-        except ValueError:
-            return None
+
+        if self._identity_registry:
+            if not self._identity_registry.verify_binding(
+                agent_id=mandate.subject,
+                domain=mandate.domain,
+                public_key=public_key,
+                algorithm=algorithm,
+            ):
+                return None
+
         return AgentIdentity(
             agent_id=mandate.subject,
             public_key=public_key,
             domain=mandate.domain,
-            algorithm="ecdsa-p256" if algorithm == "ecdsa-p256" else "ed25519",
+            algorithm=algorithm,
         )
 
     @staticmethod
