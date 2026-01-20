@@ -42,7 +42,14 @@ export type {
   // Common
   Chain,
   Token,
+  MPCProvider,
   SardisClientOptions,
+  // Wallets
+  Wallet,
+  WalletBalance,
+  TokenLimit,
+  CreateWalletInput,
+  SetAddressInput,
   // Payments
   Payment,
   PaymentStatus,

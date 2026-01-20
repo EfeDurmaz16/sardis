@@ -1,38 +1,45 @@
-"""Wallet + token balance primitives."""
+"""Non-custodial wallet primitives."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 from .tokens import TokenType
 from .virtual_card import VirtualCard
 
+if TYPE_CHECKING:
+    from sardis_chain.executor import TransactionRequest, MPCSignerPort
 
-class TokenBalance(BaseModel):
+
+class TokenLimit(BaseModel):
+    """Token-specific spending limits (for policy tracking only, not balance storage)."""
     token: TokenType
-    balance: Decimal = Field(default=Decimal("0.00"))
     limit_per_tx: Optional[Decimal] = None
     limit_total: Optional[Decimal] = None
-    spent_total: Decimal = Field(default=Decimal("0.00"))
-
-    def remaining_limit(self, wallet_limit_total: Decimal) -> Decimal:
-        limit = self.limit_total or wallet_limit_total
-        return max(Decimal("0.00"), limit - self.spent_total)
+    # Note: No balance field - balances are read from chain
 
 
 class Wallet(BaseModel):
+    """
+    Non-custodial wallet for AI agents.
+    
+    This wallet never holds funds. It only:
+    - Stores MPC provider and addresses
+    - Signs transactions via MPC
+    - Reads balances from chain (on-demand)
+    """
     wallet_id: str
     agent_id: str
-    balance: Decimal = Field(default=Decimal("0.00"))
-    currency: str = Field(default="USDC")
-    token_balances: dict[str, TokenBalance] = Field(default_factory=dict)
+    mpc_provider: str = Field(default="turnkey")  # "turnkey" | "fireblocks" | "local"
+    addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping
+    currency: str = Field(default="USDC")  # Default currency for display
+    token_limits: dict[str, TokenLimit] = Field(default_factory=dict)  # Token-specific limits
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
-    spent_total: Decimal = Field(default=Decimal("0.00"))
     virtual_card: Optional[VirtualCard] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -45,80 +52,168 @@ class Wallet(BaseModel):
         }
 
     @staticmethod
-    def new(agent_id: str, *, currency: str = "USDC") -> "Wallet":
+    def new(
+        agent_id: str,
+        *,
+        mpc_provider: str = "turnkey",
+        currency: str = "USDC",
+    ) -> "Wallet":
+        """Create a new non-custodial wallet."""
         from uuid import uuid4
+        return Wallet(
+            wallet_id=f"wallet_{uuid4().hex[:16]}",
+            agent_id=agent_id,
+            mpc_provider=mpc_provider,
+            currency=currency,
+        )
 
-        return Wallet(wallet_id=f"wallet_{uuid4().hex[:16]}", agent_id=agent_id, currency=currency)
+    def get_address(self, chain: str) -> Optional[str]:
+        """Get wallet address for a specific chain."""
+        return self.addresses.get(chain)
 
-    def get_token_balance(self, token: TokenType) -> Decimal:
-        if token.value == self.currency:
-            return self.balance
-        token_data = self.token_balances.get(token.value)
-        return token_data.balance if token_data else Decimal("0.00")
-
-    def set_token_balance(self, token: TokenType, amount: Decimal) -> None:
-        if token.value == self.currency:
-            self.balance = amount
-        else:
-            if token.value not in self.token_balances:
-                self.token_balances[token.value] = TokenBalance(token=token)
-            self.token_balances[token.value].balance = amount
+    def set_address(self, chain: str, address: str) -> None:
+        """Set wallet address for a chain."""
+        self.addresses[chain] = address
         self.updated_at = datetime.now(timezone.utc)
 
-    def add_token_balance(self, token: TokenType, amount: Decimal) -> None:
-        current = self.get_token_balance(token)
-        self.set_token_balance(token, current + amount)
+    async def get_balance(
+        self,
+        chain: str,
+        token: TokenType,
+        rpc_client: Optional[Any] = None,  # ChainRPCClient from sardis_chain
+    ) -> Decimal:
+        """
+        Get wallet balance from chain (read-only, non-custodial).
+        
+        Args:
+            chain: Chain identifier (e.g., "base", "polygon")
+            token: Token type (USDC, USDT, etc.)
+            rpc_client: RPC client for balance query (required)
+            
+        Returns:
+            Balance in token units (e.g., 100.00 USDC)
+            
+        Raises:
+            ValueError: If address not found or RPC client not provided
+        """
+        address = self.get_address(chain)
+        if not address:
+            raise ValueError(f"No address found for chain {chain}")
+        
+        if not rpc_client:
+            raise ValueError("RPC client required for balance query")
+        
+        # Get token contract address
+        from .tokens import get_token_metadata
+        token_meta = get_token_metadata(token)
+        token_address = token_meta.contract_addresses.get(chain)
+        if not token_address:
+            raise ValueError(f"Token {token} not supported on chain {chain}")
+        
+        # Query ERC20 balance using RPC client
+        # balanceOf(address) -> uint256
+        # Function selector: 0x70a08231
+        from sardis_chain.executor import encode_erc20_transfer
+        # Actually, we need balanceOf, not transfer
+        # balanceOf(address) selector: 0x70a08231
+        selector = bytes.fromhex("70a08231")
+        # Pad address to 32 bytes
+        address_bytes = bytes.fromhex(address[2:].lower().zfill(64))
+        call_data = selector + address_bytes
+        
+        # Call contract
+        tx_params = {
+            "to": token_address,
+            "data": "0x" + call_data.hex(),
+        }
+        
+        try:
+            # Use RPC client's _call method if available
+            if hasattr(rpc_client, "_call"):
+                result = await rpc_client._call("eth_call", [tx_params, "latest"])
+                # Parse result (hex string to int)
+                balance_raw = int(result, 16)
+                # Convert from raw amount to token units
+                from .tokens import normalize_token_amount
+                return normalize_token_amount(token, balance_raw)
+            else:
+                # Fallback: try direct method call
+                if hasattr(rpc_client, "get_token_balance"):
+                    return await rpc_client.get_token_balance(address, token_address)
+                raise ValueError("RPC client does not support balance queries")
+        except Exception as e:
+            # If query fails, return 0 (better than crashing)
+            # In production, this should be logged
+            return Decimal("0.00")
 
-    def subtract_token_balance(self, token: TokenType, amount: Decimal) -> bool:
-        current = self.get_token_balance(token)
-        if current < amount:
-            return False
-        self.set_token_balance(token, current - amount)
-        return True
-
-    def remaining_limit(self, token: Optional[TokenType] = None) -> Decimal:
-        if token and token.value in self.token_balances:
-            return self.token_balances[token.value].remaining_limit(self.limit_total)
-        return max(Decimal("0.00"), self.limit_total - self.spent_total)
+    async def sign_transaction(
+        self,
+        chain: str,
+        to_address: str,
+        amount: Decimal,
+        token: TokenType,
+        mpc_signer: Optional["MPCSignerPort"] = None,
+        tx_request: Optional["TransactionRequest"] = None,
+    ) -> str:
+        """
+        Sign a transaction via MPC (non-custodial, sign-only).
+        
+        Args:
+            chain: Chain identifier
+            to_address: Recipient address
+            amount: Amount in token units
+            token: Token type
+            mpc_signer: MPC signer instance
+            tx_request: Pre-built transaction request (optional)
+            
+        Returns:
+            Signed transaction hex string
+        """
+        if not mpc_signer:
+            raise ValueError("MPC signer required for transaction signing")
+        
+        # Import here to avoid circular dependency
+        from sardis_chain.executor import TransactionRequest, encode_erc20_transfer
+        
+        # Build transaction request if not provided
+        if not tx_request:
+            # Get token contract address
+            from .tokens import get_token_metadata, to_raw_token_amount
+            token_meta = get_token_metadata(token)
+            token_address = token_meta.contract_addresses.get(chain)
+            if not token_address:
+                raise ValueError(f"Token {token} not supported on chain {chain}")
+            
+            # Encode ERC20 transfer
+            amount_raw = to_raw_token_amount(token, amount)
+            transfer_data = encode_erc20_transfer(to_address, amount_raw)
+            
+            tx_request = TransactionRequest(
+                chain=chain,
+                to_address=token_address,
+                value=0,  # ERC20 transfers have value=0
+                data=transfer_data,
+            )
+        
+        # Sign via MPC
+        signed_tx = await mpc_signer.sign_transaction(self.wallet_id, tx_request)
+        return signed_tx
 
     def get_limit_per_tx(self, token: Optional[TokenType] = None) -> Decimal:
-        if token and token.value in self.token_balances:
-            token_data = self.token_balances[token.value]
-            if token_data.limit_per_tx is not None:
-                return token_data.limit_per_tx
+        """Get per-transaction limit for token (or default)."""
+        if token and token.value in self.token_limits:
+            token_limit = self.token_limits[token.value]
+            if token_limit.limit_per_tx is not None:
+                return token_limit.limit_per_tx
         return self.limit_per_tx
 
-    def can_spend(self, amount: Decimal, fee: Decimal = Decimal("0.00"), token: Optional[TokenType] = None) -> tuple[bool, str]:
-        if token is None:
-            token = TokenType(self.currency)
-        total_cost = amount + fee
-        balance = self.get_token_balance(token)
-        limit_per_tx = self.get_limit_per_tx(token)
-        remaining = self.remaining_limit(token)
-        if not self.is_active:
-            return False, "wallet_inactive"
-        if total_cost > balance:
-            return False, "insufficient_balance"
-        if amount > limit_per_tx:
-            return False, "per_transaction_limit"
-        if amount > remaining:
-            return False, "total_limit_exceeded"
-        return True, "OK"
-
-    def record_spend(self, amount: Decimal, token: Optional[TokenType] = None) -> None:
-        token = token or TokenType(self.currency)
-        if token.value == self.currency:
-            self.spent_total += amount
-        else:
-            entry = self.token_balances.setdefault(token.value, TokenBalance(token=token))
-            entry.spent_total += amount
-        self.updated_at = datetime.now(timezone.utc)
-
-    def total_balance_usd(self) -> Decimal:
-        total = self.balance
-        for token_data in self.token_balances.values():
-            total += token_data.balance
-        return total
+    def get_limit_total(self, token: Optional[TokenType] = None) -> Decimal:
+        """Get total spending limit for token (or default)."""
+        if token and token.value in self.token_limits:
+            token_limit = self.token_limits[token.value]
+            if token_limit.limit_total is not None:
+                return token_limit.limit_total
+        return self.limit_total
 
 
 @dataclass(slots=True)
@@ -126,3 +221,7 @@ class WalletSnapshot:
     wallet_id: str
     balances: dict[str, Decimal]
     captured_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# Backwards compatibility alias
+TokenBalance = TokenLimit

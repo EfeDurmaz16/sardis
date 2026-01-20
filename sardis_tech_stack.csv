@@ -1,0 +1,11 @@
+﻿Katman,Mevcut Teknoloji,Değerlendirme,Alternatif
+Backend Framework,Python 3.12 + FastAPI,✅ Mükemmel Seçim,Rust (sadece yüksek TPS için)
+Database (Production),PostgreSQL,✅ Uygun,Neon PostgreSQL Serverless
+Database (Development),SQLite,✅ Geliştirme için ideal,-
+Cache,Upstash Redis,✅ Serverless Redis,Redis Cloud
+Smart Contracts,Solidity + Foundry,✅ Endüstri standardı,-
+Frontend,React + Vite,✅ Modern ve hızlı,Next.js
+Deployment (API),Vercel,✅ Python/Node uyumu,"Railway, Render"
+Deployment (Workers),Google Cloud Run,✅ Container workload için ideal,AWS Lambda
+MPC Provider (Planned),Turnkey (Planned),⚠️ Entegrasyon gerekli,Fireblocks
+Blockchain Networks,"Base, Polygon, Ethereum, Arbitrum, Optimism",✅ Multi-chain destek,Solana (Planlanmış)

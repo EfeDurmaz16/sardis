@@ -32,6 +32,8 @@ from typing import Any, Optional
 import httpx
 
 from .models.errors import APIError, AuthenticationError, RateLimitError
+from .resources.agents import AgentsResource
+from .resources.wallets import WalletsResource
 from .resources.holds import HoldsResource
 from .resources.ledger import LedgerResource
 from .resources.marketplace import MarketplaceResource
@@ -80,6 +82,8 @@ class SardisClient:
         self._client: Optional[httpx.AsyncClient] = None
         
         # Initialize resources
+        self.agents = AgentsResource(self)
+        self.wallets = WalletsResource(self)
         self.payments = PaymentsResource(self)
         self.holds = HoldsResource(self)
         self.webhooks = WebhooksResource(self)
@@ -141,6 +145,8 @@ class SardisClient:
                 if response.status_code >= 400:
                     try:
                         body = response.json()
+                        if isinstance(body, list):
+                            body = {"detail": body}
                     except Exception:
                         body = {"detail": response.text}
                     raise APIError.from_response(response.status_code, body)

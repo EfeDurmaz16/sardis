@@ -5,8 +5,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any, TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from .wallets import Wallet
+    from .tokens import TokenType
 
 
 class TrustLevel(str, Enum):
@@ -110,6 +114,70 @@ class SpendingPolicy:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    async def evaluate(
+        self,
+        wallet: "Wallet",  # Forward reference to avoid circular import
+        amount: Decimal,
+        fee: Decimal,
+        *,
+        chain: str,
+        token: "TokenType",  # Forward reference
+        merchant_id: Optional[str] = None,
+        merchant_category: Optional[str] = None,
+        scope: SpendingScope = SpendingScope.ALL,
+        rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
+    ) -> tuple[bool, str]:
+        """
+        Evaluate payment request against policy (async, with on-chain balance check).
+        
+        Args:
+            wallet: Wallet instance (non-custodial)
+            amount: Payment amount
+            fee: Transaction fee
+            chain: Chain identifier
+            token: Token type
+            merchant_id: Merchant identifier (optional)
+            merchant_category: Merchant category (optional)
+            scope: Spending scope
+            rpc_client: RPC client for balance queries (optional)
+            
+        Returns:
+            Tuple of (approved: bool, reason: str)
+        """
+        total_cost = amount + fee
+        
+        # Check scope
+        if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
+            return False, "scope_not_allowed"
+        
+        # Check per-transaction limit
+        if amount > self.limit_per_tx:
+            return False, "per_transaction_limit"
+        
+        # Check total limit (spent_total is tracked in database, not wallet)
+        if self.spent_total + amount > self.limit_total:
+            return False, "total_limit_exceeded"
+        
+        # Check time-window limits
+        for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
+            ok, reason = window_limit.can_spend(amount)
+            if not ok:
+                return ok, reason
+        
+        # Check on-chain balance (non-custodial)
+        if rpc_client:
+            balance = await wallet.get_balance(chain, token, rpc_client)
+            if balance < total_cost:
+                return False, "insufficient_balance"
+        
+        # Check merchant rules
+        if merchant_id:
+            merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)
+            if not merchant_ok:
+                return False, merchant_reason
+        
+        return True, "OK"
+    
     def validate_payment(
         self,
         amount: Decimal,
@@ -119,6 +187,11 @@ class SpendingPolicy:
         merchant_category: Optional[str] = None,
         scope: SpendingScope = SpendingScope.ALL,
     ) -> tuple[bool, str]:
+        """
+        Synchronous validation (for backwards compatibility).
+        
+        Note: Does not check on-chain balance. Use evaluate() for full validation.
+        """
         total_cost = amount + fee
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"

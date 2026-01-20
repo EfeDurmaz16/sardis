@@ -6,6 +6,77 @@
 
 export type Chain = 'base' | 'base_sepolia' | 'polygon' | 'polygon_amoy' | 'ethereum' | 'ethereum_sepolia';
 export type Token = 'USDC' | 'USDT' | 'PYUSD' | 'EURC';
+export type MPCProvider = 'turnkey' | 'fireblocks' | 'local';
+
+// ==================== Wallet Types ====================
+
+export interface TokenLimit {
+  /** Token symbol */
+  token: Token;
+  /** Per-transaction spending limit */
+  limit_per_tx?: string;
+  /** Total spending limit */
+  limit_total?: string;
+  // Note: No balance field - balances are read from chain (non-custodial)
+}
+
+export interface Wallet {
+  /** Wallet ID */
+  id: string;
+  /** Agent ID that owns this wallet */
+  agent_id: string;
+  /** MPC provider ("turnkey", "fireblocks", or "local") */
+  mpc_provider: MPCProvider;
+  /** Chain -> address mapping */
+  addresses: Record<string, string>;
+  /** Default currency for display */
+  currency: Token;
+  /** Token-specific spending limits */
+  token_limits: Record<string, TokenLimit>;
+  /** Per-transaction spending limit */
+  limit_per_tx: string;
+  /** Total spending limit */
+  limit_total: string;
+  /** Whether wallet is active */
+  is_active: boolean;
+  /** Creation timestamp */
+  created_at: string;
+  /** Last update timestamp */
+  updated_at: string;
+}
+
+export interface WalletBalance {
+  /** Wallet ID */
+  wallet_id: string;
+  /** Chain identifier */
+  chain: string;
+  /** Token symbol */
+  token: Token;
+  /** Balance from chain (read-only) */
+  balance: string;
+  /** Wallet address on chain */
+  address: string;
+}
+
+export interface CreateWalletInput {
+  /** Agent ID */
+  agent_id: string;
+  /** MPC provider */
+  mpc_provider?: MPCProvider;
+  /** Default currency */
+  currency?: Token;
+  /** Per-transaction limit */
+  limit_per_tx?: string;
+  /** Total spending limit */
+  limit_total?: string;
+}
+
+export interface SetAddressInput {
+  /** Chain identifier */
+  chain: string;
+  /** Wallet address on chain */
+  address: string;
+}
 
 // ==================== Payment Types ====================
 

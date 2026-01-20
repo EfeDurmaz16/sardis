@@ -20,6 +20,7 @@ class Agent(SardisModel):
     public_key: Optional[str] = None
     key_algorithm: str = "ed25519"
     is_active: bool = True
+    metadata: Optional[dict] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -40,3 +41,7 @@ class UpdateAgentRequest(SardisModel):
     name: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
+
+# Aliases for consistency
+AgentCreate = CreateAgentRequest
+AgentUpdate = UpdateAgentRequest

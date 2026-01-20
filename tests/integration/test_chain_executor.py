@@ -93,20 +93,19 @@ async def test_chain_executor(live_mode: bool = False, chain: str = "base_sepoli
         issuer="did:web:test.example.com",
         subject="did:web:agent.example.com",
         purpose="checkout",
-        created_at=now,
-        expires_at=now,
+        expires_at=int(now.timestamp()) + 3600,  # 1 hour from now
         nonce=secrets.token_hex(16),
-        domain="merchant.example.com",
+        domain="localhost",  # Must be in allowed_domains
         amount_minor=amount,
         token="USDC",
         chain=chain,
         destination=destination,
         audit_hash=secrets.token_hex(32),
         proof=VCProof(
-            type="Ed25519Signature2020",
+            type="DataIntegrityProof",
             created=now.isoformat(),
             verification_method="did:web:agent.example.com#key-1",
-            proof_purpose="authentication",
+            proof_purpose="assertionMethod",
             proof_value="test_signature",
         ),
     )
@@ -232,6 +231,8 @@ if __name__ == "__main__":
         ))
     
     sys.exit(0 if success else 1)
+
+
 
 
 

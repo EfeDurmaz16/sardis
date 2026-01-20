@@ -59,6 +59,13 @@ class APIError(SardisError):
                 status_code=status_code,
                 code="API_ERROR",
             )
+        if isinstance(error_data, list):
+            return cls(
+                message="Validation Error",
+                status_code=status_code,
+                code="VALIDATION_ERROR",
+                details={"errors": error_data},
+            )
         return cls(
             message=error_data.get("message", "Unknown error"),
             status_code=status_code,

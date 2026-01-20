@@ -60,3 +60,7 @@ class CreateHoldResponse(SardisModel):
     hold_id: str
     status: HoldStatus
     expires_at: datetime
+
+
+# Aliases
+HoldCreate = CreateHoldRequest

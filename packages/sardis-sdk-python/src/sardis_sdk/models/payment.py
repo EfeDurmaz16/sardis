@@ -88,3 +88,5 @@ class ExecuteAP2Response(SardisModel):
     status: str
     compliance_provider: Optional[str] = None
     compliance_rule: Optional[str] = None
+# Aliases / Placeholders for models used in resources but not fully defined here
+PaymentMandate = dict[str, Any]  # Mandates are currently raw dicts in SDK

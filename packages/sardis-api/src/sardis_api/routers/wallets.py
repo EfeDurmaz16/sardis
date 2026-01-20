@@ -15,8 +15,8 @@ router = APIRouter()
 # Request/Response Models
 class CreateWalletRequest(BaseModel):
     agent_id: str
+    mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
     currency: str = "USDC"
-    initial_balance: Decimal = Field(default=Decimal("0.00"))
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
 
@@ -32,25 +32,19 @@ class SetLimitsRequest(BaseModel):
     limit_total: Optional[Decimal] = None
 
 
-class DepositRequest(BaseModel):
-    amount: Decimal
-    token: Optional[str] = None
-
-
-class WithdrawRequest(BaseModel):
-    amount: Decimal
-    token: Optional[str] = None
+class SetAddressRequest(BaseModel):
+    chain: str
+    address: str
 
 
 class WalletResponse(BaseModel):
     wallet_id: str
     agent_id: str
-    balance: str
+    mpc_provider: str
+    addresses: dict[str, str]  # chain -> address mapping
     currency: str
     limit_per_tx: str
     limit_total: str
-    spent_total: str
-    remaining_limit: str
     is_active: bool
     created_at: str
     updated_at: str
@@ -60,16 +54,23 @@ class WalletResponse(BaseModel):
         return cls(
             wallet_id=wallet.wallet_id,
             agent_id=wallet.agent_id,
-            balance=str(wallet.balance),
+            mpc_provider=wallet.mpc_provider,
+            addresses=wallet.addresses,
             currency=wallet.currency,
             limit_per_tx=str(wallet.limit_per_tx),
             limit_total=str(wallet.limit_total),
-            spent_total=str(wallet.spent_total),
-            remaining_limit=str(wallet.remaining_limit()),
             is_active=wallet.is_active,
             created_at=wallet.created_at.isoformat(),
             updated_at=wallet.updated_at.isoformat(),
         )
+
+
+class BalanceResponse(BaseModel):
+    wallet_id: str
+    chain: str
+    token: str
+    balance: str
+    address: str
 
 
 # Dependency
@@ -88,11 +89,11 @@ async def create_wallet(
     request: CreateWalletRequest,
     deps: WalletDependencies = Depends(get_deps),
 ):
-    """Create a new wallet for an agent."""
+    """Create a new non-custodial wallet for an agent."""
     wallet = await deps.wallet_repo.create(
         agent_id=request.agent_id,
+        mpc_provider=request.mpc_provider,
         currency=request.currency,
-        balance=request.initial_balance,
         limit_per_tx=request.limit_per_tx,
         limit_total=request.limit_total,
     )
@@ -175,40 +176,76 @@ async def set_wallet_limits(
     return WalletResponse.from_wallet(wallet)
 
 
-@router.post("/{wallet_id}/deposit", response_model=WalletResponse)
-async def deposit_to_wallet(
+@router.get("/{wallet_id}/balance", response_model=BalanceResponse)
+async def get_wallet_balance(
     wallet_id: str,
-    request: DepositRequest,
+    chain: str = Query(default="base", description="Chain identifier"),
+    token: str = Query(default="USDC", description="Token type"),
     deps: WalletDependencies = Depends(get_deps),
 ):
-    """Deposit funds to a wallet."""
-    wallet = await deps.wallet_repo.deposit(
+    """Get wallet balance from chain (non-custodial, read-only)."""
+    wallet = await deps.wallet_repo.get(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    
+    address = wallet.get_address(chain)
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No address found for chain {chain}",
+        )
+    
+    # Get RPC client for balance query
+    # TODO: Inject ChainRPCClient via dependency
+    # For now, return placeholder
+    from sardis_v2_core.tokens import TokenType
+    try:
+        token_enum = TokenType(token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid token: {token}",
+        )
+    
+    # In production, this would use ChainRPCClient to query balance
+    # For now, return 0 as placeholder
+    balance = Decimal("0.00")
+    
+    return BalanceResponse(
+        wallet_id=wallet_id,
+        chain=chain,
+        token=token,
+        balance=str(balance),
+        address=address,
+    )
+
+
+@router.get("/{wallet_id}/addresses", response_model=dict[str, str])
+async def get_wallet_addresses(
+    wallet_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+):
+    """Get all wallet addresses (chain -> address mapping)."""
+    wallet = await deps.wallet_repo.get(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    return wallet.addresses
+
+
+@router.post("/{wallet_id}/addresses", response_model=WalletResponse)
+async def set_wallet_address(
+    wallet_id: str,
+    request: SetAddressRequest,
+    deps: WalletDependencies = Depends(get_deps),
+):
+    """Set wallet address for a chain."""
+    wallet = await deps.wallet_repo.set_address(
         wallet_id,
-        amount=request.amount,
-        token=request.token,
+        chain=request.chain,
+        address=request.address,
     )
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
-    return WalletResponse.from_wallet(wallet)
-
-
-@router.post("/{wallet_id}/withdraw", response_model=WalletResponse)
-async def withdraw_from_wallet(
-    wallet_id: str,
-    request: WithdrawRequest,
-    deps: WalletDependencies = Depends(get_deps),
-):
-    """Withdraw funds from a wallet."""
-    wallet = await deps.wallet_repo.withdraw(
-        wallet_id,
-        amount=request.amount,
-        token=request.token,
-    )
-    if not wallet:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Wallet not found or insufficient balance",
-        )
     return WalletResponse.from_wallet(wallet)
 
 

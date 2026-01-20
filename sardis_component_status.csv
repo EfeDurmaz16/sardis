@@ -1,0 +1,15 @@
+﻿Bileşen,Tamamlanma (%),Durum,Öncelik
+Core Protocol (sardis-core),100,Tamamlandı,Tamamlandı
+API Gateway (sardis-api),100,Tamamlandı,Tamamlandı
+Wallet Engine,80,Aktif Geliştirme,Orta
+Policy Engine,80,Aktif Geliştirme,Orta
+Ledger System,100,Tamamlandı,Tamamlandı
+Chain Executor (Simulated),60,Test Aşamasında,Yüksek
+Chain Executor (Production),20,Erken Aşama,KRİTİK
+Smart Contracts,80,Audit Bekliyor,KRİTİK
+Compliance (KYC/Sanctions),60,Entegrasyon Devam Ediyor,Yüksek
+SDK (Python + JS),40,Kısmi Tamamlandı,Yüksek
+Dashboard,100,Tamamlandı,Tamamlandı
+Landing Page,100,Tamamlandı,Tamamlandı
+Tests,80,İyi Kapsam,Orta
+Documentation,80,Kapsamlı,Orta

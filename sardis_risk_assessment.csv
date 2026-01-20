@@ -1,0 +1,11 @@
+﻿Risk Kategorisi,Risk Seviyesi,Etki,Çözüm Süresi,Maliyet Tahmini
+Blockchain Execution,KRİTİK,Gerçek ödemeler çalışmaz,2-3 hafta,Orta
+Key Management,KRİTİK,"Güvenlik açığı, fon kaybı",1 hafta,Düşük
+Smart Contract Security,KRİTİK,"Exploit riski, fon kaybı",4-6 hafta,$15k-30k
+MPC Integration,KRİTİK,Gerçek transaction imzalama yapılamaz,2-3 hafta,Orta
+SDK Completeness,YÜKSEK,Geliştirici deneyimi kötü,2 hafta,Düşük
+QNB Integration,YÜKSEK,Fiat pilot başlatılamaz,3-4 hafta,Orta
+Virtual Cards,YÜKSEK,Kart ödemeleri eksik,2-3 hafta,Orta
+External Security Audit,KRİTİK,"Güven kaybı, regülasyon riski",4-6 hafta,$15k-30k
+Production Monitoring,YÜKSEK,Production sorunları geç tespit edilir,1-2 hafta,Düşük
+Legacy Code Cleanup,ORTA,"Kod karmaşıklığı, bakım zorluğu",1-2 hafta,Düşük

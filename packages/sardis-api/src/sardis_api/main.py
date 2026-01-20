@@ -31,6 +31,7 @@ from .routers import wallets as wallets_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
+from .routers import checkout as checkout_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -246,6 +247,23 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
     set_api_key_manager(api_key_manager)
     app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
+
+    # Checkout routes (Agentic Checkout - Pivot D)
+    from sardis_checkout.orchestrator import CheckoutOrchestrator
+    from sardis_checkout.connectors.stripe import StripeConnector
+    
+    # Initialize PSP connectors
+    stripe_connector = StripeConnector() if os.getenv("STRIPE_SECRET_KEY") else None
+    checkout_orchestrator = CheckoutOrchestrator()
+    if stripe_connector:
+        checkout_orchestrator.register_connector("stripe", stripe_connector)
+    
+    wallet_repo_for_checkout = WalletRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[checkout_router.get_deps] = lambda: checkout_router.CheckoutDependencies(  # type: ignore[arg-type]
+        wallet_repo=wallet_repo_for_checkout,
+        orchestrator=checkout_orchestrator,
+    )
+    app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
 
     # Health check endpoints
     @app.get("/", tags=["health"])

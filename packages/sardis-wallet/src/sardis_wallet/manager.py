@@ -30,6 +30,7 @@ class WalletManager:
         self._policy_store = policy_store
 
     def validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
+        """Synchronous validation (for backwards compatibility)."""
         policy = self._policy_store.fetch_policy(mandate.subject) if self._policy_store else None
         if not policy:
             policy = create_default_policy(mandate.subject)
@@ -39,5 +40,42 @@ class WalletManager:
             Decimal("0"),
             merchant_id=mandate.domain,
             scope=SpendingScope.ALL,
+        )
+        return PolicyEvaluation(allowed=ok, reason=None if ok else reason)
+    
+    async def evaluate_policies(
+        self,
+        wallet: "Wallet",  # Forward reference
+        mandate: PaymentMandate,
+        chain: str,
+        token: "TokenType",  # Forward reference
+        rpc_client: Optional[Any] = None,
+    ) -> PolicyEvaluation:
+        """
+        Async policy evaluation with on-chain balance check (non-custodial).
+        
+        Args:
+            wallet: Wallet instance
+            mandate: Payment mandate
+            chain: Chain identifier
+            token: Token type
+            rpc_client: RPC client for balance queries
+            
+        Returns:
+            PolicyEvaluation result
+        """
+        policy = self._policy_store.fetch_policy(mandate.subject) if self._policy_store else None
+        if not policy:
+            policy = create_default_policy(mandate.subject)
+        amount = Decimal(mandate.amount_minor) / Decimal(10**2)
+        ok, reason = await policy.evaluate(
+            wallet=wallet,
+            amount=amount,
+            fee=Decimal("0"),
+            chain=chain,
+            token=token,
+            merchant_id=mandate.domain,
+            scope=SpendingScope.ALL,
+            rpc_client=rpc_client,
         )
         return PolicyEvaluation(allowed=ok, reason=None if ok else reason)

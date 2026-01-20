@@ -355,80 +355,60 @@ class TurnkeyMPCSigner(MPCSignerPort):
         self._init_signing_key()
     
     def _init_signing_key(self):
-        """Initialize Ed25519 signing key from private key material."""
+        """Initialize P256 (ECDSA) signing key from Turnkey API credentials.
+        
+        Uses cryptography library exactly like Turnkey's official Python stamper.
+        """
         if not self._api_private_key:
             logger.warning("No Turnkey API private key provided")
             return
         
         try:
-            from nacl.signing import SigningKey
-            from nacl import encoding
+            from cryptography.hazmat.primitives.asymmetric import ec
             
-            private_key_bytes = None
+            # Derive private key from hex string (as integer)
+            # Turnkey's stamper.py: ec.derive_private_key(int(API_PRIVATE_KEY, 16), ec.SECP256R1())
+            private_key_int = int(self._api_private_key, 16)
+            self._signing_key = ec.derive_private_key(private_key_int, ec.SECP256R1())
             
-            # Check if it's a file path
-            if self._api_private_key.startswith("/") or self._api_private_key.endswith(".pem"):
-                import os
-                if os.path.exists(self._api_private_key):
-                    with open(self._api_private_key, "r") as f:
-                        pem_content = f.read()
-                    # Parse PEM and extract key bytes
-                    private_key_bytes = self._parse_pem_private_key(pem_content)
-            else:
-                # Assume hex-encoded private key
-                try:
-                    private_key_bytes = bytes.fromhex(self._api_private_key)
-                except ValueError:
-                    # Try base64
-                    import base64
-                    private_key_bytes = base64.b64decode(self._api_private_key)
-            
-            if private_key_bytes and len(private_key_bytes) >= 32:
-                # Ed25519 private key is 32 bytes
-                self._signing_key = SigningKey(private_key_bytes[:32])
-                logger.info("Turnkey signing key initialized successfully")
-            else:
-                logger.error("Invalid private key format or length")
+            logger.info("Turnkey P256 signing key initialized successfully (using cryptography library)")
                 
         except ImportError:
-            logger.error("PyNaCl not installed. Install with: pip install pynacl")
+            logger.error("cryptography library not installed. Install with: pip install cryptography")
         except Exception as e:
             logger.error(f"Failed to initialize Turnkey signing key: {e}")
     
-    def _parse_pem_private_key(self, pem_content: str) -> Optional[bytes]:
-        """Parse PEM-encoded private key and extract raw bytes."""
+    def _create_stamp(self, body: str) -> str:
+        """
+        Create Turnkey API stamp for request authentication using P256/ECDSA.
+        
+        Uses cryptography library exactly like Turnkey's official Python stamper.
+        
+        Reference: https://github.com/tkhq/python-sdk
+        """
         import base64
-        import re
+        import json
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
         
-        # Remove PEM headers and decode
-        pem_lines = pem_content.strip().split("\n")
-        key_data = ""
-        in_key = False
+        if not self._signing_key:
+            raise ValueError("Turnkey signing key not initialized")
         
-        for line in pem_lines:
-            if "BEGIN" in line and "PRIVATE KEY" in line:
-                in_key = True
-                continue
-            if "END" in line and "PRIVATE KEY" in line:
-                break
-            if in_key:
-                key_data += line.strip()
+        # Sign payload with ECDSA SHA256 (exactly like Turnkey's stamper.py)
+        signature = self._signing_key.sign(body.encode(), ec.ECDSA(hashes.SHA256()))
         
-        if not key_data:
-            return None
+        # Create stamp payload
+        stamp_payload = {
+            "publicKey": self._api_public_key,
+            "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+            "signature": signature.hex(),
+        }
         
-        try:
-            # Decode base64
-            der_bytes = base64.b64decode(key_data)
-            
-            # For Ed25519, the actual key is typically at the end
-            # PKCS#8 DER structure for Ed25519 has the 32-byte key at offset -32
-            if len(der_bytes) >= 32:
-                # Try to find the key bytes (usually last 32 bytes for Ed25519)
-                return der_bytes[-32:]
-            return der_bytes
-        except Exception:
-            return None
+        # Base64URL encode the stamp (without padding)
+        stamp_json = json.dumps(stamp_payload)
+        stamp_b64 = base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
+        
+        return stamp_b64
 
     async def _get_client(self):
         """Get or create HTTP client with retry configuration."""
@@ -439,40 +419,6 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             )
         return self._http_client
-
-    def _create_stamp(self, body: str) -> str:
-        """
-        Create Turnkey API stamp for request authentication.
-        
-        Stamp format: base64(json({publicKey, signature, scheme}))
-        The signature is over: SHA256(body)
-        """
-        import base64
-        import json
-        
-        if not self._signing_key:
-            raise ValueError("Turnkey signing key not initialized")
-        
-        # Create message hash
-        body_bytes = body.encode("utf-8")
-        body_hash = hashlib.sha256(body_bytes).digest()
-        
-        # Sign the hash with Ed25519
-        signed = self._signing_key.sign(body_hash)
-        signature = signed.signature
-        
-        # Create stamp payload
-        stamp_payload = {
-            "publicKey": self._api_public_key,
-            "signature": signature.hex(),
-            "scheme": "SIGNATURE_SCHEME_TK_API_P256",  # Turnkey uses this scheme name
-        }
-        
-        # Base64 encode the stamp
-        stamp_json = json.dumps(stamp_payload, separators=(",", ":"))
-        stamp_b64 = base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
-        
-        return stamp_b64
 
     async def _make_request(
         self,
@@ -505,6 +451,14 @@ class TurnkeyMPCSigner(MPCSignerPort):
                     await asyncio.sleep(self.RETRY_DELAY * (retry_count + 1))
                     return await self._make_request(method, path, body, retry_count + 1)
                 raise Exception("Rate limited by Turnkey API")
+            
+            # Log detailed error for 4xx responses
+            if response.status_code >= 400:
+                try:
+                    error_body = response.json()
+                    logger.error(f"Turnkey API error {response.status_code}: {error_body}")
+                except:
+                    logger.error(f"Turnkey API error {response.status_code}: {response.text}")
             
             response.raise_for_status()
             return response.json()
@@ -552,24 +506,42 @@ class TurnkeyMPCSigner(MPCSignerPort):
         wallet_id: str,
         tx: TransactionRequest,
     ) -> str:
-        """Sign transaction via Turnkey API."""
-        import json
+        """Sign transaction via Turnkey API.
+        
+        Turnkey expects unsigned transaction as RLP-encoded hex string.
+        """
+        import rlp
         
         chain_config = CHAIN_CONFIGS.get(tx.chain, {})
         chain_id = chain_config.get("chain_id", 1)
         
-        # Build unsigned transaction in Turnkey format
-        unsigned_tx = {
-            "type": "02",  # EIP-1559 type
-            "chainId": hex(chain_id),
-            "nonce": hex(tx.nonce) if tx.nonce is not None else "0x0",
-            "to": tx.to_address,
-            "value": hex(tx.value),
-            "data": "0x" + tx.data.hex() if tx.data else "0x",
-            "gas": hex(tx.gas_limit or 100000),
-            "maxFeePerGas": hex(tx.max_fee_per_gas or 50_000_000_000),
-            "maxPriorityFeePerGas": hex(tx.max_priority_fee_per_gas or 1_000_000_000),
-        }
+        # Build EIP-1559 transaction (Type 2)
+        # Format: 0x02 || rlp([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList])
+        nonce = tx.nonce if tx.nonce is not None else 0
+        max_priority_fee = tx.max_priority_fee_per_gas or 1_000_000_000  # 1 gwei
+        max_fee = tx.max_fee_per_gas or 50_000_000_000  # 50 gwei
+        gas_limit = tx.gas_limit or 100000
+        to_address = bytes.fromhex(tx.to_address[2:]) if tx.to_address.startswith("0x") else bytes.fromhex(tx.to_address)
+        value = tx.value
+        data = tx.data or b""
+        access_list = []  # Empty access list for now
+        
+        # RLP encode the transaction fields (without signature)
+        tx_fields = [
+            chain_id,
+            nonce,
+            max_priority_fee,
+            max_fee,
+            gas_limit,
+            to_address,
+            value,
+            data,
+            access_list,
+        ]
+        
+        # Encode with EIP-1559 type prefix
+        rlp_encoded = rlp.encode(tx_fields)
+        unsigned_tx_hex = "02" + rlp_encoded.hex()  # 0x02 prefix for EIP-1559
         
         # Create sign transaction activity
         activity_body = {
@@ -579,7 +551,7 @@ class TurnkeyMPCSigner(MPCSignerPort):
             "parameters": {
                 "signWith": wallet_id,
                 "type": "TRANSACTION_TYPE_ETHEREUM",
-                "unsignedTransaction": json.dumps(unsigned_tx),
+                "unsignedTransaction": unsigned_tx_hex,
             },
         }
         
@@ -601,8 +573,13 @@ class TurnkeyMPCSigner(MPCSignerPort):
             logger.info(f"Polling for activity {activity_id} completion")
             activity = await self._poll_activity(activity_id)
         
-        # Extract signed transaction
-        signed_tx = activity.get("result", {}).get("signedTransaction", "")
+        # Extract signed transaction (Turnkey returns in signTransactionResult)
+        sign_result = activity.get("result", {}).get("signTransactionResult", {})
+        signed_tx = sign_result.get("signedTransaction", "")
+        
+        if not signed_tx:
+            # Fallback to old path
+            signed_tx = activity.get("result", {}).get("signedTransaction", "")
         
         if not signed_tx:
             raise Exception("No signed transaction returned from Turnkey")
@@ -614,18 +591,18 @@ class TurnkeyMPCSigner(MPCSignerPort):
         """Get wallet address from Turnkey."""
         result = await self._make_request(
             "POST",
-            "/public/v1/query/get_wallet",
+            "/public/v1/query/list_wallet_accounts",
             {
                 "organizationId": self._org_id,
                 "walletId": wallet_id,
             },
         )
         
-        # Extract address from wallet accounts
-        accounts = result.get("wallet", {}).get("accounts", [])
+        # Extract address from accounts list
+        accounts = result.get("accounts", [])
         for account in accounts:
             address_format = account.get("addressFormat", "")
-            if address_format in ("ADDRESS_FORMAT_ETHEREUM", "ADDRESS_FORMAT_UNCOMPRESSED"):
+            if address_format == "ADDRESS_FORMAT_ETHEREUM":
                 return account.get("address", "")
         
         raise ValueError(f"No Ethereum address found for wallet {wallet_id}")
@@ -994,10 +971,23 @@ class ChainRPCClient:
         result = await self._call("eth_getTransactionCount", [address, "pending"])
         return int(result, 16)
 
+    async def get_balance(self, address: str) -> int:
+        """Get ETH balance for address in wei."""
+        result = await self._call("eth_getBalance", [address, "latest"])
+        return int(result, 16)
+
     async def send_raw_transaction(self, signed_tx: str) -> str:
         """Broadcast signed transaction."""
+        # Ensure hex prefix
+        if not signed_tx.startswith("0x"):
+            signed_tx = "0x" + signed_tx
         result = await self._call("eth_sendRawTransaction", [signed_tx])
         return result
+
+    # Alias for backwards compatibility
+    async def broadcast_transaction(self, signed_tx: str) -> str:
+        """Broadcast signed transaction (alias for send_raw_transaction)."""
+        return await self.send_raw_transaction(signed_tx)
 
     async def get_transaction_receipt(self, tx_hash: str) -> Optional[Dict[str, Any]]:
         """Get transaction receipt."""

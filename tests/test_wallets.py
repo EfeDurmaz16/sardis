@@ -1,363 +1,105 @@
-"""Unit tests for wallet models and operations."""
+"""Unit tests for non-custodial wallet models and operations."""
 from __future__ import annotations
 
 from decimal import Decimal
 import pytest
 
-from sardis_v2_core.wallets import Wallet, TokenBalance, WalletSnapshot
+from sardis_v2_core.wallets import Wallet, TokenLimit, WalletSnapshot
 from sardis_v2_core.tokens import TokenType
 
 
-class TestTokenBalance:
-    """Tests for TokenBalance model."""
+class TestTokenLimit:
+    """Tests for TokenLimit model (non-custodial, limits only)."""
 
-    def test_token_balance_creation(self):
-        """Test creating a TokenBalance."""
-        balance = TokenBalance(
+    def test_token_limit_creation(self):
+        """Test creating a TokenLimit."""
+        limit = TokenLimit(
             token=TokenType.USDC,
-            balance=Decimal("100.00"),
-        )
-        
-        assert balance.token == TokenType.USDC
-        assert balance.balance == Decimal("100.00")
-        assert balance.spent_total == Decimal("0.00")
-
-    def test_token_balance_remaining_limit(self):
-        """Test remaining limit calculation."""
-        balance = TokenBalance(
-            token=TokenType.USDC,
-            balance=Decimal("500.00"),
+            limit_per_tx=Decimal("100.00"),
             limit_total=Decimal("1000.00"),
-            spent_total=Decimal("300.00"),
         )
         
-        # Uses own limit
-        remaining = balance.remaining_limit(Decimal("2000.00"))
-        assert remaining == Decimal("700.00")  # 1000 - 300
-
-    def test_token_balance_uses_wallet_limit_when_none(self):
-        """Test remaining limit falls back to wallet limit when token limit is None."""
-        balance = TokenBalance(
-            token=TokenType.USDT,
-            balance=Decimal("500.00"),
-            limit_total=None,
-            spent_total=Decimal("200.00"),
-        )
-        
-        # Falls back to wallet limit
-        remaining = balance.remaining_limit(Decimal("1000.00"))
-        assert remaining == Decimal("800.00")  # 1000 - 200
+        assert limit.token == TokenType.USDC
+        assert limit.limit_per_tx == Decimal("100.00")
+        assert limit.limit_total == Decimal("1000.00")
+        # Note: No balance field - balances are read from chain
 
 
 class TestWallet:
-    """Tests for Wallet model."""
+    """Tests for non-custodial Wallet model."""
 
     def test_wallet_creation(self):
-        """Test creating a Wallet."""
+        """Test creating a non-custodial Wallet."""
         wallet = Wallet(
             wallet_id="wallet_test001",
             agent_id="agent_001",
-            balance=Decimal("1000.00"),
+            mpc_provider="turnkey",
             currency="USDC",
         )
         
         assert wallet.wallet_id == "wallet_test001"
         assert wallet.agent_id == "agent_001"
-        assert wallet.balance == Decimal("1000.00")
+        assert wallet.mpc_provider == "turnkey"
         assert wallet.is_active is True
+        assert wallet.addresses == {}
 
     def test_wallet_new_factory(self):
         """Test Wallet.new() factory method."""
-        wallet = Wallet.new("agent_123", currency="USDT")
+        wallet = Wallet.new("agent_123", mpc_provider="turnkey", currency="USDT")
         
         assert wallet.agent_id == "agent_123"
         assert wallet.wallet_id.startswith("wallet_")
         assert wallet.currency == "USDT"
-        assert wallet.balance == Decimal("0.00")
+        assert wallet.mpc_provider == "turnkey"
+        assert wallet.addresses == {}
 
-    def test_get_token_balance_default_currency(self):
-        """Test getting balance for default currency."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-        )
-        
-        balance = wallet.get_token_balance(TokenType.USDC)
-        assert balance == Decimal("500.00")
-
-    def test_get_token_balance_other_token(self):
-        """Test getting balance for non-default token."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-            token_balances={
-                "USDT": TokenBalance(token=TokenType.USDT, balance=Decimal("250.00")),
-            },
-        )
-        
-        usdt_balance = wallet.get_token_balance(TokenType.USDT)
-        assert usdt_balance == Decimal("250.00")
-
-    def test_get_token_balance_missing_token(self):
-        """Test getting balance for token not in wallet."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-        )
-        
-        pyusd_balance = wallet.get_token_balance(TokenType.PYUSD)
-        assert pyusd_balance == Decimal("0.00")
-
-    def test_set_token_balance_default_currency(self):
-        """Test setting balance for default currency."""
+    def test_wallet_address_management(self):
+        """Test wallet address management."""
         wallet = Wallet.new("agent_001")
-        wallet.set_token_balance(TokenType.USDC, Decimal("1000.00"))
         
-        assert wallet.balance == Decimal("1000.00")
+        # Set address for base chain
+        wallet.set_address("base", "0x1234567890123456789012345678901234567890")
+        
+        assert wallet.get_address("base") == "0x1234567890123456789012345678901234567890"
+        assert wallet.get_address("polygon") is None
 
-    def test_set_token_balance_other_token(self):
-        """Test setting balance for non-default token."""
+    def test_wallet_multiple_addresses(self):
+        """Test wallet with multiple chain addresses."""
         wallet = Wallet.new("agent_001")
-        wallet.set_token_balance(TokenType.USDT, Decimal("750.00"))
         
-        assert "USDT" in wallet.token_balances
-        assert wallet.token_balances["USDT"].balance == Decimal("750.00")
+        wallet.set_address("base", "0x1111111111111111111111111111111111111111")
+        wallet.set_address("polygon", "0x2222222222222222222222222222222222222222")
+        wallet.set_address("ethereum", "0x3333333333333333333333333333333333333333")
+        
+        assert len(wallet.addresses) == 3
+        assert wallet.addresses["base"] == "0x1111111111111111111111111111111111111111"
+        assert wallet.addresses["polygon"] == "0x2222222222222222222222222222222222222222"
+        assert wallet.addresses["ethereum"] == "0x3333333333333333333333333333333333333333"
 
-    def test_add_token_balance(self):
-        """Test adding to token balance."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-        )
+    @pytest.mark.asyncio
+    async def test_get_balance_requires_address(self):
+        """Test get_balance requires wallet address for chain."""
+        wallet = Wallet.new("agent_001")
         
-        wallet.add_token_balance(TokenType.USDC, Decimal("250.00"))
-        assert wallet.balance == Decimal("750.00")
+        # No address set - should raise ValueError
+        with pytest.raises(ValueError, match="No address found"):
+            await wallet.get_balance("base", TokenType.USDC)
 
-    def test_subtract_token_balance_success(self):
-        """Test subtracting from token balance (sufficient funds)."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-        )
+    @pytest.mark.asyncio
+    async def test_get_balance_requires_rpc_client(self):
+        """Test get_balance requires RPC client."""
+        wallet = Wallet.new("agent_001")
+        wallet.set_address("base", "0x1234567890123456789012345678901234567890")
         
-        result = wallet.subtract_token_balance(TokenType.USDC, Decimal("200.00"))
-        
-        assert result is True
-        assert wallet.balance == Decimal("300.00")
-
-    def test_subtract_token_balance_insufficient(self):
-        """Test subtracting from token balance (insufficient funds)."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("100.00"),
-            currency="USDC",
-        )
-        
-        result = wallet.subtract_token_balance(TokenType.USDC, Decimal("200.00"))
-        
-        assert result is False
-        assert wallet.balance == Decimal("100.00")
-
-
-class TestWalletCanSpend:
-    """Tests for wallet spending validation."""
-
-    def test_can_spend_success(self):
-        """Test can_spend returns True for valid transaction."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-            limit_per_tx=Decimal("500.00"),
-            limit_total=Decimal("5000.00"),
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is True
-        assert reason == "OK"
-
-    def test_can_spend_with_fee(self):
-        """Test can_spend accounts for fees."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("100.00"),
-            currency="USDC",
-            limit_per_tx=Decimal("500.00"),
-            limit_total=Decimal("5000.00"),
-        )
-        
-        # 90 + 15 = 105 > 100 balance
-        can_spend, reason = wallet.can_spend(
-            Decimal("90.00"),
-            fee=Decimal("15.00"),
-        )
-        
-        assert can_spend is False
-        assert reason == "insufficient_balance"
-
-    def test_can_spend_inactive_wallet(self):
-        """Test can_spend fails for inactive wallet."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-            is_active=False,
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is False
-        assert reason == "wallet_inactive"
-
-    def test_can_spend_insufficient_balance(self):
-        """Test can_spend fails for insufficient balance."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("50.00"),
-            currency="USDC",
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is False
-        assert reason == "insufficient_balance"
-
-    def test_can_spend_per_transaction_limit(self):
-        """Test can_spend fails when exceeding per-transaction limit."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-            limit_per_tx=Decimal("50.00"),
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is False
-        assert reason == "per_transaction_limit"
-
-    def test_can_spend_total_limit_exceeded(self):
-        """Test can_spend fails when exceeding total limit."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-            limit_per_tx=Decimal("500.00"),
-            limit_total=Decimal("200.00"),
-            spent_total=Decimal("150.00"),
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is False
-        assert reason == "total_limit_exceeded"
-
-    def test_can_spend_exact_limit(self):
-        """Test can_spend succeeds at exact per-tx limit."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-            limit_per_tx=Decimal("100.00"),
-            limit_total=Decimal("1000.00"),
-        )
-        
-        can_spend, reason = wallet.can_spend(Decimal("100.00"))
-        
-        assert can_spend is True
-        assert reason == "OK"
-
-
-class TestWalletRecordSpend:
-    """Tests for recording wallet spending."""
-
-    def test_record_spend_default_currency(self):
-        """Test recording spend for default currency."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-        )
-        
-        wallet.record_spend(Decimal("100.00"))
-        
-        assert wallet.spent_total == Decimal("100.00")
-
-    def test_record_spend_multiple(self):
-        """Test recording multiple spends."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-        )
-        
-        wallet.record_spend(Decimal("50.00"))
-        wallet.record_spend(Decimal("75.00"))
-        wallet.record_spend(Decimal("25.00"))
-        
-        assert wallet.spent_total == Decimal("150.00")
-
-    def test_record_spend_other_token(self):
-        """Test recording spend for non-default token."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            currency="USDC",
-            token_balances={
-                "USDT": TokenBalance(token=TokenType.USDT, balance=Decimal("500.00")),
-            },
-        )
-        
-        wallet.record_spend(Decimal("100.00"), TokenType.USDT)
-        
-        assert wallet.spent_total == Decimal("0.00")  # USDC unchanged
-        assert wallet.token_balances["USDT"].spent_total == Decimal("100.00")
-
-
-class TestWalletHelpers:
-    """Tests for wallet helper methods."""
-
-    def test_remaining_limit(self):
-        """Test remaining_limit calculation."""
-        wallet = Wallet(
-            wallet_id="wallet_001",
-            agent_id="agent_001",
-            balance=Decimal("1000.00"),
-            limit_total=Decimal("500.00"),
-            spent_total=Decimal("200.00"),
-        )
-        
-        remaining = wallet.remaining_limit()
-        assert remaining == Decimal("300.00")
+        # No RPC client - should raise ValueError
+        with pytest.raises(ValueError, match="RPC client required"):
+            await wallet.get_balance("base", TokenType.USDC)
 
     def test_get_limit_per_tx_default(self):
         """Test get_limit_per_tx returns wallet default."""
         wallet = Wallet(
             wallet_id="wallet_001",
             agent_id="agent_001",
-            balance=Decimal("1000.00"),
             limit_per_tx=Decimal("100.00"),
         )
         
@@ -366,15 +108,15 @@ class TestWalletHelpers:
 
     def test_get_limit_per_tx_token_override(self):
         """Test get_limit_per_tx uses token-specific limit when set."""
+        from sardis_v2_core.wallets import TokenLimit
+        
         wallet = Wallet(
             wallet_id="wallet_001",
             agent_id="agent_001",
-            balance=Decimal("1000.00"),
             limit_per_tx=Decimal("100.00"),
-            token_balances={
-                "USDT": TokenBalance(
+            token_limits={
+                "USDT": TokenLimit(
                     token=TokenType.USDT,
-                    balance=Decimal("500.00"),
                     limit_per_tx=Decimal("50.00"),
                 ),
             },
@@ -383,21 +125,35 @@ class TestWalletHelpers:
         limit = wallet.get_limit_per_tx(TokenType.USDT)
         assert limit == Decimal("50.00")
 
-    def test_total_balance_usd(self):
-        """Test total_balance_usd sums all balances."""
+    def test_get_limit_total_default(self):
+        """Test get_limit_total returns wallet default."""
         wallet = Wallet(
             wallet_id="wallet_001",
             agent_id="agent_001",
-            balance=Decimal("500.00"),
-            currency="USDC",
-            token_balances={
-                "USDT": TokenBalance(token=TokenType.USDT, balance=Decimal("300.00")),
-                "PYUSD": TokenBalance(token=TokenType.PYUSD, balance=Decimal("200.00")),
+            limit_total=Decimal("1000.00"),
+        )
+        
+        limit = wallet.get_limit_total()
+        assert limit == Decimal("1000.00")
+
+    def test_get_limit_total_token_override(self):
+        """Test get_limit_total uses token-specific limit when set."""
+        from sardis_v2_core.wallets import TokenLimit
+        
+        wallet = Wallet(
+            wallet_id="wallet_001",
+            agent_id="agent_001",
+            limit_total=Decimal("1000.00"),
+            token_limits={
+                "USDT": TokenLimit(
+                    token=TokenType.USDT,
+                    limit_total=Decimal("500.00"),
+                ),
             },
         )
         
-        total = wallet.total_balance_usd()
-        assert total == Decimal("1000.00")
+        limit = wallet.get_limit_total(TokenType.USDT)
+        assert limit == Decimal("500.00")
 
 
 class TestWalletSnapshot:
@@ -414,8 +170,3 @@ class TestWalletSnapshot:
         assert snapshot.balances["USDC"] == Decimal("100.00")
         assert snapshot.balances["USDT"] == Decimal("50.00")
         assert snapshot.captured_at is not None
-
-
-
-
-

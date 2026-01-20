@@ -25,7 +25,7 @@ class PaymentsResource(BaseResource):
         Returns:
             ExecutePaymentResponse with transaction details
         """
-        response = await self._post("/api/v2/mandates/execute", {"mandate": mandate})
+        response = await self._post("mandates/execute", {"mandate": mandate})
         return ExecutePaymentResponse.model_validate(response)
     
     async def execute_ap2(

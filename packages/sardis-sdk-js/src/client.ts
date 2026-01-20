@@ -10,6 +10,7 @@ import { WebhooksResource } from './resources/webhooks.js';
 import { MarketplaceResource } from './resources/marketplace.js';
 import { TransactionsResource } from './resources/transactions.js';
 import { LedgerResource } from './resources/ledger.js';
+import { WalletsResource } from './resources/wallets.js';
 import type { SardisClientOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.sardis.network';
@@ -59,6 +60,8 @@ export class SardisClient {
   public readonly transactions: TransactionsResource;
   /** Ledger query operations */
   public readonly ledger: LedgerResource;
+  /** Wallet operations (non-custodial) */
+  public readonly wallets: WalletsResource;
 
   constructor(options: SardisClientOptions) {
     if (!options.apiKey) {
@@ -84,6 +87,7 @@ export class SardisClient {
     this.marketplace = new MarketplaceResource(this);
     this.transactions = new TransactionsResource(this);
     this.ledger = new LedgerResource(this);
+    this.wallets = new WalletsResource(this);
   }
 
   /**

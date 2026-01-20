@@ -506,6 +506,101 @@ class TestCreateDefaultPolicy:
             assert "total" in limits
 
 
+class TestSpendingPolicyAsyncEvaluate:
+    """Tests for async evaluate() method with on-chain balance checks."""
+
+    @pytest.mark.asyncio
+    async def test_evaluate_success(self):
+        """Test evaluate() returns True for valid payment."""
+        from sardis_v2_core.wallets import Wallet
+        from unittest.mock import AsyncMock
+        
+        wallet = Wallet.new("agent_001")
+        wallet.set_address("base", "0x1234567890123456789012345678901234567890")
+        
+        # Mock RPC client
+        mock_rpc = AsyncMock()
+        mock_rpc._call = AsyncMock(return_value="0x0000000000000000000000000000000000000000000000000000000005f5e100")  # 100 USDC in hex
+        
+        policy = SpendingPolicy(
+            agent_id="agent_001",
+            limit_per_tx=Decimal("500.00"),
+            limit_total=Decimal("10000.00"),
+        )
+        
+        is_valid, reason = await policy.evaluate(
+            wallet=wallet,
+            amount=Decimal("100.00"),
+            fee=Decimal("1.00"),
+            chain="base",
+            token=TokenType.USDC,
+            rpc_client=mock_rpc,
+        )
+        
+        assert is_valid is True
+        assert reason == "OK"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_insufficient_balance(self):
+        """Test evaluate() fails when on-chain balance is insufficient."""
+        from sardis_v2_core.wallets import Wallet
+        from unittest.mock import AsyncMock
+        
+        wallet = Wallet.new("agent_001")
+        wallet.set_address("base", "0x1234567890123456789012345678901234567890")
+        
+        # Mock RPC client returning low balance
+        mock_rpc = AsyncMock()
+        mock_rpc._call = AsyncMock(return_value="0x00000000000000000000000000000000000000000000000000000000000f4240")  # 1 USDC in hex
+        
+        policy = SpendingPolicy(
+            agent_id="agent_001",
+            limit_per_tx=Decimal("500.00"),
+            limit_total=Decimal("10000.00"),
+        )
+        
+        is_valid, reason = await policy.evaluate(
+            wallet=wallet,
+            amount=Decimal("100.00"),
+            fee=Decimal("1.00"),
+            chain="base",
+            token=TokenType.USDC,
+            rpc_client=mock_rpc,
+        )
+        
+        assert is_valid is False
+        assert reason == "insufficient_balance"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_without_rpc_client(self):
+        """Test evaluate() works without RPC client (skips balance check)."""
+        from sardis_v2_core.wallets import Wallet
+        
+        wallet = Wallet.new("agent_001")
+        
+        policy = SpendingPolicy(
+            agent_id="agent_001",
+            limit_per_tx=Decimal("500.00"),
+            limit_total=Decimal("10000.00"),
+        )
+        
+        # Should pass policy checks but skip balance check
+        is_valid, reason = await policy.evaluate(
+            wallet=wallet,
+            amount=Decimal("100.00"),
+            fee=Decimal("1.00"),
+            chain="base",
+            token=TokenType.USDC,
+            rpc_client=None,  # No RPC client
+        )
+        
+        # Policy checks pass, balance check skipped
+        assert is_valid is True
+        assert reason == "OK"
+
+
+
+
 
 
 

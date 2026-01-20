@@ -28,3 +28,7 @@ class BaseResource:
     async def _delete(self, path: str) -> dict[str, Any]:
         """Make a DELETE request."""
         return await self._client._request("DELETE", path)
+
+
+# Alias
+Resource = BaseResource

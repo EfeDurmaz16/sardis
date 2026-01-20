@@ -19,13 +19,13 @@ class WalletRepository:
     async def create(
         self,
         agent_id: str,
+        mpc_provider: str = "turnkey",
         currency: str = "USDC",
-        balance: Decimal = Decimal("0.00"),
         limit_per_tx: Decimal = Decimal("100.00"),
         limit_total: Decimal = Decimal("1000.00"),
     ) -> Wallet:
-        wallet = Wallet.new(agent_id, currency=currency)
-        wallet.balance = balance
+        """Create a new non-custodial wallet."""
+        wallet = Wallet.new(agent_id, mpc_provider=mpc_provider, currency=currency)
         wallet.limit_per_tx = limit_per_tx
         wallet.limit_total = limit_total
         self._wallets[wallet.wallet_id] = wallet
@@ -57,23 +57,37 @@ class WalletRepository:
     async def update(
         self,
         wallet_id: str,
-        balance: Optional[Decimal] = None,
         limit_per_tx: Optional[Decimal] = None,
         limit_total: Optional[Decimal] = None,
         is_active: Optional[bool] = None,
+        addresses: Optional[dict[str, str]] = None,
     ) -> Optional[Wallet]:
+        """Update wallet (non-custodial - no balance updates)."""
         wallet = self._wallets.get(wallet_id)
         if not wallet:
             return None
-        if balance is not None:
-            wallet.balance = balance
         if limit_per_tx is not None:
             wallet.limit_per_tx = limit_per_tx
         if limit_total is not None:
             wallet.limit_total = limit_total
         if is_active is not None:
             wallet.is_active = is_active
+        if addresses is not None:
+            wallet.addresses.update(addresses)
         wallet.updated_at = datetime.now(timezone.utc)
+        return wallet
+    
+    async def set_address(
+        self,
+        wallet_id: str,
+        chain: str,
+        address: str,
+    ) -> Optional[Wallet]:
+        """Set wallet address for a chain."""
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.set_address(chain, address)
         return wallet
 
     async def delete(self, wallet_id: str) -> bool:
@@ -82,30 +96,8 @@ class WalletRepository:
             return True
         return False
 
-    async def deposit(self, wallet_id: str, amount: Decimal, token: Optional[str] = None) -> Optional[Wallet]:
-        wallet = self._wallets.get(wallet_id)
-        if not wallet:
-            return None
-        if token and token != wallet.currency:
-            wallet.add_token_balance(TokenType(token), amount)
-        else:
-            wallet.balance += amount
-        wallet.updated_at = datetime.now(timezone.utc)
-        return wallet
-
-    async def withdraw(self, wallet_id: str, amount: Decimal, token: Optional[str] = None) -> Optional[Wallet]:
-        wallet = self._wallets.get(wallet_id)
-        if not wallet:
-            return None
-        if token and token != wallet.currency:
-            if not wallet.subtract_token_balance(TokenType(token), amount):
-                return None
-        else:
-            if wallet.balance < amount:
-                return None
-            wallet.balance -= amount
-        wallet.updated_at = datetime.now(timezone.utc)
-        return wallet
+    # Note: deposit() and withdraw() removed - non-custodial wallets don't hold funds
+    # Balances are managed on-chain, not in our database
 
     async def set_limits(
         self,

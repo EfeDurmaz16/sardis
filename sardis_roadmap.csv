@@ -1,0 +1,11 @@
+﻿Milestone,Başlangıç,Bitiş,Süre (Hafta),Öncelik,Bağımlılık
+MPC Integration Complete,10 Ocak 2026,24 Ocak 2026,2,KRİTİK,-
+Real Chain Execution,13 Ocak 2026,27 Ocak 2026,2,KRİTİK,MPC Integration
+SDK Agent Operations,20 Ocak 2026,3 Şubat 2026,2,YÜKSEK,-
+QNB Integration,27 Ocak 2026,17 Şubat 2026,3,YÜKSEK,-
+Virtual Cards (Lithic),3 Şubat 2026,17 Şubat 2026,2,YÜKSEK,-
+Security Audit,10 Şubat 2026,3 Mart 2026,3,KRİTİK,Real Chain Execution
+Smart Contract Audit,17 Şubat 2026,3 Mart 2026,2,KRİTİK,-
+Legacy Code Cleanup,24 Şubat 2026,10 Mart 2026,2,ORTA,-
+Production Monitoring,3 Mart 2026,17 Mart 2026,2,YÜKSEK,-
+Pilot Launch Ready,10 Mart 2026,17 Mart 2026,1,KRİTİK,Tüm kritik görevler
