@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,17 +73,28 @@ function DarkModeToggle({ isDark, toggle }) {
   return (
     <button
       onClick={toggle}
-      className="w-10 h-10 border border-border hover:border-[var(--sardis-orange)] transition-colors flex items-center justify-center font-mono text-xs font-bold"
+      className="w-10 h-10 border border-border hover:border-[var(--sardis-orange)] transition-colors flex items-center justify-center"
       aria-label="Toggle dark mode"
     >
-      {isDark ? "LT" : "DK"}
+      {isDark ? (
+        <Sun className="w-5 h-5 text-[var(--sardis-orange)]" />
+      ) : (
+        <Moon className="w-5 h-5 text-foreground" />
+      )}
     </button>
   );
 }
 
-// Icon Component for isometric PNGs
+// Icon Component for isometric PNGs with contrast fix
 function IsometricIcon({ src, alt = "", className = "" }) {
-  return <img src={src} alt={alt} className={cn("w-8 h-8 object-contain", className)} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={cn("w-8 h-8 object-contain drop-shadow-sm", className)}
+      style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.3))" }}
+    />
+  );
 }
 
 function App() {
@@ -144,7 +157,9 @@ function App() {
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
               LIVE ON TESTNET
             </Badge>
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none">Docs</Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
+              <Link to="/docs">Docs</Link>
+            </Button>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none">GitHub</Button>
             <DarkModeToggle isDark={isDark} toggle={toggleDarkMode} />
             <Button className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-medium rounded-none">
@@ -184,8 +199,8 @@ function App() {
                   Get Early Access
                   <span className="ml-2">→</span>
                 </Button>
-                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-none border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)]">
-                  View Docs
+                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-none border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)]" asChild>
+                  <Link to="/docs">View Docs</Link>
                 </Button>
               </div>
             </motion.div>
