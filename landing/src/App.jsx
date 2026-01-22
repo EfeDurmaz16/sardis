@@ -16,7 +16,10 @@ import {
   IdentificationCard,
   Bank,
   Cpu,
-  ArrowSquareOut
+  ArrowSquareOut,
+  Copy,
+  Check,
+  Terminal
 } from "@phosphor-icons/react";
 import { IconContext } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import SardisPlayground from "./components/SardisPlayground";
+import WaitlistForm from "./components/WaitlistForm";
 
 // Animation Variants
 const fadeInUp = {
@@ -40,6 +45,34 @@ const staggerContainer = {
     }
   }
 };
+
+// Copy Command Component
+function CopyCommand({ command }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(command);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      onClick={handleCopy}
+      className="group cursor-pointer flex items-center gap-3 px-5 py-3 rounded-xl bg-black/60 border border-white/10 hover:border-indigo-500/50 transition-all duration-300 font-mono text-sm backdrop-blur-md"
+    >
+      <Terminal weight="bold" className="text-indigo-400" size={18} />
+      <code className="text-zinc-300 group-hover:text-white transition-colors">{command}</code>
+      <div className="ml-2 p-1.5 rounded-md bg-white/5 group-hover:bg-indigo-500/20 transition-colors">
+        {copied ? (
+          <Check weight="bold" className="text-emerald-400" size={14} />
+        ) : (
+          <Copy weight="bold" className="text-zinc-400 group-hover:text-indigo-400" size={14} />
+        )}
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [scrolled, setScrolled] = useState(false);
@@ -113,22 +146,25 @@ function App() {
               </motion.div>
 
               <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-display font-bold leading-tight tracking-tight mb-8">
-                The Payment Execution Layer for <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">AI Agents</span>
+                The Payment OS for the <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Agent Economy</span>
               </motion.h1>
 
               <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-                We give AI agents non-custodial wallets and spending policies so they can finally execute transactions, not just plan them.
+                Prevent Financial Hallucinations. Give your agents non-custodial MPC wallets with natural language spending limits.
               </motion.p>
 
-              <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-300 hover:scale-105">
-                  Start Building
-                  <ArrowRight weight="bold" className="ml-2" />
-                </Button>
-                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-lg">
-                  <Stack className="mr-2" />
-                  View Architecture
-                </Button>
+              <motion.div variants={fadeInUp} className="flex flex-col items-center gap-4">
+                <CopyCommand command="npx @sardis/mcp-server start" />
+                <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
+                  <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-300 hover:scale-105">
+                    Get Early Access
+                    <ArrowRight weight="bold" className="ml-2" />
+                  </Button>
+                  <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-lg">
+                    <Stack className="mr-2" />
+                    View Docs
+                  </Button>
+                </div>
               </motion.div>
             </motion.div>
           </div>
@@ -205,6 +241,20 @@ function App() {
                 </div>
               </motion.div>
             </div>
+
+            {/* Playground Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mt-24 max-w-5xl mx-auto"
+            >
+              <div className="text-center mb-10">
+                <Badge variant="outline" className="mb-4 text-indigo-400 border-indigo-400/20">INTERACTIVE DEMO</Badge>
+                <h3 className="text-3xl font-bold font-display">Experience the Spending Firewall</h3>
+              </div>
+              <SardisPlayground />
+            </motion.div>
           </div>
         </section>
 
@@ -351,13 +401,11 @@ function App() {
         {/* CTA Section */}
         <section className="py-24 text-center">
           <div className="container mx-auto px-6">
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Start building autonomous commerce</h2>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Join the Alpha Design Partner Program</h2>
             <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              Join the developers building the first generation of agents that can effectively participate in the economy.
+              Be among the first to give your agents financial autonomy. Early partners get hands-on support and priority access.
             </p>
-            <Button size="lg" className="h-14 px-10 text-lg rounded-full bg-white text-black hover:bg-zinc-200 shadow-xl shadow-white/10 transition-all hover:scale-105">
-              Request API Access
-            </Button>
+            <WaitlistForm />
           </div>
         </section>
 
