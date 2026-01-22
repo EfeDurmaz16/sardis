@@ -19,6 +19,9 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -43,7 +46,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "typescript": "^5.4.0"
+    "@vitest/coverage-v8": "^1.2.0",
+    "msw": "^2.1.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.2.0"
   },
   "engines": {
     "node": ">=18"
