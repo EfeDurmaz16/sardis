@@ -1,68 +1,25 @@
-Copyright (c) 2025 Efe Baran Durmaz.
-All rights reserved.
+# Sardis Open Core License
 
-This software, its source code, protocol definitions, API specifications, architectural designs, data models, transaction semantics, documentation, and all related intellectual property (collectively, the “Software”) are the exclusive property of the copyright holder.
+## 1. Open Source Components (MIT License)
 
-The Software is provided for viewing and evaluation purposes only.
-No rights are granted to use, copy, modify, merge, publish, distribute, sublicense, or sell the Software, in whole or in part.
+The following components of Sardis are licensed under the **MIT License**:
+- `packages/sardis-sdk/`
+- `packages/sardis-mcp-server/`
+- `packages/sardis-cli/`
 
-1. Ownership and Intellectual Property
+---
 
-All rights, title, and interest in and to the Software are reserved by the copyright holder.
-The visibility of the source code does not grant any license or permission to use it.
+## 2. Proprietary Core Components
 
-The following are explicitly protected and may not be used, replicated, or reimplemented:
-	•	Protocol logic and flow
-	•	Agent wallet architecture
-	•	Spending policy rails
-	•	Ledger design and transaction formats
-	•	API endpoints, schemas, and abstractions
-	•	Semantic rules and execution model
-	•	Any design, naming convention, or conceptual structure unique to Sardis
+The following core infrastructure components remain **Proprietary** and are the exclusive property of Efe Baran Durmaz:
+- `packages/sardis-core/` (Internal Policy Engine logic, Database schemas)
+- `packages/sardis-chain/` (MPC Signing Node management, Key threshold logic)
+- `packages/sardis-compliance/` (Direct integration logic for Persona/Elliptic)
+- `packages/sardis-api/` (Centralized API routing and orchestration)
 
-2. Prohibited Activities
+---
 
-Without explicit written consent, the following actions are strictly prohibited:
-	•	Commercial use of any kind
-	•	Creating derivative works
-	•	Modifying or adapting any part of the Software
-	•	Developing competing or functionally similar protocols, services, or SDKs based on this Software
-	•	Redistributing, sublicensing, or publishing the Software
-	•	Reverse engineering or attempting to reconstruct underlying mechanisms
-	•	Using any part of the Software to train models, agents, or automated systems
+## 3. Why Open Core?
+We believe the **Agent Economy** needs an open standard. By open-sourcing our SDKs and MCP connectors, we allow developers to integrate Sardis with any agent framework securely. We protect our core infrastructure to ensure the long-term sustainability and security of the protocol.
 
-3. Forbidden Removal of Notices
-
-Removal, alteration, or modification of license notices, copyright statements, file headers, or documentation references is prohibited.
-Any attempt to remove or replace these notices is invalid and does not affect ownership.
-
-4. Confidentiality
-
-The Software contains proprietary and confidential information.
-Any unauthorized disclosure or reuse constitutes a violation of intellectual property law.
-
-5. No Grant of Rights
-
-No implicit, explicit, or statutory rights are granted under this license.
-Access to the Software does not constitute a transfer of any rights.
-
-6. Legal Enforcement
-
-Unauthorized use may result in:
-	•	DMCA takedown actions
-	•	Removal of infringing repositories, publications, and distributions
-	•	Civil liability including damages and legal fees
-	•	Permanent ban from using the Software
-
-7. License Termination
-
-Any breach of this license terminates all rights immediately.
-Continued use after termination constitutes willful infringement.
-
-8. Contact
-
-To request written permission for specific use cases, contact:
-
-Efe Baran Durmaz
-Founder, Sardis Technologies
-Email: founder@aspendos.net
+© 2026 Efe Baran Durmaz. All rights reserved.
