@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Demo scenarios showing the "aha" moments
 const DEMO_SCENARIOS = [
-    { id: 'saas', label: '✓ OpenAI ($20)', expected: 'approved', color: 'emerald' },
-    { id: 'giftcard', label: '✕ Amazon ($500)', expected: 'blocked', color: 'red' },
-    { id: 'github', label: '✓ GitHub ($19)', expected: 'approved', color: 'emerald' },
-    { id: 'crypto', label: '✕ Coinbase ($200)', expected: 'blocked', color: 'red' },
+    { id: 'saas', label: 'OpenAI ($20)', expected: 'approved', status: 'ALLOW' },
+    { id: 'giftcard', label: 'Amazon ($500)', expected: 'blocked', status: 'BLOCK' },
+    { id: 'github', label: 'GitHub ($19)', expected: 'approved', status: 'ALLOW' },
+    { id: 'crypto', label: 'Coinbase ($200)', expected: 'blocked', status: 'BLOCK' },
 ];
 
 // Generate mock virtual card
@@ -92,35 +92,35 @@ const SardisPlayground = () => {
 
         if (details.approved) {
             // APPROVED FLOW
-            setDashboardLogs(prev => [...prev, { text: '✅ POLICY: ALLOWED', color: 'text-emerald-400 font-bold text-base' }]);
+            setDashboardLogs(prev => [...prev, { text: 'POLICY: ALLOWED', color: 'text-emerald-500 font-bold text-base' }]);
             await delay(300);
-            setDashboardLogs(prev => [...prev, { text: 'MPC Signing... ✍️ Signed', color: 'text-emerald-300' }]);
+            setDashboardLogs(prev => [...prev, { text: 'MPC Signing... Signed', color: 'text-emerald-400' }]);
             await delay(400);
 
             const card = generateCard();
             setVirtualCard(card);
 
-            setDashboardLogs(prev => [...prev, { text: '💳 Virtual Card Issued', color: 'text-amber-400' }]);
+            setDashboardLogs(prev => [...prev, { text: 'Virtual Card Issued', color: 'text-[var(--sardis-orange)]' }]);
 
             setStatus('success');
             const txId = `tx_${Math.random().toString(36).substring(2, 10)}`;
             setTerminalLogs(prev => [...prev,
                 { type: 'system', text: 'Payment approved.' },
                 { type: 'card', text: `Card: ${card.number}` },
-                { type: 'success', text: `✓ Transaction ID: ${txId}` }
+                { type: 'success', text: `Transaction ID: ${txId}` }
             ]);
         } else {
             // BLOCKED FLOW
-            setDashboardLogs(prev => [...prev, { text: '❌ POLICY: BLOCKED', color: 'text-red-400 font-bold text-base' }]);
+            setDashboardLogs(prev => [...prev, { text: 'POLICY: BLOCKED', color: 'text-red-500 font-bold text-base' }]);
             await delay(200);
-            setDashboardLogs(prev => [...prev, { text: `Reason: ${details.reason}`, color: 'text-red-300' }]);
+            setDashboardLogs(prev => [...prev, { text: `Reason: ${details.reason}`, color: 'text-red-400' }]);
             await delay(200);
-            setDashboardLogs(prev => [...prev, { text: '🛡️ Financial Hallucination PREVENTED', color: 'text-amber-400 font-semibold' }]);
+            setDashboardLogs(prev => [...prev, { text: 'Financial Hallucination PREVENTED', color: 'text-[var(--sardis-orange)] font-semibold' }]);
 
             setStatus('error');
             setTerminalLogs(prev => [...prev,
                 { type: 'error', text: 'Error 403: Policy Violation' },
-                { type: 'prevention', text: '🛡️ Financial Hallucination PREVENTED' }
+                { type: 'prevention', text: 'Financial Hallucination PREVENTED' }
             ]);
         }
     };
@@ -128,35 +128,35 @@ const SardisPlayground = () => {
     const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
     return (
-        <div className="bg-zinc-950 rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative group">
+        <div className="bg-card border border-border overflow-hidden relative group">
             {/* Header Bar */}
-            <div className="bg-zinc-900/80 px-4 py-3 border-b border-white/5 flex items-center justify-between">
+            <div className="bg-muted px-4 py-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                        <div className="w-3 h-3 rounded-full bg-green-500/70" />
+                        <div className="w-3 h-3 bg-red-500" />
+                        <div className="w-3 h-3 bg-yellow-500" />
+                        <div className="w-3 h-3 bg-emerald-500" />
                     </div>
-                    <span className="text-xs text-zinc-500 font-mono">sardis-playground.local</span>
+                    <span className="text-xs text-muted-foreground font-mono">sardis-playground.local</span>
                 </div>
                 <button
                     onClick={resetSimulation}
-                    className="text-xs text-zinc-500 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                    className="text-xs text-muted-foreground hover:text-foreground px-3 py-1 border border-border hover:border-[var(--sardis-orange)] transition-colors font-mono"
                 >
-                    Reset
+                    RESET
                 </button>
             </div>
 
             <div className="p-6">
                 {/* Policy Display */}
-                <div className="mb-4 px-4 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-sm flex items-center justify-between">
+                <div className="mb-4 px-4 py-3 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-sm flex items-center justify-between">
                     <div>
-                        <span className="text-indigo-400 font-semibold">Active Policy:</span>
-                        <span className="text-zinc-300 ml-2 font-mono text-xs">Allow SaaS & DevTools only. Max $100/tx.</span>
+                        <span className="text-[var(--sardis-orange)] font-semibold font-mono">ACTIVE POLICY:</span>
+                        <span className="text-foreground ml-2 font-mono text-xs">Allow SaaS & DevTools only. Max $100/tx.</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-emerald-400 text-xs">Live</span>
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-emerald-500 animate-pulse" />
+                        <span className="text-emerald-500 text-xs font-mono font-bold">LIVE</span>
                     </div>
                 </div>
 
@@ -167,17 +167,17 @@ const SardisPlayground = () => {
                             key={scenario.id}
                             onClick={() => runSimulation(scenario.id)}
                             disabled={status === 'processing'}
-                            className={`px-4 py-2 rounded-lg transition-all text-sm font-medium disabled:opacity-50 active:scale-95 ${
+                            className={`px-4 py-2 transition-all text-sm font-mono font-medium disabled:opacity-50 active:scale-95 border ${
                                 activeScenario === scenario.id
                                     ? scenario.expected === 'approved'
-                                        ? 'bg-emerald-600 text-white border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                                        : 'bg-red-600 text-white border border-red-400/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                                        ? 'bg-emerald-600 text-white border-emerald-500'
+                                        : 'bg-red-600 text-white border-red-500'
                                     : scenario.expected === 'approved'
-                                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/40'
-                                        : 'bg-zinc-800 text-zinc-400 border border-white/10 hover:bg-zinc-700 hover:text-white'
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500'
+                                        : 'bg-card text-muted-foreground border-border hover:border-[var(--sardis-orange)] hover:text-foreground'
                             }`}
                         >
-                            {scenario.label}
+                            [{scenario.status}] {scenario.label}
                         </button>
                     ))}
                 </div>
@@ -185,47 +185,49 @@ const SardisPlayground = () => {
                 {/* Panels Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
                     {/* Left Panel: Agent Terminal */}
-                    <div className="bg-black/80 rounded-xl border border-white/5 overflow-hidden">
-                        <div className="px-4 py-2 bg-zinc-900/50 border-b border-white/5 flex justify-between items-center">
-                            <span className="text-zinc-600 text-[10px] uppercase tracking-widest">Agent Terminal (MCP)</span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] ${
-                                status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-emerald-500/20 text-emerald-400'
+                    <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border overflow-hidden">
+                        <div className="px-4 py-2 bg-[#1f1e1c] border-b border-border flex justify-between items-center">
+                            <span className="text-[var(--sardis-canvas)]/50 text-[10px] uppercase tracking-widest">Agent Terminal (MCP)</span>
+                            <span className={`px-2 py-0.5 text-[9px] font-bold border ${
+                                status === 'processing'
+                                    ? 'border-yellow-500/50 text-yellow-400'
+                                    : 'border-emerald-500/50 text-emerald-400'
                             }`}>
                                 {status === 'processing' ? 'PROCESSING' : 'READY'}
                             </span>
                         </div>
-                        <div ref={terminalRef} className="p-4 h-56 overflow-y-auto">
+                        <div ref={terminalRef} className="p-4 h-56 overflow-y-auto text-[var(--sardis-canvas)]">
                             {terminalLogs.map((log, i) => (
                                 <div key={i} className={`mb-1.5 leading-relaxed ${
-                                    log.type === 'user' ? 'text-indigo-400' :
+                                    log.type === 'user' ? 'text-[var(--sardis-orange)]' :
                                     log.type === 'error' ? 'text-red-400' :
                                     log.type === 'success' ? 'text-emerald-400 font-semibold' :
-                                    log.type === 'card' ? 'text-amber-400' :
-                                    log.type === 'prevention' ? 'text-amber-400 font-semibold' :
-                                    log.type === 'agent' ? 'text-purple-400' : 'text-zinc-400'
+                                    log.type === 'card' ? 'text-[var(--sardis-orange)]' :
+                                    log.type === 'prevention' ? 'text-[var(--sardis-orange)] font-semibold' :
+                                    log.type === 'agent' ? 'text-purple-400' : 'text-[var(--sardis-canvas)]/60'
                                 }`}>
                                     <span className="opacity-50 select-none">{log.type === 'user' ? '>' : '$'}</span> {log.text}
                                 </div>
                             ))}
-                            {status === 'processing' && <div className="animate-pulse text-indigo-400/50 mt-1">█</div>}
+                            {status === 'processing' && <div className="animate-pulse text-[var(--sardis-orange)]/50 mt-1">█</div>}
                         </div>
                     </div>
 
                     {/* Right Panel: Policy Engine */}
-                    <div className="bg-zinc-900/50 rounded-xl border border-white/5 overflow-hidden">
-                        <div className="px-4 py-2 bg-zinc-800/50 border-b border-white/5">
-                            <span className="text-zinc-600 text-[10px] uppercase tracking-widest">SARDIS POLICY ENGINE (CFO)</span>
+                    <div className="bg-card border border-border overflow-hidden">
+                        <div className="px-4 py-2 bg-muted border-b border-border">
+                            <span className="text-muted-foreground text-[10px] uppercase tracking-widest font-mono">SARDIS POLICY ENGINE (CFO)</span>
                         </div>
                         <div ref={dashboardRef} className="p-4 h-40 overflow-y-auto">
-                            {dashboardLogs.length === 0 && <div className="text-zinc-700 italic">Awaiting transaction request...</div>}
+                            {dashboardLogs.length === 0 && <div className="text-muted-foreground italic">Awaiting transaction request...</div>}
                             {dashboardLogs.map((log, i) => (
                                 <motion.div
                                     initial={{ opacity: 0, x: -5 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     key={i}
-                                    className={`mb-1.5 leading-relaxed ${log.color || 'text-zinc-300'}`}
+                                    className={`mb-1.5 leading-relaxed ${log.color || 'text-foreground'}`}
                                 >
-                                    <span className="text-zinc-700 text-[10px] select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span> {log.text}
+                                    <span className="text-muted-foreground text-[10px] select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span> {log.text}
                                 </motion.div>
                             ))}
                         </div>
@@ -237,11 +239,11 @@ const SardisPlayground = () => {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
-                                    className="mx-4 mb-4 p-3 rounded-lg bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30"
+                                    className="mx-4 mb-4 p-3 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30"
                                 >
-                                    <div className="text-[10px] uppercase tracking-wider text-indigo-400 mb-1">Virtual Card</div>
-                                    <div className="font-mono text-white">{virtualCard.number}</div>
-                                    <div className="flex gap-4 text-xs text-zinc-400 mt-1">
+                                    <div className="text-[10px] uppercase tracking-wider text-[var(--sardis-orange)] mb-1 font-bold">Virtual Card</div>
+                                    <div className="font-mono text-foreground">{virtualCard.number}</div>
+                                    <div className="flex gap-4 text-xs text-muted-foreground mt-1">
                                         <span>CVV: {virtualCard.cvv}</span>
                                         <span>Exp: {virtualCard.expiry}</span>
                                     </div>
@@ -253,13 +255,10 @@ const SardisPlayground = () => {
             </div>
 
             {/* Footer */}
-            <div className="bg-black/30 px-4 py-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-600">
+            <div className="bg-muted px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground font-mono">
                 <span>Powered by MPC • Non-Custodial • Multi-Chain</span>
-                <span>Try the demo above ↑</span>
+                <span>Try the demo above</span>
             </div>
-
-            {/* Background Glow */}
-            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-700" />
         </div>
     );
 };

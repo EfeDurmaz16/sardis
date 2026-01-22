@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ArrowRight, Spinner } from '@phosphor-icons/react';
 
 const WaitlistForm = () => {
     const [email, setEmail] = useState('');
@@ -52,13 +51,13 @@ const WaitlistForm = () => {
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center p-6 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+                className="text-center p-6 bg-emerald-500/10 border border-emerald-500/30"
             >
-                <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check weight="bold" className="text-emerald-400" size={24} />
+                <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 font-mono font-bold text-emerald-500">
+                    OK
                 </div>
-                <h3 className="text-lg font-bold text-emerald-400 mb-2">You're on the list!</h3>
-                <p className="text-zinc-400 text-sm">
+                <h3 className="text-lg font-bold text-emerald-500 mb-2 font-display">You're on the list</h3>
+                <p className="text-muted-foreground text-sm font-mono">
                     You've been added to the Alpha Design Partner program waitlist. We'll reach out soon with early access.
                 </p>
             </motion.div>
@@ -73,7 +72,7 @@ const WaitlistForm = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
-                    className="w-full h-12 px-4 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                    className="w-full h-12 px-4 bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[var(--sardis-orange)] transition-colors font-mono"
                     disabled={status === 'loading'}
                 />
                 <AnimatePresence>
@@ -82,7 +81,7 @@ const WaitlistForm = () => {
                             initial={{ opacity: 0, y: -5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
-                            className="absolute -bottom-6 left-0 text-xs text-red-400"
+                            className="absolute -bottom-6 left-0 text-xs text-red-500 font-mono"
                         >
                             {errorMessage}
                         </motion.p>
@@ -92,17 +91,17 @@ const WaitlistForm = () => {
             <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="h-12 px-6 rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                className="h-12 px-6 bg-[var(--sardis-orange)] text-white font-semibold hover:bg-[var(--sardis-orange)]/90 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 font-mono"
             >
                 {status === 'loading' ? (
                     <>
-                        <Spinner className="animate-spin" size={18} />
-                        Joining...
+                        <span className="animate-pulse">...</span>
+                        JOINING
                     </>
                 ) : (
                     <>
-                        Join Waitlist
-                        <ArrowRight weight="bold" size={16} />
+                        JOIN WAITLIST
+                        <span>→</span>
                     </>
                 )}
             </button>
