@@ -229,6 +229,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     wallet_repo = WalletRepository(dsn=database_url if use_postgres else "memory://")
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
+        chain_executor=chain_exec,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
@@ -279,14 +280,21 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     @app.get("/health", tags=["health"])
     async def health_check():
         """Health check endpoint with component status."""
-        # TODO: Add actual DB ping when PostgreSQL is wired
         db_status = "connected"
         try:
-            # Basic check - in future, ping the database
-            pass
-        except Exception:
+            if use_postgres:
+                # Ping PostgreSQL database
+                import asyncpg
+                conn = await asyncpg.connect(database_url)
+                await conn.execute("SELECT 1")
+                await conn.close()
+            else:
+                # In-memory mode is always "connected"
+                db_status = "in_memory"
+        except Exception as e:
+            logger.warning(f"Database health check failed: {e}")
             db_status = "disconnected"
-        
+
         return {
             "status": "healthy",
             "environment": settings.environment,

@@ -29,7 +29,7 @@ class Wallet(SardisModel):
     - Reads balances from chain (on-demand)
     """
     
-    wallet_id: str = Field(alias="id")
+    wallet_id: str
     agent_id: str
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
     addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping

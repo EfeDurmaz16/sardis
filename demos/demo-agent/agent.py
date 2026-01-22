@@ -58,10 +58,16 @@ class SardisAgent:
                 console.print("[yellow]Creating demo wallet...[/yellow]")
                 wallet = await self._client.wallets.create(
                     agent_id=self.agent_id,
-                    chain="base_sepolia",
-                    metadata={"demo": True, "created_at": datetime.now(timezone.utc).isoformat()},
+                    mpc_provider="turnkey",
+                    currency="USDC",
                 )
-                self.wallet_id = wallet.id
+                self.wallet_id = wallet.wallet_id
+                # Set address for base_sepolia chain
+                await self._client.wallets.set_address(
+                    wallet_id=self.wallet_id,
+                    chain="base_sepolia",
+                    address="0x" + "0" * 40,  # Placeholder address for demo
+                )
                 console.print(f"[green]Created wallet: {self.wallet_id}[/green]")
 
             # Create LangChain tools

@@ -32,7 +32,6 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.6.0",
-    "@sardis/sdk": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

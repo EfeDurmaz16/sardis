@@ -160,7 +160,7 @@ async function getWalletInfo(): Promise<WalletInfo> {
     };
   }
 
-  return apiRequest<WalletInfo>('GET', `/wallets/${config.walletId}`);
+  return apiRequest<WalletInfo>('GET', `/api/v2/wallets/${config.walletId}`);
 }
 
 /**
@@ -183,7 +183,7 @@ async function getWalletBalance(
 
   return apiRequest<WalletBalance>(
     'GET',
-    `/wallets/${config.walletId}/balance?chain=${chain}&token=${token}`
+    `/api/v2/wallets/${config.walletId}/balance?chain=${chain}&token=${token}`
   );
 }
 

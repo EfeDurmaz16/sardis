@@ -487,4 +487,3 @@ export function createToolResponse(toolCallId: string, content: string): {
     };
 }
 
-export type { OpenAITool, OpenAIFunctionCall, SardisOpenAIOptions };

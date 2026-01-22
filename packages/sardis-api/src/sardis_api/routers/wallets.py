@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import Wallet, WalletRepository
+from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
 
 router = APIRouter()
 
@@ -75,8 +76,9 @@ class BalanceResponse(BaseModel):
 
 # Dependency
 class WalletDependencies:
-    def __init__(self, wallet_repo: WalletRepository):
+    def __init__(self, wallet_repo: WalletRepository, chain_executor: ChainExecutor | None = None):
         self.wallet_repo = wallet_repo
+        self.chain_executor = chain_executor
 
 
 def get_deps() -> WalletDependencies:
@@ -179,7 +181,7 @@ async def set_wallet_limits(
 @router.get("/{wallet_id}/balance", response_model=BalanceResponse)
 async def get_wallet_balance(
     wallet_id: str,
-    chain: str = Query(default="base", description="Chain identifier"),
+    chain: str = Query(default="base_sepolia", description="Chain identifier"),
     token: str = Query(default="USDC", description="Token type"),
     deps: WalletDependencies = Depends(get_deps),
 ):
@@ -187,17 +189,15 @@ async def get_wallet_balance(
     wallet = await deps.wallet_repo.get(wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
-    
+
     address = wallet.get_address(chain)
     if not address:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"No address found for chain {chain}",
         )
-    
-    # Get RPC client for balance query
-    # TODO: Inject ChainRPCClient via dependency
-    # For now, return placeholder
+
+    # Validate token
     from sardis_v2_core.tokens import TokenType
     try:
         token_enum = TokenType(token)
@@ -206,11 +206,37 @@ async def get_wallet_balance(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid token: {token}",
         )
-    
-    # In production, this would use ChainRPCClient to query balance
-    # For now, return 0 as placeholder
+
+    # Query balance from chain
     balance = Decimal("0.00")
-    
+
+    if deps.chain_executor:
+        try:
+            # Get the RPC client for this chain
+            rpc_client = deps.chain_executor._get_rpc_client(chain)
+
+            # Get token contract address
+            token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
+            token_address = token_addresses.get(token)
+
+            if token_address:
+                # Query ERC20 balance using balanceOf(address)
+                # balanceOf selector: 0x70a08231
+                balance_data = "0x70a08231" + address[2:].lower().zfill(64)
+                result = await rpc_client._call("eth_call", [
+                    {"to": token_address, "data": balance_data},
+                    "latest"
+                ])
+
+                if result and result != "0x":
+                    # Convert from minor units (6 decimals for USDC)
+                    balance_minor = int(result, 16)
+                    balance = Decimal(balance_minor) / Decimal(10**6)
+        except Exception as e:
+            # Log error but return 0 balance instead of failing
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to query balance for {wallet_id}: {e}")
+
     return BalanceResponse(
         wallet_id=wallet_id,
         chain=chain,
