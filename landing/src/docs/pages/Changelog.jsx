@@ -1,0 +1,217 @@
+import { cn } from '@/lib/utils';
+
+const releases = [
+  {
+    version: '0.3.0',
+    date: '2025-01-20',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Real API integration in MCP server (no more mock data)',
+          'LangChain.js integration for TypeScript SDK',
+          'OpenAI function calling integration for both SDKs',
+          'Environment variable configuration for MCP server',
+          'Comprehensive FAQ, Blog, and Changelog documentation pages',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Vercel AI SDK integration with proper mandate signing',
+          'Python SDK LangChain tool with async execution',
+          'LlamaIndex integration with full payment flow',
+          'Error handling with policy violation detection',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'MCP server now connects to real Sardis API',
+          'Python SDK properly handles async event loops',
+          'TypeScript SDK exports all integration modules',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.2.0',
+    date: '2025-01-02',
+    tag: '',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Python SDK with LangChain and LlamaIndex integrations',
+          'TypeScript SDK with Vercel AI integration',
+          'MCP server for Claude Desktop integration',
+          'Policy engine with vendor allowlists',
+          'Spending limits (per-transaction and daily)',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Documentation with Lydian Protocol design system',
+          'API response types for better TypeScript support',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.1.0',
+    date: '2024-12-15',
+    tag: '',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Initial release of Sardis SDK',
+          'MPC wallet integration via Turnkey',
+          'Basic mandate execution pipeline',
+          'USDC support on Base Sepolia testnet',
+          'Ledger with Merkle tree audit anchoring',
+          'Health and status endpoints',
+        ]
+      },
+    ]
+  },
+];
+
+const changeTypeConfig = {
+  added: {
+    label: 'Added',
+    color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+    icon: '+',
+  },
+  improved: {
+    label: 'Improved',
+    color: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
+    icon: '^',
+  },
+  fixed: {
+    label: 'Fixed',
+    color: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+    icon: '*',
+  },
+  deprecated: {
+    label: 'Deprecated',
+    color: 'bg-red-500/10 border-red-500/30 text-red-500',
+    icon: '-',
+  },
+  security: {
+    label: 'Security',
+    color: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
+    icon: '!',
+  },
+};
+
+function ReleaseSection({ release }) {
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <section className="relative pl-8 pb-12 border-l border-border last:pb-0">
+      {/* Timeline dot */}
+      <div className={cn(
+        "absolute -left-2 w-4 h-4 border-2 border-border bg-background",
+        release.tag === 'latest' && "border-[var(--sardis-orange)] bg-[var(--sardis-orange)]"
+      )} />
+
+      {/* Version header */}
+      <div className="mb-4">
+        <div className="flex items-center gap-3 mb-1">
+          <h3 className="text-xl font-bold font-display">v{release.version}</h3>
+          {release.tag && (
+            <span className="px-2 py-0.5 text-xs font-mono bg-[var(--sardis-orange)] text-white">
+              {release.tag.toUpperCase()}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground font-mono">
+          {formatDate(release.date)}
+        </p>
+      </div>
+
+      {/* Changes */}
+      <div className="space-y-4">
+        {release.changes.map((group, idx) => {
+          const config = changeTypeConfig[group.type];
+          return (
+            <div key={idx}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`px-2 py-0.5 text-xs font-mono border ${config.color}`}>
+                  {config.icon} {config.label.toUpperCase()}
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {group.items.map((item, itemIdx) => (
+                  <li key={itemIdx} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-[var(--sardis-orange)] mt-1">-</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export default function DocsChangelog() {
+  return (
+    <article className="prose prose-invert max-w-none">
+      <div className="not-prose mb-8">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
+          <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
+            CHANGELOG
+          </span>
+        </div>
+        <h1 className="text-4xl font-bold font-display mb-4">Changelog</h1>
+        <p className="text-xl text-muted-foreground">
+          Release history and version updates for Sardis SDK and API.
+        </p>
+      </div>
+
+      {/* Version format guide */}
+      <div className="not-prose mb-8 p-4 border border-border bg-muted/20">
+        <p className="text-sm text-muted-foreground font-mono">
+          Version format: <span className="text-foreground">MAJOR.MINOR.PATCH</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          We follow semantic versioning. Breaking changes increment MAJOR,
+          new features increment MINOR, and bug fixes increment PATCH.
+        </p>
+      </div>
+
+      {/* Releases timeline */}
+      <div className="not-prose">
+        {releases.map((release, idx) => (
+          <ReleaseSection key={idx} release={release} />
+        ))}
+      </div>
+
+      {/* Subscribe section */}
+      <section className="not-prose p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 mt-12">
+        <h3 className="font-bold font-display mb-2 text-[var(--sardis-orange)]">Stay Updated</h3>
+        <p className="text-muted-foreground text-sm mb-4">
+          Follow our GitHub releases for the latest updates.
+        </p>
+        <a
+          href="https://github.com/anthropics/sardis/releases"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--sardis-orange)] text-white font-medium text-sm hover:bg-[var(--sardis-orange)]/90 transition-colors"
+        >
+          View on GitHub
+        </a>
+      </section>
+    </article>
+  );
+}

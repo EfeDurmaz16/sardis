@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 
 // Demo scenarios showing the "aha" moments
 const DEMO_SCENARIOS = [
@@ -16,18 +16,89 @@ const generateCard = () => ({
     expiry: '12/26',
 });
 
+// Typewriter component for terminal output
+const TypewriterText = ({ text, speed = 20, onComplete, className = '' }) => {
+    const [displayText, setDisplayText] = useState('');
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        if (currentIndex < text.length) {
+            const timeout = setTimeout(() => {
+                setDisplayText(prev => prev + text[currentIndex]);
+                setCurrentIndex(prev => prev + 1);
+            }, speed);
+            return () => clearTimeout(timeout);
+        } else if (onComplete) {
+            onComplete();
+        }
+    }, [currentIndex, text, speed, onComplete]);
+
+    return <span className={className}>{displayText}</span>;
+};
+
+// Confetti particle for success animation
+const Confetti = ({ count = 20 }) => {
+    const colors = ['#ef8354', '#22c55e', '#3b82f6', '#a855f7', '#eab308'];
+    const particles = Array.from({ length: count }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: Math.random() * 0.3,
+        duration: 1 + Math.random() * 0.5,
+    }));
+
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {particles.map(p => (
+                <motion.div
+                    key={p.id}
+                    className="absolute w-2 h-2"
+                    style={{
+                        left: `${p.x}%`,
+                        backgroundColor: p.color,
+                        top: '-10px',
+                    }}
+                    initial={{ opacity: 1, y: 0, rotate: 0 }}
+                    animate={{
+                        opacity: [1, 1, 0],
+                        y: [0, 150, 200],
+                        rotate: [0, 180, 360],
+                        x: [0, (Math.random() - 0.5) * 100],
+                    }}
+                    transition={{
+                        duration: p.duration,
+                        delay: p.delay,
+                        ease: 'easeOut',
+                    }}
+                />
+            ))}
+        </div>
+    );
+};
+
+// Shake animation variants
+const shakeAnimation = {
+    shake: {
+        x: [0, -10, 10, -10, 10, -5, 5, 0],
+        transition: { duration: 0.5 },
+    },
+};
+
 const SardisPlayground = () => {
     const [terminalLogs, setTerminalLogs] = useState([
-        { type: 'system', text: 'Sardis MCP Server v1.0.0 started...' },
-        { type: 'system', text: 'Connected to Claude Desktop' },
-        { type: 'agent', text: 'Agent ID: agent_0x7f4d...3a91' }
+        { type: 'system', text: 'Sardis MCP Server v1.0.0 started...', instant: true },
+        { type: 'system', text: 'Connected to Claude Desktop', instant: true },
+        { type: 'agent', text: 'Agent ID: agent_0x7f4d...3a91', instant: true }
     ]);
     const [dashboardLogs, setDashboardLogs] = useState([]);
     const [status, setStatus] = useState('idle');
     const [virtualCard, setVirtualCard] = useState(null);
     const [activeScenario, setActiveScenario] = useState(null);
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [isFlipped, setIsFlipped] = useState(false);
     const terminalRef = useRef(null);
     const dashboardRef = useRef(null);
+    const panelControls = useAnimation();
 
     // Auto-scroll
     useEffect(() => {
@@ -92,7 +163,7 @@ const SardisPlayground = () => {
 
         if (details.approved) {
             // APPROVED FLOW
-            setDashboardLogs(prev => [...prev, { text: 'POLICY: ALLOWED', color: 'text-emerald-500 font-bold text-base' }]);
+            setDashboardLogs(prev => [...prev, { text: 'POLICY: ALLOWED', color: 'text-emerald-500 font-bold text-base', approved: true }]);
             await delay(300);
             setDashboardLogs(prev => [...prev, { text: 'MPC Signing... Signed', color: 'text-emerald-400' }]);
             await delay(400);
@@ -103,6 +174,9 @@ const SardisPlayground = () => {
             setDashboardLogs(prev => [...prev, { text: 'Virtual Card Issued', color: 'text-[var(--sardis-orange)]' }]);
 
             setStatus('success');
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 2000);
+
             const txId = `tx_${Math.random().toString(36).substring(2, 10)}`;
             setTerminalLogs(prev => [...prev,
                 { type: 'system', text: 'Payment approved.' },
@@ -111,13 +185,14 @@ const SardisPlayground = () => {
             ]);
         } else {
             // BLOCKED FLOW
-            setDashboardLogs(prev => [...prev, { text: 'POLICY: BLOCKED', color: 'text-red-500 font-bold text-base' }]);
+            setDashboardLogs(prev => [...prev, { text: 'POLICY: BLOCKED', color: 'text-red-500 font-bold text-base', blocked: true }]);
             await delay(200);
             setDashboardLogs(prev => [...prev, { text: `Reason: ${details.reason}`, color: 'text-red-400' }]);
             await delay(200);
             setDashboardLogs(prev => [...prev, { text: 'Financial Hallucination PREVENTED', color: 'text-[var(--sardis-orange)] font-semibold' }]);
 
             setStatus('error');
+            panelControls.start('shake');
             setTerminalLogs(prev => [...prev,
                 { type: 'error', text: 'Error 403: Policy Violation' },
                 { type: 'prevention', text: 'Financial Hallucination PREVENTED' }
@@ -129,6 +204,11 @@ const SardisPlayground = () => {
 
     return (
         <div className="bg-card border border-border overflow-hidden relative group">
+            {/* Confetti on success */}
+            <AnimatePresence>
+                {showConfetti && <Confetti count={30} />}
+            </AnimatePresence>
+
             {/* Header Bar */}
             <div className="bg-muted px-4 py-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -185,7 +265,10 @@ const SardisPlayground = () => {
                 {/* Panels Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
                     {/* Left Panel: Agent Terminal */}
-                    <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border overflow-hidden">
+                    <motion.div
+                        variants={shakeAnimation}
+                        animate={panelControls}
+                        className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border overflow-hidden">
                         <div className="px-4 py-2 bg-[#1f1e1c] border-b border-border flex justify-between items-center">
                             <span className="text-[var(--sardis-canvas)]/50 text-[10px] uppercase tracking-widest">Agent Terminal (MCP)</span>
                             <span className={`px-2 py-0.5 text-[9px] font-bold border ${
@@ -211,10 +294,13 @@ const SardisPlayground = () => {
                             ))}
                             {status === 'processing' && <div className="animate-pulse text-[var(--sardis-orange)]/50 mt-1">█</div>}
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Right Panel: Policy Engine */}
-                    <div className="bg-card border border-border overflow-hidden">
+                    <motion.div
+                        variants={shakeAnimation}
+                        animate={panelControls}
+                        className="bg-card border border-border overflow-hidden">
                         <div className="px-4 py-2 bg-muted border-b border-border">
                             <span className="text-muted-foreground text-[10px] uppercase tracking-widest font-mono">SARDIS POLICY ENGINE (CFO)</span>
                         </div>
@@ -222,35 +308,70 @@ const SardisPlayground = () => {
                             {dashboardLogs.length === 0 && <div className="text-muted-foreground italic">Awaiting transaction request...</div>}
                             {dashboardLogs.map((log, i) => (
                                 <motion.div
-                                    initial={{ opacity: 0, x: -5 }}
-                                    animate={{ opacity: 1, x: 0 }}
+                                    initial={{ opacity: 0, x: log.blocked ? 10 : -5, scale: log.approved ? 0.95 : 1 }}
+                                    animate={log.blocked ? {
+                                        opacity: 1,
+                                        x: [10, -5, 5, -3, 0],
+                                        backgroundColor: ['rgba(239, 68, 68, 0.2)', 'rgba(239, 68, 68, 0)'],
+                                    } : log.approved ? {
+                                        opacity: 1,
+                                        x: 0,
+                                        scale: [0.95, 1.02, 1],
+                                        backgroundColor: ['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0)'],
+                                    } : { opacity: 1, x: 0 }}
+                                    transition={log.blocked || log.approved ? { duration: 0.5 } : { duration: 0.2 }}
                                     key={i}
-                                    className={`mb-1.5 leading-relaxed ${log.color || 'text-foreground'}`}
+                                    className={`mb-1.5 leading-relaxed ${log.color || 'text-foreground'} ${log.blocked || log.approved ? 'px-2 py-1 -mx-2' : ''}`}
                                 >
                                     <span className="text-muted-foreground text-[10px] select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span> {log.text}
                                 </motion.div>
                             ))}
                         </div>
 
-                        {/* Virtual Card Display */}
+                        {/* Virtual Card Display with Flip Animation */}
                         <AnimatePresence>
                             {virtualCard && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="mx-4 mb-4 p-3 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30"
-                                >
-                                    <div className="text-[10px] uppercase tracking-wider text-[var(--sardis-orange)] mb-1 font-bold">Virtual Card</div>
-                                    <div className="font-mono text-foreground">{virtualCard.number}</div>
-                                    <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                                        <span>CVV: {virtualCard.cvv}</span>
-                                        <span>Exp: {virtualCard.expiry}</span>
-                                    </div>
-                                </motion.div>
+                                <div className="mx-4 mb-4" style={{ perspective: '1000px' }}>
+                                    <motion.div
+                                        initial={{ rotateY: 180, opacity: 0 }}
+                                        animate={{ rotateY: 0, opacity: 1 }}
+                                        exit={{ rotateY: -180, opacity: 0 }}
+                                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                                        className="p-3 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 backface-hidden"
+                                        style={{ transformStyle: 'preserve-3d' }}
+                                    >
+                                        <div className="text-[10px] uppercase tracking-wider text-[var(--sardis-orange)] mb-1 font-bold flex items-center gap-2">
+                                            <motion.span
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ delay: 0.3, type: 'spring', stiffness: 500 }}
+                                            >
+                                                ✓
+                                            </motion.span>
+                                            Virtual Card Issued
+                                        </div>
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.4 }}
+                                            className="font-mono text-foreground"
+                                        >
+                                            {virtualCard.number}
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: 0.5 }}
+                                            className="flex gap-4 text-xs text-muted-foreground mt-1"
+                                        >
+                                            <span>CVV: {virtualCard.cvv}</span>
+                                            <span>Exp: {virtualCard.expiry}</span>
+                                        </motion.div>
+                                    </motion.div>
+                                </div>
                             )}
                         </AnimatePresence>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 

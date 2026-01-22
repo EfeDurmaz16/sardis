@@ -26,6 +26,14 @@ const navigation = [
       { name: 'Deployment', href: '/docs/deployment' },
     ],
   },
+  {
+    title: 'Support',
+    items: [
+      { name: 'FAQ', href: '/docs/faq' },
+      { name: 'Blog', href: '/docs/blog' },
+      { name: 'Changelog', href: '/docs/changelog' },
+    ],
+  },
 ];
 
 function DarkModeToggle({ isDark, toggle }) {
