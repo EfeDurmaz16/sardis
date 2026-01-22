@@ -87,27 +87,114 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: false
 
+  test-typescript-sdk:
+    name: Test TypeScript SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/sardis-sdk-js/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/sardis-sdk-js
+        run: npm ci
+
+      - name: Run tests
+        working-directory: packages/sardis-sdk-js
+        run: npm test
+
+      - name: Build
+        working-directory: packages/sardis-sdk-js
+        run: npm run build
+
+  test-python-sdk:
+    name: Test Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        working-directory: packages/sardis-sdk-python
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        working-directory: packages/sardis-sdk-python
+        run: pytest --cov=sardis_sdk --cov-report=term-missing
+
+  test-mcp-server:
+    name: Test MCP Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/sardis-mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: packages/sardis-mcp-server
+        run: npm ci
+
+      - name: Build
+        working-directory: packages/sardis-mcp-server
+        run: npm run build
+
+  build-landing:
+    name: Build Landing Page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Install dependencies
+        working-directory: landing
+        run: npm ci
+
+      - name: Build
+        working-directory: landing
+        run: npm run build
+
   test-dashboard:
     name: Test Dashboard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: dashboard/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: dashboard
         run: npm ci
-      
+
       - name: Type check
         working-directory: dashboard
         run: npm run typecheck || true  # Don't fail on type errors for now
-      
+
       - name: Build
         working-directory: dashboard
         run: npm run build
