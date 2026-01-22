@@ -279,31 +279,97 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     @app.get("/health", tags=["health"])
     async def health_check():
-        """Health check endpoint with component status."""
-        db_status = "connected"
+        """
+        Health check endpoint with component status.
+
+        Returns detailed status of all system components:
+        - Database connection
+        - Chain executor (simulated/live)
+        - External providers (Stripe, Turnkey)
+        - Cache service (Redis/in-memory)
+        """
+        import time
+        start_time = time.time()
+
+        components = {
+            "api": "up",
+            "database": "unknown",
+            "chain_executor": "unknown",
+            "cache": "unknown",
+            "stripe": "unknown",
+            "turnkey": "unconfigured",
+        }
+        overall_healthy = True
+
+        # Database check
         try:
             if use_postgres:
-                # Ping PostgreSQL database
                 import asyncpg
                 conn = await asyncpg.connect(database_url)
                 await conn.execute("SELECT 1")
                 await conn.close()
+                components["database"] = "connected"
             else:
-                # In-memory mode is always "connected"
-                db_status = "in_memory"
+                components["database"] = "in_memory"
         except Exception as e:
             logger.warning(f"Database health check failed: {e}")
-            db_status = "disconnected"
+            components["database"] = "disconnected"
+            overall_healthy = False
+
+        # Chain executor status
+        components["chain_executor"] = "simulated" if settings.chain_mode == "simulated" else "live"
+
+        # Cache check
+        try:
+            cache = getattr(app.state, "cache_service", None)
+            if cache:
+                # Try a simple get to verify connectivity
+                await cache.get("health_check_probe")
+                components["cache"] = "redis" if os.getenv("SARDIS_REDIS_URL") else "in_memory"
+            else:
+                components["cache"] = "disabled"
+        except Exception as e:
+            logger.warning(f"Cache health check failed: {e}")
+            components["cache"] = "error"
+
+        # Stripe check (if configured)
+        stripe_key = os.getenv("STRIPE_SECRET_KEY")
+        if stripe_key:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.get(
+                        "https://api.stripe.com/v1/balance",
+                        headers={"Authorization": f"Bearer {stripe_key}"}
+                    )
+                    if resp.status_code == 200:
+                        components["stripe"] = "connected"
+                    else:
+                        components["stripe"] = "auth_error"
+                        overall_healthy = False
+            except Exception as e:
+                logger.warning(f"Stripe health check failed: {e}")
+                components["stripe"] = "unreachable"
+                overall_healthy = False
+        else:
+            components["stripe"] = "unconfigured"
+
+        # Turnkey check (if configured)
+        if os.getenv("TURNKEY_API_KEY"):
+            components["turnkey"] = "configured"
+        else:
+            components["turnkey"] = "unconfigured"
+
+        response_time_ms = int((time.time() - start_time) * 1000)
 
         return {
-            "status": "healthy",
+            "status": "healthy" if overall_healthy else "degraded",
             "environment": settings.environment,
             "chain_mode": settings.chain_mode,
-            "components": {
-                "api": "up",
-                "database": db_status,
-                "chain_executor": "simulated" if settings.chain_mode == "simulated" else "live",
-            }
+            "version": "0.1.0",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "response_time_ms": response_time_ms,
+            "components": components,
         }
 
     @app.get("/api/v2/health", tags=["health"])

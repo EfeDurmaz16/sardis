@@ -1,0 +1,340 @@
+-- =============================================================================
+-- Sardis Migration: 001_initial_schema
+-- =============================================================================
+--
+-- Initial database schema for Sardis payment system.
+--
+-- Apply: psql $DATABASE_URL -f migrations/001_initial_schema.sql
+-- Rollback: psql $DATABASE_URL -f migrations/001_initial_schema_rollback.sql
+--
+-- =============================================================================
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- -----------------------------------------------------------------------------
+-- Organizations
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS organizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    settings JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- -----------------------------------------------------------------------------
+-- Agents
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS agents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    organization_id UUID REFERENCES organizations(id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    public_key BYTEA,
+    key_algorithm VARCHAR(20) DEFAULT 'ed25519',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agents_org ON agents(organization_id);
+CREATE INDEX IF NOT EXISTS idx_agents_active ON agents(is_active) WHERE is_active = TRUE;
+
+-- -----------------------------------------------------------------------------
+-- Wallets
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS wallets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    agent_id UUID REFERENCES agents(id) NOT NULL,
+    chain_address VARCHAR(66),
+    chain VARCHAR(20) DEFAULT 'base',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallets_agent ON wallets(agent_id);
+CREATE INDEX IF NOT EXISTS idx_wallets_chain ON wallets(chain, chain_address);
+
+-- -----------------------------------------------------------------------------
+-- Token Balances
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS token_balances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_id UUID REFERENCES wallets(id) NOT NULL,
+    token VARCHAR(10) NOT NULL,
+    balance NUMERIC(20,6) DEFAULT 0,
+    spent_total NUMERIC(20,6) DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(wallet_id, token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_balances_wallet ON token_balances(wallet_id);
+
+-- -----------------------------------------------------------------------------
+-- Spending Policies
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS spending_policies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id UUID REFERENCES agents(id) UNIQUE NOT NULL,
+    trust_level VARCHAR(20) DEFAULT 'low',
+    limit_per_tx NUMERIC(20,6) DEFAULT 100,
+    limit_total NUMERIC(20,6) DEFAULT 1000,
+    require_preauth BOOLEAN DEFAULT FALSE,
+    allowed_scopes VARCHAR[] DEFAULT ARRAY['all'],
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- -----------------------------------------------------------------------------
+-- Time Window Limits
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS time_window_limits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    policy_id UUID REFERENCES spending_policies(id) NOT NULL,
+    window_type VARCHAR(20) NOT NULL,
+    limit_amount NUMERIC(20,6) NOT NULL,
+    current_spent NUMERIC(20,6) DEFAULT 0,
+    window_start TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(policy_id, window_type)
+);
+
+-- -----------------------------------------------------------------------------
+-- Merchant Rules
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS merchant_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    policy_id UUID REFERENCES spending_policies(id) NOT NULL,
+    rule_type VARCHAR(10) NOT NULL,
+    merchant_id VARCHAR(64),
+    category VARCHAR(50),
+    max_per_tx NUMERIC(20,6),
+    daily_limit NUMERIC(20,6),
+    reason TEXT,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_merchant_rules_policy ON merchant_rules(policy_id);
+CREATE INDEX IF NOT EXISTS idx_merchant_rules_merchant ON merchant_rules(merchant_id);
+
+-- -----------------------------------------------------------------------------
+-- Transactions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    from_wallet_id UUID REFERENCES wallets(id),
+    to_wallet_id UUID REFERENCES wallets(id),
+    amount NUMERIC(20,6) NOT NULL,
+    fee NUMERIC(20,6) DEFAULT 0,
+    token VARCHAR(10) NOT NULL,
+    purpose TEXT,
+    status VARCHAR(20) NOT NULL,
+    error_message TEXT,
+    idempotency_key VARCHAR(64),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_wallet_id);
+CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_wallet_id);
+CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions(idempotency_key) WHERE idempotency_key IS NOT NULL;
+
+-- -----------------------------------------------------------------------------
+-- On-Chain Records
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS on_chain_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID REFERENCES transactions(id) NOT NULL,
+    chain VARCHAR(20) NOT NULL,
+    tx_hash VARCHAR(66) NOT NULL,
+    block_number BIGINT,
+    from_address VARCHAR(66),
+    to_address VARCHAR(66),
+    status VARCHAR(20) DEFAULT 'pending',
+    confirmed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chain_records_tx ON on_chain_records(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_chain_records_hash ON on_chain_records(chain, tx_hash);
+
+-- -----------------------------------------------------------------------------
+-- Holds (Pre-authorization)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS holds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    wallet_id UUID REFERENCES wallets(id) NOT NULL,
+    merchant_id VARCHAR(64),
+    amount NUMERIC(20,6) NOT NULL,
+    token VARCHAR(10) NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    purpose TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    captured_amount NUMERIC(20,6),
+    captured_at TIMESTAMPTZ,
+    capture_tx_id UUID REFERENCES transactions(id),
+    voided_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_holds_wallet ON holds(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_holds_status ON holds(status);
+
+-- -----------------------------------------------------------------------------
+-- Mandates (AP2)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS mandates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mandate_id VARCHAR(64) UNIQUE NOT NULL,
+    mandate_type VARCHAR(20) NOT NULL,
+    issuer VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    domain VARCHAR(255),
+    payload JSONB NOT NULL,
+    proof JSONB,
+    expires_at TIMESTAMPTZ,
+    verified_at TIMESTAMPTZ,
+    executed_at TIMESTAMPTZ,
+    transaction_id UUID REFERENCES transactions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
+CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
+
+-- -----------------------------------------------------------------------------
+-- Replay Cache
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS replay_cache (
+    mandate_id VARCHAR(64) PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_replay_expires ON replay_cache(expires_at);
+
+-- -----------------------------------------------------------------------------
+-- Ledger Entries
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ledger_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tx_id VARCHAR(64) UNIQUE NOT NULL,
+    mandate_id VARCHAR(64),
+    from_wallet VARCHAR(255),
+    to_wallet VARCHAR(255),
+    amount NUMERIC(20,6) NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    chain VARCHAR(20),
+    chain_tx_hash VARCHAR(66),
+    audit_anchor TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_created ON ledger_entries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_from ON ledger_entries(from_wallet);
+CREATE INDEX IF NOT EXISTS idx_ledger_to ON ledger_entries(to_wallet);
+
+-- -----------------------------------------------------------------------------
+-- Webhook Subscriptions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    organization_id VARCHAR(64) NOT NULL,
+    url VARCHAR(2048) NOT NULL,
+    secret VARCHAR(64) NOT NULL,
+    events VARCHAR[] DEFAULT ARRAY[]::VARCHAR[],
+    is_active BOOLEAN DEFAULT TRUE,
+    total_deliveries INTEGER DEFAULT 0,
+    successful_deliveries INTEGER DEFAULT 0,
+    failed_deliveries INTEGER DEFAULT 0,
+    last_delivery_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_subs_org ON webhook_subscriptions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_subs_active ON webhook_subscriptions(is_active) WHERE is_active = TRUE;
+
+-- -----------------------------------------------------------------------------
+-- Webhook Deliveries
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_id VARCHAR(64) UNIQUE NOT NULL,
+    subscription_id VARCHAR(64) NOT NULL,
+    event_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    url VARCHAR(2048) NOT NULL,
+    status_code INTEGER,
+    response_body TEXT,
+    error TEXT,
+    duration_ms INTEGER DEFAULT 0,
+    success BOOLEAN DEFAULT FALSE,
+    attempt_number INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_deliveries_subscription ON webhook_deliveries(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_deliveries_event ON webhook_deliveries(event_id);
+CREATE INDEX IF NOT EXISTS idx_deliveries_created ON webhook_deliveries(created_at DESC);
+
+-- -----------------------------------------------------------------------------
+-- API Keys
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key_prefix VARCHAR(12) NOT NULL,
+    key_hash VARCHAR(64) NOT NULL,
+    organization_id UUID REFERENCES organizations(id) NOT NULL,
+    name VARCHAR(255),
+    scopes VARCHAR[] DEFAULT ARRAY['read'],
+    rate_limit INTEGER DEFAULT 100,
+    is_active BOOLEAN DEFAULT TRUE,
+    expires_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
+CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(organization_id);
+
+-- -----------------------------------------------------------------------------
+-- Audit Log
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_type VARCHAR(20) NOT NULL,
+    actor_id VARCHAR(64) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    resource_type VARCHAR(50) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    changes JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_type, actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_log(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
+
+-- -----------------------------------------------------------------------------
+-- Migration tracking
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version VARCHAR(20) PRIMARY KEY,
+    applied_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO schema_migrations (version) VALUES ('001_initial_schema')
+ON CONFLICT (version) DO NOTHING;

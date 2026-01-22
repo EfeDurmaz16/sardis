@@ -2,9 +2,42 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.4.0',
+    date: '2025-01-23',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Demo agent showcasing policy-enforced autonomous payments',
+          'Real on-chain ERC20 balance queries in wallet API',
+          'pnpm workspace configuration for monorepo',
+          'Database health check in API server',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'TypeScript SDK build error from duplicate exports in openai.ts',
+          'MCP Server wallet endpoints now use correct /api/v2 prefix',
+          'Python SDK Wallet model alias mismatch with API',
+          'Demo agent now uses correct wallet creation API',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Wallet balance endpoint now queries real chain via ChainExecutor',
+          'MCP Server no longer requires unused SDK dependency',
+          'API health endpoint returns proper component status',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.3.0',
     date: '2025-01-20',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',
