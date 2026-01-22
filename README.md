@@ -1,279 +1,190 @@
 # Sardis
 
-**Agent Wallet & Payment OS for the Agent Economy**
+### The Payment OS for the Agent Economy
 
-Sardis is the operating system for agent payments. We provide non-custodial wallets with spending limits, policy enforcement, and AP2/TAP compliance. Agents can pay on-chain via stablecoins, or through checkout buttons that route to Stripe, PayPal, and other PSPs.
+[![Status: Production-Ready](https://img.shields.io/badge/Status-Production--Ready_(82%25)-success)](https://sardis.sh)
+[![License: Open Core](https://img.shields.io/badge/License-Open--Core-blue)](LICENSE.txt)
+[![MCP: Native](https://img.shields.io/badge/MCP-Native-orange)](https://modelcontextprotocol.io)
 
----
+> **AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.**
 
-## Why Sardis?
+Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wallets** with **natural language spending policies**. It's Stripe + IAM + Risk Engine for the Agent Economy.
 
-- **AI agents need to pay** — LLMs calling APIs, autonomous shopping, agent-to-agent services
-- **Current rails don't work** — Credit cards require human approval, crypto is too complex, PSPs aren't agent-aware
-- **Sardis fills the gap** — Non-custodial wallets with spending limits, AP2/TAP compliance, multi-PSP routing
-
-**Key Differentiator:** We never hold funds. Non-custodial architecture = minimal compliance burden.
+**The Problem We Solve:** Financial Hallucination — agents accidentally spending $10k instead of $100 due to retry loops, decimal errors, or logic bugs. Sardis prevents this with a real-time policy firewall.
 
 ---
 
-## Quick Demo
+## Quick Start: Zero Integration with MCP
 
-### Agent Wallet OS (Core)
-
-```python
-from sardis import Agent, Wallet, Policy
-
-# Create agent with spending policy
-agent = Agent(
-    name="Shopping Bot",
-    policy=Policy(max_per_tx=100, daily_limit=500)
-)
-
-# Create non-custodial wallet
-wallet = await agent.create_wallet()
-
-# Execute payment (policy-checked, AP2-verified)
-result = await wallet.pay(
-    to="merchant_123",
-    amount=Decimal("50.00"),
-    mandate=ap2_mandate,
-)
-
-print(result.success)  # True
-```
-
-### Agentic Checkout (Surface)
-
-```python
-from sardis_checkout import CheckoutOrchestrator
-
-# Create checkout session (routes to Stripe/PayPal/etc.)
-session = await orchestrator.create_checkout_session(
-    agent_id="agent_123",
-    merchant_id="merchant_456",
-    amount=Decimal("100.00"),
-    currency="USD",
-)
-
-# Redirect to checkout URL
-print(session.checkout_url)  # https://checkout.stripe.com/...
-```
-
-**Run it yourself:**
 ```bash
-python examples/simple_payment.py
+npx @sardis/mcp-server start
 ```
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  }
+}
+```
+
+**That's it.** Your agent now has a wallet with spending limits.
 
 ---
 
 ## How It Works
 
-```mermaid
-sequenceDiagram
-    participant Agent as AI Agent
-    participant Sardis as Sardis Protocol
-    participant Policy as Policy Engine
-    participant Chain as Blockchain
-
-    Agent->>Sardis: request_payment($5)
-    Sardis->>Policy: check_limits()
-    Policy-->>Sardis: ✓ approved
-    Sardis->>Chain: execute_transfer()
-    Chain-->>Sardis: tx_hash
-    Sardis-->>Agent: success + receipt
 ```
+User: "Buy OpenAI API credits for $20"
+
+Agent: sardis.pay("OpenAI", $20, "API Credits")
+       ↓
+Sardis: Policy Check → SaaS Category ✓ → Amount < Limit ✓
+       ↓
+       APPROVED ✅
+       Card: 4242 **** **** 9999
 
 ---
 
-## Features
+User: "Buy me an Amazon gift card for $500"
 
-### Core OS Features
-
-| Feature | Description |
-|---------|-------------|
-| **Non-Custodial Wallets** | MPC wallets - we never hold funds |
-| **AP2/TAP Compliance** | Full mandate verification and identity management |
-| **Policy Engine** | Spending limits, allowlists, time windows |
-| **Multi-Chain Support** | Base, Polygon, Ethereum, Arbitrum, Optimism |
-| **Python + TypeScript SDKs** | 5-minute integration |
-
-### Checkout Surface Features
-
-| Feature | Description |
-|---------|-------------|
-| **Multi-PSP Routing** | Stripe, PayPal, Coinbase, Circle (and more) |
-| **Policy-Based Approval** | Automatic spending limit checks |
-| **Checkout Button** | One-line integration for merchants |
-| **Payment Analytics** | Agent payment insights and reporting |
-
----
-
-## Agent-to-Agent Payments
-
-```python
-from sardis import Agent, Policy
-
-# Create agents with spending policies
-alice = Agent(name="Shopping Bot", policy=Policy(max_per_tx=100))
-bob = Agent(name="Data Service", policy=Policy(max_per_tx=500))
-
-# Fund Alice's wallet
-alice.create_wallet(initial_balance=200)
-
-# Alice pays Bob for a service
-result = alice.pay(to=bob.agent_id, amount=25, purpose="Data analysis")
-print(result.success)  # True
-```
-
-**Run it yourself:**
-```bash
-python examples/agent_to_agent.py
+Agent: sardis.pay("Amazon", $500, "Gift Card")
+       ↓
+Sardis: Policy Check → Retail Category ✗
+       ↓
+       BLOCKED 🛑 Financial Hallucination PREVENTED
 ```
 
 ---
 
 ## Architecture
 
-**One OS, Multiple Surfaces:**
-
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AGENT WALLET OS (CORE)                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Agent   │  │  Wallet  │  │  Policy  │  │ Mandate  │   │
-│  │ Identity │  │  (MPC)   │  │  Engine  │  │  (AP2)   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                          │
-        ┌─────────────────┼─────────────────┐
-        │                 │                 │
-        ▼                 ▼                 ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Surface:   │  │   Surface:   │  │   Surface:  │
-│   On-Chain   │  │   Checkout   │  │     API      │
-│              │  │              │  │              │
-│  Blockchain  │  │  PSP Routing │  │  REST/GraphQL│
-│  Execution   │  │  (Stripe,    │  │              │
-│              │  │   PayPal,    │  │              │
-│              │  │   etc.)      │  │              │
-└──────────────┘  └──────────────┘  └──────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                     AI AGENT                             │
+│            (Claude, Cursor, LangChain)                   │
+└─────────────────────┬────────────────────────────────────┘
+                      │ MCP / SDK
+                      ▼
+┌──────────────────────────────────────────────────────────┐
+│              SARDIS POLICY ENGINE                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │   Natural   │  │  Merchant   │  │   Amount    │     │
+│  │  Language   │  │  Allowlist  │  │   Limits    │     │
+│  │   Rules     │  │             │  │             │     │
+│  └─────────────┘  └─────────────┘  └─────────────┘     │
+└─────────────────────┬────────────────────────────────────┘
+                      │ Approved
+                      ▼
+┌──────────────────────────────────────────────────────────┐
+│              MPC SIGNING (Turnkey)                       │
+│                Non-custodial keys                        │
+└─────────────────────┬────────────────────────────────────┘
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐
+│  On-Chain Rails │    │   Fiat Rails    │
+│  USDC on Base   │    │  Virtual Cards  │
+│  Polygon, ETH   │    │    (Lithic)     │
+└─────────────────┘    └─────────────────┘
 ```
-
-**See:** [`docs/ARCHITECTURE_PIVOT.md`](docs/ARCHITECTURE_PIVOT.md) for full architecture details.
 
 ---
 
-## Getting Started
+## Framework Integrations
 
-### 1. Install
+Sardis uses an **Adapter Pattern** to feel native in your stack:
+
+| Framework | Package | Status |
+|-----------|---------|--------|
+| **Claude Desktop / Cursor** | `@sardis/mcp-server` | ✅ Ready |
+| **LangChain** | `sardis.integrations.langchain` | ✅ Ready |
+| **Vercel AI SDK** | `@sardis/sdk` | ✅ Ready |
+| **OpenAI Functions / Swarm** | `get_openai_function_schema()` | ✅ Ready |
+| **LlamaIndex** | `get_llamaindex_tool()` | ✅ Ready |
+
+### Python (LangChain)
 
 ```bash
-git clone https://github.com/your-org/sardis.git
-cd sardis
-pip install -e .
+pip install sardis
 ```
 
-### 2. Run Demo
+```python
+from sardis.integrations import SardisTool
 
-```bash
-# Simple payment
-python examples/simple_payment.py
-
-# Agent-to-agent
-python examples/agent_to_agent.py
+# Add to your agent's toolkit
+tools = [SardisTool()]
 ```
 
-### 3. Start API Server
+### TypeScript (Vercel AI SDK)
 
-```bash
-pip install -e packages/sardis-api
-uvicorn sardis_api.main:create_app --factory --port 8000
+```typescript
+import { createSardisTools } from '@sardis/sdk/integrations';
 
-# Open http://localhost:8000/api/v2/docs
+const tools = createSardisTools(sardisClient);
 ```
 
 ---
 
-## Supported Chains & Tokens
+## Key Features
 
-| Chain | Status | Tokens |
-|-------|--------|--------|
-| Base | ✅ Live | USDC |
-| Polygon | ✅ Live | USDC, USDT |
-| Ethereum | ✅ Live | USDC, USDT, PYUSD |
-| Arbitrum | 🚧 Soon | USDC |
-| Optimism | 🚧 Soon | USDC |
-| Solana | 🔜 Planned | USDC |
-
----
-
-## Use Cases
-
-1. **AI API Payments** — Agents pay for OpenAI, Anthropic, and other APIs
-2. **Autonomous Shopping** — Shopping bots with spending limits
-3. **Agent-to-Agent Services** — Agents hire other agents for tasks
-4. **Micropayments** — Sub-dollar transactions without friction
-5. **Corporate AI Budgets** — Enterprises control agent spending
-
----
-
-## Documentation
-
-- **[Whitepaper](docs/whitepaper.md)** - Comprehensive technical and business overview
-- [Quick Start Guide](QUICKSTART.md)
-- [Architecture Overview](docs/ARCHITECTURE_PIVOT.md) - New pivot architecture
-- [Non-Custodial Migration](docs/NON_CUSTODIAL_MIGRATION.md) - Migration guide
-- [Positioning Guide](docs/POSITIONING.md) - Messaging and positioning
-- [API Reference](docs/api-reference.md)
-- [Integration Guide](docs/integration-guide.md)
+| Feature | Description |
+|---------|-------------|
+| **Non-Custodial MPC** | Keys secured via Turnkey threshold signatures |
+| **Natural Language Policies** | "Allow $50/day for SaaS only" |
+| **Financial Firewall** | Block hallucinations before they cost money |
+| **Virtual Cards** | Instant card issuance for fiat payments (Lithic) |
+| **Multi-Chain** | Base, Polygon, Ethereum (USDC/USDT) |
+| **MCP Native** | Zero-integration setup for Claude/Cursor |
 
 ---
 
 ## Project Status
 
-### Core OS (Agent Wallet OS)
+**Production-Ready Infrastructure: 82% Complete**
 
 | Component | Status |
 |-----------|--------|
-| Agent Identity (TAP) | ✅ Complete |
-| Non-Custodial Wallets | ✅ Complete |
-| Policy Engine | ✅ Complete |
-| Mandate Verification (AP2) | ✅ Complete |
-| Python SDK | ✅ Complete |
-| TypeScript SDK | ✅ Complete |
-
-### Surfaces
-
-| Component | Status |
-|-----------|--------|
-| On-Chain Mode | ✅ Complete |
-| Checkout Surface | 🚧 In Progress (Stripe connector ready) |
-| API Mode | ✅ Complete |
-
-### Infrastructure
-
-| Component | Status |
-|-----------|--------|
-| REST API | ✅ Complete |
-| Smart Contracts | ✅ Ready for Audit |
-| Dashboard | ✅ Complete |
+| Core Policy Engine | ✅ Live (150+ tests) |
+| MPC Wallets (Turnkey) | ✅ Live |
+| On-Chain Settlement | ✅ Live (Base, Polygon, ETH) |
+| KYC/AML Compliance | ✅ Integrated |
+| MCP Server | ✅ Ready |
+| Virtual Cards (Lithic) | 🟡 Sandbox (Live Feb 2026) |
 
 ---
 
-## License
+## Open Core Licensing
 
-**Proprietary License** - All rights reserved.
+Sardis follows an **Open Core** model:
 
-This software and all related intellectual property are the exclusive property of **Efe Baran Durmaz**. The source code is provided for viewing and evaluation purposes only. No rights are granted to use, copy, modify, or distribute without explicit written permission.
+- **MIT License** — SDKs, MCP Server, Integration Adapters
+  - `@sardis/sdk`
+  - `@sardis/mcp-server`
+  - `sardis` (Python)
 
-See [LICENSE.txt](LICENSE.txt) for full terms.
+- **Proprietary** — Core Banking Infrastructure, Policy Engine internals, MPC Node management
+
+---
+
+## Links
+
+- **Website**: [sardis.sh](https://sardis.sh)
+- **Documentation**: [docs.sardis.sh](https://docs.sardis.sh)
+- **GitHub**: [github.com/EfeDurmaz16/sardis](https://github.com/EfeDurmaz16/sardis)
 
 ---
 
 <p align="center">
-  <b>Sardis</b> — Agent Wallet & Payment OS for the Agent Economy
-  <br>
-  Non-custodial • AP2/TAP Compliant • Multi-PSP Routing
-  <br>
-  © 2025 Efe Baran Durmaz. All rights reserved.
+  <strong>Sardis</strong> — The Payment OS for the Agent Economy
+  <br/>
+  Non-Custodial • MCP Native • Financial Hallucination Prevention
+  <br/><br/>
+  © 2026 Efe Baran Durmaz
 </p>
