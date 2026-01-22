@@ -1,0 +1,52 @@
+{
+  "name": "@sardis/mcp-server",
+  "version": "0.1.0",
+  "description": "Model Context Protocol (MCP) server for Sardis - enables AI agents to execute secure payments",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "sardis-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest"
+  },
+  "keywords": [
+    "sardis",
+    "mcp",
+    "model-context-protocol",
+    "ai-payments",
+    "claude",
+    "llm",
+    "agent",
+    "fintech"
+  ],
+  "author": "Sardis <efe@sardis.dev>",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "@sardis/sdk": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EfeDurmaz16/sardis.git",
+    "directory": "packages/sardis-mcp-server"
+  }
+}
