@@ -1,0 +1,23 @@
+{
+  "name": "sardis-demo-video",
+  "version": "1.0.0",
+  "description": "YC Demo Video for Sardis - The Payment OS for the Agent Economy",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render src/index.tsx SardisDemo out/sardis-demo.mp4",
+    "render": "remotion render src/index.tsx SardisDemo out/sardis-demo.mp4 --codec h264",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}
