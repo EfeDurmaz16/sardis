@@ -86,3 +86,6 @@ export type {
   // Ledger
   LedgerEntry,
 } from './types.js';
+
+// Integrations
+export * as integrations from './integrations/index.js';

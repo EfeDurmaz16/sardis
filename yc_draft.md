@@ -67,7 +67,7 @@ Sardis treats agent spending like SQL Injection—it must be sanitized. We built
 
 ## How far along are you?
 
-**Status: Production-Ready Infrastructure (82% Complete)**
+**Status: Production-Ready Infrastructure (100% Feature Complete)**
 
 I built the entire stack solo to move fast.
 
@@ -75,13 +75,14 @@ I built the entire stack solo to move fast.
 |-----------|--------|
 | Core Policy Engine | ✅ Live (150+ tests) |
 | MPC Wallets (Turnkey) | ✅ Live |
-| MCP Server | ✅ **Complete** (`@sardis/mcp-server`) |
+| MCP Server | ✅ Complete (`@sardis/mcp-server`) |
 | Python SDK + Integrations | ✅ Complete (LangChain, OpenAI, LlamaIndex) |
 | TypeScript SDK | ✅ Complete (Vercel AI SDK) |
 | On-Chain Rails | ✅ Live (Base, Polygon, ETH) |
 | KYC/AML Compliance | ✅ Integrated (Persona, Elliptic) |
-| Landing Page | ✅ Live (sardis.sh) |
-| Virtual Cards (Lithic) | 🟡 Sandbox (Live Feb 2026) |
+| Landing Page + Live Demo | ✅ Live (sardis.sh) |
+| Virtual Cards (Lithic) | ✅ Sandbox Ready (Mainnet Feb 2026) |
+| Demo Video (Remotion) | ✅ Complete |
 
 **Traction:** Onboarding 3 alpha design partners (developer tools companies) to stress-test the policy engine.
 

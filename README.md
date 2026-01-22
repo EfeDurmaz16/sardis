@@ -2,7 +2,7 @@
 
 ### The Payment OS for the Agent Economy
 
-[![Status: Production-Ready](https://img.shields.io/badge/Status-Production--Ready_(82%25)-success)](https://sardis.sh)
+[![Status: Production-Ready](https://img.shields.io/badge/Status-Production--Ready-success)](https://sardis.sh)
 [![License: Open Core](https://img.shields.io/badge/License-Open--Core-blue)](LICENSE.txt)
 [![MCP: Native](https://img.shields.io/badge/MCP-Native-orange)](https://modelcontextprotocol.io)
 
@@ -147,16 +147,19 @@ const tools = createSardisTools(sardisClient);
 
 ## Project Status
 
-**Production-Ready Infrastructure: 82% Complete**
+**Production-Ready Infrastructure: 100% Feature Complete**
 
 | Component | Status |
 |-----------|--------|
 | Core Policy Engine | ✅ Live (150+ tests) |
 | MPC Wallets (Turnkey) | ✅ Live |
 | On-Chain Settlement | ✅ Live (Base, Polygon, ETH) |
-| KYC/AML Compliance | ✅ Integrated |
-| MCP Server | ✅ Ready |
-| Virtual Cards (Lithic) | 🟡 Sandbox (Live Feb 2026) |
+| KYC/AML Compliance | ✅ Integrated (Persona, Elliptic) |
+| MCP Server | ✅ Complete (`@sardis/mcp-server`) |
+| Python/TypeScript SDKs | ✅ Complete (LangChain, Vercel AI) |
+| Landing Page + Demo | ✅ Live |
+| Virtual Cards (Lithic) | ✅ Sandbox Ready (Mainnet Feb 2026) |
+| Demo Video (Remotion) | ✅ Ready |
 
 ---
 
