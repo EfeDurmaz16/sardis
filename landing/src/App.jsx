@@ -673,7 +673,7 @@ function App() {
             {[
               { label: "INFRASTRUCTURE", value: "Live on Sepolia", sub: "Core infra running" },
               { label: "TIMELINE", value: "Q1 2026", sub: "Mainnet Launch" },
-              { label: "BACKING", value: "Founder Institute", sub: "QNB Pilot Discussions" }
+              { label: "PROTOCOLS", value: "5 Standards", sub: "AP2 • UCP • A2A • TAP • x402" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>
