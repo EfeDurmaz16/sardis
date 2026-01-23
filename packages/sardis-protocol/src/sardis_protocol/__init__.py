@@ -21,9 +21,11 @@ from .payment_methods import (
 )
 from .rate_limiter import (
     AgentRateLimiter,
+    RedisAgentRateLimiter,
     RateLimitConfig,
     RateLimitResult,
     get_rate_limiter,
+    create_rate_limiter,
 )
 
 __all__ = [
@@ -52,7 +54,9 @@ __all__ = [
     "parse_payment_method_from_mandate",
     # Rate Limiting
     "AgentRateLimiter",
+    "RedisAgentRateLimiter",
     "RateLimitConfig",
     "RateLimitResult",
     "get_rate_limiter",
+    "create_rate_limiter",
 ]
