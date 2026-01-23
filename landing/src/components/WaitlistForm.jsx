@@ -19,30 +19,28 @@ const WaitlistForm = () => {
         }
 
         try {
-            // For now, simulate API call with localStorage fallback
-            // In production, replace with actual API endpoint:
-            // const response = await fetch('/api/waitlist', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ email })
-            // });
+            const response = await fetch('/api/waitlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const data = await response.json();
 
-            // Store in localStorage for demo purposes
-            const existingEmails = JSON.parse(localStorage.getItem('sardis_waitlist') || '[]');
-            if (existingEmails.includes(email)) {
+            if (response.status === 409) {
                 setStatus('error');
                 setErrorMessage('This email is already on the waitlist.');
                 return;
             }
-            existingEmails.push(email);
-            localStorage.setItem('sardis_waitlist', JSON.stringify(existingEmails));
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to join waitlist');
+            }
 
             setStatus('success');
         } catch (error) {
             setStatus('error');
-            setErrorMessage('Something went wrong. Please try again.');
+            setErrorMessage(error.message || 'Something went wrong. Please try again.');
         }
     };
 

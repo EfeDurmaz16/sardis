@@ -93,7 +93,11 @@ function IsometricIcon({ src, alt = "", className = "" }) {
     <img
       src={src}
       alt={alt}
-      className={cn("w-8 h-8 object-contain drop-shadow-sm", className)}
+      className={cn(
+        "w-8 h-8 object-contain drop-shadow-sm",
+        "dark:invert-0 invert", // Black in light mode, original (white) in dark mode
+        className
+      )}
       style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.3))" }}
     />
   );

@@ -22,25 +22,28 @@ export default function WaitlistModal({ isOpen, onClose }) {
     }
 
     try {
-      // Simulate API call - replace with actual endpoint in production
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
 
-      // Store in localStorage for demo purposes
-      const existingEmails = JSON.parse(
-        localStorage.getItem("sardis_waitlist") || "[]"
-      );
-      if (existingEmails.includes(email)) {
+      const data = await response.json();
+
+      if (response.status === 409) {
         setStatus("error");
         setErrorMessage("This email is already on the waitlist.");
         return;
       }
-      existingEmails.push(email);
-      localStorage.setItem("sardis_waitlist", JSON.stringify(existingEmails));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to join waitlist');
+      }
 
       setStatus("success");
     } catch (error) {
       setStatus("error");
-      setErrorMessage("Something went wrong. Please try again.");
+      setErrorMessage(error.message || "Something went wrong. Please try again.");
     }
   };
 
