@@ -2,6 +2,7 @@
 Tests for HoldsResource
 """
 import pytest
+from decimal import Decimal
 from sardis_sdk import SardisClient
 
 
@@ -13,17 +14,16 @@ class TestCreateHold:
         httpx_mock.add_response(
             url="https://api.sardis.network/api/v2/holds",
             method="POST",
-            json=mock_responses["hold"],
+            json={"hold_id": "hold_xyz789", "status": "active", "expires_at": "2025-01-21T00:00:00Z"},
         )
 
         result = await client.holds.create(
             wallet_id="wallet_test123",
-            amount_minor=100000000,
+            amount=Decimal("100.00"),
             token="USDC",
-            chain="base",
         )
 
-        assert result.id == "hold_xyz789"
+        assert result.hold_id == "hold_xyz789"
         assert result.status == "active"
 
 
@@ -38,9 +38,9 @@ class TestGetHold:
             json=mock_responses["hold"],
         )
 
-        result = await client.holds.get_by_id("hold_xyz789")
+        result = await client.holds.get("hold_xyz789")
 
-        assert result.id == "hold_xyz789"
+        assert result.hold_id == "hold_xyz789"
 
     async def test_handle_hold_not_found(self, client, httpx_mock):
         """Should handle hold not found."""
@@ -52,7 +52,7 @@ class TestGetHold:
         )
 
         with pytest.raises(Exception):
-            await client.holds.get_by_id("nonexistent")
+            await client.holds.get("nonexistent")
 
 
 class TestCaptureHold:
@@ -78,7 +78,7 @@ class TestCaptureHold:
             json={**mock_responses["hold"], "status": "captured", "amount": "50.00"},
         )
 
-        result = await client.holds.capture("hold_xyz789", amount="50.00")
+        result = await client.holds.capture("hold_xyz789", amount=Decimal("50.00"))
 
         assert result.status == "captured"
 

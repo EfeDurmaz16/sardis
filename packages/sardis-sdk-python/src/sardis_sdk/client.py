@@ -114,9 +114,13 @@ class SardisClient:
     ) -> dict[str, Any]:
         """Make an HTTP request with retry logic."""
         client = await self._get_client()
-        
+
+        # Add /api/v2/ prefix for resource paths (not for paths that already have a prefix)
+        if not path.startswith("/"):
+            path = f"/api/v2/{path}"
+
         last_error: Optional[Exception] = None
-        
+
         for attempt in range(self._max_retries):
             try:
                 response = await client.request(

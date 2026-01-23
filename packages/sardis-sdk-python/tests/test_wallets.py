@@ -18,10 +18,10 @@ class TestCreateWallet:
 
         result = await client.wallets.create(
             agent_id="agent_001",
-            chain="base_sepolia",
+            mpc_provider="turnkey",
         )
 
-        assert result.id == "wallet_test123"
+        assert result.wallet_id == "wallet_test123"
         assert result.agent_id == "agent_001"
 
 
@@ -87,7 +87,7 @@ class TestGetBalance:
     async def test_get_balance_successfully(self, client, httpx_mock, mock_responses):
         """Should get wallet balance."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123/balance",
+            url="https://api.sardis.network/api/v2/wallets/wallet_test123/balance?chain=base&token=USDC",
             method="GET",
             json=mock_responses["balance"],
         )
