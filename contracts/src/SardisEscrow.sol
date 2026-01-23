@@ -114,6 +114,10 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     event MilestoneCompleted(uint256 indexed escrowId, uint256 milestoneIndex);
     
     event MilestoneReleased(uint256 indexed escrowId, uint256 milestoneIndex);
+
+    event ConditionVerified(uint256 indexed escrowId, bytes32 conditionHash);
+
+    event ReleasedWithCondition(uint256 indexed escrowId, bytes32 conditionHash);
     
     // ============ Modifiers ============
     
@@ -290,7 +294,34 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     {
         Escrow storage e = escrows[escrowId];
         require(e.buyerApproved && e.sellerConfirmed, "Not approved by both parties");
-        
+
+        _release(escrowId);
+    }
+
+    /**
+     * @notice Release funds with condition verification
+     * @dev Allows release by providing condition data that hashes to stored conditionHash
+     * @param escrowId The escrow to release
+     * @param conditionData The condition data that should hash to conditionHash
+     */
+    function releaseWithCondition(
+        uint256 escrowId,
+        bytes calldata conditionData
+    )
+        external
+        inState(escrowId, EscrowState.Funded)
+        nonReentrant
+    {
+        Escrow storage e = escrows[escrowId];
+        require(msg.sender == e.buyer || msg.sender == e.seller || msg.sender == arbiter, "Not authorized");
+
+        // Verify condition matches (or no condition set)
+        require(
+            e.conditionHash == bytes32(0) || keccak256(conditionData) == e.conditionHash,
+            "Condition not met"
+        );
+
+        emit ReleasedWithCondition(escrowId, e.conditionHash);
         _release(escrowId);
     }
     
@@ -451,6 +482,40 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     function getEscrow(uint256 escrowId) external view returns (Escrow memory) {
         return escrows[escrowId];
+    }
+
+    /**
+     * @notice Verify if condition data matches the stored condition hash
+     * @param escrowId The escrow to check
+     * @param conditionData The condition data to verify
+     * @return valid True if condition matches or no condition was set
+     * @return reason Description of verification result
+     */
+    function verifyCondition(
+        uint256 escrowId,
+        bytes calldata conditionData
+    ) external view returns (bool valid, string memory reason) {
+        Escrow storage e = escrows[escrowId];
+
+        if (e.conditionHash == bytes32(0)) {
+            return (true, "No condition set");
+        }
+
+        bytes32 dataHash = keccak256(conditionData);
+        if (dataHash == e.conditionHash) {
+            return (true, "Condition verified");
+        }
+
+        return (false, "Condition hash mismatch");
+    }
+
+    /**
+     * @notice Check if an escrow has a release condition set
+     * @param escrowId The escrow to check
+     * @return hasCondition True if a condition hash is set
+     */
+    function hasReleaseCondition(uint256 escrowId) external view returns (bool) {
+        return escrows[escrowId].conditionHash != bytes32(0);
     }
     
     function getMilestones(uint256 escrowId) external view returns (Milestone[] memory) {
