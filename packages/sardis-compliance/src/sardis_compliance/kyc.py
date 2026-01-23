@@ -48,15 +48,44 @@ class KYCResult:
     expires_at: Optional[datetime] = None
     reason: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if KYC verification has expired."""
+        if self.expires_at is None:
+            return False
+        return datetime.now(timezone.utc) > self.expires_at
+
     @property
     def is_verified(self) -> bool:
         """Check if KYC is verified and not expired."""
         if self.status != KYCStatus.APPROVED:
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
+        if self.is_expired:
             return False
         return True
+
+    @property
+    def effective_status(self) -> KYCStatus:
+        """
+        Get the effective status, accounting for expiration.
+
+        Returns EXPIRED if the verification was approved but has since expired.
+        """
+        if self.status == KYCStatus.APPROVED and self.is_expired:
+            return KYCStatus.EXPIRED
+        return self.status
+
+    def time_until_expiration(self) -> Optional[float]:
+        """
+        Get seconds until expiration, or None if no expiration set.
+
+        Returns negative value if already expired.
+        """
+        if self.expires_at is None:
+            return None
+        delta = self.expires_at - datetime.now(timezone.utc)
+        return delta.total_seconds()
 
 
 @dataclass
@@ -478,25 +507,110 @@ class KYCService:
     async def check_verification(
         self,
         agent_id: str,
+        force_refresh: bool = False,
     ) -> KYCResult:
         """
         Check verification status for an agent.
-        
-        Returns cached result if available and not expired.
+
+        Returns cached result if available. If the cached result is expired,
+        returns a result with EXPIRED status and triggers re-verification flow.
+
+        Args:
+            agent_id: The agent to check verification for
+            force_refresh: If True, ignores cache and fetches fresh status
+
+        Returns:
+            KYCResult with effective_status reflecting expiration state
         """
-        # Check cache
-        if agent_id in self._cache:
+        # Check cache (unless force_refresh)
+        if not force_refresh and agent_id in self._cache:
             cached = self._cache[agent_id]
+
+            # Check if cached result has expired
+            if cached.is_expired:
+                logger.warning(
+                    f"KYC verification expired for agent {agent_id}. "
+                    f"Expired at: {cached.expires_at}, "
+                    f"Original verification: {cached.verification_id}"
+                )
+
+                # Return expired status (keeps original data for audit)
+                return KYCResult(
+                    status=KYCStatus.EXPIRED,
+                    verification_id=cached.verification_id,
+                    provider=cached.provider,
+                    verified_at=cached.verified_at,
+                    expires_at=cached.expires_at,
+                    reason="Verification expired - re-verification required",
+                    metadata={
+                        **cached.metadata,
+                        "expired": True,
+                        "original_status": str(cached.status),
+                    },
+                )
+
+            # Return cached result if still valid
             if cached.is_verified:
                 return cached
-        
-        # TODO: Look up inquiry ID from database
+
+            # Cached but not verified (declined, pending, etc.) - return as-is
+            return cached
+
+        # TODO: Look up inquiry ID from database and fetch fresh status
         # For now, return not_started
         return KYCResult(
             status=KYCStatus.NOT_STARTED,
             verification_id="",
             provider=self._provider.__class__.__name__,
         )
+
+    async def needs_reverification(self, agent_id: str) -> bool:
+        """
+        Check if an agent needs re-verification due to expiration.
+
+        Returns True if:
+        - Agent has an expired verification
+        - Agent has never been verified
+        """
+        result = await self.check_verification(agent_id)
+        return result.effective_status in (KYCStatus.EXPIRED, KYCStatus.NOT_STARTED)
+
+    async def get_expiration_warning(
+        self,
+        agent_id: str,
+        warning_days: int = 30,
+    ) -> Optional[str]:
+        """
+        Check if verification is expiring soon and return a warning message.
+
+        Args:
+            agent_id: The agent to check
+            warning_days: Days before expiration to start warning
+
+        Returns:
+            Warning message if expiring soon, None otherwise
+        """
+        if agent_id not in self._cache:
+            return None
+
+        cached = self._cache[agent_id]
+        remaining = cached.time_until_expiration()
+
+        if remaining is None:
+            return None
+
+        if remaining <= 0:
+            return f"KYC verification has expired. Re-verification required."
+
+        days_remaining = remaining / 86400  # seconds to days
+
+        if days_remaining <= warning_days:
+            return (
+                f"KYC verification expires in {int(days_remaining)} days. "
+                f"Please complete re-verification before {cached.expires_at}."
+            )
+
+        return None
 
     async def is_kyc_required(
         self,

@@ -1120,13 +1120,14 @@ def encode_erc20_transfer(to_address: str, amount: int) -> bytes:
 class ChainExecutor:
     """
     Production-ready chain executor with MPC signing support.
-    
+
     Features:
     - Multi-chain support (Base, Polygon, Ethereum)
     - MPC signing via Turnkey or Fireblocks
     - Gas estimation with EIP-1559 support
     - Transaction confirmation polling
     - Simulated mode for development
+    - Pre-execution compliance checks (fail-closed)
     """
 
     # Confirmation requirements
@@ -1139,10 +1140,35 @@ class ChainExecutor:
         self._rpc_clients: Dict[str, ChainRPCClient] = {}
         self._mpc_signer: Optional[MPCSignerPort] = None
         self._simulated = settings.chain_mode == "simulated"
-        
+
+        # Compliance services (fail-closed: None means block all)
+        self._compliance_engine = None
+        self._sanctions_service = None
+        self._init_compliance()
+
         # Initialize MPC signer based on settings
         if not self._simulated:
             self._init_mpc_signer()
+
+    def _init_compliance(self):
+        """Initialize compliance services for pre-execution checks."""
+        try:
+            from sardis_compliance import ComplianceEngine, create_sanctions_service
+
+            self._compliance_engine = ComplianceEngine(self._settings)
+
+            # Initialize sanctions service from environment
+            elliptic_api_key = os.getenv("ELLIPTIC_API_KEY")
+            elliptic_api_secret = os.getenv("ELLIPTIC_API_SECRET")
+            self._sanctions_service = create_sanctions_service(
+                api_key=elliptic_api_key,
+                api_secret=elliptic_api_secret,
+            )
+            logger.info("Compliance services initialized successfully")
+        except ImportError:
+            logger.warning("sardis_compliance not available, compliance checks will fail-closed")
+        except Exception as e:
+            logger.error(f"Failed to initialize compliance services: {e}")
 
     def _init_mpc_signer(self):
         """Initialize MPC signer based on configuration."""
@@ -1246,13 +1272,32 @@ class ChainExecutor:
     async def dispatch_payment(self, mandate: PaymentMandate) -> ChainReceipt:
         """
         Execute a payment mandate on-chain.
-        
-        In simulated mode, returns a mock receipt.
+
+        IMPORTANT: This method enforces a fail-closed compliance policy.
+        Transactions are ONLY executed if:
+        1. Compliance preflight check passes
+        2. Sanctions screening passes for destination address
+
+        In simulated mode, returns a mock receipt (compliance still checked).
         In live mode, signs and broadcasts the transaction.
+
+        Raises:
+            ComplianceError: If compliance check fails
+            SanctionsError: If destination is sanctioned
         """
         chain = mandate.chain or "base_sepolia"
         audit_anchor = f"merkle::{mandate.audit_hash}"
-        
+
+        # === PRE-EXECUTION COMPLIANCE GATE (FAIL-CLOSED) ===
+
+        # Step 1: Run compliance preflight check
+        await self._check_compliance_preflight(mandate)
+
+        # Step 2: Run sanctions screening on destination
+        await self._check_sanctions(mandate.destination, chain)
+
+        # === COMPLIANCE PASSED - PROCEED WITH EXECUTION ===
+
         if self._simulated:
             # Simulated mode - return mock receipt
             tx_hash = f"0x{secrets.token_hex(32)}"
@@ -1263,9 +1308,61 @@ class ChainExecutor:
                 block_number=0,
                 audit_anchor=audit_anchor,
             )
-        
+
         # Live mode - execute real transaction
         return await self._execute_live_payment(mandate, chain, audit_anchor)
+
+    async def _check_compliance_preflight(self, mandate: PaymentMandate) -> None:
+        """
+        Run compliance preflight check. Fail-closed policy.
+
+        Raises:
+            RuntimeError: If compliance check fails or service unavailable
+        """
+        if self._compliance_engine is None:
+            # Fail-closed: no compliance service = block all
+            logger.error(f"Compliance service unavailable, blocking mandate {mandate.mandate_id}")
+            raise RuntimeError("Compliance service unavailable - transaction blocked (fail-closed policy)")
+
+        result = self._compliance_engine.preflight(mandate)
+
+        if not result.allowed:
+            logger.warning(
+                f"Compliance check FAILED for mandate {mandate.mandate_id}: "
+                f"reason={result.reason}, rule={result.rule_id}"
+            )
+            raise RuntimeError(
+                f"Compliance check failed: {result.reason} (rule: {result.rule_id})"
+            )
+
+        logger.info(f"Compliance check PASSED for mandate {mandate.mandate_id}")
+
+    async def _check_sanctions(self, address: str, chain: str) -> None:
+        """
+        Run sanctions screening on an address. Fail-closed policy.
+
+        Raises:
+            RuntimeError: If address is sanctioned or service unavailable
+        """
+        if self._sanctions_service is None:
+            # Fail-closed: no sanctions service = block all
+            logger.error(f"Sanctions service unavailable, blocking address {address}")
+            raise RuntimeError("Sanctions service unavailable - transaction blocked (fail-closed policy)")
+
+        result = await self._sanctions_service.screen_address(address, chain)
+
+        if result.should_block:
+            logger.warning(
+                f"Sanctions check BLOCKED address {address}: "
+                f"risk={result.risk_level}, sanctioned={result.is_sanctioned}, "
+                f"reason={result.reason}"
+            )
+            raise RuntimeError(
+                f"Sanctions check failed: address {address} is blocked "
+                f"(risk: {result.risk_level}, reason: {result.reason})"
+            )
+
+        logger.info(f"Sanctions check PASSED for address {address} (risk: {result.risk_level})")
 
     async def _execute_live_payment(
         self,

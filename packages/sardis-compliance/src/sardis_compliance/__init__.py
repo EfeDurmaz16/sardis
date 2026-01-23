@@ -1,6 +1,12 @@
 """Compliance exports."""
 
-from .checks import ComplianceEngine, ComplianceResult
+from .checks import (
+    ComplianceAuditEntry,
+    ComplianceAuditStore,
+    ComplianceEngine,
+    ComplianceResult,
+    get_audit_store,
+)
 from .kyc import (
     KYCStatus,
     KYCResult,
@@ -29,6 +35,10 @@ __all__ = [
     # Compliance engine
     "ComplianceEngine",
     "ComplianceResult",
+    # Audit trail
+    "ComplianceAuditEntry",
+    "ComplianceAuditStore",
+    "get_audit_store",
     # KYC
     "KYCStatus",
     "KYCResult",
