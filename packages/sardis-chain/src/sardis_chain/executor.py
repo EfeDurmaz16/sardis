@@ -98,6 +98,8 @@ CHAIN_CONFIGS = {
         "block_time": 2,
     },
     # Solana (different architecture - requires separate handling)
+    # NOTE: Solana support is EXPERIMENTAL and NOT YET IMPLEMENTED
+    # Requires Anchor programs instead of Solidity contracts
     "solana_devnet": {
         "chain_id": 0,  # Solana doesn't use chain IDs like EVM
         "rpc_url": "https://api.devnet.solana.com",
@@ -105,6 +107,8 @@ CHAIN_CONFIGS = {
         "native_token": "SOL",
         "block_time": 0.4,
         "is_solana": True,
+        "experimental": True,
+        "not_implemented": True,
     },
     "solana": {
         "chain_id": 0,
@@ -113,6 +117,8 @@ CHAIN_CONFIGS = {
         "native_token": "SOL",
         "block_time": 0.4,
         "is_solana": True,
+        "experimental": True,
+        "not_implemented": True,
     },
 }
 
@@ -152,7 +158,7 @@ STABLECOIN_ADDRESSES = {
     "arbitrum": {
         "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
         "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-        "EURC": "0x6BEF5a51a3f4e5E5F5F0C3F2F5E5A5D5B5C5E5F5",  # Placeholder - verify actual address
+        # NOTE: EURC not yet available on Arbitrum - will add when Circle deploys
     },
     # Optimism
     "optimism_sepolia": {
@@ -175,6 +181,20 @@ STABLECOIN_ADDRESSES = {
 
 # Sardis contract addresses by chain (populated after deployment)
 # See docs/contracts-deployment.md for deployment instructions
+#
+# Environment variable overrides (format: SARDIS_{CHAIN}_{CONTRACT}_ADDRESS)
+# Example: SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS=0x...
+#
+# Deployment order:
+#   1. Base Sepolia (primary testnet)
+#   2. Polygon Amoy
+#   3. Ethereum Sepolia
+#   4. Arbitrum Sepolia
+#   5. Optimism Sepolia
+#
+# After deployment, either:
+#   a) Set environment variables for each chain, OR
+#   b) Update the addresses in this file and redeploy
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
@@ -219,15 +239,93 @@ SARDIS_CONTRACTS = {
         "escrow": "",
     },
     # Solana - requires different contract architecture (Anchor programs)
+    # NOTE: Solana integration is EXPERIMENTAL and NOT IMPLEMENTED
     "solana_devnet": {
         "wallet_program": "",  # Solana uses programs, not contracts
         "escrow_program": "",
+        "experimental": True,
+        "not_implemented": True,
     },
     "solana": {
         "wallet_program": "",
         "escrow_program": "",
+        "experimental": True,
+        "not_implemented": True,
     },
 }
+
+
+def get_sardis_contract_address(chain: str, contract_type: str) -> str:
+    """
+    Get Sardis contract address for a chain with environment variable override.
+
+    Environment variables take precedence over hardcoded addresses.
+    Format: SARDIS_{CHAIN}_{CONTRACT}_ADDRESS
+
+    Args:
+        chain: Chain name (e.g., "base_sepolia", "polygon_amoy")
+        contract_type: Contract type ("wallet_factory" or "escrow")
+
+    Returns:
+        Contract address or empty string if not configured
+
+    Raises:
+        ValueError: If chain is Solana (not implemented)
+
+    Example:
+        >>> os.environ["SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS"] = "0x123..."
+        >>> get_sardis_contract_address("base_sepolia", "wallet_factory")
+        '0x123...'
+    """
+    chain_config = SARDIS_CONTRACTS.get(chain, {})
+
+    # Check if chain is experimental/not implemented
+    if chain_config.get("not_implemented"):
+        raise ValueError(f"Chain {chain} is not yet implemented")
+
+    # Build environment variable name
+    # e.g., SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS
+    env_key = f"SARDIS_{chain.upper()}_{contract_type.upper()}_ADDRESS"
+
+    # Environment variable takes precedence
+    env_address = os.getenv(env_key, "")
+    if env_address:
+        return env_address
+
+    # Fall back to hardcoded address
+    return chain_config.get(contract_type, "")
+
+
+def get_sardis_wallet_factory(chain: str) -> str:
+    """Get SardisWalletFactory address for a chain."""
+    return get_sardis_contract_address(chain, "wallet_factory")
+
+
+def get_sardis_escrow(chain: str) -> str:
+    """Get SardisEscrow address for a chain."""
+    return get_sardis_contract_address(chain, "escrow")
+
+
+def is_chain_configured(chain: str) -> bool:
+    """
+    Check if a chain has Sardis contracts configured.
+
+    Returns True if either:
+    - Environment variables are set for the chain, OR
+    - Hardcoded addresses are present in SARDIS_CONTRACTS
+    """
+    if chain not in SARDIS_CONTRACTS:
+        return False
+
+    chain_config = SARDIS_CONTRACTS[chain]
+
+    # Check if not implemented
+    if chain_config.get("not_implemented"):
+        return False
+
+    # Check for wallet_factory (required)
+    wallet_factory = get_sardis_wallet_factory(chain)
+    return bool(wallet_factory)
 
 
 class TransactionStatus(str, Enum):
