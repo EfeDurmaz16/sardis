@@ -362,6 +362,282 @@ function App() {
         </div>
       </section>
 
+      {/* Protocol Ecosystem Section */}
+      <section className="py-24 border-t border-border">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">PROTOCOL NATIVE</Badge>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Built on Open Standards</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Sardis implements and extends the emerging standards for agentic commerce. Full interoperability with the protocols shaping the agent economy.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: icons.handshake,
+                name: "AP2",
+                fullName: "Agent Payment Protocol",
+                description: "Google, PayPal, Visa consortium standard. Mandate chain verification: Intent → Cart → Payment.",
+                status: "Implemented"
+              },
+              {
+                icon: icons.wallet,
+                name: "UCP",
+                fullName: "Universal Commerce Protocol",
+                description: "Structured checkout flows between agents and merchants. Cart management, discounts, fulfillment tracking.",
+                status: "Implemented"
+              },
+              {
+                icon: icons.rocketLaunch,
+                name: "A2A",
+                fullName: "Agent-to-Agent Protocol",
+                description: "Multi-agent communication for payments and credential verification. Agent discovery via .well-known.",
+                status: "Implemented"
+              },
+              {
+                icon: icons.verifiedUser,
+                name: "TAP",
+                fullName: "Trust Anchor Protocol",
+                description: "Ed25519 and ECDSA-P256 identity verification. Agent attestation and credential chains.",
+                status: "Implemented"
+              }
+            ].map((protocol, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-12 h-12 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors">
+                        <IsometricIcon src={protocol.icon} className="w-7 h-7" />
+                      </div>
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-600/30 rounded-none text-xs font-mono">
+                        {protocol.status}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-2xl font-bold font-display text-[var(--sardis-orange)]">{protocol.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground font-mono">{protocol.fullName}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {protocol.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* x402 Micropayments highlight */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-8 p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors"
+          >
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="w-16 h-16 border border-border flex items-center justify-center">
+                <IsometricIcon src={icons.creditCardGear} className="w-10 h-10" />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-xl font-bold font-display mb-1">x402 Micropayments</h3>
+                <p className="text-muted-foreground">HTTP 402 Payment Required - Pay-per-API-call for agent services. Sub-cent transactions with instant settlement.</p>
+              </div>
+              <Badge variant="outline" className="text-emerald-600 border-emerald-600/30 rounded-none font-mono">
+                Implemented
+              </Badge>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Use Cases Section */}
+      <section className="py-24 border-t border-border bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">USE CASES</Badge>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">What Agents Can Do</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              From simple purchases to complex multi-agent workflows, Sardis enables the full spectrum of agentic commerce.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {[
+              {
+                icon: icons.wallet,
+                title: "Shopping Agents",
+                description: "Book flights, purchase software licenses, order supplies. Agents can complete checkout flows that previously required human intervention.",
+                examples: ["Travel booking", "SaaS subscriptions", "Office supplies", "API credits"]
+              },
+              {
+                icon: icons.handshake,
+                title: "Service Agents",
+                description: "Pay for cloud compute, API calls, and data services. Programmatic access to any service with pay-as-you-go pricing.",
+                examples: ["Cloud compute", "Data APIs", "AI model inference", "Storage services"]
+              },
+              {
+                icon: icons.rocketLaunch,
+                title: "Multi-Agent Workflows",
+                description: "Coordinate payments across agent teams. One agent discovers, another negotiates, a third executes payment - all with cryptographic verification.",
+                examples: ["Supply chain automation", "Research orchestration", "Content pipelines", "Trading systems"]
+              },
+              {
+                icon: icons.verifiedUser,
+                title: "Credential Verification",
+                description: "Verify payment mandates, identity attestations, and capability credentials between agents before transacting.",
+                examples: ["KYC verification", "Mandate validation", "Capability proofs", "Trust scoring"]
+              }
+            ].map((useCase, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
+                  <CardHeader>
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors shrink-0">
+                        <IsometricIcon src={useCase.icon} className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-bold font-display mb-2">{useCase.title}</CardTitle>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {useCase.description}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {useCase.examples.map((example, j) => (
+                        <Badge key={j} variant="outline" className="rounded-none text-xs font-mono border-border">
+                          {example}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Ecosystem Contribution Section */}
+      <section className="py-24 border-t border-border">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">OPEN SOURCE</Badge>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Contributing to the Ecosystem</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              We believe the agent economy needs open infrastructure. Our SDKs, tools, and reference implementations are free for everyone.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: icons.terminal,
+                title: "Multi-Language SDKs",
+                description: "Full-featured SDKs for Python and TypeScript. Create wallets, execute payments, manage policies - all with type-safe APIs.",
+                links: [
+                  { name: "Python SDK", url: "https://github.com/EfeDurmaz16/sardis" },
+                  { name: "TypeScript SDK", url: "https://github.com/EfeDurmaz16/sardis" }
+                ]
+              },
+              {
+                icon: icons.autoRenew,
+                title: "MCP Server",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 36+ tools for payments, wallets, holds, and commerce.",
+                links: [
+                  { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
+                  { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }
+                ]
+              },
+              {
+                icon: icons.searchInsights,
+                title: "Reference Implementations",
+                description: "Complete examples for common patterns: shopping agents, subscription management, multi-agent coordination, and more.",
+                links: [
+                  { name: "Examples", url: "https://github.com/EfeDurmaz16/sardis/tree/main/examples" },
+                  { name: "Demos", url: "https://github.com/EfeDurmaz16/sardis/tree/main/demos" }
+                ]
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
+                  <CardHeader>
+                    <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
+                      <IsometricIcon src={item.icon} className="w-10 h-10" />
+                    </div>
+                    <CardTitle className="text-xl font-bold font-display">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-muted-foreground leading-relaxed">
+                      {item.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {item.links.map((link, j) => (
+                        <a
+                          key={j}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-mono text-[var(--sardis-orange)] hover:underline"
+                        >
+                          {link.name} →
+                        </a>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Protocol packages highlight */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 p-8 border border-border"
+          >
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold font-display mb-2">Protocol Packages</h3>
+              <p className="text-muted-foreground">Standalone implementations of each protocol - use them independently or as part of Sardis.</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: "sardis-protocol", desc: "AP2/TAP verification" },
+                { name: "sardis-ucp", desc: "Universal Commerce" },
+                { name: "sardis-a2a", desc: "Agent-to-Agent" },
+                { name: "sardis-chain", desc: "Multi-chain execution" }
+              ].map((pkg, i) => (
+                <div key={i} className="p-4 border border-border hover:border-[var(--sardis-orange)] transition-colors text-center">
+                  <code className="text-sm font-mono text-[var(--sardis-orange)]">{pkg.name}</code>
+                  <p className="text-xs text-muted-foreground mt-1">{pkg.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Traction Section */}
       <section className="py-24 border-t border-border">
         <div className="container mx-auto px-6">
