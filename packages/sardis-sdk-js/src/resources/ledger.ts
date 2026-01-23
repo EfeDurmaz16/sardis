@@ -20,9 +20,23 @@ export class LedgerResource extends BaseResource {
 
   /**
    * Get a ledger entry by transaction ID
+   *
+   * @param txId - The transaction ID
+   * @returns The ledger entry
+   */
+  async get(txId: string): Promise<LedgerEntry> {
+    return this._get<LedgerEntry>(`/api/v2/ledger/entries/${txId}`);
+  }
+
+  /**
+   * Get a ledger entry by transaction ID
+   *
+   * @deprecated Use `get(txId)` instead. This method will be removed in v1.0.0.
+   * @param txId - The transaction ID
+   * @returns The ledger entry
    */
   async getEntry(txId: string): Promise<LedgerEntry> {
-    return this._get<LedgerEntry>(`/api/v2/ledger/entries/${txId}`);
+    return this.get(txId);
   }
 
   /**

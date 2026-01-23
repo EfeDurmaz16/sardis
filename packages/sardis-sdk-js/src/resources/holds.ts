@@ -15,9 +15,23 @@ export class HoldsResource extends BaseResource {
 
   /**
    * Get a hold by ID
+   *
+   * @param holdId - The hold ID
+   * @returns The hold object
+   */
+  async get(holdId: string): Promise<Hold> {
+    return this._get<Hold>(`/api/v2/holds/${holdId}`);
+  }
+
+  /**
+   * Get a hold by ID
+   *
+   * @deprecated Use `get(holdId)` instead. This method will be removed in v1.0.0.
+   * @param holdId - The hold ID
+   * @returns The hold object
    */
   async getById(holdId: string): Promise<Hold> {
-    return this._get<Hold>(`/api/v2/holds/${holdId}`);
+    return this.get(holdId);
   }
 
   /**

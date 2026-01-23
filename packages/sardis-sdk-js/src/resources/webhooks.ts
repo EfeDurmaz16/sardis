@@ -31,9 +31,23 @@ export class WebhooksResource extends BaseResource {
 
   /**
    * Get a webhook subscription by ID
+   *
+   * @param webhookId - The webhook ID
+   * @returns The webhook object
+   */
+  async get(webhookId: string): Promise<Webhook> {
+    return this._get<Webhook>(`/api/v2/webhooks/${webhookId}`);
+  }
+
+  /**
+   * Get a webhook subscription by ID
+   *
+   * @deprecated Use `get(webhookId)` instead. This method will be removed in v1.0.0.
+   * @param webhookId - The webhook ID
+   * @returns The webhook object
    */
   async getById(webhookId: string): Promise<Webhook> {
-    return this._get<Webhook>(`/api/v2/webhooks/${webhookId}`);
+    return this.get(webhookId);
   }
 
   /**
