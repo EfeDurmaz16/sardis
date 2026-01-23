@@ -5,11 +5,28 @@ import './index.css'
 import App from './App.jsx'
 import DocsLayout from './docs/DocsLayout.jsx'
 import DocsOverview from './docs/pages/Overview.jsx'
+import DocsQuickstart from './docs/pages/Quickstart.jsx'
+import DocsAuthentication from './docs/pages/Authentication.jsx'
+// Protocols
+import DocsProtocols from './docs/pages/Protocols.jsx'
+import DocsAP2 from './docs/pages/AP2.jsx'
+import DocsUCP from './docs/pages/UCP.jsx'
+import DocsA2A from './docs/pages/A2A.jsx'
+import DocsTAP from './docs/pages/TAP.jsx'
+// Core Features
+import DocsWallets from './docs/pages/Wallets.jsx'
+import DocsPayments from './docs/pages/Payments.jsx'
+import DocsHolds from './docs/pages/Holds.jsx'
+import DocsPolicies from './docs/pages/Policies.jsx'
+// SDKs & Tools
+import DocsSDKPython from './docs/pages/SDKPython.jsx'
+import DocsSDKTypeScript from './docs/pages/SDKTypeScript.jsx'
+import DocsMCPServer from './docs/pages/MCPServer.jsx'
 import DocsSDK from './docs/pages/SDK.jsx'
+// Resources
+import DocsArchitecture from './docs/pages/Architecture.jsx'
 import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
 import DocsSecurity from './docs/pages/Security.jsx'
-import DocsArchitecture from './docs/pages/Architecture.jsx'
-import DocsQuickstart from './docs/pages/Quickstart.jsx'
 import DocsDeployment from './docs/pages/Deployment.jsx'
 import DocsFAQ from './docs/pages/FAQ.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
@@ -31,7 +48,24 @@ createRoot(document.getElementById('root')).render(
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />
           <Route path="quickstart" element={<DocsQuickstart />} />
+          <Route path="authentication" element={<DocsAuthentication />} />
+          {/* Protocols */}
+          <Route path="protocols" element={<DocsProtocols />} />
+          <Route path="ap2" element={<DocsAP2 />} />
+          <Route path="ucp" element={<DocsUCP />} />
+          <Route path="a2a" element={<DocsA2A />} />
+          <Route path="tap" element={<DocsTAP />} />
+          {/* Core Features */}
+          <Route path="wallets" element={<DocsWallets />} />
+          <Route path="payments" element={<DocsPayments />} />
+          <Route path="holds" element={<DocsHolds />} />
+          <Route path="policies" element={<DocsPolicies />} />
+          {/* SDKs & Tools */}
+          <Route path="sdk-python" element={<DocsSDKPython />} />
+          <Route path="sdk-typescript" element={<DocsSDKTypeScript />} />
+          <Route path="mcp-server" element={<DocsMCPServer />} />
           <Route path="sdk" element={<DocsSDK />} />
+          {/* Resources */}
           <Route path="architecture" element={<DocsArchitecture />} />
           <Route path="whitepaper" element={<DocsWhitepaper />} />
           <Route path="security" element={<DocsSecurity />} />

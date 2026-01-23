@@ -3,12 +3,39 @@ import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 const posts = [
   {
+    title: 'Sardis v0.5: UCP and A2A Protocol Support',
+    excerpt: 'Today we release Sardis v0.5 with full support for UCP (Universal Commerce Protocol) and A2A (Agent-to-Agent) protocol. Now your agents can participate in the broader AI agent economy with standardized checkout flows and multi-agent communication.',
+    date: '2026-01-24',
+    readTime: '6 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-5-protocols',
+  },
+  {
+    title: 'Understanding AP2: The Industry Standard for Agent Payments',
+    excerpt: 'AP2 (Agent Payment Protocol) is the Google, PayPal, Mastercard, and Visa consortium standard. Learn how the Intent → Cart → Payment mandate chain provides cryptographic proof of authorization for every transaction.',
+    date: '2026-01-20',
+    readTime: '8 min read',
+    category: 'Technical',
+    featured: true,
+    slug: 'understanding-ap2',
+  },
+  {
+    title: 'MCP Server: 36+ Tools for AI Payments',
+    excerpt: 'Our MCP server has expanded from 4 tools to 36+. From checkout sessions to agent discovery, learn how to add comprehensive payment capabilities to Claude Desktop and Cursor without writing code.',
+    date: '2026-01-18',
+    readTime: '5 min read',
+    category: 'Tutorial',
+    featured: false,
+    slug: 'mcp-36-tools',
+  },
+  {
     title: 'Introducing Sardis: Secure Payments for AI Agents',
     excerpt: 'Today we announce Sardis, a stablecoin execution layer designed specifically for AI agents. Learn how MPC wallets and policy enforcement enable autonomous financial operations while preventing hallucination-driven spending.',
     date: '2025-01-15',
     readTime: '5 min read',
     category: 'Announcement',
-    featured: true,
+    featured: false,
     slug: 'introducing-sardis',
   },
   {
@@ -17,7 +44,7 @@ const posts = [
     date: '2025-01-10',
     readTime: '8 min read',
     category: 'Security',
-    featured: true,
+    featured: false,
     slug: 'financial-hallucination-prevention',
   },
   {
@@ -37,15 +64,6 @@ const posts = [
     category: 'Technical',
     featured: false,
     slug: 'mpc-wallets',
-  },
-  {
-    title: 'SDK v0.2.0: LangChain, OpenAI, and LlamaIndex Support',
-    excerpt: 'Our latest SDK release adds native integrations for all major AI frameworks. Now you can add Sardis payments to any LangChain agent, OpenAI function caller, or LlamaIndex tool in minutes.',
-    date: '2025-01-02',
-    readTime: '4 min read',
-    category: 'Release',
-    featured: false,
-    slug: 'sdk-v0-2-0',
   },
   {
     title: 'Policy Engine Deep Dive: Configuring Spending Rules',

@@ -2,9 +2,47 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.5.0',
+    date: '2026-01-24',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'UCP (Universal Commerce Protocol) - Standardized checkout flows for AI agents',
+          'A2A (Agent-to-Agent) protocol - Multi-agent communication and discovery',
+          'sardis-ucp package with checkout, order, and fulfillment capabilities',
+          'sardis-a2a package with agent cards and message handling',
+          'MCP Server expanded from 4 to 36+ tools',
+          'AP2 mandate adapter for UCP-AP2 interoperability',
+          'Agent discovery service with TTL caching',
+          'TAP (Trust Anchor Protocol) identity verification',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'TypeScript SDK now includes UCP, A2A, and Agents resources',
+          'Python SDK with full UCP and A2A support',
+          'MCP Server modularized into tool categories',
+          'Policy engine with natural language support',
+          'Documentation updated with protocol guides',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'SDK method naming standardized (get() instead of getById())',
+          'MCP policy configuration now uses environment variables',
+          'Rate limiter persistence with Redis support',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.4.0',
     date: '2025-01-23',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

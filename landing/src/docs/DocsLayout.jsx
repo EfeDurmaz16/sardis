@@ -10,26 +10,42 @@ const navigation = [
     items: [
       { name: 'Overview', href: '/docs/overview' },
       { name: 'Quick Start', href: '/docs/quickstart' },
+      { name: 'Authentication', href: '/docs/authentication' },
     ],
   },
   {
-    title: 'Core Concepts',
+    title: 'Protocols',
     items: [
-      { name: 'Architecture', href: '/docs/architecture' },
-      { name: 'SDK Reference', href: '/docs/sdk' },
+      { name: 'Protocol Stack', href: '/docs/protocols' },
+      { name: 'AP2 (Payment)', href: '/docs/ap2' },
+      { name: 'UCP (Commerce)', href: '/docs/ucp' },
+      { name: 'A2A (Agent-to-Agent)', href: '/docs/a2a' },
+      { name: 'TAP (Trust Anchor)', href: '/docs/tap' },
+    ],
+  },
+  {
+    title: 'Core Features',
+    items: [
+      { name: 'Wallets', href: '/docs/wallets' },
+      { name: 'Payments', href: '/docs/payments' },
+      { name: 'Holds', href: '/docs/holds' },
+      { name: 'Policies', href: '/docs/policies' },
+    ],
+  },
+  {
+    title: 'SDKs & Tools',
+    items: [
+      { name: 'Python SDK', href: '/docs/sdk-python' },
+      { name: 'TypeScript SDK', href: '/docs/sdk-typescript' },
+      { name: 'MCP Server', href: '/docs/mcp-server' },
     ],
   },
   {
     title: 'Resources',
     items: [
+      { name: 'Architecture', href: '/docs/architecture' },
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
-      { name: 'Deployment', href: '/docs/deployment' },
-    ],
-  },
-  {
-    title: 'Support',
-    items: [
       { name: 'FAQ', href: '/docs/faq' },
       { name: 'Blog', href: '/docs/blog' },
       { name: 'Changelog', href: '/docs/changelog' },
