@@ -21,15 +21,22 @@ line_length = 120
 tab_width = 4
 bracket_spacing = true
 
-# Chain configurations
+# Chain configurations - All supported testnets
 [rpc_endpoints]
+# Primary testnet
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
+# Secondary testnets
 polygon_amoy = "${POLYGON_AMOY_RPC_URL}"
 sepolia = "${SEPOLIA_RPC_URL}"
+arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+optimism_sepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
+# Local development
 localhost = "http://127.0.0.1:8545"
 
 [etherscan]
 base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
 polygon_amoy = { key = "${POLYGONSCAN_API_KEY}", url = "https://api-amoy.polygonscan.com/api" }
 sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
+arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}", url = "https://api-sepolia.arbiscan.io/api" }
+optimism_sepolia = { key = "${OPTIMISM_API_KEY}", url = "https://api-sepolia-optimistic.etherscan.io/api" }
 

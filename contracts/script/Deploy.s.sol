@@ -8,13 +8,42 @@ import "../src/SardisEscrow.sol";
 /**
  * @title Deploy
  * @notice Deployment script for Sardis smart contracts
- * 
+ * @dev Supports deployment to all Sardis-supported testnets
+ *
+ * Supported Testnets (in deployment order):
+ *   1. Base Sepolia (primary)
+ *   2. Polygon Amoy
+ *   3. Ethereum Sepolia
+ *   4. Arbitrum Sepolia
+ *   5. Optimism Sepolia
+ *
+ * Environment Variables Required:
+ *   - PRIVATE_KEY: Deployer wallet private key
+ *   - RECOVERY_ADDRESS: (optional) Recovery address, defaults to deployer
+ *   - *_RPC_URL: RPC endpoint for each network
+ *   - *_API_KEY: Block explorer API key for verification
+ *
  * Usage:
- *   # Deploy to Base Sepolia
+ *   # Deploy to Base Sepolia (primary testnet)
  *   forge script script/Deploy.s.sol:Deploy --rpc-url base_sepolia --broadcast --verify
- *   
- *   # Deploy to local anvil
+ *
+ *   # Deploy to Polygon Amoy
+ *   forge script script/Deploy.s.sol:Deploy --rpc-url polygon_amoy --broadcast --verify
+ *
+ *   # Deploy to Ethereum Sepolia
+ *   forge script script/Deploy.s.sol:Deploy --rpc-url sepolia --broadcast --verify
+ *
+ *   # Deploy to Arbitrum Sepolia
+ *   forge script script/Deploy.s.sol:Deploy --rpc-url arbitrum_sepolia --broadcast --verify
+ *
+ *   # Deploy to Optimism Sepolia
+ *   forge script script/Deploy.s.sol:Deploy --rpc-url optimism_sepolia --broadcast --verify
+ *
+ *   # Deploy to local anvil (no verification)
  *   forge script script/Deploy.s.sol:Deploy --rpc-url localhost --broadcast
+ *
+ * After Deployment:
+ *   Update contract addresses in packages/sardis-chain/src/sardis_chain/executor.py
  */
 contract Deploy is Script {
     // Default configuration (can be overridden with env vars)
