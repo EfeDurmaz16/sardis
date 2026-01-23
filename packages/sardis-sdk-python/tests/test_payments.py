@@ -13,7 +13,14 @@ class TestExecuteMandate:
         httpx_mock.add_response(
             url="https://api.sardis.network/api/v2/mandates/execute",
             method="POST",
-            json=mock_responses["mandate"],
+            json={
+                "payment_id": "pay_abc123",
+                "status": "completed",
+                "tx_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                "chain": "base_sepolia",
+                "ledger_tx_id": "ltx_456",
+                "audit_anchor": "anchor_789",
+            },
         )
 
         mandate = {
@@ -27,7 +34,7 @@ class TestExecuteMandate:
 
         result = await client.payments.execute_mandate(mandate)
 
-        assert result.id == "mandate_abc123"
+        assert result.payment_id == "pay_abc123"
         assert result.status == "completed"
 
     async def test_handle_mandate_failure(self, client, httpx_mock):

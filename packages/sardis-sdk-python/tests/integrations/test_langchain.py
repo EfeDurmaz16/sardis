@@ -42,7 +42,13 @@ class TestSardisTool:
         httpx_mock.add_response(
             url="https://api.sardis.network/api/v2/mandates/execute",
             method="POST",
-            json=mock_responses["mandate"],
+            json={
+                "payment_id": "pay_abc123",
+                "status": "completed",
+                "tx_hash": "0xabcdef",
+                "chain": "base_sepolia",
+                "audit_anchor": "anchor_789",
+            },
         )
 
         client = SardisClient(api_key=api_key, base_url=base_url)
@@ -135,10 +141,16 @@ class TestSardisPolicyCheckTool:
             url="https://api.sardis.network/api/v2/wallets/wallet_123",
             method="GET",
             json={
-                "id": "wallet_123",
+                "wallet_id": "wallet_123",
+                "agent_id": "agent_001",
+                "mpc_provider": "turnkey",
+                "addresses": {},
+                "currency": "USDC",
                 "limit_per_tx": "100.00",
                 "limit_total": "1000.00",
                 "is_active": True,
+                "created_at": "2025-01-20T00:00:00Z",
+                "updated_at": "2025-01-20T00:00:00Z",
             },
         )
 
@@ -163,7 +175,7 @@ class TestSardisBalanceCheckTool:
     async def test_check_balance_successfully(self, api_key, base_url, httpx_mock, mock_responses):
         """Should check balance successfully."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123/balance",
+            url="https://api.sardis.network/api/v2/wallets/wallet_123/balance?chain=base_sepolia&token=USDC",
             method="GET",
             json=mock_responses["balance"],
         )

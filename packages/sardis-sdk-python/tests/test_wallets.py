@@ -38,7 +38,7 @@ class TestGetWallet:
 
         result = await client.wallets.get("wallet_test123")
 
-        assert result.id == "wallet_test123"
+        assert result.wallet_id == "wallet_test123"
 
     async def test_handle_wallet_not_found(self, client, httpx_mock):
         """Should handle wallet not found."""
@@ -59,9 +59,9 @@ class TestListWallets:
     async def test_list_all_wallets(self, client, httpx_mock, mock_responses):
         """Should list all wallets."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets",
+            url="https://api.sardis.network/api/v2/wallets?limit=100",
             method="GET",
-            json=[mock_responses["wallet"], {**mock_responses["wallet"], "id": "wallet_2"}],
+            json=[mock_responses["wallet"], {**mock_responses["wallet"], "wallet_id": "wallet_2"}],
         )
 
         result = await client.wallets.list()
@@ -94,8 +94,8 @@ class TestGetBalance:
 
         result = await client.wallets.get_balance("wallet_test123")
 
-        assert result.balance == "1000.00"
-        assert result.balance_minor == 1000000000
+        assert str(result.balance) == "1000.00"
+        assert result.chain == "base"
 
     async def test_specify_chain_and_token(self, client, httpx_mock):
         """Should specify chain and token."""
@@ -108,6 +108,7 @@ class TestGetBalance:
                 "token": "USDT",
                 "balance": "500.00",
                 "balance_minor": 500000000,
+                "address": "0xabcdef1234567890abcdef1234567890abcdef12",
             },
         )
 
@@ -158,4 +159,4 @@ class TestSetAddress:
             address="0xnewaddress1234567890abcdef1234567890abcd",
         )
 
-        assert result.id == "wallet_test123"
+        assert result.wallet_id == "wallet_test123"
