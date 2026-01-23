@@ -111,13 +111,13 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         uint256 sellerAmount
     );
     
-    event MilestoneCompleted(uint256 indexed escrowId, uint256 milestoneIndex);
-    
-    event MilestoneReleased(uint256 indexed escrowId, uint256 milestoneIndex);
+    event MilestoneCompleted(uint256 indexed escrowId, uint256 indexed milestoneIndex);
 
-    event ConditionVerified(uint256 indexed escrowId, bytes32 conditionHash);
+    event MilestoneReleased(uint256 indexed escrowId, uint256 indexed milestoneIndex);
 
-    event ReleasedWithCondition(uint256 indexed escrowId, bytes32 conditionHash);
+    event ConditionVerified(uint256 indexed escrowId, bytes32 indexed conditionHash);
+
+    event ReleasedWithCondition(uint256 indexed escrowId, bytes32 indexed conditionHash);
     
     // ============ Modifiers ============
     

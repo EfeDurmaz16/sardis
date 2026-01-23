@@ -62,7 +62,7 @@ contract SardisWalletFactory is Ownable, Pausable {
     
     event DeploymentFeeUpdated(uint256 newFee);
     
-    event RecoveryAddressUpdated(address newAddress);
+    event RecoveryAddressUpdated(address indexed newAddress);
     
     event FeesWithdrawn(address indexed to, uint256 amount);
     

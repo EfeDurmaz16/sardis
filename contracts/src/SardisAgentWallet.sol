@@ -88,7 +88,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     event HoldCreated(
         bytes32 indexed holdId,
         address indexed merchant,
-        address token,
+        address indexed token,
         uint256 amount,
         uint256 expiresAt
     );
