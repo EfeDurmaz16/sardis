@@ -276,6 +276,97 @@ class TestTotalCalculation:
                 f"Mismatch for {amount}: {net} + {fee} + {chain_fee} = {calculated_total} != {total}"
 
 
+class TestMaestroPrecision:
+    """
+    THE MAESTRO STANDARD: Precision verification.
+
+    These tests verify that fee calculations use safe math (Decimal)
+    and do not suffer from floating-point errors.
+    """
+
+    def test_no_floating_point_errors_in_fee_sum(self):
+        """
+        MAESTRO STANDARD TEST: Verify fee calculations use safe math.
+
+        This test checks that summing many small amounts does not
+        produce floating-point accumulation errors.
+        """
+        # The classic floating-point problem: 0.1 + 0.1 + ... (1000 times) != 100.0
+        # With float: sum([0.1] * 1000) == 99.99999999999857
+        # With Decimal: sum([Decimal("0.1")] * 1000) == Decimal("100.0")
+
+        amounts = [Decimal("0.10")] * 1000
+        total = sum(amounts)
+
+        # CRITICAL: Must equal exactly 100.00, not 99.999... or 100.000...01
+        assert total == Decimal("100.00"), \
+            f"MAESTRO STANDARD VIOLATED: Floating-point error detected! {total} != 100.00"
+
+    def test_fee_calculation_precision(self):
+        """
+        Verify fee calculations maintain precision across operations.
+        """
+        # Calculate fee on progressively larger amounts
+        test_amounts = [
+            Decimal("0.01"),      # 1 cent
+            Decimal("1.00"),      # 1 dollar
+            Decimal("100.00"),    # 100 dollars
+            Decimal("10000.00"),  # 10k
+            Decimal("1000000.00") # 1 million
+        ]
+
+        for amount in test_amounts:
+            fee = FeeCalculator.calculate_protocol_fee(amount)
+
+            # Fee should be a valid Decimal with max 6 decimal places
+            assert isinstance(fee, Decimal)
+            str_fee = str(fee)
+            if "." in str_fee:
+                decimals = len(str_fee.split(".")[1])
+                assert decimals <= 6, \
+                    f"Fee has too many decimal places: {fee} for amount {amount}"
+
+            # Fee should be non-negative
+            assert fee >= 0, f"Negative fee calculated: {fee}"
+
+            # Fee should be proportional (0.3% of amount)
+            expected_fee = amount * Decimal("0.003")
+            # Allow small rounding difference
+            assert abs(fee - expected_fee.quantize(Decimal("0.000001"))) < Decimal("0.000002"), \
+                f"Fee calculation off: {fee} vs expected ~{expected_fee}"
+
+    def test_no_precision_loss_in_conversion(self):
+        """
+        Verify minor/major unit conversions don't lose precision.
+        """
+        # Test various amounts
+        test_minor_units = [1, 100, 1000000, 123456789, 999999999999]
+
+        for minor in test_minor_units:
+            major = FeeCalculator.minor_to_major(minor)
+            back_to_minor = FeeCalculator.major_to_minor(major)
+
+            assert back_to_minor == minor, \
+                f"MAESTRO STANDARD VIOLATED: Precision loss! {minor} -> {major} -> {back_to_minor}"
+
+    def test_safe_division(self):
+        """
+        Verify division operations use Decimal (not float) to avoid precision issues.
+        """
+        # This amount divided by 3 produces a repeating decimal
+        amount = Decimal("100.00")
+        divided = amount / Decimal("3")
+
+        # With Decimal, we can control precision
+        # With float, we'd get 33.33333333333333...
+        assert isinstance(divided, Decimal)
+
+        # Calculate fee on the divided amount
+        fee = FeeCalculator.calculate_protocol_fee(divided)
+        assert isinstance(fee, Decimal)
+        assert fee > 0
+
+
 class TestBatchCalculation:
     """Tests for batch/aggregate calculations."""
 

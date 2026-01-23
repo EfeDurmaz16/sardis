@@ -9,9 +9,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 # Set test environment before importing app
-os.environ["SARDIS_ENVIRONMENT"] = "test"
+os.environ["SARDIS_ENVIRONMENT"] = "dev"  # Use 'dev' as test environment
 os.environ["DATABASE_URL"] = "memory://"
 os.environ["SARDIS_CHAIN_MODE"] = "simulated"
+os.environ["SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_32chars"  # Min 32 chars required
 
 from sardis_api.main import create_app
 
