@@ -161,3 +161,96 @@ class TestRequestMethod:
 
         result = await client._request("POST", "/v1/test", json={"foo": "bar"})
         assert result["received"] is True
+
+    async def test_handle_error_with_list_body(self, api_key, base_url, httpx_mock):
+        """Should handle error response with list body."""
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/validation-error",
+            method="POST",
+            status_code=422,
+            json=[
+                {"loc": ["body", "amount"], "msg": "field required"},
+                {"loc": ["body", "merchant"], "msg": "field required"},
+            ],
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=1)
+        try:
+            with pytest.raises(APIError) as exc_info:
+                await client._request("POST", "/v1/validation-error")
+            # The list should be wrapped in {"detail": list}
+            assert exc_info.value.code == "VALIDATION_ERROR"
+        finally:
+            await client.close()
+
+    async def test_handle_error_with_non_json_body(self, api_key, base_url, httpx_mock):
+        """Should handle error response with non-JSON body."""
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/html-error",
+            method="GET",
+            status_code=500,
+            content=b"<html>Internal Server Error</html>",
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=1)
+        try:
+            with pytest.raises(APIError) as exc_info:
+                await client._request("GET", "/v1/html-error")
+            # Should contain the text content
+            assert "Internal Server Error" in str(exc_info.value.details) or "Internal Server Error" in exc_info.value.message
+        finally:
+            await client.close()
+
+
+class TestLegacyMethods:
+    """Tests for legacy methods."""
+
+    async def test_execute_payment_legacy(self, client, httpx_mock):
+        """Should execute payment using legacy method."""
+        httpx_mock.add_response(
+            url="https://api.sardis.network/api/v2/mandates/execute",
+            method="POST",
+            json={
+                "payment_id": "pay_123",
+                "mandate_id": "mnd_456",
+                "status": "completed",
+                "amount_minor": "50000000",
+                "token": "USDC",
+                "chain": "base_sepolia",
+                "tx_hash": "0xabc",
+                "ledger_tx_id": "ltx_789",
+                "audit_anchor": "anchor_123",
+                "created_at": "2025-01-20T00:00:00Z",
+            },
+        )
+
+        mandate = {"mandate_id": "mnd_456", "amount": "50"}
+        result = await client.execute_payment(mandate)
+
+        assert result["payment_id"] == "pay_123"
+        assert result["status"] == "completed"
+
+    async def test_execute_ap2_payment_legacy(self, client, httpx_mock):
+        """Should execute AP2 payment using legacy method."""
+        httpx_mock.add_response(
+            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            method="POST",
+            json={
+                "mandate_id": "mnd_456",
+                "status": "completed",
+                "chain": "base_sepolia",
+                "chain_tx_hash": "0xabc123",
+                "ledger_tx_id": "ltx_789",
+                "audit_anchor": "anchor_456",
+            },
+        )
+
+        bundle = {
+            "intent": {"id": "intent_123"},
+            "cart": {"items": []},
+            "payment": {"amount_minor": "100000000"},
+        }
+        result = await client.execute_ap2_payment(bundle)
+
+        assert result["mandate_id"] == "mnd_456"
+        assert result["status"] == "completed"
