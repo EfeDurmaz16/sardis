@@ -79,9 +79,95 @@ const Confetti = ({ count = 20 }) => {
 // Shake animation variants
 const shakeAnimation = {
     shake: {
-        x: [0, -10, 10, -10, 10, -5, 5, 0],
-        transition: { duration: 0.5 },
+        x: [0, -15, 15, -12, 12, -8, 8, -4, 4, 0],
+        transition: { duration: 0.6, ease: 'easeInOut' },
     },
+};
+
+// Pulse animation for processing state
+const pulseAnimation = {
+    pulse: {
+        scale: [1, 1.02, 1],
+        boxShadow: [
+            '0 0 0 0 rgba(239, 131, 84, 0)',
+            '0 0 20px 5px rgba(239, 131, 84, 0.3)',
+            '0 0 0 0 rgba(239, 131, 84, 0)',
+        ],
+        transition: { duration: 1.5, repeat: Infinity },
+    },
+};
+
+// Success glow animation
+const successGlow = {
+    glow: {
+        boxShadow: [
+            '0 0 0 0 rgba(16, 185, 129, 0)',
+            '0 0 30px 10px rgba(16, 185, 129, 0.4)',
+            '0 0 0 0 rgba(16, 185, 129, 0)',
+        ],
+        transition: { duration: 0.8 },
+    },
+};
+
+// Chain link animation component
+const ChainVisualization = ({ isProcessing }) => {
+    if (!isProcessing) return null;
+
+    return (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[...Array(3)].map((_, i) => (
+                <motion.div
+                    key={i}
+                    className="absolute h-0.5 bg-gradient-to-r from-transparent via-[var(--sardis-orange)] to-transparent"
+                    style={{ top: `${30 + i * 25}%`, left: 0, right: 0 }}
+                    initial={{ x: '-100%', opacity: 0 }}
+                    animate={{ x: '100%', opacity: [0, 1, 1, 0] }}
+                    transition={{
+                        duration: 1.5,
+                        delay: i * 0.2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                    }}
+                />
+            ))}
+        </div>
+    );
+};
+
+// Signature animation component
+const SignatureAnimation = ({ show }) => {
+    if (!show) return null;
+
+    return (
+        <motion.div
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="absolute bottom-4 right-4 w-16 h-16"
+        >
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+                <motion.path
+                    d="M 10 50 Q 30 20 50 50 Q 70 80 90 50"
+                    fill="none"
+                    stroke="var(--sardis-orange)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.6 }}
+                />
+                <motion.circle
+                    cx="90"
+                    cy="50"
+                    r="5"
+                    fill="var(--sardis-orange)"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.5, type: 'spring', stiffness: 500 }}
+                />
+            </svg>
+        </motion.div>
+    );
 };
 
 const SardisPlayground = () => {
@@ -96,9 +182,12 @@ const SardisPlayground = () => {
     const [activeScenario, setActiveScenario] = useState(null);
     const [showConfetti, setShowConfetti] = useState(false);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [showSignature, setShowSignature] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
     const terminalRef = useRef(null);
     const dashboardRef = useRef(null);
     const panelControls = useAnimation();
+    const successControls = useAnimation();
 
     // Auto-scroll
     useEffect(() => {
@@ -138,6 +227,8 @@ const SardisPlayground = () => {
         setActiveScenario(scenarioId);
         setVirtualCard(null);
         setDashboardLogs([]);
+        setShowSignature(false);
+        setShowSuccess(false);
 
         const details = getScenarioDetails(scenarioId);
         const command = `sardis.pay("${details.vendor}", $${details.amount})`;
@@ -165,7 +256,10 @@ const SardisPlayground = () => {
             // APPROVED FLOW
             setDashboardLogs(prev => [...prev, { text: 'POLICY: ALLOWED', color: 'text-emerald-500 font-bold text-base', approved: true }]);
             await delay(300);
+            setShowSignature(true);
             setDashboardLogs(prev => [...prev, { text: 'MPC Signing... Signed', color: 'text-emerald-400' }]);
+            await delay(200);
+            setShowSignature(false);
             await delay(400);
 
             const card = generateCard();
@@ -175,7 +269,12 @@ const SardisPlayground = () => {
 
             setStatus('success');
             setShowConfetti(true);
-            setTimeout(() => setShowConfetti(false), 2000);
+            setShowSuccess(true);
+            successControls.start('glow');
+            setTimeout(() => {
+                setShowConfetti(false);
+                setShowSuccess(false);
+            }, 2000);
 
             const txId = `tx_${Math.random().toString(36).substring(2, 10)}`;
             setTerminalLogs(prev => [...prev,
@@ -204,10 +303,16 @@ const SardisPlayground = () => {
 
     return (
         <div className="bg-card border border-border overflow-hidden relative group">
+            {/* Chain visualization during processing */}
+            <ChainVisualization isProcessing={status === 'processing'} />
+
             {/* Confetti on success */}
             <AnimatePresence>
-                {showConfetti && <Confetti count={30} />}
+                {showConfetti && <Confetti count={40} />}
             </AnimatePresence>
+
+            {/* Signature animation during MPC signing */}
+            <SignatureAnimation show={showSignature} />
 
             {/* Header Bar */}
             <div className="bg-muted px-4 py-3 border-b border-border flex items-center justify-between">
@@ -271,13 +376,24 @@ const SardisPlayground = () => {
                         className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border overflow-hidden">
                         <div className="px-4 py-2 bg-[#1f1e1c] border-b border-border flex justify-between items-center">
                             <span className="text-[var(--sardis-canvas)]/50 text-[10px] uppercase tracking-widest">Agent Terminal (MCP)</span>
-                            <span className={`px-2 py-0.5 text-[9px] font-bold border ${
-                                status === 'processing'
-                                    ? 'border-yellow-500/50 text-yellow-400'
-                                    : 'border-emerald-500/50 text-emerald-400'
-                            }`}>
-                                {status === 'processing' ? 'PROCESSING' : 'READY'}
-                            </span>
+                            <motion.span
+                                animate={status === 'processing' ? {
+                                    opacity: [1, 0.5, 1],
+                                    scale: [1, 1.05, 1],
+                                } : {}}
+                                transition={{ duration: 0.8, repeat: status === 'processing' ? Infinity : 0 }}
+                                className={`px-2 py-0.5 text-[9px] font-bold border ${
+                                    status === 'processing'
+                                        ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10'
+                                        : status === 'success'
+                                            ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10'
+                                            : status === 'error'
+                                                ? 'border-red-500/50 text-red-400 bg-red-500/10'
+                                                : 'border-emerald-500/50 text-emerald-400'
+                                }`}
+                            >
+                                {status === 'processing' ? 'PROCESSING' : status === 'success' ? 'SUCCESS' : status === 'error' ? 'BLOCKED' : 'READY'}
+                            </motion.span>
                         </div>
                         <div ref={terminalRef} className="p-4 h-56 overflow-y-auto text-[var(--sardis-canvas)]">
                             {terminalLogs.map((log, i) => (
@@ -298,9 +414,11 @@ const SardisPlayground = () => {
 
                     {/* Right Panel: Policy Engine */}
                     <motion.div
-                        variants={shakeAnimation}
-                        animate={panelControls}
-                        className="bg-card border border-border overflow-hidden">
+                        variants={{...shakeAnimation, ...successGlow}}
+                        animate={showSuccess ? successControls : panelControls}
+                        className={`bg-card border overflow-hidden transition-colors duration-300 ${
+                            showSuccess ? 'border-emerald-500' : 'border-border'
+                        }`}>
                         <div className="px-4 py-2 bg-muted border-b border-border">
                             <span className="text-muted-foreground text-[10px] uppercase tracking-widest font-mono">SARDIS POLICY ENGINE (CFO)</span>
                         </div>
