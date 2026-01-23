@@ -10,3 +10,5 @@ export { TransactionsResource } from './transactions.js';
 export { LedgerResource } from './ledger.js';
 export { WalletsResource } from './wallets.js';
 export { AgentsResource } from './agents.js';
+export { UCPResource } from './ucp.js';
+export { A2AResource } from './a2a.js';

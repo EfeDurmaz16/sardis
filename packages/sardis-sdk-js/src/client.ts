@@ -12,6 +12,8 @@ import { TransactionsResource } from './resources/transactions.js';
 import { LedgerResource } from './resources/ledger.js';
 import { WalletsResource } from './resources/wallets.js';
 import { AgentsResource } from './resources/agents.js';
+import { UCPResource } from './resources/ucp.js';
+import { A2AResource } from './resources/a2a.js';
 import type { SardisClientOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.sardis.network';
@@ -65,6 +67,10 @@ export class SardisClient {
   public readonly wallets: WalletsResource;
   /** Agent management operations */
   public readonly agents: AgentsResource;
+  /** UCP (Universal Commerce Protocol) checkout operations */
+  public readonly ucp: UCPResource;
+  /** A2A (Agent-to-Agent) communication operations */
+  public readonly a2a: A2AResource;
 
   constructor(options: SardisClientOptions) {
     if (!options.apiKey) {
@@ -92,6 +98,8 @@ export class SardisClient {
     this.ledger = new LedgerResource(this);
     this.wallets = new WalletsResource(this);
     this.agents = new AgentsResource(this);
+    this.ucp = new UCPResource(this);
+    this.a2a = new A2AResource(this);
   }
 
   /**
