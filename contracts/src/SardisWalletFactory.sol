@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./SardisAgentWallet.sol";
 
 /**
@@ -17,7 +18,8 @@ import "./SardisAgentWallet.sol";
  * - Manage platform-wide settings
  */
 contract SardisWalletFactory is Ownable, Pausable {
-    
+    using Address for address payable;
+
     // ============ State Variables ============
     
     /// @notice Default per-transaction limit for new wallets (in base units)
@@ -119,9 +121,9 @@ contract SardisWalletFactory is Ownable, Pausable {
         allWallets.push(wallet);
         isValidWallet[wallet] = true;
         
-        // Refund excess ETH
+        // Refund excess ETH using sendValue for safer transfer
         if (msg.value > deploymentFee && deploymentFee > 0) {
-            payable(msg.sender).transfer(msg.value - deploymentFee);
+            payable(msg.sender).sendValue(msg.value - deploymentFee);
         }
         
         emit WalletCreated(agent, wallet, limitPerTx, dailyLimit);
@@ -167,9 +169,9 @@ contract SardisWalletFactory is Ownable, Pausable {
         allWallets.push(wallet);
         isValidWallet[wallet] = true;
         
-        // Refund excess
+        // Refund excess using sendValue for safer transfer
         if (msg.value > deploymentFee && deploymentFee > 0) {
-            payable(msg.sender).transfer(msg.value - deploymentFee);
+            payable(msg.sender).sendValue(msg.value - deploymentFee);
         }
         
         emit WalletCreated(agent, wallet, defaultLimitPerTx, defaultDailyLimit);
@@ -248,9 +250,10 @@ contract SardisWalletFactory is Ownable, Pausable {
     function withdrawFees(address to) external onlyOwner {
         uint256 balance = address(this).balance;
         require(balance > 0, "No fees to withdraw");
-        
-        payable(to).transfer(balance);
-        
+
+        // Use sendValue for safer ETH transfer (avoids transfer gas limit issues)
+        payable(to).sendValue(balance);
+
         emit FeesWithdrawn(to, balance);
     }
     
