@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Sun, Moon, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SardisLogo from '@/components/SardisLogo';
 
 const navigation = [
   {
@@ -88,9 +89,7 @@ export default function DocsLayout() {
         <div className="flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3 font-bold text-xl tracking-tight font-display">
-              <div className="w-8 h-8 bg-[var(--sardis-orange)] flex items-center justify-center text-white font-bold">
-                S
-              </div>
+              <SardisLogo />
               <span>Sardis</span>
             </Link>
             <span className="text-muted-foreground font-mono text-sm">/docs</span>

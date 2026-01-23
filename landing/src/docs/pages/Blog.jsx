@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 const posts = [
@@ -8,6 +9,7 @@ const posts = [
     readTime: '5 min read',
     category: 'Announcement',
     featured: true,
+    slug: 'introducing-sardis',
   },
   {
     title: 'Financial Hallucination Prevention: Why AI Needs Guardrails',
@@ -16,6 +18,7 @@ const posts = [
     readTime: '8 min read',
     category: 'Security',
     featured: true,
+    slug: 'financial-hallucination-prevention',
   },
   {
     title: 'MCP Integration: Zero-Code AI Payments in Claude',
@@ -24,6 +27,7 @@ const posts = [
     readTime: '3 min read',
     category: 'Tutorial',
     featured: false,
+    slug: 'mcp-integration',
   },
   {
     title: 'Understanding MPC Wallets for Agent Security',
@@ -32,6 +36,7 @@ const posts = [
     readTime: '10 min read',
     category: 'Technical',
     featured: false,
+    slug: 'mpc-wallets',
   },
   {
     title: 'SDK v0.2.0: LangChain, OpenAI, and LlamaIndex Support',
@@ -40,6 +45,7 @@ const posts = [
     readTime: '4 min read',
     category: 'Release',
     featured: false,
+    slug: 'sdk-v0-2-0',
   },
   {
     title: 'Policy Engine Deep Dive: Configuring Spending Rules',
@@ -48,6 +54,7 @@ const posts = [
     readTime: '12 min read',
     category: 'Technical',
     featured: false,
+    slug: 'policy-engine-deep-dive',
   },
 ];
 
@@ -70,67 +77,71 @@ function BlogCard({ post, featured = false }) {
 
   if (featured) {
     return (
-      <article className="group border border-border p-6 hover:border-[var(--sardis-orange)]/50 transition-colors">
-        <div className="flex items-center gap-3 mb-4">
-          <span className={`px-2 py-1 text-xs font-mono border ${categoryColors[post.category]}`}>
-            {post.category.toUpperCase()}
-          </span>
-          {post.featured && (
-            <span className="px-2 py-1 text-xs font-mono bg-[var(--sardis-orange)] text-white">
-              FEATURED
+      <Link to={`/docs/blog/${post.slug}`} className="block">
+        <article className="group border border-border p-6 hover:border-[var(--sardis-orange)]/50 transition-colors">
+          <div className="flex items-center gap-3 mb-4">
+            <span className={`px-2 py-1 text-xs font-mono border ${categoryColors[post.category]}`}>
+              {post.category.toUpperCase()}
             </span>
-          )}
-        </div>
-
-        <h3 className="text-xl font-bold font-display mb-3 group-hover:text-[var(--sardis-orange)] transition-colors">
-          {post.title}
-        </h3>
-
-        <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
-          {post.excerpt}
-        </p>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {formatDate(post.date)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {post.readTime}
-            </span>
+            {post.featured && (
+              <span className="px-2 py-1 text-xs font-mono bg-[var(--sardis-orange)] text-white">
+                FEATURED
+              </span>
+            )}
           </div>
 
-          <button className="flex items-center gap-1 text-sm text-[var(--sardis-orange)] font-medium group-hover:gap-2 transition-all">
-            Read <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </article>
+          <h3 className="text-xl font-bold font-display mb-3 group-hover:text-[var(--sardis-orange)] transition-colors">
+            {post.title}
+          </h3>
+
+          <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+            {post.excerpt}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {formatDate(post.date)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {post.readTime}
+              </span>
+            </div>
+
+            <span className="flex items-center gap-1 text-sm text-[var(--sardis-orange)] font-medium group-hover:gap-2 transition-all">
+              Read <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
+        </article>
+      </Link>
     );
   }
 
   return (
-    <article className="group border border-border p-4 hover:border-[var(--sardis-orange)]/50 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`px-2 py-0.5 text-xs font-mono border ${categoryColors[post.category]}`}>
-          {post.category.toUpperCase()}
-        </span>
-      </div>
+    <Link to={`/docs/blog/${post.slug}`} className="block">
+      <article className="group border border-border p-4 hover:border-[var(--sardis-orange)]/50 transition-colors">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`px-2 py-0.5 text-xs font-mono border ${categoryColors[post.category]}`}>
+            {post.category.toUpperCase()}
+          </span>
+        </div>
 
-      <h3 className="font-bold font-display mb-2 group-hover:text-[var(--sardis-orange)] transition-colors">
-        {post.title}
-      </h3>
+        <h3 className="font-bold font-display mb-2 group-hover:text-[var(--sardis-orange)] transition-colors">
+          {post.title}
+        </h3>
 
-      <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-        {post.excerpt}
-      </p>
+        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+          {post.excerpt}
+        </p>
 
-      <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-        <span>{formatDate(post.date)}</span>
-        <span>{post.readTime}</span>
-      </div>
-    </article>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+          <span>{formatDate(post.date)}</span>
+          <span>{post.readTime}</span>
+        </div>
+      </article>
+    </Link>
   );
 }
 

@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import SardisPlayground from "./components/SardisPlayground";
 import WaitlistForm from "./components/WaitlistForm";
+import SardisLogo from "./components/SardisLogo";
+import WaitlistModal from "./components/WaitlistModal";
 
 // Isometric Icons
 const icons = {
@@ -100,6 +102,7 @@ function IsometricIcon({ src, alt = "", className = "" }) {
 function App() {
   const [scrolled, setScrolled] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   useEffect(() => {
     // Check for saved preference or system preference
@@ -146,9 +149,7 @@ function App() {
       >
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3 font-bold text-xl tracking-tight font-display">
-            <div className="w-8 h-8 bg-[var(--sardis-orange)] flex items-center justify-center text-white font-bold">
-              S
-            </div>
+            <SardisLogo />
             <span>Sardis</span>
           </div>
 
@@ -160,9 +161,16 @@ function App() {
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
             </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none">GitHub</Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
+              <a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noopener noreferrer">
+                GitHub
+              </a>
+            </Button>
             <DarkModeToggle isDark={isDark} toggle={toggleDarkMode} />
-            <Button className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-medium rounded-none">
+            <Button
+              className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-medium rounded-none"
+              onClick={() => setIsWaitlistOpen(true)}
+            >
               Get Early Access
             </Button>
           </div>
@@ -195,7 +203,11 @@ function App() {
             <motion.div variants={fadeInUp} className="flex flex-col items-center gap-4">
               <CopyCommand command="npx @sardis/mcp-server start" />
               <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-none bg-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)]/90 text-white font-medium">
+                <Button
+                  size="lg"
+                  className="h-14 px-8 text-lg rounded-none bg-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)]/90 text-white font-medium"
+                  onClick={() => setIsWaitlistOpen(true)}
+                >
                   Get Early Access
                   <span className="ml-2">→</span>
                 </Button>
@@ -451,9 +463,7 @@ function App() {
       <footer className="py-12 border-t border-border">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-[var(--sardis-orange)] flex items-center justify-center text-white font-bold text-xs">
-              S
-            </div>
+            <SardisLogo size="small" />
             <span className="font-bold font-display">Sardis</span>
           </div>
 
@@ -468,6 +478,9 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Waitlist Modal */}
+      <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
     </div>
   );
 }
