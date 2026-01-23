@@ -88,17 +88,17 @@ function DarkModeToggle({ isDark, toggle }) {
 }
 
 // Icon Component for isometric PNGs with contrast fix
-function IsometricIcon({ src, alt = "", className = "" }) {
+function IsometricIcon({ src, alt = "", className = "", isDark = true }) {
   return (
     <img
       src={src}
       alt={alt}
-      className={cn(
-        "w-8 h-8 object-contain drop-shadow-sm",
-        "dark:invert-0 invert", // Black in light mode, original (white) in dark mode
-        className
-      )}
-      style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.3))" }}
+      className={cn("w-8 h-8 object-contain", className)}
+      style={{
+        filter: isDark
+          ? "drop-shadow(0 0 1px rgba(0,0,0,0.3))"
+          : "invert(1) drop-shadow(0 0 1px rgba(255,255,255,0.3))"
+      }}
     />
   );
 }
@@ -253,7 +253,7 @@ function App() {
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-lg text-destructive">
                     <div className="w-10 h-10 border border-destructive/30 flex items-center justify-center">
-                      <IsometricIcon src={item.icon} className="w-6 h-6" />
+                      <IsometricIcon src={item.icon} className="w-6 h-6" isDark={isDark} />
                     </div>
                     {item.text}
                   </li>
@@ -350,7 +350,7 @@ function App() {
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader>
                     <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
-                      <IsometricIcon src={feature.icon} className="w-10 h-10" />
+                      <IsometricIcon src={feature.icon} className="w-10 h-10" isDark={isDark} />
                     </div>
                     <CardTitle className="text-xl font-bold font-display">{feature.title}</CardTitle>
                   </CardHeader>
@@ -419,7 +419,7 @@ function App() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="w-12 h-12 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors">
-                        <IsometricIcon src={protocol.icon} className="w-7 h-7" />
+                        <IsometricIcon src={protocol.icon} className="w-7 h-7" isDark={isDark} />
                       </div>
                       <Badge variant="outline" className="text-emerald-600 border-emerald-600/30 rounded-none text-xs font-mono">
                         {protocol.status}
@@ -447,7 +447,7 @@ function App() {
           >
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-16 h-16 border border-border flex items-center justify-center">
-                <IsometricIcon src={icons.creditCardGear} className="w-10 h-10" />
+                <IsometricIcon src={icons.creditCardGear} className="w-10 h-10" isDark={isDark} />
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-xl font-bold font-display mb-1">x402 Micropayments</h3>
@@ -510,7 +510,7 @@ function App() {
                   <CardHeader>
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors shrink-0">
-                        <IsometricIcon src={useCase.icon} className="w-8 h-8" />
+                        <IsometricIcon src={useCase.icon} className="w-8 h-8" isDark={isDark} />
                       </div>
                       <div>
                         <CardTitle className="text-xl font-bold font-display mb-2">{useCase.title}</CardTitle>
@@ -587,7 +587,7 @@ function App() {
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader>
                     <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
-                      <IsometricIcon src={item.icon} className="w-10 h-10" />
+                      <IsometricIcon src={item.icon} className="w-10 h-10" isDark={isDark} />
                     </div>
                     <CardTitle className="text-xl font-bold font-display">{item.title}</CardTitle>
                   </CardHeader>
@@ -660,7 +660,7 @@ function App() {
               className="group flex items-center gap-3 px-5 py-3 border border-border hover:border-[var(--sardis-orange)] transition-colors"
             >
               <div className="w-8 h-8 border border-border group-hover:border-[var(--sardis-orange)] flex items-center justify-center">
-                <IsometricIcon src={icons.searchInsights} className="w-5 h-5" />
+                <IsometricIcon src={icons.searchInsights} className="w-5 h-5" isDark={isDark} />
               </div>
               <div className="text-sm text-left">
                 <div className="text-xs text-muted-foreground uppercase tracking-wider font-mono font-semibold">Verify on Etherscan</div>
