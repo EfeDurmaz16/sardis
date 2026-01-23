@@ -59,6 +59,7 @@ from .webhooks import (
 from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
 from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
 from .wallet_repository import WalletRepository
+from .utils import TTLDict, BoundedDict, TTLEntry
 
 __all__ = [
     # Exceptions
@@ -151,4 +152,8 @@ __all__ = [
     "SpendingLimits",
     "AgentRepository",
     "WalletRepository",
+    # Utilities
+    "TTLDict",
+    "BoundedDict",
+    "TTLEntry",
 ]

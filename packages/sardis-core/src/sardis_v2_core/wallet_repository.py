@@ -7,14 +7,31 @@ from typing import Optional, List
 
 from .wallets import Wallet
 from .tokens import TokenType
+from .utils import TTLDict
 
 
 class WalletRepository:
-    """In-memory wallet repository (swap for PostgreSQL in production)."""
+    """In-memory wallet repository (swap for PostgreSQL in production).
+    
+    Uses TTLDict to prevent memory leaks in long-running processes.
+    Default TTL is 7 days, max 10,000 wallets in memory.
+    """
 
-    def __init__(self, dsn: str = "memory://"):
+    # 7 days TTL for wallet cache
+    DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60
+    DEFAULT_MAX_ITEMS = 10000
+
+    def __init__(
+        self,
+        dsn: str = "memory://",
+        ttl_seconds: float = DEFAULT_TTL_SECONDS,
+        max_items: int = DEFAULT_MAX_ITEMS,
+    ):
         self._dsn = dsn
-        self._wallets: dict[str, Wallet] = {}
+        self._wallets: TTLDict[str, Wallet] = TTLDict(
+            ttl_seconds=ttl_seconds,
+            max_items=max_items,
+        )
 
     async def create(
         self,

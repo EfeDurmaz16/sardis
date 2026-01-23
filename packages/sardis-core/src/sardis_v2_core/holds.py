@@ -9,6 +9,7 @@ from typing import List, Optional
 from uuid import uuid4
 
 from .exceptions import SardisDatabaseError
+from .utils import TTLDict
 
 logger = logging.getLogger(__name__)
 
@@ -62,17 +63,32 @@ class HoldResult:
 
 
 class HoldsRepository:
-    """Repository for managing holds with database persistence."""
+    """Repository for managing holds with database persistence.
+    
+    Uses TTLDict for in-memory storage to prevent memory leaks.
+    Default TTL is 7 days (matching hold expiration), max 10,000 holds.
+    """
 
     # Default hold expiration (7 days)
     DEFAULT_EXPIRATION_HOURS = 168
+    # TTL for in-memory cache (7 days in seconds)
+    DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60
+    DEFAULT_MAX_ITEMS = 10000
 
-    def __init__(self, dsn: str):
+    def __init__(
+        self,
+        dsn: str,
+        ttl_seconds: float = DEFAULT_TTL_SECONDS,
+        max_items: int = DEFAULT_MAX_ITEMS,
+    ):
         self._dsn = dsn
         self._pg_pool = None
         self._use_postgres = dsn.startswith("postgresql://") or dsn.startswith("postgres://")
-        # In-memory fallback for dev
-        self._memory_holds: dict[str, Hold] = {}
+        # In-memory fallback for dev with TTL to prevent memory leaks
+        self._memory_holds: TTLDict[str, Hold] = TTLDict(
+            ttl_seconds=ttl_seconds,
+            max_items=max_items,
+        )
 
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
