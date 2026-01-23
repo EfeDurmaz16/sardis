@@ -125,7 +125,9 @@ export default function WaitlistModal({ isOpen, onClose }) {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <input
-                        type="email"
+                        type="text"
+                        inputMode="email"
+                        autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@company.com"

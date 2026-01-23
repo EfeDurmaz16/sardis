@@ -66,7 +66,9 @@ const WaitlistForm = () => {
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <div className="flex-1 relative">
                 <input
-                    type="email"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
