@@ -8,7 +8,7 @@ from .models import (
     TransactionStatus,
     FundingSource,
 )
-from .service import CardService
+from .service import CardService, InsufficientBalanceError, WalletBalanceChecker
 
 __all__ = [
     "Card",
@@ -17,5 +17,7 @@ __all__ = [
     "CardTransaction",
     "CardType",
     "FundingSource",
+    "InsufficientBalanceError",
     "TransactionStatus",
+    "WalletBalanceChecker",
 ]

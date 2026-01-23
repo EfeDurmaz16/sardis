@@ -1,17 +1,20 @@
-"""Ledger storage abstractions."""
+"""Ledger storage abstractions with reconciliation support."""
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from sardis_v2_core.transactions import Transaction, OnChainRecord
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -20,6 +23,26 @@ class ChainReceipt:
     chain: str
     block_number: int
     audit_anchor: str
+
+
+@dataclass
+class PendingReconciliation:
+    """Entry for failed ledger appends requiring reconciliation."""
+    id: str
+    mandate_id: str
+    chain_tx_hash: str
+    chain: str
+    audit_anchor: str
+    from_wallet: str
+    to_wallet: str
+    amount: str
+    currency: str
+    error: str
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    retry_count: int = 0
+    last_retry: Optional[datetime] = None
+    resolved: bool = False
+    resolved_at: Optional[datetime] = None
 
 
 class LedgerStore:
@@ -79,6 +102,30 @@ class LedgerStore:
                 """
             )
             self._sqlite_conn.execute("CREATE INDEX IF NOT EXISTS idx_receipts_created ON receipts(created_at)")
+            # Reconciliation queue for failed appends
+            self._sqlite_conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_reconciliation (
+                    id TEXT PRIMARY KEY,
+                    mandate_id TEXT NOT NULL,
+                    chain_tx_hash TEXT NOT NULL,
+                    chain TEXT NOT NULL,
+                    audit_anchor TEXT,
+                    from_wallet TEXT NOT NULL,
+                    to_wallet TEXT NOT NULL,
+                    amount TEXT NOT NULL,
+                    currency TEXT NOT NULL,
+                    error TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    retry_count INTEGER DEFAULT 0,
+                    last_retry TEXT,
+                    resolved INTEGER DEFAULT 0,
+                    resolved_at TEXT
+                )
+                """
+            )
+            self._sqlite_conn.execute("CREATE INDEX IF NOT EXISTS idx_reconciliation_resolved ON pending_reconciliation(resolved)")
+            self._sqlite_conn.execute("CREATE INDEX IF NOT EXISTS idx_reconciliation_mandate ON pending_reconciliation(mandate_id)")
             self._sqlite_conn.commit()
         elif dsn.startswith("postgresql://") or dsn.startswith("postgres://"):
             # PostgreSQL for production - pool will be created on first use
@@ -368,3 +415,239 @@ class LedgerStore:
                 )
             entries.append(tx)
         return entries
+
+    # ============ Reconciliation Queue Methods ============
+
+    def queue_for_reconciliation(
+        self,
+        payment_mandate,
+        chain_receipt: ChainReceipt,
+        error: str,
+    ) -> str:
+        """
+        Queue a failed ledger append for later reconciliation.
+
+        This is called when a payment succeeded on-chain but the ledger
+        append failed (e.g., database error). The payment is real and
+        must eventually be recorded.
+
+        Args:
+            payment_mandate: The payment mandate that was executed
+            chain_receipt: The chain receipt from successful execution
+            error: The error message from the failed append
+
+        Returns:
+            The reconciliation entry ID
+        """
+        import uuid
+        entry_id = f"recon_{uuid.uuid4().hex[:16]}"
+        now = datetime.now(timezone.utc).isoformat()
+
+        if self._sqlite_conn:
+            self._sqlite_conn.execute(
+                """
+                INSERT INTO pending_reconciliation (
+                    id, mandate_id, chain_tx_hash, chain, audit_anchor,
+                    from_wallet, to_wallet, amount, currency, error, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry_id,
+                    payment_mandate.mandate_id,
+                    chain_receipt.tx_hash,
+                    chain_receipt.chain,
+                    chain_receipt.audit_anchor,
+                    payment_mandate.subject,
+                    payment_mandate.destination,
+                    str(payment_mandate.amount_minor),
+                    payment_mandate.token,
+                    error,
+                    now,
+                ),
+            )
+            self._sqlite_conn.commit()
+            logger.warning(
+                f"Queued for reconciliation: id={entry_id}, "
+                f"mandate={payment_mandate.mandate_id}, tx={chain_receipt.tx_hash}"
+            )
+        else:
+            # In-memory fallback
+            if not hasattr(self, '_reconciliation_queue'):
+                self._reconciliation_queue = {}
+            self._reconciliation_queue[entry_id] = PendingReconciliation(
+                id=entry_id,
+                mandate_id=payment_mandate.mandate_id,
+                chain_tx_hash=chain_receipt.tx_hash,
+                chain=chain_receipt.chain,
+                audit_anchor=chain_receipt.audit_anchor,
+                from_wallet=payment_mandate.subject,
+                to_wallet=payment_mandate.destination,
+                amount=str(payment_mandate.amount_minor),
+                currency=payment_mandate.token,
+                error=error,
+            )
+
+        return entry_id
+
+    def get_pending_reconciliation(self, limit: int = 100) -> List[PendingReconciliation]:
+        """
+        Get pending reconciliation entries ordered by creation time.
+
+        Only returns entries that are not resolved and have not exceeded
+        the maximum retry count (5).
+        """
+        MAX_RETRIES = 5
+
+        if self._sqlite_conn:
+            rows = self._sqlite_conn.execute(
+                """
+                SELECT id, mandate_id, chain_tx_hash, chain, audit_anchor,
+                       from_wallet, to_wallet, amount, currency, error,
+                       created_at, retry_count, last_retry, resolved, resolved_at
+                FROM pending_reconciliation
+                WHERE resolved = 0 AND retry_count < ?
+                ORDER BY created_at ASC
+                LIMIT ?
+                """,
+                (MAX_RETRIES, limit),
+            ).fetchall()
+
+            return [
+                PendingReconciliation(
+                    id=row[0],
+                    mandate_id=row[1],
+                    chain_tx_hash=row[2],
+                    chain=row[3],
+                    audit_anchor=row[4],
+                    from_wallet=row[5],
+                    to_wallet=row[6],
+                    amount=row[7],
+                    currency=row[8],
+                    error=row[9],
+                    created_at=datetime.fromisoformat(row[10]) if row[10] else datetime.now(timezone.utc),
+                    retry_count=row[11] or 0,
+                    last_retry=datetime.fromisoformat(row[12]) if row[12] else None,
+                    resolved=bool(row[13]),
+                    resolved_at=datetime.fromisoformat(row[14]) if row[14] else None,
+                )
+                for row in rows
+            ]
+        else:
+            # In-memory fallback
+            if not hasattr(self, '_reconciliation_queue'):
+                return []
+            pending = [
+                e for e in self._reconciliation_queue.values()
+                if not e.resolved and e.retry_count < MAX_RETRIES
+            ]
+            return sorted(pending, key=lambda e: e.created_at)[:limit]
+
+    def mark_reconciliation_resolved(self, entry_id: str) -> bool:
+        """Mark a reconciliation entry as resolved."""
+        now = datetime.now(timezone.utc).isoformat()
+
+        if self._sqlite_conn:
+            cursor = self._sqlite_conn.execute(
+                """
+                UPDATE pending_reconciliation
+                SET resolved = 1, resolved_at = ?
+                WHERE id = ?
+                """,
+                (now, entry_id),
+            )
+            self._sqlite_conn.commit()
+            if cursor.rowcount > 0:
+                logger.info(f"Reconciliation resolved: id={entry_id}")
+                return True
+            return False
+        else:
+            if hasattr(self, '_reconciliation_queue') and entry_id in self._reconciliation_queue:
+                self._reconciliation_queue[entry_id].resolved = True
+                self._reconciliation_queue[entry_id].resolved_at = datetime.now(timezone.utc)
+                return True
+            return False
+
+    def increment_reconciliation_retry(self, entry_id: str) -> bool:
+        """Increment retry count for a reconciliation entry."""
+        now = datetime.now(timezone.utc).isoformat()
+
+        if self._sqlite_conn:
+            cursor = self._sqlite_conn.execute(
+                """
+                UPDATE pending_reconciliation
+                SET retry_count = retry_count + 1, last_retry = ?
+                WHERE id = ?
+                """,
+                (now, entry_id),
+            )
+            self._sqlite_conn.commit()
+            return cursor.rowcount > 0
+        else:
+            if hasattr(self, '_reconciliation_queue') and entry_id in self._reconciliation_queue:
+                entry = self._reconciliation_queue[entry_id]
+                entry.retry_count += 1
+                entry.last_retry = datetime.now(timezone.utc)
+                return True
+            return False
+
+    def count_pending_reconciliation(self) -> int:
+        """Count pending reconciliation entries."""
+        if self._sqlite_conn:
+            row = self._sqlite_conn.execute(
+                "SELECT COUNT(*) FROM pending_reconciliation WHERE resolved = 0"
+            ).fetchone()
+            return row[0] if row else 0
+        else:
+            if not hasattr(self, '_reconciliation_queue'):
+                return 0
+            return len([e for e in self._reconciliation_queue.values() if not e.resolved])
+
+    async def run_reconciliation(self, batch_size: int = 10) -> int:
+        """
+        Background job to reconcile failed ledger appends.
+
+        This should be called periodically (e.g., every minute) to retry
+        failed appends.
+
+        Returns:
+            Number of successfully reconciled entries
+        """
+        pending = self.get_pending_reconciliation(batch_size)
+        reconciled = 0
+
+        for entry in pending:
+            try:
+                # Reconstruct minimal mandate and receipt for append
+                from sardis_v2_core.mandates import PaymentMandate
+
+                # Create minimal mandate with required fields
+                mandate = PaymentMandate(
+                    mandate_id=entry.mandate_id,
+                    subject=entry.from_wallet,
+                    destination=entry.to_wallet,
+                    amount_minor=int(entry.amount),
+                    token=entry.currency,
+                    chain=entry.chain,
+                )
+
+                receipt = ChainReceipt(
+                    tx_hash=entry.chain_tx_hash,
+                    chain=entry.chain,
+                    block_number=0,  # Unknown at reconciliation time
+                    audit_anchor=entry.audit_anchor,
+                )
+
+                # Attempt append
+                self.append(mandate, receipt)
+                self.mark_reconciliation_resolved(entry.id)
+                reconciled += 1
+                logger.info(f"Reconciled entry: id={entry.id}, mandate={entry.mandate_id}")
+
+            except Exception as e:
+                self.increment_reconciliation_retry(entry.id)
+                logger.warning(
+                    f"Reconciliation retry failed: id={entry.id}, "
+                    f"retry={entry.retry_count + 1}, error={e}"
+                )
+
+        return reconciled
