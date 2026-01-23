@@ -70,7 +70,7 @@ contract SardisWalletFactory is Ownable, Pausable {
         uint256 _defaultLimitPerTx,
         uint256 _defaultDailyLimit,
         address _defaultRecoveryAddress
-    ) Ownable(msg.sender) {
+    ) {
         defaultLimitPerTx = _defaultLimitPerTx;
         defaultDailyLimit = _defaultDailyLimit;
         defaultRecoveryAddress = _defaultRecoveryAddress;

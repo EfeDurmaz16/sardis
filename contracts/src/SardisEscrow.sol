@@ -144,7 +144,7 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         uint256 _feeBps,
         uint256 _minAmount,
         uint256 _maxDeadlineDays
-    ) Ownable(msg.sender) {
+    ) {
         require(_arbiter != address(0), "Invalid arbiter");
         require(_feeBps <= 500, "Fee too high"); // Max 5%
         

@@ -59,6 +59,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     /// @notice Nonce for transaction ordering
     uint256 public nonce;
+
+    /// @notice Mapping of used signatures to prevent replay attacks
+    mapping(bytes32 => bool) public usedSignatures;
     
     // ============ Structs ============
     
@@ -106,6 +109,8 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     event MerchantRemoved(address indexed merchant);
     
     event RecoveryInitiated(address indexed recoveryAddress);
+
+    event SignatureUsed(bytes32 indexed signatureHash, address indexed signer);
     
     // ============ Modifiers ============
     
@@ -197,6 +202,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
      * @param to Recipient address
      * @param amount Amount to pay
      * @param purpose Human-readable purpose
+     * @param deadline Timestamp after which the signature expires
      * @param agentSignature Agent's signature approving this payment
      */
     function payWithCoSign(
@@ -204,29 +210,42 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         address to,
         uint256 amount,
         string calldata purpose,
+        uint256 deadline,
         bytes calldata agentSignature
     ) external onlySardis nonReentrant whenNotPaused returns (bytes32) {
-        // Verify agent signature
+        // Check signature deadline
+        require(block.timestamp <= deadline, "Signature expired");
+
+        // Create unique signature hash for replay protection
         bytes32 messageHash = keccak256(abi.encodePacked(
             address(this),
             token,
             to,
             amount,
             nonce,
+            deadline,
             block.chainid
         ));
-        
+
+        // Check if signature has been used
+        require(!usedSignatures[messageHash], "Signature already used");
+
+        // Verify agent signature
         require(
             _verifySignature(messageHash, agentSignature, agent),
             "Invalid agent signature"
         );
-        
+
+        // Mark signature as used to prevent replay
+        usedSignatures[messageHash] = true;
+        emit SignatureUsed(messageHash, agent);
+
         // Check merchant restrictions (limits bypassed for co-signed tx)
         _checkMerchant(to);
-        
+
         // Execute transfer
         IERC20(token).safeTransfer(to, amount);
-        
+
         // Generate transaction hash
         bytes32 txHash = keccak256(abi.encodePacked(
             address(this),
@@ -236,9 +255,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
             nonce++,
             block.timestamp
         ));
-        
+
         emit Payment(token, to, amount, txHash, purpose);
-        
+
         return txHash;
     }
     
