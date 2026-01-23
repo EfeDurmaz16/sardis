@@ -136,6 +136,124 @@ class TestRetryLogic:
         assert client._max_retries == 3
         await client.close()
 
+    async def test_retry_on_rate_limit_then_succeed(self, api_key, base_url, httpx_mock):
+        """Should retry on 429 and succeed on next attempt."""
+        # First request returns 429, second succeeds
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/retry-test",
+            method="GET",
+            status_code=429,
+            headers={"Retry-After": "0"},
+            json={"error": "Rate limit"},
+        )
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/retry-test",
+            method="GET",
+            status_code=200,
+            json={"success": True},
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=2)
+        try:
+            result = await client._request("GET", "/v1/retry-test")
+            assert result["success"] is True
+        finally:
+            await client.close()
+
+    async def test_retry_on_timeout_then_succeed(self, api_key, base_url, httpx_mock):
+        """Should retry on timeout and succeed on next attempt."""
+        import httpx
+
+        # First request times out, second succeeds
+        httpx_mock.add_exception(
+            httpx.TimeoutException("Connection timed out"),
+            url="https://api.sardis.network/v1/timeout-test",
+            method="GET",
+        )
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/timeout-test",
+            method="GET",
+            status_code=200,
+            json={"success": True},
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=2)
+        try:
+            result = await client._request("GET", "/v1/timeout-test")
+            assert result["success"] is True
+        finally:
+            await client.close()
+
+    async def test_retry_on_connection_error_then_succeed(self, api_key, base_url, httpx_mock):
+        """Should retry on connection error and succeed on next attempt."""
+        import httpx
+
+        # First request has connection error, second succeeds
+        httpx_mock.add_exception(
+            httpx.ConnectError("Connection refused"),
+            url="https://api.sardis.network/v1/connect-test",
+            method="GET",
+        )
+        httpx_mock.add_response(
+            url="https://api.sardis.network/v1/connect-test",
+            method="GET",
+            status_code=200,
+            json={"success": True},
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=2)
+        try:
+            result = await client._request("GET", "/v1/connect-test")
+            assert result["success"] is True
+        finally:
+            await client.close()
+
+    async def test_raise_timeout_after_max_retries(self, api_key, base_url, httpx_mock):
+        """Should raise timeout error after exhausting retries."""
+        import httpx
+
+        # All requests timeout
+        httpx_mock.add_exception(
+            httpx.TimeoutException("Connection timed out"),
+            url="https://api.sardis.network/v1/timeout-fail",
+            method="GET",
+        )
+        httpx_mock.add_exception(
+            httpx.TimeoutException("Connection timed out"),
+            url="https://api.sardis.network/v1/timeout-fail",
+            method="GET",
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=2)
+        try:
+            with pytest.raises(httpx.TimeoutException):
+                await client._request("GET", "/v1/timeout-fail")
+        finally:
+            await client.close()
+
+    async def test_raise_connection_error_after_max_retries(self, api_key, base_url, httpx_mock):
+        """Should raise connection error after exhausting retries."""
+        import httpx
+
+        # All requests fail with connection error
+        httpx_mock.add_exception(
+            httpx.ConnectError("Connection refused"),
+            url="https://api.sardis.network/v1/connect-fail",
+            method="GET",
+        )
+        httpx_mock.add_exception(
+            httpx.ConnectError("Connection refused"),
+            url="https://api.sardis.network/v1/connect-fail",
+            method="GET",
+        )
+
+        client = SardisClient(api_key=api_key, base_url=base_url, max_retries=2)
+        try:
+            with pytest.raises(httpx.ConnectError):
+                await client._request("GET", "/v1/connect-fail")
+        finally:
+            await client.close()
+
 
 class TestRequestMethod:
     """Tests for request method."""

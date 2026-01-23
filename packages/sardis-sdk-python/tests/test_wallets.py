@@ -24,6 +24,31 @@ class TestCreateWallet:
         assert result.wallet_id == "wallet_test123"
         assert result.agent_id == "agent_001"
 
+    async def test_create_wallet_with_limits(self, client, httpx_mock, mock_responses):
+        """Should create a wallet with per-transaction and total limits."""
+        from decimal import Decimal
+
+        httpx_mock.add_response(
+            url="https://api.sardis.network/api/v2/wallets",
+            method="POST",
+            json={
+                **mock_responses["wallet"],
+                "limit_per_tx": "500.00",
+                "limit_total": "10000.00",
+            },
+        )
+
+        result = await client.wallets.create(
+            agent_id="agent_001",
+            mpc_provider="turnkey",
+            limit_per_tx=500.00,
+            limit_total=10000.00,
+        )
+
+        assert result.wallet_id == "wallet_test123"
+        assert result.limit_per_tx == Decimal("500.00")
+        assert result.limit_total == Decimal("10000.00")
+
 
 class TestGetWallet:
     """Tests for getting wallet by ID."""

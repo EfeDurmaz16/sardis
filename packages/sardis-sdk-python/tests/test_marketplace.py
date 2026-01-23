@@ -264,6 +264,30 @@ class TestListOffers:
         offers = await client.marketplace.list_offers(as_provider=True)
         assert len(offers) == 1
 
+    async def test_list_offers_as_consumer(self, client, httpx_mock):
+        """Should list offers as consumer."""
+        httpx_mock.add_response(
+            url="https://api.sardis.network/api/v2/marketplace/offers?as_consumer=true",
+            method="GET",
+            json={"offers": [MOCK_OFFER]},
+        )
+
+        offers = await client.marketplace.list_offers(as_consumer=True)
+        assert len(offers) == 1
+
+    async def test_list_offers_with_status_filter(self, client, httpx_mock):
+        """Should list offers with status filter."""
+        from sardis_sdk.models.marketplace import OfferStatus
+
+        httpx_mock.add_response(
+            url="https://api.sardis.network/api/v2/marketplace/offers?status=pending",
+            method="GET",
+            json={"offers": [MOCK_OFFER]},
+        )
+
+        offers = await client.marketplace.list_offers(status=OfferStatus.PENDING)
+        assert len(offers) == 1
+
     async def test_list_empty_offers(self, client, httpx_mock):
         """Should handle empty offers list."""
         httpx_mock.add_response(
