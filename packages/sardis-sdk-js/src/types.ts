@@ -351,6 +351,104 @@ export interface SardisErrorDetails {
   request_id?: string;
 }
 
+// ==================== Agent Types ====================
+
+export type KeyAlgorithm = 'ed25519' | 'ecdsa-p256';
+
+export interface SpendingLimits {
+  /** Per-transaction limit */
+  per_transaction?: string;
+  /** Daily spending limit */
+  daily?: string;
+  /** Monthly spending limit */
+  monthly?: string;
+}
+
+export interface AgentPolicy {
+  /** Allowed merchant categories */
+  allowed_categories?: string[];
+  /** Blocked merchants */
+  blocked_merchants?: string[];
+  /** Allowed merchants (whitelist mode) */
+  allowed_merchants?: string[];
+  /** Maximum single transaction amount */
+  max_transaction_amount?: string;
+  /** Require approval above this amount */
+  approval_threshold?: string;
+}
+
+export interface Agent {
+  /** Agent ID */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Description */
+  description?: string;
+  /** Organization ID */
+  organization_id?: string;
+  /** Associated wallet ID */
+  wallet_id?: string;
+  /** Public key for signing */
+  public_key?: string;
+  /** Key algorithm (ed25519 or ecdsa-p256) */
+  key_algorithm: KeyAlgorithm;
+  /** Spending limits */
+  spending_limits?: SpendingLimits;
+  /** Policy configuration */
+  policy?: AgentPolicy;
+  /** Whether agent is active */
+  is_active: boolean;
+  /** Arbitrary metadata */
+  metadata: Record<string, unknown>;
+  /** Creation timestamp */
+  created_at: string;
+  /** Last update timestamp */
+  updated_at: string;
+}
+
+export interface CreateAgentInput {
+  /** Display name (required) */
+  name: string;
+  /** Description */
+  description?: string;
+  /** Organization ID */
+  organization_id?: string;
+  /** Public key for signing */
+  public_key?: string;
+  /** Key algorithm */
+  key_algorithm?: KeyAlgorithm;
+  /** Spending limits */
+  spending_limits?: SpendingLimits;
+  /** Policy configuration */
+  policy?: AgentPolicy;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateAgentInput {
+  /** Display name */
+  name?: string;
+  /** Description */
+  description?: string;
+  /** Spending limits */
+  spending_limits?: SpendingLimits;
+  /** Policy configuration */
+  policy?: AgentPolicy;
+  /** Whether agent is active */
+  is_active?: boolean;
+  /** Arbitrary metadata (merged with existing) */
+  metadata?: Record<string, unknown>;
+}
+
+export interface ListAgentsOptions {
+  /** Maximum number of agents to return */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+  /** Filter by active status */
+  is_active?: boolean;
+}
+
 // ==================== Client Options ====================
 
 export interface SardisClientOptions {

@@ -11,6 +11,7 @@ import { MarketplaceResource } from './resources/marketplace.js';
 import { TransactionsResource } from './resources/transactions.js';
 import { LedgerResource } from './resources/ledger.js';
 import { WalletsResource } from './resources/wallets.js';
+import { AgentsResource } from './resources/agents.js';
 import type { SardisClientOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.sardis.network';
@@ -62,6 +63,8 @@ export class SardisClient {
   public readonly ledger: LedgerResource;
   /** Wallet operations (non-custodial) */
   public readonly wallets: WalletsResource;
+  /** Agent management operations */
+  public readonly agents: AgentsResource;
 
   constructor(options: SardisClientOptions) {
     if (!options.apiKey) {
@@ -88,6 +91,7 @@ export class SardisClient {
     this.transactions = new TransactionsResource(this);
     this.ledger = new LedgerResource(this);
     this.wallets = new WalletsResource(this);
+    this.agents = new AgentsResource(this);
   }
 
   /**
