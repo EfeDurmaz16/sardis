@@ -17,6 +17,11 @@ from .auth import (
     set_api_key_manager,
     get_api_key_manager,
 )
+from .exceptions import (
+    ExceptionHandlerMiddleware,
+    register_exception_handlers,
+    create_error_response,
+)
 
 __all__ = [
     "RateLimitMiddleware",
@@ -34,4 +39,7 @@ __all__ = [
     "require_scope",
     "set_api_key_manager",
     "get_api_key_manager",
+    "ExceptionHandlerMiddleware",
+    "register_exception_handlers",
+    "create_error_response",
 ]

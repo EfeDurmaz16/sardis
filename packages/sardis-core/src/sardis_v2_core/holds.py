@@ -1,11 +1,16 @@
 """Holds (pre-authorization) management with database persistence."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
 from uuid import uuid4
+
+from .exceptions import SardisDatabaseError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -127,7 +132,11 @@ class HoldsRepository:
                         expires_at,
                     )
             except Exception as e:
-                return HoldResult.failed(f"Database error: {e}")
+                logger.error(f"Failed to create hold {hold_id}: {e}", exc_info=True)
+                raise SardisDatabaseError(
+                    f"Failed to create hold: {e}",
+                    operation="insert_hold",
+                ) from e
         else:
             self._memory_holds[hold_id] = hold
 
@@ -196,7 +205,11 @@ class HoldsRepository:
                         tx_id,
                     )
             except Exception as e:
-                return HoldResult.failed(f"Database error: {e}")
+                logger.error(f"Failed to capture hold {hold_id}: {e}", exc_info=True)
+                raise SardisDatabaseError(
+                    f"Failed to capture hold: {e}",
+                    operation="update_hold_capture",
+                ) from e
         else:
             hold.status = "captured"
             hold.captured_amount = capture_amount
@@ -236,7 +249,11 @@ class HoldsRepository:
                         now,
                     )
             except Exception as e:
-                return HoldResult.failed(f"Database error: {e}")
+                logger.error(f"Failed to void hold {hold_id}: {e}", exc_info=True)
+                raise SardisDatabaseError(
+                    f"Failed to void hold: {e}",
+                    operation="update_hold_void",
+                ) from e
         else:
             hold.status = "voided"
             hold.voided_at = now

@@ -11,6 +11,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from nacl import encoding, signing
 
+from .exceptions import SardisAlgorithmNotSupportedError
+
 AllowedKeys = Literal["ed25519", "ecdsa-p256"]
 
 
@@ -44,7 +46,10 @@ class AgentIdentity:
             except ValueError:
                 return False
             return True
-        raise NotImplementedError(f"algorithm {self.algorithm} not supported")
+        raise SardisAlgorithmNotSupportedError(
+                self.algorithm,
+                supported=["ed25519", "ecdsa-p256"],
+            )
 
     @staticmethod
     def generate(seed: bytes | None = None) -> tuple["AgentIdentity", bytes]:

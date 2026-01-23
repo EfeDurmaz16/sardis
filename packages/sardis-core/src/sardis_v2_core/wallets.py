@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from .tokens import TokenType
 from .virtual_card import VirtualCard
+from .exceptions import SardisRPCError
 
 if TYPE_CHECKING:
     from sardis_chain.executor import TransactionRequest, MPCSignerPort
@@ -142,9 +143,13 @@ class Wallet(BaseModel):
                     return await rpc_client.get_token_balance(address, token_address)
                 raise ValueError("RPC client does not support balance queries")
         except Exception as e:
-            # If query fails, return 0 (better than crashing)
-            # In production, this should be logged
-            return Decimal("0.00")
+            # Re-raise as SardisRPCError with context
+            raise SardisRPCError(
+                f"Failed to query balance for {address} on {chain}",
+                chain=chain,
+                method="eth_call",
+                rpc_error=str(e),
+            ) from e
 
     async def sign_transaction(
         self,
