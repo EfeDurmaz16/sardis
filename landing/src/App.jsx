@@ -366,6 +366,95 @@ function App() {
         </div>
       </section>
 
+      {/* Why Sardis Section - Competitive Positioning */}
+      <section className="py-24 border-t border-border bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">WHY SARDIS</Badge>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">The Policy Firewall for Agent Payments</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Others build payment rails. We build the intelligence layer that prevents financial hallucinations.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              {
+                icon: icons.policy,
+                title: "Natural Language Policies",
+                description: "Define complex spending rules in plain English. Not just limits—context-aware governance.",
+                unique: true
+              },
+              {
+                icon: icons.shieldLock,
+                title: "Non-Custodial MPC",
+                description: "True key ownership via Turnkey. No single entity can move funds unilaterally.",
+                unique: false
+              },
+              {
+                icon: icons.creditCardGear,
+                title: "Virtual Cards",
+                description: "Instant Visa cards via Lithic. Your agent can pay anywhere cards are accepted.",
+                unique: true
+              },
+              {
+                icon: icons.terminal,
+                title: "Zero-Config MCP",
+                description: "One command to add 36+ payment tools to Claude or Cursor. No setup required.",
+                unique: false
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group relative">
+                  {item.unique && (
+                    <div className="absolute top-3 right-3">
+                      <Badge className="bg-[var(--sardis-orange)] text-white rounded-none text-xs font-mono">
+                        UNIQUE
+                      </Badge>
+                    </div>
+                  )}
+                  <CardHeader className="pb-3">
+                    <div className="w-12 h-12 border border-border flex items-center justify-center mb-3 group-hover:border-[var(--sardis-orange)] transition-colors">
+                      <IsometricIcon src={item.icon} className="w-7 h-7" isDark={isDark} />
+                    </div>
+                    <CardTitle className="text-lg font-bold font-display">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {item.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Comparison callout */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <h3 className="text-xl font-bold font-display mb-2">No competitor offers natural language policies + virtual cards + multi-chain</h3>
+                <p className="text-muted-foreground">We analyzed Locus, Payman, and Skyfire. Read why we built Sardis differently.</p>
+              </div>
+              <Button variant="outline" className="rounded-none border-[var(--sardis-orange)] text-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)] hover:text-white shrink-0" asChild>
+                <Link to="/docs/blog/why-sardis">Read the Analysis →</Link>
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Protocol Ecosystem Section */}
       <section className="py-24 border-t border-border">
         <div className="container mx-auto px-6">

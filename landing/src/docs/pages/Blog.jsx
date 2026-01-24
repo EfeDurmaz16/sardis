@@ -3,6 +3,15 @@ import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 const posts = [
   {
+    title: 'Why Sardis: The Policy Firewall for Agent Payments',
+    excerpt: 'We analyzed the competitive landscape and built Sardis to fill a critical gap: natural language policy enforcement with non-custodial security. See how we compare to Locus, Payman, and Skyfire.',
+    date: '2026-01-24',
+    readTime: '7 min read',
+    category: 'Technical',
+    featured: true,
+    slug: 'why-sardis',
+  },
+  {
     title: 'Sardis v0.5: UCP and A2A Protocol Support',
     excerpt: 'Today we release Sardis v0.5 with full support for UCP (Universal Commerce Protocol) and A2A (Agent-to-Agent) protocol. Now your agents can participate in the broader AI agent economy with standardized checkout flows and multi-agent communication.',
     date: '2026-01-24',

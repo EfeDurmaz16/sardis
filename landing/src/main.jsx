@@ -38,6 +38,10 @@ import MCPIntegration from './docs/pages/blog/MCPIntegration.jsx'
 import MPCWallets from './docs/pages/blog/MPCWallets.jsx'
 import SDKRelease from './docs/pages/blog/SDKRelease.jsx'
 import PolicyEngineDeepDive from './docs/pages/blog/PolicyEngineDeepDive.jsx'
+import SardisV05Protocols from './docs/pages/blog/SardisV05Protocols.jsx'
+import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
+import MCP36Tools from './docs/pages/blog/MCP36Tools.jsx'
+import WhySardis from './docs/pages/blog/WhySardis.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -78,6 +82,10 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/mpc-wallets" element={<MPCWallets />} />
           <Route path="blog/sdk-v0-2-0" element={<SDKRelease />} />
           <Route path="blog/policy-engine-deep-dive" element={<PolicyEngineDeepDive />} />
+          <Route path="blog/sardis-v0-5-protocols" element={<SardisV05Protocols />} />
+          <Route path="blog/understanding-ap2" element={<UnderstandingAP2 />} />
+          <Route path="blog/mcp-36-tools" element={<MCP36Tools />} />
+          <Route path="blog/why-sardis" element={<WhySardis />} />
           <Route path="changelog" element={<DocsChangelog />} />
         </Route>
       </Routes>
