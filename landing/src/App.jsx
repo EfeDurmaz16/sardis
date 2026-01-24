@@ -366,8 +366,205 @@ function App() {
         </div>
       </section>
 
-      {/* Why Sardis Section - Competitive Positioning */}
+      {/* Fiat Rails Section */}
       <section className="py-24 border-t border-border bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">FIAT RAILS</Badge>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Bridge Fiat & Crypto</h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Fund agent wallets from traditional banking. Withdraw back to USD. Complete the loop between legacy finance and agentic commerce.
+            </p>
+          </div>
+
+          {/* Flow Diagram */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 p-8 border border-border bg-card overflow-x-auto"
+          >
+            <div className="flex items-center justify-center gap-4 min-w-[600px]">
+              {/* Bank */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 border-2 border-[var(--sardis-orange)] flex items-center justify-center">
+                  <IsometricIcon src={icons.trendingUp} className="w-10 h-10" isDark={isDark} />
+                </div>
+                <span className="text-sm font-mono font-bold">Bank</span>
+                <span className="text-xs text-muted-foreground">ACH / Wire / Card</span>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
+                <span className="text-xs text-muted-foreground font-mono">Fund</span>
+              </div>
+
+              {/* Bridge */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 border border-border flex items-center justify-center bg-muted">
+                  <IsometricIcon src={icons.autoRenew} className="w-10 h-10" isDark={isDark} />
+                </div>
+                <span className="text-sm font-mono font-bold">Bridge</span>
+                <span className="text-xs text-muted-foreground">Fiat ↔ USDC</span>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
+                <span className="text-xs text-muted-foreground font-mono">Convert</span>
+              </div>
+
+              {/* Sardis Wallet */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-20 h-20 border-2 border-[var(--sardis-orange)] flex items-center justify-center bg-[var(--sardis-orange)]/10">
+                  <IsometricIcon src={icons.wallet} className="w-12 h-12" isDark={isDark} />
+                </div>
+                <span className="text-sm font-mono font-bold text-[var(--sardis-orange)]">Sardis Wallet</span>
+                <span className="text-xs text-muted-foreground">MPC + Policy Engine</span>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
+                <span className="text-xs text-muted-foreground font-mono">Spend</span>
+              </div>
+
+              {/* Outputs */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 border border-border flex items-center justify-center">
+                    <IsometricIcon src={icons.creditCardGear} className="w-7 h-7" isDark={isDark} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-mono font-bold block">Virtual Card</span>
+                    <span className="text-xs text-muted-foreground">Pay anywhere</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 border border-border flex items-center justify-center">
+                    <IsometricIcon src={icons.handshake} className="w-7 h-7" isDark={isDark} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-mono font-bold block">Crypto</span>
+                    <span className="text-xs text-muted-foreground">On-chain tx</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 border border-border flex items-center justify-center">
+                    <IsometricIcon src={icons.trendingUp} className="w-7 h-7" isDark={isDark} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-mono font-bold block">Bank Payout</span>
+                    <span className="text-xs text-muted-foreground">USD withdrawal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Features Grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: icons.trendingUp,
+                title: "Bank Funding",
+                description: "Fund agent wallets via ACH, wire transfer, or card. Automatically converts to USDC in the wallet.",
+                details: ["ACH: 0.5% fee", "Wire: 0.25% fee", "Card: 2.9% + $0.30"]
+              },
+              {
+                icon: icons.wallet,
+                title: "Unified Balance",
+                description: "One wallet balance powers everything - crypto payments, virtual cards, and merchant payouts.",
+                details: ["Policy enforcement on all spend", "Real-time balance tracking", "Multi-chain support"]
+              },
+              {
+                icon: icons.creditCardGear,
+                title: "USD Payouts",
+                description: "Withdraw to any US bank account. Convert USDC back to USD with automatic compliance checks.",
+                details: ["Same-day ACH", "2-day wire transfers", "Merchant settlements"]
+              }
+            ].map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
+                  <CardHeader>
+                    <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
+                      <IsometricIcon src={feature.icon} className="w-10 h-10" isDark={isDark} />
+                    </div>
+                    <CardTitle className="text-xl font-bold font-display">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-muted-foreground leading-relaxed">
+                      {feature.description}
+                    </p>
+                    <div className="pt-2 border-t border-border">
+                      {feature.details.map((detail, j) => (
+                        <div key={j} className="text-sm text-muted-foreground font-mono py-1">
+                          → {detail}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Code Example */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 border border-border overflow-hidden"
+          >
+            <div className="bg-muted px-4 py-3 border-b border-border flex items-center gap-2">
+              <div className="w-3 h-3 bg-destructive" />
+              <div className="w-3 h-3 bg-yellow-500" />
+              <div className="w-3 h-3 bg-emerald-500" />
+              <span className="ml-4 text-sm font-mono text-muted-foreground">fiat-ramp.ts</span>
+            </div>
+            <div className="p-6 font-mono text-sm leading-relaxed bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
+              <pre className="whitespace-pre">{`import { SardisFiatRamp } from '@sardis/fiat-ramp'
+
+const ramp = new SardisFiatRamp({
+  sardisKey: 'sk_...',
+  bridgeKey: 'bridge_...'
+})
+
+// Fund wallet from bank
+const funding = await ramp.fundWallet({
+  walletId: 'wallet_123',
+  amountUsd: 1000,
+  method: 'bank'  // or 'card', 'crypto'
+})
+console.log(funding.achInstructions) // Bank transfer details
+
+// Withdraw to bank (policy-checked)
+const withdrawal = await ramp.withdrawToBank({
+  walletId: 'wallet_123',
+  amountUsd: 500,
+  bankAccount: { accountNumber: '...', routingNumber: '...' }
+})
+
+// Pay merchant directly in USD
+const payment = await ramp.payMerchantFiat({
+  walletId: 'wallet_123',
+  amountUsd: 99.99,
+  merchant: { name: 'ACME Corp', bankAccount: {...} }
+})`}</pre>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Why Sardis Section - Competitive Positioning */}
+      <section className="py-24 border-t border-border">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">WHY SARDIS</Badge>

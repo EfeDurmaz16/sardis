@@ -3,6 +3,15 @@ import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 const posts = [
   {
+    title: 'Fiat Rails: Bridging Traditional Banking to Agent Wallets',
+    excerpt: 'The crypto rails for agent payments are ready. But the real world runs on dollars. Today we announce Fiat Rails — a complete on/off ramp solution that bridges traditional banking to agent wallets with full policy enforcement.',
+    date: '2026-01-24',
+    readTime: '8 min read',
+    category: 'Feature',
+    featured: true,
+    slug: 'fiat-rails',
+  },
+  {
     title: 'Why Sardis: The Policy Firewall for Agent Payments',
     excerpt: 'We analyzed the competitive landscape and built Sardis to fill a critical gap: natural language policy enforcement with non-custodial security. See how we compare to Locus, Payman, and Skyfire.',
     date: '2026-01-24',
@@ -91,6 +100,7 @@ const categoryColors = {
   Tutorial: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
   Technical: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
   Release: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
+  Feature: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
 };
 
 function BlogCard({ post, featured = false }) {

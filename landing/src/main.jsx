@@ -42,6 +42,7 @@ import SardisV05Protocols from './docs/pages/blog/SardisV05Protocols.jsx'
 import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
 import MCP36Tools from './docs/pages/blog/MCP36Tools.jsx'
 import WhySardis from './docs/pages/blog/WhySardis.jsx'
+import FiatRails from './docs/pages/blog/FiatRails.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -86,6 +87,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/understanding-ap2" element={<UnderstandingAP2 />} />
           <Route path="blog/mcp-36-tools" element={<MCP36Tools />} />
           <Route path="blog/why-sardis" element={<WhySardis />} />
+          <Route path="blog/fiat-rails" element={<FiatRails />} />
           <Route path="changelog" element={<DocsChangelog />} />
         </Route>
       </Routes>
