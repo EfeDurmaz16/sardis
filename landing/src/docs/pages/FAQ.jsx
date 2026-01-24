@@ -8,7 +8,7 @@ const faqs = [
     questions: [
       {
         q: 'What is Sardis?',
-        a: 'Sardis is the Payment OS for the Agent Economy. It provides non-custodial MPC wallets with natural language spending policies, enabling AI agents to make secure financial transactions. Sardis implements industry-standard protocols (AP2, UCP, A2A, TAP) for interoperability with the broader AI agent ecosystem.'
+        a: 'Sardis is the Payment OS for the Agent Economy. It provides a unified wallet abstraction combining non-custodial MPC wallets, fiat rails, and virtual cards—all governed by natural language spending policies. Sardis implements industry-standard protocols (AP2, UCP, A2A, TAP) for interoperability with the broader AI agent ecosystem.'
       },
       {
         q: 'What protocols does Sardis support?',
@@ -19,8 +19,29 @@ const faqs = [
         a: 'Sardis is fully non-custodial. Your funds are secured by MPC (Multi-Party Computation) wallets via Turnkey. Key shares are distributed - Sardis never has custody of your funds. Transactions only execute when policy conditions are met and proper cryptographic authorization is provided.'
       },
       {
-        q: 'What is Financial Hallucination Prevention?',
-        a: 'Just as AI can hallucinate facts, it can attempt unauthorized transactions. Sardis prevents this through: cryptographic mandate chains (AP2), spending policies with vendor allowlists, real-time policy enforcement, and comprehensive audit trails. Every transaction requires verifiable authorization.'
+        q: 'What is the Unified Wallet Architecture?',
+        a: 'The Unified Wallet Architecture combines three payment sides under one API: Crypto (USDC, USDT on multi-EVM chains), Fiat (USD, EUR via bank rails), and Virtual Cards (Lithic). All three sides are governed by the same Policy Engine, so "Max $100/day on AWS" applies whether you pay via stablecoin, bank transfer, or card swipe.'
+      },
+    ]
+  },
+  {
+    category: 'Fiat Rails',
+    questions: [
+      {
+        q: 'What are Fiat Rails?',
+        a: 'Fiat Rails (v0.6) allow agents to fund wallets from bank accounts (on-ramp) and withdraw back to bank accounts (off-ramp). We use a dual-track provider strategy: Onramper for quick go-live (30+ payment providers, widget integration) and Bridge for enterprise (built-in KYC, lower fees at scale).'
+      },
+      {
+        q: 'How does Unified Balance work?',
+        a: 'Sardis treats USDC and USD as equivalent at 1:1 parity—like Coinbase Exchange. When you deposit either crypto (USDC) or fiat (USD), both appear as a single unified balance. Your agent can then spend from this balance via crypto payments OR virtual card payments, with automatic conversion happening seamlessly. For example: deposit $500 USDC, spend $100 via virtual card (auto-converts USDC→USD), remaining balance: $400.'
+      },
+      {
+        q: 'What is the difference between Onramper and Bridge?',
+        a: 'Onramper is Track 1 for quick go-live: 30+ aggregated payment providers, no KYB for sandbox, 2-3 day integration via widget. Bridge is Track 2 for enterprise: full on-ramp AND off-ramp, built-in KYC verification, lower fees at scale, and compliance-first design. You can start with Onramper and migrate to Bridge as you scale.'
+      },
+      {
+        q: 'Is KYC required for fiat rails?',
+        a: 'For Onramper (Track 1), KYC is handled by the individual payment providers through the widget. For Bridge (Track 2), KYC is built-in and required for off-ramp operations. Sardis provides MCP tools (sardis_get_kyc_status, sardis_initiate_kyc) to manage verification programmatically.'
       },
     ]
   },
@@ -46,15 +67,19 @@ const faqs = [
     questions: [
       {
         q: 'How do I integrate Sardis with Claude?',
-        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 36+ tools including sardis_pay, sardis_create_checkout, sardis_discover_agent, and more.'
+        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 40+ tools including payment, wallet, fiat, checkout, and agent discovery tools.'
       },
       {
         q: 'Which AI frameworks does Sardis support?',
-        a: 'Sardis supports: Claude MCP (36+ tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
+        a: 'Sardis supports: Claude MCP (40+ tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
       },
       {
         q: 'Can I use Sardis without any code?',
-        a: 'Yes! With MCP integration, add Sardis to Claude Desktop or Cursor without writing code. Just configure the MCP server with your API key and Claude can immediately execute payments, create checkouts, and manage wallets.'
+        a: 'Yes! With MCP integration, add Sardis to Claude Desktop or Cursor without writing code. Just configure the MCP server with your API key and Claude can immediately execute payments, fund wallets from bank accounts, create checkouts, and manage wallets.'
+      },
+      {
+        q: 'How do I add fiat rails to my agent?',
+        a: 'Install the sardis-ramp SDK (pip install sardis-ramp or npm install @sardis/ramp), configure your Onramper or Bridge API key, and use the FiatRamp class. For MCP users, 8 new fiat tools are available: sardis_fund_wallet, sardis_withdraw_to_bank, sardis_link_bank_account, and more.'
       },
     ]
   },
@@ -67,11 +92,15 @@ const faqs = [
       },
       {
         q: 'How do spending policies work?',
-        a: 'Policies are enforced at the protocol level before any transaction. You can set: per-transaction limits, daily/monthly limits, vendor allowlists/blocklists, category restrictions, and time-based rules. Policies can be defined programmatically or in natural language.'
+        a: 'Policies are enforced at the protocol level before any transaction—whether crypto, fiat, or card payment. You can set: per-transaction limits, daily/monthly limits, vendor allowlists/blocklists, category restrictions, and time-based rules. Policies can be defined programmatically or in natural language.'
       },
       {
         q: 'Is there an audit trail?',
-        a: 'Yes. Every transaction is recorded in an append-only ledger with Merkle tree anchoring. The ledger captures: mandate chains, policy evaluation results, on-chain transaction hashes, and timestamps. This provides cryptographic proof for compliance and debugging.'
+        a: 'Yes. Every transaction is recorded in an append-only ledger with Merkle tree anchoring. The ledger captures: mandate chains, policy evaluation results, on-chain transaction hashes, fiat transfer references, and timestamps. This provides cryptographic proof for compliance and debugging.'
+      },
+      {
+        q: 'How is fiat security handled?',
+        a: 'Fiat operations go through licensed providers (Onramper, Bridge) with built-in compliance. KYC verification is required for off-ramp. Bank account linking uses secure tokenization. All fiat transactions are subject to the same Policy Engine rules as crypto transactions.'
       },
     ]
   },
@@ -80,7 +109,7 @@ const faqs = [
     questions: [
       {
         q: 'Which stablecoins are supported?',
-        a: 'USDC (all chains), USDT (Polygon, Ethereum, Arbitrum, Optimism), EURC (Base, Polygon, Ethereum), and PYUSD (Ethereum). More tokens are added regularly.'
+        a: 'USDC (all chains), USDT (Polygon, Ethereum, Arbitrum, Optimism), EURC (Base, Polygon, Ethereum), and PYUSD (Ethereum). All stablecoins can be auto-converted to fiat for merchant payments.'
       },
       {
         q: 'Which chains are supported?',
@@ -88,7 +117,15 @@ const faqs = [
       },
       {
         q: 'What are the default spending limits?',
-        a: 'Default limits are $100 per transaction and $500 per day. These can be configured per-wallet through the API or dashboard. Enterprise plans support custom limit configurations.'
+        a: 'Default limits are $100 per transaction and $500 per day. These can be configured per-wallet through the API or dashboard. Enterprise plans support custom limit configurations including fiat-specific limits.'
+      },
+      {
+        q: 'Can I pay fiat merchants with crypto?',
+        a: 'Yes! With unified balance and virtual cards, your agent can pay any merchant that accepts Visa/Mastercard using USDC in the wallet. Sardis automatically converts USDC to USD (1:1) at the point of purchase. This bridges the gap between crypto wallets and traditional commerce—deposit crypto, spend anywhere.'
+      },
+      {
+        q: 'Is the USDC/USD conversion rate really 1:1?',
+        a: 'Yes. Sardis uses Bridge for instant USDC↔USD conversion at 1:1 parity with no slippage, just like Coinbase Exchange treats USDC and USD as equivalent. This is possible because USDC is a regulated stablecoin fully backed by USD reserves.'
       },
     ]
   },
@@ -137,7 +174,7 @@ export default function DocsFAQ() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Frequently Asked Questions</h1>
         <p className="text-xl text-muted-foreground">
-          Common questions about Sardis, integrations, security, and pricing.
+          Common questions about Sardis, fiat rails, integrations, security, and pricing.
         </p>
       </div>
 
@@ -146,6 +183,9 @@ export default function DocsFAQ() {
           <section key={category.category}>
             <h2 className="text-xl font-bold font-display mb-4 flex items-center gap-2">
               <span className="text-[var(--sardis-orange)]">#</span> {category.category}
+              {category.category === 'Fiat Rails' && (
+                <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
+              )}
             </h2>
             <div className="border border-border divide-y divide-border">
               {category.questions.map((item, idx) => (
@@ -169,13 +209,13 @@ export default function DocsFAQ() {
         </p>
         <div className="flex gap-4">
           <a
-            href="https://github.com/anthropics/sardis/discussions"
+            href="https://github.com/EfeDurmaz16/sardis/discussions"
             className="px-4 py-2 bg-[var(--sardis-orange)] text-white font-medium text-sm hover:bg-[var(--sardis-orange)]/90 transition-colors"
           >
             Ask on GitHub
           </a>
           <a
-            href="mailto:support@sardis.network"
+            href="mailto:support@sardis.sh"
             className="px-4 py-2 border border-border text-foreground font-medium text-sm hover:border-[var(--sardis-orange)] transition-colors"
           >
             Email Support
