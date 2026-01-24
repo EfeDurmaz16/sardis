@@ -1,0 +1,160 @@
+# Sardis Documentation
+
+> Payment OS for the Agent Economy
+
+## Quick Reference
+
+Sardis = Non-custodial MPC wallets + Natural language spending policies for AI agents
+
+## Installation
+
+```bash
+# Python
+pip install sardis
+
+# TypeScript
+npm install @sardis/sdk
+
+# MCP Server (Claude Desktop)
+npx @sardis/mcp-server start
+```
+
+## 5-Minute Quickstart
+
+```python
+from sardis import Sardis
+
+# Initialize
+client = Sardis(api_key="sk_...")
+
+# Create wallet with policy
+wallet = client.wallets.create(
+    name="my-agent",
+    chain="base",
+    policy="Max $50/day on approved vendors only"
+)
+
+# Make payment
+result = wallet.pay(
+    to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+    amount="10.00",
+    token="USDC"
+)
+
+print(f"Transaction: {result.tx_hash}")
+```
+
+## Core Concepts
+
+### Wallets
+- Non-custodial via Turnkey MPC
+- One wallet per agent recommended
+- Multi-chain: Base, Polygon, Ethereum, Arbitrum, Optimism
+- Tokens: USDC, USDT, EURC, PYUSD
+
+### Policies
+Natural language spending rules:
+- `"Max $100/day"` - Daily spending limit
+- `"Only openai.com, anthropic.com"` - Merchant whitelist
+- `"Require approval over $50"` - Human-in-the-loop
+- `"No transactions after 6pm"` - Time restrictions
+- `"Block gambling, adult categories"` - Category restrictions
+
+### Transactions
+```python
+# Simple payment
+wallet.pay(to="0x...", amount="25.00", token="USDC")
+
+# With memo
+wallet.pay(to="0x...", amount="25.00", token="USDC", memo="API credits")
+
+# Check if policy allows
+can_pay = wallet.check_policy(amount="100.00")
+```
+
+## Documentation Map
+
+| Path | Content |
+|------|---------|
+| /getting-started | 5-minute quickstart |
+| /guides/wallets | Wallet creation and management |
+| /guides/policies | Spending policy configuration |
+| /guides/mcp-server | Claude Desktop / Cursor setup |
+| /guides/sdk-python | Python SDK reference |
+| /guides/sdk-typescript | TypeScript SDK reference |
+| /guides/ap2 | AP2 protocol (Google/PayPal/Visa/Mastercard) |
+| /guides/tap | TAP identity verification |
+| /guides/a2a | Agent-to-Agent payments |
+| /guides/holds | Pre-authorization holds |
+| /guides/cards | Virtual card issuance |
+| /reference/api | REST API reference |
+| /reference/errors | Error codes |
+
+## API Quick Reference
+
+Base: `https://api.sardis.sh/v2`
+
+```
+POST   /wallets              Create wallet
+GET    /wallets              List wallets
+GET    /wallets/{id}         Get wallet
+GET    /wallets/{id}/balance Get balance
+POST   /wallets/{id}/policy  Update policy
+
+POST   /transactions         Create transaction
+GET    /transactions         List transactions
+GET    /transactions/{id}    Get transaction
+
+POST   /cards                Issue virtual card
+GET    /cards                List cards
+DELETE /cards/{id}           Cancel card
+```
+
+## Framework Integration
+
+### LangChain
+```python
+from langchain_community.tools.sardis import SardisPaymentTool
+
+tools = [SardisPaymentTool(api_key="sk_...")]
+agent = create_react_agent(llm, tools)
+```
+
+### Vercel AI SDK
+```typescript
+import { sardisTools } from '@sardis/vercel-ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  tools: sardisTools({ apiKey: process.env.SARDIS_API_KEY })
+});
+```
+
+### MCP Server
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": { "SARDIS_API_KEY": "sk_..." }
+    }
+  }
+}
+```
+
+## Common Errors
+
+| Code | Meaning | Solution |
+|------|---------|----------|
+| POLICY_VIOLATION | Transaction exceeds policy | Reduce amount or request approval |
+| INSUFFICIENT_BALANCE | Not enough funds | Add funds to wallet |
+| INVALID_MERCHANT | Merchant not in whitelist | Add merchant to policy |
+| APPROVAL_REQUIRED | Needs human approval | Use request_approval() |
+| RATE_LIMITED | Too many requests | Wait and retry |
+
+## Support
+
+- Docs: https://sardis.sh/docs
+- Discord: https://discord.gg/sardis
+- Email: support@sardis.sh
