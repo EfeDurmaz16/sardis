@@ -1,0 +1,870 @@
+# Sardis - Complete Reference for LLMs
+
+> Payment OS for the Agent Economy
+> Non-custodial MPC wallets with natural language spending policies for AI agents
+
+---
+
+## Table of Contents
+
+1. Overview
+2. Core Concepts
+3. Python SDK
+4. TypeScript SDK
+5. MCP Server
+6. REST API
+7. Protocols (AP2, TAP, UCP, A2A)
+8. Virtual Cards
+9. Compliance
+10. Error Handling
+11. Best Practices
+
+---
+
+## 1. Overview
+
+### What is Sardis?
+
+Sardis is payment infrastructure that enables AI agents to make real financial transactions while staying within human-defined guardrails. It solves the fundamental problem of agent autonomy vs. control.
+
+### The Problem
+
+AI agents need to spend money to be useful (API credits, subscriptions, services), but:
+- Giving agents full access is dangerous (they may overspend)
+- Manual approval for everything defeats automation
+- API keys with crude limits lack nuance
+
+### The Solution
+
+Sardis provides:
+- **Non-custodial wallets**: Agents control wallets via MPC, users maintain ownership
+- **Natural language policies**: Define rules in plain English
+- **Real-time enforcement**: Every transaction checked against policies
+- **Complete audit trail**: Full visibility into agent spending
+
+### Key Differentiators
+
+| Feature | Sardis | Traditional |
+|---------|--------|-------------|
+| Custody | Non-custodial (MPC) | Custodial |
+| Policies | Natural language | Code/JSON only |
+| Protocols | AP2, TAP, x402 | Proprietary |
+| Chains | 5 (Base, Polygon, ETH, Arb, OP) | Usually 1-2 |
+| Cards | Virtual cards (Lithic) | Rarely |
+| Compliance | KYC + AML built-in | Add-on |
+
+---
+
+## 2. Core Concepts
+
+### Wallets
+
+Sardis wallets are non-custodial smart contract wallets powered by Turnkey MPC:
+
+```python
+wallet = client.wallets.create(
+    name="my-agent-wallet",
+    chain="base",  # base, polygon, ethereum, arbitrum, optimism
+    policy={
+        "max_daily": "100.00",
+        "max_per_tx": "25.00",
+        "allowed_merchants": ["openai.com"],
+        "require_approval_above": "50.00"
+    }
+)
+
+# Wallet properties
+wallet.id          # Unique identifier
+wallet.address     # On-chain address (0x...)
+wallet.chain       # Chain identifier
+wallet.balance     # Current balance
+wallet.policy      # Active policy
+```
+
+### Policies
+
+Policies define what an agent can and cannot do:
+
+#### Natural Language Format
+```python
+policy = "Max $100/day on cloud services, only approved vendors, require approval over $50"
+```
+
+#### Structured Format
+```python
+policy = {
+    "max_daily": "100.00",           # Maximum per day
+    "max_per_tx": "50.00",           # Maximum per transaction
+    "max_monthly": "2000.00",        # Maximum per month
+    "allowed_merchants": [            # Whitelist
+        "openai.com",
+        "anthropic.com",
+        "aws.amazon.com"
+    ],
+    "blocked_categories": [           # Blacklist by category
+        "gambling",
+        "adult",
+        "crypto_exchange"
+    ],
+    "require_approval_above": "50.00", # Human approval threshold
+    "allowed_hours": {                 # Time restrictions
+        "start": "09:00",
+        "end": "18:00",
+        "timezone": "America/New_York"
+    },
+    "allowed_days": ["mon", "tue", "wed", "thu", "fri"]
+}
+```
+
+#### Policy Validation
+```python
+# Check if a transaction would be allowed
+result = wallet.check_policy(
+    amount="75.00",
+    merchant="openai.com"
+)
+
+if result.allowed:
+    wallet.pay(...)
+else:
+    print(f"Blocked: {result.reason}")
+    # "Blocked: Amount exceeds require_approval_above threshold"
+```
+
+### Transactions
+
+```python
+# Simple payment
+tx = wallet.pay(
+    to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+    amount="25.00",
+    token="USDC"
+)
+
+# Payment with metadata
+tx = wallet.pay(
+    to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+    amount="25.00",
+    token="USDC",
+    memo="Monthly API credits",
+    metadata={
+        "invoice_id": "INV-001",
+        "agent_reasoning": "Purchasing credits for next month"
+    }
+)
+
+# Transaction result
+tx.id           # Transaction ID
+tx.tx_hash      # On-chain transaction hash
+tx.status       # pending, confirmed, failed
+tx.amount       # Amount in token
+tx.token        # Token symbol
+tx.to           # Recipient address
+tx.created_at   # Timestamp
+tx.policy_check # Policy validation result
+```
+
+### Holds (Pre-authorization)
+
+```python
+# Create a hold (reserve funds without spending)
+hold = wallet.create_hold(
+    amount="100.00",
+    token="USDC",
+    merchant="travel-service.com",
+    expires_in=3600  # 1 hour
+)
+
+# Capture the hold (complete the transaction)
+tx = hold.capture(amount="85.00")  # Capture partial amount
+
+# Release the hold (cancel)
+hold.release()
+```
+
+---
+
+## 3. Python SDK
+
+### Installation
+
+```bash
+pip install sardis
+```
+
+### Initialization
+
+```python
+from sardis import Sardis
+
+# With API key
+client = Sardis(api_key="sk_live_...")
+
+# With environment variable (SARDIS_API_KEY)
+client = Sardis()
+
+# Sandbox mode
+client = Sardis(api_key="sk_test_...", sandbox=True)
+```
+
+### Wallet Operations
+
+```python
+# Create wallet
+wallet = client.wallets.create(
+    name="agent-wallet",
+    chain="base",
+    policy="Max $100/day"
+)
+
+# List wallets
+wallets = client.wallets.list()
+
+# Get wallet by ID
+wallet = client.wallets.get("wallet_123")
+
+# Get balance
+balance = wallet.balance()
+# {"USDC": "150.00", "EURC": "50.00"}
+
+# Update policy
+wallet.update_policy("Max $200/day, require approval over $100")
+
+# Fund wallet (returns deposit address)
+deposit = wallet.get_deposit_address()
+```
+
+### Transaction Operations
+
+```python
+# Make payment
+tx = wallet.pay(
+    to="0x...",
+    amount="50.00",
+    token="USDC",
+    memo="API credits"
+)
+
+# List transactions
+txs = wallet.transactions.list(
+    limit=50,
+    status="confirmed"
+)
+
+# Get transaction
+tx = wallet.transactions.get("tx_123")
+
+# Wait for confirmation
+tx.wait_for_confirmation(timeout=60)
+```
+
+### Async Support
+
+```python
+import asyncio
+from sardis import AsyncSardis
+
+async def main():
+    client = AsyncSardis(api_key="sk_...")
+
+    wallet = await client.wallets.create(
+        name="async-wallet",
+        chain="base",
+        policy="Max $100/day"
+    )
+
+    tx = await wallet.pay(
+        to="0x...",
+        amount="25.00",
+        token="USDC"
+    )
+
+asyncio.run(main())
+```
+
+### LangChain Integration
+
+```python
+from langchain_community.tools.sardis import (
+    SardisPaymentTool,
+    SardisBalanceTool,
+    SardisTransactionsTool
+)
+from langchain.agents import create_react_agent
+
+tools = [
+    SardisPaymentTool(
+        api_key="sk_...",
+        wallet_id="wallet_123"
+    ),
+    SardisBalanceTool(api_key="sk_..."),
+    SardisTransactionsTool(api_key="sk_...")
+]
+
+agent = create_react_agent(
+    llm=ChatOpenAI(model="gpt-4o"),
+    tools=tools,
+    prompt=prompt
+)
+```
+
+---
+
+## 4. TypeScript SDK
+
+### Installation
+
+```bash
+npm install @sardis/sdk
+# or
+pnpm add @sardis/sdk
+```
+
+### Initialization
+
+```typescript
+import { Sardis } from '@sardis/sdk';
+
+const client = new Sardis({
+  apiKey: 'sk_live_...',
+  // sandbox: true  // for testing
+});
+```
+
+### Wallet Operations
+
+```typescript
+// Create wallet
+const wallet = await client.wallets.create({
+  name: 'agent-wallet',
+  chain: 'base',
+  policy: {
+    maxDaily: '100.00',
+    maxPerTx: '25.00',
+    allowedMerchants: ['openai.com']
+  }
+});
+
+// Get balance
+const balance = await wallet.balance();
+// { USDC: '150.00', EURC: '50.00' }
+
+// Make payment
+const tx = await wallet.pay({
+  to: '0x...',
+  amount: '25.00',
+  token: 'USDC',
+  memo: 'API credits'
+});
+```
+
+### Vercel AI SDK Integration
+
+```typescript
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { sardisTools } from '@sardis/vercel-ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  tools: sardisTools({
+    apiKey: process.env.SARDIS_API_KEY!,
+    walletId: 'wallet_123'
+  }),
+  prompt: 'Buy $20 worth of API credits from OpenAI'
+});
+```
+
+### Type Definitions
+
+```typescript
+interface Wallet {
+  id: string;
+  name: string;
+  address: string;
+  chain: Chain;
+  policy: Policy;
+  createdAt: Date;
+}
+
+interface Policy {
+  maxDaily?: string;
+  maxPerTx?: string;
+  maxMonthly?: string;
+  allowedMerchants?: string[];
+  blockedCategories?: string[];
+  requireApprovalAbove?: string;
+}
+
+interface Transaction {
+  id: string;
+  txHash: string;
+  status: 'pending' | 'confirmed' | 'failed';
+  amount: string;
+  token: Token;
+  to: string;
+  memo?: string;
+  createdAt: Date;
+}
+
+type Chain = 'base' | 'polygon' | 'ethereum' | 'arbitrum' | 'optimism';
+type Token = 'USDC' | 'USDT' | 'EURC' | 'PYUSD';
+```
+
+---
+
+## 5. MCP Server
+
+### Installation
+
+```bash
+npx @sardis/mcp-server start
+```
+
+### Claude Desktop Configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_..."
+      }
+    }
+  }
+}
+```
+
+### Cursor Configuration
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_..."
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `sardis_get_balance` | Get wallet balance |
+| `sardis_pay` | Make a payment (policy enforced) |
+| `sardis_get_transactions` | List recent transactions |
+| `sardis_check_policy` | Check if payment would be allowed |
+| `sardis_request_approval` | Request human approval |
+| `sardis_get_wallet_info` | Get wallet details |
+
+### Tool Schemas
+
+```typescript
+// sardis_pay
+{
+  to: string;       // Recipient address or merchant
+  amount: string;   // Amount to pay
+  token?: string;   // Token (default: USDC)
+  memo?: string;    // Transaction memo
+}
+
+// sardis_check_policy
+{
+  amount: string;   // Amount to check
+  merchant?: string; // Merchant to check
+}
+
+// sardis_request_approval
+{
+  amount: string;   // Amount needing approval
+  reason: string;   // Why approval is needed
+}
+```
+
+---
+
+## 6. REST API
+
+### Base URL
+
+```
+Production: https://api.sardis.sh/v2
+Sandbox:    https://sandbox.api.sardis.sh/v2
+```
+
+### Authentication
+
+```bash
+curl https://api.sardis.sh/v2/wallets \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+### Endpoints
+
+#### Wallets
+
+```bash
+# Create wallet
+POST /wallets
+{
+  "name": "my-wallet",
+  "chain": "base",
+  "policy": {
+    "max_daily": "100.00"
+  }
+}
+
+# List wallets
+GET /wallets
+
+# Get wallet
+GET /wallets/{wallet_id}
+
+# Get balance
+GET /wallets/{wallet_id}/balance
+
+# Update policy
+PATCH /wallets/{wallet_id}/policy
+{
+  "policy": {
+    "max_daily": "200.00"
+  }
+}
+```
+
+#### Transactions
+
+```bash
+# Create transaction
+POST /transactions
+{
+  "wallet_id": "wallet_123",
+  "to": "0x...",
+  "amount": "25.00",
+  "token": "USDC",
+  "memo": "API credits"
+}
+
+# List transactions
+GET /transactions?wallet_id=wallet_123&limit=50
+
+# Get transaction
+GET /transactions/{tx_id}
+```
+
+#### Policies
+
+```bash
+# Parse natural language policy
+POST /policies/parse
+{
+  "text": "Max $100/day on cloud services, require approval over $50"
+}
+
+# Validate policy
+POST /policies/validate
+{
+  "policy": {
+    "max_daily": "100.00",
+    "require_approval_above": "50.00"
+  }
+}
+```
+
+#### Cards
+
+```bash
+# Issue virtual card
+POST /cards
+{
+  "wallet_id": "wallet_123",
+  "spending_limit": "500.00",
+  "merchant_category": "software"
+}
+
+# List cards
+GET /cards?wallet_id=wallet_123
+
+# Cancel card
+DELETE /cards/{card_id}
+```
+
+### Response Format
+
+```json
+{
+  "data": { ... },
+  "meta": {
+    "request_id": "req_123",
+    "timestamp": "2026-01-24T12:00:00Z"
+  }
+}
+```
+
+### Error Format
+
+```json
+{
+  "error": {
+    "code": "POLICY_VIOLATION",
+    "message": "Transaction amount exceeds daily limit",
+    "details": {
+      "limit": "100.00",
+      "requested": "150.00",
+      "remaining": "25.00"
+    }
+  }
+}
+```
+
+---
+
+## 7. Protocols
+
+### AP2 (Agent Payment Protocol)
+
+Industry standard from Google, PayPal, Mastercard, Visa (60+ partners).
+
+```python
+from sardis.protocols import AP2
+
+# Create AP2 mandate
+mandate = AP2.create_mandate(
+    intent={
+        "action": "purchase",
+        "amount": "50.00",
+        "merchant": "openai.com"
+    },
+    cart={
+        "items": [{"name": "API Credits", "amount": "50.00"}]
+    }
+)
+
+# Execute with mandate
+tx = wallet.pay_with_mandate(mandate)
+```
+
+### TAP (Trust Anchor Protocol)
+
+Cryptographic identity verification for agents.
+
+```python
+from sardis.protocols import TAP
+
+# Verify agent identity
+identity = TAP.create_identity(
+    agent_id="agent_123",
+    public_key="ed25519:...",
+    attestations=["anthropic", "verified_developer"]
+)
+
+# Attach to transaction
+tx = wallet.pay(
+    to="0x...",
+    amount="25.00",
+    identity=identity
+)
+```
+
+### A2A (Agent-to-Agent)
+
+Multi-agent payment protocol.
+
+```python
+# Agent A sends to Agent B
+tx = wallet_a.pay_agent(
+    to_agent="agent_b_wallet_id",
+    amount="10.00",
+    protocol="a2a",
+    message={
+        "task": "research_complete",
+        "deliverable": "report.pdf"
+    }
+)
+```
+
+---
+
+## 8. Virtual Cards
+
+### Issuance
+
+```python
+card = wallet.cards.create(
+    spending_limit="500.00",
+    merchant_category="software",
+    expires_in_days=30
+)
+
+# Card details
+card.number      # 4242...1234
+card.cvv         # 123
+card.expiry      # 12/26
+card.billing     # Billing address
+```
+
+### Management
+
+```python
+# List cards
+cards = wallet.cards.list()
+
+# Update limit
+card.update(spending_limit="1000.00")
+
+# Cancel card
+card.cancel()
+
+# Get transactions
+txs = card.transactions()
+```
+
+---
+
+## 9. Compliance
+
+### KYC (Know Your Customer)
+
+```python
+# Require KYC for wallet
+wallet = client.wallets.create(
+    name="kyc-wallet",
+    chain="base",
+    require_kyc=True
+)
+
+# Check KYC status
+kyc_status = wallet.kyc_status()
+# "verified", "pending", "required"
+
+# Initiate KYC
+kyc_link = wallet.initiate_kyc()
+# Returns Persona verification link
+```
+
+### AML (Anti-Money Laundering)
+
+```python
+# Screen address
+result = client.compliance.screen_address("0x...")
+# {"risk": "low", "flags": []}
+
+# Screen transaction
+result = client.compliance.screen_transaction(tx)
+# {"risk": "medium", "flags": ["high_value"]}
+```
+
+---
+
+## 10. Error Handling
+
+### Error Codes
+
+| Code | HTTP | Description |
+|------|------|-------------|
+| POLICY_VIOLATION | 400 | Transaction violates policy |
+| INSUFFICIENT_BALANCE | 400 | Not enough funds |
+| INVALID_MERCHANT | 400 | Merchant not allowed |
+| APPROVAL_REQUIRED | 400 | Needs human approval |
+| INVALID_ADDRESS | 400 | Invalid recipient address |
+| WALLET_NOT_FOUND | 404 | Wallet does not exist |
+| TX_NOT_FOUND | 404 | Transaction does not exist |
+| UNAUTHORIZED | 401 | Invalid API key |
+| RATE_LIMITED | 429 | Too many requests |
+| INTERNAL_ERROR | 500 | Server error |
+
+### Handling Errors
+
+```python
+from sardis.exceptions import (
+    PolicyViolation,
+    InsufficientBalance,
+    ApprovalRequired
+)
+
+try:
+    tx = wallet.pay(to="0x...", amount="1000.00")
+except PolicyViolation as e:
+    print(f"Policy blocked: {e.reason}")
+    print(f"Limit: {e.limit}, Requested: {e.requested}")
+except InsufficientBalance as e:
+    print(f"Need {e.required}, have {e.available}")
+except ApprovalRequired as e:
+    # Request human approval
+    approval = wallet.request_approval(
+        amount="1000.00",
+        reason="Large purchase for infrastructure"
+    )
+```
+
+---
+
+## 11. Best Practices
+
+### Wallet Management
+
+1. **One wallet per agent** - Easier to track and manage
+2. **Descriptive names** - `shopping-agent-prod` not `wallet1`
+3. **Start restrictive** - Begin with tight limits, loosen as needed
+4. **Regular audits** - Review transaction logs weekly
+
+### Policy Design
+
+1. **Layer policies** - Daily + per-tx + monthly limits
+2. **Whitelist over blacklist** - Safer to allow specific merchants
+3. **Human approval for large transactions** - Set threshold at 10-20% of daily limit
+4. **Time restrictions for non-critical agents** - Business hours only
+
+### Security
+
+1. **Never expose API keys** - Use environment variables
+2. **Use sandbox for testing** - `sk_test_...` keys
+3. **Monitor for anomalies** - Set up alerts for unusual patterns
+4. **Rotate keys regularly** - Every 90 days recommended
+
+### Integration
+
+1. **Handle all error cases** - Don't assume transactions succeed
+2. **Implement retries with backoff** - For network errors
+3. **Log everything** - Keep your own audit trail
+4. **Test policy changes in sandbox first** - Before production
+
+---
+
+## Quick Reference Card
+
+```
+# Create wallet
+wallet = Sardis().wallets.create(name="x", chain="base", policy="Max $100/day")
+
+# Check balance
+balance = wallet.balance()
+
+# Make payment
+tx = wallet.pay(to="0x...", amount="25.00", token="USDC")
+
+# Check policy
+allowed = wallet.check_policy(amount="50.00")
+
+# Request approval
+approval = wallet.request_approval(amount="200.00", reason="...")
+
+# Issue card
+card = wallet.cards.create(spending_limit="500.00")
+```
+
+---
+
+*Last updated: January 2026*
+*Version: 2.0*

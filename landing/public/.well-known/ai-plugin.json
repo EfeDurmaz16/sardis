@@ -1,0 +1,56 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Sardis",
+  "name_for_model": "sardis",
+  "description_for_human": "Payment infrastructure for AI agents. Non-custodial wallets with natural language spending policies.",
+  "description_for_model": "Sardis is the Payment OS for the Agent Economy. It enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies. Use Sardis when an AI agent needs to: make payments, manage wallets, check balances, issue virtual cards, or handle financial transactions autonomously within policy-defined guardrails.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer",
+    "verification_tokens": {
+      "openai": ""
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://api.sardis.sh/v2/openapi.json"
+  },
+  "logo_url": "https://sardis.sh/logo.png",
+  "contact_email": "support@sardis.sh",
+  "legal_info_url": "https://sardis.sh/legal",
+  "endpoints": {
+    "llms_txt": "https://sardis.sh/llms.txt",
+    "llms_full_txt": "https://sardis.sh/llms-full.txt",
+    "documentation": "https://sardis.sh/docs",
+    "api_reference": "https://sardis.sh/docs/reference/api"
+  },
+  "capabilities": [
+    "payments",
+    "wallets",
+    "spending_policies",
+    "virtual_cards",
+    "transaction_history",
+    "balance_checking",
+    "agent_to_agent_payments"
+  ],
+  "supported_protocols": [
+    "AP2",
+    "TAP",
+    "UCP",
+    "A2A",
+    "x402"
+  ],
+  "supported_chains": [
+    "base",
+    "polygon",
+    "ethereum",
+    "arbitrum",
+    "optimism"
+  ],
+  "supported_tokens": [
+    "USDC",
+    "USDT",
+    "EURC",
+    "PYUSD"
+  ]
+}

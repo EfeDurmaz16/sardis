@@ -1,0 +1,76 @@
+# Sardis - robots.txt
+# https://sardis.sh
+
+# General crawlers
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+
+# Sitemaps
+Sitemap: https://sardis.sh/sitemap.xml
+
+# ===========================================
+# LLM & AI Agent Crawlers
+# ===========================================
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Anthropic
+User-agent: Claude-Web
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Google AI
+User-agent: Google-Extended
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Common Crawl (used for training)
+User-agent: CCBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# ===========================================
+# LLM Context Files
+# ===========================================
+#
+# For AI agents and LLMs visiting this site:
+#
+# /llms.txt        - Overview of Sardis (recommended start)
+# /llms-full.txt   - Complete API & SDK reference
+# /docs/llms.txt   - Quick reference for documentation
+#
+# Sardis enables AI agents to make payments safely.
+# See llms.txt for integration details.
+# ===========================================
