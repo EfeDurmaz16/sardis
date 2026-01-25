@@ -13,6 +13,16 @@ export default function DocsQuickstart() {
         </p>
       </div>
 
+      <section className="not-prose mb-8 p-4 border border-emerald-500/30 bg-emerald-500/10">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          <span className="font-bold text-emerald-500">LIVE ON BASE SEPOLIA</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Smart contracts deployed and verified. Ready for testnet integration.
+        </p>
+      </section>
+
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Zero Integration (MCP)
@@ -134,11 +144,49 @@ console.log('Card:', result.cardNumber);`}</pre>
         </div>
       </section>
 
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Testnet Configuration
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Configure your environment to use deployed contracts on Base Sepolia:
+        </p>
+
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# Deployed Contract Addresses (Base Sepolia)
+SARDIS_WALLET_FACTORY=0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7
+SARDIS_ESCROW=0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932
+
+# API Configuration
+SARDIS_API_URL=https://api.sardis.sh
+SARDIS_API_KEY=sk_test_...
+
+# Network Configuration
+SARDIS_CHAIN=base_sepolia
+SARDIS_RPC_URL=https://sepolia.base.org`}</pre>
+          </div>
+        </div>
+
+        <p className="text-muted-foreground mt-4 text-sm">
+          View contracts on{' '}
+          <a
+            href="https://sepolia.basescan.org/address/0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--sardis-orange)] hover:underline"
+          >
+            BaseScan →
+          </a>
+        </p>
+      </section>
+
       <section className="not-prose p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">
         <h3 className="font-bold font-display mb-2 text-[var(--sardis-orange)]">Next Steps</h3>
         <ul className="space-y-2 text-muted-foreground text-sm">
           <li>→ Learn about the <a href="/docs/architecture" className="text-[var(--sardis-orange)] hover:underline">Architecture</a></li>
           <li>→ Explore the <a href="/docs/sdk" className="text-[var(--sardis-orange)] hover:underline">SDK Reference</a></li>
+          <li>→ View <a href="/docs/deployment" className="text-[var(--sardis-orange)] hover:underline">Deployment Guide</a></li>
           <li>→ Read the <a href="/docs/whitepaper" className="text-[var(--sardis-orange)] hover:underline">Whitepaper</a></li>
         </ul>
       </section>

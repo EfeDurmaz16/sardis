@@ -31,6 +31,10 @@ import DocsDeployment from './docs/pages/Deployment.jsx'
 import DocsFAQ from './docs/pages/FAQ.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
 import DocsChangelog from './docs/pages/Changelog.jsx'
+import DocsRoadmap from './docs/pages/Roadmap.jsx'
+// Legal
+import TermsOfService from './docs/pages/TermsOfService.jsx'
+import PrivacyPolicy from './docs/pages/PrivacyPolicy.jsx'
 // Blog posts
 import IntroducingSardis from './docs/pages/blog/IntroducingSardis.jsx'
 import FinancialHallucination from './docs/pages/blog/FinancialHallucination.jsx'
@@ -43,12 +47,15 @@ import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
 import MCP36Tools from './docs/pages/blog/MCP36Tools.jsx'
 import WhySardis from './docs/pages/blog/WhySardis.jsx'
 import FiatRails from './docs/pages/blog/FiatRails.jsx'
+// Standalone pages
+import Playground from './pages/Playground.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/playground" element={<Playground />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />
@@ -89,6 +96,10 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/why-sardis" element={<WhySardis />} />
           <Route path="blog/fiat-rails" element={<FiatRails />} />
           <Route path="changelog" element={<DocsChangelog />} />
+          <Route path="roadmap" element={<DocsRoadmap />} />
+          {/* Legal */}
+          <Route path="terms" element={<TermsOfService />} />
+          <Route path="privacy" element={<PrivacyPolicy />} />
         </Route>
       </Routes>
     </BrowserRouter>

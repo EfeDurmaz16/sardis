@@ -1,33 +1,38 @@
 # Sardis
 
 > Payment OS for the Agent Economy
+> Prevent Financial Hallucinations
 
 Sardis enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.
 
 ## Overview
 
-Sardis is infrastructure that allows AI agents (Claude, LangChain, OpenAI, Vercel AI SDK) to autonomously handle payments while staying within human-defined guardrails. It solves the "AI agent money problem" - how to let agents spend money without giving them unlimited access.
+Sardis is infrastructure that allows AI agents (Claude, Cursor, LangChain, OpenAI, Vercel AI SDK) to autonomously handle payments while staying within human-defined guardrails. It solves the "AI agent money problem" - how to let agents spend money without giving them unlimited access.
+
+The core innovation is the **Policy Firewall** - a natural language policy engine that validates every transaction against human-defined rules before execution.
 
 ## Core Concepts
 
 ### Non-Custodial MPC Wallets
 - Agents get wallets they control via Multi-Party Computation (MPC)
-- Private keys are split across multiple parties
+- Private keys are split across multiple parties using Turnkey
 - Users always maintain control - Sardis never holds funds
-- Powered by Turnkey for enterprise-grade security
+- Enterprise-grade security with hardware-backed key storage
 
 ### Natural Language Spending Policies
 - Define spending rules in plain English
 - Example: "Max $100/day on cloud services, only approved vendors, require approval over $50"
 - Policies are parsed into structured rules and enforced in real-time
 - Agent cannot override or bypass policies
+- Time-based restrictions (business hours, specific days)
+- Merchant whitelisting and category blocking
 
 ### Supported Protocols
-- AP2 (Agent Payment Protocol) - Google, PayPal, Mastercard, Visa consortium standard
-- TAP (Trust Anchor Protocol) - Ed25519/ECDSA cryptographic identity verification
-- UCP (Universal Commerce Protocol) - Standardized checkout flows
-- A2A (Agent-to-Agent) - Google-developed multi-agent communication
-- x402 (HTTP 402) - Coinbase micropayment protocol
+- **AP2** (Agent Payment Protocol) - Google, PayPal, Mastercard, Visa consortium (60+ partners)
+- **TAP** (Trust Anchor Protocol) - Ed25519/ECDSA cryptographic identity verification
+- **UCP** (Universal Commerce Protocol) - Standardized checkout flows and cart management
+- **A2A** (Agent-to-Agent) - Google-developed multi-agent communication and payments
+- **x402** (HTTP 402) - Coinbase micropayment protocol for pay-per-API-call
 
 ### Multi-Chain Support
 | Chain     | Tokens              |
@@ -39,9 +44,17 @@ Sardis is infrastructure that allows AI agents (Claude, LangChain, OpenAI, Verce
 | Optimism  | USDC, USDT          |
 
 ### Virtual Cards
-- Issue virtual cards on-demand via Lithic integration
+- Issue virtual Visa/Mastercard cards on-demand via Lithic integration
 - Bridge crypto wallets to traditional commerce
-- Works anywhere Visa/Mastercard is accepted
+- Works anywhere cards are accepted (online and physical POS)
+- Per-card spending limits and merchant restrictions
+
+### Fiat Rails
+- Fund agent wallets via ACH, wire transfer, or card
+- Automatic USD → USDC conversion
+- Withdraw back to USD bank accounts
+- Same-day ACH and wire payouts
+- Complete bridge between legacy finance and agentic commerce
 
 ## SDKs
 
@@ -111,12 +124,15 @@ const result = await wallet.pay({
 |--------------------|------------|--------|
 | Claude Desktop     | MCP Server | Stable |
 | Cursor             | MCP Server | Stable |
+| Windsurf           | MCP Server | Stable |
 | LangChain          | Python     | Stable |
 | Vercel AI SDK      | TypeScript | Stable |
 | OpenAI Functions   | Python     | Stable |
+| OpenAI Swarm       | Python     | Stable |
 | LlamaIndex         | Python     | Beta   |
 | CrewAI             | Python     | Beta   |
 | AutoGen            | Python     | Beta   |
+| Mastra             | TypeScript | Beta   |
 
 ## API Endpoints
 
@@ -143,19 +159,40 @@ Base URL: `https://api.sardis.sh/v2`
 - `GET /cards` - List cards
 - `DELETE /cards/{id}` - Cancel a card
 
+### Fiat
+- `POST /fiat/fund` - Fund wallet from bank/card
+- `POST /fiat/withdraw` - Withdraw to bank account
+- `GET /fiat/status/{id}` - Check funding/withdrawal status
+
+### Holds (Pre-authorization)
+- `POST /holds` - Create a hold (reserve funds)
+- `POST /holds/{id}/capture` - Capture hold
+- `POST /holds/{id}/release` - Release hold
+
 ## Documentation Structure
 
-- `/docs` - Main documentation
-- `/docs/getting-started` - Quick start guide (5 minutes)
-- `/docs/guides/wallets` - Wallet management
-- `/docs/guides/policies` - Spending policy configuration
-- `/docs/guides/mcp-server` - MCP server setup for Claude
-- `/docs/guides/sdk-python` - Python SDK guide
-- `/docs/guides/sdk-typescript` - TypeScript SDK guide
-- `/docs/guides/ap2` - AP2 protocol deep-dive
-- `/docs/guides/tap` - TAP identity verification
-- `/docs/guides/a2a` - Agent-to-Agent payments
-- `/docs/reference/api` - API reference
+- `/docs` - Main documentation overview
+- `/docs/quickstart` - Quick start guide (5 minutes)
+- `/docs/architecture` - System architecture and components
+- `/docs/wallets` - Wallet creation and management
+- `/docs/payments` - Making payments and transactions
+- `/docs/policies` - Spending policy configuration
+- `/docs/holds` - Pre-authorization and holds
+- `/docs/mcp-server` - MCP server setup for Claude/Cursor
+- `/docs/sdk` - SDK overview
+- `/docs/sdk-python` - Python SDK reference
+- `/docs/sdk-typescript` - TypeScript SDK reference
+- `/docs/protocols` - Protocol overview
+- `/docs/ap2` - AP2 protocol deep-dive
+- `/docs/tap` - TAP identity verification
+- `/docs/ucp` - Universal Commerce Protocol
+- `/docs/a2a` - Agent-to-Agent payments
+- `/docs/authentication` - API authentication
+- `/docs/security` - Security model
+- `/docs/deployment` - Deployment guide
+- `/docs/faq` - Frequently asked questions
+- `/docs/changelog` - Version history
+- `/docs/blog` - Technical blog posts
 
 ## Use Cases
 
@@ -164,14 +201,19 @@ Base URL: `https://api.sardis.sh/v2`
 3. **Travel/Booking Agents** - Agents that book flights, hotels, services within budgets
 4. **Expense Automation** - Corporate agents with department-specific spending policies
 5. **Multi-Agent Treasury** - Agent-to-agent payments with shared treasury management
+6. **Micropayments** - Pay-per-API-call using x402 protocol
+7. **Credential Verification** - Verify payment mandates and agent identity before transacting
 
 ## Security Model
 
 - **Non-Custodial**: Sardis never holds private keys or funds
-- **MPC Custody**: Keys split via Turnkey MPC infrastructure
+- **MPC Custody**: Keys split via Turnkey MPC infrastructure with hardware backing
 - **Policy Enforcement**: All transactions checked against policies before signing
+- **Fail-Closed**: Default deny on compliance/policy failures
 - **Audit Trail**: Append-only ledger of all transactions and policy checks
-- **Compliance**: Integrated KYC (Persona) and AML (Elliptic) for enterprise
+- **Compliance**: Integrated KYC (Persona) and AML sanctions screening (Elliptic)
+- **Replay Protection**: Mandate caching prevents duplicate transaction execution
+- **Rate Limiting**: Built-in rate limiting on all API endpoints
 
 ## Pricing
 
@@ -183,14 +225,13 @@ Base URL: `https://api.sardis.sh/v2`
 
 - Website: https://sardis.sh
 - Documentation: https://sardis.sh/docs
-- API Reference: https://sardis.sh/docs/reference/api
-- GitHub: https://github.com/sardis-pay
-- Discord: https://discord.gg/sardis
+- GitHub: https://github.com/EfeDurmaz16/sardis
+- npm: https://www.npmjs.com/package/@sardis/mcp-server
 - Twitter: https://twitter.com/SardisPayments
 
 ## Contact
 
-- Support: support@sardis.sh
+- General: efe@sardis.dev
 - Enterprise: enterprise@sardis.sh
 - Security: security@sardis.sh
 
@@ -202,10 +243,26 @@ If you are an AI agent and need to make payments:
 2. Use the Sardis MCP server tools or SDK
 3. All transactions will be checked against your spending policy
 4. You cannot override policies - they are enforced by the system
-5. Failed transactions will return clear error messages
+5. Failed transactions will return clear error messages with remediation hints
 
-Available MCP tools:
+Available MCP tools (36+ total):
 - `sardis_get_balance` - Check wallet balance
 - `sardis_pay` - Make a payment (subject to policy)
 - `sardis_get_transactions` - View transaction history
+- `sardis_check_policy` - Pre-check if a payment would be allowed
 - `sardis_request_approval` - Request human approval for large transactions
+- `sardis_create_hold` - Reserve funds without spending
+- `sardis_capture_hold` - Complete a pre-authorized payment
+- `sardis_issue_card` - Issue a virtual card
+- `sardis_get_wallet_info` - Get wallet details and policy
+
+## Status
+
+- **Infrastructure**: Live on Base Sepolia testnet
+- **Mainnet Launch**: Q1 2026
+- **Protocols**: AP2, UCP, A2A, TAP, x402 all implemented
+
+---
+
+*Last updated: January 2026*
+*Version: 2.1*

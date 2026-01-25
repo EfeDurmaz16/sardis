@@ -125,12 +125,24 @@ export default function DocsSecurity() {
           <div className="p-4 border border-border">
             <h4 className="font-bold font-display mb-2">KYC Verification</h4>
             <p className="text-sm text-muted-foreground mb-2">
-              Off-ramp operations require KYC verification via Bridge API. Identity is verified before any
-              fiat can leave the system. KYC status is checked on every withdrawal request.
+              Off-ramp operations require KYC verification via Persona (680+ lines of integration code with
+              webhook support). Identity is verified before any fiat can leave the system. KYC status is
+              checked on every withdrawal request.
             </p>
             <div className="flex gap-2 mt-2">
-              <span className="px-2 py-0.5 text-xs font-mono bg-blue-500/10 text-blue-500 border border-blue-500/30">BRIDGE</span>
-              <span className="px-2 py-0.5 text-xs font-mono bg-blue-500/10 text-blue-500 border border-blue-500/30">PERSONA</span>
+              <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">PERSONA ✓</span>
+              <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">BRIDGE ✓</span>
+            </div>
+          </div>
+
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">AML/Sanctions Screening</h4>
+            <p className="text-sm text-muted-foreground mb-2">
+              Real-time AML screening via Elliptic (618 lines with HMAC-signed API). Wallet addresses and
+              transactions are screened against OFAC, UN, and EU sanctions lists before execution.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">ELLIPTIC ✓</span>
             </div>
           </div>
 

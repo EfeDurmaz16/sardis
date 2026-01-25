@@ -1,7 +1,7 @@
 # Sardis - Complete Reference for LLMs
 
 > Payment OS for the Agent Economy
-> Non-custodial MPC wallets with natural language spending policies for AI agents
+> Prevent Financial Hallucinations with Non-custodial MPC wallets and natural language spending policies
 
 ---
 
@@ -13,11 +13,12 @@
 4. TypeScript SDK
 5. MCP Server
 6. REST API
-7. Protocols (AP2, TAP, UCP, A2A)
-8. Virtual Cards
-9. Compliance
-10. Error Handling
-11. Best Practices
+7. Protocols (AP2, TAP, UCP, A2A, x402)
+8. Fiat Rails
+9. Virtual Cards
+10. Compliance
+11. Error Handling
+12. Best Practices
 
 ---
 
@@ -25,7 +26,7 @@
 
 ### What is Sardis?
 
-Sardis is payment infrastructure that enables AI agents to make real financial transactions while staying within human-defined guardrails. It solves the fundamental problem of agent autonomy vs. control.
+Sardis is the **Policy Firewall for Agent Payments** - payment infrastructure that enables AI agents to make real financial transactions while staying within human-defined guardrails. It solves the fundamental problem of agent autonomy vs. control, preventing "financial hallucinations" where agents overspend or transact inappropriately.
 
 ### The Problem
 
@@ -33,14 +34,16 @@ AI agents need to spend money to be useful (API credits, subscriptions, services
 - Giving agents full access is dangerous (they may overspend)
 - Manual approval for everything defeats automation
 - API keys with crude limits lack nuance
+- Agents get blocked by 2FA, CAPTCHAs, and human-centric security
 
 ### The Solution
 
 Sardis provides:
 - **Non-custodial wallets**: Agents control wallets via MPC, users maintain ownership
-- **Natural language policies**: Define rules in plain English
-- **Real-time enforcement**: Every transaction checked against policies
+- **Natural language policies**: Define rules in plain English ("Max $100/day on cloud services")
+- **Real-time enforcement**: Every transaction checked against policies before signing
 - **Complete audit trail**: Full visibility into agent spending
+- **Multi-rail payments**: Crypto (stablecoins) + fiat (virtual cards, bank transfers)
 
 ### Key Differentiators
 
@@ -48,9 +51,10 @@ Sardis provides:
 |---------|--------|-------------|
 | Custody | Non-custodial (MPC) | Custodial |
 | Policies | Natural language | Code/JSON only |
-| Protocols | AP2, TAP, x402 | Proprietary |
+| Protocols | AP2, TAP, UCP, A2A, x402 | Proprietary |
 | Chains | 5 (Base, Polygon, ETH, Arb, OP) | Usually 1-2 |
 | Cards | Virtual cards (Lithic) | Rarely |
+| Fiat Rails | ACH, Wire, Card funding | Crypto only |
 | Compliance | KYC + AML built-in | Add-on |
 
 ---
@@ -490,7 +494,41 @@ Add to `.cursor/mcp.json`:
   amount: string;   // Amount needing approval
   reason: string;   // Why approval is needed
 }
+
+// sardis_create_hold
+{
+  amount: string;   // Amount to reserve
+  token?: string;   // Token (default: USDC)
+  merchant?: string; // Merchant identifier
+  expires_in?: number; // Seconds until expiry
+}
+
+// sardis_capture_hold
+{
+  hold_id: string;  // Hold to capture
+  amount?: string;  // Amount (can be less than hold)
+}
+
+// sardis_issue_card
+{
+  spending_limit: string;    // Card limit
+  merchant_category?: string; // Optional category restriction
+  expires_in_days?: number;  // Card validity
+}
 ```
+
+### Full Tool List (36+ tools)
+
+| Category | Tools |
+|----------|-------|
+| Wallet | `get_balance`, `get_wallet_info`, `list_wallets` |
+| Payments | `pay`, `check_policy`, `request_approval` |
+| Transactions | `get_transactions`, `get_transaction` |
+| Holds | `create_hold`, `capture_hold`, `release_hold`, `list_holds` |
+| Cards | `issue_card`, `list_cards`, `cancel_card`, `get_card_transactions` |
+| Policies | `get_policy`, `update_policy`, `validate_policy` |
+| Compliance | `screen_address`, `get_kyc_status`, `initiate_kyc` |
+| Fiat | `fund_wallet`, `withdraw_to_bank`, `get_funding_status` |
 
 ---
 
@@ -679,7 +717,7 @@ tx = wallet.pay(
 
 ### A2A (Agent-to-Agent)
 
-Multi-agent payment protocol.
+Multi-agent payment protocol developed by Google.
 
 ```python
 # Agent A sends to Agent B
@@ -692,11 +730,161 @@ tx = wallet_a.pay_agent(
         "deliverable": "report.pdf"
     }
 )
+
+# Discover agent capabilities via .well-known
+from sardis.protocols import A2A
+
+agent_info = await A2A.discover("https://agent.example.com")
+print(agent_info.capabilities)  # ["payments", "research", "booking"]
+```
+
+### UCP (Universal Commerce Protocol)
+
+Standardized checkout flows for agents.
+
+```python
+from sardis.protocols import UCP
+
+# Create a cart
+cart = UCP.create_cart(
+    merchant="store.example.com",
+    items=[
+        {"sku": "API-CREDITS-100", "quantity": 1, "price": "10.00"},
+        {"sku": "SUPPORT-ADDON", "quantity": 1, "price": "5.00"}
+    ]
+)
+
+# Apply discount
+cart = UCP.apply_discount(cart, code="AGENT10")
+
+# Checkout
+checkout = UCP.checkout(cart, wallet=wallet)
+print(checkout.status)  # "completed"
+print(checkout.receipt)  # Full receipt with line items
+```
+
+### x402 (HTTP 402 Micropayments)
+
+Coinbase-developed protocol for pay-per-API-call.
+
+```python
+from sardis.protocols import X402
+
+# Make a paid API request
+response = await X402.request(
+    url="https://api.example.com/expensive-endpoint",
+    wallet=wallet,
+    max_amount="0.01"  # Maximum willing to pay
+)
+
+# The x402 client automatically:
+# 1. Receives 402 Payment Required response
+# 2. Parses payment requirements from headers
+# 3. Makes payment via Sardis wallet
+# 4. Retries request with payment proof
+
+print(response.data)       # API response
+print(response.amount_paid)  # "0.005" (actual cost)
+```
+
+```typescript
+// TypeScript
+import { X402Client } from '@sardis/x402';
+
+const x402 = new X402Client({ wallet });
+
+const response = await x402.fetch('https://api.example.com/data', {
+  maxPayment: '0.01'
+});
 ```
 
 ---
 
-## 8. Virtual Cards
+## 8. Fiat Rails
+
+### Overview
+
+Sardis bridges traditional banking with agentic commerce, allowing wallets to be funded from and withdrawn to bank accounts.
+
+### Funding Wallets
+
+```python
+from sardis import SardisFiatRamp
+
+ramp = SardisFiatRamp(
+    sardis_key="sk_...",
+    bridge_key="bridge_..."
+)
+
+# Fund wallet via ACH
+funding = await ramp.fund_wallet(
+    wallet_id="wallet_123",
+    amount_usd=1000,
+    method="bank"  # "bank", "card", or "crypto"
+)
+
+print(funding.ach_instructions)  # Bank transfer details
+# {
+#   "account_number": "...",
+#   "routing_number": "...",
+#   "bank_name": "...",
+#   "reference": "SARDIS-wallet_123"
+# }
+
+# Fund via card (higher fees, instant)
+card_funding = await ramp.fund_wallet(
+    wallet_id="wallet_123",
+    amount_usd=100,
+    method="card",
+    card_token="tok_..."
+)
+```
+
+### Withdrawals
+
+```python
+# Withdraw to bank (policy-checked)
+withdrawal = await ramp.withdraw_to_bank(
+    wallet_id="wallet_123",
+    amount_usd=500,
+    bank_account={
+        "account_number": "...",
+        "routing_number": "...",
+        "account_type": "checking"
+    }
+)
+
+print(withdrawal.status)  # "pending", "processing", "completed"
+print(withdrawal.estimated_arrival)  # Same-day ACH or T+2 wire
+```
+
+### Merchant Payouts
+
+```python
+# Pay merchant directly in USD
+payment = await ramp.pay_merchant_fiat(
+    wallet_id="wallet_123",
+    amount_usd=99.99,
+    merchant={
+        "name": "ACME Corp",
+        "bank_account": {...}
+    }
+)
+```
+
+### Fee Structure
+
+| Method | Fee | Speed |
+|--------|-----|-------|
+| ACH Funding | 0.5% | 2-3 business days |
+| Wire Funding | 0.25% | Same day |
+| Card Funding | 2.9% + $0.30 | Instant |
+| ACH Withdrawal | 0.25% | Same day |
+| Wire Withdrawal | $25 flat | Same day |
+
+---
+
+## 9. Virtual Cards
 
 ### Issuance
 
@@ -732,7 +920,7 @@ txs = card.transactions()
 
 ---
 
-## 9. Compliance
+## 10. Compliance
 
 ### KYC (Know Your Customer)
 
@@ -767,7 +955,7 @@ result = client.compliance.screen_transaction(tx)
 
 ---
 
-## 10. Error Handling
+## 11. Error Handling
 
 ### Error Codes
 
@@ -810,7 +998,7 @@ except ApprovalRequired as e:
 
 ---
 
-## 11. Best Practices
+## 12. Best Practices
 
 ### Wallet Management
 
@@ -844,27 +1032,74 @@ except ApprovalRequired as e:
 
 ## Quick Reference Card
 
-```
+```python
+from sardis import Sardis
+
+client = Sardis(api_key="sk_...")
+
 # Create wallet
-wallet = Sardis().wallets.create(name="x", chain="base", policy="Max $100/day")
+wallet = client.wallets.create(name="agent-wallet", chain="base", policy="Max $100/day")
 
 # Check balance
-balance = wallet.balance()
+balance = wallet.balance()  # {"USDC": "150.00", "EURC": "50.00"}
 
-# Make payment
+# Make payment (policy enforced)
 tx = wallet.pay(to="0x...", amount="25.00", token="USDC")
 
-# Check policy
-allowed = wallet.check_policy(amount="50.00")
+# Pre-check if payment would be allowed
+result = wallet.check_policy(amount="50.00", merchant="openai.com")
+if result.allowed:
+    wallet.pay(...)
 
-# Request approval
-approval = wallet.request_approval(amount="200.00", reason="...")
+# Request human approval for large transactions
+approval = wallet.request_approval(amount="200.00", reason="Annual subscription")
 
-# Issue card
-card = wallet.cards.create(spending_limit="500.00")
+# Create hold (pre-authorization)
+hold = wallet.create_hold(amount="100.00", token="USDC", expires_in=3600)
+tx = hold.capture(amount="85.00")  # Capture partial amount
+
+# Issue virtual card
+card = wallet.cards.create(spending_limit="500.00", merchant_category="software")
+
+# Fund from bank
+from sardis import SardisFiatRamp
+ramp = SardisFiatRamp(sardis_key="sk_...", bridge_key="bridge_...")
+funding = await ramp.fund_wallet(wallet_id="wallet_123", amount_usd=1000, method="bank")
 ```
+
+## MCP Server Quick Start
+
+```bash
+# Install and start
+npx @sardis/mcp-server start
+
+# Or add to Claude Desktop config
+# ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": { "SARDIS_API_KEY": "sk_..." }
+    }
+  }
+}
+```
+
+## Status
+
+- **Infrastructure**: Live on Base Sepolia testnet
+- **Mainnet Launch**: Q1 2026
+- **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
+
+## Links
+
+- Website: https://sardis.sh
+- Documentation: https://sardis.sh/docs
+- GitHub: https://github.com/EfeDurmaz16/sardis
+- npm: https://www.npmjs.com/package/@sardis/mcp-server
 
 ---
 
 *Last updated: January 2026*
-*Version: 2.0*
+*Version: 2.1*

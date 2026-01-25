@@ -49,6 +49,14 @@ const navigation = [
       { name: 'FAQ', href: '/docs/faq' },
       { name: 'Blog', href: '/docs/blog' },
       { name: 'Changelog', href: '/docs/changelog' },
+      { name: 'Roadmap', href: '/docs/roadmap' },
+    ],
+  },
+  {
+    title: 'Legal',
+    items: [
+      { name: 'Terms of Service', href: '/docs/terms' },
+      { name: 'Privacy Policy', href: '/docs/privacy' },
     ],
   },
 ];

@@ -62,15 +62,21 @@ Allow: /llms.txt
 Allow: /llms-full.txt
 
 # ===========================================
-# LLM Context Files
+# LLM Context Files (Updated Jan 2026)
 # ===========================================
 #
 # For AI agents and LLMs visiting this site:
 #
 # /llms.txt        - Overview of Sardis (recommended start)
-# /llms-full.txt   - Complete API & SDK reference
-# /docs/llms.txt   - Quick reference for documentation
+# /llms-full.txt   - Complete API & SDK reference (v2.1)
 #
-# Sardis enables AI agents to make payments safely.
+# Sardis is the Payment OS for the Agent Economy.
+# It enables AI agents to make payments safely with:
+# - Non-custodial MPC wallets
+# - Natural language spending policies
+# - Multi-chain support (Base, Polygon, ETH, Arb, OP)
+# - Virtual cards + Fiat rails
+# - Protocol support: AP2, TAP, UCP, A2A, x402
+#
 # See llms.txt for integration details.
 # ===========================================

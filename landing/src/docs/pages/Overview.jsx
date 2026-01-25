@@ -8,7 +8,10 @@ export default function DocsOverview() {
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
             DOCUMENTATION
           </span>
-          <span>Updated Jan 22, 2026</span>
+          <span>Updated Jan 25, 2026</span>
+          <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
+            95% COMPLETE
+          </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Sardis Payment OS Documentation</h1>
         <p className="text-xl text-muted-foreground">
@@ -27,8 +30,9 @@ export default function DocsOverview() {
           errors by acting as a policy firewall, ensuring agents cannot overspend or transact outside defined limits.
         </p>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          Sardis supports both on-chain (Base, Polygon, Ethereum) and fiat rails (virtual cards via Lithic)
-          and integrates with popular agent frameworks using SDKs in Python and TypeScript.
+          Sardis supports both on-chain (Base, Polygon, Ethereum, Arbitrum, Optimism) and fiat rails (virtual cards via Lithic,
+          bank transfers via Bridge.xyz) with full compliance (Persona KYC, Elliptic AML). It integrates with popular agent
+          frameworks using SDKs in Python and TypeScript.
         </p>
         <p className="text-muted-foreground leading-relaxed">
           The project is production-ready and follows an <strong className="text-foreground">Open Core licensing model</strong>,
@@ -46,8 +50,10 @@ export default function DocsOverview() {
             { title: 'Natural Language Policies', desc: 'Define spending rules in plain English' },
             { title: 'Financial Firewall', desc: 'Prevent hallucination errors in real-time' },
             { title: 'Instant Virtual Cards', desc: 'Issue cards on-demand via Lithic' },
-            { title: 'Multi-Chain Support', desc: 'Base, Polygon, Ethereum settlement' },
-            { title: 'Zero Integration Setup', desc: 'MCP server for Claude Desktop' },
+            { title: 'Multi-Chain Support', desc: 'Base, Polygon, Ethereum, Arbitrum, Optimism' },
+            { title: 'Fiat Rails', desc: 'Bank ↔ crypto via Bridge.xyz' },
+            { title: 'Built-in Compliance', desc: 'Persona KYC + Elliptic AML' },
+            { title: 'Zero Integration Setup', desc: 'MCP server with 36 tools' },
           ].map((feature) => (
             <div key={feature.title} className="p-4 border border-border hover:border-[var(--sardis-orange)] transition-colors">
               <h3 className="font-bold font-display mb-1">{feature.title}</h3>

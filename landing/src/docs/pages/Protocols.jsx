@@ -86,17 +86,22 @@ export default function DocsProtocols() {
               <tr className="bg-muted/30">
                 <th className="px-4 py-2 text-left border-b border-border">Chain</th>
                 <th className="px-4 py-2 text-left border-b border-border">Tokens</th>
+                <th className="px-4 py-2 text-left border-b border-border">Status</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Base</td><td className="px-4 py-2 border-b border-border">USDC, EURC</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Polygon</td><td className="px-4 py-2 border-b border-border">USDC, USDT, EURC</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Ethereum</td><td className="px-4 py-2 border-b border-border">USDC, USDT, PYUSD, EURC</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Arbitrum</td><td className="px-4 py-2 border-b border-border">USDC, USDT</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Optimism</td><td className="px-4 py-2 border-b border-border">USDC, USDT</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Base</td><td className="px-4 py-2 border-b border-border">USDC, EURC</td><td className="px-4 py-2 border-b border-border"><span className="text-emerald-500">✓ Deployed</span></td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Polygon</td><td className="px-4 py-2 border-b border-border">USDC, USDT, EURC</td><td className="px-4 py-2 border-b border-border"><span className="text-yellow-500">Ready</span></td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Ethereum</td><td className="px-4 py-2 border-b border-border">USDC, USDT, PYUSD, EURC</td><td className="px-4 py-2 border-b border-border"><span className="text-yellow-500">Ready</span></td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Arbitrum</td><td className="px-4 py-2 border-b border-border">USDC, USDT</td><td className="px-4 py-2 border-b border-border"><span className="text-yellow-500">Ready</span></td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">Optimism</td><td className="px-4 py-2 border-b border-border">USDC, USDT</td><td className="px-4 py-2 border-b border-border"><span className="text-yellow-500">Ready</span></td></tr>
             </tbody>
           </table>
         </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          <span className="text-emerald-500">✓ Deployed</span> = Contracts live on testnet &nbsp;|&nbsp;
+          <span className="text-yellow-500">Ready</span> = Chain integration complete, pending deployment
+        </p>
       </section>
     </article>
   );

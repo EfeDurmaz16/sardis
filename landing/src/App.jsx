@@ -940,7 +940,7 @@ const payment = await ramp.payMerchantFiat({
             </div>
 
             <a
-              href="https://sepolia.etherscan.io/address/0xAb849f77D54d4D406ED5082079cB44EfC22EAa98"
+              href="https://sepolia.basescan.org/address/0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7"
               target="_blank"
               rel="noreferrer"
               className="group flex items-center gap-3 px-5 py-3 border border-border hover:border-[var(--sardis-orange)] transition-colors"
@@ -949,17 +949,17 @@ const payment = await ramp.payMerchantFiat({
                 <IsometricIcon src={icons.searchInsights} className="w-5 h-5" isDark={isDark} />
               </div>
               <div className="text-sm text-left">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider font-mono font-semibold">Verify on Etherscan</div>
-                <div className="font-mono text-foreground group-hover:text-[var(--sardis-orange)] transition-colors">0xAb84...Aa98</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider font-mono font-semibold">Verify on BaseScan</div>
+                <div className="font-mono text-foreground group-hover:text-[var(--sardis-orange)] transition-colors">0x0922...3D7</div>
               </div>
             </a>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { label: "INFRASTRUCTURE", value: "Live on Sepolia", sub: "Core infra running" },
-              { label: "TIMELINE", value: "Q1 2026", sub: "Mainnet Launch" },
-              { label: "PROTOCOLS", value: "5 Standards", sub: "AP2 • UCP • A2A • TAP • x402" }
+              { label: "INFRASTRUCTURE", value: "Live on Base Sepolia", sub: "Contracts deployed" },
+              { label: "COMPLETION", value: "95%", sub: "Production Ready" },
+              { label: "PROTOCOLS", value: "11 Integrations", sub: "5 chains • 6 services" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>
