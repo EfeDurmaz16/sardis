@@ -74,3 +74,9 @@ load_test_*.json
 
 
 coverage/
+
+# Local/temporary files
+.serena/
+RALPH_LOOP_*.md
+run_ralph_loop.sh
+demo-video/
