@@ -1,7 +1,7 @@
 """Sardis Fiat Ramp - Bridge crypto wallets to traditional banking."""
 
 from .ramp import SardisFiatRamp
-from .types import (
+from .ramp_types import (
     FundingResult,
     WithdrawalResult,
     PaymentResult,

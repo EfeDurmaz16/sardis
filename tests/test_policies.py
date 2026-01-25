@@ -513,14 +513,15 @@ class TestSpendingPolicyAsyncEvaluate:
     async def test_evaluate_success(self):
         """Test evaluate() returns True for valid payment."""
         from sardis_v2_core.wallets import Wallet
+        from sardis_v2_core.tokens import TokenType
         from unittest.mock import AsyncMock
         
         wallet = Wallet.new("agent_001")
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
         
-        # Mock RPC client
+        # Mock RPC client - return 200 USDC balance (enough for 100 + 1 fee)
         mock_rpc = AsyncMock()
-        mock_rpc._call = AsyncMock(return_value="0x0000000000000000000000000000000000000000000000000000000005f5e100")  # 100 USDC in hex
+        mock_rpc._call = AsyncMock(return_value="0x000000000000000000000000000000000000000000000000000000000bebc200")  # 200 USDC in hex
         
         policy = SpendingPolicy(
             agent_id="agent_001",
@@ -544,6 +545,7 @@ class TestSpendingPolicyAsyncEvaluate:
     async def test_evaluate_insufficient_balance(self):
         """Test evaluate() fails when on-chain balance is insufficient."""
         from sardis_v2_core.wallets import Wallet
+        from sardis_v2_core.tokens import TokenType
         from unittest.mock import AsyncMock
         
         wallet = Wallet.new("agent_001")
@@ -575,6 +577,7 @@ class TestSpendingPolicyAsyncEvaluate:
     async def test_evaluate_without_rpc_client(self):
         """Test evaluate() works without RPC client (skips balance check)."""
         from sardis_v2_core.wallets import Wallet
+        from sardis_v2_core.tokens import TokenType
         
         wallet = Wallet.new("agent_001")
         

@@ -73,6 +73,13 @@ target-version = "py310"
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]
 
+[dependency-groups]
+dev = [
+    "fastapi>=0.128.0",
+    "httpx>=0.28.1",
+    "python-multipart>=0.0.22",
+]
+
 
 
 

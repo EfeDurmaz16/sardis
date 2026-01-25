@@ -8,7 +8,7 @@ from typing import Literal, Optional
 
 import httpx
 
-from .types import (
+from .ramp_types import (
     BankAccount,
     FundingMethod,
     FundingResult,
