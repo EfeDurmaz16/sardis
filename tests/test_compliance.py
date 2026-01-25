@@ -350,23 +350,241 @@ class TestComplianceProviderProtocol:
     def test_protocol_requires_evaluate_method(self):
         """Test that ComplianceProvider protocol requires evaluate method."""
         from typing import runtime_checkable, Protocol
-        
+
         # SimpleRuleProvider should satisfy the protocol
         from sardis_v2_core import SardisSettings
-        
+
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(environment="dev")
-        
+
         provider = SimpleRuleProvider(settings)
-        
+
         # Should have evaluate method
         assert hasattr(provider, "evaluate")
         assert callable(provider.evaluate)
-        
+
         # Should return ComplianceResult
         mandate = create_test_mandate()
         result = provider.evaluate(mandate)
         assert isinstance(result, ComplianceResult)
+
+
+class TestNLPolicyProvider:
+    """Tests for NLPolicyProvider with natural language policies."""
+
+    @pytest.fixture
+    def settings(self):
+        """Create test settings."""
+        from sardis_v2_core import SardisSettings
+
+        with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
+            return SardisSettings(environment="dev")
+
+    @pytest.fixture
+    def provider(self, settings):
+        """Create an NLPolicyProvider."""
+        from sardis_compliance.checks import NLPolicyProvider
+        return NLPolicyProvider(settings)
+
+    def test_nl_provider_has_fallback(self, provider):
+        """Test NL provider uses SimpleRuleProvider as fallback."""
+        assert provider._fallback is not None
+        assert isinstance(provider._fallback, SimpleRuleProvider)
+
+    def test_no_policy_uses_fallback(self, provider):
+        """Test mandate without policy uses fallback rules."""
+        mandate = create_test_mandate(token="USDC", amount=10000)
+        result = provider.evaluate(mandate)
+
+        assert result.allowed is True
+        assert result.provider == "nl_policy"
+        assert result.rule_id == "no_policy_default"
+
+    def test_set_and_get_policy(self, provider):
+        """Test setting and getting policies for agents."""
+        from decimal import Decimal
+        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+
+        policy = SpendingPolicy(
+            agent_id="test_agent",
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("100.00"),
+            limit_total=Decimal("1000.00"),
+        )
+
+        provider.set_policy_for_agent("test_agent", policy)
+        retrieved = provider.get_policy_for_agent("test_agent")
+
+        assert retrieved is not None
+        assert retrieved.agent_id == "test_agent"
+        assert retrieved.limit_per_tx == Decimal("100.00")
+
+    def test_policy_enforces_per_tx_limit(self, provider):
+        """Test that NL policy enforces per-transaction limits."""
+        from decimal import Decimal
+        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+
+        # Create policy with $50 per-tx limit
+        policy = SpendingPolicy(
+            agent_id="test_wallet",
+            trust_level=TrustLevel.LOW,
+            limit_per_tx=Decimal("50.00"),
+            limit_total=Decimal("1000.00"),
+        )
+        provider.set_policy_for_agent("test_wallet", policy)
+
+        # Test amount within limit
+        mandate_ok = create_test_mandate(token="USDC", amount=4000)  # $40
+        result_ok = provider.evaluate(mandate_ok)
+        assert result_ok.allowed is True
+
+        # Test amount over limit
+        mandate_over = create_test_mandate(token="USDC", amount=7500)  # $75
+        result_over = provider.evaluate(mandate_over)
+        assert result_over.allowed is False
+        assert result_over.reason == "per_transaction_limit"
+
+
+class TestComplianceAuditStore:
+    """Tests for ComplianceAuditStore audit trail."""
+
+    @pytest.fixture
+    def store(self):
+        """Create a fresh audit store."""
+        from sardis_compliance.checks import ComplianceAuditStore
+        return ComplianceAuditStore()
+
+    @pytest.fixture
+    def entry(self):
+        """Create a test audit entry."""
+        from sardis_compliance.checks import ComplianceAuditEntry
+        return ComplianceAuditEntry(
+            mandate_id="test_mandate_123",
+            subject="test_wallet",
+            allowed=True,
+            reason=None,
+            rule_id="baseline",
+            provider="rules",
+        )
+
+    def test_append_entry(self, store, entry):
+        """Test appending an audit entry."""
+        audit_id = store.append(entry)
+
+        assert audit_id is not None
+        assert audit_id == entry.audit_id
+        assert store.count() == 1
+
+    def test_append_multiple_entries(self, store):
+        """Test appending multiple entries."""
+        from sardis_compliance.checks import ComplianceAuditEntry
+
+        for i in range(5):
+            entry = ComplianceAuditEntry(
+                mandate_id=f"mandate_{i}",
+                subject="wallet",
+                allowed=True,
+            )
+            store.append(entry)
+
+        assert store.count() == 5
+
+    def test_get_by_mandate(self, store, entry):
+        """Test retrieving entries by mandate ID."""
+        store.append(entry)
+
+        entries = store.get_by_mandate("test_mandate_123")
+        assert len(entries) == 1
+        assert entries[0].mandate_id == "test_mandate_123"
+
+    def test_get_recent(self, store):
+        """Test getting recent entries."""
+        from sardis_compliance.checks import ComplianceAuditEntry
+
+        for i in range(10):
+            entry = ComplianceAuditEntry(
+                mandate_id=f"mandate_{i}",
+                subject="wallet",
+                allowed=True,
+            )
+            store.append(entry)
+
+        recent = store.get_recent(5)
+        assert len(recent) == 5
+        # Should be most recent
+        assert recent[-1].mandate_id == "mandate_9"
+
+    def test_export_all(self, store, entry):
+        """Test exporting all entries as dictionaries."""
+        store.append(entry)
+
+        exported = store.export_all()
+        assert len(exported) == 1
+        assert exported[0]["mandate_id"] == "test_mandate_123"
+        assert exported[0]["allowed"] is True
+
+    def test_audit_entry_to_dict(self, entry):
+        """Test converting audit entry to dictionary."""
+        data = entry.to_dict()
+
+        assert "audit_id" in data
+        assert "mandate_id" in data
+        assert data["mandate_id"] == "test_mandate_123"
+        assert data["allowed"] is True
+        assert "evaluated_at" in data
+
+
+class TestComplianceEngineAuditTrail:
+    """Tests for ComplianceEngine audit trail integration."""
+
+    @pytest.fixture
+    def settings(self):
+        """Create test settings."""
+        from sardis_v2_core import SardisSettings
+
+        with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
+            return SardisSettings(environment="dev")
+
+    @pytest.fixture
+    def engine(self, settings):
+        """Create a ComplianceEngine."""
+        from sardis_compliance.checks import ComplianceAuditStore
+        store = ComplianceAuditStore()
+        return ComplianceEngine(settings, audit_store=store)
+
+    def test_preflight_creates_audit_entry(self, engine):
+        """Test that preflight creates an audit entry."""
+        mandate = create_test_mandate()
+        result = engine.preflight(mandate)
+
+        assert result.audit_id is not None
+
+        # Check audit store
+        audits = engine.get_audit_history(mandate.mandate_id)
+        assert len(audits) == 1
+        assert audits[0].mandate_id == mandate.mandate_id
+
+    def test_preflight_records_denial(self, engine):
+        """Test that denied mandates are recorded in audit."""
+        mandate = create_test_mandate(token="BAD_TOKEN")
+        result = engine.preflight(mandate)
+
+        assert result.allowed is False
+
+        audits = engine.get_audit_history(mandate.mandate_id)
+        assert len(audits) == 1
+        assert audits[0].allowed is False
+        assert audits[0].reason == "token_not_permitted"
+
+    def test_recent_audits(self, engine):
+        """Test getting recent audit entries."""
+        # Create several mandates
+        for i in range(5):
+            mandate = create_test_mandate()
+            engine.preflight(mandate)
+
+        recent = engine.get_recent_audits(3)
+        assert len(recent) == 3
 
 
 
