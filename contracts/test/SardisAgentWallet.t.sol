@@ -138,18 +138,22 @@ contract SardisAgentWalletTest is Test {
     }
     
     function testDailyLimitResetsNextDay() public {
-        uint256 amount = dailyLimit;
-        
+        // Pay up to the per-tx limit (which is within daily limit)
+        uint256 amount = limitPerTx;
+
         vm.prank(agent);
-        wallet.pay(address(usdc), merchant1, amount, "Full limit");
-        
+        wallet.pay(address(usdc), merchant1, amount, "First payment");
+
+        assertEq(wallet.spentToday(), amount);
+
         // Warp to next day
         vm.warp(block.timestamp + 1 days);
-        
-        // Should be able to pay again
+
+        // Should be able to pay again (daily limit reset)
         vm.prank(agent);
         wallet.pay(address(usdc), merchant1, 100 * 10**6, "Next day");
-        
+
+        // spentToday should only reflect today's spending
         assertEq(wallet.spentToday(), 100 * 10**6);
     }
     

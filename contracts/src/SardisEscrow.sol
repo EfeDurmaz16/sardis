@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -102,6 +102,8 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     );
     
     event EscrowRefunded(uint256 indexed escrowId);
+
+    event EscrowCancelled(uint256 indexed escrowId);
     
     event DisputeRaised(uint256 indexed escrowId, address indexed by);
     
@@ -148,10 +150,10 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         uint256 _feeBps,
         uint256 _minAmount,
         uint256 _maxDeadlineDays
-    ) {
+    ) Ownable(msg.sender) {
         require(_arbiter != address(0), "Invalid arbiter");
         require(_feeBps <= 500, "Fee too high"); // Max 5%
-        
+
         arbiter = _arbiter;
         feeBps = _feeBps;
         minAmount = _minAmount;
@@ -177,17 +179,70 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         bytes32 conditionHash,
         string calldata description
     ) external returns (uint256 escrowId) {
-        require(seller != address(0) && seller != msg.sender, "Invalid seller");
+        return _createEscrow(msg.sender, seller, token, amount, deadline, conditionHash, description);
+    }
+
+    /**
+     * @notice Create escrow with milestones
+     * @param seller The seller address
+     * @param token Payment token
+     * @param milestoneAmounts Array of amounts for each milestone
+     * @param deadline When the escrow expires
+     * @param conditionHash Hash of delivery conditions
+     * @param description Service description
+     */
+    function createEscrowWithMilestones(
+        address seller,
+        address token,
+        uint256[] calldata milestoneAmounts,
+        uint256 deadline,
+        bytes32 conditionHash,
+        string calldata description
+    ) external returns (uint256 escrowId) {
+        require(milestoneAmounts.length > 0, "No milestones");
+        require(milestoneAmounts.length <= 20, "Too many milestones");
+
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < milestoneAmounts.length; i++) {
+            require(milestoneAmounts[i] > 0, "Zero milestone amount");
+            totalAmount += milestoneAmounts[i];
+        }
+
+        // Use internal function to preserve msg.sender as buyer
+        escrowId = _createEscrow(msg.sender, seller, token, totalAmount, deadline, conditionHash, description);
+
+        for (uint256 i = 0; i < milestoneAmounts.length; i++) {
+            milestones[escrowId].push(Milestone({
+                amount: milestoneAmounts[i],
+                completed: false,
+                released: false
+            }));
+        }
+    }
+
+    /**
+     * @notice Internal function to create escrow with explicit buyer
+     */
+    function _createEscrow(
+        address buyer,
+        address seller,
+        address token,
+        uint256 amount,
+        uint256 deadline,
+        bytes32 conditionHash,
+        string calldata description
+    ) internal returns (uint256 escrowId) {
+        require(seller != address(0) && seller != buyer, "Invalid seller");
         require(amount >= minAmount, "Amount too low");
         require(deadline > block.timestamp, "Invalid deadline");
         require(deadline <= block.timestamp + maxDeadlineDays * 1 days, "Deadline too far");
-        
+
         uint256 fee = (amount * feeBps) / 10000;
-        
+
         escrowId = escrowCounter++;
-        
+
         escrows[escrowId] = Escrow({
-            buyer: msg.sender,
+            buyer: buyer,
             seller: seller,
             token: token,
             amount: amount,
@@ -200,35 +255,8 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
             sellerConfirmed: false,
             description: description
         });
-        
-        emit EscrowCreated(escrowId, msg.sender, seller, token, amount);
-    }
-    
-    /**
-     * @notice Create escrow with milestones
-     */
-    function createEscrowWithMilestones(
-        address seller,
-        address token,
-        uint256[] calldata milestoneAmounts,
-        uint256 deadline,
-        bytes32 conditionHash,
-        string calldata description
-    ) external returns (uint256 escrowId) {
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < milestoneAmounts.length; i++) {
-            totalAmount += milestoneAmounts[i];
-        }
-        
-        escrowId = this.createEscrow(seller, token, totalAmount, deadline, conditionHash, description);
-        
-        for (uint256 i = 0; i < milestoneAmounts.length; i++) {
-            milestones[escrowId].push(Milestone({
-                amount: milestoneAmounts[i],
-                completed: false,
-                released: false
-            }));
-        }
+
+        emit EscrowCreated(escrowId, buyer, seller, token, amount);
     }
     
     // ============ Escrow Lifecycle ============
@@ -337,8 +365,22 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         Escrow storage e = escrows[escrowId];
         require(!e.sellerConfirmed, "Seller already confirmed");
         require(block.timestamp > e.deadline, "Deadline not passed");
-        
+
         _refund(escrowId);
+    }
+
+    /**
+     * @notice Cancel an unfunded escrow
+     * @dev Only buyer can cancel. Escrow must be in Created state (not yet funded).
+     */
+    function cancelEscrow(uint256 escrowId)
+        external
+        onlyBuyer(escrowId)
+        inState(escrowId, EscrowState.Created)
+    {
+        escrows[escrowId].state = EscrowState.Expired;
+
+        emit EscrowCancelled(escrowId);
     }
     
     // ============ Milestone Functions ============
@@ -360,6 +402,7 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     /**
      * @notice Release a milestone payment (buyer approval)
+     * @dev Fee is calculated proportionally based on the escrow's stored fee
      */
     function releaseMilestone(uint256 escrowId, uint256 milestoneIndex)
         external
@@ -371,17 +414,41 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         Milestone storage m = milestones[escrowId][milestoneIndex];
         require(m.completed, "Milestone not completed");
         require(!m.released, "Already released");
-        
+
         m.released = true;
-        
+
         Escrow storage e = escrows[escrowId];
-        uint256 milestoneFee = (m.amount * feeBps) / 10000;
-        uint256 sellerAmount = m.amount - milestoneFee;
-        
+
+        // Calculate proportional fee based on stored fee (consistent with deposit)
+        // milestoneFee = (m.amount / e.amount) * e.fee
+        uint256 milestoneFee = (m.amount * e.fee) / e.amount;
+        uint256 sellerAmount = m.amount;
+
         IERC20(e.token).safeTransfer(e.seller, sellerAmount);
         IERC20(e.token).safeTransfer(owner(), milestoneFee);
-        
+
         emit MilestoneReleased(escrowId, milestoneIndex);
+
+        // Check if all milestones are released, if so transition state
+        if (_allMilestonesReleased(escrowId)) {
+            e.state = EscrowState.Released;
+            emit EscrowReleased(escrowId, e.amount, e.fee);
+        }
+    }
+
+    /**
+     * @notice Check if all milestones for an escrow are released
+     */
+    function _allMilestonesReleased(uint256 escrowId) internal view returns (bool) {
+        Milestone[] storage ms = milestones[escrowId];
+        if (ms.length == 0) return false;
+
+        for (uint256 i = 0; i < ms.length; i++) {
+            if (!ms[i].released) {
+                return false;
+            }
+        }
+        return true;
     }
     
     // ============ Dispute Functions ============

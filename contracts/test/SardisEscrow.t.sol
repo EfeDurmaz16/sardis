@@ -449,32 +449,37 @@ contract SardisEscrowTest is Test {
         uint256[] memory milestoneAmounts = new uint256[](2);
         milestoneAmounts[0] = 500 * 10**6;
         milestoneAmounts[1] = 500 * 10**6;
-        
+
         uint256 totalAmount = 1000 * 10**6;
         uint256 fee = (totalAmount * feeBps) / 10000;
-        
+
         vm.prank(buyer);
         uint256 escrowId = escrow.createEscrowWithMilestones(
             seller, address(usdc), milestoneAmounts, block.timestamp + 7 days, bytes32(0), "Test"
         );
-        
+
         vm.startPrank(buyer);
         usdc.approve(address(escrow), totalAmount + fee);
         escrow.fundEscrow(escrowId);
         vm.stopPrank();
-        
+
         // Seller completes first milestone
         vm.prank(seller);
         escrow.completeMilestone(escrowId, 0);
-        
+
         uint256 sellerBalanceBefore = usdc.balanceOf(seller);
-        
+        uint256 ownerBalanceBefore = usdc.balanceOf(deployer);
+
         // Buyer releases first milestone
         vm.prank(buyer);
         escrow.releaseMilestone(escrowId, 0);
-        
-        uint256 milestoneFee = (500 * 10**6 * feeBps) / 10000;
-        assertEq(usdc.balanceOf(seller), sellerBalanceBefore + 500 * 10**6 - milestoneFee);
+
+        // Seller gets full milestone amount (fee was paid by buyer upfront)
+        assertEq(usdc.balanceOf(seller), sellerBalanceBefore + 500 * 10**6);
+
+        // Owner (Sardis) gets proportional fee from the deposited fee
+        uint256 expectedFee = (500 * 10**6 * fee) / totalAmount; // proportional fee
+        assertEq(usdc.balanceOf(deployer), ownerBalanceBefore + expectedFee);
     }
     
     // ============ Admin Tests ============

@@ -1,0 +1,13 @@
+{
+  "chain": "arbitrum_sepolia",
+  "chainId": null,
+  "status": "pending",
+  "deployer": null,
+  "contracts": {
+    "walletFactory": null,
+    "escrow": null
+  },
+  "blockNumber": null,
+  "timestamp": null,
+  "notes": "Deploy with: forge script script/DeployMultiChain.s.sol:DeployMultiChain --rpc-url arbitrum_sepolia --broadcast --verify"
+}

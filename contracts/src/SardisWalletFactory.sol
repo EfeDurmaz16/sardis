@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./SardisAgentWallet.sol";
 
@@ -72,7 +72,7 @@ contract SardisWalletFactory is Ownable, Pausable {
         uint256 _defaultLimitPerTx,
         uint256 _defaultDailyLimit,
         address _defaultRecoveryAddress
-    ) {
+    ) Ownable(msg.sender) {
         defaultLimitPerTx = _defaultLimitPerTx;
         defaultDailyLimit = _defaultDailyLimit;
         defaultRecoveryAddress = _defaultRecoveryAddress;

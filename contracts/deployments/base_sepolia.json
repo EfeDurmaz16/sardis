@@ -1,0 +1,17 @@
+{
+  "chain": "base_sepolia",
+  "chainId": 84532,
+  "status": "deployed",
+  "deployer": "0x57bfF0E18C994c14a7f034CC5aBda9e7341Fb906",
+  "contracts": {
+    "walletFactory": "0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
+    "escrow": "0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932"
+  },
+  "blockNumber": 36783677,
+  "timestamp": "2026-01-25T12:07:22Z",
+  "verified": false,
+  "explorer": {
+    "walletFactory": "https://sepolia.basescan.org/address/0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
+    "escrow": "https://sepolia.basescan.org/address/0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932"
+  }
+}

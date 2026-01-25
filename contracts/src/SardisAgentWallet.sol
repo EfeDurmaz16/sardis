@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title SardisAgentWallet
@@ -62,6 +62,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
 
     /// @notice Mapping of used signatures to prevent replay attacks
     mapping(bytes32 => bool) public usedSignatures;
+
+    /// @notice Total amount held per token (to prevent over-commitment)
+    mapping(address => uint256) public totalHeldAmount;
     
     // ============ Structs ============
     
@@ -111,6 +114,8 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     event RecoveryInitiated(address indexed recoveryAddress);
 
     event SignatureUsed(bytes32 indexed signatureHash, address indexed signer);
+
+    event SardisTransferred(address indexed oldSardis, address indexed newSardis);
     
     // ============ Modifiers ============
     
@@ -277,11 +282,15 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         uint256 duration
     ) external onlyAgentOrSardis returns (bytes32) {
         require(duration > 0 && duration <= 7 days, "Invalid duration");
-        require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient balance");
-        
+
+        // Check available balance (total balance minus already held amounts)
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 available = balance > totalHeldAmount[token] ? balance - totalHeldAmount[token] : 0;
+        require(available >= amount, "Insufficient available balance");
+
         _checkMerchant(merchant);
         _checkLimits(amount);
-        
+
         bytes32 holdId = keccak256(abi.encodePacked(
             address(this),
             merchant,
@@ -290,7 +299,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
             block.timestamp,
             nonce++
         ));
-        
+
         holds[holdId] = Hold({
             merchant: merchant,
             token: token,
@@ -300,9 +309,12 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
             captured: false,
             voided: false
         });
-        
+
+        // Track held amount
+        totalHeldAmount[token] += amount;
+
         emit HoldCreated(holdId, merchant, token, amount, block.timestamp + duration);
-        
+
         return holdId;
     }
     
@@ -316,21 +328,24 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         uint256 captureAmount
     ) external onlyAgentOrSardis nonReentrant {
         Hold storage hold = holds[holdId];
-        
+
         require(hold.amount > 0, "Hold not found");
         require(!hold.captured, "Already captured");
         require(!hold.voided, "Hold voided");
         require(block.timestamp <= hold.expiresAt, "Hold expired");
         require(captureAmount <= hold.amount, "Amount exceeds hold");
-        
+
         hold.captured = true;
-        
+
+        // Release held amount (full hold amount, not just captured)
+        totalHeldAmount[hold.token] -= hold.amount;
+
         // Update spent amount
         _updateSpentAmount(captureAmount);
-        
+
         // Execute transfer
         IERC20(hold.token).safeTransfer(hold.merchant, captureAmount);
-        
+
         emit HoldCaptured(holdId, captureAmount);
     }
     
@@ -340,13 +355,16 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
      */
     function voidHold(bytes32 holdId) external onlyAgentOrSardis {
         Hold storage hold = holds[holdId];
-        
+
         require(hold.amount > 0, "Hold not found");
         require(!hold.captured, "Already captured");
         require(!hold.voided, "Already voided");
-        
+
         hold.voided = true;
-        
+
+        // Release held amount
+        totalHeldAmount[hold.token] -= hold.amount;
+
         emit HoldVoided(holdId);
     }
     
@@ -437,8 +455,23 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     function setRecoveryAddress(address _recoveryAddress) external onlySardis {
         require(_recoveryAddress != address(0), "Invalid address");
         recoveryAddress = _recoveryAddress;
-        
+
         emit RecoveryInitiated(_recoveryAddress);
+    }
+
+    /**
+     * @notice Transfer Sardis role to a new address
+     * @dev Only current Sardis can transfer. Enables platform upgrades and migration.
+     * @param _newSardis The new Sardis platform address
+     */
+    function transferSardis(address _newSardis) external onlySardis {
+        require(_newSardis != address(0), "Invalid address");
+        require(_newSardis != sardis, "Same address");
+
+        address oldSardis = sardis;
+        sardis = _newSardis;
+
+        emit SardisTransferred(oldSardis, _newSardis);
     }
     
     // ============ View Functions ============
@@ -448,6 +481,15 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
      */
     function getBalance(address token) external view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Get available balance (total balance minus held amounts)
+     */
+    function getAvailableBalance(address token) external view returns (uint256) {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 held = totalHeldAmount[token];
+        return balance > held ? balance - held : 0;
     }
     
     /**
@@ -537,12 +579,15 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     function _splitSignature(bytes calldata sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
         require(sig.length == 65, "Invalid signature length");
-        
+
         assembly {
             r := calldataload(sig.offset)
             s := calldataload(add(sig.offset, 32))
             v := byte(0, calldataload(add(sig.offset, 64)))
         }
+
+        // Validate v value (must be 27 or 28)
+        require(v == 27 || v == 28, "Invalid signature v value");
     }
     
     // ============ Receive ============
