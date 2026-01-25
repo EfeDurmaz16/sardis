@@ -1,4 +1,34 @@
-"""Core domain primitives shared across Sardis services."""
+"""Core domain primitives shared across Sardis services.
+
+This package provides the foundational components for the Sardis payment
+infrastructure, including:
+
+- Exception hierarchy with detailed error codes
+- Configuration management and validation
+- Input validation utilities
+- Retry mechanisms with exponential backoff
+- Circuit breaker pattern for service resilience
+- Structured logging with sensitive data masking
+- Domain models (wallets, transactions, holds, etc.)
+
+Example usage:
+    from sardis_v2_core import (
+        # Configuration
+        load_config_from_env,
+        validate_startup,
+
+        # Domain models
+        Wallet,
+        Transaction,
+        Hold,
+
+        # Utilities
+        retry,
+        get_circuit_breaker,
+        get_logger,
+        validate_wallet_id,
+    )
+"""
 
 from .exceptions import (
     SardisException,
@@ -34,6 +64,14 @@ from .exceptions import (
     SardisConfigurationError,
     SardisDependencyNotConfiguredError,
     SardisRateLimitError,
+    SardisTimeoutError,
+    SardisServiceUnavailableError,
+    # Error mapping utilities
+    exception_from_chain_error,
+    exception_from_mpc_error,
+    exception_from_compliance_error,
+    get_exception_class,
+    create_exception,
 )
 from .config import SardisSettings, load_settings, TurnkeyConfig, MPCProvider, ChainConfig
 from .identity import AgentIdentity
@@ -71,6 +109,92 @@ from .spending_tracker import (
     SpendingTracker,
     InMemorySpendingTracker,
     create_spending_tracker,
+)
+
+# New enterprise-quality modules
+from .constants import (
+    Timeouts,
+    RetryConfig as RetryDefaults,
+    CircuitBreakerDefaults,
+    PoolLimits,
+    CacheTTL,
+    CacheLimits,
+    PaymentLimits,
+    HoldConfig,
+    CardLimits,
+    TokenConfig,
+    APIConfig,
+    SecurityConfig,
+    LoggingConfig,
+    ErrorCodes,
+    get_http_status_for_error,
+    map_chain_error,
+)
+from .retry import (
+    RetryConfig,
+    RetryStats,
+    RetryExhausted,
+    RetryContext,
+    retry,
+    retry_async,
+    retry_sync,
+    MPC_RETRY_CONFIG,
+    RPC_RETRY_CONFIG,
+    DB_RETRY_CONFIG,
+    WEBHOOK_RETRY_CONFIG,
+)
+from .validators import (
+    validate_wallet_id,
+    validate_agent_id,
+    validate_amount,
+    validate_token,
+    validate_chain,
+    validate_eth_address,
+    validate_chain_address,
+    validate_url,
+    validate_email,
+    validate_payment_request,
+    validate_hold_request,
+    ValidationResult,
+)
+from .circuit_breaker import (
+    CircuitState,
+    CircuitBreakerConfig,
+    CircuitStats,
+    CircuitBreakerError,
+    CircuitBreaker,
+    CircuitBreakerRegistry,
+    get_circuit_breaker_registry,
+    get_circuit_breaker,
+    create_service_circuit_breakers,
+    circuit_breaker,
+)
+from .logging import (
+    get_logger,
+    StructuredLogger,
+    RequestContext,
+    mask_sensitive_data,
+    mask_headers,
+    log_request,
+    log_response,
+    log_operation,
+    configure_logging,
+)
+from .config_validation import (
+    SardisConfig,
+    DatabaseConfig,
+    CacheConfig as CacheConfigModel,
+    TurnkeyConfig as TurnkeyConfigModel,
+    PersonaConfig,
+    EllipticConfig,
+    LithicConfig,
+    ChainConfig as ChainConfigModel,
+    APIServerConfig,
+    Environment,
+    load_config_from_env,
+    validate_config,
+    require_service_config,
+    validate_startup,
 )
 
 __all__ = [
@@ -178,4 +302,90 @@ __all__ = [
     "SpendingTracker",
     "InMemorySpendingTracker",
     "create_spending_tracker",
+    # Constants
+    "Timeouts",
+    "RetryDefaults",
+    "CircuitBreakerDefaults",
+    "PoolLimits",
+    "CacheTTL",
+    "CacheLimits",
+    "PaymentLimits",
+    "HoldConfig",
+    "CardLimits",
+    "TokenConfig",
+    "APIConfig",
+    "SecurityConfig",
+    "LoggingConfig",
+    "ErrorCodes",
+    "get_http_status_for_error",
+    "map_chain_error",
+    # Retry
+    "RetryConfig",
+    "RetryStats",
+    "RetryExhausted",
+    "RetryContext",
+    "retry",
+    "retry_async",
+    "retry_sync",
+    "MPC_RETRY_CONFIG",
+    "RPC_RETRY_CONFIG",
+    "DB_RETRY_CONFIG",
+    "WEBHOOK_RETRY_CONFIG",
+    # Validators
+    "validate_wallet_id",
+    "validate_agent_id",
+    "validate_amount",
+    "validate_token",
+    "validate_chain",
+    "validate_eth_address",
+    "validate_chain_address",
+    "validate_url",
+    "validate_email",
+    "validate_payment_request",
+    "validate_hold_request",
+    "ValidationResult",
+    # Circuit Breaker
+    "CircuitState",
+    "CircuitBreakerConfig",
+    "CircuitStats",
+    "CircuitBreakerError",
+    "CircuitBreaker",
+    "CircuitBreakerRegistry",
+    "get_circuit_breaker_registry",
+    "get_circuit_breaker",
+    "create_service_circuit_breakers",
+    "circuit_breaker",
+    # Logging
+    "get_logger",
+    "StructuredLogger",
+    "RequestContext",
+    "mask_sensitive_data",
+    "mask_headers",
+    "log_request",
+    "log_response",
+    "log_operation",
+    "configure_logging",
+    # Configuration Validation
+    "SardisConfig",
+    "DatabaseConfig",
+    "CacheConfigModel",
+    "TurnkeyConfigModel",
+    "PersonaConfig",
+    "EllipticConfig",
+    "LithicConfig",
+    "ChainConfigModel",
+    "APIServerConfig",
+    "Environment",
+    "load_config_from_env",
+    "validate_config",
+    "require_service_config",
+    "validate_startup",
+    # Exception utilities
+    "SardisTimeoutError",
+    "SardisServiceUnavailableError",
+    "exception_from_chain_error",
+    "exception_from_mpc_error",
+    "exception_from_compliance_error",
+    "get_exception_class",
+    "create_exception",
 ]

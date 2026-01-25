@@ -658,22 +658,45 @@ class KYCService:
 def create_kyc_service(
     api_key: Optional[str] = None,
     template_id: Optional[str] = None,
+    webhook_secret: Optional[str] = None,
     environment: str = "sandbox",
 ) -> KYCService:
     """
     Factory function to create KYC service.
-    
+
     Uses MockKYCProvider if no API key is provided.
+
+    Args:
+        api_key: Persona API key
+        template_id: Persona inquiry template ID
+        webhook_secret: Secret for webhook signature verification (REQUIRED for production)
+        environment: 'sandbox' or 'production'
+
+    SECURITY: In production, webhook_secret MUST be configured.
+    Webhooks without valid signatures will be rejected.
     """
+    import os
+
+    # Get webhook secret from parameter or environment
+    webhook_secret = webhook_secret or os.getenv("PERSONA_WEBHOOK_SECRET")
+
     if api_key and template_id:
+        # Production warning if webhook secret not configured
+        if environment == "production" and not webhook_secret:
+            logger.error(
+                "SECURITY WARNING: Production KYC service created without webhook_secret. "
+                "Webhook signature verification will fail. Set PERSONA_WEBHOOK_SECRET."
+            )
+
         provider = PersonaKYCProvider(
             api_key=api_key,
             template_id=template_id,
+            webhook_secret=webhook_secret,
             environment=environment,
         )
     else:
         logger.warning("No Persona API key provided, using mock provider")
         provider = MockKYCProvider()
-    
+
     return KYCService(provider=provider)
 

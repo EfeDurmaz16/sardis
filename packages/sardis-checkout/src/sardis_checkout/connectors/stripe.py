@@ -4,7 +4,7 @@ from __future__ import annotations
 import hmac
 import hashlib
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 

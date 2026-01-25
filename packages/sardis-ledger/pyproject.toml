@@ -4,13 +4,41 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ledger"
-version = "0.1.0"
-description = "Append-only ledger + receipt engine for Sardis"
+version = "0.2.0"
+description = "Production-grade append-only ledger with row-level locking, batch processing, and blockchain reconciliation"
 authors = [{name = "Sardis"}]
 requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["ledger", "blockchain", "fintech", "accounting", "reconciliation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "sardis-core",
     "sqlalchemy>=2.0",
+]
+
+[project.optional-dependencies]
+postgres = [
+    "asyncpg>=0.28.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+]
+all = [
+    "sardis-ledger[postgres,dev]",
 ]
 
 [tool.hatch.metadata]
@@ -18,3 +46,18 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_ledger"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/sardis_ledger"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

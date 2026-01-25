@@ -247,11 +247,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         allowed, headers = self.limiter.check_rate_limit(request)
         
         if not allowed:
+            import json
+            import time
+            # RFC 7807 Problem Details format
+            error_content = {
+                "type": "https://api.sardis.io/errors/rate-limit-exceeded",
+                "title": "Rate Limit Exceeded",
+                "status": 429,
+                "detail": "Too many requests. Please wait before making another request.",
+                "instance": request.url.path,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+            if "Retry-After" in headers:
+                error_content["retry_after_seconds"] = int(headers["Retry-After"])
+
+            headers["Content-Type"] = "application/problem+json"
             return Response(
-                content='{"error": {"code": "RATE_LIMIT_EXCEEDED", "message": "Too many requests"}}',
+                content=json.dumps(error_content),
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 headers=headers,
-                media_type="application/json",
+                media_type="application/problem+json",
             )
         
         # Process request and add rate limit headers to response

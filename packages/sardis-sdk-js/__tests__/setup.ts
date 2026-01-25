@@ -58,6 +58,27 @@ export const mockResponses = {
         policy_id: 'policy_test',
         reason: 'Amount exceeds daily limit',
     },
+    agent: {
+        id: 'agent_test123',
+        name: 'Test Agent',
+        description: 'A test agent for unit testing',
+        is_active: true,
+        spending_limits: {
+            per_transaction: '100.00',
+            daily: '1000.00',
+            monthly: '10000.00',
+        },
+        metadata: { environment: 'test' },
+        created_at: '2025-01-20T00:00:00Z',
+        updated_at: '2025-01-20T00:00:00Z',
+    },
+    agentWallet: {
+        wallet_id: 'wallet_abc123',
+        addresses: {
+            base: '0x1234567890abcdef1234567890abcdef12345678',
+            polygon: '0xabcdef1234567890abcdef1234567890abcdef12',
+        },
+    },
 };
 
 // MSW handlers
@@ -144,11 +165,34 @@ export const handlers = [
     http.get('https://api.sardis.network/v1/error/500', () => {
         return HttpResponse.json({ error: 'Internal server error' }, { status: 500 });
     }),
+
+    // Agents - Default handlers (can be overridden in tests)
+    http.get('https://api.sardis.network/api/v2/agents', () => {
+        return HttpResponse.json([mockResponses.agent]);
+    }),
+    http.get('https://api.sardis.network/api/v2/agents/:id', ({ params }) => {
+        return HttpResponse.json({ ...mockResponses.agent, id: params.id });
+    }),
+    http.post('https://api.sardis.network/api/v2/agents', () => {
+        return HttpResponse.json(mockResponses.agent);
+    }),
+    http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+        return HttpResponse.json(mockResponses.agent);
+    }),
+    http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+        return new HttpResponse(null, { status: 204 });
+    }),
+    http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+        return HttpResponse.json(mockResponses.agentWallet);
+    }),
+    http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+        return HttpResponse.json(mockResponses.agentWallet);
+    }),
 ];
 
 // Setup MSW server
 export const server = setupServer(...handlers);
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

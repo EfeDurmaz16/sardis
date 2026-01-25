@@ -1,10 +1,41 @@
-"""Non-custodial wallet primitives."""
+"""Non-custodial wallet primitives for AI agent payments.
+
+This module provides the core Wallet model for AI agents in the Sardis
+payment infrastructure. Wallets are non-custodial, meaning:
+
+- Funds are held on-chain, not in our database
+- Balances are read directly from blockchain
+- Transactions are signed via MPC providers (Turnkey, Fireblocks)
+- Private keys never leave secure enclaves
+
+Usage:
+    from sardis_v2_core import Wallet, TokenType
+
+    # Create a new wallet
+    wallet = Wallet.new(agent_id="agent_xxx", mpc_provider="turnkey")
+
+    # Get balance from chain
+    balance = await wallet.get_balance(
+        chain="base",
+        token=TokenType.USDC,
+        rpc_client=rpc_client,
+    )
+
+    # Sign a transaction
+    signed_tx = await wallet.sign_transaction(
+        chain="base",
+        to_address="0x...",
+        amount=Decimal("100.00"),
+        token=TokenType.USDC,
+        mpc_signer=signer,
+    )
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 

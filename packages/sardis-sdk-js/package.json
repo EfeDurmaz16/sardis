@@ -1,28 +1,46 @@
 {
   "name": "@sardis/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official TypeScript SDK for the Sardis stablecoin execution layer",
   "type": "module",
   "main": "dist/index.js",
+  "module": "dist/index.js",
+  "browser": "dist/browser/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/browser/index.js",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser/index.js",
+      "default": "./dist/browser/index.js"
+    },
+    "./integrations/*": {
+      "types": "./dist/integrations/*.d.ts",
+      "import": "./dist/integrations/*.js"
     }
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:browser",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:browser": "rollup -c rollup.config.js",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run clean && npm run build && npm run test"
   },
   "keywords": [
     "sardis",
@@ -31,27 +49,51 @@
     "ai-agents",
     "blockchain",
     "usdc",
-    "web3"
+    "web3",
+    "mpc",
+    "wallet",
+    "typescript",
+    "sdk"
   ],
-  "author": "Sardis",
+  "author": "Sardis <sdk@sardis.network>",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/sardis-network/sardis-sdk-js"
   },
   "homepage": "https://sardis.network",
+  "bugs": {
+    "url": "https://github.com/sardis-network/sardis-sdk-js/issues"
+  },
   "dependencies": {
     "axios": "^1.6.7",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^5.0.5",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^20.11.0",
     "@vitest/coverage-v8": "^1.2.0",
     "msw": "^2.1.0",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
     "typescript": "^5.4.0",
     "vitest": "^1.2.0"
   },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "sideEffects": false
 }

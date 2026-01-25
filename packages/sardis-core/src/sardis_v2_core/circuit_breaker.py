@@ -2,20 +2,63 @@
 Circuit breaker pattern implementation for external service resilience.
 
 Prevents cascading failures by temporarily blocking calls to failing services.
+
+This module provides:
+- CircuitBreaker: Main circuit breaker class for protecting service calls
+- CircuitBreakerConfig: Configuration for circuit breaker behavior
+- CircuitBreakerRegistry: Global registry for managing circuit breakers
+- Pre-configured circuit breakers for common Sardis services
+
+Usage:
+    from sardis_v2_core.circuit_breaker import (
+        CircuitBreaker,
+        CircuitBreakerConfig,
+        get_circuit_breaker,
+    )
+
+    # Create a circuit breaker
+    breaker = CircuitBreaker("my_service")
+
+    # Use as context manager
+    async with breaker:
+        await make_external_call()
+
+    # Or use as decorator
+    @breaker.decorate
+    async def make_call():
+        ...
+
+    # Or use the global registry
+    breaker = get_circuit_breaker("my_service")
 """
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Optional,
+    ParamSpec,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
+
+from .constants import CircuitBreakerDefaults, ErrorCodes
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class CircuitState(str, Enum):
@@ -27,24 +70,74 @@ class CircuitState(str, Enum):
 
 @dataclass
 class CircuitBreakerConfig:
-    """Configuration for a circuit breaker."""
+    """Configuration for a circuit breaker.
+
+    Attributes:
+        failure_threshold: Number of failures before opening the circuit.
+            Default: 5 (from CircuitBreakerDefaults.FAILURE_THRESHOLD)
+        recovery_timeout: Time to wait before attempting recovery in seconds.
+            Default: 30.0 (from CircuitBreakerDefaults.RECOVERY_TIMEOUT)
+        success_threshold: Number of successful calls in half-open state
+            required to close the circuit. Default: 2
+        failure_window: Time window for counting failures in seconds.
+            Default: 60.0
+        fallback: Optional async function to call when circuit is open.
+            Should have signature: async def fallback(*args, **kwargs) -> T
+        count_timeout_as_failure: Whether timeout exceptions count as failures.
+        excluded_exceptions: Exception types that should not count as failures.
+        included_exceptions: If set, only these exception types count as failures.
+        on_state_change: Optional callback when circuit state changes.
+            Signature: (old_state, new_state, breaker_name) -> None
+    """
+
     # Number of failures before opening the circuit
-    failure_threshold: int = 5
-    
+    failure_threshold: int = CircuitBreakerDefaults.FAILURE_THRESHOLD
+
     # Time to wait before attempting recovery (seconds)
-    recovery_timeout: float = 30.0
-    
+    recovery_timeout: float = CircuitBreakerDefaults.RECOVERY_TIMEOUT
+
     # Number of successful calls in half-open state to close circuit
-    success_threshold: int = 2
-    
+    success_threshold: int = CircuitBreakerDefaults.SUCCESS_THRESHOLD
+
     # Time window for counting failures (seconds)
-    failure_window: float = 60.0
-    
+    failure_window: float = CircuitBreakerDefaults.FAILURE_WINDOW
+
     # Optional fallback function
-    fallback: Optional[Callable[..., Any]] = None
-    
+    fallback: Optional[Callable[..., Awaitable[Any]]] = None
+
     # Whether to count timeouts as failures
     count_timeout_as_failure: bool = True
+
+    # Exception types that should NOT count as failures
+    excluded_exceptions: tuple[Type[BaseException], ...] = ()
+
+    # If set, ONLY these exception types count as failures
+    included_exceptions: Optional[tuple[Type[BaseException], ...]] = None
+
+    # Callback when state changes
+    on_state_change: Optional[
+        Callable[[CircuitState, CircuitState, str], None]
+    ] = None
+
+    def should_count_as_failure(self, exception: BaseException) -> bool:
+        """Determine if an exception should count as a failure.
+
+        Args:
+            exception: The exception that was raised
+
+        Returns:
+            True if the exception should count as a circuit failure
+        """
+        # Check excluded exceptions first
+        if isinstance(exception, self.excluded_exceptions):
+            return False
+
+        # If included_exceptions is set, only count those
+        if self.included_exceptions is not None:
+            return isinstance(exception, self.included_exceptions)
+
+        # By default, all exceptions count as failures
+        return True
 
 
 @dataclass
@@ -63,15 +156,36 @@ class CircuitStats:
 
 
 class CircuitBreakerError(Exception):
-    """Raised when circuit breaker is open."""
-    
-    def __init__(self, service_name: str, recovery_time: float):
+    """Raised when circuit breaker is open.
+
+    This exception is raised when a call is attempted while the
+    circuit breaker is in the OPEN state.
+
+    Attributes:
+        service_name: Name of the service protected by the circuit breaker
+        recovery_time: Estimated time until circuit attempts recovery
+        error_code: Standardized error code for API responses
+    """
+
+    def __init__(self, service_name: str, recovery_time: float) -> None:
         self.service_name = service_name
         self.recovery_time = recovery_time
+        self.error_code = ErrorCodes.CIRCUIT_BREAKER_OPEN
         super().__init__(
             f"Circuit breaker open for {service_name}. "
             f"Recovery in {recovery_time:.1f}s"
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to API response format."""
+        return {
+            "error": self.error_code,
+            "message": str(self),
+            "details": {
+                "service": self.service_name,
+                "recovery_seconds": self.recovery_time,
+            },
+        }
 
 
 class CircuitBreaker:
@@ -217,11 +331,29 @@ class CircuitBreaker:
         elif new_state == CircuitState.CLOSED:
             self._failure_times.clear()
     
-    def decorate(self, func: Callable) -> Callable:
-        """Decorator to wrap a function with circuit breaker."""
-        async def wrapper(*args, **kwargs):
+    def decorate(
+        self,
+        func: Callable[P, Awaitable[T]],
+    ) -> Callable[P, Awaitable[T]]:
+        """Decorator to wrap an async function with circuit breaker.
+
+        Usage:
+            @breaker.decorate
+            async def make_api_call():
+                ...
+
+        Args:
+            func: The async function to wrap
+
+        Returns:
+            Wrapped function with circuit breaker protection
+        """
+
+        @functools.wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             async with self:
                 return await func(*args, **kwargs)
+
         return wrapper
     
     async def call(self, func: Callable, *args, **kwargs) -> Any:
@@ -337,41 +469,132 @@ def get_circuit_breaker(
 
 # Pre-configured circuit breakers for common services
 def create_service_circuit_breakers() -> Dict[str, CircuitBreaker]:
-    """Create circuit breakers for standard Sardis services."""
+    """Create circuit breakers for standard Sardis services.
+
+    Creates and registers circuit breakers with service-specific
+    configurations from constants. These breakers protect external
+    service calls from cascading failures.
+
+    Returns:
+        Dictionary mapping service names to their circuit breakers
+
+    Services configured:
+        - turnkey: MPC signing service (slower recovery, sensitive)
+        - persona_kyc: KYC verification service
+        - elliptic_sanctions: Sanctions screening service
+        - lithic_cards: Card provider service
+        - rpc_provider: Blockchain RPC endpoints (fast recovery)
+    """
     registry = get_circuit_breaker_registry()
-    
+
     services = {
         "turnkey": CircuitBreakerConfig(
-            failure_threshold=3,
-            recovery_timeout=60.0,
+            failure_threshold=CircuitBreakerDefaults.TURNKEY_FAILURE_THRESHOLD,
+            recovery_timeout=CircuitBreakerDefaults.TURNKEY_RECOVERY_TIMEOUT,
             success_threshold=2,
         ),
         "persona_kyc": CircuitBreakerConfig(
-            failure_threshold=5,
-            recovery_timeout=30.0,
+            failure_threshold=CircuitBreakerDefaults.PERSONA_FAILURE_THRESHOLD,
+            recovery_timeout=CircuitBreakerDefaults.PERSONA_RECOVERY_TIMEOUT,
             success_threshold=2,
         ),
         "elliptic_sanctions": CircuitBreakerConfig(
-            failure_threshold=5,
-            recovery_timeout=30.0,
+            failure_threshold=CircuitBreakerDefaults.ELLIPTIC_FAILURE_THRESHOLD,
+            recovery_timeout=CircuitBreakerDefaults.ELLIPTIC_RECOVERY_TIMEOUT,
             success_threshold=2,
         ),
         "lithic_cards": CircuitBreakerConfig(
-            failure_threshold=5,
-            recovery_timeout=45.0,
+            failure_threshold=CircuitBreakerDefaults.LITHIC_FAILURE_THRESHOLD,
+            recovery_timeout=CircuitBreakerDefaults.LITHIC_RECOVERY_TIMEOUT,
             success_threshold=3,
         ),
         "rpc_provider": CircuitBreakerConfig(
-            failure_threshold=10,
-            recovery_timeout=15.0,
+            failure_threshold=CircuitBreakerDefaults.RPC_FAILURE_THRESHOLD,
+            recovery_timeout=CircuitBreakerDefaults.RPC_RECOVERY_TIMEOUT,
             success_threshold=1,
         ),
     }
-    
+
     return {
         name: registry.get_or_create(name, config)
         for name, config in services.items()
     }
+
+
+# =============================================================================
+# Convenience decorator
+# =============================================================================
+
+def circuit_breaker(
+    name: str,
+    *,
+    failure_threshold: int = CircuitBreakerDefaults.FAILURE_THRESHOLD,
+    recovery_timeout: float = CircuitBreakerDefaults.RECOVERY_TIMEOUT,
+    success_threshold: int = CircuitBreakerDefaults.SUCCESS_THRESHOLD,
+    fallback: Optional[Callable[..., Awaitable[Any]]] = None,
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
+    """Decorator to protect an async function with a circuit breaker.
+
+    Usage:
+        @circuit_breaker("my_service")
+        async def call_external_api():
+            ...
+
+        @circuit_breaker(
+            "payment_service",
+            failure_threshold=3,
+            fallback=fallback_handler,
+        )
+        async def process_payment():
+            ...
+
+    Args:
+        name: Name for the circuit breaker (used in registry)
+        failure_threshold: Number of failures before opening circuit
+        recovery_timeout: Seconds before attempting recovery
+        success_threshold: Successes needed in half-open to close
+        fallback: Async function to call when circuit is open
+
+    Returns:
+        Decorator function
+    """
+
+    def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+        config = CircuitBreakerConfig(
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout,
+            success_threshold=success_threshold,
+            fallback=fallback,
+        )
+        breaker = get_circuit_breaker(name, config)
+
+        @functools.wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                async with breaker:
+                    return await func(*args, **kwargs)
+            except CircuitBreakerError:
+                if fallback is not None:
+                    return await fallback(*args, **kwargs)
+                raise
+
+        return wrapper
+
+    return decorator
+
+
+__all__ = [
+    "CircuitState",
+    "CircuitBreakerConfig",
+    "CircuitStats",
+    "CircuitBreakerError",
+    "CircuitBreaker",
+    "CircuitBreakerRegistry",
+    "get_circuit_breaker_registry",
+    "get_circuit_breaker",
+    "create_service_circuit_breakers",
+    "circuit_breaker",
+]
 
 
 

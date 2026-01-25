@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-sdk"
-version = "0.1.0"
-description = "Python SDK for the Sardis stablecoin execution layer"
+version = "0.2.0"
+description = "Production-grade Python SDK for the Sardis stablecoin execution layer"
 readme = "README.md"
 authors = [{name = "Sardis"}]
 license = {text = "MIT"}
@@ -17,11 +17,22 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
+    "Framework :: AsyncIO",
+]
+keywords = [
+    "sardis",
+    "stablecoin",
+    "payments",
+    "blockchain",
+    "api",
+    "sdk",
+    "async",
 ]
 dependencies = [
-    "httpx>=0.27",
+    "httpx[http2]>=0.27",
     "pydantic>=2.6",
 ]
 
@@ -31,12 +42,24 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-httpx>=0.30",
     "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.2",
+    "respx>=0.20",
+]
+integrations = [
+    "langchain>=0.1",
+    "llama-index>=0.10",
+    "openai>=1.0",
+]
+all = [
+    "sardis-sdk[dev,integrations]",
 ]
 
 [project.urls]
 Homepage = "https://sardis.network"
 Documentation = "https://docs.sardis.network"
 Repository = "https://github.com/sardis-network/sardis-sdk-python"
+Changelog = "https://github.com/sardis-network/sardis-sdk-python/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_sdk"]
@@ -45,6 +68,7 @@ packages = ["src/sardis_sdk"]
 include = [
     "/src",
     "/README.md",
+    "/CHANGELOG.md",
 ]
 
 [tool.ruff]
@@ -52,27 +76,76 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "RUF",    # Ruff-specific rules
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate
+    "PL",     # pylint
+]
+ignore = [
+    "PLR0913",  # Too many arguments
+    "PLR2004",  # Magic value comparison
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sardis_sdk"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "httpx.*",
+    "pydantic.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
 
 [tool.coverage.run]
 source = ["sardis_sdk"]
-omit = ["tests/*"]
+branch = true
+omit = ["tests/*", "*/__init__.py"]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "@abstractmethod",
+    "def __repr__",
 ]
+fail_under = 80
+show_missing = true
 
 [dependency-groups]
 dev = [
@@ -81,4 +154,6 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
     "pytest-httpx>=0.36.0",
+    "mypy>=1.8",
+    "ruff>=0.2",
 ]

@@ -19,6 +19,9 @@ from .executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,
 )
+from .rpc_client import ProductionRPCClient, get_rpc_client
+from .config import get_chain_config
+from .logging_utils import get_chain_logger, OperationType
 
 logger = logging.getLogger(__name__)
 
@@ -166,13 +169,35 @@ class DepositMonitor:
             
             await asyncio.sleep(self._config.poll_interval)
     
-    async def _get_rpc_client(self, chain: str) -> ChainRPCClient:
-        """Get or create RPC client for chain."""
+    async def _get_rpc_client(self, chain: str) -> ProductionRPCClient:
+        """
+        Get or create production RPC client for chain.
+
+        Uses the production RPC client with:
+        - Multi-endpoint failover
+        - Chain ID validation
+        - Health-based endpoint selection
+        """
         if chain not in self._rpc_clients:
             config = CHAIN_CONFIGS.get(chain)
             if not config:
                 raise ValueError(f"Unknown chain: {chain}")
-            self._rpc_clients[chain] = ChainRPCClient(config["rpc_url"], chain=chain)
+
+            try:
+                # Use production RPC client
+                chain_config = get_chain_config(chain)
+                client = ProductionRPCClient(
+                    chain=chain,
+                    chain_config=chain_config,
+                    validate_chain_id_on_connect=True,
+                )
+                await client.connect()
+                self._rpc_clients[chain] = client
+            except ValueError:
+                # Fall back to legacy client if chain config not available
+                logger.warning(f"Using legacy RPC client for {chain}")
+                self._rpc_clients[chain] = ChainRPCClient(config["rpc_url"], chain=chain)
+
         return self._rpc_clients[chain]
     
     async def _check_chain(self, chain: str) -> None:

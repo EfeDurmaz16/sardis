@@ -1,4 +1,15 @@
-"""Multi-chain stablecoin executor with MPC signing support."""
+"""
+Multi-chain stablecoin executor with MPC signing support.
+
+Production-grade blockchain executor with:
+- Multi-RPC endpoint support with automatic failover
+- Chain ID validation on connection
+- Transaction simulation before execution
+- Comprehensive gas estimation with safety margins
+- Nonce management with stuck transaction handling
+- Block confirmation tracking with reorg detection
+- Comprehensive logging for all operations
+"""
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +27,53 @@ from typing import Any, Dict, List, Optional, Tuple
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate
 from sardis_ledger.records import ChainReceipt
+
+# Import new production modules
+from .config import (
+    get_config,
+    get_chain_config,
+    validate_chain_id,
+    SardisChainConfig,
+    ChainConfig,
+)
+from .rpc_client import (
+    ProductionRPCClient,
+    get_rpc_client,
+    ChainIDMismatchError,
+    AllEndpointsFailedError,
+)
+from .nonce_manager import (
+    NonceManager,
+    get_nonce_manager,
+    TransactionReceiptStatus,
+    ReceiptValidation,
+    TransactionFailedError,
+    StuckTransactionError,
+)
+from .simulation import (
+    TransactionSimulator,
+    GasEstimator,
+    SimulationAndEstimation,
+    SimulationOutput,
+    SimulationResult,
+    GasEstimation,
+    SimulationError,
+    get_simulation_service,
+)
+from .confirmation import (
+    ConfirmationTracker,
+    get_confirmation_tracker,
+    ConfirmationStatus,
+    TrackedTransaction,
+    ReorgEvent,
+    ReorgError,
+)
+from .logging_utils import (
+    ChainLogger,
+    get_chain_logger,
+    OperationType,
+    setup_logging,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +416,359 @@ class GasEstimate:
     max_priority_fee_gwei: Decimal
     estimated_cost_wei: int
     estimated_cost_usd: Optional[Decimal] = None
+
+
+# ============================================================================
+# Gas Price Protection Configuration
+# ============================================================================
+
+@dataclass
+class GasPriceProtectionConfig:
+    """
+    Configuration for gas price spike protection.
+
+    CRITICAL SECURITY: These limits protect against executing transactions
+    during extreme gas price spikes that could result in significant
+    unexpected costs.
+
+    All values are in Gwei.
+    """
+    # Maximum allowed gas price (base fee + priority fee)
+    # Default: 500 Gwei - protects against extreme spikes
+    max_gas_price_gwei: Decimal = Decimal("500")
+
+    # Maximum allowed priority fee (tip to miners/validators)
+    # Default: 50 Gwei - prevents overpaying for priority
+    max_priority_fee_gwei: Decimal = Decimal("50")
+
+    # Maximum total transaction cost in USD
+    # Default: $50 - prevents extremely expensive transactions
+    max_transaction_cost_usd: Decimal = Decimal("50")
+
+    # Chain-specific overrides (some chains have different gas economics)
+    chain_overrides: Dict[str, Dict[str, Decimal]] = field(default_factory=lambda: {
+        # Ethereum mainnet - allow higher due to higher typical gas prices
+        "ethereum": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("100"),
+        },
+        # L2s typically have lower gas prices
+        "base": {
+            "max_gas_price_gwei": Decimal("100"),
+            "max_transaction_cost_usd": Decimal("10"),
+        },
+        "optimism": {
+            "max_gas_price_gwei": Decimal("100"),
+            "max_transaction_cost_usd": Decimal("10"),
+        },
+        "arbitrum": {
+            "max_gas_price_gwei": Decimal("100"),
+            "max_transaction_cost_usd": Decimal("10"),
+        },
+        "polygon": {
+            "max_gas_price_gwei": Decimal("1000"),  # MATIC can spike
+            "max_transaction_cost_usd": Decimal("20"),
+        },
+        # Testnets - more lenient
+        "base_sepolia": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("1000"),  # Test tokens
+        },
+        "ethereum_sepolia": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("1000"),
+        },
+        "polygon_amoy": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("1000"),
+        },
+        "arbitrum_sepolia": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("1000"),
+        },
+        "optimism_sepolia": {
+            "max_gas_price_gwei": Decimal("1000"),
+            "max_transaction_cost_usd": Decimal("1000"),
+        },
+    })
+
+    # Grace period multiplier - allows slight overage before hard rejection
+    # e.g., 1.1 means 10% grace over the limit triggers warning, not rejection
+    grace_multiplier: Decimal = Decimal("1.1")
+
+    # Enable automatic retry with lower gas after spike detection
+    enable_retry_on_spike: bool = True
+
+    # Delay before retry (seconds) - allows gas to settle
+    retry_delay_seconds: int = 30
+
+    # Maximum retries before giving up
+    max_retries: int = 3
+
+    def get_max_gas_price(self, chain: str) -> Decimal:
+        """Get maximum gas price for a chain."""
+        if chain in self.chain_overrides:
+            return self.chain_overrides[chain].get(
+                "max_gas_price_gwei", self.max_gas_price_gwei
+            )
+        return self.max_gas_price_gwei
+
+    def get_max_priority_fee(self, chain: str) -> Decimal:
+        """Get maximum priority fee for a chain."""
+        if chain in self.chain_overrides:
+            return self.chain_overrides[chain].get(
+                "max_priority_fee_gwei", self.max_priority_fee_gwei
+            )
+        return self.max_priority_fee_gwei
+
+    def get_max_transaction_cost(self, chain: str) -> Decimal:
+        """Get maximum transaction cost for a chain."""
+        if chain in self.chain_overrides:
+            return self.chain_overrides[chain].get(
+                "max_transaction_cost_usd", self.max_transaction_cost_usd
+            )
+        return self.max_transaction_cost_usd
+
+
+class GasPriceSpikeError(Exception):
+    """Raised when gas price exceeds configured limits."""
+
+    def __init__(
+        self,
+        message: str,
+        current_gas_price_gwei: Decimal,
+        max_gas_price_gwei: Decimal,
+        chain: str,
+        is_retryable: bool = True,
+    ):
+        super().__init__(message)
+        self.current_gas_price_gwei = current_gas_price_gwei
+        self.max_gas_price_gwei = max_gas_price_gwei
+        self.chain = chain
+        self.is_retryable = is_retryable
+
+
+class GasPriceProtection:
+    """
+    Gas price spike protection for blockchain transactions.
+
+    SECURITY: This class prevents executing transactions during gas price
+    spikes that could result in unexpectedly high costs.
+
+    Features:
+    - Configurable per-chain gas price limits
+    - Priority fee limits to prevent overpaying for priority
+    - Total transaction cost limits in USD
+    - Automatic retry with delay when spikes are detected
+    - Grace period to allow slight overages with warnings
+    - Comprehensive logging for monitoring
+    """
+
+    def __init__(self, config: Optional[GasPriceProtectionConfig] = None):
+        self.config = config or GasPriceProtectionConfig()
+        self._eth_price_usd: Optional[Decimal] = None
+        self._eth_price_timestamp: float = 0
+        self._price_cache_ttl: int = 300  # 5 minutes
+
+    async def _get_eth_price_usd(self) -> Decimal:
+        """
+        Get current ETH price in USD for cost calculations.
+
+        Uses cached value if fresh enough to avoid excessive API calls.
+        """
+        import time
+
+        now = time.time()
+        if (
+            self._eth_price_usd is not None
+            and now - self._eth_price_timestamp < self._price_cache_ttl
+        ):
+            return self._eth_price_usd
+
+        # Try to fetch from environment or use fallback
+        price_str = os.getenv("ETH_PRICE_USD")
+        if price_str:
+            try:
+                self._eth_price_usd = Decimal(price_str)
+                self._eth_price_timestamp = now
+                return self._eth_price_usd
+            except Exception:
+                pass
+
+        # Fallback to a conservative estimate
+        # In production, this should fetch from a price oracle
+        self._eth_price_usd = Decimal("2000")
+        self._eth_price_timestamp = now
+        logger.warning(
+            "Using fallback ETH price for gas cost calculation. "
+            "Set ETH_PRICE_USD for accurate estimates."
+        )
+        return self._eth_price_usd
+
+    async def check_gas_price(
+        self,
+        gas_estimate: "GasEstimate",
+        chain: str,
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Check if gas price is within acceptable limits.
+
+        Args:
+            gas_estimate: Gas estimation from RPC
+            chain: Target blockchain
+
+        Returns:
+            Tuple of (is_acceptable, warning_message)
+
+        Raises:
+            GasPriceSpikeError: If gas price exceeds hard limits
+        """
+        max_gas_price = self.config.get_max_gas_price(chain)
+        max_priority_fee = self.config.get_max_priority_fee(chain)
+        max_cost_usd = self.config.get_max_transaction_cost(chain)
+
+        # Check gas price (max fee)
+        if gas_estimate.max_fee_gwei > max_gas_price * self.config.grace_multiplier:
+            logger.error(
+                f"SECURITY: Gas price spike detected on {chain}! "
+                f"Current: {gas_estimate.max_fee_gwei} Gwei, "
+                f"Max allowed: {max_gas_price} Gwei"
+            )
+            raise GasPriceSpikeError(
+                message=(
+                    f"Gas price too high on {chain}: "
+                    f"{gas_estimate.max_fee_gwei} Gwei exceeds limit of {max_gas_price} Gwei"
+                ),
+                current_gas_price_gwei=gas_estimate.max_fee_gwei,
+                max_gas_price_gwei=max_gas_price,
+                chain=chain,
+                is_retryable=True,
+            )
+
+        # Check priority fee
+        if gas_estimate.max_priority_fee_gwei > max_priority_fee * self.config.grace_multiplier:
+            logger.error(
+                f"SECURITY: Priority fee spike detected on {chain}! "
+                f"Current: {gas_estimate.max_priority_fee_gwei} Gwei, "
+                f"Max allowed: {max_priority_fee} Gwei"
+            )
+            raise GasPriceSpikeError(
+                message=(
+                    f"Priority fee too high on {chain}: "
+                    f"{gas_estimate.max_priority_fee_gwei} Gwei exceeds limit of {max_priority_fee} Gwei"
+                ),
+                current_gas_price_gwei=gas_estimate.max_priority_fee_gwei,
+                max_gas_price_gwei=max_priority_fee,
+                chain=chain,
+                is_retryable=True,
+            )
+
+        # Calculate and check total cost in USD
+        eth_price = await self._get_eth_price_usd()
+        cost_eth = Decimal(gas_estimate.estimated_cost_wei) / Decimal(10**18)
+        cost_usd = cost_eth * eth_price
+
+        if cost_usd > max_cost_usd * self.config.grace_multiplier:
+            logger.error(
+                f"SECURITY: Transaction cost too high on {chain}! "
+                f"Estimated: ${cost_usd:.2f}, Max allowed: ${max_cost_usd}"
+            )
+            raise GasPriceSpikeError(
+                message=(
+                    f"Transaction cost too high on {chain}: "
+                    f"${cost_usd:.2f} exceeds limit of ${max_cost_usd}"
+                ),
+                current_gas_price_gwei=gas_estimate.max_fee_gwei,
+                max_gas_price_gwei=max_gas_price,
+                chain=chain,
+                is_retryable=True,
+            )
+
+        # Generate warnings for values approaching limits
+        warnings = []
+
+        if gas_estimate.max_fee_gwei > max_gas_price:
+            warnings.append(
+                f"Gas price ({gas_estimate.max_fee_gwei} Gwei) is above normal limit "
+                f"({max_gas_price} Gwei) but within grace period"
+            )
+
+        if gas_estimate.max_priority_fee_gwei > max_priority_fee:
+            warnings.append(
+                f"Priority fee ({gas_estimate.max_priority_fee_gwei} Gwei) is above normal limit "
+                f"({max_priority_fee} Gwei) but within grace period"
+            )
+
+        if cost_usd > max_cost_usd:
+            warnings.append(
+                f"Transaction cost (${cost_usd:.2f}) is above normal limit "
+                f"(${max_cost_usd}) but within grace period"
+            )
+
+        warning_message = "; ".join(warnings) if warnings else None
+        if warning_message:
+            logger.warning(f"Gas price warning on {chain}: {warning_message}")
+
+        return True, warning_message
+
+    def cap_gas_price(
+        self,
+        gas_estimate: "GasEstimate",
+        chain: str,
+    ) -> "GasEstimate":
+        """
+        Cap gas price to maximum allowed values.
+
+        Use this to automatically adjust gas prices to stay within limits
+        rather than failing the transaction.
+
+        Args:
+            gas_estimate: Original gas estimation
+            chain: Target blockchain
+
+        Returns:
+            New GasEstimate with capped values
+        """
+        max_gas_price = self.config.get_max_gas_price(chain)
+        max_priority_fee = self.config.get_max_priority_fee(chain)
+
+        capped_max_fee = min(gas_estimate.max_fee_gwei, max_gas_price)
+        capped_priority_fee = min(gas_estimate.max_priority_fee_gwei, max_priority_fee)
+
+        # Recalculate estimated cost with capped values
+        capped_max_fee_wei = int(capped_max_fee * Decimal(10**9))
+        capped_cost = gas_estimate.gas_limit * capped_max_fee_wei
+
+        if capped_max_fee < gas_estimate.max_fee_gwei:
+            logger.info(
+                f"Capped max fee from {gas_estimate.max_fee_gwei} to {capped_max_fee} Gwei on {chain}"
+            )
+
+        if capped_priority_fee < gas_estimate.max_priority_fee_gwei:
+            logger.info(
+                f"Capped priority fee from {gas_estimate.max_priority_fee_gwei} to {capped_priority_fee} Gwei on {chain}"
+            )
+
+        return GasEstimate(
+            gas_limit=gas_estimate.gas_limit,
+            gas_price_gwei=min(gas_estimate.gas_price_gwei, max_gas_price),
+            max_fee_gwei=capped_max_fee,
+            max_priority_fee_gwei=capped_priority_fee,
+            estimated_cost_wei=capped_cost,
+            estimated_cost_usd=gas_estimate.estimated_cost_usd,
+        )
+
+
+# Global gas price protection instance
+_gas_price_protection: Optional[GasPriceProtection] = None
+
+
+def get_gas_price_protection() -> GasPriceProtection:
+    """Get or create the global gas price protection instance."""
+    global _gas_price_protection
+    if _gas_price_protection is None:
+        _gas_price_protection = GasPriceProtection()
+    return _gas_price_protection
 
 
 @dataclass
@@ -1122,12 +1533,26 @@ class ChainExecutor:
     Production-ready chain executor with MPC signing support.
 
     Features:
-    - Multi-chain support (Base, Polygon, Ethereum)
+    - Multi-chain support (Base, Polygon, Ethereum, Arbitrum, Optimism)
     - MPC signing via Turnkey or Fireblocks
-    - Gas estimation with EIP-1559 support
-    - Transaction confirmation polling
+    - Multi-RPC endpoint support with automatic failover
+    - Chain ID validation on connection (security)
+    - Transaction simulation before execution
+    - Comprehensive gas estimation with EIP-1559 support and safety margins
+    - Nonce management with stuck transaction handling
+    - Transaction receipt status verification
+    - Block confirmation tracking with reorg detection
     - Simulated mode for development
     - Pre-execution compliance checks (fail-closed)
+    - Gas price spike protection (prevents high-cost transactions)
+    - Comprehensive logging for all blockchain operations
+
+    SECURITY FEATURES:
+    - Chain ID validation prevents connecting to wrong networks
+    - Transaction simulation prevents executing failing transactions
+    - Receipt verification ensures transaction success on-chain
+    - Reorg detection identifies and handles chain reorganizations
+    - Nonce management prevents double-spend and stuck transactions
     """
 
     # Confirmation requirements
@@ -1137,18 +1562,40 @@ class ChainExecutor:
 
     def __init__(self, settings: SardisSettings):
         self._settings = settings
-        self._rpc_clients: Dict[str, ChainRPCClient] = {}
-        self._mpc_signer: Optional[MPCSignerPort] = None
         self._simulated = settings.chain_mode == "simulated"
+
+        # Production-grade RPC clients with failover
+        self._rpc_clients: Dict[str, ProductionRPCClient] = {}
+
+        # Legacy ChainRPCClient support (for backward compatibility)
+        self._legacy_rpc_clients: Dict[str, ChainRPCClient] = {}
+
+        # MPC signer
+        self._mpc_signer: Optional[MPCSignerPort] = None
 
         # Compliance services (fail-closed: None means block all)
         self._compliance_engine = None
         self._sanctions_service = None
         self._init_compliance()
 
+        # Gas price protection (prevents executing during gas spikes)
+        self._gas_protection = get_gas_price_protection()
+
+        # Production services
+        self._nonce_manager = get_nonce_manager()
+        self._simulation_service = get_simulation_service()
+        self._chain_logger = get_chain_logger()
+
+        # Confirmation trackers per chain
+        self._confirmation_trackers: Dict[str, ConfirmationTracker] = {}
+
         # Initialize MPC signer based on settings
         if not self._simulated:
             self._init_mpc_signer()
+
+        logger.info(
+            f"ChainExecutor initialized (simulated={self._simulated}) with production enhancements"
+        )
 
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""
@@ -1199,8 +1646,16 @@ class ChainExecutor:
         else:
             self._mpc_signer = SimulatedMPCSigner()
 
-    def _get_rpc_client(self, chain: str) -> ChainRPCClient:
-        """Get or create RPC client for chain."""
+    def _get_rpc_client(self, chain: str) -> ProductionRPCClient:
+        """
+        Get or create production RPC client for chain.
+
+        The production client provides:
+        - Multi-endpoint failover
+        - Chain ID validation
+        - Health-based endpoint selection
+        - Automatic retry with exponential backoff
+        """
         if chain not in self._rpc_clients:
             config = CHAIN_CONFIGS.get(chain)
             if not config:
@@ -1213,62 +1668,143 @@ class ChainExecutor:
                     f"Solana integration requires Anchor programs and is planned for a future release. "
                     f"Supported chains: base, polygon, ethereum, arbitrum, optimism (and their testnets)."
                 )
-            
-            # Check for custom RPC URL in settings
+
+            # Use production RPC client with chain ID validation
+            try:
+                chain_config = get_chain_config(chain)
+                self._rpc_clients[chain] = ProductionRPCClient(
+                    chain=chain,
+                    chain_config=chain_config,
+                    validate_chain_id_on_connect=True,
+                )
+                logger.info(f"Created production RPC client for {chain}")
+            except ValueError:
+                # Fall back to legacy client if chain config not available
+                logger.warning(f"Chain config not found for {chain}, using legacy client")
+                return self._get_legacy_rpc_client(chain)
+
+        return self._rpc_clients[chain]
+
+    def _get_legacy_rpc_client(self, chain: str) -> ChainRPCClient:
+        """Get or create legacy RPC client for backward compatibility."""
+        if chain not in self._legacy_rpc_clients:
+            config = CHAIN_CONFIGS.get(chain)
+            if not config:
+                raise ValueError(f"Unknown chain: {chain}")
+
             rpc_url = config["rpc_url"]
             for chain_config in self._settings.chains:
                 if chain_config.name == chain and chain_config.rpc_url:
                     rpc_url = chain_config.rpc_url
                     break
-            
-            self._rpc_clients[chain] = ChainRPCClient(rpc_url, chain=chain)
-        
-        return self._rpc_clients[chain]
+
+            self._legacy_rpc_clients[chain] = ChainRPCClient(rpc_url, chain=chain)
+
+        return self._legacy_rpc_clients[chain]
+
+    def _get_confirmation_tracker(self, chain: str) -> ConfirmationTracker:
+        """Get or create confirmation tracker for chain."""
+        if chain not in self._confirmation_trackers:
+            self._confirmation_trackers[chain] = get_confirmation_tracker(chain)
+        return self._confirmation_trackers[chain]
 
     async def estimate_gas(self, mandate: PaymentMandate) -> GasEstimate:
-        """Estimate gas for a payment mandate."""
+        """
+        Estimate gas for a payment mandate using production gas estimator.
+
+        Features:
+        - Comprehensive gas estimation with safety margins
+        - EIP-1559 base fee and priority fee calculation
+        - Gas price spike protection
+        - USD cost estimation
+        """
         chain = mandate.chain or "base_sepolia"
         rpc = self._get_rpc_client(chain)
+
+        # Ensure RPC is connected with chain ID validation
+        await rpc.connect()
+
         from_address = None
         if not self._simulated and self._mpc_signer:
             try:
                 from_address = await self._mpc_signer.get_address(mandate.subject, chain)
             except Exception:  # noqa: BLE001
                 from_address = None
-        
+
         # Get token contract address
         token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
         token_address = token_addresses.get(mandate.token, "")
-        
+
         if not token_address:
             raise ValueError(f"Token {mandate.token} not supported on {chain}")
-        
+
         # Encode transfer data
         amount_minor = int(mandate.amount_minor)
         transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
-        
-        # Estimate gas
+
+        # Build transaction params
         tx_params = {
             "to": token_address,
             "data": "0x" + transfer_data.hex(),
+            "value": "0x0",
         }
         if from_address:
             tx_params["from"] = from_address
-        
+
+        # Use production gas estimator
+        try:
+            gas_estimation = await self._simulation_service.estimator.estimate(
+                rpc_client=rpc,
+                tx_params=tx_params,
+                chain=chain,
+                apply_safety_margins=True,
+            )
+
+            # Log the estimation
+            self._chain_logger.log_gas_estimation(
+                chain=chain,
+                gas_limit=gas_estimation.gas_limit,
+                max_fee_gwei=gas_estimation.max_fee_gwei,
+                priority_fee_gwei=gas_estimation.priority_fee_gwei,
+                estimated_cost_usd=gas_estimation.estimated_cost_usd,
+                is_capped=gas_estimation.is_gas_price_capped,
+            )
+
+            # Convert to legacy GasEstimate format for backward compatibility
+            return GasEstimate(
+                gas_limit=gas_estimation.gas_limit,
+                gas_price_gwei=gas_estimation.base_fee_gwei,
+                max_fee_gwei=gas_estimation.max_fee_gwei,
+                max_priority_fee_gwei=gas_estimation.priority_fee_gwei,
+                estimated_cost_wei=gas_estimation.estimated_cost_wei,
+                estimated_cost_usd=gas_estimation.estimated_cost_usd,
+            )
+
+        except Exception as e:
+            logger.warning(f"Production gas estimation failed, falling back: {e}")
+            # Fallback to legacy estimation
+            return await self._legacy_estimate_gas(rpc, tx_params)
+
+    async def _legacy_estimate_gas(
+        self,
+        rpc: ProductionRPCClient,
+        tx_params: Dict[str, Any],
+    ) -> GasEstimate:
+        """Legacy gas estimation fallback."""
         try:
             gas_limit = await rpc.estimate_gas(tx_params)
             gas_limit = int(gas_limit * 1.2)  # Add 20% buffer
         except Exception as e:
             logger.warning(f"Gas estimation failed: {e}, using default")
             gas_limit = 100000
-        
+
         # Get gas prices
         gas_price = await rpc.get_gas_price()
         max_priority_fee = await rpc.get_max_priority_fee()
         max_fee = gas_price + max_priority_fee
-        
+
         estimated_cost = gas_limit * max_fee
-        
+
         return GasEstimate(
             gas_limit=gas_limit,
             gas_price_gwei=Decimal(gas_price) / Decimal(10**9),
@@ -1285,6 +1821,7 @@ class ChainExecutor:
         Transactions are ONLY executed if:
         1. Compliance preflight check passes
         2. Sanctions screening passes for destination address
+        3. Gas price is within acceptable limits (spike protection)
 
         In simulated mode, returns a mock receipt (compliance still checked).
         In live mode, signs and broadcasts the transaction.
@@ -1292,6 +1829,7 @@ class ChainExecutor:
         Raises:
             ComplianceError: If compliance check fails
             SanctionsError: If destination is sanctioned
+            GasPriceSpikeError: If gas price exceeds limits
         """
         chain = mandate.chain or "base_sepolia"
         audit_anchor = f"merkle::{mandate.audit_hash}"
@@ -1317,8 +1855,47 @@ class ChainExecutor:
                 audit_anchor=audit_anchor,
             )
 
-        # Live mode - execute real transaction
-        return await self._execute_live_payment(mandate, chain, audit_anchor)
+        # Live mode - execute real transaction with gas protection
+        return await self._execute_live_payment_with_gas_protection(mandate, chain, audit_anchor)
+
+    async def _execute_live_payment_with_gas_protection(
+        self,
+        mandate: PaymentMandate,
+        chain: str,
+        audit_anchor: str,
+    ) -> ChainReceipt:
+        """
+        Execute live payment with gas price spike protection.
+
+        This wrapper adds retry logic for gas price spikes.
+        """
+        retry_count = 0
+        max_retries = self._gas_protection.config.max_retries
+
+        while retry_count <= max_retries:
+            try:
+                return await self._execute_live_payment(mandate, chain, audit_anchor)
+            except GasPriceSpikeError as e:
+                if not e.is_retryable or retry_count >= max_retries:
+                    logger.error(
+                        f"Gas price spike on {chain} for mandate {mandate.mandate_id}: "
+                        f"{e.current_gas_price_gwei} Gwei (max: {e.max_gas_price_gwei} Gwei). "
+                        f"Giving up after {retry_count} retries."
+                    )
+                    raise
+
+                retry_count += 1
+                delay = self._gas_protection.config.retry_delay_seconds
+
+                logger.warning(
+                    f"Gas price spike detected on {chain}. "
+                    f"Waiting {delay}s before retry {retry_count}/{max_retries}..."
+                )
+
+                await asyncio.sleep(delay)
+
+        # Should not reach here, but just in case
+        raise RuntimeError("Unexpected error in gas protection retry loop")
 
     async def _check_compliance_preflight(self, mandate: PaymentMandate) -> None:
         """
@@ -1378,61 +1955,247 @@ class ChainExecutor:
         chain: str,
         audit_anchor: str,
     ) -> ChainReceipt:
-        """Execute a live payment on-chain."""
+        """
+        Execute a live payment on-chain with production-grade handling.
+
+        SECURITY FEATURES:
+        - Chain ID validation (prevents wrong network)
+        - Transaction simulation (prevents failing transactions)
+        - Nonce management (prevents double-spend and stuck txs)
+        - Receipt verification (confirms success on-chain)
+        - Reorg detection (handles chain reorganizations)
+        """
         rpc = self._get_rpc_client(chain)
+
+        # Ensure RPC is connected with chain ID validation
+        await rpc.connect()
+
         if not self._mpc_signer:
             raise RuntimeError("No signer configured. Provide SARDIS_EOA_PRIVATE_KEY or configure MPC.")
-        
+
         # Get token contract address
         token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
         token_address = token_addresses.get(mandate.token, "")
-        
+
         if not token_address:
             raise ValueError(f"Token {mandate.token} not supported on {chain}")
-        
+
         # Encode transfer data
         amount_minor = int(mandate.amount_minor)
         transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
-        
-        # Get gas estimates
-        gas_estimate = await self.estimate_gas(mandate)
-        
-        # Get sender address and nonce
+
+        # Get sender address
         wallet_id = mandate.subject  # Use subject as wallet ID
         sender_address = await self._mpc_signer.get_address(wallet_id, chain)
-        nonce = await rpc.get_nonce(sender_address)
-        
-        # Build transaction request
-        tx_request = TransactionRequest(
+
+        # Build transaction params for simulation
+        tx_params = {
+            "from": sender_address,
+            "to": token_address,
+            "data": "0x" + transfer_data.hex(),
+            "value": "0x0",
+        }
+
+        # === TRANSACTION SIMULATION ===
+        # Simulate before execution to catch failures early
+        async with self._chain_logger.operation_context(
+            OperationType.SIMULATION, chain, mandate_id=mandate.mandate_id
+        ):
+            try:
+                simulation_output, gas_estimation = await self._simulation_service.prepare_transaction(
+                    rpc_client=rpc,
+                    tx_params=tx_params,
+                    chain=chain,
+                    validate=True,
+                )
+                logger.info(
+                    f"Transaction simulation passed for mandate {mandate.mandate_id}"
+                )
+            except SimulationError as e:
+                logger.error(
+                    f"Transaction simulation failed for mandate {mandate.mandate_id}: "
+                    f"{e.simulation_output.revert_reason if e.simulation_output else str(e)}"
+                )
+                raise RuntimeError(
+                    f"Transaction would fail: {e.simulation_output.revert_reason if e.simulation_output else str(e)}"
+                )
+
+        # Convert to legacy GasEstimate for compatibility
+        gas_estimate = GasEstimate(
+            gas_limit=gas_estimation.gas_limit,
+            gas_price_gwei=gas_estimation.base_fee_gwei,
+            max_fee_gwei=gas_estimation.max_fee_gwei,
+            max_priority_fee_gwei=gas_estimation.priority_fee_gwei,
+            estimated_cost_wei=gas_estimation.estimated_cost_wei,
+            estimated_cost_usd=gas_estimation.estimated_cost_usd,
+        )
+
+        # === GAS PRICE SPIKE PROTECTION ===
+        is_acceptable, warning = await self._gas_protection.check_gas_price(
+            gas_estimate, chain
+        )
+
+        if warning:
+            logger.warning(
+                f"Gas price warning for mandate {mandate.mandate_id} on {chain}: {warning}"
+            )
+
+        # Cap gas price to maximum allowed values (safety net)
+        gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+
+        # Log gas estimation
+        self._chain_logger.log_gas_estimation(
             chain=chain,
-            to_address=token_address,
-            value=0,
-            data=transfer_data,
             gas_limit=gas_estimate.gas_limit,
-            max_fee_per_gas=int(gas_estimate.max_fee_gwei * 10**9),
-            max_priority_fee_per_gas=int(gas_estimate.max_priority_fee_gwei * 10**9),
-            nonce=nonce,
+            max_fee_gwei=gas_estimate.max_fee_gwei,
+            priority_fee_gwei=gas_estimate.max_priority_fee_gwei,
+            estimated_cost_usd=gas_estimate.estimated_cost_usd,
+            is_capped=True,
         )
-        
-        # Sign transaction via MPC
-        logger.info(f"Signing transaction for mandate {mandate.mandate_id}")
-        signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
-        
-        # Broadcast transaction
-        logger.info(f"Broadcasting transaction for mandate {mandate.mandate_id}")
-        tx_hash = await rpc.send_raw_transaction(signed_tx)
-        
-        logger.info(f"Transaction submitted: {tx_hash}")
-        
-        # Wait for confirmation
-        receipt = await self._wait_for_confirmation(rpc, tx_hash, chain)
-        
-        return ChainReceipt(
-            tx_hash=tx_hash,
-            chain=chain,
-            block_number=int(receipt.get("blockNumber", "0x0"), 16) if isinstance(receipt.get("blockNumber"), str) else receipt.get("blockNumber", 0),
-            audit_anchor=audit_anchor,
-        )
+
+        # === NONCE MANAGEMENT ===
+        # Use production nonce manager for thread-safe nonce handling
+        async with self._chain_logger.operation_context(
+            OperationType.NONCE_MANAGEMENT, chain, address=sender_address
+        ):
+            nonce = await self._nonce_manager.reserve_nonce(sender_address, rpc)
+            self._chain_logger.log_nonce_management(
+                address=sender_address,
+                action="reserved",
+                nonce=nonce,
+                details={"mandate_id": mandate.mandate_id},
+            )
+
+        try:
+            # Build transaction request with capped gas prices
+            tx_request = TransactionRequest(
+                chain=chain,
+                to_address=token_address,
+                value=0,
+                data=transfer_data,
+                gas_limit=gas_estimate.gas_limit,
+                max_fee_per_gas=int(gas_estimate.max_fee_gwei * 10**9),
+                max_priority_fee_per_gas=int(gas_estimate.max_priority_fee_gwei * 10**9),
+                nonce=nonce,
+            )
+
+            # Sign transaction via MPC
+            logger.info(f"Signing transaction for mandate {mandate.mandate_id}")
+            signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+
+            # Broadcast transaction
+            logger.info(f"Broadcasting transaction for mandate {mandate.mandate_id}")
+            tx_hash = await rpc.send_raw_transaction(signed_tx)
+
+            logger.info(f"Transaction submitted: {tx_hash}")
+
+            # Register pending transaction for tracking
+            data_hash = hashlib.sha256(transfer_data).hexdigest()
+            self._nonce_manager.register_pending_transaction(
+                tx_hash=tx_hash,
+                address=sender_address,
+                nonce=nonce,
+                chain=chain,
+                gas_price=int(gas_estimate.max_fee_gwei * 10**9),
+                priority_fee=int(gas_estimate.max_priority_fee_gwei * 10**9),
+                data_hash=data_hash,
+            )
+
+            # Log transaction submission
+            self._chain_logger.log_transaction_submitted(
+                tx_hash=tx_hash,
+                chain=chain,
+                from_address=sender_address,
+                to_address=token_address,
+                value_wei=0,
+                nonce=nonce,
+                gas_limit=gas_estimate.gas_limit,
+                max_fee_gwei=gas_estimate.max_fee_gwei,
+                priority_fee_gwei=gas_estimate.max_priority_fee_gwei,
+            )
+
+            # === CONFIRMATION TRACKING ===
+            # Wait for confirmation with receipt verification
+            receipt_validation = await self._wait_for_confirmation_with_verification(
+                rpc, tx_hash, chain, sender_address
+            )
+
+            # Log confirmation
+            self._chain_logger.log_transaction_confirmed(
+                tx_hash=tx_hash,
+                block_number=receipt_validation.block_number or 0,
+                confirmations=1,  # At least 1 confirmation at this point
+                gas_used=receipt_validation.gas_used or 0,
+                effective_gas_price=receipt_validation.effective_gas_price,
+            )
+
+            return ChainReceipt(
+                tx_hash=tx_hash,
+                chain=chain,
+                block_number=receipt_validation.block_number or 0,
+                audit_anchor=audit_anchor,
+            )
+
+        except Exception as e:
+            # Release nonce on failure for potential retry
+            await self._nonce_manager.release_nonce(sender_address, nonce)
+            self._chain_logger.log_nonce_management(
+                address=sender_address,
+                action="released",
+                nonce=nonce,
+                details={"error": str(e)},
+            )
+            raise
+
+    async def _wait_for_confirmation_with_verification(
+        self,
+        rpc: ProductionRPCClient,
+        tx_hash: str,
+        chain: str,
+        sender_address: str,
+    ) -> ReceiptValidation:
+        """
+        Wait for transaction confirmation with comprehensive receipt verification.
+
+        SECURITY: Verifies:
+        - Transaction was included in a block
+        - Transaction succeeded (status = 1)
+        - Required confirmations reached
+        """
+        async with self._chain_logger.operation_context(
+            OperationType.CONFIRMATION_TRACKING, chain, tx_hash=tx_hash
+        ):
+            try:
+                receipt_validation = await self._nonce_manager.wait_for_receipt(
+                    tx_hash=tx_hash,
+                    rpc_client=rpc,
+                    timeout_seconds=self.CONFIRMATION_TIMEOUT,
+                    poll_interval=self.POLL_INTERVAL,
+                    required_confirmations=self.CONFIRMATIONS_REQUIRED,
+                )
+
+                if not receipt_validation.is_successful:
+                    self._chain_logger.log_transaction_failed(
+                        tx_hash=tx_hash,
+                        error=receipt_validation.error_message or "Transaction failed",
+                        revert_reason=receipt_validation.revert_reason,
+                    )
+                    raise TransactionFailedError(
+                        tx_hash=tx_hash,
+                        revert_reason=receipt_validation.revert_reason,
+                        receipt=receipt_validation,
+                    )
+
+                return receipt_validation
+
+            except TimeoutError:
+                logger.error(f"Transaction {tx_hash} confirmation timeout")
+                raise
+            except TransactionFailedError:
+                raise
+            except Exception as e:
+                logger.error(f"Error waiting for confirmation: {e}")
+                raise
 
     async def _wait_for_confirmation(
         self,
@@ -1495,10 +2258,128 @@ class ChainExecutor:
         
         return TransactionStatus.CONFIRMING
 
+    async def validate_chain_connection(self, chain: str) -> bool:
+        """
+        Validate connection to a chain including chain ID verification.
+
+        SECURITY: This should be called before any sensitive operations
+        to ensure we're connected to the correct network.
+
+        Args:
+            chain: Chain name to validate
+
+        Returns:
+            True if connection is valid
+
+        Raises:
+            ChainIDMismatchError: If chain ID doesn't match expected
+        """
+        rpc = self._get_rpc_client(chain)
+        await rpc.connect()
+        return True
+
+    async def get_rpc_health(self, chain: str) -> Dict[str, Any]:
+        """
+        Get health status of RPC endpoints for a chain.
+
+        Returns:
+            Dictionary with endpoint health information
+        """
+        rpc = self._get_rpc_client(chain)
+        return await rpc.health_check()
+
+    async def get_pending_transactions(
+        self,
+        address: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get list of pending transactions.
+
+        Args:
+            address: Optional address to filter by
+
+        Returns:
+            List of pending transaction details
+        """
+        pending = self._nonce_manager.get_all_pending(address)
+        return [
+            {
+                "tx_hash": p.tx_hash,
+                "nonce": p.nonce,
+                "address": p.address,
+                "chain": p.chain,
+                "submitted_at": p.submitted_at.isoformat(),
+                "is_stuck": p.is_stuck(
+                    self._nonce_manager._config.stuck_tx_timeout_seconds
+                ),
+            }
+            for p in pending
+        ]
+
+    async def get_stuck_transactions(
+        self,
+        address: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get list of stuck transactions that may need replacement.
+
+        Args:
+            address: Optional address to filter by
+
+        Returns:
+            List of stuck transaction details
+        """
+        stuck = await self._nonce_manager.get_stuck_transactions(address)
+        return [
+            {
+                "tx_hash": p.tx_hash,
+                "nonce": p.nonce,
+                "address": p.address,
+                "chain": p.chain,
+                "submitted_at": p.submitted_at.isoformat(),
+                "age_seconds": (
+                    datetime.now(timezone.utc) - p.submitted_at
+                ).total_seconds(),
+            }
+            for p in stuck
+        ]
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """
+        Get comprehensive metrics from all components.
+
+        Returns:
+            Dictionary with RPC, transaction, and tracking metrics
+        """
+        return {
+            "rpc_metrics": self._chain_logger.get_rpc_metrics(),
+            "transaction_metrics": self._chain_logger.get_transaction_metrics(),
+            "pending_transactions": self._nonce_manager.get_pending_count(None),
+            "confirmation_trackers": {
+                chain: tracker.get_stats()
+                for chain, tracker in self._confirmation_trackers.items()
+            },
+        }
+
     async def close(self):
-        """Close all connections."""
+        """Close all connections and cleanup resources."""
+        # Close production RPC clients
         for client in self._rpc_clients.values():
             await client.close()
-        
+        self._rpc_clients.clear()
+
+        # Close legacy RPC clients
+        for client in self._legacy_rpc_clients.values():
+            await client.close()
+        self._legacy_rpc_clients.clear()
+
+        # Stop confirmation trackers
+        for tracker in self._confirmation_trackers.values():
+            await tracker.stop_monitoring()
+        self._confirmation_trackers.clear()
+
+        # Close MPC signer
         if hasattr(self._mpc_signer, "close"):
             await self._mpc_signer.close()
+
+        logger.info("ChainExecutor closed")
