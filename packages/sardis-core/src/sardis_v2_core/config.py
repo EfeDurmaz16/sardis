@@ -163,8 +163,76 @@ class SardisSettings(BaseSettings):
         return v
 
 
+def validate_production_config(settings: SardisSettings) -> list[str]:
+    """
+    Validate that all required configuration is present for production.
+
+    Returns a list of missing/invalid configuration items.
+    """
+    import os
+    errors = []
+
+    if settings.environment in ("prod", "sandbox"):
+        # Required for production
+        if not settings.secret_key or len(settings.secret_key) < 32:
+            errors.append("SARDIS_SECRET_KEY: Must be at least 32 characters")
+
+        if not os.getenv("JWT_SECRET_KEY"):
+            errors.append("JWT_SECRET_KEY: Required for auth (min 32 chars)")
+
+        if not os.getenv("SARDIS_ADMIN_PASSWORD"):
+            errors.append("SARDIS_ADMIN_PASSWORD: Required for admin access")
+
+        if not settings.database_url or settings.database_url.startswith("sqlite"):
+            errors.append("DATABASE_URL: PostgreSQL required for production")
+
+        if not os.getenv("REDIS_URL"):
+            errors.append("REDIS_URL: Required for distributed rate limiting")
+
+        # MPC configuration
+        if settings.chain_mode == "live":
+            if not settings.turnkey_configured:
+                errors.append("TURNKEY_*: MPC provider not configured for live mode")
+
+        # Compliance providers (recommended)
+        if not os.getenv("PERSONA_API_KEY"):
+            errors.append("PERSONA_API_KEY: KYC provider not configured (recommended)")
+
+        if not os.getenv("ELLIPTIC_API_KEY"):
+            errors.append("ELLIPTIC_API_KEY: Sanctions screening not configured (recommended)")
+
+    return errors
+
+
 @lru_cache
 def load_settings(env_file: str | None = None) -> SardisSettings:
     """Load SardisSettings once per process to keep services consistent."""
+    import os
+    import logging
+
+    logger = logging.getLogger(__name__)
     env_path = Path(env_file) if env_file else None
-    return SardisSettings(_env_file=env_path)
+    settings = SardisSettings(_env_file=env_path)
+
+    # Run production validation
+    env = os.getenv("SARDIS_ENVIRONMENT", settings.environment)
+    if env in ("prod", "sandbox"):
+        errors = validate_production_config(settings)
+        if errors:
+            logger.warning("=" * 60)
+            logger.warning("PRODUCTION CONFIGURATION WARNINGS")
+            logger.warning("=" * 60)
+            for error in errors:
+                logger.warning(f"  - {error}")
+            logger.warning("=" * 60)
+
+            # In strict mode, raise error for critical missing config
+            critical_errors = [e for e in errors if any(k in e for k in
+                ["SECRET_KEY", "JWT_SECRET", "ADMIN_PASSWORD", "DATABASE_URL"])]
+            if critical_errors and os.getenv("SARDIS_STRICT_CONFIG", "false").lower() == "true":
+                raise RuntimeError(
+                    f"Critical configuration missing: {', '.join(critical_errors)}. "
+                    "Set SARDIS_STRICT_CONFIG=false to bypass (not recommended)."
+                )
+
+    return settings

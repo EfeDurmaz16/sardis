@@ -2,6 +2,7 @@
  * Sardis MCP Server - Tool Registry
  *
  * Aggregates all tool definitions and handlers from domain-specific modules.
+ * Total: 36+ tools across 9 categories.
  */
 
 import type { ToolDefinition, ToolHandler } from './types.js';
@@ -12,6 +13,11 @@ import { holdToolDefinitions, holdToolHandlers } from './holds.js';
 import { agentToolDefinitions, agentToolHandlers } from './agents.js';
 import { paymentToolDefinitions, paymentToolHandlers } from './payments.js';
 import { policyToolDefinitions, policyToolHandlers } from './policy.js';
+import { cardToolDefinitions, cardToolHandlers } from './cards.js';
+import { fiatToolDefinitions, fiatToolHandlers } from './fiat.js';
+import { approvalToolDefinitions, approvalToolHandlers } from './approvals.js';
+import { spendingToolDefinitions, spendingToolHandlers } from './spending.js';
+import { walletManagementToolDefinitions, walletManagementToolHandlers } from './wallet-management.js';
 
 // Re-export types
 export * from './types.js';
@@ -30,6 +36,11 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...agentToolDefinitions,
   ...paymentToolDefinitions,
   ...policyToolDefinitions,
+  ...cardToolDefinitions,
+  ...fiatToolDefinitions,
+  ...approvalToolDefinitions,
+  ...spendingToolDefinitions,
+  ...walletManagementToolDefinitions,
 ];
 
 /**
@@ -41,6 +52,11 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...agentToolHandlers,
   ...paymentToolHandlers,
   ...policyToolHandlers,
+  ...cardToolHandlers,
+  ...fiatToolHandlers,
+  ...approvalToolHandlers,
+  ...spendingToolHandlers,
+  ...walletManagementToolHandlers,
 };
 
 /**
@@ -68,7 +84,7 @@ export function getAllToolNames(): string[] {
  * Tool categories for organization
  */
 export const toolCategories = {
-  wallet: ['sardis_get_wallet', 'sardis_get_balance'],
+  wallet: ['sardis_get_wallet', 'sardis_get_balance', 'sardis_create_wallet', 'sardis_update_wallet_policy', 'sardis_list_wallets'],
   payment: ['sardis_pay', 'sardis_get_transaction', 'sardis_list_transactions'],
   policy: ['sardis_check_policy', 'sardis_validate_limits', 'sardis_check_compliance'],
   hold: [
@@ -85,6 +101,29 @@ export const toolCategories = {
     'sardis_list_agents',
     'sardis_update_agent',
   ],
+  card: [
+    'sardis_issue_card',
+    'sardis_get_card',
+    'sardis_list_cards',
+    'sardis_freeze_card',
+    'sardis_unfreeze_card',
+    'sardis_cancel_card',
+  ],
+  fiat: [
+    'sardis_fund_wallet',
+    'sardis_withdraw_to_bank',
+    'sardis_get_funding_status',
+    'sardis_get_withdrawal_status',
+  ],
+  approval: [
+    'sardis_request_approval',
+    'sardis_get_approval_status',
+  ],
+  spending: [
+    'sardis_get_spending_summary',
+    'sardis_get_spending_by_vendor',
+    'sardis_get_spending_by_category',
+  ],
 } as const;
 
 /**
@@ -93,4 +132,22 @@ export const toolCategories = {
 export function getToolsByCategory(category: keyof typeof toolCategories): ToolDefinition[] {
   const toolNames = toolCategories[category];
   return allToolDefinitions.filter((t) => toolNames.includes(t.name as never));
+}
+
+/**
+ * Get total tool count
+ */
+export function getToolCount(): number {
+  return allToolDefinitions.length;
+}
+
+/**
+ * Get tool summary for documentation
+ */
+export function getToolSummary(): { category: string; count: number; tools: string[] }[] {
+  return Object.entries(toolCategories).map(([category, tools]) => ({
+    category,
+    count: tools.length,
+    tools: [...tools],
+  }));
 }

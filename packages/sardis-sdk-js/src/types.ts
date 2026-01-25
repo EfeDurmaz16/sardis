@@ -4,7 +4,30 @@
 
 // ==================== Common Types ====================
 
-export type Chain = 'base' | 'base_sepolia' | 'polygon' | 'polygon_amoy' | 'ethereum' | 'ethereum_sepolia';
+/**
+ * Supported blockchain networks.
+ *
+ * Note: Solana support is planned but NOT YET IMPLEMENTED.
+ * Using 'solana' or 'solana_devnet' will throw a NotImplementedError.
+ */
+export type Chain =
+  | 'base'
+  | 'base_sepolia'
+  | 'polygon'
+  | 'polygon_amoy'
+  | 'ethereum'
+  | 'ethereum_sepolia'
+  | 'arbitrum'
+  | 'arbitrum_sepolia'
+  | 'optimism'
+  | 'optimism_sepolia';
+
+/**
+ * Experimental chains - NOT YET IMPLEMENTED.
+ * These are planned for future releases.
+ * @internal
+ */
+export type ExperimentalChain = 'solana' | 'solana_devnet';
 export type Token = 'USDC' | 'USDT' | 'PYUSD' | 'EURC';
 export type MPCProvider = 'turnkey' | 'fireblocks' | 'local';
 

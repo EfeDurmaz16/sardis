@@ -1,0 +1,392 @@
+"""Policy API endpoints with Natural Language parsing support."""
+from __future__ import annotations
+
+import logging
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+# ============================================================================
+# Request/Response Models
+# ============================================================================
+
+class ParsePolicyRequest(BaseModel):
+    """Request to parse a natural language policy."""
+
+    natural_language: str = Field(
+        ...,
+        description="Natural language description of the spending policy",
+        examples=[
+            "Allow max $500 per day on AWS and OpenAI, block gambling",
+            "Spend up to $100 per transaction, require approval over $500",
+            "Only allow cloud services (AWS, GCP, Azure) with $1000 monthly limit",
+        ],
+    )
+    agent_id: Optional[str] = Field(
+        default=None,
+        description="Agent ID to associate with the parsed policy",
+    )
+
+
+class SpendingLimitResponse(BaseModel):
+    """A single spending limit."""
+
+    vendor_pattern: str
+    max_amount: float
+    period: str
+    currency: str = "USD"
+
+
+class CategoryRestrictionsResponse(BaseModel):
+    """Category-based restrictions."""
+
+    allowed_categories: List[str] = []
+    blocked_categories: List[str] = []
+
+
+class TimeRestrictionsResponse(BaseModel):
+    """Time-based restrictions."""
+
+    allowed_hours_start: int = 0
+    allowed_hours_end: int = 23
+    allowed_days: List[str] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    timezone: str = "UTC"
+
+
+class ParsedPolicyResponse(BaseModel):
+    """Response containing the parsed policy."""
+
+    name: str
+    description: str
+    spending_limits: List[SpendingLimitResponse] = []
+    category_restrictions: Optional[CategoryRestrictionsResponse] = None
+    time_restrictions: Optional[TimeRestrictionsResponse] = None
+    requires_approval_above: Optional[float] = None
+    global_daily_limit: Optional[float] = None
+    global_monthly_limit: Optional[float] = None
+    is_active: bool = True
+
+    # The converted SpendingPolicy (if agent_id provided)
+    policy_id: Optional[str] = None
+    agent_id: Optional[str] = None
+
+
+class CreatePolicyFromNLRequest(BaseModel):
+    """Request to create a policy from natural language and apply it to an agent."""
+
+    natural_language: str = Field(
+        ...,
+        description="Natural language description of the spending policy",
+    )
+    agent_id: str = Field(
+        ...,
+        description="Agent ID to apply the policy to",
+    )
+    confirm: bool = Field(
+        default=False,
+        description="If true, immediately apply the policy. If false, return preview only.",
+    )
+
+
+class PolicyPreviewResponse(BaseModel):
+    """Preview of a policy before applying."""
+
+    parsed: ParsedPolicyResponse
+    warnings: List[str] = []
+    requires_confirmation: bool = True
+    confirmation_message: str = ""
+
+
+# ============================================================================
+# Endpoints
+# ============================================================================
+
+@router.post("/parse", response_model=ParsedPolicyResponse)
+async def parse_natural_language_policy(
+    request: ParsePolicyRequest,
+):
+    """
+    Parse a natural language policy into structured format.
+
+    This endpoint uses AI to convert human-readable spending policies
+    into structured rules that can be enforced by the payment system.
+
+    **Examples:**
+    - "Allow max $500 per day on AWS and OpenAI, block gambling"
+    - "Spend up to $100 per transaction, require approval over $500"
+    - "Only allow cloud services with $1000 monthly limit"
+
+    **Returns:** Structured policy with spending limits, restrictions, and rules.
+    """
+    try:
+        # Import here to handle optional dependency
+        from sardis_v2_core.nl_policy_parser import (
+            NLPolicyParser,
+            RegexPolicyParser,
+            HAS_INSTRUCTOR,
+        )
+
+        # Try LLM parser first, fall back to regex
+        if HAS_INSTRUCTOR:
+            try:
+                parser = NLPolicyParser()
+                extracted = await parser.parse(request.natural_language)
+
+                # Convert to response model
+                response = ParsedPolicyResponse(
+                    name=extracted.name,
+                    description=extracted.description,
+                    spending_limits=[
+                        SpendingLimitResponse(
+                            vendor_pattern=sl.vendor_pattern,
+                            max_amount=sl.max_amount,
+                            period=sl.period,
+                            currency=sl.currency,
+                        )
+                        for sl in extracted.spending_limits
+                    ],
+                    requires_approval_above=extracted.requires_approval_above,
+                    global_daily_limit=extracted.global_daily_limit,
+                    global_monthly_limit=extracted.global_monthly_limit,
+                    is_active=extracted.is_active,
+                    agent_id=request.agent_id,
+                )
+
+                # Add category restrictions if present
+                if extracted.category_restrictions:
+                    response.category_restrictions = CategoryRestrictionsResponse(
+                        allowed_categories=extracted.category_restrictions.allowed_categories,
+                        blocked_categories=extracted.category_restrictions.blocked_categories,
+                    )
+
+                # Add time restrictions if present
+                if extracted.time_restrictions:
+                    response.time_restrictions = TimeRestrictionsResponse(
+                        allowed_hours_start=extracted.time_restrictions.allowed_hours_start,
+                        allowed_hours_end=extracted.time_restrictions.allowed_hours_end,
+                        allowed_days=extracted.time_restrictions.allowed_days,
+                        timezone=extracted.time_restrictions.timezone,
+                    )
+
+                # If agent_id provided, also generate policy_id
+                if request.agent_id:
+                    policy = parser.to_spending_policy(extracted, request.agent_id)
+                    response.policy_id = policy.policy_id
+
+                return response
+
+            except Exception as e:
+                logger.warning(f"LLM parser failed, falling back to regex: {e}")
+                # Fall through to regex parser
+
+        # Fallback: Use regex parser
+        regex_parser = RegexPolicyParser()
+        parsed = regex_parser.parse(request.natural_language)
+
+        return ParsedPolicyResponse(
+            name="Parsed Policy",
+            description=request.natural_language,
+            spending_limits=[
+                SpendingLimitResponse(**sl)
+                for sl in parsed.get("spending_limits", [])
+            ],
+            category_restrictions=CategoryRestrictionsResponse(
+                blocked_categories=parsed.get("blocked_categories", []),
+            ) if parsed.get("blocked_categories") else None,
+            requires_approval_above=parsed.get("requires_approval_above"),
+            agent_id=request.agent_id,
+        )
+
+    except ImportError as e:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"Policy parsing not available: {e}",
+        )
+
+
+@router.post("/preview", response_model=PolicyPreviewResponse)
+async def preview_policy_from_nl(
+    request: CreatePolicyFromNLRequest,
+):
+    """
+    Preview a policy from natural language before applying.
+
+    This is a safety feature that shows what the AI understood from your
+    natural language input, allowing you to confirm before applying.
+
+    **Human-in-the-loop protection:**
+    - Prevents misinterpretation (e.g., "$500" parsed as "$5000")
+    - Shows blocked categories clearly
+    - Highlights any unusual restrictions
+    """
+    # Parse the policy
+    parsed = await parse_natural_language_policy(
+        ParsePolicyRequest(
+            natural_language=request.natural_language,
+            agent_id=request.agent_id,
+        )
+    )
+
+    # Generate warnings for potential issues
+    warnings = []
+
+    # Check for high limits
+    for limit in parsed.spending_limits:
+        if limit.max_amount > 10000:
+            warnings.append(
+                f"High spending limit detected: ${limit.max_amount} {limit.period} for {limit.vendor_pattern}"
+            )
+
+    if parsed.global_daily_limit and parsed.global_daily_limit > 10000:
+        warnings.append(f"High global daily limit: ${parsed.global_daily_limit}")
+
+    if parsed.global_monthly_limit and parsed.global_monthly_limit > 100000:
+        warnings.append(f"High global monthly limit: ${parsed.global_monthly_limit}")
+
+    # Check for missing blocks
+    if not parsed.category_restrictions or not parsed.category_restrictions.blocked_categories:
+        warnings.append("No blocked categories specified. Consider blocking 'gambling' and 'adult' categories.")
+
+    # Generate confirmation message
+    limit_summary = []
+    for limit in parsed.spending_limits:
+        limit_summary.append(f"${limit.max_amount} {limit.period} on {limit.vendor_pattern}")
+
+    blocked = []
+    if parsed.category_restrictions and parsed.category_restrictions.blocked_categories:
+        blocked = parsed.category_restrictions.blocked_categories
+
+    confirmation_message = (
+        f"Policy Summary:\n"
+        f"- Spending limits: {', '.join(limit_summary) if limit_summary else 'None specified'}\n"
+        f"- Blocked categories: {', '.join(blocked) if blocked else 'None'}\n"
+        f"- Requires approval above: ${parsed.requires_approval_above if parsed.requires_approval_above else 'N/A'}\n"
+        f"\nDo you want to apply this policy to agent {request.agent_id}?"
+    )
+
+    return PolicyPreviewResponse(
+        parsed=parsed,
+        warnings=warnings,
+        requires_confirmation=True,
+        confirmation_message=confirmation_message,
+    )
+
+
+@router.post("/apply", response_model=dict)
+async def apply_policy_from_nl(
+    request: CreatePolicyFromNLRequest,
+):
+    """
+    Parse natural language and apply policy to an agent.
+
+    **IMPORTANT:** Set `confirm: true` to actually apply the policy.
+    Otherwise, use `/preview` first to see what will be applied.
+
+    **Safety features:**
+    - Requires explicit confirmation
+    - Returns the applied policy for verification
+    - Logs all policy changes for audit
+    """
+    if not request.confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Confirmation required. Set 'confirm: true' or use /preview first.",
+        )
+
+    try:
+        from sardis_v2_core.nl_policy_parser import NLPolicyParser, HAS_INSTRUCTOR
+
+        if not HAS_INSTRUCTOR:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="LLM policy parsing requires instructor package",
+            )
+
+        parser = NLPolicyParser()
+        policy = await parser.parse_and_convert(
+            request.natural_language,
+            request.agent_id,
+        )
+
+        # In production, this would save to database
+        # For now, return the policy details
+        logger.info(
+            f"Policy applied: agent_id={request.agent_id}, "
+            f"policy_id={policy.policy_id}, "
+            f"limits={policy.limit_per_tx}/{policy.limit_total}"
+        )
+
+        return {
+            "success": True,
+            "policy_id": policy.policy_id,
+            "agent_id": policy.agent_id,
+            "trust_level": policy.trust_level.value,
+            "limit_per_tx": str(policy.limit_per_tx),
+            "limit_total": str(policy.limit_total),
+            "daily_limit": str(policy.daily_limit.limit_amount) if policy.daily_limit else None,
+            "weekly_limit": str(policy.weekly_limit.limit_amount) if policy.weekly_limit else None,
+            "monthly_limit": str(policy.monthly_limit.limit_amount) if policy.monthly_limit else None,
+            "merchant_rules_count": len(policy.merchant_rules),
+            "require_preauth": policy.require_preauth,
+            "message": f"Policy {policy.policy_id} applied to agent {request.agent_id}",
+        }
+
+    except ImportError as e:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"Policy parsing not available: {e}",
+        )
+    except Exception as e:
+        logger.error(f"Failed to apply policy: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to apply policy: {str(e)}",
+        )
+
+
+@router.get("/examples", response_model=List[dict])
+async def get_policy_examples():
+    """
+    Get example natural language policies.
+
+    These examples demonstrate the supported policy syntax and can be
+    used as templates for creating your own policies.
+    """
+    return [
+        {
+            "description": "Basic cloud spending policy",
+            "natural_language": "Allow max $500 per day on AWS and OpenAI, block gambling",
+            "use_case": "AI agent that needs to purchase cloud compute and API credits",
+        },
+        {
+            "description": "Conservative spending with approval",
+            "natural_language": "Spend up to $100 per transaction, require approval over $500, max $1000 monthly",
+            "use_case": "Low-trust agent with spending oversight",
+        },
+        {
+            "description": "Cloud-only policy",
+            "natural_language": "Only allow cloud services (AWS, GCP, Azure, DigitalOcean, Vercel) with $2000 monthly limit",
+            "use_case": "DevOps agent restricted to infrastructure spending",
+        },
+        {
+            "description": "Business hours only",
+            "natural_language": "Allow $200 daily during business hours (9am-5pm weekdays), block adult and gambling",
+            "use_case": "Agent that should only operate during work hours",
+        },
+        {
+            "description": "SaaS subscription manager",
+            "natural_language": "Allow Slack, Notion, GitHub, Figma up to $50 each monthly, total cap $500",
+            "use_case": "Agent managing team software subscriptions",
+        },
+        {
+            "description": "AI API spending",
+            "natural_language": "OpenAI and Anthropic only, max $1000 per month combined, $100 per transaction limit",
+            "use_case": "Agent that uses LLM APIs for its operations",
+        },
+    ]

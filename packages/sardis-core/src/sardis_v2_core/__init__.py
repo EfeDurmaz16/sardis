@@ -60,6 +60,18 @@ from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create
 from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
 from .wallet_repository import WalletRepository
 from .utils import TTLDict, BoundedDict, TTLEntry
+from .nl_policy_parser import (
+    NLPolicyParser,
+    RegexPolicyParser,
+    create_policy_parser,
+    parse_nl_policy,
+    parse_nl_policy_sync,
+)
+from .spending_tracker import (
+    SpendingTracker,
+    InMemorySpendingTracker,
+    create_spending_tracker,
+)
 
 __all__ = [
     # Exceptions
@@ -156,4 +168,14 @@ __all__ = [
     "TTLDict",
     "BoundedDict",
     "TTLEntry",
+    # NL Policy Parser
+    "NLPolicyParser",
+    "RegexPolicyParser",
+    "create_policy_parser",
+    "parse_nl_policy",
+    "parse_nl_policy_sync",
+    # Spending Tracker
+    "SpendingTracker",
+    "InMemorySpendingTracker",
+    "create_spending_tracker",
 ]

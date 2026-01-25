@@ -198,8 +198,8 @@ STABLECOIN_ADDRESSES = {
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
-        "wallet_factory": "",  # Deploy with: forge script Deploy.s.sol --rpc-url base_sepolia
-        "escrow": "",          # Contract addresses will be output after deployment
+        "wallet_factory": "0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
+        "escrow": "0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932",
     },
     "polygon_amoy": {
         "wallet_factory": "",
@@ -1205,6 +1205,14 @@ class ChainExecutor:
             config = CHAIN_CONFIGS.get(chain)
             if not config:
                 raise ValueError(f"Unknown chain: {chain}")
+
+            # Block Solana chains - not yet implemented
+            if config.get("not_implemented") or config.get("is_solana"):
+                raise NotImplementedError(
+                    f"Chain '{chain}' is not yet supported. "
+                    f"Solana integration requires Anchor programs and is planned for a future release. "
+                    f"Supported chains: base, polygon, ethereum, arbitrum, optimism (and their testnets)."
+                )
             
             # Check for custom RPC URL in settings
             rpc_url = config["rpc_url"]

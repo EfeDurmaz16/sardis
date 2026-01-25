@@ -5,6 +5,8 @@ from .checks import (
     ComplianceAuditStore,
     ComplianceEngine,
     ComplianceResult,
+    SimpleRuleProvider,
+    NLPolicyProvider,
     get_audit_store,
 )
 from .kyc import (
@@ -35,6 +37,8 @@ __all__ = [
     # Compliance engine
     "ComplianceEngine",
     "ComplianceResult",
+    "SimpleRuleProvider",
+    "NLPolicyProvider",
     # Audit trail
     "ComplianceAuditEntry",
     "ComplianceAuditStore",

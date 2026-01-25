@@ -178,18 +178,74 @@ const client = new SardisClient({
 });
 ```
 
+## Agents
+
+Create and manage AI agents with spending policies:
+
+```typescript
+// Create an agent
+const agent = await client.agents.create({
+  name: 'Invoice Processing Agent',
+  description: 'Processes invoices and pays vendors',
+  spending_limits: {
+    per_transaction: '500.00',
+    daily: '5000.00',
+    monthly: '50000.00',
+  },
+  policy: {
+    blocked_categories: ['gambling', 'adult'],
+    approval_threshold: '1000.00',
+  },
+});
+
+// Update spending limits
+await client.agents.update(agent.id, {
+  spending_limits: { daily: '10000.00' },
+});
+
+// List agents
+const agents = await client.agents.list({ is_active: true, limit: 50 });
+```
+
+## Wallets
+
+Manage non-custodial MPC wallets:
+
+```typescript
+// Create a wallet for an agent
+const wallet = await client.wallets.create({
+  agent_id: agent.id,
+  mpc_provider: 'turnkey', // or 'fireblocks'
+  limit_per_tx: '500.00',
+  limit_total: '10000.00',
+});
+
+// Get wallet balance (read from chain)
+const balance = await client.wallets.getBalance(wallet.id, 'base', 'USDC');
+console.log(`Balance: ${balance.balance} USDC`);
+
+// Set chain address
+await client.wallets.setAddress(wallet.id, 'base', '0x...');
+```
+
 ## Supported Chains
 
-- Base (mainnet & Sepolia testnet)
-- Polygon (mainnet & Amoy testnet)
-- Ethereum (mainnet & Sepolia testnet)
+| Chain | Mainnet | Testnet |
+|-------|---------|---------|
+| Base | `base` | `base_sepolia` |
+| Polygon | `polygon` | `polygon_amoy` |
+| Ethereum | `ethereum` | `ethereum_sepolia` |
+| Arbitrum | `arbitrum` | `arbitrum_sepolia` |
+| Optimism | `optimism` | `optimism_sepolia` |
+
+> **Note:** Solana support is planned but not yet implemented.
 
 ## Supported Tokens
 
-- USDC
-- USDT
-- PYUSD
-- EURC
+- **USDC** - USD Coin (Circle)
+- **USDT** - Tether USD
+- **PYUSD** - PayPal USD
+- **EURC** - Euro Coin (Circle)
 
 ## TypeScript Support
 
@@ -197,12 +253,63 @@ This SDK is written in TypeScript and provides full type definitions for all API
 
 ```typescript
 import type {
+  Chain,
+  Token,
+  MPCProvider,
   Payment,
   Hold,
   Webhook,
   Service,
   GasEstimate,
+  Agent,
+  Wallet,
+  WalletBalance,
 } from '@sardis/sdk';
+
+// Type-safe chain selection
+const chain: Chain = 'base';
+const token: Token = 'USDC';
+```
+
+## Framework Integrations
+
+### LangChain.js
+
+```typescript
+import { SardisToolkit } from '@sardis/sdk/integrations/langchain';
+
+const toolkit = new SardisToolkit({ client });
+const tools = toolkit.getTools();
+
+// Use with LangChain agent
+const agent = createOpenAIFunctionsAgent({ llm, tools, prompt });
+```
+
+### Vercel AI SDK
+
+```typescript
+import { sardisTools } from '@sardis/sdk/integrations/vercel-ai';
+
+const tools = sardisTools(client);
+
+// Use with Vercel AI
+const { text } = await generateText({
+  model: openai('gpt-4'),
+  tools,
+  messages,
+});
+```
+
+### OpenAI Function Calling
+
+```typescript
+import { sardisFunctions, handleSardisCall } from '@sardis/sdk/integrations/openai';
+
+// Get function definitions
+const functions = sardisFunctions(client);
+
+// Handle function calls
+const result = await handleSardisCall(client, functionName, args);
 ```
 
 ## License

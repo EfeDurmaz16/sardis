@@ -179,18 +179,141 @@ client = SardisClient(
 )
 ```
 
+## Agents
+
+Create and manage AI agents with spending policies:
+
+```python
+# Create an agent
+agent = await client.agents.create(
+    name="Invoice Processing Agent",
+    description="Processes invoices and pays vendors",
+    spending_limits={
+        "per_transaction": "500.00",
+        "daily": "5000.00",
+        "monthly": "50000.00",
+    },
+    policy={
+        "blocked_categories": ["gambling", "adult"],
+        "approval_threshold": "1000.00",
+    },
+)
+
+# Update spending limits
+await client.agents.update(
+    agent.id,
+    spending_limits={"daily": "10000.00"},
+)
+
+# List agents
+agents = await client.agents.list(is_active=True, limit=50)
+```
+
+## Wallets
+
+Manage non-custodial MPC wallets:
+
+```python
+# Create a wallet for an agent
+wallet = await client.wallets.create(
+    agent_id=agent.id,
+    mpc_provider="turnkey",  # or "fireblocks"
+    limit_per_tx="500.00",
+    limit_total="10000.00",
+)
+
+# Get wallet balance (read from chain)
+balance = await client.wallets.get_balance(
+    wallet_id=wallet.id,
+    chain="base",
+    token="USDC",
+)
+print(f"Balance: {balance.balance} USDC")
+
+# Set chain address
+await client.wallets.set_address(
+    wallet_id=wallet.id,
+    chain="base",
+    address="0x...",
+)
+```
+
 ## Supported Chains
 
-- Base (mainnet & Sepolia testnet)
-- Polygon (mainnet & Amoy testnet)
-- Ethereum (mainnet & Sepolia testnet)
+| Chain | Mainnet | Testnet |
+|-------|---------|---------|
+| Base | `base` | `base_sepolia` |
+| Polygon | `polygon` | `polygon_amoy` |
+| Ethereum | `ethereum` | `ethereum_sepolia` |
+| Arbitrum | `arbitrum` | `arbitrum_sepolia` |
+| Optimism | `optimism` | `optimism_sepolia` |
+
+> **Note:** Solana support is planned but not yet implemented.
 
 ## Supported Tokens
 
-- USDC
-- USDT
-- PYUSD
-- EURC
+- **USDC** - USD Coin (Circle)
+- **USDT** - Tether USD
+- **PYUSD** - PayPal USD
+- **EURC** - Euro Coin (Circle)
+
+## Type Hints
+
+The SDK is fully typed with Python type hints:
+
+```python
+from sardis_sdk.models import (
+    Chain,           # Literal type for supported chains
+    Token,           # Literal type for supported tokens
+    MPCProvider,     # Literal type for MPC providers
+    ChainEnum,       # Enum for chain selection
+    Payment,
+    Wallet,
+    Agent,
+)
+
+# Use type hints for better IDE support
+chain: Chain = "base"
+token: Token = "USDC"
+```
+
+## Framework Integrations
+
+### LangChain
+
+```python
+from sardis_sdk.integrations.langchain import SardisToolkit
+
+toolkit = SardisToolkit(client=client)
+tools = toolkit.get_tools()
+
+# Use with LangChain agent
+agent = create_openai_functions_agent(llm, tools, prompt)
+```
+
+### LlamaIndex
+
+```python
+from sardis_sdk.integrations.llamaindex import SardisToolSpec
+
+tool_spec = SardisToolSpec(client=client)
+tools = tool_spec.to_tool_list()
+
+# Use with LlamaIndex agent
+agent = OpenAIAgent.from_tools(tools)
+```
+
+### OpenAI Function Calling
+
+```python
+from sardis_sdk.integrations.openai import sardis_functions, handle_sardis_call
+
+# Get function definitions
+functions = sardis_functions(client)
+
+# Handle function calls
+result = await handle_sardis_call(client, function_name, arguments)
+```
 
 ## License
 

@@ -188,6 +188,10 @@ class CacheService:
     def __init__(self, backend: CacheBackend):
         self._backend = backend
 
+    async def get(self, key: str) -> Optional[str]:
+        """Get a raw value from cache (for health checks)."""
+        return await self._backend.get(key)
+
     @classmethod
     def create(cls, redis_url: Optional[str] = None) -> "CacheService":
         """Create a cache service with appropriate backend."""

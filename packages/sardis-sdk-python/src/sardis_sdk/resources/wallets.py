@@ -22,19 +22,23 @@ class WalletsResource(Resource):
         agent_id: str,
         mpc_provider: str = "turnkey",
         currency: str = "USDC",
+        chain: Optional[str] = None,
         limit_per_tx: Optional[Decimal] = None,
         limit_total: Optional[Decimal] = None,
+        metadata: Optional[dict] = None,
     ) -> Wallet:
         """
         Create a new non-custodial wallet for an agent.
-        
+
         Args:
             agent_id: ID of the owner agent
             mpc_provider: MPC provider ("turnkey", "fireblocks", or "local")
             currency: Base currency code (default: USDC)
+            chain: Optional chain identifier (e.g., "base_sepolia", "base")
             limit_per_tx: Per-transaction spending limit
             limit_total: Total spending limit
-            
+            metadata: Optional metadata dictionary
+
         Returns:
             The created Wallet object
         """
@@ -43,12 +47,16 @@ class WalletsResource(Resource):
             "mpc_provider": mpc_provider,
             "currency": currency,
         }
-        
+
+        if chain is not None:
+            payload["chain"] = chain
         if limit_per_tx is not None:
             payload["limit_per_tx"] = str(limit_per_tx)
         if limit_total is not None:
             payload["limit_total"] = str(limit_total)
-            
+        if metadata is not None:
+            payload["metadata"] = metadata
+
         data = await self._client._request("POST", "wallets", json=payload)
         return Wallet.parse_obj(data)
 

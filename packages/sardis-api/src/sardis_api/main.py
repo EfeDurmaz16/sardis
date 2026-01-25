@@ -32,6 +32,8 @@ from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
 from .routers import checkout as checkout_router
+from .routers import policies as policies_router
+from .routers import compliance as compliance_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -265,6 +267,26 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=checkout_orchestrator,
     )
     app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
+
+    # Policy routes (Natural Language policy parsing)
+    app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
+
+    # Compliance routes (KYC and Sanctions)
+    from sardis_compliance import create_kyc_service, create_sanctions_service
+    kyc_service = create_kyc_service(
+        api_key=os.getenv("PERSONA_API_KEY"),
+        template_id=os.getenv("PERSONA_TEMPLATE_ID"),
+        environment="sandbox" if settings.environment != "production" else "production",
+    )
+    sanctions_service = create_sanctions_service(
+        api_key=os.getenv("ELLIPTIC_API_KEY"),
+        api_secret=os.getenv("ELLIPTIC_API_SECRET"),
+    )
+    app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
+        kyc_service=kyc_service,
+        sanctions_service=sanctions_service,
+    )
+    app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
 
     # Health check endpoints
     @app.get("/", tags=["health"])

@@ -31,9 +31,97 @@ class RateLimitState:
     last_update: float = 0
 
 
+class RedisRateLimiter:
+    """Production-ready Redis-backed rate limiter using sliding window."""
+
+    def __init__(self, config: RateLimitConfig, redis_url: str):
+        self.config = config
+        self._redis_url = redis_url
+        self._redis = None
+
+    def _get_redis(self):
+        """Lazy Redis connection."""
+        if self._redis is None:
+            try:
+                import redis
+                self._redis = redis.from_url(self._redis_url, decode_responses=True)
+            except ImportError:
+                raise RuntimeError(
+                    "redis package required for RedisRateLimiter. "
+                    "Install with: pip install redis"
+                )
+        return self._redis
+
+    def _get_client_key(self, request: Request) -> str:
+        """Get a unique key for the client."""
+        api_key = request.headers.get("X-API-Key", "")
+        if api_key:
+            return f"rl:key:{api_key[:8]}"
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return f"rl:ip:{forwarded.split(',')[0].strip()}"
+        client_host = request.client.host if request.client else "unknown"
+        return f"rl:ip:{client_host}"
+
+    def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
+        """Check rate limit using Redis sliding window."""
+        now = time.time()
+        client_key = self._get_client_key(request)
+        redis_client = self._get_redis()
+
+        # Sliding window keys
+        minute_key = f"{client_key}:minute"
+        hour_key = f"{client_key}:hour"
+
+        # Use pipeline for atomic operations
+        pipe = redis_client.pipeline()
+
+        # Clean old entries and count current
+        minute_cutoff = now - 60
+        hour_cutoff = now - 3600
+
+        # Minute window
+        pipe.zremrangebyscore(minute_key, 0, minute_cutoff)
+        pipe.zcard(minute_key)
+        pipe.zadd(minute_key, {str(now): now})
+        pipe.expire(minute_key, 120)
+
+        # Hour window
+        pipe.zremrangebyscore(hour_key, 0, hour_cutoff)
+        pipe.zcard(hour_key)
+        pipe.zadd(hour_key, {str(now): now})
+        pipe.expire(hour_key, 7200)
+
+        results = pipe.execute()
+        minute_count = results[1]
+        hour_count = results[5]
+
+        headers = {
+            "X-RateLimit-Limit": str(self.config.requests_per_minute),
+            "X-RateLimit-Remaining": str(max(0, self.config.requests_per_minute - minute_count)),
+            "X-RateLimit-Reset": str(int(now + 60)),
+        }
+
+        # Check limits
+        if minute_count > self.config.requests_per_minute:
+            headers["Retry-After"] = "60"
+            return False, headers
+
+        if hour_count > self.config.requests_per_hour:
+            headers["Retry-After"] = "3600"
+            return False, headers
+
+        headers["X-RateLimit-Remaining"] = str(max(0, self.config.requests_per_minute - minute_count))
+        return True, headers
+
+
 class InMemoryRateLimiter:
-    """Simple in-memory rate limiter using token bucket algorithm."""
-    
+    """Simple in-memory rate limiter using token bucket algorithm.
+
+    ⚠️ WARNING: This is single-instance only. For multi-instance deployments,
+    use RedisRateLimiter by setting REDIS_URL environment variable.
+    """
+
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self._states: dict[str, RateLimitState] = defaultdict(RateLimitState)
@@ -109,9 +197,37 @@ class InMemoryRateLimiter:
         return True, headers
 
 
+def create_rate_limiter(config: RateLimitConfig) -> InMemoryRateLimiter:
+    """Factory to create appropriate rate limiter based on environment."""
+    import os
+    import logging
+
+    logger = logging.getLogger(__name__)
+    redis_url = os.getenv("REDIS_URL", "")
+
+    if redis_url:
+        try:
+            limiter = RedisRateLimiter(config, redis_url)
+            # Test connection
+            limiter._get_redis().ping()
+            logger.info("Using Redis-backed rate limiter for multi-instance support")
+            return limiter
+        except Exception as e:
+            logger.warning(f"Redis rate limiter failed ({e}), falling back to in-memory")
+
+    if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production"):
+        logger.warning(
+            "⚠️ Using in-memory rate limiter in PRODUCTION. "
+            "This does NOT work correctly with multiple instances. "
+            "Set REDIS_URL for distributed rate limiting."
+        )
+
+    return InMemoryRateLimiter(config)
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware for rate limiting."""
-    
+
     def __init__(
         self,
         app,
@@ -119,7 +235,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         exclude_paths: Optional[list[str]] = None,
     ):
         super().__init__(app)
-        self.limiter = InMemoryRateLimiter(config or RateLimitConfig())
+        self.limiter = create_rate_limiter(config or RateLimitConfig())
         self.exclude_paths = exclude_paths or ["/health", "/", "/api/v2/docs", "/api/v2/openapi.json"]
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

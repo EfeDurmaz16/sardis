@@ -1,5 +1,5 @@
 """Sardis SDK Models."""
-from .base import SardisModel
+from .base import SardisModel, Chain, Token, MPCProvider, ChainEnum, ExperimentalChain
 from .agent import Agent, CreateAgentRequest, AgentCreate, AgentUpdate
 from .wallet import Wallet, TokenBalance, TokenLimit, WalletBalance, WalletCreate
 from .payment import Payment, PaymentStatus, ExecutePaymentRequest, ExecutePaymentResponse, PaymentMandate
@@ -13,6 +13,11 @@ from .errors import (
 
 __all__ = [
     "SardisModel",
+    "Chain",
+    "Token",
+    "MPCProvider",
+    "ChainEnum",
+    "ExperimentalChain",
     "Agent",
     "CreateAgentRequest",
     "AgentCreate",

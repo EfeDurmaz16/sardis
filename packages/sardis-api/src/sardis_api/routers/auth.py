@@ -19,8 +19,24 @@ import base64
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
 
-# JWT configuration
-JWT_SECRET = os.getenv("JWT_SECRET_KEY", secrets.token_hex(32))
+# JWT configuration - SECURITY CRITICAL
+_jwt_secret_env = os.getenv("JWT_SECRET_KEY", "")
+if not _jwt_secret_env:
+    import logging
+    _logger = logging.getLogger(__name__)
+    if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production", "staging"):
+        raise RuntimeError(
+            "CRITICAL: JWT_SECRET_KEY environment variable is not set. "
+            "This is required for production deployments. "
+            "Generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    _logger.warning(
+        "⚠️ JWT_SECRET_KEY not set - generating random secret. "
+        "This will invalidate all tokens on restart. Set JWT_SECRET_KEY for persistent sessions."
+    )
+    _jwt_secret_env = secrets.token_hex(32)
+
+JWT_SECRET = _jwt_secret_env
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
@@ -187,7 +203,22 @@ async def login(
 
     Returns a JWT access token on successful authentication.
     """
-    admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "admin")
+    admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "")
+
+    # SECURITY: Require explicit password in production
+    if not admin_password:
+        if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production", "staging"):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication not configured. Set SARDIS_ADMIN_PASSWORD.",
+            )
+        # Dev mode: use insecure default but warn
+        import logging
+        logging.getLogger(__name__).warning(
+            "⚠️ SARDIS_ADMIN_PASSWORD not set - using insecure default 'change-me-immediately'. "
+            "DO NOT use this in production!"
+        )
+        admin_password = "change-me-immediately"
 
     # Timing-safe comparison to prevent timing attacks
     valid_username = hmac.compare_digest(username, "admin")
