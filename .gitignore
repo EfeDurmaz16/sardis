@@ -80,3 +80,30 @@ coverage/
 RALPH_LOOP_*.md
 run_ralph_loop.sh
 demo-video/
+
+# Planning & documentation files (internal)
+*.docx
+*.pptx
+pitch-deck/
+DEMO_VIDEO_SCRIPT.md
+PRODUCTION_DEPLOYMENT_GUIDE.md
+SARDIS_DEPLOYMENT_INVESTMENT_AUDIT*.md
+AUDIT_SUMMARY*.md
+
+# Backup/duplicate files (macOS creates these)
+* 2.md
+* 2.py
+* 2.ts
+*__init__ 2.py
+*index 2.ts
+
+# Playwright MCP
+.playwright-mcp/
+
+# Landing backup
+landing-2/
+
+# Deployment configs (keep local)
+fly.toml
+railway.json
+docker-compose.yml
