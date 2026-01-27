@@ -296,7 +296,7 @@ export default function MCP36Tools() {
 
         <p>
           Have a tool you'd like to see? Let us know on <a href="https://discord.gg/sardis" className="text-[var(--sardis-orange)]">Discord</a> or
-          open an issue on <a href="https://github.com/sardis-pay" className="text-[var(--sardis-orange)]">GitHub</a>.
+          open an issue on <a href="https://github.com/EfeDurmaz16/sardis" className="text-[var(--sardis-orange)]">GitHub</a>.
         </p>
 
         <p>

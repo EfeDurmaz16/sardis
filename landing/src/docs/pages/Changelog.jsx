@@ -277,7 +277,7 @@ export default function DocsChangelog() {
           Follow our GitHub releases for the latest updates.
         </p>
         <a
-          href="https://github.com/anthropics/sardis/releases"
+          href="https://github.com/EfeDurmaz16/sardis/releases"
           className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--sardis-orange)] text-white font-medium text-sm hover:bg-[var(--sardis-orange)]/90 transition-colors"
         >
           View on GitHub

@@ -184,7 +184,7 @@ export default function DocsWhitepaper() {
           would otherwise make autonomous agent spending too risky to deploy.
         </p>
         <div className="flex gap-3">
-          <a href="mailto:efe@sardis.dev"
+          <a href="mailto:contact@sardis.sh"
             className="px-4 py-2 bg-[var(--sardis-orange)] text-white text-sm font-mono hover:bg-[var(--sardis-orange)]/90 transition-colors">
             Contact Us
           </a>

@@ -204,7 +204,7 @@ const Roadmap = () => {
         </p>
         <div className="flex flex-wrap gap-3">
           <a
-            href="https://github.com/sardis-project/sardis/issues/new?template=feature_request.md"
+            href="https://github.com/EfeDurmaz16/sardis/issues/new?template=feature_request.md"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 bg-[var(--sardis-orange)] text-white text-sm font-medium hover:bg-[var(--sardis-orange)]/90 transition-colors"

@@ -215,10 +215,10 @@ export default function DocsFAQ() {
             Ask on GitHub
           </a>
           <a
-            href="mailto:support@sardis.sh"
+            href="mailto:contact@sardis.sh"
             className="px-4 py-2 border border-border text-foreground font-medium text-sm hover:border-[var(--sardis-orange)] transition-colors"
           >
-            Email Support
+            Contact Us
           </a>
         </div>
       </section>

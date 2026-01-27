@@ -221,8 +221,8 @@ const PrivacyPolicy = () => {
             If you have questions about this Privacy Policy or wish to exercise your rights, contact us:
           </p>
           <div className="bg-card border border-border p-4 mt-4 font-mono text-sm">
-            <p>Email: privacy@sardis.sh</p>
-            <p>Data Protection Officer: dpo@sardis.sh</p>
+            <p>Email: legal@sardis.sh</p>
+            <p>General Inquiries: contact@sardis.sh</p>
             <p>Website: https://sardis.sh</p>
           </div>
           <p className="text-muted-foreground leading-relaxed mt-4">

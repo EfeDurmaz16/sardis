@@ -328,7 +328,7 @@ export default function DocsSecurity() {
         </p>
         <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-3 font-mono text-sm">
           <span className="text-muted-foreground">Email:</span>{' '}
-          <a href="mailto:security@sardis.sh" className="text-[var(--sardis-orange)]">security@sardis.sh</a>
+          <a href="mailto:dev@sardis.sh" className="text-[var(--sardis-orange)]">dev@sardis.sh</a>
         </div>
         <p className="text-muted-foreground text-sm mt-4">
           We offer a bug bounty program for qualifying vulnerabilities. Rewards up to $10,000 for critical issues.
