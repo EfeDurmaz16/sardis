@@ -70,92 +70,84 @@ const Roadmap = () => {
       version: 'v0.1.0 - v0.3.0',
       title: 'Foundation',
       status: 'completed',
-      date: 'Q3 2025',
+      date: 'Dec 2025',
       items: [
         { text: 'Core payment infrastructure', done: true },
         { text: 'MPC wallet integration (Turnkey)', done: true },
         { text: 'Base chain support', done: true },
         { text: 'Basic spending policies', done: true },
-        { text: 'REST API v1', done: true },
+        { text: 'REST API v2', done: true },
+        { text: 'MCP Server (4 tools)', done: true },
       ],
     },
     {
-      version: 'v0.4.0',
-      title: 'Multi-Chain & Compliance',
+      version: 'v0.4.0 - v0.5.0',
+      title: 'Protocols & Multi-Chain',
       status: 'completed',
-      date: 'Q4 2025',
+      date: 'Jan 2026',
       items: [
-        { text: 'Polygon, Ethereum, Arbitrum support', done: true },
-        { text: 'KYC integration (Persona)', done: true },
-        { text: 'Sanctions screening (Elliptic)', done: true },
-        { text: 'Compliance audit trail', done: true },
-        { text: 'Python SDK release', done: true },
-      ],
-    },
-    {
-      version: 'v0.5.0',
-      title: 'AI-Native Features',
-      status: 'completed',
-      date: 'Dec 2025',
-      items: [
-        { text: 'MCP Server (36 tools)', done: true },
-        { text: 'Natural language policy parser', done: true },
-        { text: 'AP2 protocol support', done: true },
-        { text: 'TypeScript SDK release', done: true },
-        { text: 'A2A Marketplace beta', done: true },
+        { text: 'Polygon, Ethereum, Arbitrum, Optimism support', done: true },
+        { text: 'AP2 (Agent Payment Protocol) implementation', done: true },
+        { text: 'UCP (Universal Commerce Protocol)', done: true },
+        { text: 'A2A (Agent-to-Agent) protocol', done: true },
+        { text: 'TAP identity verification', done: true },
+        { text: 'MCP Server expanded to 36+ tools', done: true },
       ],
     },
     {
       version: 'v0.6.0',
-      title: 'Production Hardening',
+      title: 'Fiat Rails & Virtual Cards',
       status: 'current',
-      date: 'Q1 2026',
+      date: 'Jan 2026',
       items: [
-        { text: 'PostgreSQL audit store', done: true },
-        { text: 'Redis rate limiting', done: true },
-        { text: 'Security hardening', done: true },
+        { text: 'Fiat on-ramp via Onramper', done: true },
+        { text: 'Fiat off-ramp via Bridge', done: true },
+        { text: 'Virtual card issuance (Lithic)', done: true },
+        { text: 'Unified USDC/USD balance (1:1)', done: true },
+        { text: 'KYC integration (Persona)', done: true },
+        { text: 'AML screening (Elliptic)', done: true },
         { text: 'Smart contract audit', done: false },
-        { text: 'SOC 2 Type II preparation', done: false },
-        { text: 'Mainnet deployment (Base)', done: false },
+        { text: 'Base mainnet deployment', done: false },
       ],
     },
     {
       version: 'v0.7.0',
-      title: 'Virtual Cards & Fiat',
+      title: 'Production Hardening',
       status: 'upcoming',
-      date: 'Q2 2026',
+      date: 'Q1 2026',
       items: [
-        { text: 'Virtual card issuance (Lithic)', done: false },
-        { text: 'Fiat on/off ramp (Bridge)', done: false },
-        { text: 'Multi-currency support', done: false },
-        { text: 'Merchant payment rails', done: false },
-        { text: 'Recurring payments', done: false },
+        { text: 'SOC 2 Type II certification', done: false },
+        { text: 'Multi-chain mainnet deployment', done: false },
+        { text: 'Enhanced rate limiting', done: false },
+        { text: 'Webhook reliability improvements', done: false },
+        { text: 'Dashboard analytics', done: false },
       ],
     },
     {
       version: 'v0.8.0',
       title: 'Enterprise Features',
       status: 'planned',
-      date: 'Q3 2026',
+      date: 'Q2 2026',
       items: [
         { text: 'Multi-tenant organization support', done: false },
         { text: 'Custom policy templates', done: false },
         { text: 'Advanced analytics dashboard', done: false },
         { text: 'Webhook management UI', done: false },
         { text: 'Enterprise SLA & support', done: false },
+        { text: 'Recurring payments', done: false },
       ],
     },
     {
       version: 'v1.0.0',
       title: 'General Availability',
       status: 'planned',
-      date: 'Q4 2026',
+      date: 'Q3 2026',
       items: [
         { text: 'Full production readiness', done: false },
-        { text: 'Multi-chain mainnet deployment', done: false },
+        { text: 'Public API stability guarantee', done: false },
         { text: 'Mobile SDK (iOS/Android)', done: false },
         { text: 'Self-service onboarding', done: false },
-        { text: 'Public API stability guarantee', done: false },
+        { text: 'Developer portal launch', done: false },
       ],
     },
   ];
@@ -173,7 +165,7 @@ const Roadmap = () => {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
         {[
-          { label: 'Completed', count: 3, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 2, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 2, color: 'bg-slate-400' },
@@ -212,12 +204,10 @@ const Roadmap = () => {
             Submit on GitHub
           </a>
           <a
-            href="https://discord.gg/sardis"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="mailto:dev@sardis.sh"
             className="px-4 py-2 border border-border text-foreground text-sm font-medium hover:border-[var(--sardis-orange)] transition-colors"
           >
-            Join Discord
+            Email Us
           </a>
         </div>
       </div>

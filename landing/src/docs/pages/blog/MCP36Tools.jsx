@@ -23,15 +23,15 @@ export default function MCP36Tools() {
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">
-          MCP Server: 36+ Tools for AI Payments
+          MCP Server: 40+ Tools for AI Payments
         </h1>
         <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
           <span className="flex items-center gap-1">
             <Calendar className="w-4 h-4" />
-            January 18, 2026
+            January 27, 2026
           </span>
           <span className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />5 min read
+            <Clock className="w-4 h-4" />6 min read
           </span>
         </div>
       </header>
@@ -39,26 +39,24 @@ export default function MCP36Tools() {
       {/* Content */}
       <div className="prose prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
-          Our MCP server has expanded from 4 tools to 36+. From checkout sessions to
-          agent discovery, learn how to add comprehensive payment capabilities to
-          Claude Desktop and Cursor without writing code.
+          Our MCP server has grown from 4 tools to over 40. From fiat on-ramps to virtual cards,
+          learn how to give Claude or Cursor complete payment capabilities without writing any code.
         </p>
 
         <h2>The Evolution</h2>
         <p>
-          When we launched the Sardis MCP server six months ago, it had four tools:
-          get balance, make payment, list transactions, and request approval. Simple,
-          but limited.
+          When we launched the Sardis MCP server, it had four basic tools:
+          get balance, make payment, list transactions, and request approval.
         </p>
         <p>
-          Today, we're shipping 36+ tools that cover the entire payment lifecycle.
-          Your AI agent can now manage wallets, issue virtual cards, handle checkout
-          flows, coordinate with other agents, and more - all through Claude Desktop
-          or Cursor.
+          Today, we're shipping 40+ tools that cover the entire payment lifecycle—including
+          the new Fiat Rails (v0.6) for bank on-ramp/off-ramp and Virtual Cards via Lithic.
+          Your AI agent can now manage wallets, fund from banks, issue virtual cards, and
+          pay anywhere Visa is accepted.
         </p>
 
         <h2>Quick Setup</h2>
-        <p>Add this to your Claude Desktop or Cursor configuration:</p>
+        <p>Add this to your Claude Desktop or Cursor MCP configuration:</p>
 
         <div className="not-prose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] p-4 font-mono text-sm mb-6 border border-border overflow-x-auto">
           <pre className="text-[var(--sardis-canvas)]">
@@ -76,7 +74,7 @@ export default function MCP36Tools() {
           </pre>
         </div>
 
-        <p>Restart your app, and you now have 36+ payment tools available.</p>
+        <p>Restart your app, and you now have 40+ payment tools available.</p>
 
         <h2>Tool Categories</h2>
 
@@ -95,7 +93,7 @@ export default function MCP36Tools() {
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_create_wallet</td><td className="p-3 border-b border-border">Create new MPC wallet with policy</td></tr>
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_wallets</td><td className="p-3 border-b border-border">List all wallets</td></tr>
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_wallet</td><td className="p-3 border-b border-border">Get wallet details</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_balance</td><td className="p-3 border-b border-border">Check wallet balance</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_balance</td><td className="p-3 border-b border-border">Check unified balance (USDC + USD)</td></tr>
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_address</td><td className="p-3 border-b border-border">Get wallet address for a chain</td></tr>
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_update_policy</td><td className="p-3 border-b border-border">Update spending policy</td></tr>
               <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_check_policy</td><td className="p-3 border-b border-border">Check if transaction passes policy</td></tr>
@@ -104,8 +102,53 @@ export default function MCP36Tools() {
           </table>
         </div>
 
+        <h3>Fiat Rails (8 tools) <span className="text-emerald-500 text-sm">NEW in v0.6</span></h3>
+        <p>Fund wallets from banks and withdraw to fiat:</p>
+
+        <div className="not-prose overflow-x-auto mb-6">
+          <table className="w-full text-sm border border-border">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
+                <th className="text-left p-3 border-b border-border">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_fund_wallet</td><td className="p-3 border-b border-border">Fund wallet from bank (on-ramp)</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_withdraw_to_bank</td><td className="p-3 border-b border-border">Withdraw to bank (off-ramp)</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_fiat_quote</td><td className="p-3 border-b border-border">Get funding quote with fees</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_funding_status</td><td className="p-3 border-b border-border">Check funding status</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_link_bank_account</td><td className="p-3 border-b border-border">Link bank account</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_bank_accounts</td><td className="p-3 border-b border-border">List linked banks</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_kyc_status</td><td className="p-3 border-b border-border">Check KYC status</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_initiate_kyc</td><td className="p-3 border-b border-border">Start KYC verification</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Virtual Cards (5 tools) <span className="text-emerald-500 text-sm">NEW in v0.6</span></h3>
+        <p>Issue and manage virtual cards backed by your wallet:</p>
+
+        <div className="not-prose overflow-x-auto mb-6">
+          <table className="w-full text-sm border border-border">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
+                <th className="text-left p-3 border-b border-border">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_create_card</td><td className="p-3 border-b border-border">Issue a virtual card</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_cards</td><td className="p-3 border-b border-border">List all cards</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_card</td><td className="p-3 border-b border-border">Get card details</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_freeze_card</td><td className="p-3 border-b border-border">Temporarily freeze card</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_cancel_card</td><td className="p-3 border-b border-border">Permanently cancel card</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <h3>Payments (7 tools)</h3>
-        <p>Execute and manage transactions:</p>
+        <p>Execute and manage crypto transactions:</p>
 
         <div className="not-prose overflow-x-auto mb-6">
           <table className="w-full text-sm border border-border">
@@ -127,142 +170,35 @@ export default function MCP36Tools() {
           </table>
         </div>
 
-        <h3>Holds & Pre-authorization (5 tools)</h3>
-        <p>Reserve funds before final purchase:</p>
-
-        <div className="not-prose overflow-x-auto mb-6">
-          <table className="w-full text-sm border border-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
-                <th className="text-left p-3 border-b border-border">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_create_hold</td><td className="p-3 border-b border-border">Create a hold on funds</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_capture_hold</td><td className="p-3 border-b border-border">Capture held funds</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_release_hold</td><td className="p-3 border-b border-border">Release a hold</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_holds</td><td className="p-3 border-b border-border">List active holds</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_hold</td><td className="p-3 border-b border-border">Get hold details</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>Virtual Cards (5 tools)</h3>
-        <p>Issue and manage virtual cards:</p>
-
-        <div className="not-prose overflow-x-auto mb-6">
-          <table className="w-full text-sm border border-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
-                <th className="text-left p-3 border-b border-border">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_issue_card</td><td className="p-3 border-b border-border">Issue a virtual card</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_cards</td><td className="p-3 border-b border-border">List all cards</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_card</td><td className="p-3 border-b border-border">Get card details</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_freeze_card</td><td className="p-3 border-b border-border">Temporarily freeze card</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_cancel_card</td><td className="p-3 border-b border-border">Permanently cancel card</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>UCP Commerce (4 tools)</h3>
-        <p>Interact with UCP-enabled merchants:</p>
-
-        <div className="not-prose overflow-x-auto mb-6">
-          <table className="w-full text-sm border border-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
-                <th className="text-left p-3 border-b border-border">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_ucp_discover</td><td className="p-3 border-b border-border">Discover products from merchant</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_ucp_checkout</td><td className="p-3 border-b border-border">Create checkout session</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_ucp_confirm</td><td className="p-3 border-b border-border">Confirm and pay</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_ucp_cancel</td><td className="p-3 border-b border-border">Cancel checkout</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>A2A Agent Coordination (4 tools)</h3>
-        <p>Communicate with other AI agents:</p>
-
-        <div className="not-prose overflow-x-auto mb-6">
-          <table className="w-full text-sm border border-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
-                <th className="text-left p-3 border-b border-border">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_a2a_discover</td><td className="p-3 border-b border-border">Find other A2A agents</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_a2a_request</td><td className="p-3 border-b border-border">Send payment request</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_a2a_respond</td><td className="p-3 border-b border-border">Respond to request</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_a2a_status</td><td className="p-3 border-b border-border">Check request status</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3>Utilities (3 tools)</h3>
-        <p>Helper tools for common operations:</p>
-
-        <div className="not-prose overflow-x-auto mb-6">
-          <table className="w-full text-sm border border-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Tool</th>
-                <th className="text-left p-3 border-b border-border">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_prices</td><td className="p-3 border-b border-border">Get token prices</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_resolve_ens</td><td className="p-3 border-b border-border">Resolve ENS names</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_verify_address</td><td className="p-3 border-b border-border">Validate wallet address</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h2>Example Workflows</h2>
-
-        <h3>Buying API Credits</h3>
+        <h2>Example: Full Payment Flow</h2>
         <p>
-          Here's what Claude can do with these tools. Just say: "Buy $50 of OpenAI
-          API credits"
+          Here's what Claude can do with these tools. Just say: "Fund my wallet with $100 from
+          my bank, then pay $50 for OpenAI credits using a virtual card"
         </p>
 
         <div className="not-prose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] p-4 font-mono text-sm mb-6 border border-border overflow-x-auto">
           <pre className="text-[var(--sardis-canvas)]">
-{`1. sardis_get_balance → Check if wallet has sufficient funds
-2. sardis_check_policy → Verify $50 is within policy limits
-3. sardis_ucp_discover → Find OpenAI credit products
-4. sardis_ucp_checkout → Create checkout session
-5. sardis_ucp_confirm → Execute payment
-6. Returns: Transaction hash and confirmation`}
+{`1. sardis_list_bank_accounts → Find linked bank
+2. sardis_fund_wallet → Fund $100 from Chase ****1234
+3. sardis_get_funding_status → Wait for funding to complete
+4. sardis_get_balance → Verify unified balance
+5. sardis_create_card → Issue virtual card (limit: $50)
+6. Returns: Card number, expiry, CVV for use at openai.com
+
+The agent handles the entire flow, including:
+- Checking KYC status for off-ramp eligibility
+- Policy validation at each step
+- Waiting for funding confirmation
+- Card issuance with merchant lock`}
           </pre>
         </div>
 
-        <h3>Managing Subscriptions</h3>
+        <h2>Unified Balance</h2>
         <p>
-          "Cancel my unused subscriptions and reallocate the budget to cloud compute"
+          The new unified balance treats USDC and USD as equivalent at 1:1 parity.
+          When you fund with fiat or deposit USDC, both appear as a single balance.
+          Card payments automatically convert USDC to USD at the point of purchase.
         </p>
-
-        <div className="not-prose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] p-4 font-mono text-sm mb-6 border border-border overflow-x-auto">
-          <pre className="text-[var(--sardis-canvas)]">
-{`1. sardis_list_cards → Find active virtual cards
-2. sardis_list_transactions → Analyze spending patterns
-3. sardis_cancel_card → Cancel unused subscription cards
-4. sardis_update_policy → Increase cloud compute allocation
-5. sardis_create_hold → Reserve funds for next compute purchase`}
-          </pre>
-        </div>
-
-        <h2>Best Practices</h2>
 
         <div className="not-prose p-4 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 mb-6">
           <div className="flex gap-3">
@@ -274,9 +210,9 @@ export default function MCP36Tools() {
             <div>
               <div className="font-bold text-[var(--sardis-orange)] mb-1">Pro Tips</div>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Always use <code>sardis_check_policy</code> before large transactions</li>
-                <li>Use holds for multi-step purchases to reserve funds</li>
+                <li>Use <code>sardis_check_policy</code> before large transactions</li>
                 <li>Issue single-use virtual cards for one-time purchases</li>
+                <li>Link bank account once, fund multiple times</li>
                 <li>Use <code>sardis_request_approval</code> for amounts near policy limits</li>
               </ul>
             </div>
@@ -289,14 +225,14 @@ export default function MCP36Tools() {
         </p>
         <ul>
           <li><strong>Recurring payments:</strong> Set up automatic subscriptions</li>
-          <li><strong>Multi-wallet operations:</strong> Transfer between wallets</li>
-          <li><strong>Reporting tools:</strong> Generate spending reports</li>
+          <li><strong>Multi-wallet transfers:</strong> Move funds between wallets</li>
+          <li><strong>Spending reports:</strong> Generate analytics from MCP</li>
           <li><strong>Webhook management:</strong> Configure notifications from MCP</li>
         </ul>
 
         <p>
-          Have a tool you'd like to see? Let us know on <a href="https://discord.gg/sardis" className="text-[var(--sardis-orange)]">Discord</a> or
-          open an issue on <a href="https://github.com/EfeDurmaz16/sardis" className="text-[var(--sardis-orange)]">GitHub</a>.
+          Have a tool you'd like to see? Let us know on{' '}
+          <a href="https://github.com/EfeDurmaz16/sardis/issues" className="text-[var(--sardis-orange)]">GitHub</a>.
         </p>
 
         <p>

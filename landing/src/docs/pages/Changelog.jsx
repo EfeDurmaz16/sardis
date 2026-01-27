@@ -2,9 +2,47 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.6.0',
+    date: '2026-01-27',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Fiat Rails - Bank on-ramp and off-ramp support via Bridge and Onramper',
+          'Virtual Cards - Lithic integration for instant card issuance',
+          'Unified Balance - USDC/USD treated as 1:1 equivalent',
+          'KYC/AML Integration - Persona verification and Elliptic sanctions screening',
+          'sardis-ramp-js package for JavaScript/TypeScript fiat operations',
+          'sardis-cards package for virtual card management',
+          '8 new MCP fiat tools (sardis_fund_wallet, sardis_withdraw_to_bank, etc.)',
+          'Bank account linking and verification',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'MCP Server expanded to 40+ tools with fiat and card support',
+          'TypeScript SDK v0.2.0 with fiat.fund(), fiat.withdraw(), cards.create()',
+          'Python SDK with full fiat rails and unified balance support',
+          'Policy Engine now validates across crypto, fiat, and card transactions',
+          'Documentation updated with fiat rails guides',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'Wallet balance now shows unified USDC + USD total',
+          'Rate limiter now tracks spend across all payment rails',
+          'KYC status properly cached to reduce API calls',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.5.0',
     date: '2026-01-24',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',
@@ -41,7 +79,7 @@ const releases = [
   },
   {
     version: '0.4.0',
-    date: '2025-01-23',
+    date: '2026-01-23',
     tag: '',
     changes: [
       {
@@ -74,7 +112,7 @@ const releases = [
   },
   {
     version: '0.3.0',
-    date: '2025-01-20',
+    date: '2026-01-20',
     tag: '',
     changes: [
       {
@@ -108,7 +146,7 @@ const releases = [
   },
   {
     version: '0.2.0',
-    date: '2025-01-02',
+    date: '2026-01-02',
     tag: '',
     changes: [
       {
@@ -132,7 +170,7 @@ const releases = [
   },
   {
     version: '0.1.0',
-    date: '2024-12-15',
+    date: '2025-12-15',
     tag: '',
     changes: [
       {
