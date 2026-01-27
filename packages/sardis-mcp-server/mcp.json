@@ -1,0 +1,283 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/mcp.json",
+  "name": "sardis",
+  "displayName": "Sardis",
+  "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
+  "version": "0.1.0",
+  "author": {
+    "name": "Sardis",
+    "email": "support@sardis.network",
+    "url": "https://sardis.network"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sardis-network/sardis",
+    "directory": "packages/sardis-mcp-server"
+  },
+  "homepage": "https://sardis.network",
+  "documentation": "https://docs.sardis.network",
+  "category": "finance",
+  "tags": [
+    "payments",
+    "fintech",
+    "ai-agents",
+    "stablecoin",
+    "usdc",
+    "spending-policy",
+    "virtual-cards",
+    "wallets"
+  ],
+  "transport": {
+    "type": "stdio"
+  },
+  "installation": {
+    "npm": {
+      "package": "@sardis/mcp-server",
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  },
+  "configuration": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "SARDIS_API_KEY": {
+          "type": "string",
+          "description": "Your Sardis API key. Optional for demo/simulated mode.",
+          "secret": true
+        },
+        "SARDIS_WALLET_ID": {
+          "type": "string",
+          "description": "Default wallet ID to use for operations"
+        },
+        "SARDIS_AGENT_ID": {
+          "type": "string",
+          "description": "Agent ID for this MCP connection"
+        },
+        "SARDIS_MODE": {
+          "type": "string",
+          "enum": ["live", "simulated"],
+          "default": "simulated",
+          "description": "Operating mode - 'live' for real transactions, 'simulated' for testing"
+        }
+      },
+      "required": []
+    },
+    "examples": {
+      "minimal": {
+        "description": "Simulated mode (no API key required)",
+        "config": {}
+      },
+      "production": {
+        "description": "Production mode with API key",
+        "config": {
+          "SARDIS_API_KEY": "sk_live_...",
+          "SARDIS_WALLET_ID": "wal_...",
+          "SARDIS_MODE": "live"
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "sardis_get_wallet",
+      "description": "Get wallet details and configuration including balance, policy, and metadata",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_get_balance",
+      "description": "Get current wallet balance and spending limits (daily/monthly remaining)",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_create_wallet",
+      "description": "Create a new MPC wallet with optional spending policy",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_update_wallet_policy",
+      "description": "Update the spending policy for a wallet (limits, allowed vendors, etc.)",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_list_wallets",
+      "description": "List all wallets, optionally filtered by agent or status",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_pay",
+      "description": "Execute a secure payment with policy validation. Returns virtual card details if approved.",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_get_transaction",
+      "description": "Get transaction status and details by transaction ID",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_list_transactions",
+      "description": "List recent transactions for a wallet with optional filters",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_check_policy",
+      "description": "Check if a payment would be allowed before executing (dry run)",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_validate_limits",
+      "description": "Validate spending against daily and monthly limits",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_check_compliance",
+      "description": "Check vendor against compliance rules and blocklists",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_create_hold",
+      "description": "Create a pre-authorization hold on funds (reserve without charging)",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_capture_hold",
+      "description": "Capture a previously created hold (complete the transaction)",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_void_hold",
+      "description": "Void/cancel a hold without capturing (release the funds)",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_get_hold",
+      "description": "Get hold status and details by hold ID",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_list_holds",
+      "description": "List active holds for a wallet",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_extend_hold",
+      "description": "Extend the expiration of a hold",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_create_agent",
+      "description": "Create a new AI agent with identity and capabilities",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_get_agent",
+      "description": "Get agent details and capabilities by agent ID",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_list_agents",
+      "description": "List all agents in the organization",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_update_agent",
+      "description": "Update agent configuration and capabilities",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_issue_card",
+      "description": "Issue a virtual card linked to a wallet for payments",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_get_card",
+      "description": "Get virtual card details (card number is masked for security)",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_list_cards",
+      "description": "List all virtual cards for a wallet",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_freeze_card",
+      "description": "Temporarily freeze a virtual card (blocks all transactions)",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_unfreeze_card",
+      "description": "Unfreeze a previously frozen card (resume transactions)",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_cancel_card",
+      "description": "Permanently cancel a virtual card",
+      "category": "Card"
+    },
+    {
+      "name": "sardis_fund_wallet",
+      "description": "Fund a wallet from bank account, wire transfer, or card",
+      "category": "Fiat"
+    },
+    {
+      "name": "sardis_withdraw_to_bank",
+      "description": "Withdraw funds from wallet to a bank account",
+      "category": "Fiat"
+    },
+    {
+      "name": "sardis_get_funding_status",
+      "description": "Check status of a funding transfer",
+      "category": "Fiat"
+    },
+    {
+      "name": "sardis_get_withdrawal_status",
+      "description": "Check status of a withdrawal",
+      "category": "Fiat"
+    },
+    {
+      "name": "sardis_request_approval",
+      "description": "Request human approval for payments exceeding limits or requiring review",
+      "category": "Approval"
+    },
+    {
+      "name": "sardis_get_approval_status",
+      "description": "Check status of a pending approval request",
+      "category": "Approval"
+    },
+    {
+      "name": "sardis_get_spending_summary",
+      "description": "Get spending summary with totals, limits, and trends",
+      "category": "Analytics"
+    },
+    {
+      "name": "sardis_get_spending_by_vendor",
+      "description": "Get spending breakdown by vendor/merchant",
+      "category": "Analytics"
+    },
+    {
+      "name": "sardis_get_spending_by_category",
+      "description": "Get spending breakdown by category (SaaS, Cloud, API, etc.)",
+      "category": "Analytics"
+    }
+  ],
+  "capabilities": {
+    "features": [
+      "Financial Hallucination Prevention",
+      "Natural language spending policies",
+      "Risk scoring for payments",
+      "Human-in-the-loop approval workflows",
+      "Virtual card issuance",
+      "Pre-authorization holds",
+      "Spending analytics"
+    ],
+    "integrations": [
+      "Claude Desktop",
+      "Cursor",
+      "Any MCP-compatible client"
+    ]
+  },
+  "requirements": {
+    "node": ">=18.0.0"
+  }
+}

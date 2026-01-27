@@ -4,27 +4,40 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ledger"
-version = "0.2.0"
+version = "0.3.0"
 description = "Production-grade append-only ledger with row-level locking, batch processing, and blockchain reconciliation"
-authors = [{name = "Sardis"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
 requires-python = ">=3.11"
 readme = "README.md"
 license = {text = "MIT"}
-keywords = ["ledger", "blockchain", "fintech", "accounting", "reconciliation"]
+keywords = [
+    "ledger",
+    "blockchain",
+    "fintech",
+    "accounting",
+    "reconciliation",
+    "audit-trail",
+    "merkle-tree",
+    "immutable",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
     "Topic :: Office/Business :: Financial :: Accounting",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-core",
+    "sardis-core>=0.1.0",
     "sqlalchemy>=2.0",
 ]
 
@@ -32,14 +45,29 @@ dependencies = [
 postgres = [
     "asyncpg>=0.28.0",
 ]
+immudb = [
+    "immudb-py>=1.5.0",
+]
+anchoring = [
+    "web3>=6.0.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
     "pytest-cov>=4.0",
+    "mypy>=1.7",
+    "ruff>=0.1",
 ]
 all = [
-    "sardis-ledger[postgres,dev]",
+    "sardis-ledger[postgres,immudb,anchoring,dev]",
 ]
+
+[project.urls]
+Homepage = "https://sardis.io"
+Documentation = "https://docs.sardis.io/ledger"
+Repository = "https://github.com/sardis-io/sardis-ledger"
+Changelog = "https://github.com/sardis-io/sardis-ledger/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/sardis-io/sardis-ledger/issues"
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -47,9 +75,32 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_ledger"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/examples",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "N", "SIM"]
+ignore = ["E501"]
 
 [tool.coverage.run]
 source = ["src/sardis_ledger"]

@@ -1,34 +1,42 @@
 /**
- * Sardis Fiat Ramp - Bridge crypto wallets to traditional banking.
+ * Sardis Fiat Ramp
  *
- * @example
- * ```typescript
- * import { SardisFiatRamp } from '@sardis/fiat-ramp'
+ * Fiat on/off ramp integrations for Sardis wallets.
+ * Supports multiple providers:
+ * - Onramper (aggregator with 100+ providers)
+ * - Bridge.xyz (direct integration)
  *
- * const ramp = new SardisFiatRamp({
- *   sardisKey: 'sk_...',
- *   bridgeKey: 'bridge_...'
- * })
- *
- * // Fund wallet from bank
- * const result = await ramp.fundWallet({
- *   walletId: 'wallet_123',
- *   amountUsd: 100,
- *   method: 'bank'
- * })
- * ```
+ * @packageDocumentation
  */
 
+// Bridge integration (direct)
 export { SardisFiatRamp } from './ramp'
+
+// Onramper integration (aggregator)
+export {
+  SardisOnramper,
+  createOnramper,
+  type OnramperConfig,
+  type OnramperQuote,
+  type OnramperTransaction,
+  type OnramperWidgetOptions,
+  type SupportedAsset,
+  type SupportedFiat,
+} from './onramper'
+
+// Types
 export type {
+  RampConfig,
+  FundingMethod,
   FundingResult,
   WithdrawalResult,
   PaymentResult,
   BankAccount,
   MerchantAccount,
-  FundingMethod,
-  RampConfig,
   ACHDetails,
   WireDetails,
+  Wallet,
 } from './types'
-export { PolicyViolation } from './errors'
+
+// Errors
+export { RampError, PolicyViolation } from './errors'

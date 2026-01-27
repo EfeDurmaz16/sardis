@@ -6,21 +6,40 @@ build-backend = "hatchling.build"
 name = "sardis-chain"
 version = "0.2.0"
 description = "Production-grade multi-chain stablecoin executor for Sardis"
-authors = [{name = "Sardis"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+license = {text = "MIT"}
 requires-python = ">=3.11"
 readme = "README.md"
-keywords = ["blockchain", "ethereum", "base", "polygon", "web3", "mpc", "turnkey"]
+keywords = [
+    "blockchain",
+    "ethereum",
+    "base",
+    "polygon",
+    "web3",
+    "mpc",
+    "turnkey",
+    "stablecoin",
+    "defi",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "web3>=6.0",
     "pydantic>=2.6",
-    "sardis-core",
+    "sardis-core>=0.1.0",
     "httpx>=0.25.0",
     "rlp>=3.0.0",
     "cryptography>=41.0.0",
@@ -35,11 +54,27 @@ dev = [
     "ruff>=0.1",
 ]
 
+[project.urls]
+Homepage = "https://sardis.io"
+Documentation = "https://docs.sardis.io/chain"
+Repository = "https://github.com/sardis-io/sardis-chain"
+Changelog = "https://github.com/sardis-io/sardis-chain/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/sardis-io/sardis-chain/issues"
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_chain"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -53,5 +88,18 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-select = ["E", "F", "W", "I", "B", "C4", "UP"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "N", "SIM"]
 ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src/sardis_chain"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

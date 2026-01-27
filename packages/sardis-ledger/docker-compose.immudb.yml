@@ -1,0 +1,98 @@
+# Docker Compose for immudb - Immutable Database
+#
+# Run with: docker-compose -f docker-compose.immudb.yml up -d
+#
+# immudb provides:
+# - True immutability (data cannot be modified/deleted)
+# - Merkle tree proofs for every entry
+# - Cryptographic verification API
+# - PostgreSQL wire protocol compatibility (port 5432)
+#
+# Ports:
+# - 3322: immudb native protocol (gRPC)
+# - 9497: Metrics (Prometheus)
+# - 8080: Web console
+# - 5432: PostgreSQL wire protocol
+
+version: '3.8'
+
+services:
+  immudb:
+    image: codenotary/immudb:1.9.5
+    container_name: sardis-immudb
+    restart: unless-stopped
+    ports:
+      - "3322:3322"   # immudb native (gRPC)
+      - "9497:9497"   # Metrics
+      - "8080:8080"   # Web console
+      - "5433:5432"   # PostgreSQL wire protocol (using 5433 to avoid conflict)
+    environment:
+      # Default credentials (change in production!)
+      IMMUDB_ADMIN_PASSWORD: immudb
+      # Enable PostgreSQL wire protocol
+      IMMUDB_PGSQL_SERVER: "true"
+      IMMUDB_PGSQL_SERVER_PORT: 5432
+      # Enable metrics
+      IMMUDB_METRICS_SERVER: "true"
+      IMMUDB_METRICS_SERVER_PORT: 9497
+      # Enable web console
+      IMMUDB_WEB_SERVER: "true"
+      IMMUDB_WEB_SERVER_PORT: 8080
+      # Data directory
+      IMMUDB_DIR: /var/lib/immudb
+    volumes:
+      - immudb_data:/var/lib/immudb
+    healthcheck:
+      test: ["CMD", "immuadmin", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - sardis-network
+
+  # Optional: immuadmin web UI
+  immudb-webconsole:
+    image: codenotary/immudb:1.9.5
+    container_name: sardis-immudb-webconsole
+    depends_on:
+      - immudb
+    entrypoint: ["tail", "-f", "/dev/null"]
+    networks:
+      - sardis-network
+    profiles:
+      - webconsole
+
+volumes:
+  immudb_data:
+    driver: local
+
+networks:
+  sardis-network:
+    driver: bridge
+
+# Usage Examples:
+#
+# 1. Start immudb:
+#    docker-compose -f docker-compose.immudb.yml up -d
+#
+# 2. Check status:
+#    docker-compose -f docker-compose.immudb.yml ps
+#
+# 3. View logs:
+#    docker-compose -f docker-compose.immudb.yml logs -f immudb
+#
+# 4. Connect via immuadmin CLI:
+#    docker exec -it sardis-immudb immuadmin login immudb
+#
+# 5. Create sardis_audit database:
+#    docker exec -it sardis-immudb immuadmin database create sardis_audit
+#
+# 6. Connect via PostgreSQL protocol (e.g., psql):
+#    psql -h localhost -p 5433 -U immudb -d defaultdb
+#
+# 7. Stop:
+#    docker-compose -f docker-compose.immudb.yml down
+#
+# 8. Remove all data:
+#    docker-compose -f docker-compose.immudb.yml down -v

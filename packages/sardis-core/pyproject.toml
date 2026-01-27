@@ -6,9 +6,36 @@ build-backend = "hatchling.build"
 name = "sardis-core"
 version = "0.1.0"
 description = "Core AP2/TAP-aligned domain primitives for the Sardis stablecoin execution layer"
-authors = [{name = "Sardis"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = [
+    "stablecoin",
+    "payments",
+    "fintech",
+    "web3",
+    "blockchain",
+    "ap2",
+    "tap",
+    "agent-payments",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.0",
@@ -24,11 +51,62 @@ nl-parser = [
 spending-tracker = [
     "redis>=5.0",
 ]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.1",
+    "mypy>=1.7",
+    "ruff>=0.1",
+]
 all = [
     "instructor>=1.0",
     "openai>=1.0",
     "redis>=5.0",
 ]
 
+[project.urls]
+Homepage = "https://sardis.io"
+Documentation = "https://docs.sardis.io"
+Repository = "https://github.com/sardis-io/sardis-core"
+Changelog = "https://github.com/sardis-io/sardis-core/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/sardis-io/sardis-core/issues"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_v2_core"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "N", "SIM"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src/sardis_v2_core"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

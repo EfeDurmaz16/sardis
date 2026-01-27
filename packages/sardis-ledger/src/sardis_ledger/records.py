@@ -1220,8 +1220,8 @@ class LedgerStore:
                     """
                     SELECT
                         COALESCE(SUM(CASE
-                            WHEN to_wallet = ? THEN CAST(amount AS REAL)
-                            WHEN from_wallet = ? THEN -CAST(amount AS REAL)
+                            WHEN to_wallet = ? THEN CAST(amount AS NUMERIC)
+                            WHEN from_wallet = ? THEN -CAST(amount AS NUMERIC)
                             ELSE 0
                         END), 0) as balance,
                         COUNT(*) as entry_count,
@@ -1323,8 +1323,8 @@ class LedgerStore:
                 delta_row = self._sqlite_conn.execute(
                     """
                     SELECT COALESCE(SUM(CASE
-                        WHEN to_wallet = ? THEN CAST(amount AS REAL)
-                        WHEN from_wallet = ? THEN -CAST(amount AS REAL)
+                        WHEN to_wallet = ? THEN CAST(amount AS NUMERIC)
+                        WHEN from_wallet = ? THEN -CAST(amount AS NUMERIC)
                         ELSE 0
                     END), 0)
                     FROM ledger_entries
@@ -1598,7 +1598,7 @@ class LedgerStore:
                 # Volume by currency
                 rows = self._sqlite_conn.execute(
                     """
-                    SELECT currency, SUM(CAST(amount AS REAL)), COUNT(*)
+                    SELECT currency, SUM(CAST(amount AS NUMERIC)), COUNT(*)
                     FROM ledger_entries
                     WHERE status = 'confirmed'
                     GROUP BY currency

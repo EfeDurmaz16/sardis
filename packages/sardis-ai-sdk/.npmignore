@@ -1,0 +1,22 @@
+# Source files
+src/
+
+# Config files
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+.eslintrc*
+
+# Test files
+__tests__/
+*.test.ts
+*.spec.ts
+coverage/
+
+# Dev files
+.github/
+.vscode/
+*.log
+
+# Build artifacts (keep dist/)
+*.tsbuildinfo

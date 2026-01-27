@@ -57,6 +57,8 @@ const navigation = [
     items: [
       { name: 'Terms of Service', href: '/docs/terms' },
       { name: 'Privacy Policy', href: '/docs/privacy' },
+      { name: 'Acceptable Use', href: '/docs/acceptable-use' },
+      { name: 'Risk Disclosures', href: '/docs/risk-disclosures' },
     ],
   },
 ];

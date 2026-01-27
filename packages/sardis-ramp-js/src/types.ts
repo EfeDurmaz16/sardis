@@ -78,10 +78,20 @@ export interface PaymentResult {
 }
 
 export interface RampConfig {
+  /** Sardis API key (required) */
   sardisKey: string
+  /** Bridge API key (required) */
   bridgeKey: string
+  /** Environment - sandbox for testing, production for live (default: sandbox) */
   environment?: 'sandbox' | 'production'
+  /** Default chain for new wallets */
   defaultChain?: string
+  /** Custom Sardis API URL (optional, for enterprise deployments) */
+  sardisUrl?: string
+  /** Custom Bridge API URL (optional, for testing) */
+  bridgeUrl?: string
+  /** Request timeout in milliseconds (default: 30000) */
+  timeout?: number
 }
 
 export interface Wallet {

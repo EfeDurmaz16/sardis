@@ -1,5 +1,7 @@
 """Core domain primitives shared across Sardis services.
 
+Version: 0.1.0
+
 This package provides the foundational components for the Sardis payment
 infrastructure, including:
 
@@ -388,4 +390,8 @@ __all__ = [
     "exception_from_compliance_error",
     "get_exception_class",
     "create_exception",
+    # Version
+    "__version__",
 ]
+
+__version__ = "0.1.0"

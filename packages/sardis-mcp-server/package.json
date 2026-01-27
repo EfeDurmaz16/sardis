@@ -1,22 +1,42 @@
 {
   "name": "@sardis/mcp-server",
   "version": "0.1.0",
-  "description": "Model Context Protocol (MCP) server for Sardis - enables AI agents to execute secure payments",
+  "description": "Model Context Protocol (MCP) server for Sardis - Enable AI agents (Claude, Cursor, etc.) to execute secure payments with policy validation",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "sardis-mcp": "./dist/cli.js"
+    "sardis-mcp": "./dist/cli.js",
+    "sardis-mcp-server": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "mcp.json",
+    "CLAUDE_DESKTOP_CONFIG.md"
   ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test"
   },
   "keywords": [
     "sardis",
@@ -24,12 +44,32 @@
     "model-context-protocol",
     "ai-payments",
     "claude",
+    "cursor",
     "llm",
     "agent",
-    "fintech"
+    "fintech",
+    "ai-agents",
+    "payments",
+    "stablecoin",
+    "usdc",
+    "financial-hallucination",
+    "spending-policy"
   ],
-  "author": "Sardis <efe@sardis.dev>",
+  "author": "Sardis <support@sardis.network>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sardis-network/sardis.git",
+    "directory": "packages/sardis-mcp-server"
+  },
+  "homepage": "https://sardis.network",
+  "bugs": {
+    "url": "https://github.com/sardis-network/sardis/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/sardis-network"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
     "zod": "^3.23.8"
@@ -40,12 +80,66 @@
     "typescript": "^5.5.0",
     "vitest": "^1.6.0"
   },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
   "engines": {
     "node": ">=18.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/EfeDurmaz16/sardis.git",
-    "directory": "packages/sardis-mcp-server"
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "sideEffects": false,
+  "mcp": {
+    "name": "sardis",
+    "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
+    "version": "0.1.0",
+    "tools": [
+      "sardis_get_wallet",
+      "sardis_get_balance",
+      "sardis_create_wallet",
+      "sardis_update_wallet_policy",
+      "sardis_list_wallets",
+      "sardis_pay",
+      "sardis_get_transaction",
+      "sardis_list_transactions",
+      "sardis_check_policy",
+      "sardis_validate_limits",
+      "sardis_check_compliance",
+      "sardis_create_hold",
+      "sardis_capture_hold",
+      "sardis_void_hold",
+      "sardis_get_hold",
+      "sardis_list_holds",
+      "sardis_extend_hold",
+      "sardis_create_agent",
+      "sardis_get_agent",
+      "sardis_list_agents",
+      "sardis_update_agent",
+      "sardis_issue_card",
+      "sardis_get_card",
+      "sardis_list_cards",
+      "sardis_freeze_card",
+      "sardis_unfreeze_card",
+      "sardis_cancel_card",
+      "sardis_fund_wallet",
+      "sardis_withdraw_to_bank",
+      "sardis_get_funding_status",
+      "sardis_get_withdrawal_status",
+      "sardis_request_approval",
+      "sardis_get_approval_status",
+      "sardis_get_spending_summary",
+      "sardis_get_spending_by_vendor",
+      "sardis_get_spending_by_category"
+    ],
+    "transport": "stdio",
+    "category": "finance",
+    "icon": "wallet"
   }
 }

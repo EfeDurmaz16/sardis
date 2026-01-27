@@ -93,11 +93,61 @@ from .reconciliation import (
     ReconciliationScheduler,
 )
 
-__version__ = "0.2.0"
+# Immutable audit trail (optional - requires immudb-py)
+try:
+    from .immutable import (
+        # Config
+        ImmutableConfig,
+        # Errors
+        ImmutableStoreError,
+        VerificationError,
+        ConsistencyError,
+        AnchoringError,
+        # Enums
+        VerificationStatus,
+        # Models
+        MerkleProof,
+        ImmutableReceipt,
+        VerificationResult,
+        AuditEntry,
+        # Services
+        ImmutableAuditTrail,
+        BlockchainAnchor,
+        # Factory
+        create_audit_trail,
+    )
+    IMMUDB_AVAILABLE = True
+except ImportError:
+    IMMUDB_AVAILABLE = False
+
+# Hybrid ledger (PostgreSQL + immudb)
+try:
+    from .hybrid import (
+        # Config
+        HybridConfig,
+        # Errors
+        HybridLedgerError,
+        DualWriteError,
+        # Models
+        HybridReceipt,
+        ConsistencyReport,
+        # Service
+        HybridLedger,
+        # Factory
+        create_hybrid_ledger,
+    )
+    HYBRID_AVAILABLE = True
+except ImportError:
+    HYBRID_AVAILABLE = False
+
+__version__ = "0.3.0"
 
 __all__ = [
     # Version
     "__version__",
+    # Feature flags
+    "IMMUDB_AVAILABLE",
+    "HYBRID_AVAILABLE",
     # Core store
     "LedgerStore",
     "ChainReceipt",
@@ -148,3 +198,44 @@ __all__ = [
     "CurrencyConverter",
     "ReconciliationScheduler",
 ]
+
+# Add immutable audit trail exports if available
+if IMMUDB_AVAILABLE:
+    __all__.extend([
+        # Config
+        "ImmutableConfig",
+        # Errors
+        "ImmutableStoreError",
+        "VerificationError",
+        "ConsistencyError",
+        "AnchoringError",
+        # Enums
+        "VerificationStatus",
+        # Models
+        "MerkleProof",
+        "ImmutableReceipt",
+        "VerificationResult",
+        "AuditEntry",
+        # Services
+        "ImmutableAuditTrail",
+        "BlockchainAnchor",
+        # Factory
+        "create_audit_trail",
+    ])
+
+# Add hybrid ledger exports if available
+if HYBRID_AVAILABLE:
+    __all__.extend([
+        # Config
+        "HybridConfig",
+        # Errors
+        "HybridLedgerError",
+        "DualWriteError",
+        # Models
+        "HybridReceipt",
+        "ConsistencyReport",
+        # Service
+        "HybridLedger",
+        # Factory
+        "create_hybrid_ledger",
+    ])

@@ -1,6 +1,28 @@
 # Sardis TypeScript SDK
 
+[![npm version](https://img.shields.io/npm/v/@sardis/sdk.svg)](https://www.npmjs.com/package/@sardis/sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@sardis/sdk.svg)](https://www.npmjs.com/package/@sardis/sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+
 The official TypeScript SDK for the Sardis stablecoin execution layer. Enables AI agents to execute programmable payments using stablecoins across multiple chains.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Error Handling](#error-handling)
+- [Configuration](#configuration)
+- [Agents](#agents)
+- [Wallets](#wallets)
+- [Supported Chains](#supported-chains)
+- [Supported Tokens](#supported-tokens)
+- [TypeScript Support](#typescript-support)
+- [Framework Integrations](#framework-integrations)
+- [Browser Usage](#browser-usage)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
@@ -312,6 +334,47 @@ const functions = sardisFunctions(client);
 const result = await handleSardisCall(client, functionName, args);
 ```
 
+## Browser Usage
+
+The SDK includes a browser-optimized bundle:
+
+```html
+<!-- Via CDN -->
+<script src="https://unpkg.com/@sardis/sdk@latest/dist/browser/sardis.umd.min.js"></script>
+<script>
+  const client = new Sardis.SardisClient({
+    apiKey: 'your-api-key',
+  });
+</script>
+```
+
+Or import the browser bundle directly:
+
+```typescript
+import { SardisClient } from '@sardis/sdk/browser';
+```
+
+## Requirements
+
+- Node.js 18.0.0 or higher
+- TypeScript 4.7+ (optional, for type definitions)
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](https://github.com/sardis-network/sardis-sdk-js/blob/main/CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Support
+
+- [Documentation](https://docs.sardis.network)
+- [GitHub Issues](https://github.com/sardis-network/sardis-sdk-js/issues)
+- [Discord Community](https://discord.gg/sardis)
+
 ## License
 
-MIT
+MIT - see [LICENSE](./LICENSE) for details.

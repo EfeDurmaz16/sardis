@@ -1,9 +1,9 @@
 {
   "name": "@sardis/sdk",
   "version": "0.2.0",
-  "description": "Official TypeScript SDK for the Sardis stablecoin execution layer",
+  "description": "Official TypeScript SDK for the Sardis stablecoin execution layer - Enable AI agents to execute programmable payments using stablecoins",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/cjs/index.cjs",
   "module": "dist/index.js",
   "browser": "dist/browser/index.js",
   "types": "dist/index.d.ts",
@@ -22,15 +22,17 @@
     "./integrations/*": {
       "types": "./dist/integrations/*.d.ts",
       "import": "./dist/integrations/*.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs && npm run build:browser",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:browser",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:browser": "rollup -c rollup.config.js",
@@ -40,30 +42,39 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run clean && npm run build && npm run test"
+    "prepublishOnly": "npm run build && npm run test"
   },
   "keywords": [
     "sardis",
     "stablecoin",
     "payments",
     "ai-agents",
+    "ai-payments",
     "blockchain",
     "usdc",
     "web3",
     "mpc",
     "wallet",
     "typescript",
-    "sdk"
+    "sdk",
+    "fintech",
+    "defi",
+    "crypto-payments",
+    "programmable-payments"
   ],
   "author": "Sardis <sdk@sardis.network>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sardis-network/sardis-sdk-js"
+    "url": "git+https://github.com/sardis-network/sardis-sdk-js.git"
   },
   "homepage": "https://sardis.network",
   "bugs": {
     "url": "https://github.com/sardis-network/sardis-sdk-js/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/sardis-network"
   },
   "dependencies": {
     "axios": "^1.6.7",
@@ -93,7 +104,11 @@
     }
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "sideEffects": false
 }

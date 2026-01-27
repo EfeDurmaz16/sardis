@@ -35,6 +35,8 @@ import DocsRoadmap from './docs/pages/Roadmap.jsx'
 // Legal
 import TermsOfService from './docs/pages/TermsOfService.jsx'
 import PrivacyPolicy from './docs/pages/PrivacyPolicy.jsx'
+import AcceptableUse from './docs/pages/AcceptableUse.jsx'
+import RiskDisclosures from './docs/pages/RiskDisclosures.jsx'
 // Blog posts
 import IntroducingSardis from './docs/pages/blog/IntroducingSardis.jsx'
 import FinancialHallucination from './docs/pages/blog/FinancialHallucination.jsx'
@@ -100,6 +102,8 @@ createRoot(document.getElementById('root')).render(
           {/* Legal */}
           <Route path="terms" element={<TermsOfService />} />
           <Route path="privacy" element={<PrivacyPolicy />} />
+          <Route path="acceptable-use" element={<AcceptableUse />} />
+          <Route path="risk-disclosures" element={<RiskDisclosures />} />
         </Route>
       </Routes>
     </BrowserRouter>

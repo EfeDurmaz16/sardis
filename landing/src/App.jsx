@@ -1027,20 +1027,63 @@ const payment = await ramp.payMerchantFiat({
 
       {/* Footer */}
       <footer className="py-12 border-t border-border">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3">
-            <SardisLogo size="small" />
-            <span className="font-bold font-display">Sardis</span>
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8">
+            <div className="flex items-center gap-3">
+              <SardisLogo size="small" />
+              <span className="font-bold font-display">Sardis</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
+              <div>
+                <h4 className="font-semibold mb-3 text-foreground">Product</h4>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li><a href="/docs" className="hover:text-[var(--sardis-orange)] transition-colors">Documentation</a></li>
+                  <li><a href="/docs/quickstart" className="hover:text-[var(--sardis-orange)] transition-colors">Quick Start</a></li>
+                  <li><a href="/docs/sdk" className="hover:text-[var(--sardis-orange)] transition-colors">SDKs</a></li>
+                  <li><a href="/playground" className="hover:text-[var(--sardis-orange)] transition-colors">Playground</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3 text-foreground">Resources</h4>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li><a href="/docs/blog" className="hover:text-[var(--sardis-orange)] transition-colors">Blog</a></li>
+                  <li><a href="/docs/changelog" className="hover:text-[var(--sardis-orange)] transition-colors">Changelog</a></li>
+                  <li><a href="/docs/roadmap" className="hover:text-[var(--sardis-orange)] transition-colors">Roadmap</a></li>
+                  <li><a href="/docs/security" className="hover:text-[var(--sardis-orange)] transition-colors">Security</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3 text-foreground">Legal</h4>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li><a href="/docs/terms" className="hover:text-[var(--sardis-orange)] transition-colors">Terms of Service</a></li>
+                  <li><a href="/docs/privacy" className="hover:text-[var(--sardis-orange)] transition-colors">Privacy Policy</a></li>
+                  <li><a href="/docs/acceptable-use" className="hover:text-[var(--sardis-orange)] transition-colors">Acceptable Use</a></li>
+                  <li><a href="/docs/risk-disclosures" className="hover:text-[var(--sardis-orange)] transition-colors">Risk Disclosures</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3 text-foreground">Connect</h4>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li><a href="https://github.com/sardis-labs" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">GitHub</a></li>
+                  <li><a href="https://twitter.com/sardisdev" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Twitter</a></li>
+                  <li><a href="https://discord.gg/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Discord</a></li>
+                  <li><a href="mailto:hello@sardis.dev" className="hover:text-[var(--sardis-orange)] transition-colors">Contact</a></li>
+                </ul>
+              </div>
+            </div>
           </div>
 
-          <div className="flex gap-8 text-sm text-muted-foreground font-mono">
-            <span>Non-Custodial</span>
-            <span>Multi-Chain</span>
-            <span>AP2 Compliant</span>
-          </div>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-8 border-t border-border">
+            <div className="flex gap-6 text-xs text-muted-foreground font-mono">
+              <span>Non-Custodial</span>
+              <span>Multi-Chain</span>
+              <span>AP2 Compliant</span>
+            </div>
 
-          <div className="text-sm text-muted-foreground font-mono">
-            © 2026 Sardis. All rights reserved.
+            <div className="text-xs text-muted-foreground font-mono">
+              © 2026 Sardis. All rights reserved.
+            </div>
           </div>
         </div>
       </footer>

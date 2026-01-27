@@ -16,20 +16,36 @@ import type {
   WireDetails,
 } from './types'
 
-const BRIDGE_API_URL = 'https://api.bridge.xyz/v0'
-const BRIDGE_SANDBOX_URL = 'https://api.sandbox.bridge.xyz/v0'
-const SARDIS_API_URL = 'https://api.sardis.sh/v2'
+// Default API URLs - can be overridden via config for testing/custom deployments
+const DEFAULT_BRIDGE_API_URL = 'https://api.bridge.xyz/v0'
+const DEFAULT_BRIDGE_SANDBOX_URL = 'https://api.sandbox.bridge.xyz/v0'
+const DEFAULT_SARDIS_API_URL = 'https://api.sardis.sh/v2'
 
 export class SardisFiatRamp {
-  private sardisKey: string
-  private bridgeKey: string
-  private bridgeUrl: string
+  private readonly sardisKey: string
+  private readonly bridgeKey: string
+  private readonly bridgeUrl: string
+  private readonly sardisUrl: string
 
   constructor(config: RampConfig) {
+    // Validate required keys
+    if (!config.sardisKey || config.sardisKey.trim() === '') {
+      throw new RampError('Sardis API key is required', 'INVALID_CONFIG')
+    }
+    if (!config.bridgeKey || config.bridgeKey.trim() === '') {
+      throw new RampError('Bridge API key is required', 'INVALID_CONFIG')
+    }
+
     this.sardisKey = config.sardisKey
     this.bridgeKey = config.bridgeKey
-    this.bridgeUrl =
-      config.environment === 'production' ? BRIDGE_API_URL : BRIDGE_SANDBOX_URL
+
+    // Allow custom URLs for testing/enterprise deployments
+    this.bridgeUrl = config.bridgeUrl ?? (
+      config.environment === 'production'
+        ? DEFAULT_BRIDGE_API_URL
+        : DEFAULT_BRIDGE_SANDBOX_URL
+    )
+    this.sardisUrl = config.sardisUrl ?? DEFAULT_SARDIS_API_URL
   }
 
   private async sardisRequest<T>(
@@ -37,7 +53,7 @@ export class SardisFiatRamp {
     path: string,
     body?: unknown
   ): Promise<T> {
-    const response = await fetch(`${SARDIS_API_URL}${path}`, {
+    const response = await fetch(`${this.sardisUrl}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.sardisKey}`,

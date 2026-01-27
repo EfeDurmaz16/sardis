@@ -1,0 +1,43 @@
+# Source files (TypeScript source is compiled to dist/)
+src/
+__tests__/
+
+# Development configuration
+tsconfig.json
+tsconfig.cjs.json
+tsconfig.browser.json
+rollup.config.js
+vitest.config.ts
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Test files
+*.test.ts
+*.spec.ts
+coverage/
+
+# Development files
+.env
+.env.*
+.git/
+.github/
+.vscode/
+.idea/
+
+# Build artifacts not needed
+*.tsbuildinfo
+
+# Documentation source (README.md is included)
+docs/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Misc
+*.log
+*.local
+.DS_Store
+Thumbs.db

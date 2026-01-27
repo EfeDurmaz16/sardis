@@ -1,48 +1,87 @@
 {
-  "name": "@sardis/fiat-ramp",
+  "name": "@sardis/ramp",
   "version": "0.1.0",
-  "description": "Sardis Fiat Ramp - Bridge crypto wallets to traditional banking",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "description": "Sardis Fiat Ramp SDK - Bridge crypto wallets to traditional banking with fiat on/off ramp functionality",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test"
   },
   "keywords": [
     "sardis",
     "fiat",
     "ramp",
+    "on-ramp",
+    "off-ramp",
     "crypto",
     "bridge",
     "payments",
-    "ai-agents"
+    "ai-agents",
+    "banking",
+    "ach",
+    "wire",
+    "usdc",
+    "stablecoin",
+    "fintech"
   ],
-  "author": "Sardis <support@sardis.sh>",
-  "license": "Apache-2.0",
+  "author": "Sardis <support@sardis.network>",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/EfeDurmaz16/sardis.git",
+    "url": "git+https://github.com/sardis-network/sardis.git",
     "directory": "packages/sardis-ramp-js"
   },
-  "homepage": "https://sardis.sh",
+  "homepage": "https://sardis.network",
+  "bugs": {
+    "url": "https://github.com/sardis-network/sardis/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/sardis-network"
+  },
   "dependencies": {},
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "vitest": "^1.2.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "engines": {
-    "node": ">=18"
-  }
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "sideEffects": false
 }

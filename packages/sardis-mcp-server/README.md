@@ -1,6 +1,23 @@
 # @sardis/mcp-server
 
-> Model Context Protocol (MCP) server for Sardis - Enable AI agents to execute secure payments
+[![npm version](https://img.shields.io/npm/v/@sardis/mcp-server.svg)](https://www.npmjs.com/package/@sardis/mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/@sardis/mcp-server.svg)](https://www.npmjs.com/package/@sardis/mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> Model Context Protocol (MCP) server for Sardis - Enable AI agents to execute secure payments with Financial Hallucination Prevention
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [What is this?](#what-is-this)
+- [Installation](#installation)
+- [Available Tools](#available-tools-36-total)
+- [Policy Engine](#policy-engine)
+- [Example Session](#example-session)
+- [Environment Variables](#environment-variables)
+- [Simulated Mode](#simulated-mode)
+- [API Reference](#api-reference)
+- [License](#license)
 
 ## Quick Start
 
@@ -14,9 +31,39 @@ Sardis MCP Server allows AI agents (Claude, Cursor, etc.) to execute payments th
 
 ## Installation
 
-### For Claude Desktop
+### Option 1: npx (Recommended)
 
-Add to your `claude_desktop_config.json`:
+No installation required - run directly:
+
+```bash
+npx @sardis/mcp-server start
+```
+
+### Option 2: Global Install
+
+```bash
+npm install -g @sardis/mcp-server
+sardis-mcp start
+```
+
+### Option 3: Local Install
+
+```bash
+npm install @sardis/mcp-server
+npx sardis-mcp start
+```
+
+## Configuration
+
+### Claude Desktop
+
+Add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+#### Minimal Configuration (Simulated Mode)
 
 ```json
 {
@@ -29,17 +76,66 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-### For Cursor
-
-Add to your MCP configuration:
+#### Production Configuration
 
 ```json
 {
-  "sardis": {
-    "command": "npx @sardis/mcp-server start"
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_live_your_api_key_here",
+        "SARDIS_WALLET_ID": "wal_your_wallet_id",
+        "SARDIS_MODE": "live"
+      }
+    }
   }
 }
 ```
+
+### Cursor
+
+Add to your Cursor MCP settings (`.cursor/mcp.json` or Cursor settings):
+
+#### Minimal Configuration
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  }
+}
+```
+
+#### Production Configuration
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_live_your_api_key_here",
+        "SARDIS_WALLET_ID": "wal_your_wallet_id",
+        "SARDIS_MODE": "live"
+      }
+    }
+  }
+}
+```
+
+### Other MCP Clients
+
+For any MCP-compatible client, use:
+
+- **Command**: `npx`
+- **Arguments**: `["@sardis/mcp-server", "start"]`
+- **Transport**: `stdio`
 
 ## Available Tools (36 total)
 
@@ -178,12 +274,20 @@ Result: {
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `SARDIS_API_KEY` | Your Sardis API key (optional for demo mode) |
-| `SARDIS_WALLET_ID` | Your wallet ID |
-| `SARDIS_AGENT_ID` | Your agent ID |
-| `SARDIS_MODE` | `live` or `simulated` (default: simulated) |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SARDIS_API_KEY` | No | - | Your Sardis API key. Get one at [sardis.network](https://sardis.network) |
+| `SARDIS_WALLET_ID` | No | - | Default wallet ID for operations |
+| `SARDIS_AGENT_ID` | No | - | Agent ID for this MCP connection |
+| `SARDIS_MODE` | No | `simulated` | `live` for real transactions, `simulated` for testing |
+| `SARDIS_API_URL` | No | `https://api.sardis.network` | API endpoint (for enterprise/self-hosted) |
+
+### Getting Your API Key
+
+1. Sign up at [sardis.network](https://sardis.network)
+2. Go to Settings > API Keys
+3. Create a new API key with appropriate permissions
+4. Add it to your MCP configuration
 
 ## Simulated Mode
 
@@ -193,12 +297,79 @@ When running without an API key, the server operates in simulated mode with:
 - Full policy validation to test your rules
 - Realistic response formats
 
+## API Reference
+
+### Tools Schema
+
+Each tool follows the MCP tool specification:
+
+```typescript
+interface Tool {
+  name: string;
+  description: string;
+  inputSchema: JSONSchema;
+}
+```
+
+### Common Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `wallet_id` | `string` | The wallet ID to operate on |
+| `amount` | `string` | Amount in USD (e.g., "100.00") |
+| `vendor` | `string` | Merchant/vendor name |
+| `purpose` | `string` | Description of the payment purpose |
+
+### Response Format
+
+All tools return responses in this format:
+
+```typescript
+interface ToolResponse {
+  success: boolean;
+  status: 'APPROVED' | 'BLOCKED' | 'PENDING' | 'ERROR';
+  data?: Record<string, unknown>;
+  error?: string;
+  message?: string;
+}
+```
+
+## Requirements
+
+- Node.js 18.0.0 or higher
+- Claude Desktop, Cursor, or any MCP-compatible client
+
+## Troubleshooting
+
+### Server not starting
+
+1. Ensure Node.js 18+ is installed: `node --version`
+2. Clear npx cache: `npx clear-npx-cache`
+3. Try global install: `npm install -g @sardis/mcp-server`
+
+### Tools not appearing in Claude
+
+1. Restart Claude Desktop after configuration changes
+2. Check the configuration file path is correct for your OS
+3. Verify JSON syntax is valid
+
+### API errors
+
+1. Check your API key is valid
+2. Ensure `SARDIS_MODE` is set to `live` for production
+3. Verify wallet ID exists in your account
+
+## Support
+
+- [Documentation](https://docs.sardis.network)
+- [GitHub Issues](https://github.com/sardis-network/sardis/issues)
+- [Discord Community](https://discord.gg/sardis)
+- Email: support@sardis.network
+
+## Contributing
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
+
 ## License
 
-MIT
-
-## Links
-
-- [Sardis Documentation](https://docs.sardis.sh)
-- [GitHub](https://github.com/EfeDurmaz16/sardis)
-- [Website](https://sardis.sh)
+MIT - see [LICENSE](./LICENSE) for details.

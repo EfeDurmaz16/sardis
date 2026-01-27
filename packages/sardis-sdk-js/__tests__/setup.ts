@@ -188,6 +188,77 @@ export const handlers = [
     http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
         return HttpResponse.json(mockResponses.agentWallet);
     }),
+
+    // API v2 Wallets
+    http.get('https://api.sardis.network/api/v2/wallets', () => {
+        return HttpResponse.json([mockResponses.wallet]);
+    }),
+    http.get('https://api.sardis.network/api/v2/wallets/:id', ({ params }) => {
+        return HttpResponse.json({ ...mockResponses.wallet, id: params.id });
+    }),
+    http.post('https://api.sardis.network/api/v2/wallets', () => {
+        return HttpResponse.json(mockResponses.wallet);
+    }),
+    http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+        return HttpResponse.json(mockResponses.balance);
+    }),
+    http.get('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+        return HttpResponse.json({
+            base: '0x1234567890abcdef1234567890abcdef12345678',
+            polygon: '0xabcdef1234567890abcdef1234567890abcdef12',
+        });
+    }),
+    http.post('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+        return HttpResponse.json(mockResponses.wallet);
+    }),
+
+    // API v2 Holds
+    http.get('https://api.sardis.network/api/v2/holds', () => {
+        return HttpResponse.json({ holds: [mockResponses.hold] });
+    }),
+    http.get('https://api.sardis.network/api/v2/holds/:id', ({ params }) => {
+        return HttpResponse.json({ ...mockResponses.hold, id: params.id });
+    }),
+    http.post('https://api.sardis.network/api/v2/holds', () => {
+        return HttpResponse.json(mockResponses.hold);
+    }),
+    http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+        return HttpResponse.json({ ...mockResponses.hold, status: 'captured' });
+    }),
+    http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+        return HttpResponse.json({ ...mockResponses.hold, status: 'voided' });
+    }),
+    http.get('https://api.sardis.network/api/v2/holds/wallet/:walletId', () => {
+        return HttpResponse.json({ holds: [mockResponses.hold] });
+    }),
+
+    // API v2 Mandates/Payments
+    http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+        return HttpResponse.json({
+            ...mockResponses.mandate,
+            chain: 'base',
+            ledger_tx_id: 'ltx_123',
+            audit_anchor: '0xaudit123',
+        });
+    }),
+
+    // API v2 AP2 Payments
+    http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+        return HttpResponse.json({
+            id: 'ap2_xyz789',
+            mandate_id: 'mandate_123',
+            ledger_tx_id: 'ltx_456',
+            chain_tx_hash: '0xabcdef',
+            chain: 'base',
+            audit_anchor: '0xaudit456',
+            status: 'EXECUTED',
+            steps: [
+                { step: 'intent', status: 'completed' },
+                { step: 'cart', status: 'completed' },
+                { step: 'payment', status: 'completed' },
+            ],
+        });
+    }),
 ];
 
 // Setup MSW server

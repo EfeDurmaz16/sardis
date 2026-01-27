@@ -1,4 +1,9 @@
-"""Compliance exports."""
+"""Compliance exports.
+
+Sardis Compliance - KYC, Sanctions, PEP, Risk Scoring, and Reporting.
+
+Version: 0.2.0
+"""
 
 from .checks import (
     ComplianceAuditEntry,
@@ -254,4 +259,8 @@ __all__ = [
     "RetryableClient",
     "retry",
     "create_retryable_client",
+    # Version
+    "__version__",
 ]
+
+__version__ = "0.2.0"

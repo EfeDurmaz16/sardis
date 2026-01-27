@@ -1,231 +1,139 @@
-"""
-Sardis Chain - Production-grade blockchain executor with MPC signing support.
+"""Sardis Chain - Production-grade multi-chain stablecoin executor.
 
-This module provides comprehensive blockchain interaction capabilities with:
-- Multi-RPC endpoint support with automatic failover
-- Chain ID validation on connection (security)
-- Transaction simulation before execution
-- Comprehensive gas estimation with safety margins
-- Nonce management with stuck transaction handling
-- Transaction receipt status verification
-- Block confirmation tracking with reorg detection
-- Comprehensive logging for all operations
+This package provides the blockchain execution layer for stablecoin operations:
+- Multi-chain support (Ethereum, Base, Polygon, Arbitrum)
+- MPC custody integration (Turnkey, Fireblocks)
+- Transaction execution with gas estimation
+- Nonce management and confirmation tracking
+- MEV protection and deposit monitoring
 
-Usage:
-    from sardis_chain import ChainExecutor, get_config
-
-    # Create executor with settings
-    executor = ChainExecutor(settings)
-
-    # Validate chain connection
-    await executor.validate_chain_connection("base_sepolia")
-
-    # Execute payment
-    receipt = await executor.dispatch_payment(mandate)
+Version: 0.2.0
 """
 
-# Core executor and signers
-from .executor import (
-    ChainExecutor,
-    ChainRPCClient,
-    TurnkeyMPCSigner,
-    SimulatedMPCSigner,
-    LocalAccountSigner,
-    MPCSignerPort,
-    TransactionRequest,
-    TransactionStatus,
-    GasEstimate,
-    SubmittedTx,
-    CHAIN_CONFIGS,
-    STABLECOIN_ADDRESSES,
-    SARDIS_CONTRACTS,
-    GasPriceProtection,
-    GasPriceSpikeError,
-    GasPriceProtectionConfig,
-    get_gas_price_protection,
-    encode_erc20_transfer,
-)
-
-# Wallet management
-from .wallet_manager import (
-    WalletManager,
-    WalletInfo,
-    KeyRotationSchedule,
-    get_wallet_manager,
-)
-
-# Configuration
 from .config import (
-    SardisChainConfig,
     ChainConfig,
-    RPCEndpointConfig,
-    NonceManagerConfig,
-    GasEstimationConfig,
-    TransactionSimulationConfig,
-    ReorgDetectionConfig,
-    LoggingConfig,
-    ChainNetwork,
-    get_config,
-    set_config,
-    get_chain_config,
-    build_default_config,
-    validate_chain_id,
-    CHAIN_ID_MAP,
+    ChainId,
+    TokenConfig,
+    GasConfig,
+    RPCConfig,
+    TurnkeyConfig,
+    load_chain_config,
 )
-
-# Production RPC client
 from .rpc_client import (
-    ProductionRPCClient,
-    EndpointHealth,
-    EndpointStatus,
-    ChainIDMismatchError,
+    RPCClient,
     RPCError,
-    AllEndpointsFailedError,
-    get_rpc_client,
-    close_all_clients,
+    RPCConnectionError,
+    RPCTimeoutError,
+    create_rpc_client,
 )
-
-# Nonce management
 from .nonce_manager import (
     NonceManager,
-    PendingTransaction,
-    ReceiptValidation,
-    TransactionReceiptStatus,
-    NonceConflictError,
-    StuckTransactionError,
-    TransactionFailedError,
-    get_nonce_manager,
+    NonceError,
+    NonceExhaustedError,
+    NonceSyncError,
 )
-
-# Transaction simulation and gas estimation
-from .simulation import (
-    TransactionSimulator,
-    GasEstimator,
-    SimulationAndEstimation,
-    SimulationOutput,
-    SimulationResult,
-    GasEstimation,
-    SimulationError,
-    GasEstimationError,
-    get_simulation_service,
-)
-
-# Confirmation tracking and reorg detection
 from .confirmation import (
     ConfirmationTracker,
-    TrackedTransaction,
+    ConfirmationResult,
     ConfirmationStatus,
-    ReorgEvent,
-    ReorgSeverity,
-    BlockInfo,
-    ReorgError,
-    get_confirmation_tracker,
-    close_all_trackers,
+    TransactionReceipt,
+)
+from .simulation import (
+    TransactionSimulator,
+    SimulationResult,
+    SimulationError,
+    GasEstimate,
+)
+from .executor import (
+    ChainExecutor,
+    ExecutorConfig,
+    TransferResult,
+    TransactionError,
+    InsufficientFundsError,
+    GasEstimationError,
+)
+from .deposit_monitor import (
+    DepositMonitor,
+    Deposit,
+    DepositCallback,
+    MonitorConfig,
+)
+from .mev_protection import (
+    MEVProtector,
+    FlashbotsProvider,
+    PrivateMempoolProvider,
+    MEVConfig,
+)
+from .wallet_manager import (
+    WalletManager,
+    ManagedWallet,
+    WalletCreationError,
+)
+from .logging_utils import (
+    get_chain_logger,
+    ChainLogContext,
+    log_transaction,
+    log_confirmation,
 )
 
-# Logging utilities
-from .logging_utils import (
-    ChainLogger,
-    OperationType,
-    OperationContext,
-    RPCCallLog,
-    TransactionLog,
-    LogLevel,
-    get_chain_logger,
-    log_operation,
-    setup_logging,
-)
+__version__ = "0.2.0"
 
 __all__ = [
-    # Core executor
-    "ChainExecutor",
-    "ChainRPCClient",
-    "TurnkeyMPCSigner",
-    "SimulatedMPCSigner",
-    "LocalAccountSigner",
-    "MPCSignerPort",
-    "TransactionRequest",
-    "TransactionStatus",
-    "GasEstimate",
-    "SubmittedTx",
-    "CHAIN_CONFIGS",
-    "STABLECOIN_ADDRESSES",
-    "SARDIS_CONTRACTS",
-    "GasPriceProtection",
-    "GasPriceSpikeError",
-    "GasPriceProtectionConfig",
-    "get_gas_price_protection",
-    "encode_erc20_transfer",
-    # Wallet management
-    "WalletManager",
-    "WalletInfo",
-    "KeyRotationSchedule",
-    "get_wallet_manager",
-    # Configuration
-    "SardisChainConfig",
+    # Version
+    "__version__",
+    # Config
     "ChainConfig",
-    "RPCEndpointConfig",
-    "NonceManagerConfig",
-    "GasEstimationConfig",
-    "TransactionSimulationConfig",
-    "ReorgDetectionConfig",
-    "LoggingConfig",
-    "ChainNetwork",
-    "get_config",
-    "set_config",
-    "get_chain_config",
-    "build_default_config",
-    "validate_chain_id",
-    "CHAIN_ID_MAP",
-    # Production RPC client
-    "ProductionRPCClient",
-    "EndpointHealth",
-    "EndpointStatus",
-    "ChainIDMismatchError",
+    "ChainId",
+    "TokenConfig",
+    "GasConfig",
+    "RPCConfig",
+    "TurnkeyConfig",
+    "load_chain_config",
+    # RPC Client
+    "RPCClient",
     "RPCError",
-    "AllEndpointsFailedError",
-    "get_rpc_client",
-    "close_all_clients",
-    # Nonce management
+    "RPCConnectionError",
+    "RPCTimeoutError",
+    "create_rpc_client",
+    # Nonce Manager
     "NonceManager",
-    "PendingTransaction",
-    "ReceiptValidation",
-    "TransactionReceiptStatus",
-    "NonceConflictError",
-    "StuckTransactionError",
-    "TransactionFailedError",
-    "get_nonce_manager",
-    # Simulation and gas estimation
-    "TransactionSimulator",
-    "GasEstimator",
-    "SimulationAndEstimation",
-    "SimulationOutput",
-    "SimulationResult",
-    "GasEstimation",
-    "SimulationError",
-    "GasEstimationError",
-    "get_simulation_service",
-    # Confirmation tracking
+    "NonceError",
+    "NonceExhaustedError",
+    "NonceSyncError",
+    # Confirmation
     "ConfirmationTracker",
-    "TrackedTransaction",
+    "ConfirmationResult",
     "ConfirmationStatus",
-    "ReorgEvent",
-    "ReorgSeverity",
-    "BlockInfo",
-    "ReorgError",
-    "get_confirmation_tracker",
-    "close_all_trackers",
+    "TransactionReceipt",
+    # Simulation
+    "TransactionSimulator",
+    "SimulationResult",
+    "SimulationError",
+    "GasEstimate",
+    # Executor
+    "ChainExecutor",
+    "ExecutorConfig",
+    "TransferResult",
+    "TransactionError",
+    "InsufficientFundsError",
+    "GasEstimationError",
+    # Deposit Monitor
+    "DepositMonitor",
+    "Deposit",
+    "DepositCallback",
+    "MonitorConfig",
+    # MEV Protection
+    "MEVProtector",
+    "FlashbotsProvider",
+    "PrivateMempoolProvider",
+    "MEVConfig",
+    # Wallet Manager
+    "WalletManager",
+    "ManagedWallet",
+    "WalletCreationError",
     # Logging
-    "ChainLogger",
-    "OperationType",
-    "OperationContext",
-    "RPCCallLog",
-    "TransactionLog",
-    "LogLevel",
     "get_chain_logger",
-    "log_operation",
-    "setup_logging",
+    "ChainLogContext",
+    "log_transaction",
+    "log_confirmation",
 ]
-
-# Version
-__version__ = "0.2.0"
