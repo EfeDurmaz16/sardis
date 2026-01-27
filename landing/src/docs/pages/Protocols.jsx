@@ -1,21 +1,27 @@
 import { Link } from 'react-router-dom';
+import {
+  Agreement02Icon,
+  ShoppingBag01Icon,
+  ConnectIcon,
+  Key01Icon
+} from 'hugeicons-react';
 
 export default function DocsProtocols() {
   return (
     <article className="prose prose-invert max-w-none">
-      <div className="not-prose mb-8">
+      <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-500">
             PROTOCOLS
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Protocol Stack</h1>
-        <p className="text-xl text-muted-foreground">
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Industry-standard protocols for secure agent payments.
         </p>
       </div>
 
-      <section className="mb-12">
+      <section className="mb-14">
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-6 font-mono text-sm overflow-x-auto">
             <pre className="text-[var(--sardis-canvas)]">{`┌─────────────────────────────────────────────────────────────┐
@@ -40,38 +46,46 @@ export default function DocsProtocols() {
         </div>
       </section>
 
-      <section className="mb-12">
-        <div className="not-prose grid gap-4">
-          <Link to="/docs/ap2" className="block p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors group">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">📋</span>
+      <section className="mb-14">
+        <div className="not-prose grid gap-5">
+          <Link to="/docs/ap2" className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[var(--sardis-orange)]/10 flex items-center justify-center">
+                <Agreement02Icon size={22} color="var(--sardis-orange)" />
+              </div>
               <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">AP2 (Agent Payment Protocol)</h3>
             </div>
-            <p className="text-muted-foreground text-sm">Google, PayPal, Mastercard, Visa consortium standard. Mandate chain verification.</p>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">Google, PayPal, Mastercard, Visa consortium standard. Mandate chain verification.</p>
           </Link>
 
-          <Link to="/docs/ucp" className="block p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors group">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">🛒</span>
+          <Link to="/docs/ucp" className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <ShoppingBag01Icon size={22} className="text-emerald-500" />
+              </div>
               <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">UCP (Universal Commerce Protocol)</h3>
             </div>
-            <p className="text-muted-foreground text-sm">Standardized checkout flow. Cart management, sessions, fulfillment.</p>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">Standardized checkout flow. Cart management, sessions, fulfillment.</p>
           </Link>
 
-          <Link to="/docs/a2a" className="block p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors group">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">🤖</span>
+          <Link to="/docs/a2a" className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <ConnectIcon size={22} className="text-blue-500" />
+              </div>
               <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">A2A (Agent-to-Agent)</h3>
             </div>
-            <p className="text-muted-foreground text-sm">Google-developed multi-agent communication protocol.</p>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">Google-developed multi-agent communication protocol.</p>
           </Link>
 
-          <Link to="/docs/tap" className="block p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors group">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">🔐</span>
+          <Link to="/docs/tap" className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Key01Icon size={22} className="text-purple-500" />
+              </div>
               <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">TAP (Trust Anchor Protocol)</h3>
             </div>
-            <p className="text-muted-foreground text-sm">Cryptographic identity verification. Ed25519/ECDSA signatures.</p>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">Cryptographic identity verification. Ed25519/ECDSA signatures.</p>
           </Link>
         </div>
       </section>

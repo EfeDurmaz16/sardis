@@ -115,8 +115,8 @@ function BlogCard({ post, featured = false }) {
   if (featured) {
     return (
       <Link to={`/docs/blog/${post.slug}`} className="block">
-        <article className="group border border-border p-6 hover:border-[var(--sardis-orange)]/50 transition-colors">
-          <div className="flex items-center gap-3 mb-4">
+        <article className="group bg-card/50 rounded-lg p-7 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center gap-3 mb-5">
             <span className={`px-2 py-1 text-xs font-mono border ${categoryColors[post.category]}`}>
               {post.category.toUpperCase()}
             </span>
@@ -127,22 +127,22 @@ function BlogCard({ post, featured = false }) {
             )}
           </div>
 
-          <h3 className="text-xl font-bold font-display mb-3 group-hover:text-[var(--sardis-orange)] transition-colors">
+          <h3 className="text-xl font-bold font-display mb-4 group-hover:text-[var(--sardis-orange)] transition-colors leading-snug">
             {post.title}
           </h3>
 
-          <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+          <p className="text-muted-foreground text-sm mb-5 leading-7">
             {post.excerpt}
           </p>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
                 {formatDate(post.date)}
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
                 {post.readTime}
               </span>
             </div>
@@ -158,18 +158,18 @@ function BlogCard({ post, featured = false }) {
 
   return (
     <Link to={`/docs/blog/${post.slug}`} className="block">
-      <article className="group border border-border p-4 hover:border-[var(--sardis-orange)]/50 transition-colors">
-        <div className="flex items-center gap-2 mb-2">
+      <article className="group bg-card/50 rounded-lg p-5 shadow-sm hover:shadow-md transition-all">
+        <div className="flex items-center gap-2 mb-3">
           <span className={`px-2 py-0.5 text-xs font-mono border ${categoryColors[post.category]}`}>
             {post.category.toUpperCase()}
           </span>
         </div>
 
-        <h3 className="font-bold font-display mb-2 group-hover:text-[var(--sardis-orange)] transition-colors">
+        <h3 className="font-bold font-display mb-3 group-hover:text-[var(--sardis-orange)] transition-colors leading-snug">
           {post.title}
         </h3>
 
-        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+        <p className="text-muted-foreground text-sm mb-4 line-clamp-2 leading-relaxed">
           {post.excerpt}
         </p>
 
@@ -188,21 +188,21 @@ export default function DocsBlog() {
 
   return (
     <article className="prose prose-invert max-w-none">
-      <div className="not-prose mb-8">
+      <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-500">
             BLOG
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Blog</h1>
-        <p className="text-xl text-muted-foreground">
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Updates, tutorials, and deep dives from the Sardis team.
         </p>
       </div>
 
       {/* Featured Posts */}
-      <section className="not-prose mb-12">
-        <h2 className="text-xl font-bold font-display mb-4 flex items-center gap-2">
+      <section className="not-prose mb-14">
+        <h2 className="text-xl font-bold font-display mb-6 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Featured
         </h2>
         <div className="grid gap-6 md:grid-cols-2">
@@ -213,31 +213,31 @@ export default function DocsBlog() {
       </section>
 
       {/* All Posts */}
-      <section className="not-prose mb-12">
-        <h2 className="text-xl font-bold font-display mb-4 flex items-center gap-2">
+      <section className="not-prose mb-14">
+        <h2 className="text-xl font-bold font-display mb-6 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> All Posts
         </h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {regularPosts.map((post, idx) => (
             <BlogCard key={idx} post={post} />
           ))}
         </div>
       </section>
 
-      <section className="not-prose p-6 border border-border bg-muted/20">
-        <h3 className="font-bold font-display mb-2">Subscribe to Updates</h3>
-        <p className="text-muted-foreground text-sm mb-4">
+      <section className="not-prose p-7 rounded-lg bg-card/50 shadow-sm">
+        <h3 className="font-bold font-display mb-3">Subscribe to Updates</h3>
+        <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
           Get notified when we publish new articles and release updates.
         </p>
-        <form className="flex gap-2">
+        <form className="flex gap-3">
           <input
             type="email"
             placeholder="Enter your email"
-            className="flex-1 px-4 py-2 bg-background border border-border text-sm font-mono focus:outline-none focus:border-[var(--sardis-orange)]"
+            className="flex-1 px-4 py-2.5 bg-background border border-border rounded-md text-sm font-mono focus:outline-none focus:border-[var(--sardis-orange)]"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-[var(--sardis-orange)] text-white font-medium text-sm hover:bg-[var(--sardis-orange)]/90 transition-colors"
+            className="px-5 py-2.5 bg-[var(--sardis-orange)] text-white font-medium text-sm rounded-md hover:bg-[var(--sardis-orange)]/90 transition-colors"
           >
             Subscribe
           </button>

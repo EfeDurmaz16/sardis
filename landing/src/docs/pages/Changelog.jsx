@@ -226,19 +226,19 @@ function ReleaseSection({ release }) {
   };
 
   return (
-    <section className="relative pl-8 pb-12 border-l border-border last:pb-0">
+    <section className="relative pl-8 pb-14 border-l border-border last:pb-0">
       {/* Timeline dot */}
       <div className={cn(
-        "absolute -left-2 w-4 h-4 border-2 border-border bg-background",
+        "absolute -left-2 w-4 h-4 rounded-full border-2 border-border bg-background",
         release.tag === 'latest' && "border-[var(--sardis-orange)] bg-[var(--sardis-orange)]"
       )} />
 
       {/* Version header */}
-      <div className="mb-4">
-        <div className="flex items-center gap-3 mb-1">
+      <div className="mb-5">
+        <div className="flex items-center gap-3 mb-2">
           <h3 className="text-xl font-bold font-display">v{release.version}</h3>
           {release.tag && (
-            <span className="px-2 py-0.5 text-xs font-mono bg-[var(--sardis-orange)] text-white">
+            <span className="px-2 py-0.5 text-xs font-mono bg-[var(--sardis-orange)] text-white rounded">
               {release.tag.toUpperCase()}
             </span>
           )}
@@ -249,19 +249,19 @@ function ReleaseSection({ release }) {
       </div>
 
       {/* Changes */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         {release.changes.map((group, idx) => {
           const config = changeTypeConfig[group.type];
           return (
             <div key={idx}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`px-2 py-0.5 text-xs font-mono border ${config.color}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`px-2 py-0.5 text-xs font-mono border rounded ${config.color}`}>
                   {config.icon} {config.label.toUpperCase()}
                 </span>
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {group.items.map((item, itemIdx) => (
-                  <li key={itemIdx} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <li key={itemIdx} className="text-sm text-muted-foreground flex items-start gap-2 leading-relaxed">
                     <span className="text-[var(--sardis-orange)] mt-1">-</span>
                     <span>{item}</span>
                   </li>
@@ -278,24 +278,24 @@ function ReleaseSection({ release }) {
 export default function DocsChangelog() {
   return (
     <article className="prose prose-invert max-w-none">
-      <div className="not-prose mb-8">
+      <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
             CHANGELOG
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Changelog</h1>
-        <p className="text-xl text-muted-foreground">
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Release history and version updates for Sardis SDK and API.
         </p>
       </div>
 
       {/* Version format guide */}
-      <div className="not-prose mb-8 p-4 border border-border bg-muted/20">
+      <div className="not-prose mb-10 p-5 rounded-lg bg-card/50 shadow-sm">
         <p className="text-sm text-muted-foreground font-mono">
           Version format: <span className="text-foreground">MAJOR.MINOR.PATCH</span>
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           We follow semantic versioning. Breaking changes increment MAJOR,
           new features increment MINOR, and bug fixes increment PATCH.
         </p>

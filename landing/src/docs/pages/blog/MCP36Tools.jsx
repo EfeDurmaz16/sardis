@@ -5,7 +5,7 @@ export default function MCP36Tools() {
   return (
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
-      <div className="not-prose mb-8">
+      <div className="not-prose mb-10">
         <Link
           to="/docs/blog"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-[var(--sardis-orange)] transition-colors"
@@ -16,29 +16,30 @@ export default function MCP36Tools() {
       </div>
 
       {/* Header */}
-      <header className="not-prose mb-8">
-        <div className="flex items-center gap-3 mb-4">
+      <header className="not-prose mb-10">
+        <div className="flex items-center gap-3 mb-5">
           <span className="px-2 py-1 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
             TUTORIAL
           </span>
         </div>
-        <h1 className="text-4xl font-bold font-display mb-4">
+        <h1 className="text-4xl font-bold font-display mb-5 leading-tight">
           MCP Server: 40+ Tools for AI Payments
         </h1>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
-          <span className="flex items-center gap-1">
+        <div className="flex items-center gap-5 text-sm text-muted-foreground font-mono">
+          <span className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4" />
             January 27, 2026
           </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />6 min read
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4" />
+            6 min read
           </span>
         </div>
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
-        <p className="lead text-xl text-muted-foreground">
+      <div className="prose prose-invert max-w-none prose-p:leading-7 prose-li:leading-7">
+        <p className="lead text-xl text-muted-foreground leading-8">
           Our MCP server has grown from 4 tools to over 40. From fiat on-ramps to virtual cards,
           learn how to give Claude or Cursor complete payment capabilities without writing any code.
         </p>

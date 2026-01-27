@@ -133,22 +133,22 @@ const faqs = [
 
 function AccordionItem({ question, answer, isOpen, onClick }) {
   return (
-    <div className="border-b border-border last:border-0">
+    <div className="bg-card/50 rounded-lg shadow-sm hover:shadow-md transition-all">
       <button
         onClick={onClick}
-        className="w-full py-4 flex items-center justify-between text-left hover:text-[var(--sardis-orange)] transition-colors"
+        className="w-full px-5 py-5 flex items-center justify-between text-left hover:text-[var(--sardis-orange)] transition-colors"
       >
-        <span className="font-medium pr-4">{question}</span>
+        <span className="font-medium pr-4 leading-relaxed">{question}</span>
         <ChevronDown className={cn(
-          "w-5 h-5 flex-shrink-0 transition-transform",
-          isOpen && "rotate-180"
+          "w-5 h-5 flex-shrink-0 transition-transform text-muted-foreground",
+          isOpen && "rotate-180 text-[var(--sardis-orange)]"
         )} />
       </button>
       <div className={cn(
         "overflow-hidden transition-all duration-300",
-        isOpen ? "max-h-96 pb-4" : "max-h-0"
+        isOpen ? "max-h-[500px] pb-5 px-5" : "max-h-0"
       )}>
-        <p className="text-muted-foreground text-sm leading-relaxed">
+        <p className="text-muted-foreground text-sm leading-7">
           {answer}
         </p>
       </div>
@@ -166,28 +166,28 @@ export default function DocsFAQ() {
 
   return (
     <article className="prose prose-invert max-w-none">
-      <div className="not-prose mb-8">
+      <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">
             SUPPORT
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Frequently Asked Questions</h1>
-        <p className="text-xl text-muted-foreground">
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Common questions about Sardis, fiat rails, integrations, security, and pricing.
         </p>
       </div>
 
-      <div className="not-prose space-y-8">
+      <div className="not-prose space-y-10">
         {faqs.map((category) => (
           <section key={category.category}>
-            <h2 className="text-xl font-bold font-display mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold font-display mb-5 flex items-center gap-2">
               <span className="text-[var(--sardis-orange)]">#</span> {category.category}
               {category.category === 'Fiat Rails' && (
                 <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
               )}
             </h2>
-            <div className="border border-border divide-y divide-border">
+            <div className="space-y-3">
               {category.questions.map((item, idx) => (
                 <AccordionItem
                   key={idx}
