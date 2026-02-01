@@ -2,9 +2,54 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.7.0',
+    date: '2026-02-02',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Invoices API - Full CRUD endpoints for merchant invoice management',
+          'Fireblocks MPC signer - Institutional-grade vault account creation and transaction signing',
+          'PostgreSQL-backed mandate store - Mandates now persist across restarts',
+          'PostgreSQL-backed checkout sessions - Checkout state no longer in-memory',
+          'PostgreSQL-backed KYC verification storage with DB lookup fallback',
+          'ABI revert reason decoding - Human-readable Solidity error messages',
+          'Dashboard invoices page wired to real API (replaces mock data)',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Auth context wired into all API routes (agents, webhooks, marketplace)',
+          'Webhook secret rotation now persisted to database',
+          'sardis-ai-sdk resolved as pnpm workspace dependency',
+          'ChainId, TokenConfig, GasConfig exports fixed in sardis-chain',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'Critical NameError: turnkey_client referenced before assignment in main.py',
+          'Database schema idempotency: consolidated ALTER TABLE into CREATE TABLE',
+          'Hardcoded secret removed from .env.example',
+          'Solidity contract file permissions (600 → 644)',
+          'Python 3.13 compatibility: pinned asyncpg>=0.30 and fastapi>=0.115',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'API routes now enforce authentication via require_api_key dependency',
+          'Marketplace endpoints require X-Agent-Id header instead of hardcoded demo values',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.6.0',
     date: '2026-01-27',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

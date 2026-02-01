@@ -847,7 +847,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 36+ tools for payments, wallets, holds, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 40+ tools for payments, wallets, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }
@@ -958,8 +958,8 @@ const payment = await ramp.payMerchantFiat({
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { label: "INFRASTRUCTURE", value: "Live on Base Sepolia", sub: "Contracts deployed" },
-              { label: "COMPLETION", value: "95%", sub: "Production Ready" },
-              { label: "PROTOCOLS", value: "11 Integrations", sub: "5 chains • 6 services" }
+              { label: "COMPLETION", value: "97%", sub: "Production Ready" },
+              { label: "PROTOCOLS", value: "13 Integrations", sub: "5 chains • 8 services" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>

@@ -49,6 +49,7 @@ import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
 import MCP36Tools from './docs/pages/blog/MCP36Tools.jsx'
 import WhySardis from './docs/pages/blog/WhySardis.jsx'
 import FiatRails from './docs/pages/blog/FiatRails.jsx'
+import SardisV07ProductionHardening from './docs/pages/blog/SardisV07ProductionHardening.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 
@@ -97,6 +98,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/mcp-36-tools" element={<MCP36Tools />} />
           <Route path="blog/why-sardis" element={<WhySardis />} />
           <Route path="blog/fiat-rails" element={<FiatRails />} />
+          <Route path="blog/sardis-v0-7-production-hardening" element={<SardisV07ProductionHardening />} />
           <Route path="changelog" element={<DocsChangelog />} />
           <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}

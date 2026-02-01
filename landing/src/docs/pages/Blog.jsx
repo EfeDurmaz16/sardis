@@ -3,6 +3,15 @@ import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 const posts = [
   {
+    title: 'Sardis v0.7: Production Hardening and Fireblocks Integration',
+    excerpt: 'v0.7 eliminates 24 technical debt items: PostgreSQL-backed mandate and checkout stores, Fireblocks MPC signer, invoices API, auth wiring across all routes, ABI revert decoding, and critical deployment fixes. The biggest step toward production readiness yet.',
+    date: '2026-02-02',
+    readTime: '6 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-7-production-hardening',
+  },
+  {
     title: 'Fiat Rails: Bridging Traditional Banking to Agent Wallets',
     excerpt: 'The crypto rails for agent payments are ready. But the real world runs on dollars. Today we announce Fiat Rails — a complete on/off ramp solution that bridges traditional banking to agent wallets with full policy enforcement.',
     date: '2026-01-24',
