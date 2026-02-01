@@ -350,6 +350,27 @@ CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
 CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
 CREATE INDEX IF NOT EXISTS idx_mandates_status ON mandates(status);
 
+-- Checkout sessions
+CREATE TABLE IF NOT EXISTS checkouts (
+    checkout_id VARCHAR(100) PRIMARY KEY,
+    organization_id VARCHAR(100) NOT NULL,
+    agent_id VARCHAR(100),
+    wallet_id VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'pending',
+    amount VARCHAR(50),
+    currency VARCHAR(10) DEFAULT 'USDC',
+    merchant_name VARCHAR(255),
+    description TEXT,
+    return_url TEXT,
+    metadata JSONB DEFAULT '{}',
+    payment_result JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_checkouts_org ON checkouts(organization_id);
+CREATE INDEX IF NOT EXISTS idx_checkouts_status ON checkouts(status);
+
 -- Mandate Chains
 CREATE TABLE IF NOT EXISTS mandate_chains (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

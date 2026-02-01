@@ -1,7 +1,9 @@
 """Agentic Checkout API endpoints (Pivot D)."""
 from __future__ import annotations
 
+import json as _json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -16,6 +18,7 @@ from sardis_v2_core.wallets import Wallet
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope
 from sardis_v2_core.tokens import TokenType
+from sardis_v2_core.database import Database
 
 router = APIRouter()
 
@@ -55,8 +58,35 @@ def get_deps() -> CheckoutDependencies:
     raise NotImplementedError("Dependency override required")
 
 
-# In-memory checkout store (swap for PostgreSQL in production)
-_checkout_store: dict[str, CheckoutResponse] = {}
+async def _save_checkout(checkout: CheckoutResponse) -> None:
+    """Save checkout session to PostgreSQL."""
+    now = datetime.now(timezone.utc)
+    await Database.execute(
+        """
+        INSERT INTO checkouts (checkout_id, status, amount, currency, metadata, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (checkout_id) DO UPDATE SET
+            status = EXCLUDED.status,
+            updated_at = EXCLUDED.updated_at
+        """,
+        checkout.checkout_id,
+        checkout.status.value if hasattr(checkout.status, "value") else str(checkout.status),
+        str(checkout.amount),
+        checkout.currency,
+        _json.dumps({
+            "psp_name": checkout.psp_name,
+            "redirect_url": checkout.redirect_url,
+        }),
+        now,
+        now,
+    )
+
+
+async def _get_checkout(checkout_id: str) -> Optional[dict]:
+    """Get checkout from PostgreSQL."""
+    return await Database.fetchrow(
+        "SELECT * FROM checkouts WHERE checkout_id = $1", checkout_id
+    )
 
 
 @router.post("", response_model=CheckoutResponse, status_code=status.HTTP_201_CREATED)
@@ -66,7 +96,7 @@ async def create_checkout(
 ):
     """
     Create a checkout session for agent payment.
-    
+
     This endpoint:
     1. Validates wallet and policy
     2. Routes to appropriate PSP (Stripe, PayPal, etc.)
@@ -79,13 +109,13 @@ async def create_checkout(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wallet not found",
         )
-    
+
     if wallet.agent_id != request.agent_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Wallet does not belong to agent",
         )
-    
+
     # Create checkout request
     checkout_req = CheckoutRequest(
         agent_id=request.agent_id,
@@ -97,16 +127,16 @@ async def create_checkout(
         success_url=request.success_url,
         cancel_url=request.cancel_url,
     )
-    
+
     # Route to PSP via orchestrator
     checkout_resp = await deps.orchestrator.create_checkout(
         checkout_req,
         psp_preference=request.psp_preference,
     )
-    
+
     # Store checkout session
-    _checkout_store[checkout_resp.checkout_id] = checkout_resp
-    
+    await _save_checkout(checkout_resp)
+
     return checkout_resp
 
 
@@ -116,32 +146,39 @@ async def get_checkout_status(
     deps: CheckoutDependencies = Depends(get_deps),
 ):
     """Get checkout session status."""
-    checkout = _checkout_store.get(checkout_id)
-    if not checkout:
+    row = await _get_checkout(checkout_id)
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Checkout session not found",
         )
-    
+
+    metadata = row["metadata"] if isinstance(row["metadata"], dict) else _json.loads(row["metadata"] or "{}")
+    psp_name = metadata.get("psp_name")
+
     # Get latest status from PSP
     status_from_psp = await deps.orchestrator.get_payment_status(
         checkout_id,
-        checkout.psp_name,
+        psp_name,
     )
-    
+
     # Update stored status
-    checkout.status = status_from_psp
-    _checkout_store[checkout_id] = checkout
-    
+    await Database.execute(
+        "UPDATE checkouts SET status = $1, updated_at = $2 WHERE checkout_id = $3",
+        status_from_psp.value if hasattr(status_from_psp, "value") else str(status_from_psp),
+        datetime.now(timezone.utc),
+        checkout_id,
+    )
+
     return CheckoutStatusResponse(
-        checkout_id=checkout.checkout_id,
-        status=checkout.status.value,
-        psp_name=checkout.psp_name,
-        redirect_url=checkout.redirect_url,
-        amount=str(checkout.amount),
-        currency=checkout.currency,
-        created_at="",  # TODO: Add timestamps to CheckoutResponse
-        updated_at="",
+        checkout_id=checkout_id,
+        status=status_from_psp.value if hasattr(status_from_psp, "value") else str(status_from_psp),
+        psp_name=psp_name,
+        redirect_url=metadata.get("redirect_url"),
+        amount=row["amount"],
+        currency=row["currency"],
+        created_at=row["created_at"].isoformat() if row["created_at"] else "",
+        updated_at=row["updated_at"].isoformat() if row["updated_at"] else "",
     )
 
 
@@ -153,13 +190,13 @@ async def handle_psp_webhook(
 ):
     """
     Handle webhooks from PSPs (Stripe, PayPal, etc.).
-    
+
     This endpoint processes payment status updates from PSPs.
     """
     try:
         payload = await request.json()
         headers = dict(request.headers)
-        
+
         result = await deps.orchestrator.handle_webhook(
             psp=psp,
             payload=payload,
