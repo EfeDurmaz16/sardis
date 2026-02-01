@@ -7,6 +7,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl
 
+from sardis_api.middleware.auth import require_api_key, APIKey
 from sardis_v2_core.webhooks import (
     WebhookRepository,
     WebhookService,
@@ -141,10 +142,11 @@ async def list_event_types():
 @router.post("", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED)
 async def create_webhook(
     request: CreateWebhookRequest,
-    organization_id: str = "default",  # TODO: Get from auth
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Create a new webhook subscription."""
+    organization_id = api_key.organization_id
     # Validate event types if provided
     if request.events:
         valid_events = {e.value for e in EventType}
@@ -166,10 +168,11 @@ async def create_webhook(
 
 @router.get("", response_model=List[WebhookResponse])
 async def list_webhooks(
-    organization_id: str = "default",  # TODO: Get from auth
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """List all webhook subscriptions."""
+    organization_id = api_key.organization_id
     subscriptions = await deps.repository.list_subscriptions(
         organization_id=organization_id,
         active_only=False,

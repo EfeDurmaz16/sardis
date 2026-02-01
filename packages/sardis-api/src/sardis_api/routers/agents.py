@@ -4,10 +4,11 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import Agent, AgentPolicy, SpendingLimits, AgentRepository, WalletRepository
+from sardis_api.middleware.auth import require_api_key, APIKey
 
 router = APIRouter()
 
@@ -93,10 +94,11 @@ def get_deps() -> AgentDependencies:
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
 async def create_agent(
     request: CreateAgentRequest,
-    owner_id: str = "default",  # TODO: Get from auth
     deps: AgentDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Create a new AI agent."""
+    owner_id = api_key.organization_id
     spending_limits = None
     if request.spending_limits:
         spending_limits = SpendingLimits(

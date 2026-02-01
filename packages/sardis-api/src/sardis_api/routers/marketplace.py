@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from pydantic import BaseModel, Field
 
 from sardis_v2_core.marketplace import (
@@ -183,10 +183,11 @@ async def list_categories():
 @router.post("/services", response_model=ServiceResponse, status_code=status.HTTP_201_CREATED)
 async def create_service(
     request: CreateServiceRequest,
-    provider_agent_id: str = "demo_agent",  # TODO: Get from auth
     deps: MarketplaceDependencies = Depends(get_deps),
+    x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
 ):
     """Create a new service listing."""
+    provider_agent_id = x_agent_id
     try:
         category = ServiceCategory(request.category)
     except ValueError:
@@ -297,10 +298,11 @@ async def search_services(
 @router.post("/offers", response_model=OfferResponse, status_code=status.HTTP_201_CREATED)
 async def create_offer(
     request: CreateOfferRequest,
-    consumer_agent_id: str = "demo_consumer",  # TODO: Get from auth
     deps: MarketplaceDependencies = Depends(get_deps),
+    x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
 ):
     """Create a service offer."""
+    consumer_agent_id = x_agent_id
     # Get the service to find provider
     service = await deps.repository.get_service(request.service_id)
     if not service:
@@ -333,13 +335,14 @@ async def create_offer(
 
 @router.get("/offers", response_model=List[OfferResponse])
 async def list_offers(
-    agent_id: str = "demo_agent",  # TODO: Get from auth
     role: str = Query(default="any", regex="^(provider|consumer|any)$"),
+    x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
     status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
 ):
     """List offers for an agent."""
+    agent_id = x_agent_id
     offer_status = OfferStatus(status_filter) if status_filter else None
     offers = await deps.repository.list_offers(
         agent_id=agent_id,
@@ -416,10 +419,11 @@ async def complete_offer(
 async def create_review(
     offer_id: str,
     request: CreateReviewRequest,
-    reviewer_agent_id: str = "demo_consumer",  # TODO: Get from auth
     deps: MarketplaceDependencies = Depends(get_deps),
+    x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
 ):
     """Create a review for a completed offer."""
+    reviewer_agent_id = x_agent_id
     offer = await deps.repository.get_offer(offer_id)
     if not offer:
         raise HTTPException(
