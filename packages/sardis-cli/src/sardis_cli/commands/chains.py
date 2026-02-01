@@ -170,28 +170,58 @@ def route(ctx, from_chain: str, to_chain: str, amount: float, token: str):
     )
     
     try:
-        # Note: This is a placeholder - cross-chain routing may not be implemented yet
+        console.print(f"\n[bold blue]Route Analysis[/bold blue]\n")
+        console.print(f"From: [cyan]{from_chain}[/cyan]")
+        console.print(f"To: [cyan]{to_chain}[/cyan]")
+        console.print(f"Amount: {amount} {token}")
+
+        if from_chain == to_chain:
+            console.print(f"\n[green]Same-chain transfer — no bridge needed.[/green]")
+            # Estimate gas for direct transfer
+            try:
+                gas = client.post("/api/v2/transactions/estimate-gas", {
+                    "chain": from_chain,
+                    "token": token,
+                    "amount": str(amount),
+                    "destination": "0x0000000000000000000000000000000000000000",
+                })
+                console.print(f"  Estimated gas: {gas.get('estimated_cost_eth', 'N/A')} ETH")
+            except APIError:
+                pass
+            return
+
+        # Try the routing endpoint
         result = client.post("/api/v2/transactions/route", {
             "from_chain": from_chain,
             "to_chain": to_chain,
             "amount_minor": int(amount * 100),
             "token": token,
         })
-        
-        console.print(f"\n[bold blue]Route Analysis[/bold blue]\n")
-        console.print(f"From: [cyan]{from_chain}[/cyan]")
-        console.print(f"To: [cyan]{to_chain}[/cyan]")
-        console.print(f"Amount: {amount} {token}")
-        
+
         if result.get("bridges"):
             console.print(f"\n[bold]Available Bridges:[/bold]")
             for bridge in result.get("bridges", []):
                 console.print(f"  - {bridge.get('name')}: ~{bridge.get('estimated_time')} mins, ${bridge.get('fee')}")
         else:
-            console.print("\n[yellow]Cross-chain routing not yet implemented[/yellow]")
-        
+            # Provide manual guidance when no bridges returned
+            console.print(f"\n[yellow]No automated bridge routes found.[/yellow]")
+            console.print(f"\nManual options:")
+            console.print(f"  1. Transfer {token} on {from_chain} to a bridge (e.g. Across, Stargate)")
+            console.print(f"  2. Receive {token} on {to_chain}")
+            console.print(f"\nSupported bridges for {token}:")
+            console.print(f"  - [cyan]Across Protocol[/cyan] (fastest, ~2 min)")
+            console.print(f"  - [cyan]Stargate Finance[/cyan] (LayerZero, ~5 min)")
+            console.print(f"  - [cyan]Circle CCTP[/cyan] (native USDC, ~15 min)")
+
     except APIError as e:
-        console.print(f"[red]Error: {e.message}[/red]")
+        if "404" in str(e) or "not found" in str(e).lower():
+            console.print(f"\n[yellow]Route endpoint not available on this server.[/yellow]")
+            console.print(f"\nManual cross-chain options for {token}:")
+            console.print(f"  - [cyan]Across Protocol[/cyan] — https://across.to")
+            console.print(f"  - [cyan]Stargate Finance[/cyan] — https://stargate.finance")
+            console.print(f"  - [cyan]Circle CCTP[/cyan] — https://www.circle.com/en/cross-chain-transfer-protocol")
+        else:
+            console.print(f"[red]Error: {e.message}[/red]")
     finally:
         client.close()
 

@@ -369,10 +369,14 @@ _audit_store: Optional[ComplianceAuditStore] = None
 
 
 def get_audit_store() -> ComplianceAuditStore:
-    """Get the global audit store singleton."""
+    """Get the global audit store singleton.
+
+    Uses PostgresAuditStore when DATABASE_URL is set and asyncpg is available,
+    otherwise falls back to in-memory ComplianceAuditStore.
+    """
     global _audit_store
     if _audit_store is None:
-        _audit_store = ComplianceAuditStore()
+        _audit_store = create_audit_store()
     return _audit_store
 
 

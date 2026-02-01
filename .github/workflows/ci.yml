@@ -79,7 +79,7 @@ jobs:
       
       - name: Check coverage threshold
         run: |
-          coverage report --fail-under=60 || echo "Coverage below 60%, please add more tests"
+          coverage report --fail-under=70 || echo "Coverage below 70%, please add more tests"
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3

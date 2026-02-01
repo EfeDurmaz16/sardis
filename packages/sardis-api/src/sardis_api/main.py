@@ -478,10 +478,29 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("Turnkey client module not available")
 
     app.state.turnkey_client = turnkey_client
+
+    # Validate MPC provider is available for live chain mode
+    if getattr(settings, "chain_mode", "simulated") == "live" and turnkey_client is None:
+        mpc_name = os.getenv("SARDIS_MPC__NAME", "simulated")
+        if mpc_name == "turnkey":
+            logger.error(
+                "SARDIS_CHAIN_MODE=live with MPC=turnkey but Turnkey client is not initialized. "
+                "Set TURNKEY_API_KEY and TURNKEY_ORGANIZATION_ID or switch to simulated mode."
+            )
+            raise RuntimeError("Turnkey MPC provider required for live chain mode but not configured")
+        elif mpc_name == "fireblocks":
+            if not os.getenv("FIREBLOCKS_API_KEY"):
+                logger.error(
+                    "SARDIS_CHAIN_MODE=live with MPC=fireblocks but FIREBLOCKS_API_KEY is not set."
+                )
+                raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
+
     wallet_mgr = WalletManager(settings=settings, turnkey_client=turnkey_client)
     chain_exec = ChainExecutor(settings=settings)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
-    compliance = ComplianceEngine(settings=settings)
+    from sardis_compliance.checks import create_audit_store
+    audit_store = create_audit_store(dsn=database_url)
+    compliance = ComplianceEngine(settings=settings, audit_store=audit_store)
     identity_registry = IdentityRegistry()
 
     # Use PostgreSQL for mandate archive and replay cache if available
@@ -833,6 +852,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             components["turnkey"]["status"] = "configured"
         else:
             components["turnkey"]["status"] = "unconfigured"
+
+        # Smart contract check (verify configured addresses are valid)
+        checks_total += 1
+        try:
+            from sardis_v2_core.config import get_chain_config
+            chain_cfg = get_chain_config(settings.chain_mode if settings.chain_mode != "simulated" else "base_sepolia")
+            contract_addr = getattr(chain_cfg, "wallet_factory_address", None) or os.getenv("SARDIS_WALLET_FACTORY_ADDRESS")
+            if contract_addr and contract_addr.startswith("0x") and len(contract_addr) == 42:
+                components["contracts"] = {"status": "configured", "wallet_factory": contract_addr[:10] + "..."}
+                checks_passed += 1
+            elif contract_addr:
+                components["contracts"] = {"status": "invalid_address", "address": contract_addr}
+                overall_healthy = False
+            else:
+                components["contracts"] = {"status": "unconfigured"}
+                checks_passed += 1  # Not required in dev/simulated mode
+        except Exception as e:
+            components["contracts"] = {"status": "error", "error": str(e)}
 
         # Webhook service check
         checks_total += 1
