@@ -53,6 +53,7 @@ from .routers import checkout as checkout_router
 from .routers import policies as policies_router
 from .routers import compliance as compliance_router
 from .routers import admin as admin_router
+from .routers import invoices as invoices_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -193,6 +194,12 @@ async def lifespan(app: FastAPI):
     await shutdown_state.wait_for_requests()
 
     # Cleanup resources
+    if hasattr(app.state, "turnkey_client") and app.state.turnkey_client:
+        try:
+            await app.state.turnkey_client.close()
+        except Exception as e:
+            logger.warning(f"Error closing Turnkey client: {e}")
+
     if hasattr(app.state, "cache_service"):
         try:
             await app.state.cache_service.close()
@@ -338,6 +345,29 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = settings or load_settings()
 
+    # Initialize Sentry for error monitoring (if configured)
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
+            from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                environment=settings.environment,
+                traces_sample_rate=0.1 if settings.environment == "production" else 1.0,
+                profiles_sample_rate=0.1 if settings.environment == "production" else 1.0,
+                integrations=[
+                    FastApiIntegration(transaction_style="endpoint"),
+                    AsyncPGIntegration(),
+                ],
+                send_default_pii=False,
+            )
+            logger.info("Sentry monitoring initialized")
+        except ImportError:
+            logger.warning("SENTRY_DSN is set but sentry-sdk is not installed")
+
     app = FastAPI(
         title="Sardis Stablecoin Execution API",
         version=API_VERSION,
@@ -432,8 +462,23 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.database_url = database_url
     app.state.use_postgres = use_postgres
+    app.state.turnkey_client = turnkey_client
 
-    wallet_mgr = WalletManager(settings=settings)
+    # Initialize Turnkey MPC client if configured
+    turnkey_client = None
+    if os.getenv("TURNKEY_API_KEY") and os.getenv("TURNKEY_ORGANIZATION_ID"):
+        try:
+            from sardis_wallet.turnkey_client import TurnkeyClient
+            turnkey_client = TurnkeyClient(
+                api_key=os.getenv("TURNKEY_API_KEY", ""),
+                api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
+                organization_id=os.getenv("TURNKEY_ORGANIZATION_ID", ""),
+            )
+            logger.info("Turnkey MPC client initialized")
+        except ImportError:
+            logger.warning("Turnkey client module not available")
+
+    wallet_mgr = WalletManager(settings=settings, turnkey_client=turnkey_client)
     chain_exec = ChainExecutor(settings=settings)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     compliance = ComplianceEngine(settings=settings)
@@ -605,6 +650,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         sanctions_service=sanctions_service,
     )
     app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
+
+    # Invoice routes
+    app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
 
     # Admin routes (with strict rate limiting)
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)

@@ -388,6 +388,25 @@ CREATE TABLE IF NOT EXISTS kyc_verifications (
 CREATE INDEX IF NOT EXISTS idx_kyc_agent ON kyc_verifications(agent_id);
 CREATE INDEX IF NOT EXISTS idx_kyc_inquiry ON kyc_verifications(inquiry_id);
 
+-- Invoices
+CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id VARCHAR(100) PRIMARY KEY,
+    organization_id VARCHAR(100) NOT NULL,
+    merchant_name VARCHAR(255),
+    amount VARCHAR(50) NOT NULL,
+    amount_paid VARCHAR(50) DEFAULT '0.00',
+    currency VARCHAR(10) DEFAULT 'USDC',
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'pending',
+    payer_agent_id VARCHAR(100),
+    reference VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    paid_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(organization_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+
 -- Mandate Chains
 CREATE TABLE IF NOT EXISTS mandate_chains (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

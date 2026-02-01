@@ -364,6 +364,36 @@ export const holdsApi = {
   listActive: (limit = 100) => requestV2<any[]>(`/holds?limit=${limit}`),
 }
 
+// Invoices APIs (V2 only)
+export const invoicesApi = {
+  list: (params?: { status?: string; limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.limit) searchParams.append('limit', String(params.limit))
+    if (params?.offset) searchParams.append('offset', String(params.offset))
+    return requestV2<any[]>(`/invoices?${searchParams}`)
+  },
+
+  get: (invoiceId: string) => requestV2<any>(`/invoices/${invoiceId}`),
+
+  create: (data: {
+    amount: string
+    currency?: string
+    description?: string
+    merchant_name?: string
+    payer_agent_id?: string
+    reference?: string
+  }) => requestV2<any>('/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  updateStatus: (invoiceId: string, status: string) =>
+    requestV2<any>(`/invoices/${invoiceId}?status=${status}`, {
+      method: 'PATCH',
+    }),
+}
+
 // Marketplace APIs (V2 only - A2A service discovery)
 export const marketplaceApi = {
   // List categories
