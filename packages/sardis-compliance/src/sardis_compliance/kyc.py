@@ -556,8 +556,38 @@ class KYCService:
             # Cached but not verified (declined, pending, etc.) - return as-is
             return cached
 
-        # TODO: Look up inquiry ID from database and fetch fresh status
-        # For now, return not_started
+        # Look up from database
+        try:
+            from sardis_v2_core.database import Database
+            row = await Database.fetchrow(
+                """
+                SELECT inquiry_id, provider, status, verified_at, expires_at, reason, metadata
+                FROM kyc_verifications
+                WHERE agent_id = $1
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                agent_id,
+            )
+            if row:
+                import json
+                meta = row["metadata"]
+                if isinstance(meta, str):
+                    meta = json.loads(meta)
+                result = KYCResult(
+                    status=KYCStatus(row["status"]),
+                    verification_id=row["inquiry_id"],
+                    provider=row["provider"] or "persona",
+                    verified_at=row["verified_at"],
+                    expires_at=row["expires_at"],
+                    reason=row["reason"],
+                    metadata=meta or {},
+                )
+                # Populate cache for future lookups
+                self._cache[agent_id] = result
+                return result
+        except Exception as e:
+            logger.warning(f"DB lookup for KYC failed, returning not_started: {e}")
+
         return KYCResult(
             status=KYCStatus.NOT_STARTED,
             verification_id="",
@@ -644,6 +674,30 @@ class KYCService:
                 if reference_id:
                     self._cache[reference_id] = result
                     logger.info(f"KYC completed for {reference_id}: {result.status}")
+                    # Persist to database
+                    try:
+                        import json as _json
+                        from sardis_v2_core.database import Database
+                        await Database.execute(
+                            """
+                            INSERT INTO kyc_verifications
+                                (agent_id, inquiry_id, provider, status, verified_at, expires_at, reason, metadata)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            ON CONFLICT (inquiry_id) DO UPDATE SET
+                                status = EXCLUDED.status, verified_at = EXCLUDED.verified_at,
+                                updated_at = NOW()
+                            """,
+                            reference_id,
+                            inquiry_id,
+                            result.provider,
+                            result.status.value,
+                            result.verified_at,
+                            result.expires_at,
+                            result.reason,
+                            _json.dumps(result.metadata, default=str),
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to persist KYC result: {e}")
 
         elif event_type == "inquiry.expired":
             inquiry_id = payload.get("data", {}).get("id")

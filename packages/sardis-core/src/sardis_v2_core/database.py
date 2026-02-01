@@ -371,6 +371,23 @@ CREATE TABLE IF NOT EXISTS checkouts (
 CREATE INDEX IF NOT EXISTS idx_checkouts_org ON checkouts(organization_id);
 CREATE INDEX IF NOT EXISTS idx_checkouts_status ON checkouts(status);
 
+-- KYC verifications
+CREATE TABLE IF NOT EXISTS kyc_verifications (
+    id SERIAL PRIMARY KEY,
+    agent_id VARCHAR(100) NOT NULL,
+    inquiry_id VARCHAR(100) NOT NULL,
+    provider VARCHAR(50) DEFAULT 'persona',
+    status VARCHAR(20) DEFAULT 'pending',
+    verified_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    reason TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_kyc_agent ON kyc_verifications(agent_id);
+CREATE INDEX IF NOT EXISTS idx_kyc_inquiry ON kyc_verifications(inquiry_id);
+
 -- Mandate Chains
 CREATE TABLE IF NOT EXISTS mandate_chains (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
