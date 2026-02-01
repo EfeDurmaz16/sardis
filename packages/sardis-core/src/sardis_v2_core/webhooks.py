@@ -253,6 +253,7 @@ class WebhookRepository:
         url: Optional[str] = None,
         events: Optional[List[str]] = None,
         is_active: Optional[bool] = None,
+        secret: Optional[str] = None,
     ) -> Optional[WebhookSubscription]:
         """Update a subscription."""
         sub = await self.get_subscription(subscription_id)
@@ -265,6 +266,8 @@ class WebhookRepository:
             sub.events = events
         if is_active is not None:
             sub.is_active = is_active
+        if secret is not None:
+            sub.secret = secret
 
         if self._use_postgres:
             pool = await self._get_pool()
@@ -272,13 +275,14 @@ class WebhookRepository:
                 await conn.execute(
                     """
                     UPDATE webhook_subscriptions SET
-                        url = $2, events = $3, is_active = $4
+                        url = $2, events = $3, is_active = $4, secret = $5
                     WHERE external_id = $1
                     """,
                     subscription_id,
                     sub.url,
                     sub.events,
                     sub.is_active,
+                    sub.secret,
                 )
         else:
             self._subscriptions[subscription_id] = sub

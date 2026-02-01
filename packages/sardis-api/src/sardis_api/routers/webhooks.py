@@ -318,11 +318,11 @@ async def rotate_secret(
     # Generate new secret
     from uuid import uuid4
     new_secret = f"whsec_{uuid4().hex}"
-    subscription.secret = new_secret
 
-    # Update in database
-    # Note: This requires adding secret update to the repository
-    # For now, we'll just return the subscription with new secret
-    # In production, you'd update the database
+    # Persist the new secret
+    await deps.repository.update_subscription(
+        subscription_id, secret=new_secret
+    )
+    subscription.secret = new_secret
 
     return WebhookResponse.from_subscription(subscription, show_secret=True)
