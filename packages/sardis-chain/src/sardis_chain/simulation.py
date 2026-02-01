@@ -251,14 +251,42 @@ class TransactionSimulator:
 
         # Pattern: "Error(string)" selector (0x08c379a0)
         if "0x08c379a0" in error_message:
-            # Could decode ABI here - for now return raw
-            return error_message
+            return self._decode_error_string(error_message)
 
         # Pattern: "Panic(uint256)" selector (0x4e487b71)
         if "0x4e487b71" in error_message:
             return "Panic: assertion failed or arithmetic error"
 
         return None
+
+    @staticmethod
+    def _decode_error_string(error_message: str) -> str:
+        """Decode ABI-encoded Error(string) revert reason.
+
+        The ABI encoding for Error(string) is:
+        - 4 bytes selector (0x08c379a0)
+        - 32 bytes offset to string data
+        - 32 bytes string length
+        - N bytes UTF-8 string (padded to 32-byte boundary)
+        """
+        try:
+            # Find the hex data after the selector
+            idx = error_message.find("0x08c379a0")
+            if idx == -1:
+                return error_message
+            hex_data = error_message[idx + 2:]  # skip "0x"
+            # Remove any non-hex chars (quotes, whitespace, etc.)
+            hex_data = "".join(c for c in hex_data if c in "0123456789abcdefABCDEF")
+            if len(hex_data) < 8 + 64 + 64:  # selector + offset + length minimum
+                return error_message
+            # Skip selector (8 hex chars) and offset (64 hex chars)
+            length_hex = hex_data[8 + 64 : 8 + 64 + 64]
+            string_length = int(length_hex, 16)
+            string_start = 8 + 64 + 64
+            string_hex = hex_data[string_start : string_start + string_length * 2]
+            return bytes.fromhex(string_hex).decode("utf-8", errors="replace")
+        except Exception:
+            return error_message
 
     async def simulate_and_validate(
         self,
