@@ -1,6 +1,25 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
-
 @import "tailwindcss";
+
+/* === FONT TEST START — revert by removing this block and restoring vars below === */
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/fonts/CabinetGrotesk-Extrabold.woff2") format("woff2"),
+       url("/fonts/CabinetGrotesk-Extrabold.woff") format("woff");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Medium.woff2") format("woff2"),
+       url("/fonts/Satoshi-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+/* === FONT TEST END === */
 
 @plugin "tailwindcss-animate";
 
@@ -17,9 +36,13 @@
   --sardis-ghost: #fafafa; /* Dark mode text */
   --sardis-border: #0f0e0c; /* 1px borders */
 
-  /* Fonts */
-  --font-display: "Geist Mono", "JetBrains Mono", monospace;
-  --font-body: "Inter", "SF Pro", system-ui, sans-serif;
+  /* Fonts — ORIGINAL VALUES (for revert):
+     --font-display: "Geist Mono", "JetBrains Mono", monospace;
+     --font-body: "Inter", "SF Pro", system-ui, sans-serif;
+     --font-mono: "Geist Mono", "Fira Code", monospace;
+  */
+  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
+  --font-body: "Satoshi", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Fira Code", monospace;
 
   /* Light mode defaults */
@@ -92,8 +115,10 @@
   --radius-lg: 0px;
   --radius-xl: 0px;
 
-  --font-display: "Geist Mono", "JetBrains Mono", monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* ORIGINAL: --font-display: "Geist Mono", "JetBrains Mono", monospace; */
+  /* ORIGINAL: --font-sans: "Inter", system-ui, sans-serif; */
+  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
+  --font-sans: "Satoshi", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Fira Code", monospace;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
