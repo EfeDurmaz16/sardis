@@ -38,6 +38,44 @@ class ChainNetwork(str, Enum):
     OPTIMISM_SEPOLIA = "optimism_sepolia"
 
 
+# Aliases for backwards compatibility with __init__.py exports
+ChainId = ChainNetwork
+
+
+@dataclass
+class TokenConfig:
+    """Token configuration placeholder for API compatibility."""
+    symbol: str = ""
+    address: str = ""
+    decimals: int = 6
+
+
+@dataclass
+class GasConfig:
+    """Gas configuration placeholder for API compatibility."""
+    max_gas_price_gwei: Decimal = Decimal("500")
+    max_priority_fee_gwei: Decimal = Decimal("50")
+
+
+@dataclass
+class RPCConfig:
+    """RPC configuration placeholder for API compatibility."""
+    url: str = ""
+    timeout: float = 30.0
+
+
+@dataclass
+class TurnkeyConfig:
+    """Turnkey MPC configuration placeholder for API compatibility."""
+    api_key: str = ""
+    organization_id: str = ""
+
+
+def load_chain_config(chain: str = "base_sepolia") -> "ChainConfig":
+    """Load chain configuration (alias for get_chain_config)."""
+    return get_chain_config(chain)
+
+
 @dataclass
 class RPCEndpointConfig:
     """Configuration for a single RPC endpoint."""
