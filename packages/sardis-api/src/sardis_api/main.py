@@ -462,7 +462,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.database_url = database_url
     app.state.use_postgres = use_postgres
-    app.state.turnkey_client = turnkey_client
 
     # Initialize Turnkey MPC client if configured
     turnkey_client = None
@@ -478,6 +477,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         except ImportError:
             logger.warning("Turnkey client module not available")
 
+    app.state.turnkey_client = turnkey_client
     wallet_mgr = WalletManager(settings=settings, turnkey_client=turnkey_client)
     chain_exec = ChainExecutor(settings=settings)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)

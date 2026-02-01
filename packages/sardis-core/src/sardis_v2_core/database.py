@@ -328,23 +328,22 @@ CREATE TABLE IF NOT EXISTS mandates (
     domain VARCHAR(255),
     payload JSONB NOT NULL,
     proof JSONB,
+    status VARCHAR(20) DEFAULT 'pending',
+    attestation_bundle JSONB DEFAULT '{}',
+    validation_result JSONB,
+    execution_result JSONB,
+    amount_minor BIGINT,
+    currency VARCHAR(10),
+    recipient VARCHAR(255),
+    chain VARCHAR(20),
+    memo TEXT,
     expires_at TIMESTAMPTZ,
     verified_at TIMESTAMPTZ,
     executed_at TIMESTAMPTZ,
     transaction_id UUID REFERENCES transactions(id),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS attestation_bundle JSONB DEFAULT '{}';
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS validation_result JSONB;
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS execution_result JSONB;
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS amount_minor BIGINT;
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS currency VARCHAR(10);
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS recipient VARCHAR(255);
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS chain VARCHAR(20);
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS memo TEXT;
-ALTER TABLE mandates ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
 CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
