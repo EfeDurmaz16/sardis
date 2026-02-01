@@ -1640,9 +1640,8 @@ class ChainExecutor:
                 api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
             )
         elif mpc_config.name == "fireblocks":
-            # TODO: Implement Fireblocks signer
-            logger.warning("Fireblocks not yet implemented, using simulated")
-            self._mpc_signer = SimulatedMPCSigner()
+            from .fireblocks_signer import FireblocksSigner
+            self._mpc_signer = FireblocksSigner()
         else:
             self._mpc_signer = SimulatedMPCSigner()
 
