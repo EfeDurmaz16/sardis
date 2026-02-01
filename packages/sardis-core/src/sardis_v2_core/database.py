@@ -23,12 +23,24 @@ class Database:
             if database_url.startswith("postgres://"):
                 database_url = database_url.replace("postgres://", "postgresql://", 1)
             
-            cls._pool = await asyncpg.create_pool(
-                database_url,
-                min_size=2,
-                max_size=10,
-                command_timeout=60,
-            )
+            # Neon serverless requires SSL and pgbouncer-compatible settings
+            pool_kwargs: dict = {
+                "min_size": 2,
+                "max_size": 10,
+                "command_timeout": 60,
+            }
+
+            if "neon" in database_url:
+                import ssl
+                ssl_ctx = ssl.create_default_context()
+                pool_kwargs.update({
+                    "ssl": ssl_ctx,
+                    "min_size": 1,
+                    "max_size": 5,
+                    "statement_cache_size": 0,  # Required for pgbouncer/Neon pooler
+                })
+
+            cls._pool = await asyncpg.create_pool(database_url, **pool_kwargs)
         return cls._pool
     
     @classmethod
@@ -323,8 +335,20 @@ CREATE TABLE IF NOT EXISTS mandates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS attestation_bundle JSONB DEFAULT '{}';
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS validation_result JSONB;
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS execution_result JSONB;
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS amount_minor BIGINT;
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS currency VARCHAR(10);
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS recipient VARCHAR(255);
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS chain VARCHAR(20);
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS memo TEXT;
+ALTER TABLE mandates ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
 CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
+CREATE INDEX IF NOT EXISTS idx_mandates_status ON mandates(status);
 
 -- Mandate Chains
 CREATE TABLE IF NOT EXISTS mandate_chains (

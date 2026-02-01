@@ -9,8 +9,11 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
+import json
+
 from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 from sardis_v2_core.mandates import PaymentMandate
+from sardis_v2_core.database import Database
 
 if TYPE_CHECKING:
     from sardis_wallet.manager import WalletManager
@@ -34,8 +37,95 @@ class StoredMandate(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-# In-memory mandate store (swap for PostgreSQL in production)
-_mandate_store: Dict[str, StoredMandate] = {}
+async def _save_mandate(stored: StoredMandate) -> None:
+    """Save or update a mandate in PostgreSQL."""
+    await Database.execute(
+        """
+        INSERT INTO mandates (
+            mandate_id, mandate_type, issuer, subject, domain, payload, status,
+            attestation_bundle, validation_result, execution_result,
+            amount_minor, currency, recipient, chain, memo, updated_at, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ON CONFLICT (mandate_id) DO UPDATE SET
+            status = EXCLUDED.status,
+            validation_result = EXCLUDED.validation_result,
+            execution_result = EXCLUDED.execution_result,
+            updated_at = EXCLUDED.updated_at
+        """,
+        stored.mandate_id,
+        "payment",
+        stored.mandate.subject,
+        stored.mandate.subject,
+        stored.mandate.domain,
+        json.dumps(stored.mandate.model_dump(), default=str),
+        stored.status,
+        json.dumps(stored.attestation_bundle),
+        json.dumps(stored.validation_result) if stored.validation_result else None,
+        json.dumps(stored.execution_result) if stored.execution_result else None,
+        stored.mandate.amount_minor,
+        stored.mandate.currency,
+        stored.mandate.recipient,
+        stored.mandate.chain,
+        getattr(stored.mandate, "memo", ""),
+        stored.updated_at,
+        stored.created_at,
+    )
+
+
+async def _get_mandate(mandate_id: str) -> Optional[StoredMandate]:
+    """Get a mandate from PostgreSQL."""
+    row = await Database.fetchrow(
+        "SELECT * FROM mandates WHERE mandate_id = $1", mandate_id
+    )
+    if not row:
+        return None
+    return _row_to_stored(row)
+
+
+async def _list_mandates(
+    subject: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list:
+    """List mandates from PostgreSQL."""
+    conditions = []
+    args: list = []
+    idx = 1
+
+    if subject:
+        conditions.append(f"subject = ${idx}")
+        args.append(subject)
+        idx += 1
+    if status_filter:
+        conditions.append(f"status = ${idx}")
+        args.append(status_filter)
+        idx += 1
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    args.extend([limit, offset])
+
+    rows = await Database.fetch(
+        f"SELECT * FROM mandates {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+        *args,
+    )
+    return [_row_to_stored(r) for r in rows]
+
+
+def _row_to_stored(row) -> StoredMandate:
+    """Convert a database row to StoredMandate."""
+    payload = row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"])
+    mandate = PaymentMandate(**payload)
+    return StoredMandate(
+        mandate_id=row["mandate_id"],
+        mandate=mandate,
+        status=row["status"] or "pending",
+        attestation_bundle=json.loads(row["attestation_bundle"]) if isinstance(row["attestation_bundle"], str) else (row["attestation_bundle"] or {}),
+        validation_result=json.loads(row["validation_result"]) if isinstance(row["validation_result"], str) else row["validation_result"],
+        execution_result=json.loads(row["execution_result"]) if isinstance(row["execution_result"], str) else row["execution_result"],
+        created_at=row["created_at"],
+        updated_at=row.get("updated_at") or row["created_at"],
+    )
 
 
 # Request/Response models
@@ -126,7 +216,7 @@ async def create_mandate(
         mandate=mandate,
         attestation_bundle=request.attestation_bundle,
     )
-    _mandate_store[mandate_id] = stored
+    await _save_mandate(stored)
     
     return MandateResponse.from_stored(stored)
 
@@ -140,13 +230,13 @@ async def list_mandates(
     deps: Dependencies = Depends(get_deps),
 ):
     """List all mandates."""
-    mandates = list(_mandate_store.values())
-    if subject:
-        mandates = [m for m in mandates if m.mandate.subject == subject]
-    if status_filter:
-        mandates = [m for m in mandates if m.status == status_filter]
-    mandates = mandates[offset : offset + limit]
-    return [MandateResponse.from_stored(m) for m in mandates]
+    results = await _list_mandates(
+        subject=subject,
+        status_filter=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return [MandateResponse.from_stored(m) for m in results]
 
 
 @router.get("/{mandate_id}", response_model=MandateResponse)
@@ -155,7 +245,7 @@ async def get_mandate(
     deps: Dependencies = Depends(get_deps),
 ):
     """Get mandate details."""
-    stored = _mandate_store.get(mandate_id)
+    stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     return MandateResponse.from_stored(stored)
@@ -167,7 +257,7 @@ async def validate_mandate(
     deps: Dependencies = Depends(get_deps),
 ):
     """Validate a mandate without executing it."""
-    stored = _mandate_store.get(mandate_id)
+    stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     
@@ -200,7 +290,8 @@ async def validate_mandate(
         "compliance": compliance_check,
     }
     stored.updated_at = datetime.now(timezone.utc)
-    
+    await _save_mandate(stored)
+
     return ValidateMandateResponse(
         mandate_id=mandate_id,
         valid=valid,
@@ -217,7 +308,7 @@ async def execute_stored_mandate(
     deps: Dependencies = Depends(get_deps),
 ):
     """Execute a previously created mandate."""
-    stored = _mandate_store.get(mandate_id)
+    stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     
@@ -233,18 +324,21 @@ async def execute_stored_mandate(
         if not verification.accepted:
             stored.status = "failed"
             stored.updated_at = datetime.now(timezone.utc)
+            await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
-        
+
         policy_result = deps.wallet_manager.validate_policies(stored.mandate)
         if not policy_result.allowed:
             stored.status = "failed"
             stored.updated_at = datetime.now(timezone.utc)
+            await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
-        
+
         compliance_status = deps.compliance.preflight(stored.mandate)
         if not compliance_status.allowed:
             stored.status = "failed"
             stored.updated_at = datetime.now(timezone.utc)
+            await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
     
     # Execute
@@ -258,7 +352,8 @@ async def execute_stored_mandate(
         "audit_anchor": tx.audit_anchor,
     }
     stored.updated_at = datetime.now(timezone.utc)
-    
+    await _save_mandate(stored)
+
     return MandateExecutionResponse(
         mandate_id=stored.mandate.mandate_id,
         status="submitted",
@@ -274,7 +369,7 @@ async def cancel_mandate(
     deps: Dependencies = Depends(get_deps),
 ):
     """Cancel a pending mandate."""
-    stored = _mandate_store.get(mandate_id)
+    stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
     
@@ -283,7 +378,8 @@ async def cancel_mandate(
     
     stored.status = "cancelled"
     stored.updated_at = datetime.now(timezone.utc)
-    
+    await _save_mandate(stored)
+
     return MandateResponse.from_stored(stored)
 
 
