@@ -11,13 +11,15 @@ import sys
 
 # Add the sardis packages to the path
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(root_dir, "sardis-core", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-api", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-wallet", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-protocol", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-chain", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-ledger", "src"))
-sys.path.insert(0, os.path.join(root_dir, "sardis-compliance", "src"))
+packages_dir = os.path.join(root_dir, "packages")
+sys.path.insert(0, os.path.join(packages_dir, "sardis-core", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-api", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-wallet", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-protocol", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-chain", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-ledger", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-compliance", "src"))
+sys.path.insert(0, os.path.join(packages_dir, "sardis-cards", "src"))
 
 from sardis_api.main import create_app
 
