@@ -616,8 +616,23 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
-    # Virtual Card routes (pre-loaded cards for fiat on-ramp)
-    app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
+    # Virtual Card routes (gated behind feature flag)
+    if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
+        from sardis_api.repositories.card_repository import CardRepository
+        card_repo = CardRepository(pool=app.state.db_pool if hasattr(app.state, "db_pool") else None)
+        # Import provider - use Lithic if API key present, else stub
+        lithic_api_key = os.getenv("LITHIC_API_KEY")
+        if lithic_api_key:
+            from sardis_cards.providers.lithic import LithicProvider
+            card_provider = LithicProvider(api_key=lithic_api_key)
+        else:
+            card_provider = None
+        webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
+        if card_provider:
+            injected_router = cards_router.create_cards_router(card_repo, card_provider, webhook_secret)
+            app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
+    else:
+        app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
     # Agent routes
     agent_repo = AgentRepository(dsn=database_url if use_postgres else "memory://")

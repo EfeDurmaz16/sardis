@@ -1,3 +1,7 @@
+import hashlib
+import hmac as hmac_mod
+import json
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
@@ -103,3 +107,60 @@ def test_get_card_not_found(app_with_cards, mock_card_repo):
     client = TestClient(app_with_cards)
     resp = client.get("/api/v2/cards/nonexistent")
     assert resp.status_code == 404
+
+
+# ---- Webhook HMAC tests ----
+
+@pytest.fixture
+def app_with_webhook_secret(mock_card_repo, mock_card_provider):
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location(
+        "cards_router_wh",
+        "/Users/efebarandurmaz/Desktop/sardis 2/packages/sardis-api/src/sardis_api/routers/cards.py",
+    )
+    cards_mod = importlib.util.module_from_spec(spec)
+    sys.modules["cards_router_wh"] = cards_mod
+    spec.loader.exec_module(cards_mod)
+    app = FastAPI()
+    router = cards_mod.create_cards_router(
+        card_repo=mock_card_repo,
+        card_provider=mock_card_provider,
+        webhook_secret="test_secret_key",
+    )
+    app.include_router(router, prefix="/api/v2/cards")
+    return app
+
+
+def test_webhook_rejects_missing_signature(app_with_webhook_secret):
+    client = TestClient(app_with_webhook_secret)
+    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"})
+    assert resp.status_code == 401
+
+
+def test_webhook_rejects_invalid_signature(app_with_webhook_secret):
+    client = TestClient(app_with_webhook_secret)
+    resp = client.post(
+        "/api/v2/cards/webhooks",
+        json={"event_type": "test"},
+        headers={"x-lithic-hmac": "bad_sig"},
+    )
+    assert resp.status_code == 401
+
+
+def test_webhook_accepts_valid_signature(app_with_webhook_secret, mock_card_repo):
+    body = json.dumps({"event_type": "card.transaction.created", "card_token": "card_1", "data": {"token": "txn_1", "amount": 100, "currency": "USD", "merchant": {"descriptor": "Test", "mcc": "5411"}, "status": "pending"}})
+    sig = hmac_mod.new(b"test_secret_key", body.encode(), hashlib.sha256).hexdigest()
+    client = TestClient(app_with_webhook_secret)
+    resp = client.post(
+        "/api/v2/cards/webhooks",
+        content=body,
+        headers={"x-lithic-hmac": sig, "content-type": "application/json"},
+    )
+    assert resp.status_code == 200
+    mock_card_repo.record_transaction.assert_called_once()
+
+
+def test_webhook_no_secret_accepts_all(app_with_cards):
+    client = TestClient(app_with_cards)
+    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"})
+    assert resp.status_code == 200

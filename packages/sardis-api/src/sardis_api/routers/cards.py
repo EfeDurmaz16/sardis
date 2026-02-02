@@ -1,12 +1,17 @@
 """Virtual Card API endpoints with dependency injection."""
 from __future__ import annotations
 
+import hashlib
+import hmac
+import logging
 from decimal import Decimal
 from typing import Optional, List
 import uuid
 
 from fastapi import APIRouter, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 # ---- Request/Response Models ----
@@ -157,6 +162,41 @@ def create_cards_router(card_repo, card_provider, webhook_secret: str | None = N
     @r.post("/webhooks", status_code=status.HTTP_200_OK)
     async def receive_card_webhook(request: Request):
         body = await request.body()
+
+        if webhook_secret:
+            signature = request.headers.get("x-lithic-hmac")
+            if not signature:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook signature")
+            expected = hmac.new(
+                webhook_secret.encode(), body, hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
+
+        import json
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
+
+        event_type = payload.get("event_type", "")
+        card_token = payload.get("card_token") or payload.get("data", {}).get("card_token")
+
+        if event_type in ("card.transaction.created", "card.transaction.updated") and card_token:
+            txn = payload.get("data", {})
+            card = await card_repo.get_by_card_id(card_token)
+            if card:
+                await card_repo.record_transaction(
+                    card_id=card_token,
+                    transaction_id=txn.get("token", f"txn_{uuid.uuid4().hex[:12]}"),
+                    amount=txn.get("amount", 0),
+                    currency=txn.get("currency", "USD"),
+                    merchant_name=txn.get("merchant", {}).get("descriptor", "Unknown"),
+                    merchant_category=txn.get("merchant", {}).get("mcc", "0000"),
+                    status=txn.get("status", "pending"),
+                )
+
+        logger.info("Processed webhook event_type=%s", event_type)
         return {"status": "received"}
 
     return r
