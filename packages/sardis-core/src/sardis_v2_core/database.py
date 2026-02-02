@@ -92,11 +92,37 @@ class Database:
 
 
 async def init_database() -> None:
-    """Initialize database schema."""
+    """Initialize database schema.
+
+    In production, expects migrations to have been applied already.
+    In dev/test, falls back to running SCHEMA_SQL directly.
+    """
+    import os
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
     pool = await Database.get_pool()
     async with pool.acquire() as conn:
-        # Create tables if they don't exist
-        await conn.execute(SCHEMA_SQL)
+        if env in ("prod", "production"):
+            # Production: verify migrations have been applied
+            try:
+                count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM schema_migrations"
+                )
+                if count == 0:
+                    raise RuntimeError(
+                        "No migrations found in schema_migrations table. "
+                        "Run: ./scripts/run_migrations.sh"
+                    )
+                logger.info(f"Database schema verified: {count} migrations applied")
+            except Exception as e:
+                if "does not exist" in str(e):
+                    raise RuntimeError(
+                        "schema_migrations table not found. "
+                        "Run: ./scripts/run_migrations.sh to initialize the database."
+                    ) from e
+                raise
+        else:
+            # Dev/test: create tables directly
+            await conn.execute(SCHEMA_SQL)
 
 
 # Production-ready schema

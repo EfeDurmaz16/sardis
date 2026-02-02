@@ -178,32 +178,44 @@ class PostgresAuditStore:
 
         self._pool = await asyncpg.create_pool(self._dsn, min_size=2, max_size=10)
 
-        # Create table if not exists (append-only, no DELETE)
+        # In production, expect migrations to have created this table.
+        # In dev/test, create it directly.
+        import os
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
         async with self._pool.acquire() as conn:
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS compliance_audit_trail (
-                    id SERIAL PRIMARY KEY,
-                    audit_id UUID UNIQUE NOT NULL,
-                    mandate_id VARCHAR(255),
-                    subject VARCHAR(255),
-                    allowed BOOLEAN NOT NULL,
-                    reason TEXT,
-                    rule_id VARCHAR(255),
-                    provider VARCHAR(255),
-                    evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    metadata JSONB DEFAULT '{}',
-                    prev_hash VARCHAR(64),
-                    entry_hash VARCHAR(64) NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
+            if env in ("prod", "production"):
+                # Verify table exists
+                exists = await conn.fetchval(
+                    "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = 'compliance_audit_trail')"
+                )
+                if not exists:
+                    raise RuntimeError(
+                        "compliance_audit_trail table not found. "
+                        "Run: ./scripts/run_migrations.sh"
+                    )
+            else:
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS compliance_audit_trail (
+                        id SERIAL PRIMARY KEY,
+                        audit_id UUID UNIQUE NOT NULL,
+                        mandate_id VARCHAR(255),
+                        subject VARCHAR(255),
+                        allowed BOOLEAN NOT NULL,
+                        reason TEXT,
+                        rule_id VARCHAR(255),
+                        provider VARCHAR(255),
+                        evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        metadata JSONB DEFAULT '{}',
+                        prev_hash VARCHAR(64),
+                        entry_hash VARCHAR(64) NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
 
-                CREATE INDEX IF NOT EXISTS idx_audit_mandate_id ON compliance_audit_trail(mandate_id);
-                CREATE INDEX IF NOT EXISTS idx_audit_subject ON compliance_audit_trail(subject);
-                CREATE INDEX IF NOT EXISTS idx_audit_evaluated_at ON compliance_audit_trail(evaluated_at);
-
-                -- Revoke DELETE permission for audit integrity
-                -- REVOKE DELETE ON compliance_audit_trail FROM PUBLIC;
-            """)
+                    CREATE INDEX IF NOT EXISTS idx_audit_mandate_id ON compliance_audit_trail(mandate_id);
+                    CREATE INDEX IF NOT EXISTS idx_audit_subject ON compliance_audit_trail(subject);
+                    CREATE INDEX IF NOT EXISTS idx_audit_evaluated_at ON compliance_audit_trail(evaluated_at);
+                """)
 
         self._initialized = True
         logger.info("PostgreSQL audit store initialized successfully")

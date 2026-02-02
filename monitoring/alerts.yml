@@ -1,0 +1,221 @@
+# Sardis Alert Rules Configuration
+# Consumed by monitoring/alerting systems (Prometheus Alertmanager, Grafana, custom).
+
+global:
+  evaluation_interval: 60s
+  notification_channels:
+    - name: slack-ops
+      type: webhook
+      url: ${SLACK_WEBHOOK_URL}
+    - name: pagerduty
+      type: pagerduty
+      routing_key: ${PAGERDUTY_KEY}
+
+rules:
+
+  # ── Health Check ──────────────────────────────────────────────
+  - name: health_endpoint_down
+    description: API health endpoint is not responding
+    source: health_monitor
+    condition: http_status != 200 OR response_time > 5s
+    for: 2m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: api
+      team: platform
+
+  - name: health_degraded
+    description: One or more non-critical components report unhealthy
+    source: health_monitor
+    condition: status == "degraded"
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: api
+
+  # ── Database ──────────────────────────────────────────────────
+  - name: database_unhealthy
+    description: PostgreSQL connection pool exhausted or unreachable
+    source: health_monitor
+    condition: components.database.status != "healthy"
+    for: 1m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: database
+
+  # ── Cache ─────────────────────────────────────────────────────
+  - name: cache_down
+    description: Redis/Upstash cache is unreachable
+    source: health_monitor
+    condition: components.cache.status != "healthy"
+    for: 3m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: cache
+
+  # ── RPC / Blockchain ──────────────────────────────────────────
+  - name: rpc_endpoint_failure
+    description: Blockchain RPC endpoint is unreachable or returning errors
+    source: health_monitor
+    condition: components.rpc.status != "healthy"
+    for: 2m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: rpc
+
+  - name: gas_price_spike
+    description: Gas price exceeds acceptable threshold
+    source: contract_monitor
+    condition: gas_price_gwei > 50
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: chain
+
+  # ── Transactions ──────────────────────────────────────────────
+  - name: transaction_stuck
+    description: Transaction has been pending for more than 5 minutes
+    source: sardis_chain
+    condition: tx.status == "pending" AND tx.age > 5m
+    for: 0s
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: chain
+    annotations:
+      runbook: "Check nonce, gas price. Consider speed-up or cancellation."
+
+  - name: transaction_failure_rate
+    description: Transaction failure rate exceeds 5% over a 10-minute window
+    source: sardis_chain
+    condition: rate(tx_failures[10m]) / rate(tx_total[10m]) > 0.05
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: chain
+
+  # ── Spending & Limits ─────────────────────────────────────────
+  - name: daily_spend_limit_approaching
+    description: Agent wallet daily spend exceeds 80% of configured limit
+    source: sardis_core
+    condition: wallet.daily_spent / wallet.daily_limit > 0.80
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: policy
+
+  - name: daily_spend_limit_exceeded
+    description: Agent wallet daily spend reached 100% of limit
+    source: sardis_core
+    condition: wallet.daily_spent >= wallet.daily_limit
+    for: 0s
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: policy
+
+  - name: large_single_transaction
+    description: Single transaction exceeds $10,000 equivalent
+    source: sardis_chain
+    condition: tx.amount_usd > 10000
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: compliance
+
+  # ── Compliance ────────────────────────────────────────────────
+  - name: compliance_service_down
+    description: Persona KYC or Elliptic AML service unreachable
+    source: health_monitor
+    condition: components.compliance.status != "healthy"
+    for: 2m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: compliance
+    annotations:
+      impact: "New wallet creation and high-risk transactions will be blocked."
+
+  - name: sanctions_check_failure
+    description: Sanctions screening returning errors
+    source: sardis_compliance
+    condition: rate(sanctions_errors[5m]) > 0
+    for: 1m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: compliance
+
+  # ── MPC / Turnkey ─────────────────────────────────────────────
+  - name: turnkey_unhealthy
+    description: Turnkey MPC signing service is unreachable
+    source: health_monitor
+    condition: components.turnkey.status != "healthy"
+    for: 1m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: wallet
+    annotations:
+      impact: "All transaction signing will fail."
+
+  # ── Contracts ─────────────────────────────────────────────────
+  - name: contract_health_degraded
+    description: On-chain contract checks failing
+    source: health_monitor
+    condition: components.contracts.status != "healthy"
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: contracts
+
+  - name: rapid_wallet_creation
+    description: Unusual number of wallets created in a short period
+    source: contract_monitor
+    condition: factory.new_wallets > 10 per 100 blocks
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: contracts
+
+  - name: escrow_dispute_opened
+    description: An escrow dispute has been initiated
+    source: contract_monitor
+    condition: escrow.disputes > 0
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: contracts
+
+  # ── API Performance ───────────────────────────────────────────
+  - name: api_latency_high
+    description: p95 API latency exceeds 2 seconds
+    source: sardis_api
+    condition: http_request_duration_p95 > 2s
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: api
+
+  - name: api_error_rate
+    description: 5xx error rate exceeds 1%
+    source: sardis_api
+    condition: rate(http_5xx[5m]) / rate(http_total[5m]) > 0.01
+    for: 3m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: api
