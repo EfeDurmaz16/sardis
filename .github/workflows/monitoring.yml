@@ -1,0 +1,38 @@
+name: Health Monitor
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: API Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.API_BASE_URL }}/api/v2/health" || echo "000")
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::API health check failed with status $STATUS"
+            exit 1
+          fi
+
+      - name: Check API response time
+        run: |
+          TIME=$(curl -s -o /dev/null -w "%{time_total}" "${{ secrets.API_BASE_URL }}/api/v2/health" || echo "0")
+          echo "Response time: ${TIME}s"
+          THRESHOLD="5.0"
+          if [ "$(echo "$TIME > $THRESHOLD" | bc -l)" = "1" ]; then
+            echo "::warning::API response time ${TIME}s exceeds threshold ${THRESHOLD}s"
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{"text":"Sardis API health check FAILED. Check GitHub Actions for details."}'
+          fi
