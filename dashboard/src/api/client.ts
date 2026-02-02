@@ -1,5 +1,7 @@
 // API Client for Sardis Dashboard
 
+import { getCurrentToken } from '../auth/AuthContext'
+
 // API base URL - can be overridden by environment variable
 const API_URL = import.meta.env.VITE_API_URL || ''
 const API_V1_BASE = `${API_URL}/api/v1`
@@ -16,15 +18,14 @@ async function request<T>(
   const base = useV2 ? API_V2_BASE : API_V1_BASE
   const url = `${base}${endpoint}`
 
-  // Get API key from localStorage (set by Settings page)
-  const apiKey = localStorage.getItem('sardis_api_key') || ''
+  const token = getCurrentToken()
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-  
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
   }
 
   const response = await fetch(url, {

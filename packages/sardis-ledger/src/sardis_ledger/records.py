@@ -442,7 +442,7 @@ class LedgerStore:
         if self._sqlite_conn:
             self._sqlite_conn.execute(
                 """
-                INSERT OR REPLACE INTO ledger_entries (
+                INSERT INTO ledger_entries (
                     tx_id, mandate_id, from_wallet, to_wallet, amount, currency, chain,
                     chain_tx_hash, audit_anchor, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -516,7 +516,7 @@ class LedgerStore:
         if self._sqlite_conn:
             self._sqlite_conn.execute(
                 """
-                INSERT OR REPLACE INTO receipts (
+                INSERT INTO receipts (
                     receipt_id, mandate_id, tx_hash, chain, audit_anchor,
                     merkle_root, leaf_hash, proof_json, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -591,9 +591,6 @@ class LedgerStore:
                         tx_id, mandate_id, from_wallet, to_wallet, amount, currency, chain,
                         chain_tx_hash, audit_anchor, created_at
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-                    ON CONFLICT (tx_id) DO UPDATE SET
-                        chain_tx_hash = EXCLUDED.chain_tx_hash,
-                        audit_anchor = EXCLUDED.audit_anchor
                     """,
                     tx.tx_id,
                     payment_mandate.mandate_id,

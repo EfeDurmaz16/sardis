@@ -193,7 +193,7 @@ jobs:
 
       - name: Type check
         working-directory: dashboard
-        run: npm run typecheck || true  # Don't fail on type errors for now
+        run: npm run typecheck
 
       - name: Build
         working-directory: dashboard
@@ -216,7 +216,7 @@ jobs:
         run: pip install safety
       
       - name: Check for vulnerabilities
-        run: safety check -r requirements.txt || true  # Don't fail for now
+        run: safety check -r requirements.txt
       
       - name: Check for secrets
         uses: trufflesecurity/trufflehog@main

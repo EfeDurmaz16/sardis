@@ -165,8 +165,35 @@ async def get_system_health() -> HealthResponse:
     except Exception as e:
         components["analytics"] = f"degraded: {str(e)}"
 
+    # Check database
+    import os
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        try:
+            import asyncpg
+            conn = await asyncpg.connect(db_url, timeout=5)
+            await conn.execute("SELECT 1")
+            await conn.close()
+            components["database"] = "healthy"
+        except Exception as e:
+            components["database"] = f"degraded: {str(e)}"
+    else:
+        components["database"] = "in_memory"
+
+    # Check Redis
+    redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
+    if redis_url:
+        try:
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(redis_url, socket_connect_timeout=3)
+            await r.ping()
+            await r.aclose()
+            components["redis"] = "healthy"
+        except Exception as e:
+            components["redis"] = f"degraded: {str(e)}"
+
     # Overall status
-    all_healthy = all(v == "healthy" for v in components.values())
+    all_healthy = all(v == "healthy" or v == "in_memory" for v in components.values())
     status = "healthy" if all_healthy else "degraded"
 
     return HealthResponse(

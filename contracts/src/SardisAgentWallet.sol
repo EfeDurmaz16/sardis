@@ -72,6 +72,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         address merchant;
         address token;
         uint256 amount;
+        uint256 capturedAmount;
         uint256 createdAt;
         uint256 expiresAt;
         bool captured;
@@ -174,9 +175,11 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         uint256 amount,
         string calldata purpose
     ) external onlyAgentOrSardis nonReentrant whenNotPaused returns (bytes32) {
+        require(amount > 0, "Amount must be greater than zero");
+
         // Check merchant restrictions
         _checkMerchant(to);
-        
+
         // Check spending limits
         _checkLimits(amount);
         
@@ -281,6 +284,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         uint256 amount,
         uint256 duration
     ) external onlyAgentOrSardis returns (bytes32) {
+        require(amount > 0, "Amount must be greater than zero");
         require(duration > 0 && duration <= 7 days, "Invalid duration");
 
         // Check available balance (total balance minus already held amounts)
@@ -304,6 +308,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
             merchant: merchant,
             token: token,
             amount: amount,
+            capturedAmount: 0,
             createdAt: block.timestamp,
             expiresAt: block.timestamp + duration,
             captured: false,
@@ -330,14 +335,17 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         Hold storage hold = holds[holdId];
 
         require(hold.amount > 0, "Hold not found");
+        require(captureAmount > 0, "Capture amount must be greater than zero");
         require(!hold.captured, "Already captured");
         require(!hold.voided, "Hold voided");
         require(block.timestamp <= hold.expiresAt, "Hold expired");
         require(captureAmount <= hold.amount, "Amount exceeds hold");
 
         hold.captured = true;
+        hold.capturedAmount = captureAmount;
 
-        // Release held amount (full hold amount, not just captured)
+        // Release full held amount: captured portion is transferred,
+        // uncaptured remainder becomes available balance again
         totalHeldAmount[hold.token] -= hold.amount;
 
         // Update spent amount
@@ -588,6 +596,13 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
 
         // Validate v value (must be 27 or 28)
         require(v == 27 || v == 28, "Invalid signature v value");
+
+        // EIP-2: Enforce low-s to prevent signature malleability
+        // secp256k1n / 2 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
+        require(
+            uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
+            "Invalid signature s value"
+        );
     }
     
     // ============ Receive ============

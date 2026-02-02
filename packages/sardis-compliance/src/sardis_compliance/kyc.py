@@ -749,7 +749,13 @@ def create_kyc_service(
             environment=environment,
         )
     else:
-        logger.warning("No Persona API key provided, using mock provider")
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        if env in ("prod", "production"):
+            raise RuntimeError(
+                "Production requires Persona KYC provider. "
+                "Set PERSONA_API_KEY and PERSONA_TEMPLATE_ID environment variables."
+            )
+        logger.warning("No Persona API key provided, using mock provider (dev/test only)")
         provider = MockKYCProvider()
 
     return KYCService(provider=provider)

@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [keyName, setKeyName] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [activeKey, setActiveKey] = useState(localStorage.getItem('sardis_api_key') || '')
+  const [activeKey, setActiveKey] = useState('')
   const { token } = useAuth()
 
   const copyApiKey = () => {
@@ -49,8 +49,6 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setGeneratedKey(data.api_key);
-        // Automatically set as active key for the dashboard
-        localStorage.setItem('sardis_api_key', data.api_key);
         setActiveKey(data.api_key);
       }
     } catch (error) {

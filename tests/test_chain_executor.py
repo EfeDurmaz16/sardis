@@ -475,24 +475,24 @@ class TestChainExecutorHelpers:
     async def test_get_transaction_status_pending(self, simulated_settings):
         """Test get_transaction_status returns PENDING when no receipt."""
         executor = ChainExecutor(simulated_settings)
-        
-        with patch.object(ChainRPCClient, "get_transaction_receipt", new_callable=AsyncMock) as mock:
-            mock.return_value = None
-            
-            status = await executor.get_transaction_status("0xabc...", "base_sepolia")
-            
+
+        mock_rpc = AsyncMock()
+        mock_rpc.get_transaction_receipt.return_value = None
+        with patch.object(executor, "_get_rpc_client", return_value=mock_rpc):
+            status = await executor.get_transaction_status("0xabc123", "base_sepolia")
+
             assert status == TransactionStatus.PENDING
 
     @pytest.mark.asyncio
     async def test_get_transaction_status_failed(self, simulated_settings):
         """Test get_transaction_status returns FAILED for failed tx."""
         executor = ChainExecutor(simulated_settings)
-        
-        with patch.object(ChainRPCClient, "get_transaction_receipt", new_callable=AsyncMock) as mock_receipt:
-            mock_receipt.return_value = {"status": "0x0", "blockNumber": "0x100"}
-            
-            status = await executor.get_transaction_status("0xabc...", "base_sepolia")
-            
+
+        mock_rpc = AsyncMock()
+        mock_rpc.get_transaction_receipt.return_value = {"status": "0x0", "blockNumber": "0x100"}
+        with patch.object(executor, "_get_rpc_client", return_value=mock_rpc):
+            status = await executor.get_transaction_status("0xabc123", "base_sepolia")
+
             assert status == TransactionStatus.FAILED
 
     @pytest.mark.asyncio

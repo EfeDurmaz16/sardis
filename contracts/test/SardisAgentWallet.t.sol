@@ -217,6 +217,7 @@ contract SardisAgentWalletTest is Test {
             address hToken,
             uint256 hAmount,
             ,
+            ,
             uint256 hExpiresAt,
             bool hCaptured,
             bool hVoided
@@ -244,7 +245,7 @@ contract SardisAgentWalletTest is Test {
         
         assertEq(usdc.balanceOf(merchant1), merchantBalanceBefore + captureAmount);
         
-        (,,,,,bool captured,) = wallet.holds(holdId);
+        (,,,,,,bool captured,) = wallet.holds(holdId);
         assertTrue(captured);
     }
     
@@ -257,7 +258,7 @@ contract SardisAgentWalletTest is Test {
         vm.prank(agent);
         wallet.voidHold(holdId);
         
-        (,,,,,,bool voided) = wallet.holds(holdId);
+        (,,,,,,,bool voided) = wallet.holds(holdId);
         assertTrue(voided);
     }
     

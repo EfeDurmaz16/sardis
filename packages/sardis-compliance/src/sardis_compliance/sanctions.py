@@ -610,8 +610,15 @@ def create_sanctions_service(
             api_secret=api_secret,
         )
     else:
-        logger.warning("No Elliptic API key provided, using mock provider")
+        import os
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        if env in ("prod", "production"):
+            raise RuntimeError(
+                "Production requires Elliptic sanctions screening provider. "
+                "Set ELLIPTIC_API_KEY and ELLIPTIC_API_SECRET environment variables."
+            )
+        logger.warning("No Elliptic API key provided, using mock provider (dev/test only)")
         provider = MockSanctionsProvider()
-    
+
     return SanctionsService(provider=provider)
 

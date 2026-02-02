@@ -144,8 +144,14 @@ class SpendingPolicy:
         Returns:
             Tuple of (approved: bool, reason: str)
         """
+        # Validate amount
+        if amount <= 0:
+            return False, "amount_must_be_positive"
+        if fee < 0:
+            return False, "fee_must_be_non_negative"
+
         total_cost = amount + fee
-        
+
         # Check scope
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"
@@ -192,6 +198,11 @@ class SpendingPolicy:
         
         Note: Does not check on-chain balance. Use evaluate() for full validation.
         """
+        if amount <= 0:
+            return False, "amount_must_be_positive"
+        if fee < 0:
+            return False, "fee_must_be_non_negative"
+
         total_cost = amount + fee
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"

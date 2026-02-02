@@ -2,7 +2,7 @@
 
 ### The Payment OS for the Agent Economy
 
-[![Status: Production-Ready](https://img.shields.io/badge/Status-Production--Ready-success)](https://sardis.sh)
+[![Status: Beta](https://img.shields.io/badge/Status-Beta-yellow)](https://sardis.sh)
 [![License: Open Core](https://img.shields.io/badge/License-Open--Core-blue)](LICENSE.txt)
 [![MCP: Native](https://img.shields.io/badge/MCP-Native-orange)](https://modelcontextprotocol.io)
 
@@ -147,7 +147,7 @@ const tools = createSardisTools(sardisClient);
 
 ## Project Status
 
-**Production-Ready Infrastructure: 100% Feature Complete**
+**Beta Infrastructure: Core Features Complete, Hardening In Progress**
 
 | Component | Status |
 |-----------|--------|

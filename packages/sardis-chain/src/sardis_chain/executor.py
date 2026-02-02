@@ -1780,8 +1780,14 @@ class ChainExecutor:
             )
 
         except Exception as e:
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+            if env in ("prod", "production"):
+                logger.error(f"Gas estimation failed in production: {e}")
+                raise RuntimeError(
+                    f"Gas estimation failed: {e}. "
+                    "Refusing to proceed with fallback values in production."
+                ) from e
             logger.warning(f"Production gas estimation failed, falling back: {e}")
-            # Fallback to legacy estimation
             return await self._legacy_estimate_gas(rpc, tx_params)
 
     async def _legacy_estimate_gas(
@@ -1794,6 +1800,12 @@ class ChainExecutor:
             gas_limit = await rpc.estimate_gas(tx_params)
             gas_limit = int(gas_limit * 1.2)  # Add 20% buffer
         except Exception as e:
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+            if env in ("prod", "production"):
+                raise RuntimeError(
+                    f"Legacy gas estimation failed: {e}. "
+                    "Refusing to use hardcoded default in production."
+                ) from e
             logger.warning(f"Gas estimation failed: {e}, using default")
             gas_limit = 100000
 
@@ -2342,6 +2354,74 @@ class ChainExecutor:
             }
             for p in stuck
         ]
+
+    async def replace_stuck_transaction(
+        self,
+        tx_hash: str,
+    ) -> str:
+        """
+        Replace a stuck transaction with a higher-gas version.
+
+        Sends a same-nonce transaction with bumped gas to unstick the address.
+        Returns the replacement tx hash.
+
+        Raises:
+            RuntimeError: If signer unavailable or replacement fails
+            ValueError: If tx_hash not found in pending transactions
+        """
+        if not self._mpc_signer:
+            raise RuntimeError("No signer configured for replacement transaction")
+
+        # Find the stuck pending tx
+        pending = self._nonce_manager._pending_txs.get(tx_hash)
+        if pending is None:
+            raise ValueError(f"Transaction {tx_hash} not found in pending list")
+
+        chain = pending.chain
+        rpc = self._get_rpc_client(chain)
+        await rpc.connect()
+
+        # Calculate bumped gas
+        new_max_fee, new_priority_fee = await self._nonce_manager.calculate_replacement_gas(
+            pending, rpc
+        )
+
+        # Build a zero-value self-transfer to cancel, or re-send original data
+        # Using the original data_hash to replay the same intent
+        tx_request = TransactionRequest(
+            chain=chain,
+            to_address=pending.address,  # self-transfer (cancel tx)
+            value=0,
+            data=b"",
+            gas_limit=21000,  # simple transfer
+            max_fee_per_gas=new_max_fee,
+            max_priority_fee_per_gas=new_priority_fee,
+            nonce=pending.nonce,
+        )
+
+        # Sign and broadcast replacement
+        wallet_id = pending.address  # best available identifier
+        signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+        new_tx_hash = await rpc.send_raw_transaction(signed_tx)
+
+        logger.info(
+            f"Replaced stuck tx {tx_hash} with {new_tx_hash} "
+            f"(nonce={pending.nonce}, max_fee={new_max_fee})"
+        )
+
+        # Update tracking: remove old, register new
+        self._nonce_manager._pending_txs.pop(tx_hash, None)
+        self._nonce_manager.register_pending_transaction(
+            tx_hash=new_tx_hash,
+            address=pending.address,
+            nonce=pending.nonce,
+            chain=chain,
+            gas_price=new_max_fee,
+            priority_fee=new_priority_fee,
+            data_hash=pending.data_hash,
+        )
+
+        return new_tx_hash
 
     def get_metrics(self) -> Dict[str, Any]:
         """

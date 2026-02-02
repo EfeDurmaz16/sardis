@@ -20,60 +20,56 @@ from .config import (
     load_chain_config,
 )
 from .rpc_client import (
-    RPCClient,
+    ProductionRPCClient,
     RPCError,
-    RPCConnectionError,
-    RPCTimeoutError,
-    create_rpc_client,
+    AllEndpointsFailedError,
+    ChainIDMismatchError,
+    get_rpc_client,
+    close_all_clients,
 )
 from .nonce_manager import (
     NonceManager,
-    NonceError,
-    NonceExhaustedError,
-    NonceSyncError,
+    NonceConflictError,
+    StuckTransactionError,
+    TransactionFailedError,
 )
+from .redis_nonce_manager import RedisNonceManager
 from .confirmation import (
     ConfirmationTracker,
-    ConfirmationResult,
     ConfirmationStatus,
-    TransactionReceipt,
 )
 from .simulation import (
     TransactionSimulator,
     SimulationResult,
     SimulationError,
-    GasEstimate,
+    GasEstimation,
 )
 from .executor import (
     ChainExecutor,
-    ExecutorConfig,
-    TransferResult,
-    TransactionError,
-    InsufficientFundsError,
-    GasEstimationError,
+    ChainRPCClient,
+    TransactionRequest,
+    GasEstimate,
+    GasPriceProtection,
+    GasPriceSpikeError,
 )
 from .deposit_monitor import (
     DepositMonitor,
     Deposit,
-    DepositCallback,
     MonitorConfig,
 )
 from .mev_protection import (
-    MEVProtector,
+    MEVProtectionService,
     FlashbotsProvider,
-    PrivateMempoolProvider,
     MEVConfig,
 )
 from .wallet_manager import (
     WalletManager,
-    ManagedWallet,
-    WalletCreationError,
+    WalletInfo,
 )
 from .logging_utils import (
     get_chain_logger,
-    ChainLogContext,
-    log_transaction,
-    log_confirmation,
+    ChainLogger,
+    log_operation,
 )
 
 __version__ = "0.2.0"
@@ -90,50 +86,47 @@ __all__ = [
     "TurnkeyConfig",
     "load_chain_config",
     # RPC Client
-    "RPCClient",
+    "ProductionRPCClient",
     "RPCError",
-    "RPCConnectionError",
-    "RPCTimeoutError",
-    "create_rpc_client",
+    "AllEndpointsFailedError",
+    "ChainIDMismatchError",
+    "get_rpc_client",
+    "close_all_clients",
     # Nonce Manager
     "NonceManager",
-    "NonceError",
-    "NonceExhaustedError",
-    "NonceSyncError",
+    "NonceConflictError",
+    "StuckTransactionError",
+    "TransactionFailedError",
+    # Redis Nonce Manager
+    "RedisNonceManager",
     # Confirmation
     "ConfirmationTracker",
-    "ConfirmationResult",
     "ConfirmationStatus",
-    "TransactionReceipt",
     # Simulation
     "TransactionSimulator",
     "SimulationResult",
     "SimulationError",
-    "GasEstimate",
+    "GasEstimation",
     # Executor
     "ChainExecutor",
-    "ExecutorConfig",
-    "TransferResult",
-    "TransactionError",
-    "InsufficientFundsError",
-    "GasEstimationError",
+    "ChainRPCClient",
+    "TransactionRequest",
+    "GasEstimate",
+    "GasPriceProtection",
+    "GasPriceSpikeError",
     # Deposit Monitor
     "DepositMonitor",
     "Deposit",
-    "DepositCallback",
     "MonitorConfig",
     # MEV Protection
-    "MEVProtector",
+    "MEVProtectionService",
     "FlashbotsProvider",
-    "PrivateMempoolProvider",
     "MEVConfig",
     # Wallet Manager
     "WalletManager",
-    "ManagedWallet",
-    "WalletCreationError",
+    "WalletInfo",
     # Logging
     "get_chain_logger",
-    "ChainLogContext",
-    "log_transaction",
-    "log_confirmation",
+    "ChainLogger",
+    "log_operation",
 ]

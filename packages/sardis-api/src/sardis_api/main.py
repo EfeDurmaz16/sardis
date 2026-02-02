@@ -848,10 +848,72 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 overall_healthy = False
 
         # Turnkey check (if configured)
-        if os.getenv("TURNKEY_API_KEY"):
-            components["turnkey"]["status"] = "configured"
+        turnkey_key = os.getenv("TURNKEY_API_KEY")
+        if turnkey_key:
+            checks_total += 1
+            turnkey_start = time.time()
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.post(
+                        "https://api.turnkey.com/public/v1/query/get_whoami",
+                        headers={
+                            "X-Stamp-WebAuthn": "",  # Will fail auth but proves connectivity
+                        },
+                        json={"organizationId": os.getenv("TURNKEY_ORGANIZATION_ID", "")},
+                    )
+                    # Any response (even 401) means the service is reachable
+                    components["turnkey"]["status"] = "reachable"
+                    components["turnkey"]["latency_ms"] = int((time.time() - turnkey_start) * 1000)
+                    checks_passed += 1
+            except Exception as e:
+                logger.warning(f"Turnkey health check failed: {e}")
+                components["turnkey"]["status"] = "unreachable"
+                components["turnkey"]["error"] = str(e)
+                overall_healthy = False
         else:
             components["turnkey"]["status"] = "unconfigured"
+
+        # RPC endpoint check
+        checks_total += 1
+        rpc_start = time.time()
+        try:
+            chain_name = settings.chain_mode if settings.chain_mode != "simulated" else "base_sepolia"
+            chain_executor = getattr(app.state, "chain_executor", None)
+            if chain_executor and hasattr(chain_executor, "check_chain_health"):
+                rpc_health = await chain_executor.check_chain_health(chain_name)
+                if rpc_health:
+                    components["rpc"] = {
+                        "status": "connected",
+                        "chain": chain_name,
+                        "latency_ms": int((time.time() - rpc_start) * 1000),
+                    }
+                    checks_passed += 1
+                else:
+                    components["rpc"] = {"status": "unhealthy", "chain": chain_name}
+                    overall_healthy = False
+            else:
+                components["rpc"] = {"status": "not_initialized"}
+                checks_passed += 1  # Not a failure if executor not yet created
+        except Exception as e:
+            logger.warning(f"RPC health check failed: {e}")
+            components["rpc"] = {"status": "error", "error": str(e)}
+            overall_healthy = False
+
+        # Compliance services check
+        try:
+            compliance_engine = getattr(app.state, "compliance_engine", None)
+            if compliance_engine:
+                components["compliance"] = {"status": "configured"}
+            else:
+                env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+                if env in ("prod", "production"):
+                    components["compliance"] = {"status": "missing_in_production"}
+                    overall_healthy = False
+                else:
+                    components["compliance"] = {"status": "disabled_dev_mode"}
+        except Exception as e:
+            components["compliance"] = {"status": "error", "error": str(e)}
 
         # Smart contract check (verify configured addresses are valid)
         checks_total += 1

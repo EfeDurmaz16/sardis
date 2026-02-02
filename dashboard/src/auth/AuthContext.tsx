@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 interface AuthContextType {
   token: string | null;
@@ -10,24 +10,38 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Use a module-level variable for the token so the API client can access it
+// without needing React context (for use outside components).
+let _currentToken: string | null = null;
+
+export function getCurrentToken(): string | null {
+  return _currentToken;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('sardis_token'));
+  // Initialize from sessionStorage (tab-scoped, cleared on browser close)
+  const [token, setToken] = useState<string | null>(() => {
+    const stored = sessionStorage.getItem('sardis_session');
+    _currentToken = stored;
+    return stored;
+  });
 
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('sardis_token', token);
-    } else {
-      localStorage.removeItem('sardis_token');
-    }
-  }, [token]);
-
-  const login = (newToken: string) => {
+  const login = useCallback((newToken: string) => {
+    _currentToken = newToken;
+    sessionStorage.setItem('sardis_session', newToken);
+    // Clean up any legacy localStorage keys
+    localStorage.removeItem('sardis_token');
+    localStorage.removeItem('sardis_api_key');
     setToken(newToken);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    _currentToken = null;
+    sessionStorage.removeItem('sardis_session');
+    localStorage.removeItem('sardis_token');
+    localStorage.removeItem('sardis_api_key');
     setToken(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, isAuthenticated: !!token, login, logout }}>

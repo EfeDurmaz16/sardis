@@ -86,16 +86,14 @@ class ComplianceAuditStore:
     _PRODUCTION_WARNING_SHOWN = False
 
     def __init__(self):
-        if not ComplianceAuditStore._PRODUCTION_WARNING_SHOWN:
-            import os
-            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-            if env in ("prod", "production"):
-                logger.warning(
-                    "⚠️ ComplianceAuditStore is using IN-MEMORY storage in PRODUCTION. "
-                    "This does NOT meet regulatory requirements for audit trail retention. "
-                    "Configure DATABASE_URL to enable persistent storage."
-                )
-            ComplianceAuditStore._PRODUCTION_WARNING_SHOWN = True
+        import os
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        if env in ("prod", "production"):
+            raise RuntimeError(
+                "In-memory ComplianceAuditStore cannot be used in production. "
+                "Configure DATABASE_URL with a valid PostgreSQL connection string "
+                "and ensure asyncpg is installed."
+            )
         self._entries: deque[ComplianceAuditEntry] = deque(maxlen=self.MAX_ENTRIES)
         self._lock = threading.Lock()
         self._by_mandate: Dict[str, List[str]] = {}  # mandate_id -> [audit_ids]
@@ -343,23 +341,37 @@ def create_audit_store(dsn: Optional[str] = None) -> ComplianceAuditStore:
     Factory function to create the appropriate audit store.
 
     If DATABASE_URL is set and asyncpg is available, returns PostgresAuditStore.
-    Otherwise returns in-memory ComplianceAuditStore.
+    Otherwise returns in-memory ComplianceAuditStore (dev/test only).
+
+    Raises RuntimeError in production if persistent storage cannot be configured.
     """
     import os
 
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+    is_production = env in ("prod", "production")
     dsn = dsn or os.getenv("DATABASE_URL", "")
 
     if dsn and dsn.startswith("postgres"):
         try:
             import asyncpg  # noqa: F401
             logger.info("Using PostgreSQL audit store for compliance")
-            # Note: PostgresAuditStore is async, caller must handle appropriately
             return PostgresAuditStore(dsn)
         except ImportError:
+            if is_production:
+                raise RuntimeError(
+                    "Production requires asyncpg for persistent compliance audit storage. "
+                    "Install asyncpg: pip install asyncpg"
+                )
             logger.warning(
                 "DATABASE_URL is set but asyncpg is not installed. "
                 "Falling back to in-memory audit store."
             )
+    elif is_production:
+        raise RuntimeError(
+            "Production requires a PostgreSQL DATABASE_URL for compliance audit storage. "
+            "In-memory audit storage does not meet regulatory requirements. "
+            "Set DATABASE_URL to a valid postgres:// connection string."
+        )
 
     return ComplianceAuditStore()
 

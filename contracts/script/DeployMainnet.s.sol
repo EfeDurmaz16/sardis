@@ -162,16 +162,16 @@ contract VerifyDeployment is Script {
         console.log("Escrow:", escrowAddr);
 
         // Check factory
-        SardisWalletFactory factory = SardisWalletFactory(factoryAddr);
-        console.log("Factory limit per tx:", factory.limitPerTx());
-        console.log("Factory daily limit:", factory.dailyLimit());
-        console.log("Factory recovery:", factory.recoveryAddress());
+        SardisWalletFactory factory = SardisWalletFactory(payable(factoryAddr));
+        console.log("Factory limit per tx:", factory.defaultLimitPerTx());
+        console.log("Factory daily limit:", factory.defaultDailyLimit());
+        console.log("Factory recovery:", factory.defaultRecoveryAddress());
 
         // Check escrow
         SardisEscrow escrow = SardisEscrow(escrowAddr);
         console.log("Escrow arbiter:", escrow.arbiter());
-        console.log("Escrow fee:", escrow.feeBasisPoints(), "bps");
-        console.log("Escrow min amount:", escrow.minEscrowAmount());
+        console.log("Escrow fee:", escrow.feeBps(), "bps");
+        console.log("Escrow min amount:", escrow.minAmount());
 
         console.log("");
         console.log("Verification complete!");
