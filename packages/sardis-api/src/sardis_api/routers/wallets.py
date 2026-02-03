@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from sardis_v2_core import Wallet, WalletRepository
 from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
 from sardis_api.authz import require_principal
+from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis_ledger.records import LedgerStore
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -52,6 +54,8 @@ class TransferRequest(BaseModel):
     amount: Decimal = Field(gt=0, description="Amount in token units (e.g. 10.50 USDC)")
     token: str = Field(default="USDC")
     chain: str = Field(default="base_sepolia")
+    domain: str = Field(default="localhost", description="Logical merchant/domain label for policy enforcement")
+    memo: Optional[str] = Field(default=None, description="Optional memo for audit/logging")
 
 
 class TransferResponse(BaseModel):
@@ -62,6 +66,7 @@ class TransferResponse(BaseModel):
     amount: str
     token: str
     chain: str
+    audit_anchor: Optional[str] = None
 
 
 class WalletResponse(BaseModel):
@@ -107,10 +112,12 @@ class WalletDependencies:
         wallet_repo: WalletRepository,
         chain_executor: ChainExecutor | None = None,
         wallet_manager: any | None = None,
+        ledger: LedgerStore | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.chain_executor = chain_executor
         self.wallet_manager = wallet_manager
+        self.ledger = ledger
 
 
 def get_deps() -> WalletDependencies:
@@ -374,6 +381,10 @@ async def transfer_crypto(
     if not wallet.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
 
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+
     source_address = wallet.get_address(request.chain)
     if not source_address:
         raise HTTPException(
@@ -407,16 +418,24 @@ async def transfer_crypto(
             created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             proof_value="internal-transfer",
         ),
-        domain="sardis.sh",
+        domain=request.domain,
         purpose="checkout",
         chain=request.chain,
         token=request.token,
         amount_minor=amount_minor,
         destination=request.destination,
         audit_hash=hashlib.sha256(
-            f"{wallet_id}:{request.destination}:{amount_minor}".encode()
+            f"{wallet_id}:{request.destination}:{amount_minor}:{request.domain}:{request.memo or ''}".encode()
         ).hexdigest(),
     )
+
+    if deps.wallet_manager:
+        policy = deps.wallet_manager.validate_policies(mandate)  # type: ignore[call-arg]
+        if not getattr(policy, "allowed", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=getattr(policy, "reason", None) or "policy_denied",
+            )
 
     try:
         receipt = await deps.chain_executor.dispatch_payment(mandate)
@@ -426,6 +445,13 @@ async def transfer_crypto(
             detail=f"Transfer failed: {str(e)}",
         )
 
+    if deps.ledger:
+        try:
+            deps.ledger.append(payment_mandate=mandate, chain_receipt=receipt)
+        except Exception:
+            # Don't fail the transfer response if ledger append fails; this is best-effort for demo.
+            pass
+
     return TransferResponse(
         tx_hash=receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt),
         status="submitted",
@@ -434,6 +460,7 @@ async def transfer_crypto(
         amount=str(request.amount),
         token=request.token,
         chain=request.chain,
+        audit_anchor=getattr(receipt, "audit_anchor", None),
     )
 
 

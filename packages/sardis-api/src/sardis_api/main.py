@@ -696,6 +696,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
+        ledger=ledger_store,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
