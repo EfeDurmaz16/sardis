@@ -26,6 +26,11 @@ class PolicyViolation(Exception):
     pass
 
 
+class KYCRequired(Exception):
+    """Raised when KYC verification is required before proceeding."""
+    pass
+
+
 class SardisFiatRamp:
     """
     Sardis Fiat Ramp - Bridge crypto wallets to traditional banking.
@@ -65,12 +70,16 @@ class SardisFiatRamp:
     BRIDGE_SANDBOX_URL = "https://api.sandbox.bridge.xyz/v0"
     SARDIS_API_URL = "https://api.sardis.sh/v2"
 
+    # KYC threshold for on-ramp (USD)
+    KYC_THRESHOLD_USD = 1000.00
+
     def __init__(
         self,
         sardis_api_key: Optional[str] = None,
         bridge_api_key: Optional[str] = None,
         environment: Literal["sandbox", "production"] = "sandbox",
         config: Optional[RampConfig] = None,
+        kyc_threshold_usd: float = 1000.00,
     ):
         """
         Initialize the fiat ramp.
@@ -80,6 +89,7 @@ class SardisFiatRamp:
             bridge_api_key: Bridge API key (or set BRIDGE_API_KEY env var)
             environment: "sandbox" or "production"
             config: Optional RampConfig object
+            kyc_threshold_usd: KYC verification threshold in USD (default: $1000)
         """
         if config:
             self.sardis_api_key = config.sardis_api_key
@@ -99,6 +109,7 @@ class SardisFiatRamp:
             self.BRIDGE_SANDBOX_URL if environment == "sandbox"
             else self.BRIDGE_API_URL
         )
+        self.kyc_threshold_usd = kyc_threshold_usd
 
         self._http = httpx.AsyncClient(timeout=30.0)
 
@@ -134,6 +145,56 @@ class SardisFiatRamp:
         """Get wallet details from Sardis."""
         return await self._sardis_request("GET", f"/wallets/{wallet_id}")
 
+    async def _check_kyc_status(self, wallet_id: str) -> dict:
+        """
+        Check KYC verification status for a wallet.
+
+        Args:
+            wallet_id: The Sardis wallet ID
+
+        Returns:
+            dict with 'verified' (bool), 'status' (str), 'inquiry_url' (str)
+        """
+        try:
+            # Get wallet to find agent_id
+            wallet = await self.get_wallet(wallet_id)
+            agent_id = wallet.get("agent_id")
+
+            if not agent_id:
+                # No agent associated - cannot verify KYC
+                return {
+                    "verified": False,
+                    "status": "no_agent",
+                    "inquiry_url": "",
+                }
+
+            # Check KYC status via Sardis compliance endpoint
+            kyc_result = await self._sardis_request(
+                "GET",
+                f"/agents/{agent_id}/kyc"
+            )
+
+            return {
+                "verified": kyc_result.get("status") == "approved",
+                "status": kyc_result.get("status", "not_started"),
+                "inquiry_url": kyc_result.get("inquiry_url", ""),
+                "inquiry_id": kyc_result.get("inquiry_id", ""),
+            }
+        except Exception as e:
+            logger.warning(f"KYC check failed for wallet {wallet_id}: {e}")
+            # Fail open in sandbox, fail closed in production
+            if self.environment == "sandbox":
+                return {
+                    "verified": True,
+                    "status": "sandbox_bypass",
+                    "inquiry_url": "",
+                }
+            return {
+                "verified": False,
+                "status": "check_failed",
+                "inquiry_url": "",
+            }
+
     async def fund_wallet(
         self,
         wallet_id: str,
@@ -150,7 +211,20 @@ class SardisFiatRamp:
 
         Returns:
             FundingResult with payment instructions or deposit address
+
+        Raises:
+            KYCRequired: If amount exceeds threshold and KYC is not verified
         """
+        # KYC check for high-value on-ramp
+        if amount_usd >= self.kyc_threshold_usd:
+            kyc_status = await self._check_kyc_status(wallet_id)
+            if not kyc_status.get("verified", False):
+                raise KYCRequired(
+                    f"KYC verification required for on-ramp amounts >= ${self.kyc_threshold_usd}. "
+                    f"Please complete KYC verification before proceeding. "
+                    f"Inquiry URL: {kyc_status.get('inquiry_url', '')}"
+                )
+
         wallet = await self.get_wallet(wallet_id)
 
         if method == FundingMethod.CRYPTO or method == "crypto":
