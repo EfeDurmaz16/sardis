@@ -63,21 +63,15 @@ class ApprovalService:
         Returns:
             Created Approval object
         """
-        # Generate approval ID
-        approval_id = self._generate_approval_id()
-
         # Calculate expiration time
         expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
 
-        # Create approval
-        approval = Approval(
-            id=approval_id,
+        # Create approval via repository
+        approval = await self._repository.create(
             action=action,
-            status='pending',
-            urgency=urgency,
             requested_by=requested_by,
-            created_at=datetime.now(timezone.utc),
             expires_at=expires_at,
+            urgency=urgency,
             vendor=vendor,
             amount=amount,
             purpose=purpose,
@@ -86,18 +80,15 @@ class ApprovalService:
             agent_id=agent_id,
             wallet_id=wallet_id,
             organization_id=organization_id,
-            metadata=metadata or {},
+            metadata=metadata,
         )
 
-        # Save to repository
-        saved = await self._repository.create(approval)
-
         logger.info(
-            f"Created approval request {approval_id} for action '{action}' "
+            f"Created approval request {approval.id} for action '{action}' "
             f"by {requested_by} (expires: {expires_at.isoformat()})"
         )
 
-        return saved
+        return approval
 
     async def approve(
         self,
@@ -124,13 +115,14 @@ class ApprovalService:
             )
             return None
 
-        # Update status
-        approval.status = 'approved'
-        approval.reviewed_by = reviewed_by
-        approval.reviewed_at = datetime.now(timezone.utc)
-
-        # Save
-        updated = await self._repository.update(approval_id, approval)
+        # Update status via repository
+        reviewed_at = datetime.now(timezone.utc)
+        updated = await self._repository.update(
+            approval_id,
+            status='approved',
+            reviewed_by=reviewed_by,
+            reviewed_at=reviewed_at,
+        )
 
         logger.info(
             f"Approval {approval_id} approved by {reviewed_by} "
@@ -166,15 +158,20 @@ class ApprovalService:
             )
             return None
 
-        # Update status
-        approval.status = 'denied'
-        approval.reviewed_by = reviewed_by
-        approval.reviewed_at = datetime.now(timezone.utc)
+        # Update metadata with denial reason
+        metadata = approval.metadata.copy()
         if reason:
-            approval.metadata['denial_reason'] = reason
+            metadata['denial_reason'] = reason
 
-        # Save
-        updated = await self._repository.update(approval_id, approval)
+        # Update status via repository
+        reviewed_at = datetime.now(timezone.utc)
+        updated = await self._repository.update(
+            approval_id,
+            status='denied',
+            reviewed_by=reviewed_by,
+            reviewed_at=reviewed_at,
+            metadata=metadata,
+        )
 
         logger.info(
             f"Approval {approval_id} denied by {reviewed_by} "
@@ -208,13 +205,17 @@ class ApprovalService:
             )
             return None
 
-        # Update status
-        approval.status = 'cancelled'
+        # Update metadata with cancellation reason
+        metadata = approval.metadata.copy()
         if reason:
-            approval.metadata['cancellation_reason'] = reason
+            metadata['cancellation_reason'] = reason
 
-        # Save
-        updated = await self._repository.update(approval_id, approval)
+        # Update status via repository
+        updated = await self._repository.update(
+            approval_id,
+            status='cancelled',
+            metadata=metadata,
+        )
 
         logger.info(f"Approval {approval_id} cancelled (action: {approval.action})")
 
@@ -232,8 +233,10 @@ class ApprovalService:
         count = 0
 
         for approval in expired_approvals:
-            approval.status = 'expired'
-            await self._repository.update(approval.id, approval)
+            await self._repository.update(
+                approval.id,
+                status='expired',
+            )
             count += 1
             logger.info(f"Expired approval {approval.id} (action: {approval.action})")
 
@@ -250,10 +253,10 @@ class ApprovalService:
         self,
         *,
         status: Optional[ApprovalStatus] = None,
-        action: Optional[str] = None,
         agent_id: Optional[str] = None,
         wallet_id: Optional[str] = None,
         organization_id: Optional[str] = None,
+        requested_by: Optional[str] = None,
         urgency: Optional[ApprovalUrgency] = None,
         limit: int = 50,
         offset: int = 0,
@@ -262,10 +265,10 @@ class ApprovalService:
 
         Args:
             status: Filter by status
-            action: Filter by action type
             agent_id: Filter by agent ID
             wallet_id: Filter by wallet ID
             organization_id: Filter by organization ID
+            requested_by: Filter by requester
             urgency: Filter by urgency level
             limit: Maximum number of results
             offset: Pagination offset
@@ -275,10 +278,10 @@ class ApprovalService:
         """
         return await self._repository.list(
             status=status,
-            action=action,
             agent_id=agent_id,
             wallet_id=wallet_id,
             organization_id=organization_id,
+            requested_by=requested_by,
             urgency=urgency,
             limit=limit,
             offset=offset,
@@ -287,40 +290,12 @@ class ApprovalService:
     async def list_pending(
         self,
         *,
-        action: Optional[str] = None,
         urgency: Optional[ApprovalUrgency] = None,
         limit: int = 50,
     ) -> List[Approval]:
         """List pending approvals."""
         return await self.list_approvals(
             status='pending',
-            action=action,
             urgency=urgency,
             limit=limit,
         )
-
-    def _generate_approval_id(self) -> str:
-        """Generate a unique approval ID.
-
-        Format: appr_<base36_timestamp>
-        """
-        import time
-        timestamp = int(time.time() * 1000)  # milliseconds
-        # Convert to base36 for shorter IDs
-        base36 = self._to_base36(timestamp)
-        return f"appr_{base36}"
-
-    @staticmethod
-    def _to_base36(num: int) -> str:
-        """Convert integer to base36 string."""
-        if num == 0:
-            return '0'
-
-        digits = '0123456789abcdefghijklmnopqrstuvwxyz'
-        result = []
-
-        while num:
-            result.append(digits[num % 36])
-            num //= 36
-
-        return ''.join(reversed(result))
