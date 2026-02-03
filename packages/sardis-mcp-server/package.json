@@ -88,11 +88,6 @@
       "optional": true
     }
   },
-  "pnpm": {
-    "overrides": {
-      "hono": ">=4.11.7"
-    }
-  },
   "engines": {
     "node": ">=18.0.0"
   },

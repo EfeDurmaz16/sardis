@@ -41,6 +41,8 @@ dependencies = [
     "pydantic-settings>=2.0",
     "PyNaCl>=1.5",
     "cryptography>=41.0",
+    "apscheduler>=3.10",
+    "asyncpg>=0.29",
 ]
 
 [project.optional-dependencies]

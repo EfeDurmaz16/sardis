@@ -84,6 +84,10 @@ dev = [
     "ruff>=0.14.14",
     "mypy>=1.19.1",
     "pytest-cov>=7.0.0",
+    "apscheduler>=3.10",
+    "alembic>=1.13",
+    "sentry-sdk[fastapi]>=2.0",
+    "prometheus-client>=0.19",
 ]
 
 
