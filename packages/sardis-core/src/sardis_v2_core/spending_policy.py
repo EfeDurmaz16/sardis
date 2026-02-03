@@ -8,6 +8,8 @@ from enum import Enum
 from typing import Optional, Any, TYPE_CHECKING
 import uuid
 
+from .mcc_service import get_mcc_info, is_blocked_category
+
 if TYPE_CHECKING:
     from .wallets import Wallet
     from .tokens import TokenType
@@ -109,6 +111,7 @@ class SpendingPolicy:
     monthly_limit: Optional[TimeWindowLimit] = None
     merchant_rules: list[MerchantRule] = field(default_factory=list)
     allowed_scopes: list[SpendingScope] = field(default_factory=lambda: [SpendingScope.ALL])
+    blocked_merchant_categories: list[str] = field(default_factory=list)
     require_preauth: bool = False
     max_hold_hours: int = 168
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -124,12 +127,13 @@ class SpendingPolicy:
         token: "TokenType",  # Forward reference
         merchant_id: Optional[str] = None,
         merchant_category: Optional[str] = None,
+        mcc_code: Optional[str] = None,
         scope: SpendingScope = SpendingScope.ALL,
         rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
     ) -> tuple[bool, str]:
         """
         Evaluate payment request against policy (async, with on-chain balance check).
-        
+
         Args:
             wallet: Wallet instance (non-custodial)
             amount: Payment amount
@@ -138,9 +142,10 @@ class SpendingPolicy:
             token: Token type
             merchant_id: Merchant identifier (optional)
             merchant_category: Merchant category (optional)
+            mcc_code: Merchant Category Code (4-digit code, optional)
             scope: Spending scope
             rpc_client: RPC client for balance queries (optional)
-            
+
         Returns:
             Tuple of (approved: bool, reason: str)
         """
@@ -155,7 +160,13 @@ class SpendingPolicy:
         # Check scope
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"
-        
+
+        # Check MCC code policy (merchant category blocking)
+        if mcc_code:
+            mcc_ok, mcc_reason = self._check_mcc_policy(mcc_code)
+            if not mcc_ok:
+                return False, mcc_reason
+
         # Check per-transaction limit
         if amount > self.limit_per_tx:
             return False, "per_transaction_limit"
@@ -191,11 +202,12 @@ class SpendingPolicy:
         *,
         merchant_id: Optional[str] = None,
         merchant_category: Optional[str] = None,
+        mcc_code: Optional[str] = None,
         scope: SpendingScope = SpendingScope.ALL,
     ) -> tuple[bool, str]:
         """
         Synchronous validation (for backwards compatibility).
-        
+
         Note: Does not check on-chain balance. Use evaluate() for full validation.
         """
         if amount <= 0:
@@ -206,6 +218,13 @@ class SpendingPolicy:
         total_cost = amount + fee
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"
+
+        # Check MCC code policy
+        if mcc_code:
+            mcc_ok, mcc_reason = self._check_mcc_policy(mcc_code)
+            if not mcc_ok:
+                return False, mcc_reason
+
         if amount > self.limit_per_tx:
             return False, "per_transaction_limit"
         if self.spent_total + amount > self.limit_total:
@@ -236,6 +255,29 @@ class SpendingPolicy:
                 return False, "merchant_not_allowlisted"
             if match.max_per_tx and amount > match.max_per_tx:
                 return False, "merchant_cap_exceeded"
+        return True, "OK"
+
+    def _check_mcc_policy(self, mcc_code: str) -> tuple[bool, str]:
+        """
+        Check if MCC code is allowed by policy.
+
+        Args:
+            mcc_code: 4-digit Merchant Category Code
+
+        Returns:
+            Tuple of (allowed: bool, reason: str)
+        """
+        # Check if MCC belongs to blocked category
+        if self.blocked_merchant_categories and is_blocked_category(mcc_code, self.blocked_merchant_categories):
+            mcc_info = get_mcc_info(mcc_code)
+            category_name = mcc_info.category if mcc_info else "unknown"
+            return False, f"merchant_category_blocked:{category_name}"
+
+        # Check default high-risk blocks
+        mcc_info = get_mcc_info(mcc_code)
+        if mcc_info and mcc_info.default_blocked:
+            return False, f"high_risk_merchant:{mcc_info.description}"
+
         return True, "OK"
 
     def record_spend(self, amount: Decimal) -> None:
@@ -272,6 +314,28 @@ class SpendingPolicy:
         self.merchant_rules.insert(0, rule)
         self.updated_at = datetime.now(timezone.utc)
         return rule
+
+    def block_merchant_category(self, category: str) -> None:
+        """
+        Block a merchant category by name (e.g., 'gambling', 'alcohol').
+
+        Args:
+            category: Category name to block
+        """
+        if category not in self.blocked_merchant_categories:
+            self.blocked_merchant_categories.append(category)
+            self.updated_at = datetime.now(timezone.utc)
+
+    def unblock_merchant_category(self, category: str) -> None:
+        """
+        Unblock a merchant category.
+
+        Args:
+            category: Category name to unblock
+        """
+        if category in self.blocked_merchant_categories:
+            self.blocked_merchant_categories.remove(category)
+            self.updated_at = datetime.now(timezone.utc)
 
 
 DEFAULT_LIMITS = {
