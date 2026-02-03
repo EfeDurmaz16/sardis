@@ -1,0 +1,175 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # Python dependencies (uv)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Sardis MCP Server (TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/packages/sardis-mcp-server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "mcp-server"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      mcp-server-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Ignore major version updates for stability
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Sardis SDK JS
+  - package-ecosystem: "npm"
+    directory: "/packages/sardis-sdk-js"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "sdk"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      sdk-js-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Landing page
+  - package-ecosystem: "npm"
+    directory: "/landing"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "landing"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      landing-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Dashboard
+  - package-ecosystem: "npm"
+    directory: "/dashboard"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "dashboard"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      dashboard-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"
+
+  # Docker (if using Docker)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+
+# Security-focused settings
+# Dependabot will automatically:
+# - Create PRs for security updates immediately (not just weekly)
+# - Prioritize security updates over regular updates
+# - Group minor/patch updates to reduce PR noise
+# - Auto-merge patch updates (if auto-merge is enabled in repo settings)
