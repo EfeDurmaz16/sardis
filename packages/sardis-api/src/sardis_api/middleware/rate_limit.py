@@ -1,6 +1,7 @@
 """Rate limiting middleware for Sardis API."""
 from __future__ import annotations
 
+import inspect
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -43,7 +44,7 @@ class RedisRateLimiter:
         """Lazy Redis connection."""
         if self._redis is None:
             try:
-                import redis
+                import redis.asyncio as redis
                 self._redis = redis.from_url(self._redis_url, decode_responses=True)
             except ImportError:
                 raise RuntimeError(
@@ -63,7 +64,7 @@ class RedisRateLimiter:
         client_host = request.client.host if request.client else "unknown"
         return f"rl:ip:{client_host}"
 
-    def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
+    async def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
         """Check rate limit using Redis sliding window."""
         now = time.time()
         client_key = self._get_client_key(request)
@@ -92,7 +93,7 @@ class RedisRateLimiter:
         pipe.zadd(hour_key, {str(now): now})
         pipe.expire(hour_key, 7200)
 
-        results = pipe.execute()
+        results = await pipe.execute()
         minute_count = results[1]
         hour_count = results[5]
 
@@ -197,29 +198,32 @@ class InMemoryRateLimiter:
         return True, headers
 
 
-def create_rate_limiter(config: RateLimitConfig) -> InMemoryRateLimiter:
+def create_rate_limiter(config: RateLimitConfig):
     """Factory to create appropriate rate limiter based on environment."""
     import os
     import logging
 
     logger = logging.getLogger(__name__)
-    redis_url = os.getenv("REDIS_URL", "")
+    redis_url = (
+        os.getenv("SARDIS_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or os.getenv("UPSTASH_REDIS_URL")
+        or ""
+    )
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
 
     if redis_url:
         try:
             limiter = RedisRateLimiter(config, redis_url)
-            # Test connection
-            limiter._get_redis().ping()
             logger.info("Using Redis-backed rate limiter for multi-instance support")
             return limiter
         except Exception as e:
             logger.warning(f"Redis rate limiter failed ({e}), falling back to in-memory")
 
-    if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production"):
-        logger.warning(
-            "⚠️ Using in-memory rate limiter in PRODUCTION. "
-            "This does NOT work correctly with multiple instances. "
-            "Set REDIS_URL for distributed rate limiting."
+    if env in ("prod", "production"):
+        raise RuntimeError(
+            "CRITICAL: Redis is required for production rate limiting. "
+            "Set SARDIS_REDIS_URL (preferred), REDIS_URL, or UPSTASH_REDIS_URL."
         )
 
     return InMemoryRateLimiter(config)
@@ -244,7 +248,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # Check rate limit
-        allowed, headers = self.limiter.check_rate_limit(request)
+        check = getattr(self.limiter, "check_rate_limit", None)
+        if check is None:
+            allowed, headers = True, {}
+        elif inspect.iscoroutinefunction(check):
+            allowed, headers = await check(request)
+        else:
+            allowed, headers = check(request)
         
         if not allowed:
             import json

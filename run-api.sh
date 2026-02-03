@@ -6,11 +6,20 @@ cd "$(dirname "$0")"
 # Set PYTHONPATH for all packages
 export PYTHONPATH="./packages/sardis-api/src:./packages/sardis-core/src:./packages/sardis-wallet/src:./packages/sardis-chain/src:./packages/sardis-protocol/src:./packages/sardis-cards/src:./packages/sardis-compliance/src:./packages/sardis-ledger/src:./packages/sardis-checkout/src:$PYTHONPATH"
 
-# Required environment variables
-export JWT_SECRET_KEY="${JWT_SECRET_KEY:-demo-secret-key-minimum-32-characters-long}"
-export SARDIS_ADMIN_PASSWORD="${SARDIS_ADMIN_PASSWORD:-demo123}"
-export SARDIS_ENABLE_CARDS="${SARDIS_ENABLE_CARDS:-true}"
+# Environment
 export SARDIS_ENVIRONMENT="${SARDIS_ENVIRONMENT:-dev}"
+export SARDIS_ENABLE_CARDS="${SARDIS_ENABLE_CARDS:-true}"
+
+# Security: never silently default secrets outside dev.
+if [[ "$SARDIS_ENVIRONMENT" == "prod" || "$SARDIS_ENVIRONMENT" == "production" || "$SARDIS_ENVIRONMENT" == "sandbox" || "$SARDIS_ENVIRONMENT" == "staging" ]]; then
+  : "${JWT_SECRET_KEY:?JWT_SECRET_KEY is required for non-dev environments}"
+  : "${SARDIS_ADMIN_PASSWORD:?SARDIS_ADMIN_PASSWORD is required for non-dev environments}"
+else
+  if [[ -z "${JWT_SECRET_KEY:-}" ]]; then
+    export JWT_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+  fi
+  export SARDIS_ADMIN_PASSWORD="${SARDIS_ADMIN_PASSWORD:-demo123}"
+fi
 
 # Optional: Redis for caching (uses in-memory if not set)
 # export REDIS_URL="redis://localhost:6379"

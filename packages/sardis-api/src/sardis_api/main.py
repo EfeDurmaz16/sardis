@@ -517,8 +517,23 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
 
     # Determine storage backend based on DSN
-    database_url = os.getenv("DATABASE_URL", settings.ledger_dsn)
+    database_url = (
+        os.getenv("DATABASE_URL")
+        or settings.database_url
+        or settings.ledger_dsn
+        or ""
+    )
     use_postgres = database_url.startswith("postgresql://") or database_url.startswith("postgres://")
+    if settings.is_production:
+        if not database_url:
+            raise RuntimeError(
+                "CRITICAL: DATABASE_URL is required in production."
+            )
+        if not use_postgres:
+            raise RuntimeError(
+                "CRITICAL: Production requires PostgreSQL. "
+                "Set DATABASE_URL to a postgres/postgresql URL."
+            )
 
     # Store configuration in app state
     app.state.settings = settings
@@ -688,6 +703,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         or settings.redis_url
         or None
     )
+    if settings.is_production and not redis_url:
+        raise RuntimeError(
+            "CRITICAL: Redis is required in production for idempotency, webhook replay protection, "
+            "and JWT revocation. Set SARDIS_REDIS_URL (preferred), REDIS_URL, or UPSTASH_REDIS_URL."
+        )
     cache_service = create_cache_service(redis_url)
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
