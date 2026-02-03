@@ -118,6 +118,8 @@ class PolicyStore(Protocol):
 class AsyncPolicyStore(Protocol):
     """Async policy store (used by API services)."""
     async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None: ...
+    async def set_policy(self, agent_id: str, policy: SpendingPolicy) -> None: ...
+    async def record_spend(self, agent_id: str, amount: Decimal) -> SpendingPolicy: ...
 
 
 class EnhancedWalletManager:
@@ -215,6 +217,17 @@ class EnhancedWalletManager:
         )
 
         return PolicyEvaluation(allowed=ok, reason=None if ok else reason)
+
+    async def async_record_spend(self, mandate: PaymentMandate) -> None:
+        """
+        Persist spend state for enforcement across transactions.
+
+        This should run only after a payment is executed successfully.
+        """
+        if not self._async_policy_store:
+            return
+        amount = self._amount_from_mandate(mandate)
+        await self._async_policy_store.record_spend(mandate.subject, amount)
 
     async def evaluate_policies(
         self,

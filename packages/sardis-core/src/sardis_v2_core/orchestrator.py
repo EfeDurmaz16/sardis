@@ -31,6 +31,7 @@ class ExecutionPhase(str, Enum):
     POLICY_VALIDATION = "policy_validation"
     COMPLIANCE_CHECK = "compliance_check"
     CHAIN_EXECUTION = "chain_execution"
+    POLICY_STATE_UPDATE = "policy_state_update"
     LEDGER_APPEND = "ledger_append"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -388,6 +389,20 @@ class PaymentOrchestrator:
                 mandate_id=mandate_id,
                 chain=payment.chain,
             )
+
+        # Phase 3.5: Persist spending state (best-effort)
+        try:
+            if hasattr(self._wallet_manager, "async_record_spend"):
+                await getattr(self._wallet_manager, "async_record_spend")(payment)
+                self._audit(
+                    mandate_id,
+                    ExecutionPhase.POLICY_STATE_UPDATE,
+                    True,
+                    {"token": payment.token, "amount_minor": payment.amount_minor},
+                )
+        except Exception as e:
+            self._audit(mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, False, error=str(e))
+            logger.error("Policy spend-state update failed for mandate=%s: %s", mandate_id, e)
 
         # Phase 4: Ledger Append (queue for reconciliation on failure)
         ledger_tx = None
