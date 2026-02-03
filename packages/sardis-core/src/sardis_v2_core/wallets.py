@@ -58,7 +58,7 @@ class TokenLimit(BaseModel):
 class Wallet(BaseModel):
     """
     Non-custodial wallet for AI agents.
-    
+
     This wallet never holds funds. It only:
     - Stores MPC provider and addresses
     - Signs transactions via MPC
@@ -74,6 +74,13 @@ class Wallet(BaseModel):
     limit_total: Decimal = Field(default=Decimal("1000.00"))
     virtual_card: Optional[VirtualCard] = None
     is_active: bool = True
+
+    # Freeze state (blocks all transactions)
+    is_frozen: bool = False
+    frozen_at: Optional[datetime] = None
+    frozen_by: Optional[str] = None
+    freeze_reason: Optional[str] = None
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -250,6 +257,28 @@ class Wallet(BaseModel):
             if token_limit.limit_total is not None:
                 return token_limit.limit_total
         return self.limit_total
+
+    def freeze(self, by: str, reason: str) -> None:
+        """
+        Freeze the wallet (blocks all transactions).
+
+        Args:
+            by: Admin/system identifier who froze the wallet
+            reason: Reason for freezing (compliance, suspicious activity, etc.)
+        """
+        self.is_frozen = True
+        self.frozen_at = datetime.now(timezone.utc)
+        self.frozen_by = by
+        self.freeze_reason = reason
+        self.updated_at = datetime.now(timezone.utc)
+
+    def unfreeze(self) -> None:
+        """Unfreeze the wallet (restore transaction capability)."""
+        self.is_frozen = False
+        self.frozen_at = None
+        self.frozen_by = None
+        self.freeze_reason = None
+        self.updated_at = datetime.now(timezone.utc)
 
 
 @dataclass(slots=True)

@@ -127,3 +127,51 @@ class WalletRepository:
             limit_per_tx=limit_per_tx,
             limit_total=limit_total,
         )
+
+    async def freeze(
+        self,
+        wallet_id: str,
+        frozen_by: str,
+        reason: str,
+    ) -> Optional[Wallet]:
+        """
+        Freeze a wallet (blocks all transactions).
+
+        Args:
+            wallet_id: Wallet identifier
+            frozen_by: Admin/system identifier who froze the wallet
+            reason: Reason for freezing (compliance, suspicious activity, etc.)
+
+        Returns:
+            Updated wallet or None if not found
+        """
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.freeze(by=frozen_by, reason=reason)
+        return wallet
+
+    async def unfreeze(self, wallet_id: str) -> Optional[Wallet]:
+        """
+        Unfreeze a wallet (restore transaction capability).
+
+        Args:
+            wallet_id: Wallet identifier
+
+        Returns:
+            Updated wallet or None if not found
+        """
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.unfreeze()
+        return wallet
+
+    async def get_frozen_wallets(self) -> List[Wallet]:
+        """
+        Get all frozen wallets.
+
+        Returns:
+            List of frozen wallets
+        """
+        return [w for w in self._wallets.values() if w.is_frozen]
