@@ -28,9 +28,25 @@ jobs:
       
       - name: Run Ruff
         run: ruff check .
-      
+
       - name: Run Ruff format check
         run: ruff format --check .
+
+      - name: Run mypy type checking
+        run: |
+          mypy packages/sardis-core/src \
+               packages/sardis-api/src \
+               packages/sardis-chain/src \
+               packages/sardis-wallet/src \
+               packages/sardis-protocol/src \
+               packages/sardis-compliance/src \
+               packages/sardis-cards/src \
+               packages/sardis-ramp/src \
+               --ignore-missing-imports \
+               --no-strict-optional \
+               --warn-unused-ignores \
+               --show-error-codes \
+               || echo "mypy found type issues - please fix"
 
   test-python:
     name: Test Python
