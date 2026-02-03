@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
@@ -522,26 +523,53 @@ def create_cards_router(
         except json.JSONDecodeError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
 
-        event_type = _normalize_event_type(payload.get("event_type") or payload.get("type"))
-        card_token = payload.get("card_token") or payload.get("data", {}).get("card_token") or payload.get("cardToken")
+        event_id = (
+            payload.get("token")
+            or payload.get("event_token")
+            or payload.get("eventToken")
+            or payload.get("id")
+        )
+        if not event_id:
+            event_id = hashlib.sha256(body).hexdigest()
 
-        # Card lifecycle events (status sync). We only require webhook signature (not JWT/API key).
-        if "card." in event_type and "transaction" not in event_type:
-            data = payload.get("data", {}) or {}
-            card_token = (
-                payload.get("card_token")
-                or data.get("card_token")
-                or payload.get("cardToken")
-                or data.get("token")
-                or payload.get("token")
-            )
-            card_status = (
-                data.get("status")
-                or (data.get("card") or {}).get("status")
-                or payload.get("status")
-            )
+        async def _process() -> dict:
+            event_type = _normalize_event_type(payload.get("event_type") or payload.get("type"))
+            card_token = payload.get("card_token") or payload.get("data", {}).get("card_token") or payload.get("cardToken")
 
-            if card_token and card_status:
+            # Card lifecycle events (status sync). We only require webhook signature (not JWT/API key).
+            if "card." in event_type and "transaction" not in event_type:
+                data = payload.get("data", {}) or {}
+                card_token = (
+                    payload.get("card_token")
+                    or data.get("card_token")
+                    or payload.get("cardToken")
+                    or data.get("token")
+                    or payload.get("token")
+                )
+                card_status = (
+                    data.get("status")
+                    or (data.get("card") or {}).get("status")
+                    or payload.get("status")
+                )
+
+                if card_token and card_status:
+                    card = await card_repo.get_by_card_id(card_token)
+                    if not card and hasattr(card_repo, "get_by_provider_card_id"):
+                        try:
+                            card = await card_repo.get_by_provider_card_id(card_token)
+                        except Exception:
+                            card = None
+                    if card:
+                        internal_card_id = card.get("card_id") or card_token
+                        await card_repo.update_status(internal_card_id, _normalize_card_status(card_status))
+
+                logger.info("Processed card lifecycle event_type=%s", event_type)
+                return {"status": "received"}
+
+            # We accept multiple Lithic-ish transaction event types but treat them similarly.
+            is_tx_event = "transaction" in event_type and card_token
+            if is_tx_event:
+                txn = payload.get("data", {}) or {}
                 card = await card_repo.get_by_card_id(card_token)
                 if not card and hasattr(card_repo, "get_by_provider_card_id"):
                     try:
@@ -550,54 +578,47 @@ def create_cards_router(
                         card = None
                 if card:
                     internal_card_id = card.get("card_id") or card_token
-                    await card_repo.update_status(internal_card_id, _normalize_card_status(card_status))
+                    amount = Decimal(str(txn.get("amount", 0) or 0))
+                    mcc_code = txn.get("merchant", {}).get("mcc") or txn.get("mcc") or "0000"
+                    ok, reason = await _evaluate_policy_for_card(
+                        wallet_id=card.get("wallet_id") or "",
+                        amount=amount,
+                        mcc_code=str(mcc_code),
+                    )
+                    status_value, settled_at, decline_reason = _normalize_tx_status(event_type, txn)
+                    if not ok:
+                        status_value = "declined_policy"
+                        decline_reason = reason
+                        if _auto_freeze_enabled() and card.get("provider_card_id"):
+                            try:
+                                await card_provider.freeze_card(provider_card_id=card.get("provider_card_id"))
+                                await card_repo.update_status(internal_card_id, "frozen")
+                            except Exception:
+                                logger.exception("Failed to auto-freeze card after policy denial")
+                    await card_repo.record_transaction(
+                        card_id=internal_card_id,
+                        transaction_id=txn.get("token", f"txn_{uuid.uuid4().hex[:12]}"),
+                        amount=txn.get("amount", 0),
+                        currency=txn.get("currency", "USD"),
+                        merchant_name=txn.get("merchant", {}).get("descriptor", "Unknown"),
+                        merchant_category=str(mcc_code),
+                        merchant_id=txn.get("merchant", {}).get("token") or txn.get("merchant_id"),
+                        decline_reason=decline_reason,
+                        status=status_value,
+                        settled_at=settled_at,
+                    )
 
-            logger.info("Processed card lifecycle event_type=%s", event_type)
+            logger.info("Processed webhook event_type=%s", event_type)
             return {"status": "received"}
 
-        # We accept multiple Lithic-ish transaction event types but treat them similarly.
-        is_tx_event = "transaction" in event_type and card_token
-        if is_tx_event:
-            txn = payload.get("data", {}) or {}
-            card = await card_repo.get_by_card_id(card_token)
-            if not card and hasattr(card_repo, "get_by_provider_card_id"):
-                try:
-                    card = await card_repo.get_by_provider_card_id(card_token)
-                except Exception:
-                    card = None
-            if card:
-                internal_card_id = card.get("card_id") or card_token
-                amount = Decimal(str(txn.get("amount", 0) or 0))
-                mcc_code = txn.get("merchant", {}).get("mcc") or txn.get("mcc") or "0000"
-                ok, reason = await _evaluate_policy_for_card(
-                    wallet_id=card.get("wallet_id") or "",
-                    amount=amount,
-                    mcc_code=str(mcc_code),
-                )
-                status_value, settled_at, decline_reason = _normalize_tx_status(event_type, txn)
-                if not ok:
-                    status_value = "declined_policy"
-                    decline_reason = reason
-                    if _auto_freeze_enabled() and card.get("provider_card_id"):
-                        try:
-                            await card_provider.freeze_card(provider_card_id=card.get("provider_card_id"))
-                            await card_repo.update_status(internal_card_id, "frozen")
-                        except Exception:
-                            logger.exception("Failed to auto-freeze card after policy denial")
-                await card_repo.record_transaction(
-                    card_id=internal_card_id,
-                    transaction_id=txn.get("token", f"txn_{uuid.uuid4().hex[:12]}"),
-                    amount=txn.get("amount", 0),
-                    currency=txn.get("currency", "USD"),
-                    merchant_name=txn.get("merchant", {}).get("descriptor", "Unknown"),
-                    merchant_category=str(mcc_code),
-                    merchant_id=txn.get("merchant", {}).get("token") or txn.get("merchant_id"),
-                    decline_reason=decline_reason,
-                    status=status_value,
-                    settled_at=settled_at,
-                )
-
-        logger.info("Processed webhook event_type=%s", event_type)
-        return {"status": "received"}
+        return await run_with_replay_protection(
+            request=request,
+            provider="lithic",
+            event_id=str(event_id),
+            body=body,
+            ttl_seconds=7 * 24 * 60 * 60,
+            response_on_duplicate={"status": "received"},
+            fn=_process,
+        )
 
     return r

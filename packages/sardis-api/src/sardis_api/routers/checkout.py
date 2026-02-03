@@ -21,6 +21,7 @@ from sardis_v2_core.tokens import TokenType
 from sardis_v2_core.database import Database
 
 from sardis_api.authz import require_principal
+from sardis_api.webhook_replay import run_with_replay_protection
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 public_router = APIRouter()
@@ -217,12 +218,27 @@ async def handle_psp_webhook(
 
         payload = _json.loads(raw)
 
-        result = await deps.orchestrator.handle_webhook(
-            psp=psp,
-            payload=payload,
-            headers=headers,
+        event_id = payload.get("id") or headers.get("idempotency-key")
+        if not event_id:
+            import hashlib
+            event_id = hashlib.sha256(raw).hexdigest()
+
+        async def _process():
+            return await deps.orchestrator.handle_webhook(
+                psp=psp,
+                payload=payload,
+                headers=headers,
+            )
+
+        return await run_with_replay_protection(
+            request=request,
+            provider=f"psp:{psp}",
+            event_id=str(event_id),
+            body=raw,
+            ttl_seconds=7 * 24 * 60 * 60,
+            response_on_duplicate={"status": "received"},
+            fn=_process,
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:

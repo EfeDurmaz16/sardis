@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
@@ -210,48 +211,60 @@ async def onramp_webhook(
     except json.JSONDecodeError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
 
-    event_type = payload.get("type", "")
-    tx_data = payload.get("payload", payload)
+    event_id = payload.get("id") or payload.get("event_id") or payload.get("token") or hashlib.sha256(body).hexdigest()
+    async def _process() -> dict:
+        event_type = payload.get("type", "")
+        tx_data = payload.get("payload", payload)
 
-    if event_type in ("transaction.completed", "completed"):
-        wallet_address = tx_data.get("wallet_address") or tx_data.get("destinationAddress", "")
-        amount = tx_data.get("crypto_amount") or tx_data.get("amount", 0)
-        token = tx_data.get("crypto_currency") or tx_data.get("currency", "USDC")
-        tx_hash = tx_data.get("tx_hash") or tx_data.get("transactionHash", "")
-        chain = tx_data.get("network") or tx_data.get("chain", "base")
+        if event_type in ("transaction.completed", "completed"):
+            wallet_address = tx_data.get("wallet_address") or tx_data.get("destinationAddress", "")
+            amount = tx_data.get("crypto_amount") or tx_data.get("amount", 0)
+            token = tx_data.get("crypto_currency") or tx_data.get("currency", "USDC")
+            tx_hash = tx_data.get("tx_hash") or tx_data.get("transactionHash", "")
+            chain = tx_data.get("network") or tx_data.get("chain", "base")
 
-        logger.info(
-            "Onramp completed: address=%s amount=%s token=%s tx_hash=%s chain=%s",
-            wallet_address, amount, token, tx_hash, chain,
-        )
+            logger.info(
+                "Onramp completed: address=%s amount=%s token=%s tx_hash=%s chain=%s",
+                wallet_address, amount, token, tx_hash, chain,
+            )
 
-        # Find wallet by address and record the on-ramp transaction
-        try:
-            # Find wallet by searching through all wallets for matching address
-            wallet = None
-            all_wallets = await deps.wallet_repo.list(limit=10000)
-            for w in all_wallets:
-                if wallet_address.lower() in [addr.lower() for addr in w.addresses.values()]:
-                    wallet = w
-                    break
+            # Find wallet by address and record the on-ramp transaction
+            try:
+                # Find wallet by searching through all wallets for matching address
+                wallet = None
+                all_wallets = await deps.wallet_repo.list(limit=10000)
+                for w in all_wallets:
+                    if wallet_address.lower() in [addr.lower() for addr in w.addresses.values()]:
+                        wallet = w
+                        break
 
-            if wallet:
-                logger.info(
-                    f"Onramp credited: wallet_id={wallet.wallet_id} amount={amount} {token} tx_hash={tx_hash}"
-                )
-                # Note: Wallet balance is already on-chain (non-custodial)
-                # The funds are already in the wallet address - no manual credit needed
-                # This log serves as an audit trail of the on-ramp event
-            else:
-                logger.warning(
-                    f"Onramp completed but wallet not found for address: {wallet_address}"
-                )
-        except Exception as e:
-            logger.error(f"Error processing onramp webhook: {e}", exc_info=True)
-            # Don't fail the webhook - we've logged the transaction
-            # The funds are still on-chain and accessible
+                if wallet:
+                    logger.info(
+                        f"Onramp credited: wallet_id={wallet.wallet_id} amount={amount} {token} tx_hash={tx_hash}"
+                    )
+                    # Note: Wallet balance is already on-chain (non-custodial)
+                    # The funds are already in the wallet address - no manual credit needed
+                    # This log serves as an audit trail of the on-ramp event
+                else:
+                    logger.warning(
+                        f"Onramp completed but wallet not found for address: {wallet_address}"
+                    )
+            except Exception as e:
+                logger.error(f"Error processing onramp webhook: {e}", exc_info=True)
+                # Don't fail the webhook - we've logged the transaction
+                # The funds are still on-chain and accessible
 
-    return {"status": "received"}
+        return {"status": "received"}
+
+    return await run_with_replay_protection(
+        request=request,
+        provider="onramper",
+        event_id=str(event_id),
+        body=body,
+        ttl_seconds=7 * 24 * 60 * 60,
+        response_on_duplicate={"status": "received"},
+        fn=_process,
+    )
 
 
 # ---- Offramp Endpoints ----

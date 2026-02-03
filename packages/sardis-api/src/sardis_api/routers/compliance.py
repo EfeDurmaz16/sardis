@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_admin_principal, require_principal
+from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
@@ -579,48 +580,63 @@ async def handle_persona_webhook(
         inquiry_data = payload.get("data", {})
         inquiry_id = inquiry_data.get("id", "")
 
-        logger.info(
-            f"Persona webhook received: event={event_type}, inquiry={inquiry_id}"
+        async def _process() -> dict:
+            logger.info(
+                f"Persona webhook received: event={event_type}, inquiry={inquiry_id}"
+            )
+
+            # Process based on event type
+            if event_type in ("inquiry.completed", "inquiry.approved"):
+                # KYC completed successfully
+                await deps.kyc_service.handle_webhook(
+                    event_type="inquiry.completed",
+                    payload=payload,
+                )
+                logger.info(f"KYC inquiry {inquiry_id} completed successfully")
+
+            elif event_type == "inquiry.expired":
+                # KYC verification expired
+                await deps.kyc_service.handle_webhook(
+                    event_type="inquiry.expired",
+                    payload=payload,
+                )
+                logger.info(f"KYC inquiry {inquiry_id} expired")
+
+            elif event_type in ("inquiry.failed", "inquiry.declined"):
+                # KYC verification failed
+                await deps.kyc_service.handle_webhook(
+                    event_type="inquiry.completed",
+                    payload=payload,
+                )
+                logger.warning(f"KYC inquiry {inquiry_id} failed/declined")
+
+            elif event_type == "inquiry.created":
+                # New inquiry created - just log
+                logger.info(f"KYC inquiry {inquiry_id} created")
+
+            else:
+                # Unknown event type - log but don't fail
+                logger.warning(f"Unknown Persona webhook event: {event_type}")
+
+            return {
+                "success": True,
+                "event": event_type,
+                "inquiry_id": inquiry_id,
+            }
+
+        return await run_with_replay_protection(
+            request=request,
+            provider="persona",
+            event_id=f"{event_type}:{inquiry_id}",
+            body=verified_body,
+            ttl_seconds=7 * 24 * 60 * 60,
+            response_on_duplicate={
+                "success": True,
+                "event": event_type,
+                "inquiry_id": inquiry_id,
+            },
+            fn=_process,
         )
-
-        # Process based on event type
-        if event_type in ("inquiry.completed", "inquiry.approved"):
-            # KYC completed successfully
-            await deps.kyc_service.handle_webhook(
-                event_type="inquiry.completed",
-                payload=payload,
-            )
-            logger.info(f"KYC inquiry {inquiry_id} completed successfully")
-
-        elif event_type == "inquiry.expired":
-            # KYC verification expired
-            await deps.kyc_service.handle_webhook(
-                event_type="inquiry.expired",
-                payload=payload,
-            )
-            logger.info(f"KYC inquiry {inquiry_id} expired")
-
-        elif event_type in ("inquiry.failed", "inquiry.declined"):
-            # KYC verification failed
-            await deps.kyc_service.handle_webhook(
-                event_type="inquiry.completed",
-                payload=payload,
-            )
-            logger.warning(f"KYC inquiry {inquiry_id} failed/declined")
-
-        elif event_type == "inquiry.created":
-            # New inquiry created - just log
-            logger.info(f"KYC inquiry {inquiry_id} created")
-
-        else:
-            # Unknown event type - log but don't fail
-            logger.warning(f"Unknown Persona webhook event: {event_type}")
-
-        return {
-            "success": True,
-            "event": event_type,
-            "inquiry_id": inquiry_id,
-        }
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Persona webhook payload: {e}")
@@ -628,6 +644,8 @@ async def handle_persona_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing Persona webhook: {e}")
         raise HTTPException(
