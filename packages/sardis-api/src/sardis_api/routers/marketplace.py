@@ -335,7 +335,7 @@ async def create_offer(
 
 @router.get("/offers", response_model=List[OfferResponse])
 async def list_offers(
-    role: str = Query(default="any", regex="^(provider|consumer|any)$"),
+    role: str = Query(default="any", pattern="^(provider|consumer|any)$"),
     x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
     status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
