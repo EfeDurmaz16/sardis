@@ -4,9 +4,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Dict, Optional, TypeVar, Generic, AsyncIterator
@@ -14,6 +16,95 @@ from typing import Any, Dict, Optional, TypeVar, Generic, AsyncIterator
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+@dataclass
+class CacheMetrics:
+    """Cache performance metrics."""
+
+    # Hit/miss counters
+    hits: int = 0
+    misses: int = 0
+
+    # Operation counters
+    sets: int = 0
+    deletes: int = 0
+
+    # Latency tracking (milliseconds)
+    total_latency_ms: float = 0.0
+    operation_count: int = 0
+
+    # Error tracking
+    errors: int = 0
+
+    def record_hit(self, latency_ms: float) -> None:
+        """Record a cache hit."""
+        self.hits += 1
+        self._record_latency(latency_ms)
+
+    def record_miss(self, latency_ms: float) -> None:
+        """Record a cache miss."""
+        self.misses += 1
+        self._record_latency(latency_ms)
+
+    def record_set(self, latency_ms: float) -> None:
+        """Record a cache set operation."""
+        self.sets += 1
+        self._record_latency(latency_ms)
+
+    def record_delete(self, latency_ms: float) -> None:
+        """Record a cache delete operation."""
+        self.deletes += 1
+        self._record_latency(latency_ms)
+
+    def record_error(self) -> None:
+        """Record a cache error."""
+        self.errors += 1
+
+    def _record_latency(self, latency_ms: float) -> None:
+        """Record operation latency."""
+        self.total_latency_ms += latency_ms
+        self.operation_count += 1
+
+    @property
+    def hit_rate(self) -> float:
+        """Calculate cache hit rate (0.0 to 1.0)."""
+        total = self.hits + self.misses
+        return self.hits / total if total > 0 else 0.0
+
+    @property
+    def miss_rate(self) -> float:
+        """Calculate cache miss rate (0.0 to 1.0)."""
+        return 1.0 - self.hit_rate
+
+    @property
+    def avg_latency_ms(self) -> float:
+        """Calculate average operation latency in milliseconds."""
+        return self.total_latency_ms / self.operation_count if self.operation_count > 0 else 0.0
+
+    def to_dict(self) -> dict:
+        """Convert metrics to dictionary."""
+        return {
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": round(self.hit_rate, 4),
+            "miss_rate": round(self.miss_rate, 4),
+            "sets": self.sets,
+            "deletes": self.deletes,
+            "errors": self.errors,
+            "avg_latency_ms": round(self.avg_latency_ms, 2),
+            "total_operations": self.operation_count,
+        }
+
+    def reset(self) -> None:
+        """Reset all metrics to zero."""
+        self.hits = 0
+        self.misses = 0
+        self.sets = 0
+        self.deletes = 0
+        self.total_latency_ms = 0.0
+        self.operation_count = 0
+        self.errors = 0
 
 
 class CacheBackend(ABC):
@@ -307,15 +398,31 @@ class CacheService:
     TTL_AGENT = 300  # 5 minutes
     TTL_RATE_LIMIT = 60  # 1 minute
 
-    def __init__(self, backend: CacheBackend):
+    def __init__(self, backend: CacheBackend, enable_metrics: bool = True):
         self._backend = backend
+        self._metrics = CacheMetrics() if enable_metrics else None
 
     async def get(self, key: str) -> Optional[str]:
         """Get a raw value from cache (for health checks)."""
-        return await self._backend.get(key)
+        start = time.time()
+        try:
+            result = await self._backend.get(key)
+            latency_ms = (time.time() - start) * 1000
+
+            if self._metrics:
+                if result is not None:
+                    self._metrics.record_hit(latency_ms)
+                else:
+                    self._metrics.record_miss(latency_ms)
+
+            return result
+        except Exception as e:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
 
     @classmethod
-    def create(cls, redis_url: Optional[str] = None) -> "CacheService":
+    def create(cls, redis_url: Optional[str] = None, enable_metrics: bool = True) -> "CacheService":
         """Create a cache service with appropriate backend."""
         if redis_url:
             try:
@@ -327,7 +434,7 @@ class CacheService:
         else:
             backend = InMemoryCache()
             logger.info("Using in-memory cache (no Redis URL provided)")
-        return cls(backend)
+        return cls(backend, enable_metrics=enable_metrics)
 
     def _key(self, prefix: str, *parts: str) -> str:
         """Build a cache key."""
@@ -338,22 +445,60 @@ class CacheService:
     async def get_balance(self, wallet_id: str, token: str) -> Optional[Decimal]:
         """Get cached wallet balance."""
         key = self._key(self.PREFIX_BALANCE, wallet_id, token)
-        value = await self._backend.get(key)
-        if value is not None:
-            return Decimal(value)
-        return None
+        start = time.time()
+        try:
+            value = await self._backend.get(key)
+            latency_ms = (time.time() - start) * 1000
+
+            if self._metrics:
+                if value is not None:
+                    self._metrics.record_hit(latency_ms)
+                else:
+                    self._metrics.record_miss(latency_ms)
+
+            if value is not None:
+                return Decimal(value)
+            return None
+        except Exception as e:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
 
     async def set_balance(
         self, wallet_id: str, token: str, balance: Decimal, ttl: Optional[int] = None
     ) -> bool:
         """Cache wallet balance."""
         key = self._key(self.PREFIX_BALANCE, wallet_id, token)
-        return await self._backend.set(key, str(balance), ttl or self.TTL_BALANCE)
+        start = time.time()
+        try:
+            result = await self._backend.set(key, str(balance), ttl or self.TTL_BALANCE)
+            latency_ms = (time.time() - start) * 1000
+
+            if self._metrics:
+                self._metrics.record_set(latency_ms)
+
+            return result
+        except Exception as e:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
 
     async def invalidate_balance(self, wallet_id: str, token: str) -> bool:
         """Invalidate cached balance."""
         key = self._key(self.PREFIX_BALANCE, wallet_id, token)
-        return await self._backend.delete(key)
+        start = time.time()
+        try:
+            result = await self._backend.delete(key)
+            latency_ms = (time.time() - start) * 1000
+
+            if self._metrics:
+                self._metrics.record_delete(latency_ms)
+
+            return result
+        except Exception as e:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
 
     async def invalidate_wallet_balances(self, wallet_id: str) -> int:
         """Invalidate all balances for a wallet."""
@@ -540,6 +685,17 @@ class CacheService:
                 logger.warning(
                     f"Failed to release lock on '{resource}' (owner: {owner[:8]}...)"
                 )
+
+    def get_metrics(self) -> Optional[dict]:
+        """Get cache performance metrics."""
+        if self._metrics:
+            return self._metrics.to_dict()
+        return None
+
+    def reset_metrics(self) -> None:
+        """Reset cache metrics."""
+        if self._metrics:
+            self._metrics.reset()
 
     async def close(self):
         """Close cache backend connections."""
