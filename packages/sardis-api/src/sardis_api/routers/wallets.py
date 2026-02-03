@@ -38,6 +38,30 @@ class SetAddressRequest(BaseModel):
     address: str
 
 
+class FreezeWalletRequest(BaseModel):
+    """Request to freeze a wallet."""
+    reason: str = Field(description="Reason for freezing the wallet")
+    frozen_by: str = Field(description="Admin or system identifier that froze the wallet")
+
+
+class TransferRequest(BaseModel):
+    """Request to transfer crypto from this wallet to another address."""
+    destination: str = Field(description="Destination wallet address (0x...)")
+    amount: Decimal = Field(gt=0, description="Amount in token units (e.g. 10.50 USDC)")
+    token: str = Field(default="USDC")
+    chain: str = Field(default="base_sepolia")
+
+
+class TransferResponse(BaseModel):
+    tx_hash: str
+    status: str
+    from_address: str
+    to_address: str
+    amount: str
+    token: str
+    chain: str
+
+
 class WalletResponse(BaseModel):
     wallet_id: str
     agent_id: str
@@ -284,4 +308,119 @@ async def get_wallet_by_agent(
     wallet = await deps.wallet_repo.get_by_agent(agent_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
+    return WalletResponse.from_wallet(wallet)
+
+
+@router.post("/{wallet_id}/transfer", response_model=TransferResponse)
+async def transfer_crypto(
+    wallet_id: str,
+    request: TransferRequest,
+    deps: WalletDependencies = Depends(get_deps),
+):
+    """Transfer crypto from wallet to any address (including A2A transfers)."""
+    wallet = await deps.wallet_repo.get(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+
+    if not wallet.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
+
+    source_address = wallet.get_address(request.chain)
+    if not source_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No address for chain {request.chain}",
+        )
+
+    if not deps.chain_executor:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chain executor not available",
+        )
+
+    # Build a PaymentMandate for the chain executor
+    import time
+    import uuid
+    import hashlib
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
+
+    amount_minor = int(request.amount * Decimal(10**6))
+
+    mandate = PaymentMandate(
+        mandate_id=f"transfer_{uuid.uuid4().hex[:16]}",
+        mandate_type="payment",
+        issuer=f"wallet:{wallet_id}",
+        subject=f"transfer:{wallet_id}",
+        expires_at=int(time.time()) + 300,
+        nonce=uuid.uuid4().hex,
+        proof=VCProof(
+            verification_method=f"wallet:{wallet_id}#key-1",
+            created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            proof_value="internal-transfer",
+        ),
+        domain="sardis.sh",
+        purpose="checkout",
+        chain=request.chain,
+        token=request.token,
+        amount_minor=amount_minor,
+        destination=request.destination,
+        audit_hash=hashlib.sha256(
+            f"{wallet_id}:{request.destination}:{amount_minor}".encode()
+        ).hexdigest(),
+    )
+
+    try:
+        receipt = await deps.chain_executor.dispatch_payment(mandate)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Transfer failed: {str(e)}",
+        )
+
+    return TransferResponse(
+        tx_hash=receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt),
+        status="submitted",
+        from_address=source_address,
+        to_address=request.destination,
+        amount=str(request.amount),
+        token=request.token,
+        chain=request.chain,
+    )
+
+
+@router.post("/{wallet_id}/freeze", response_model=WalletResponse)
+async def freeze_wallet(
+    wallet_id: str,
+    request: FreezeWalletRequest,
+    deps: WalletDependencies = Depends(get_deps),
+):
+    """
+    Freeze a wallet to block all transactions.
+
+    Use this for compliance holds, suspicious activity, or risk mitigation.
+    Frozen wallets cannot send transactions until unfrozen.
+    """
+    wallet = await deps.wallet_repo.freeze(
+        wallet_id=wallet_id,
+        frozen_by=request.frozen_by,
+        reason=request.reason,
+    )
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    return WalletResponse.from_wallet(wallet)
+
+
+@router.post("/{wallet_id}/unfreeze", response_model=WalletResponse)
+async def unfreeze_wallet(
+    wallet_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+):
+    """
+    Unfreeze a wallet to restore normal operations.
+
+    This removes the freeze hold and allows transactions to proceed.
+    """
+    wallet = await deps.wallet_repo.unfreeze(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
     return WalletResponse.from_wallet(wallet)
