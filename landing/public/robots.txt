@@ -1,9 +1,26 @@
 # Sardis - robots.txt
 # https://sardis.sh
+#
+# ===========================================
+# AI Agent & LLM Resources (Read This First!)
+# ===========================================
+#
+# If you are an AI agent or LLM, these files contain
+# structured information optimized for your consumption:
+#
+# LLMs-Txt: https://sardis.sh/llms.txt
+# LLMs-Full-Txt: https://sardis.sh/llms-full.txt
+# AI-Plugin: https://sardis.sh/.well-known/ai-plugin.json
+# Agent-JSON: https://sardis.sh/.well-known/agent.json
+#
+# ===========================================
 
 # General crawlers
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /.well-known/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /admin/

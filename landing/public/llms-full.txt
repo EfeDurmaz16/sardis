@@ -517,18 +517,20 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-### Full Tool List (36+ tools)
+### Full Tool List (40+ tools)
 
 | Category | Tools |
 |----------|-------|
-| Wallet | `get_balance`, `get_wallet_info`, `list_wallets` |
-| Payments | `pay`, `check_policy`, `request_approval` |
+| Wallet | `get_balance`, `get_wallet_info`, `list_wallets`, `freeze_wallet`, `unfreeze_wallet` |
+| Payments | `pay`, `check_policy`, `request_approval`, `batch_transfer` |
 | Transactions | `get_transactions`, `get_transaction` |
 | Holds | `create_hold`, `capture_hold`, `release_hold`, `list_holds` |
 | Cards | `issue_card`, `list_cards`, `cancel_card`, `get_card_transactions` |
 | Policies | `get_policy`, `update_policy`, `validate_policy` |
-| Compliance | `screen_address`, `get_kyc_status`, `initiate_kyc` |
+| Compliance | `screen_address`, `get_kyc_status`, `initiate_kyc`, `mcc_lookup` |
 | Fiat | `fund_wallet`, `withdraw_to_bank`, `get_funding_status` |
+| Approvals | `create_approval`, `get_approval`, `list_approvals`, `approve`, `deny`, `cancel_approval` |
+| Invoices | `create_invoice`, `get_invoice`, `list_invoices`, `update_invoice` |
 
 ---
 
@@ -1088,9 +1090,67 @@ npx @sardis/mcp-server start
 
 ## Status
 
+- **Current Version**: v0.8.0 (Production Hardening)
 - **Infrastructure**: Live on Base Sepolia testnet
-- **Mainnet Launch**: Q1 2026
+- **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
+
+## What's New in v0.8.0 (February 2026)
+
+### Human Approval Workflows
+```python
+# Create an approval request
+approval = wallet.request_approval(
+    amount="500.00",
+    reason="Large infrastructure purchase",
+    expires_in=3600  # 1 hour
+)
+
+# Check approval status
+if approval.status == "approved":
+    tx = wallet.pay(to="0x...", amount="500.00")
+```
+
+### Wallet Freeze
+```python
+# Freeze wallet (blocks all transactions)
+wallet.freeze(reason="Suspicious activity detected")
+
+# Unfreeze wallet
+wallet.unfreeze()
+```
+
+### Batch Transfers
+```python
+# Send multiple payments in one transaction
+results = wallet.batch_transfer([
+    {"to": "0x123...", "amount": "10.00", "token": "USDC"},
+    {"to": "0x456...", "amount": "25.00", "token": "USDC"},
+    {"to": "0x789...", "amount": "15.00", "token": "USDC"},
+])
+```
+
+### Velocity Limits (Off-Ramp)
+```python
+policy = {
+    "off_ramp_limits": {
+        "daily": "1000.00",
+        "weekly": "5000.00",
+        "monthly": "15000.00"
+    }
+}
+```
+
+### New Features Summary
+- **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset
+- **Alembic Migrations** - Database schema versioning with 6 migrations
+- **EIP-2771 Meta-Transactions** - Gasless transactions support
+- **Invoices API** - Full CRUD for merchant invoice management
+- **Fireblocks Integration** - Institutional-grade MPC signing option
+- **Prometheus Metrics** - Production monitoring at `/metrics`
+- **Sentry Integration** - Error tracking and alerting
+- **MCC Lookup** - Merchant Category Code lookup service
+- **SAR Generation** - Suspicious Activity Report generation
 
 ## Links
 
@@ -1101,5 +1161,5 @@ npx @sardis/mcp-server start
 
 ---
 
-*Last updated: January 2026*
-*Version: 2.1*
+*Last updated: February 2026*
+*Version: 2.2*

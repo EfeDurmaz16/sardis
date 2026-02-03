@@ -245,24 +245,45 @@ If you are an AI agent and need to make payments:
 4. You cannot override policies - they are enforced by the system
 5. Failed transactions will return clear error messages with remediation hints
 
-Available MCP tools (36+ total):
+Available MCP tools (40+ total):
 - `sardis_get_balance` - Check wallet balance
 - `sardis_pay` - Make a payment (subject to policy)
+- `sardis_batch_transfer` - Send multiple payments in one call
 - `sardis_get_transactions` - View transaction history
 - `sardis_check_policy` - Pre-check if a payment would be allowed
 - `sardis_request_approval` - Request human approval for large transactions
+- `sardis_get_approval` - Check approval status
 - `sardis_create_hold` - Reserve funds without spending
 - `sardis_capture_hold` - Complete a pre-authorized payment
 - `sardis_issue_card` - Issue a virtual card
 - `sardis_get_wallet_info` - Get wallet details and policy
+- `sardis_freeze_wallet` - Freeze wallet to block transactions
+- `sardis_unfreeze_wallet` - Unfreeze a frozen wallet
+- `sardis_create_invoice` - Create a merchant invoice
+- `sardis_mcc_lookup` - Look up merchant category codes
 
 ## Status
 
+- **Current Version**: v0.8.0 (Production Hardening)
 - **Infrastructure**: Live on Base Sepolia testnet
-- **Mainnet Launch**: Q1 2026
+- **Mainnet Launch**: Q2 2026
 - **Protocols**: AP2, UCP, A2A, TAP, x402 all implemented
+
+## What's New in v0.8.0 (February 2026)
+
+- **Human Approval Workflows** - Full create/approve/deny/expire/cancel lifecycle with webhooks
+- **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset
+- **Alembic Migrations** - Database schema versioning with 6 migrations
+- **Wallet Freeze** - Freeze/unfreeze capability with transaction blocking
+- **Velocity Limits** - Daily/weekly/monthly limits for off-ramp operations
+- **EIP-2771 Meta-Transactions** - Gasless transactions support
+- **Batch Transfers** - Single API call for multiple transfers
+- **Invoices API** - Full CRUD for merchant invoice management
+- **Fireblocks Integration** - Institutional-grade MPC signing option
+- **Prometheus Metrics** - Production monitoring endpoint
+- **Sentry Integration** - Error tracking and alerting
 
 ---
 
-*Last updated: January 2026*
-*Version: 2.1*
+*Last updated: February 2026*
+*Version: 2.2*

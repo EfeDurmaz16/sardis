@@ -1,0 +1,96 @@
+{
+  "name": "Sardis",
+  "description": "Payment OS for the Agent Economy. Enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.",
+  "url": "https://sardis.sh",
+  "version": "2.1",
+  "protocol_version": "1.0",
+  "capabilities": {
+    "payments": {
+      "description": "Make payments on behalf of agents within policy-defined limits",
+      "supported_tokens": ["USDC", "USDT", "EURC", "PYUSD"],
+      "supported_chains": ["base", "polygon", "ethereum", "arbitrum", "optimism"]
+    },
+    "wallets": {
+      "description": "Create and manage non-custodial MPC wallets for agents",
+      "features": ["multi-chain", "policy-enforcement", "audit-trail"]
+    },
+    "policies": {
+      "description": "Natural language spending policies with real-time enforcement",
+      "features": ["daily-limits", "per-tx-limits", "merchant-whitelist", "time-restrictions"]
+    },
+    "cards": {
+      "description": "Issue virtual Visa/Mastercard cards backed by agent wallets",
+      "features": ["instant-issuance", "spending-limits", "merchant-restrictions"]
+    },
+    "holds": {
+      "description": "Pre-authorize payments without immediate execution",
+      "features": ["partial-capture", "auto-release"]
+    }
+  },
+  "supported_protocols": [
+    {
+      "name": "AP2",
+      "version": "1.0",
+      "description": "Agent Payment Protocol (Google, PayPal, Mastercard, Visa consortium)"
+    },
+    {
+      "name": "TAP",
+      "version": "1.0",
+      "description": "Trust Anchor Protocol for agent identity verification"
+    },
+    {
+      "name": "UCP",
+      "version": "1.0",
+      "description": "Universal Commerce Protocol for standardized checkout"
+    },
+    {
+      "name": "A2A",
+      "version": "1.0",
+      "description": "Agent-to-Agent payment protocol"
+    },
+    {
+      "name": "x402",
+      "version": "1.0",
+      "description": "HTTP 402 micropayments protocol"
+    }
+  ],
+  "authentication": {
+    "type": "bearer",
+    "header": "Authorization",
+    "prefix": "Bearer"
+  },
+  "endpoints": {
+    "api": "https://api.sardis.sh/v2",
+    "sandbox": "https://sandbox.api.sardis.sh/v2",
+    "documentation": "https://sardis.sh/docs",
+    "openapi": "https://api.sardis.sh/v2/openapi.json",
+    "llms_txt": "https://sardis.sh/llms.txt",
+    "llms_full_txt": "https://sardis.sh/llms-full.txt"
+  },
+  "mcp_server": {
+    "package": "@sardis/mcp-server",
+    "registry": "npm",
+    "command": "npx @sardis/mcp-server start"
+  },
+  "sdks": {
+    "python": {
+      "package": "sardis",
+      "registry": "pypi",
+      "documentation": "https://sardis.sh/docs/sdk-python"
+    },
+    "typescript": {
+      "package": "@sardis/sdk",
+      "registry": "npm",
+      "documentation": "https://sardis.sh/docs/sdk-typescript"
+    }
+  },
+  "contact": {
+    "email": "support@sardis.sh",
+    "security": "security@sardis.sh",
+    "enterprise": "enterprise@sardis.sh"
+  },
+  "legal": {
+    "terms": "https://sardis.sh/docs/terms",
+    "privacy": "https://sardis.sh/docs/privacy"
+  }
+}
