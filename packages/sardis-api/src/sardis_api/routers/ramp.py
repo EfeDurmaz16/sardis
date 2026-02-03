@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +288,7 @@ async def get_offramp_quote(
 @router.post("/offramp/execute", response_model=OfframpExecuteResponse)
 async def execute_offramp(
     request: OfframpExecuteRequest,
+    http_request: Request,
     deps: RampDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -330,18 +332,32 @@ async def execute_offramp(
         output_currency="USD",
     )
 
-    tx = await deps.offramp_service.execute(
-        quote=quote,
-        source_address=source_address,
-        destination_account=request.destination_account,
-    )
+    idem_key = get_idempotency_key(http_request) or f"{request.wallet_id}:{request.quote_id}:{request.destination_account}"
 
-    return OfframpExecuteResponse(
-        transaction_id=tx.transaction_id,
-        status=tx.status.value,
-        input_amount=f"{tx.input_amount_minor / 10**6:.2f}",
-        output_amount=f"{tx.output_amount_cents / 100:.2f}",
-        provider_reference=tx.provider_reference,
+    async def _execute() -> tuple[int, object]:
+        tx = await deps.offramp_service.execute(
+            quote=quote,
+            source_address=source_address,
+            destination_account=request.destination_account,
+            wallet_id=request.wallet_id,
+        )
+
+        return 200, OfframpExecuteResponse(
+            transaction_id=tx.transaction_id,
+            status=tx.status.value,
+            input_amount=f"{tx.input_amount_minor / 10**6:.2f}",
+            output_amount=f"{tx.output_amount_cents / 100:.2f}",
+            provider_reference=tx.provider_reference,
+        )
+
+    return await run_idempotent(
+        request=http_request,
+        principal=principal,
+        operation="ramp.offramp.execute",
+        key=str(idem_key),
+        payload=request.model_dump(),
+        fn=_execute,
+        ttl_seconds=7 * 24 * 60 * 60,
     )
 
 

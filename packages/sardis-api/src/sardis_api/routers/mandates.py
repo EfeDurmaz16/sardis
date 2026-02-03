@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
 import json
@@ -20,6 +20,7 @@ from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionRespon
 from sardis_v2_core.mandates import PaymentMandate
 from sardis_v2_core.database import Database
 from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 if TYPE_CHECKING:
     from sardis_wallet.manager import WalletManager
@@ -414,6 +415,7 @@ async def cancel_mandate(
 @router.post("/execute", response_model=MandateExecutionResponse)
 async def execute_payment_mandate(
     payload: IngestMandateRequest,
+    request: Request,
     deps: Dependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -424,37 +426,49 @@ async def execute_payment_mandate(
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    verifier = deps.verifier
-    verification = verifier.verify(payload.mandate)
-    if not verification.accepted:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
+    idem_key = get_idempotency_key(request) or payload.mandate.mandate_id
 
-    wallet = await deps.wallet_repository.get_by_agent(payload.mandate.subject)
-    if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
-    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
-    if not freeze_ok:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+    async def _execute() -> tuple[int, Any]:
+        verifier = deps.verifier
+        verification = verifier.verify(payload.mandate)
+        if not verification.accepted:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
 
-    mandate = replace(payload.mandate, wallet_id=wallet.wallet_id)
+        wallet = await deps.wallet_repository.get_by_agent(payload.mandate.subject)
+        if not wallet:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
+        freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+        if not freeze_ok:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
 
-    policy_result = await deps.wallet_manager.async_validate_policies(mandate)
-    if not policy_result.allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
+        mandate = replace(payload.mandate, wallet_id=wallet.wallet_id)
 
-    compliance_status = deps.compliance.preflight(mandate)
-    if not compliance_status.allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
+        policy_result = await deps.wallet_manager.async_validate_policies(mandate)
+        if not policy_result.allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
 
-    tx = await deps.chain_executor.dispatch_payment(mandate)
-    deps.ledger.append(payment_mandate=mandate, chain_receipt=tx)
+        compliance_status = deps.compliance.preflight(mandate)
+        if not compliance_status.allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
 
-    return MandateExecutionResponse(
-        mandate_id=mandate.mandate_id,
-        status="submitted",
-        tx_hash=tx.tx_hash,
-        chain=tx.chain,
-        audit_anchor=tx.audit_anchor,
+        tx = await deps.chain_executor.dispatch_payment(mandate)
+        deps.ledger.append(payment_mandate=mandate, chain_receipt=tx)
+
+        return 200, MandateExecutionResponse(
+            mandate_id=mandate.mandate_id,
+            status="submitted",
+            tx_hash=tx.tx_hash,
+            chain=tx.chain,
+            audit_anchor=tx.audit_anchor,
+        )
+
+    return await run_idempotent(
+        request=request,
+        principal=principal,
+        operation="mandates.execute",
+        key=idem_key,
+        payload=payload.model_dump(),
+        fn=_execute,
     )
     agent = await deps.agent_repo.get(stored.mandate.subject)
     if not agent:

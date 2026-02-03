@@ -423,6 +423,51 @@ class CacheService:
                 self._metrics.record_error()
             raise
 
+    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """Set a raw value in cache with optional TTL (seconds)."""
+        start = time.time()
+        try:
+            result = await self._backend.set(key, value, ttl=ttl)
+            latency_ms = (time.time() - start) * 1000
+            if self._metrics:
+                self._metrics.record_set(latency_ms)
+            return result
+        except Exception:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
+
+    async def delete(self, key: str) -> bool:
+        """Delete a raw key from cache."""
+        start = time.time()
+        try:
+            result = await self._backend.delete(key)
+            latency_ms = (time.time() - start) * 1000
+            if self._metrics:
+                self._metrics.record_delete(latency_ms)
+            return result
+        except Exception:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
+
+    async def exists(self, key: str) -> bool:
+        """Check if a raw key exists in cache."""
+        start = time.time()
+        try:
+            result = await self._backend.exists(key)
+            latency_ms = (time.time() - start) * 1000
+            if self._metrics:
+                if result:
+                    self._metrics.record_hit(latency_ms)
+                else:
+                    self._metrics.record_miss(latency_ms)
+            return result
+        except Exception:
+            if self._metrics:
+                self._metrics.record_error()
+            raise
+
     @classmethod
     def create(cls, redis_url: Optional[str] = None, enable_metrics: bool = True) -> "CacheService":
         """Create a cache service with appropriate backend."""

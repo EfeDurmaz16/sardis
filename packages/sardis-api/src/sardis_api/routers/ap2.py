@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 
 from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
 from sardis_v2_core.orchestrator import PaymentExecutionError
@@ -14,6 +14,7 @@ from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
+from sardis_api.idempotency import run_idempotent
 
 if TYPE_CHECKING:
     from sardis_protocol.verifier import MandateVerifier
@@ -138,6 +139,7 @@ async def perform_compliance_checks(
 @router.post("/payments/execute", response_model=AP2PaymentExecuteResponse)
 async def execute_ap2_payment(
     payload: AP2PaymentExecuteRequest,
+    request: Request,
     deps: Dependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -152,79 +154,94 @@ async def execute_ap2_payment(
     5. Execute payment
     6. Log compliance decisions
     """
-    # Step 1: Verify mandate chain
-    verification = deps.verifier.verify_chain(payload)
-    if not verification.accepted or not verification.chain:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            detail=verification.reason or "mandate_invalid"
-        )
-    
-    chain = verification.chain
-    payment = chain.payment
+    async def _execute() -> tuple[int, object]:
+        # Step 1: Verify mandate chain
+        verification = deps.verifier.verify_chain(payload)
+        if not verification.accepted or not verification.chain:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=verification.reason or "mandate_invalid",
+            )
 
-    agent = await deps.agent_repo.get(payment.subject)
-    if not agent:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="access_denied")
+        chain = verification.chain
+        payment = chain.payment
 
-    # Resolve wallet for the agent (needed for signing in live mode) + freeze gate
-    wallet = await deps.wallet_repo.get_by_agent(payment.subject)
-    if not wallet:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
-    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
-    if not freeze_ok:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
-    chain = MandateChain(
-        intent=chain.intent,
-        cart=chain.cart,
-        payment=replace(payment, wallet_id=wallet.wallet_id),
-    )
-    payment = chain.payment
-    
-    # Step 2: Perform compliance checks
-    compliance = await perform_compliance_checks(
-        deps=deps,
-        agent_id=payment.subject,
-        destination=payment.destination,
-        amount_minor=payment.amount_minor,
-    )
-    
-    if not compliance.passed:
-        logger.warning(
-            f"Compliance check failed for mandate {payment.mandate_id}: "
-            f"{compliance.reason}"
+        agent = await deps.agent_repo.get(payment.subject)
+        if not agent:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
+        if not principal.is_admin and agent.owner_id != principal.organization_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="access_denied")
+
+        # Resolve wallet for the agent (needed for signing in live mode) + freeze gate
+        wallet = await deps.wallet_repo.get_by_agent(payment.subject)
+        if not wallet:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
+        freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+        if not freeze_ok:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+        chain = MandateChain(
+            intent=chain.intent,
+            cart=chain.cart,
+            payment=replace(payment, wallet_id=wallet.wallet_id),
         )
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": compliance.reason,
-                "provider": compliance.provider,
-                "rule": compliance.rule,
-            }
+        payment = chain.payment
+
+        # Step 2: Perform compliance checks
+        compliance = await perform_compliance_checks(
+            deps=deps,
+            agent_id=payment.subject,
+            destination=payment.destination,
+            amount_minor=payment.amount_minor,
         )
-    
-    # Step 3: Execute payment
-    try:
-        result = await deps.orchestrator.execute_chain(chain)
-    except PaymentExecutionError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    
-    # Log successful transaction with compliance info
-    logger.info(
-        f"Payment executed: mandate={payment.mandate_id}, "
-        f"amount={payment.amount_minor}, kyc={compliance.kyc_verified}, "
-        f"sanctions_clear={compliance.sanctions_clear}"
-    )
-    
-    return AP2PaymentExecuteResponse(
-        mandate_id=result.mandate_id,
-        ledger_tx_id=result.ledger_tx_id,
-        chain_tx_hash=result.chain_tx_hash,
-        chain=result.chain,
-        audit_anchor=result.audit_anchor,
-        status=result.status,
-        compliance_provider=compliance.provider or result.compliance_provider,
-        compliance_rule=compliance.rule or result.compliance_rule,
+
+        if not compliance.passed:
+            logger.warning(
+                f"Compliance check failed for mandate {payment.mandate_id}: "
+                f"{compliance.reason}"
+            )
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": compliance.reason,
+                    "provider": compliance.provider,
+                    "rule": compliance.rule,
+                },
+            )
+
+        # Step 3: Execute payment
+        try:
+            result = await deps.orchestrator.execute_chain(chain)
+        except PaymentExecutionError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+        logger.info(
+            f"Payment executed: mandate={payment.mandate_id}, "
+            f"amount={payment.amount_minor}, kyc={compliance.kyc_verified}, "
+            f"sanctions_clear={compliance.sanctions_clear}"
+        )
+
+        return 200, AP2PaymentExecuteResponse(
+            mandate_id=result.mandate_id,
+            ledger_tx_id=result.ledger_tx_id,
+            chain_tx_hash=result.chain_tx_hash,
+            chain=result.chain,
+            audit_anchor=result.audit_anchor,
+            status=result.status,
+            compliance_provider=compliance.provider or result.compliance_provider,
+            compliance_rule=compliance.rule or result.compliance_rule,
+        )
+
+    # Use payment.mandate_id for dedupe; mandate chain verification ensures it's stable.
+    # If multiple requests use the same idempotency key with different payloads, we reject.
+    key = payload.payment.get("mandate_id") if isinstance(payload.payment, dict) else None
+    if not key:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="missing_payment_mandate_id")
+
+    return await run_idempotent(
+        request=request,
+        principal=principal,
+        operation="ap2.payments.execute",
+        key=str(key),
+        payload=payload.model_dump(),
+        fn=_execute,
     )

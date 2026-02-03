@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import AgentRepository, Wallet, WalletRepository
@@ -12,6 +12,7 @@ from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDR
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_ledger.records import LedgerStore
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -431,104 +432,118 @@ async def get_wallet_by_agent(
 @router.post("/{wallet_id}/transfer", response_model=TransferResponse)
 async def transfer_crypto(
     wallet_id: str,
-    request: TransferRequest,
+    transfer_request: TransferRequest,
+    request: Request,
     deps: WalletDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
     """Transfer crypto from wallet to any address (including A2A transfers)."""
-    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+    # Prefer explicit idempotency key; otherwise derive from request contents.
+    derived = f"{wallet_id}:{transfer_request.chain}:{transfer_request.token}:{transfer_request.destination}:{transfer_request.amount}:{transfer_request.domain}:{transfer_request.memo or ''}"
+    idem_key = get_idempotency_key(request) or derived
 
-    if not wallet.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
+    async def _execute() -> tuple[int, object]:
+        wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
 
-    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
-    if not freeze_ok:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+        if not wallet.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
 
-    source_address = wallet.get_address(request.chain)
-    if not source_address:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No address for chain {request.chain}",
-        )
+        freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+        if not freeze_ok:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
 
-    if not deps.chain_executor:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chain executor not available",
-        )
-
-    # Build a PaymentMandate for the chain executor
-    import time
-    import uuid
-    import hashlib
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-    from sardis_v2_core.tokens import TokenType, to_raw_token_amount
-
-    try:
-        amount_minor = to_raw_token_amount(TokenType(request.token.upper()), request.amount)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"unsupported_token: {request.token}",
-        ) from exc
-
-    mandate = PaymentMandate(
-        mandate_id=f"transfer_{uuid.uuid4().hex[:16]}",
-        mandate_type="payment",
-        issuer=f"wallet:{wallet_id}",
-        subject=wallet.agent_id,
-        expires_at=int(time.time()) + 300,
-        nonce=uuid.uuid4().hex,
-        proof=VCProof(
-            verification_method=f"wallet:{wallet_id}#key-1",
-            created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            proof_value="internal-transfer",
-        ),
-        domain=request.domain,
-        purpose="checkout",
-        chain=request.chain,
-        token=request.token,
-        amount_minor=amount_minor,
-        destination=request.destination,
-        audit_hash=hashlib.sha256(
-            f"{wallet_id}:{request.destination}:{amount_minor}:{request.domain}:{request.memo or ''}".encode()
-        ).hexdigest(),
-        wallet_id=wallet_id,
-    )
-
-    if deps.wallet_manager:
-        policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
-        if not getattr(policy, "allowed", False):
+        source_address = wallet.get_address(transfer_request.chain)
+        if not source_address:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=getattr(policy, "reason", None) or "policy_denied",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No address for chain {transfer_request.chain}",
             )
 
-    try:
-        receipt = await deps.chain_executor.dispatch_payment(mandate)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Transfer failed: {str(e)}",
+        if not deps.chain_executor:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Chain executor not available",
+            )
+
+        # Build a PaymentMandate for the chain executor
+        import time
+        import hashlib
+        from sardis_v2_core.mandates import PaymentMandate, VCProof
+        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+
+        try:
+            amount_minor = to_raw_token_amount(TokenType(transfer_request.token.upper()), transfer_request.amount)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"unsupported_token: {transfer_request.token}",
+            ) from exc
+
+        digest = hashlib.sha256(str(idem_key).encode()).hexdigest()
+        mandate = PaymentMandate(
+            mandate_id=f"transfer_{digest[:16]}",
+            mandate_type="payment",
+            issuer=f"wallet:{wallet_id}",
+            subject=wallet.agent_id,
+            expires_at=int(time.time()) + 300,
+            nonce=digest,
+            proof=VCProof(
+                verification_method=f"wallet:{wallet_id}#key-1",
+                created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                proof_value="internal-transfer",
+            ),
+            domain=transfer_request.domain,
+            purpose="checkout",
+            chain=transfer_request.chain,
+            token=transfer_request.token,
+            amount_minor=amount_minor,
+            destination=transfer_request.destination,
+            audit_hash=hashlib.sha256(
+                f"{wallet_id}:{transfer_request.destination}:{amount_minor}:{transfer_request.domain}:{transfer_request.memo or ''}".encode()
+            ).hexdigest(),
+            wallet_id=wallet_id,
         )
 
-    if deps.ledger:
-        try:
-            deps.ledger.append(payment_mandate=mandate, chain_receipt=receipt)
-        except Exception:
-            # Don't fail the transfer response if ledger append fails; this is best-effort for demo.
-            pass
+        if deps.wallet_manager:
+            policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
+            if not getattr(policy, "allowed", False):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=getattr(policy, "reason", None) or "policy_denied",
+                )
 
-    return TransferResponse(
-        tx_hash=receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt),
-        status="submitted",
-        from_address=source_address,
-        to_address=request.destination,
-        amount=str(request.amount),
-        token=request.token,
-        chain=request.chain,
-        audit_anchor=getattr(receipt, "audit_anchor", None),
+        try:
+            receipt = await deps.chain_executor.dispatch_payment(mandate)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Transfer failed: {str(e)}",
+            )
+
+        if deps.ledger:
+            try:
+                deps.ledger.append(payment_mandate=mandate, chain_receipt=receipt)
+            except Exception:
+                pass
+
+        return 200, TransferResponse(
+            tx_hash=receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt),
+            status="submitted",
+            from_address=source_address,
+            to_address=transfer_request.destination,
+            amount=str(transfer_request.amount),
+            token=transfer_request.token,
+            chain=transfer_request.chain,
+            audit_anchor=getattr(receipt, "audit_anchor", None),
+        )
+
+    return await run_idempotent(
+        request=request,
+        principal=principal,
+        operation="wallets.transfer",
+        key=str(idem_key),
+        payload={"wallet_id": wallet_id, **transfer_request.model_dump()},
+        fn=_execute,
     )
 
 

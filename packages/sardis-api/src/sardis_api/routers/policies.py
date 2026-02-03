@@ -6,12 +6,13 @@ import logging
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
 from sardis_api.authz import Principal
 from sardis_v2_core import AgentRepository
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +325,7 @@ async def preview_policy_from_nl(
 @router.post("/apply", response_model=dict)
 async def apply_policy_from_nl(
     request: CreatePolicyFromNLRequest,
+    http_request: Request,
     deps: PolicyDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -350,7 +352,12 @@ async def apply_policy_from_nl(
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    try:
+    idem_key = get_idempotency_key(http_request)
+    if not idem_key:
+        import hashlib
+        idem_key = hashlib.sha256(f"{request.agent_id}:{request.natural_language}".encode()).hexdigest()
+
+    async def _apply() -> tuple[int, object]:
         from sardis_v2_core.nl_policy_parser import create_policy_parser
         from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel
 
@@ -403,7 +410,7 @@ async def apply_policy_from_nl(
             f"limits={policy.limit_per_tx}/{policy.limit_total}"
         )
 
-        return {
+        return 200, {
             "success": True,
             "policy_id": policy.policy_id,
             "agent_id": policy.agent_id,
@@ -417,12 +424,22 @@ async def apply_policy_from_nl(
             "require_preauth": policy.require_preauth,
             "message": f"Policy {policy.policy_id} applied to agent {request.agent_id}",
         }
-
+    try:
+        return await run_idempotent(
+            request=http_request,
+            principal=principal,
+            operation="policies.apply",
+            key=str(idem_key),
+            payload=request.model_dump(),
+            fn=_apply,
+        )
     except ImportError as e:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail=f"Policy parsing not available: {e}",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to apply policy: {e}")
         raise HTTPException(

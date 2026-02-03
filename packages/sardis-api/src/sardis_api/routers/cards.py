@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 logger = logging.getLogger(__name__)
 
@@ -201,29 +202,48 @@ def create_cards_router(
         return explicit.strip().lower() in ("1", "true", "yes")
 
     @r.post("", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
-    async def issue_card(request: IssueCardRequest, principal: Principal = Depends(require_principal)):
-        await _require_wallet_access(request.wallet_id, principal)
+    async def issue_card(payload: IssueCardRequest, http_request: Request, principal: Principal = Depends(require_principal)):
+        await _require_wallet_access(payload.wallet_id, principal)
 
-        card_id = f"vc_{uuid.uuid4().hex[:16]}"
-        provider_result = await card_provider.create_card(
-            card_id=card_id,
-            wallet_id=request.wallet_id,
-            card_type=request.card_type,
-            limit_per_tx=float(request.limit_per_tx),
-            limit_daily=float(request.limit_daily),
-            limit_monthly=float(request.limit_monthly),
+        idem_key = get_idempotency_key(http_request)
+        if not idem_key:
+            idem_key = (
+                f"{payload.wallet_id}:{payload.card_type}:{payload.limit_per_tx}:{payload.limit_daily}:"
+                f"{payload.limit_monthly}:{payload.locked_merchant_id or ''}:{payload.funding_source}"
+            )
+
+        async def _issue() -> tuple[int, object]:
+            digest = hashlib.sha256(str(idem_key).encode()).hexdigest()
+            card_id = f"vc_{digest[:16]}"
+            provider_result = await card_provider.create_card(
+                card_id=card_id,
+                wallet_id=payload.wallet_id,
+                card_type=payload.card_type,
+                limit_per_tx=float(payload.limit_per_tx),
+                limit_daily=float(payload.limit_daily),
+                limit_monthly=float(payload.limit_monthly),
+            )
+            row = await card_repo.create(
+                card_id=card_id,
+                wallet_id=payload.wallet_id,
+                provider="lithic",
+                provider_card_id=provider_result.provider_card_id,
+                card_type=payload.card_type,
+                limit_per_tx=float(payload.limit_per_tx),
+                limit_daily=float(payload.limit_daily),
+                limit_monthly=float(payload.limit_monthly),
+            )
+            return status.HTTP_201_CREATED, row
+
+        return await run_idempotent(
+            request=http_request,
+            principal=principal,
+            operation="cards.issue",
+            key=str(idem_key),
+            payload=payload.model_dump(),
+            fn=_issue,
+            ttl_seconds=7 * 24 * 60 * 60,
         )
-        row = await card_repo.create(
-            card_id=card_id,
-            wallet_id=request.wallet_id,
-            provider="lithic",
-            provider_card_id=provider_result.provider_card_id,
-            card_type=request.card_type,
-            limit_per_tx=float(request.limit_per_tx),
-            limit_daily=float(request.limit_daily),
-            limit_monthly=float(request.limit_monthly),
-        )
-        return row
 
     @r.get("", dependencies=auth_deps)
     async def list_cards(
@@ -250,7 +270,12 @@ def create_cards_router(
         return card
 
     @r.post("/{card_id}/fund", dependencies=auth_deps)
-    async def fund_card(card_id: str, request: FundCardRequest, principal: Principal = Depends(require_principal)):
+    async def fund_card(
+        card_id: str,
+        payload: FundCardRequest,
+        http_request: Request,
+        principal: Principal = Depends(require_principal),
+    ):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
@@ -258,75 +283,84 @@ def create_cards_router(
         if wallet_id:
             await _require_wallet_access(str(wallet_id), principal)
 
-        # If offramp_service is available, use real USDC→USD→Lithic flow
-        if offramp_service and chain_executor and wallet_repo and request.source == "stablecoin":
-            wallet_id = card.get("wallet_id")
-            if not wallet_id:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Card not linked to wallet")
+        idem_key = get_idempotency_key(http_request) or f"{card_id}:{payload.source}:{payload.amount}"
 
-            wallet = await wallet_repo.get(wallet_id)
-            if not wallet:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
+        async def _fund() -> tuple[int, object]:
+            # Stablecoin-backed card funding path (USDC -> USD -> Lithic)
+            if offramp_service and chain_executor and wallet_repo and payload.source == "stablecoin":
+                if not wallet_id:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Card not linked to wallet")
 
-            amount_minor = int(request.amount * 10**6)
+                wallet = await wallet_repo.get(str(wallet_id))
+                if not wallet:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
 
-            # 1. Get offramp quote (USDC→USD)
-            try:
-                quote = await offramp_service.get_quote(
-                    input_token="USDC",
-                    input_amount_minor=amount_minor,
-                    input_chain="base",
-                    output_currency="USD",
-                )
-            except Exception as e:
-                logger.error("Offramp quote failed: %s", e)
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to get offramp quote")
+                from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+                amount_minor = to_raw_token_amount(TokenType.USDC, payload.amount)
 
-            # 2. Get source address from wallet
-            source_address = wallet.get_address("base") or ""
-            for chain, addr in wallet.addresses.items():
-                if addr:
-                    source_address = addr
-                    break
+                try:
+                    quote = await offramp_service.get_quote(
+                        input_token="USDC",
+                        input_amount_minor=amount_minor,
+                        input_chain="base",
+                        output_currency="USD",
+                    )
+                except Exception as e:
+                    logger.error("Offramp quote failed: %s", e)
+                    raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to get offramp quote")
 
-            if not source_address:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet has no on-chain address")
+                source_address = wallet.get_address("base") or ""
+                for _, addr in wallet.addresses.items():
+                    if addr:
+                        source_address = addr
+                        break
+                if not source_address:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet has no on-chain address")
 
-            # 3. Get destination (Lithic funding account or Bridge deposit)
-            import os
-            funding_account = os.getenv("LITHIC_FUNDING_ACCOUNT_ID", "")
+                import os
+                funding_account = os.getenv("LITHIC_FUNDING_ACCOUNT_ID", "")
+                if not funding_account:
+                    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="lithic_funding_account_not_configured")
 
-            # 4. Execute offramp (Bridge converts USDC→USD→Lithic)
-            try:
-                tx = await offramp_service.execute(
-                    quote=quote,
-                    source_address=source_address,
-                    destination_account=funding_account,
-                )
-            except Exception as e:
-                logger.error("Offramp execute failed: %s", e)
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to execute offramp")
+                try:
+                    tx = await offramp_service.execute(
+                        quote=quote,
+                        source_address=source_address,
+                        destination_account=funding_account,
+                        wallet_id=str(wallet_id),
+                    )
+                except Exception as e:
+                    logger.error("Offramp execute failed: %s", e)
+                    raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to execute offramp")
 
-            # 5. Update card spend limit via Lithic provider
-            try:
-                await card_provider.fund_card(card_id=card_id, amount=float(request.amount))
-            except Exception as e:
-                logger.warning("Lithic fund_card call failed (offramp still processing): %s", e)
+                try:
+                    await card_provider.fund_card(card_id=card_id, amount=float(payload.amount))
+                except Exception as e:
+                    logger.warning("Lithic fund_card call failed (offramp still processing): %s", e)
 
-            # 6. Update funded_amount in DB
+                current = card.get("funded_amount", 0) or 0
+                row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
+                return 200, {
+                    **(row or {}),
+                    "offramp_tx_id": tx.transaction_id,
+                    "offramp_status": tx.status.value,
+                }
+
+            # Fallback: provider-based funding (e.g., sandbox-only)
+            await card_provider.fund_card(card_id=card_id, amount=float(payload.amount))
             current = card.get("funded_amount", 0) or 0
-            row = await card_repo.update_funded_amount(card_id, float(current) + float(request.amount))
-            return {
-                **(row or {}),
-                "offramp_tx_id": tx.transaction_id,
-                "offramp_status": tx.status.value,
-            }
+            row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
+            return 200, row
 
-        # Fallback: simple provider-based funding
-        await card_provider.fund_card(card_id=card_id, amount=float(request.amount))
-        current = card.get("funded_amount", 0) or 0
-        row = await card_repo.update_funded_amount(card_id, float(current) + float(request.amount))
-        return row
+        return await run_idempotent(
+            request=http_request,
+            principal=principal,
+            operation="cards.fund",
+            key=str(idem_key),
+            payload={"card_id": card_id, **payload.model_dump()},
+            fn=_fund,
+            ttl_seconds=7 * 24 * 60 * 60,
+        )
 
     @r.post("/{card_id}/freeze", dependencies=auth_deps)
     async def freeze_card(card_id: str, principal: Principal = Depends(require_principal)):
