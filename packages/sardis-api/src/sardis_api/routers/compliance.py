@@ -12,9 +12,12 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from sardis_api.authz import Principal, require_admin_principal, require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
+public_router = APIRouter()
 
 
 # ============================================================================
@@ -548,7 +551,7 @@ class PersonaWebhookPayload(BaseModel):
     included: Optional[List[dict]] = None
 
 
-@router.post("/webhooks/persona")
+@public_router.post("/webhooks/persona")
 async def handle_persona_webhook(
     request: Request,
     verified_body: bytes = Depends(verify_persona_webhook),
@@ -634,7 +637,9 @@ async def handle_persona_webhook(
 
 
 @router.get("/webhooks/persona/verify")
-async def verify_persona_webhook_config():
+async def verify_persona_webhook_config(
+    _: Principal = Depends(require_admin_principal),
+):
     """
     Check if Persona webhook verification is properly configured.
 

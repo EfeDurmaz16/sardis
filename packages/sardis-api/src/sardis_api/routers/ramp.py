@@ -12,9 +12,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
+public_router = APIRouter()
 
 
 # ---- Request/Response Models ----
@@ -171,7 +174,7 @@ async def get_onramp_quote(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to fetch onramp quote")
 
 
-@router.post("/onramp/webhook", status_code=status.HTTP_200_OK)
+@public_router.post("/onramp/webhook", status_code=status.HTTP_200_OK)
 async def onramp_webhook(
     request: Request,
     deps: RampDependencies = Depends(get_deps),
@@ -180,13 +183,17 @@ async def onramp_webhook(
     body = await request.body()
 
     # Verify webhook signature if secret is configured
-    if deps.onramper_webhook_secret:
-        signature = request.headers.get("x-onramper-signature", "")
-        expected = hmac.new(
-            deps.onramper_webhook_secret.encode(), body, hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(signature, expected):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
+    if not deps.onramper_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Onramper webhook verification not configured",
+        )
+    signature = request.headers.get("x-onramper-signature", "")
+    expected = hmac.new(
+        deps.onramper_webhook_secret.encode(), body, hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
 
     import json
     try:

@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
 from sardis_v2_core.orchestrator import PaymentExecutionError
 
+from sardis_api.authz import require_principal
+
 if TYPE_CHECKING:
     from sardis_protocol.verifier import MandateVerifier
     from sardis_v2_core.orchestrator import PaymentOrchestrator
@@ -18,7 +20,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 # KYC thresholds (amounts in minor units - cents for USD)
 KYC_THRESHOLD_MINOR = 100000  # $1000 requires KYC

@@ -16,9 +16,11 @@ from pydantic import BaseModel, Field
 from sardis_v2_core.approval_service import ApprovalService, ApprovalStatus, ApprovalUrgency
 from sardis_v2_core.approval_repository import ApprovalRepository, Approval
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # ============================================================================

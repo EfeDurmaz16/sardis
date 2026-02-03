@@ -8,8 +8,10 @@ from pydantic import BaseModel
 
 from sardis_ledger.records import LedgerStore
 
+from sardis_api.authz import require_principal
 
-router = APIRouter(tags=["ledger"])
+
+router = APIRouter(dependencies=[Depends(require_principal)], tags=["ledger"])
 
 
 class TransactionResponse(BaseModel):

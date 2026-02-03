@@ -184,6 +184,7 @@ async def list_webhooks(
 async def get_webhook(
     subscription_id: str,
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Get a webhook subscription by ID."""
     subscription = await deps.repository.get_subscription(subscription_id)
@@ -192,7 +193,9 @@ async def get_webhook(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Webhook subscription {subscription_id} not found",
         )
-    return WebhookResponse.from_subscription(subscription, show_secret=True)
+    if subscription.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
+    return WebhookResponse.from_subscription(subscription, show_secret=False)
 
 
 @router.patch("/{subscription_id}", response_model=WebhookResponse)
@@ -200,8 +203,13 @@ async def update_webhook(
     subscription_id: str,
     request: UpdateWebhookRequest,
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Update a webhook subscription."""
+    existing = await deps.repository.get_subscription(subscription_id)
+    if not existing or existing.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
+
     # Validate event types if provided
     if request.events:
         valid_events = {e.value for e in EventType}
@@ -232,8 +240,13 @@ async def update_webhook(
 async def delete_webhook(
     subscription_id: str,
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Delete a webhook subscription."""
+    existing = await deps.repository.get_subscription(subscription_id)
+    if not existing or existing.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
+
     deleted = await deps.repository.delete_subscription(subscription_id)
     if not deleted:
         raise HTTPException(
@@ -246,6 +259,7 @@ async def delete_webhook(
 async def test_webhook(
     subscription_id: str,
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Send a test event to verify the webhook endpoint."""
     subscription = await deps.repository.get_subscription(subscription_id)
@@ -254,6 +268,8 @@ async def test_webhook(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Webhook subscription {subscription_id} not found",
         )
+    if subscription.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
 
     # Create test event
     test_event = WebhookEvent(
@@ -285,6 +301,7 @@ async def list_deliveries(
     subscription_id: str,
     limit: int = Query(default=50, ge=1, le=500),
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """List delivery attempts for a webhook subscription."""
     # Verify subscription exists
@@ -294,6 +311,8 @@ async def list_deliveries(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Webhook subscription {subscription_id} not found",
         )
+    if subscription.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
 
     deliveries = await deps.repository.list_deliveries(
         subscription_id=subscription_id,
@@ -306,6 +325,7 @@ async def list_deliveries(
 async def rotate_secret(
     subscription_id: str,
     deps: WebhookDependencies = Depends(get_deps),
+    api_key: APIKey = Depends(require_api_key),
 ):
     """Rotate the webhook signing secret."""
     subscription = await deps.repository.get_subscription(subscription_id)
@@ -314,6 +334,8 @@ async def rotate_secret(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Webhook subscription {subscription_id} not found",
         )
+    if subscription.organization_id != api_key.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
 
     # Generate new secret
     from uuid import uuid4

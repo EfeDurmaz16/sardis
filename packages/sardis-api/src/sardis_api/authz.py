@@ -68,3 +68,22 @@ async def require_principal(
         headers={"WWW-Authenticate": "ApiKey, Bearer"},
     )
 
+
+async def require_admin_principal(
+    principal: Principal = Depends(require_principal),
+) -> Principal:
+    if principal.is_admin:
+        return principal
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Admin privileges required",
+    )
+
+
+def metrics_auth_required() -> bool:
+    """
+    Whether the /metrics endpoint should require auth.
+
+    Default: require auth (production-grade). Set SARDIS_PUBLIC_METRICS=1 to expose.
+    """
+    return os.getenv("SARDIS_PUBLIC_METRICS", "").strip() not in {"1", "true", "yes", "on"}

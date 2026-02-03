@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 
 import json
 
+from sardis_api.authz import require_principal
+
 from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 from sardis_v2_core.mandates import PaymentMandate
 from sardis_v2_core.database import Database
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
     from sardis_compliance.checks import ComplianceEngine
     from sardis_v2_core.wallet_repository import WalletRepository
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # Stored mandate model

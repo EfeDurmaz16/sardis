@@ -16,8 +16,10 @@ from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_v2_core import SardisSettings
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 METRICS = {
     "mandate_validations": 0,
     "mandate_rejections": 0,
@@ -266,6 +268,5 @@ def metrics(deps: Dependencies = Depends(get_deps)):
             "token": ALLOWED_TOKEN,
         },
     }
-
 
 

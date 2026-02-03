@@ -12,12 +12,23 @@ Login → Create Turnkey wallet → Apply “block gambling” policy → Issue 
 - `TURNKEY_API_PUBLIC_KEY` (or `TURNKEY_API_KEY`)
 - `TURNKEY_API_PRIVATE_KEY`
 - `LITHIC_API_KEY`
-- `LITHIC_WEBHOOK_SECRET` (optional for real webhook; **not required** for `/simulate-purchase`)
+- `LITHIC_WEBHOOK_SECRET` (required for real `/api/v2/cards/webhooks`; **not required** for `/simulate-purchase`)
 
 Optional but recommended:
 - `SARDIS_DEFAULT_ORG_ID=org_demo`
+- `DATABASE_URL` (recommended; enables Postgres persistence)
 - `REDIS_URL` (or `SARDIS_REDIS_URL` / `UPSTASH_REDIS_URL`)
 - `SARDIS_AUTO_FREEZE_ON_POLICY_DENY=1` (default: enabled outside prod)
+- `STRIPE_SECRET_KEY` (optional; enables `/api/v2/checkout`)
+- `STRIPE_WEBHOOK_SECRET` (required if you want to accept Stripe webhooks)
+- `PERSONA_API_KEY` + `PERSONA_TEMPLATE_ID` (optional; enables real Persona KYC)
+- `PERSONA_WEBHOOK_SECRET` (required to accept `/api/v2/compliance/webhooks/persona`)
+- `ONRAMPER_API_KEY` (optional; enables `/api/v2/ramp/onramp/*`)
+- `ONRAMPER_WEBHOOK_SECRET` (required to accept `/api/v2/ramp/onramp/webhook`)
+- `SARDIS_PUBLIC_METRICS=1` (optional; exposes `/metrics` without auth)
+
+Dashboard (Vite):
+- `VITE_API_URL=http://localhost:8000` (dashboard → API base URL)
 
 ## 1) Login (JWT)
 
@@ -107,4 +118,3 @@ curl -sS "$BASE_URL/api/v2/cards/$CARD_ID/transactions" \
   -H "Authorization: Bearer $TOKEN" \
 | python -m json.tool
 ```
-

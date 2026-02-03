@@ -10,8 +10,10 @@ from pydantic import BaseModel, Field
 
 from sardis_v2_core.holds import HoldsRepository, Hold
 
+from sardis_api.authz import Principal, require_admin_principal, require_principal
 
-router = APIRouter(tags=["holds"])
+
+router = APIRouter(dependencies=[Depends(require_principal)], tags=["holds"])
 
 
 # Request/Response Models
@@ -201,6 +203,7 @@ async def list_active_holds(
 
 @router.post("/expire", response_model=dict)
 async def expire_old_holds(
+    _: Principal = Depends(require_admin_principal),
     deps: HoldsDependencies = Depends(get_deps),
 ):
     """Mark expired holds as expired. Admin endpoint."""

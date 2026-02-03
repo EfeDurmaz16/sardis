@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field
 
 from sardis_chain.executor import ChainExecutor, TransactionStatus, CHAIN_CONFIGS, STABLECOIN_ADDRESSES
 
+from sardis_api.authz import require_principal
 
-router = APIRouter(tags=["transactions"])
+
+router = APIRouter(dependencies=[Depends(require_principal)], tags=["transactions"])
 
 
 # Request/Response Models

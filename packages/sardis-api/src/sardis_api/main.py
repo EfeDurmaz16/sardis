@@ -728,6 +728,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         onramper_webhook_secret=onramper_webhook_secret,
     )
     app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
+    if hasattr(ramp_router, "public_router"):
+        app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
@@ -834,7 +836,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from sardis_checkout.connectors.stripe import StripeConnector
 
     # Initialize PSP connectors
-    stripe_connector = StripeConnector() if os.getenv("STRIPE_SECRET_KEY") else None
+    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
+    stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    stripe_connector = (
+        StripeConnector(api_key=stripe_secret_key, webhook_secret=stripe_webhook_secret)
+        if stripe_secret_key
+        else None
+    )
     checkout_orchestrator = CheckoutOrchestrator()
     if stripe_connector:
         checkout_orchestrator.register_connector("stripe", stripe_connector)
@@ -845,6 +853,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=checkout_orchestrator,
     )
     app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
+    if hasattr(checkout_router, "public_router"):
+        app.include_router(checkout_router.public_router, prefix="/api/v2/checkout", tags=["checkout"])
 
     # Policy routes (Natural Language policy parsing)
     app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
@@ -869,6 +879,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         sanctions_service=sanctions_service,
     )
     app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
+    if hasattr(compliance_router, "public_router"):
+        app.include_router(compliance_router.public_router, prefix="/api/v2/compliance", tags=["compliance"])
 
     # Invoice routes
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])

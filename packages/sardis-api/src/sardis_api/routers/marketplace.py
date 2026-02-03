@@ -20,8 +20,10 @@ from sardis_v2_core.marketplace import (
     MilestoneStatus,
 )
 
+from sardis_api.authz import require_principal
 
-router = APIRouter(tags=["marketplace"])
+
+router = APIRouter(dependencies=[Depends(require_principal)], tags=["marketplace"])
 
 
 # Request/Response Models

@@ -72,6 +72,10 @@ data/
 load_test_*.json
 
 
+# Codex / agent artifacts
+.omc/
+coverage.json
+
 
 coverage/
 

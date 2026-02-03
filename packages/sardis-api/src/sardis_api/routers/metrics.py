@@ -5,7 +5,7 @@ import os
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 from prometheus_client import (
     Counter,
     Histogram,
@@ -16,6 +16,8 @@ from prometheus_client import (
     CollectorRegistry,
     REGISTRY,
 )
+
+from sardis_api.authz import Principal, metrics_auth_required, require_principal
 
 router = APIRouter(tags=["monitoring"])
 
@@ -271,18 +273,32 @@ def record_error(error_type: str, severity: str = "error") -> None:
     errors_total.labels(error_type=error_type, severity=severity).inc()
 
 
-@router.get("/metrics")
-async def metrics() -> Response:
-    """
-    Expose Prometheus metrics endpoint.
+if metrics_auth_required():
+    @router.get("/metrics")
+    async def metrics(_: Principal = Depends(require_principal)) -> Response:
+        """
+        Expose Prometheus metrics endpoint.
 
-    Returns metrics in Prometheus text exposition format.
-    This endpoint should be scraped by Prometheus server.
-    """
-    return Response(
-        content=generate_latest(REGISTRY),
-        media_type=CONTENT_TYPE_LATEST,
-    )
+        Returns metrics in Prometheus text exposition format.
+        This endpoint should be scraped by Prometheus server.
+        """
+        return Response(
+            content=generate_latest(REGISTRY),
+            media_type=CONTENT_TYPE_LATEST,
+        )
+else:
+    @router.get("/metrics")
+    async def metrics() -> Response:
+        """
+        Expose Prometheus metrics endpoint.
+
+        Returns metrics in Prometheus text exposition format.
+        This endpoint should be scraped by Prometheus server.
+        """
+        return Response(
+            content=generate_latest(REGISTRY),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
 
 @router.get("/health")

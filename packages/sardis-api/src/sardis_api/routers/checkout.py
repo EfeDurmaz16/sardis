@@ -20,7 +20,10 @@ from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope
 from sardis_v2_core.tokens import TokenType
 from sardis_v2_core.database import Database
 
-router = APIRouter()
+from sardis_api.authz import require_principal
+
+router = APIRouter(dependencies=[Depends(require_principal)])
+public_router = APIRouter()
 
 
 # Request/Response Models
@@ -182,7 +185,7 @@ async def get_checkout_status(
     )
 
 
-@router.post("/webhooks/{psp}", status_code=status.HTTP_200_OK)
+@public_router.post("/webhooks/{psp}", status_code=status.HTTP_200_OK)
 async def handle_psp_webhook(
     psp: str,
     request: Request,
@@ -194,8 +197,25 @@ async def handle_psp_webhook(
     This endpoint processes payment status updates from PSPs.
     """
     try:
-        payload = await request.json()
+        raw = await request.body()
         headers = dict(request.headers)
+
+        # Fail closed: verify provider signatures before parsing/processing.
+        connector = getattr(deps.orchestrator, "connectors", {}).get(psp)
+        if connector is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"PSP {psp} not configured")
+
+        if psp == "stripe":
+            sig = headers.get("stripe-signature", "")
+            if not sig:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Stripe signature")
+            if not isinstance(connector, StripeConnector):
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Stripe connector misconfigured")
+            ok = await connector.verify_webhook(raw, sig)
+            if not ok:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Stripe signature")
+
+        payload = _json.loads(raw)
 
         result = await deps.orchestrator.handle_webhook(
             psp=psp,
@@ -203,6 +223,8 @@ async def handle_psp_webhook(
             headers=headers,
         )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

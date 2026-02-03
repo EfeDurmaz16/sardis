@@ -24,9 +24,11 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from sardis_api.authz import require_admin_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin_principal)])
 
 
 # ============================================================================
