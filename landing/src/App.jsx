@@ -160,7 +160,7 @@ function App() {
           <div className="hidden md:flex items-center gap-1">
             <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              LIVE ON TESTNET
+              PRODUCTION READY
             </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
@@ -175,7 +175,7 @@ function App() {
               className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-medium rounded-none"
               onClick={() => setIsWaitlistOpen(true)}
             >
-              Get Early Access
+              Get Started
             </Button>
           </div>
         </div>
@@ -212,7 +212,7 @@ function App() {
                   className="h-14 px-8 text-lg rounded-none bg-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)]/90 text-white font-medium"
                   onClick={() => setIsWaitlistOpen(true)}
                 >
-                  Get Early Access
+                  Get Started
                   <span className="ml-2">→</span>
                 </Button>
                 <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-none border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)]" asChild>
@@ -1017,9 +1017,9 @@ const payment = await ramp.payMerchantFiat({
       {/* CTA Section */}
       <section className="py-24 text-center border-t border-border">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Join the Alpha Design Partner Program</h2>
+          <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Start Building with Sardis</h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Be among the first to give your agents financial autonomy. Early partners get hands-on support and priority access.
+            Give your agents financial autonomy today. Get hands-on support and full access to the production-ready platform.
           </p>
           <WaitlistForm />
         </div>

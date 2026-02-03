@@ -151,8 +151,7 @@ export default function SardisV07ProductionHardening() {
       </ul>
 
       <p>
-        If you're building AI agents that need real financial capabilities, <Link to="/docs/quickstart" className="text-[var(--sardis-orange)]">get started with Sardis</Link> or
-        join our Alpha Design Partner Program.
+        If you're building AI agents that need real financial capabilities, <Link to="/docs/quickstart" className="text-[var(--sardis-orange)]">get started with Sardis</Link> today.
       </p>
 
       {/* Footer */}

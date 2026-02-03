@@ -56,7 +56,7 @@ const WaitlistForm = () => {
                 </div>
                 <h3 className="text-lg font-bold text-emerald-500 mb-2 font-display">You're on the list</h3>
                 <p className="text-muted-foreground text-sm font-mono">
-                    You've been added to the Alpha Design Partner program waitlist. We'll reach out soon with early access.
+                    You've been registered for Sardis. We'll reach out soon with your access credentials.
                 </p>
             </motion.div>
         );
@@ -100,7 +100,7 @@ const WaitlistForm = () => {
                     </>
                 ) : (
                     <>
-                        JOIN WAITLIST
+                        GET ACCESS
                         <span>→</span>
                     </>
                 )}

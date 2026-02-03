@@ -97,8 +97,8 @@ export default function WaitlistModal({ isOpen, onClose }) {
                     You're on the list
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    You've been added to the Alpha Design Partner program
-                    waitlist. We'll reach out soon with early access.
+                    You've been registered for Sardis. We'll reach out soon
+                    with your access credentials.
                   </p>
                   <Button
                     onClick={handleClose}
@@ -113,11 +113,11 @@ export default function WaitlistModal({ isOpen, onClose }) {
                   <div className="text-center mb-6">
                     <SardisLogo className="mx-auto mb-4" size="large" />
                     <h2 className="text-2xl font-bold font-display mb-2">
-                      Get Early Access
+                      Get Started with Sardis
                     </h2>
                     <p className="text-muted-foreground">
-                      Join the Alpha Design Partner program and be among the
-                      first to give your agents financial autonomy.
+                      Sign up to give your agents financial autonomy with
+                      production-ready payment infrastructure.
                     </p>
                   </div>
 
@@ -160,7 +160,7 @@ export default function WaitlistModal({ isOpen, onClose }) {
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
-                          Join Waitlist
+                          Get Access
                           <span>→</span>
                         </span>
                       )}
