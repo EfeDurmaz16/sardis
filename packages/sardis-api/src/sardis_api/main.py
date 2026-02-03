@@ -55,6 +55,12 @@ from .routers import compliance as compliance_router
 from .routers import admin as admin_router
 from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
+
+# Conditional import for approvals router (may not exist yet)
+try:
+    from .routers import approvals as approvals_router
+except ImportError:
+    approvals_router = None  # type: ignore
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -362,6 +368,7 @@ Current API version: v2. The API version is included in all response headers:
         {"name": "mvp", "description": "Minimum Viable Protocol operations"},
         {"name": "ledger", "description": "Ledger and transaction history"},
         {"name": "holds", "description": "Pre-authorization holds"},
+        {"name": "approvals", "description": "Human approval workflows for agent actions"},
         {"name": "webhooks", "description": "Webhook subscription management"},
         {"name": "transactions", "description": "Transaction status and gas estimation"},
         {"name": "marketplace", "description": "A2A service discovery"},
@@ -607,6 +614,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         holds_repo=holds_repo,
     )
     app.include_router(holds_router.router, prefix="/api/v2/holds")
+
+    # Approvals routes (human approval workflows)
+    if approvals_router is not None:
+        try:
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
+            approval_repo = ApprovalRepository(dsn=database_url if use_postgres else "memory://")
+            approval_service = ApprovalService(repository=approval_repo)
+            app.dependency_overrides[approvals_router.get_deps] = lambda: approvals_router.ApprovalsDependencies(  # type: ignore[arg-type]
+                approval_service=approval_service,
+                approval_repo=approval_repo,
+            )
+            app.include_router(approvals_router.router, prefix="/api/v2/approvals", tags=["approvals"])
+            logger.info("Approvals router registered")
+        except ImportError as e:
+            logger.warning(f"Approvals dependencies not available: {e}")
+    else:
+        logger.info("Approvals router not yet available (dependencies not complete)")
 
     # Webhook routes
     webhook_repo = WebhookRepository(dsn=database_url if use_postgres else "memory://")
