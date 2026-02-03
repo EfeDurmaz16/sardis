@@ -3,10 +3,29 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
+from pathlib import Path
 from typing import AsyncGenerator, Generator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+# Ensure local packages are importable when running pytest directly.
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+packages_dir = Path(__file__).parent.parent.parent
+for pkg in [
+    "sardis-core",
+    "sardis-wallet",
+    "sardis-chain",
+    "sardis-protocol",
+    "sardis-ledger",
+    "sardis-cards",
+    "sardis-compliance",
+    "sardis-checkout",
+]:
+    pkg_path = packages_dir / pkg / "src"
+    if pkg_path.exists():
+        sys.path.insert(0, str(pkg_path))
 
 # Set test environment before importing app
 os.environ["SARDIS_ENVIRONMENT"] = "dev"  # Use 'dev' as test environment
