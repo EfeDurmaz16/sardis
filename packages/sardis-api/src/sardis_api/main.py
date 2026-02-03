@@ -54,9 +54,14 @@ from .routers import policies as policies_router
 from .routers import compliance as compliance_router
 from .routers import admin as admin_router
 from .routers import invoices as invoices_router
+from .routers import ramp as ramp_router
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
+from sardis_v2_core.scheduler import init_scheduler, get_scheduler
+from sardis_v2_core.jobs.spending_reset import reset_spending_limits
+from sardis_v2_core.jobs.hold_expiry import expire_holds
+from sardis_v2_core.jobs.approval_expiry import expire_approvals
 from .middleware import (
     RateLimitMiddleware,
     RateLimitConfig,
@@ -178,6 +183,33 @@ async def lifespan(app: FastAPI):
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
 
+    # Initialize and start scheduler
+    database_url = os.getenv("DATABASE_URL", "")
+    scheduler = init_scheduler(
+        database_url=database_url if database_url.startswith("postgresql") else None
+    )
+
+    # Register jobs
+    scheduler.add_cron_job(
+        reset_spending_limits,
+        job_id="spending_reset_daily",
+        hour=0, minute=0,  # Midnight UTC
+    )
+    scheduler.add_interval_job(
+        expire_holds,
+        job_id="hold_expiry_check",
+        seconds=300,  # Every 5 minutes
+    )
+    scheduler.add_interval_job(
+        expire_approvals,
+        job_id="approval_expiry_check",
+        seconds=60,  # Every minute
+    )
+
+    await scheduler.start()
+    app.state.scheduler = scheduler
+    logger.info("Background scheduler started with jobs registered")
+
     # Mark startup complete
     app.state.startup_time = time.time()
     app.state.ready = True
@@ -192,6 +224,13 @@ async def lifespan(app: FastAPI):
 
     # Wait for active requests to complete
     await shutdown_state.wait_for_requests()
+
+    # Shutdown scheduler
+    if hasattr(app.state, "scheduler"):
+        try:
+            await app.state.scheduler.shutdown(wait=True)
+        except Exception as e:
+            logger.warning(f"Error shutting down scheduler: {e}")
 
     # Cleanup resources
     if hasattr(app.state, "turnkey_client") and app.state.turnkey_client:
@@ -335,6 +374,7 @@ Current API version: v2. The API version is included in all response headers:
         {"name": "compliance", "description": "KYC and sanctions screening"},
         {"name": "admin", "description": "Administrative operations"},
         {"name": "auth", "description": "Authentication endpoints"},
+        {"name": "ramp", "description": "Fiat on-ramp and off-ramp"},
     ]
 
     app.openapi_schema = openapi_schema
@@ -616,6 +656,36 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
+    # Initialize OfframpService (used by ramp + cards)
+    offramp_service = None
+    bridge_api_key = os.getenv("BRIDGE_API_KEY")
+    bridge_api_secret = os.getenv("BRIDGE_API_SECRET")
+    if bridge_api_key and bridge_api_secret:
+        from sardis_cards.offramp import BridgeOfframpProvider, OfframpService
+        bridge_env = "sandbox" if settings.environment != "production" else "production"
+        bridge_provider = BridgeOfframpProvider(
+            api_key=bridge_api_key,
+            api_secret=bridge_api_secret,
+            environment=bridge_env,
+        )
+        offramp_service = OfframpService(provider=bridge_provider)
+        logger.info("OfframpService initialized with Bridge provider")
+    else:
+        from sardis_cards.offramp import OfframpService, MockOfframpProvider
+        offramp_service = OfframpService(provider=MockOfframpProvider())
+        logger.info("OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)")
+
+    # Ramp routes (fiat on-ramp / off-ramp)
+    onramper_api_key = os.getenv("ONRAMPER_API_KEY", "")
+    onramper_webhook_secret = os.getenv("ONRAMPER_WEBHOOK_SECRET", "")
+    app.dependency_overrides[ramp_router.get_deps] = lambda: ramp_router.RampDependencies(
+        wallet_repo=wallet_repo,
+        offramp_service=offramp_service,
+        onramper_api_key=onramper_api_key,
+        onramper_webhook_secret=onramper_webhook_secret,
+    )
+    app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
+
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
         from sardis_api.repositories.card_repository import CardRepository
@@ -629,7 +699,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             card_provider = None
         webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
         if card_provider:
-            injected_router = cards_router.create_cards_router(card_repo, card_provider, webhook_secret)
+            injected_router = cards_router.create_cards_router(
+                card_repo, card_provider, webhook_secret,
+                offramp_service=offramp_service,
+                chain_executor=chain_exec,
+                wallet_repo=wallet_repo,
+            )
             app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
