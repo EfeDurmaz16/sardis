@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
+from sardis_api.authz import Principal
+from sardis_v2_core import AgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 @dataclass
 class PolicyDependencies:
     policy_store: any  # AsyncPolicyStore (in-memory or postgres)
+    agent_repo: AgentRepository
 
 
 def get_deps() -> PolicyDependencies:
@@ -322,6 +325,7 @@ async def preview_policy_from_nl(
 async def apply_policy_from_nl(
     request: CreatePolicyFromNLRequest,
     deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Parse natural language and apply policy to an agent.
@@ -339,6 +343,12 @@ async def apply_policy_from_nl(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Confirmation required. Set 'confirm: true' or use /preview first.",
         )
+
+    agent = await deps.agent_repo.get(request.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     try:
         from sardis_v2_core.nl_policy_parser import create_policy_parser
@@ -464,7 +474,16 @@ async def get_policy_examples():
 
 
 @router.get("/{agent_id}", response_model=dict)
-async def get_active_policy(agent_id: str, deps: PolicyDependencies = Depends(get_deps)):
+async def get_active_policy(
+    agent_id: str,
+    deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     policy = await deps.policy_store.fetch_policy(agent_id)
     if not policy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No policy for agent")
@@ -481,12 +500,22 @@ async def get_active_policy(agent_id: str, deps: PolicyDependencies = Depends(ge
 
 
 @router.post("/check", response_model=PolicyCheckResponse)
-async def check_policy(request: PolicyCheckRequest, deps: PolicyDependencies = Depends(get_deps)):
+async def check_policy(
+    request: PolicyCheckRequest,
+    deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
     """
     Evaluate a hypothetical purchase against the agent's active policy.
 
     For demo purposes, currency is treated as 1:1 with the policy's default currency.
     """
+    agent = await deps.agent_repo.get(request.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     policy = await deps.policy_store.fetch_policy(request.agent_id)
     if not policy:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No policy for agent")

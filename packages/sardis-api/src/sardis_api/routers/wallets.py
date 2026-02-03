@@ -7,9 +7,9 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from sardis_v2_core import Wallet, WalletRepository
+from sardis_v2_core import AgentRepository, Wallet, WalletRepository
 from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_ledger.records import LedgerStore
 
@@ -110,11 +110,13 @@ class WalletDependencies:
     def __init__(
         self,
         wallet_repo: WalletRepository,
+        agent_repo: AgentRepository,
         chain_executor: ChainExecutor | None = None,
         wallet_manager: any | None = None,
         ledger: LedgerStore | None = None,
     ):
         self.wallet_repo = wallet_repo
+        self.agent_repo = agent_repo
         self.chain_executor = chain_executor
         self.wallet_manager = wallet_manager
         self.ledger = ledger
@@ -124,13 +126,46 @@ def get_deps() -> WalletDependencies:
     raise NotImplementedError("Dependency override required")
 
 
+async def _require_agent_access(
+    agent_id: str,
+    *,
+    principal: Principal,
+    deps: WalletDependencies,
+):
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return agent
+
+
+async def _require_wallet_access(
+    wallet_id: str,
+    *,
+    principal: Principal,
+    deps: WalletDependencies,
+) -> Wallet:
+    wallet = await deps.wallet_repo.get(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return wallet
+
+
 # Endpoints
 @router.post("", response_model=WalletResponse, status_code=status.HTTP_201_CREATED)
 async def create_wallet(
     request: CreateWalletRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Create a new non-custodial wallet for an agent."""
+    await _require_agent_access(request.agent_id, principal=principal, deps=deps)
     wallet_id_override: str | None = None
     addresses: dict[str, str] | None = None
 
@@ -189,14 +224,33 @@ async def list_wallets(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """List all wallets."""
-    wallets = await deps.wallet_repo.list(
-        agent_id=agent_id,
-        is_active=is_active,
-        limit=limit,
-        offset=offset,
-    )
+    if agent_id:
+        await _require_agent_access(agent_id, principal=principal, deps=deps)
+        wallets = await deps.wallet_repo.list(
+            agent_id=agent_id,
+            is_active=is_active,
+            limit=limit,
+            offset=offset,
+        )
+    elif principal.is_admin:
+        wallets = await deps.wallet_repo.list(
+            agent_id=None,
+            is_active=is_active,
+            limit=limit,
+            offset=offset,
+        )
+    else:
+        # Non-admin callers: list wallets for agents in their org (best-effort).
+        agents = await deps.agent_repo.list(owner_id=principal.organization_id, limit=1000, offset=0)
+        collected: list[Wallet] = []
+        for agent in agents:
+            w = await deps.wallet_repo.get_by_agent(agent.agent_id)
+            if w:
+                collected.append(w)
+        wallets = collected[offset : offset + limit]
     return [WalletResponse.from_wallet(w) for w in wallets]
 
 
@@ -204,11 +258,10 @@ async def list_wallets(
 async def get_wallet(
     wallet_id: str,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get wallet details."""
-    wallet = await deps.wallet_repo.get(wallet_id)
-    if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     return WalletResponse.from_wallet(wallet)
 
 
@@ -217,8 +270,10 @@ async def update_wallet(
     wallet_id: str,
     request: UpdateWalletRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Update wallet settings."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.update(
         wallet_id,
         limit_per_tx=request.limit_per_tx,
@@ -234,8 +289,10 @@ async def update_wallet(
 async def delete_wallet(
     wallet_id: str,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Delete a wallet."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     deleted = await deps.wallet_repo.delete(wallet_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
@@ -246,8 +303,10 @@ async def set_wallet_limits(
     wallet_id: str,
     request: SetLimitsRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Set spending limits for a wallet."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.set_limits(
         wallet_id,
         limit_per_tx=request.limit_per_tx,
@@ -264,11 +323,10 @@ async def get_wallet_balance(
     chain: str = Query(default="base_sepolia", description="Chain identifier"),
     token: str = Query(default="USDC", description="Token type"),
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get wallet balance from chain (non-custodial, read-only)."""
-    wallet = await deps.wallet_repo.get(wallet_id)
-    if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
 
     address = wallet.get_address(chain)
     if not address:
@@ -330,11 +388,10 @@ async def get_wallet_balance(
 async def get_wallet_addresses(
     wallet_id: str,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get all wallet addresses (chain -> address mapping)."""
-    wallet = await deps.wallet_repo.get(wallet_id)
-    if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     return wallet.addresses
 
 
@@ -343,8 +400,10 @@ async def set_wallet_address(
     wallet_id: str,
     request: SetAddressRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Set wallet address for a chain."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.set_address(
         wallet_id,
         chain=request.chain,
@@ -359,8 +418,10 @@ async def set_wallet_address(
 async def get_wallet_by_agent(
     agent_id: str,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get wallet for a specific agent."""
+    await _require_agent_access(agent_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.get_by_agent(agent_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
@@ -372,11 +433,10 @@ async def transfer_crypto(
     wallet_id: str,
     request: TransferRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Transfer crypto from wallet to any address (including A2A transfers)."""
-    wallet = await deps.wallet_repo.get(wallet_id)
-    if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
 
     if not wallet.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
@@ -477,6 +537,7 @@ async def freeze_wallet(
     wallet_id: str,
     request: FreezeWalletRequest,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Freeze a wallet to block all transactions.
@@ -484,6 +545,7 @@ async def freeze_wallet(
     Use this for compliance holds, suspicious activity, or risk mitigation.
     Frozen wallets cannot send transactions until unfrozen.
     """
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.freeze(
         wallet_id=wallet_id,
         frozen_by=request.frozen_by,
@@ -498,12 +560,14 @@ async def freeze_wallet(
 async def unfreeze_wallet(
     wallet_id: str,
     deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Unfreeze a wallet to restore normal operations.
 
     This removes the freeze hold and allows transactions to proceed.
     """
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
     wallet = await deps.wallet_repo.unfreeze(wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")

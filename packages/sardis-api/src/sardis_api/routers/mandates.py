@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 import json
 
 from sardis_api.authz import require_principal
+from sardis_api.authz import Principal
+from sardis_v2_core import AgentRepository
 
 from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 from sardis_v2_core.mandates import PaymentMandate
@@ -190,6 +192,7 @@ class Dependencies:
     ledger: "LedgerStore"
     compliance: "ComplianceEngine"
     wallet_repository: "WalletRepository"
+    agent_repo: AgentRepository
 
 
 def get_deps() -> Dependencies:
@@ -261,6 +264,7 @@ async def get_mandate(
 async def validate_mandate(
     mandate_id: str,
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Validate a mandate without executing it."""
     stored = await _get_mandate(mandate_id)
@@ -312,6 +316,7 @@ async def validate_mandate(
 async def execute_stored_mandate(
     mandate_id: str,
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Execute a previously created mandate."""
     stored = await _get_mandate(mandate_id)
@@ -388,6 +393,7 @@ async def execute_stored_mandate(
 async def cancel_mandate(
     mandate_id: str,
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Cancel a pending mandate."""
     stored = await _get_mandate(mandate_id)
@@ -406,8 +412,18 @@ async def cancel_mandate(
 
 # Legacy endpoint for backwards compatibility
 @router.post("/execute", response_model=MandateExecutionResponse)
-async def execute_payment_mandate(payload: IngestMandateRequest, deps: Dependencies = Depends(get_deps)):
+async def execute_payment_mandate(
+    payload: IngestMandateRequest,
+    deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
     """Execute a payment mandate directly (legacy endpoint)."""
+    agent = await deps.agent_repo.get(payload.mandate.subject)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     verifier = deps.verifier
     verification = verifier.verify(payload.mandate)
     if not verification.accepted:
@@ -440,3 +456,20 @@ async def execute_payment_mandate(payload: IngestMandateRequest, deps: Dependenc
         chain=tx.chain,
         audit_anchor=tx.audit_anchor,
     )
+    agent = await deps.agent_repo.get(stored.mandate.subject)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    agent = await deps.agent_repo.get(stored.mandate.subject)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    agent = await deps.agent_repo.get(stored.mandate.subject)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

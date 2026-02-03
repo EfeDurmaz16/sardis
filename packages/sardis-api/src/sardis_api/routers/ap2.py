@@ -12,7 +12,8 @@ from sardis_v2_core.orchestrator import PaymentExecutionError
 from sardis_v2_core.mandates import MandateChain
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
+from sardis_v2_core import AgentRepository
 
 if TYPE_CHECKING:
     from sardis_protocol.verifier import MandateVerifier
@@ -35,6 +36,7 @@ class Dependencies:
     verifier: "MandateVerifier"
     orchestrator: "PaymentOrchestrator"
     wallet_repo: "WalletRepository"
+    agent_repo: AgentRepository
     kyc_service: Optional["KYCService"] = None
     sanctions_service: Optional["SanctionsService"] = None
 
@@ -137,6 +139,7 @@ async def perform_compliance_checks(
 async def execute_ap2_payment(
     payload: AP2PaymentExecuteRequest,
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Execute an AP2 payment with full compliance checks.
@@ -159,6 +162,12 @@ async def execute_ap2_payment(
     
     chain = verification.chain
     payment = chain.payment
+
+    agent = await deps.agent_repo.get(payment.subject)
+    if not agent:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="access_denied")
 
     # Resolve wallet for the agent (needed for signing in live mode) + freeze gate
     wallet = await deps.wallet_repo.get_by_agent(payment.subject)

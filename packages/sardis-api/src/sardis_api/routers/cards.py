@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
+from sardis_v2_core import AgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ def create_cards_router(
     chain_executor=None,
     wallet_repo=None,
     policy_store=None,
+    agent_repo: AgentRepository | None = None,
 ) -> APIRouter:
     """Create a cards router with injected dependencies."""
     r = APIRouter()
@@ -107,6 +109,22 @@ def create_cards_router(
             mcc_code=mcc_code,
         )
         return ok, reason
+
+    async def _require_wallet_access(wallet_id: str, principal: Principal):
+        if not wallet_repo or not agent_repo:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="wallet_or_agent_repository_not_configured",
+            )
+        wallet = await wallet_repo.get(wallet_id)
+        if not wallet:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        agent = await agent_repo.get(wallet.agent_id)
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+        if not principal.is_admin and agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        return wallet
 
     def _parse_timestamp(value: Any) -> datetime | None:
         """
@@ -183,11 +201,8 @@ def create_cards_router(
         return explicit.strip().lower() in ("1", "true", "yes")
 
     @r.post("", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
-    async def issue_card(request: IssueCardRequest):
-        if wallet_repo:
-            wallet = await wallet_repo.get(request.wallet_id)
-            if not wallet:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    async def issue_card(request: IssueCardRequest, principal: Principal = Depends(require_principal)):
+        await _require_wallet_access(request.wallet_id, principal)
 
         card_id = f"vc_{uuid.uuid4().hex[:16]}"
         provider_result = await card_provider.create_card(
@@ -215,23 +230,33 @@ def create_cards_router(
         wallet_id: Optional[str] = Query(None),
         limit: int = Query(default=50, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
+        principal: Principal = Depends(require_principal),
     ):
         if wallet_id:
+            await _require_wallet_access(wallet_id, principal)
             return await card_repo.get_by_wallet_id(wallet_id)
-        return []
+        if principal.is_admin:
+            return []
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="wallet_id_required")
 
     @r.get("/{card_id}", dependencies=auth_deps)
-    async def get_card(card_id: str):
+    async def get_card(card_id: str, principal: Principal = Depends(require_principal)):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         return card
 
     @r.post("/{card_id}/fund", dependencies=auth_deps)
-    async def fund_card(card_id: str, request: FundCardRequest):
+    async def fund_card(card_id: str, request: FundCardRequest, principal: Principal = Depends(require_principal)):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
 
         # If offramp_service is available, use real USDC→USD→Lithic flow
         if offramp_service and chain_executor and wallet_repo and request.source == "stablecoin":
@@ -304,34 +329,49 @@ def create_cards_router(
         return row
 
     @r.post("/{card_id}/freeze", dependencies=auth_deps)
-    async def freeze_card(card_id: str):
+    async def freeze_card(card_id: str, principal: Principal = Depends(require_principal)):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         await card_provider.freeze_card(provider_card_id=card.get("provider_card_id"))
         row = await card_repo.update_status(card_id, "frozen")
         return row
 
     @r.post("/{card_id}/unfreeze", dependencies=auth_deps)
-    async def unfreeze_card(card_id: str):
+    async def unfreeze_card(card_id: str, principal: Principal = Depends(require_principal)):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         await card_provider.unfreeze_card(provider_card_id=card.get("provider_card_id"))
         row = await card_repo.update_status(card_id, "active")
         return row
 
     @r.delete("/{card_id}", dependencies=auth_deps)
-    async def cancel_card(card_id: str):
+    async def cancel_card(card_id: str, principal: Principal = Depends(require_principal)):
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         await card_provider.cancel_card(provider_card_id=card.get("provider_card_id"))
         row = await card_repo.update_status(card_id, "cancelled")
         return row
 
     @r.patch("/{card_id}/limits", dependencies=auth_deps)
-    async def update_card_limits(card_id: str, request: UpdateLimitsRequest):
+    async def update_card_limits(card_id: str, request: UpdateLimitsRequest, principal: Principal = Depends(require_principal)):
+        card = await card_repo.get_by_card_id(card_id)
+        if not card:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         row = await card_repo.update_limits(
             card_id,
             limit_per_tx=float(request.limit_per_tx) if request.limit_per_tx is not None else None,
@@ -346,11 +386,18 @@ def create_cards_router(
     async def list_card_transactions(
         card_id: str,
         limit: int = Query(default=50, ge=1, le=100),
+        principal: Principal = Depends(require_principal),
     ):
+        card = await card_repo.get_by_card_id(card_id)
+        if not card:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
         return await card_repo.list_transactions(card_id, limit)
 
     @r.post("/{card_id}/simulate-purchase", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
-    async def simulate_purchase(card_id: str, request: SimulatePurchaseRequest):
+    async def simulate_purchase(card_id: str, request: SimulatePurchaseRequest, principal: Principal = Depends(require_principal)):
         """
         Demo helper endpoint.
 
@@ -360,6 +407,9 @@ def create_cards_router(
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
 
         amount = Decimal(str(request.amount))
         ok, reason = await _evaluate_policy_for_card(

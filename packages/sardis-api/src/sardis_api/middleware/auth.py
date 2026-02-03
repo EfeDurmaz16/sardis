@@ -65,6 +65,24 @@ class APIKeyManager:
             self._pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
         return self._pg_pool
 
+    async def _ensure_org_uuid(self, conn, organization_external_id: str) -> str:
+        row = await conn.fetchrow(
+            "SELECT id FROM organizations WHERE external_id = $1",
+            organization_external_id,
+        )
+        if row:
+            return str(row["id"])
+        created = await conn.fetchrow(
+            """
+            INSERT INTO organizations (external_id, name, settings)
+            VALUES ($1, $2, '{}'::jsonb)
+            RETURNING id
+            """,
+            organization_external_id,
+            organization_external_id,
+        )
+        return str(created["id"])
+
     @staticmethod
     def generate_api_key() -> tuple[str, str, str]:
         """
@@ -129,6 +147,7 @@ class APIKeyManager:
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
+                org_uuid = await self._ensure_org_uuid(conn, organization_id)
                 await conn.execute(
                     """
                     INSERT INTO api_keys (
@@ -138,7 +157,7 @@ class APIKeyManager:
                     """,
                     prefix,
                     key_hash,
-                    organization_id,
+                    org_uuid,
                     name,
                     scopes,
                     rate_limit,
@@ -169,8 +188,10 @@ class APIKeyManager:
             async with pool.acquire() as conn:
                 row = await conn.fetchrow(
                     """
-                    SELECT * FROM api_keys
-                    WHERE key_prefix = $1 AND key_hash = $2 AND is_active = TRUE
+                    SELECT k.*, o.external_id AS organization_external_id
+                    FROM api_keys k
+                    JOIN organizations o ON o.id = k.organization_id
+                    WHERE k.key_prefix = $1 AND k.key_hash = $2 AND k.is_active = TRUE
                     """,
                     prefix,
                     key_hash,
@@ -193,7 +214,7 @@ class APIKeyManager:
                     key_id=str(row["id"]),
                     key_prefix=row["key_prefix"],
                     key_hash=row["key_hash"],
-                    organization_id=str(row["organization_id"]),
+                    organization_id=str(row["organization_external_id"]),
                     name=row["name"],
                     scopes=row["scopes"],
                     rate_limit=row["rate_limit"],
@@ -250,9 +271,11 @@ class APIKeyManager:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT * FROM api_keys
-                    WHERE organization_id = $1
-                    ORDER BY created_at DESC
+                    SELECT k.*, o.external_id AS organization_external_id
+                    FROM api_keys k
+                    JOIN organizations o ON o.id = k.organization_id
+                    WHERE o.external_id = $1
+                    ORDER BY k.created_at DESC
                     """,
                     organization_id,
                 )
@@ -261,7 +284,7 @@ class APIKeyManager:
                         key_id=str(row["id"]),
                         key_prefix=row["key_prefix"],
                         key_hash=row["key_hash"],
-                        organization_id=str(row["organization_id"]),
+                        organization_id=str(row["organization_external_id"]),
                         name=row["name"],
                         scopes=row["scopes"],
                         rate_limit=row["rate_limit"],
@@ -284,7 +307,12 @@ class APIKeyManager:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
                 row = await conn.fetchrow(
-                    "SELECT * FROM api_keys WHERE id = $1",
+                    """
+                    SELECT k.*, o.external_id AS organization_external_id
+                    FROM api_keys k
+                    JOIN organizations o ON o.id = k.organization_id
+                    WHERE k.id = $1
+                    """,
                     key_id,
                 )
                 if not row:
@@ -293,7 +321,7 @@ class APIKeyManager:
                     key_id=str(row["id"]),
                     key_prefix=row["key_prefix"],
                     key_hash=row["key_hash"],
-                    organization_id=str(row["organization_id"]),
+                    organization_id=str(row["organization_external_id"]),
                     name=row["name"],
                     scopes=row["scopes"],
                     rate_limit=row["rate_limit"],

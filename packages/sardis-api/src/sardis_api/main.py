@@ -566,6 +566,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.policy_store = policy_store
 
     wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
+    agent_repo = PostgresAgentRepository(database_url) if use_postgres else AgentRepository(dsn="memory://")
     wallet_mgr = WalletManager(
         settings=settings,
         turnkey_client=turnkey_client,
@@ -612,6 +613,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger=ledger_store,
         compliance=compliance,
         wallet_repository=wallet_repo,
+        agent_repo=agent_repo,
     )
     app.include_router(mandates.router, prefix="/api/v2/mandates")
 
@@ -619,6 +621,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         verifier=verifier,
         orchestrator=orchestrator,
         wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -630,6 +633,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         identity_registry=identity_registry,
         settings=settings,
         wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
@@ -713,6 +717,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Wallet routes
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
@@ -743,6 +748,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     onramper_webhook_secret = os.getenv("ONRAMPER_WEBHOOK_SECRET", "")
     app.dependency_overrides[ramp_router.get_deps] = lambda: ramp_router.RampDependencies(
         wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
         offramp_service=offramp_service,
         onramper_api_key=onramper_api_key,
         onramper_webhook_secret=onramper_webhook_secret,
@@ -835,13 +841,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 chain_executor=chain_exec,
                 wallet_repo=wallet_repo,
                 policy_store=policy_store,
+                agent_repo=agent_repo,
             )
             app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
     # Agent routes
-    agent_repo = PostgresAgentRepository(database_url) if use_postgres else AgentRepository(dsn="memory://")
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
@@ -879,6 +885,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Policy routes (Natural Language policy parsing)
     app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
         policy_store=policy_store,
+        agent_repo=agent_repo,
     )
     app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
 

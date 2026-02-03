@@ -19,6 +19,8 @@ from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_v2_core.wallet_repository import WalletRepository
 
 from sardis_api.authz import require_principal
+from sardis_api.authz import Principal
+from sardis_v2_core import AgentRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -78,6 +80,7 @@ class Dependencies:
     identity_registry: IdentityRegistry
     settings: SardisSettings
     wallet_repo: WalletRepository
+    agent_repo: AgentRepository
 
 
 def get_deps() -> Dependencies:
@@ -202,7 +205,11 @@ def validate_mandate(payload: MandatePayload, deps: Dependencies = Depends(get_d
 
 
 @router.post("/payments/execute", response_model=ExecuteResponse, status_code=status.HTTP_202_ACCEPTED)
-async def execute_payment(payload: MandatePayload, deps: Dependencies = Depends(get_deps)):
+async def execute_payment(
+    payload: MandatePayload,
+    deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
     """
     Validate + execute a single-rail Base Sepolia USDC payment.
     Requires SARDIS_CHAIN_MODE=live and SARDIS_EOA_PRIVATE_KEY configured.
@@ -221,6 +228,12 @@ async def execute_payment(payload: MandatePayload, deps: Dependencies = Depends(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=verification.reason or "mandate_invalid")
     if not policy_ok:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=policy_reason or "policy_violation")
+
+    agent = await deps.agent_repo.get(mandate.subject)
+    if not agent:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="access_denied")
 
     wallet = await deps.wallet_repo.get_by_agent(mandate.subject)
     if not wallet:
@@ -279,4 +292,3 @@ def metrics(deps: Dependencies = Depends(get_deps)):
             "token": ALLOWED_TOKEN,
         },
     }
-

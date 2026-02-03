@@ -12,7 +12,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
+from sardis_v2_core import AgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ class OfframpStatusResponse(BaseModel):
 @dataclass
 class RampDependencies:
     wallet_repo: object  # WalletRepository
+    agent_repo: AgentRepository
     offramp_service: object  # OfframpService
     onramper_api_key: str = ""
     onramper_webhook_secret: str = ""
@@ -109,11 +111,17 @@ def get_deps() -> RampDependencies:
 async def generate_onramp_widget(
     request: OnrampWidgetRequest,
     deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Generate an Onramper widget URL with wallet address pre-filled."""
     wallet = await deps.wallet_repo.get(request.wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     address = wallet.get_address(request.chain)
     if not address:
@@ -280,11 +288,17 @@ async def get_offramp_quote(
 async def execute_offramp(
     request: OfframpExecuteRequest,
     deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Execute USDC to USD off-ramp (send USDC to Bridge, receive USD)."""
     wallet = await deps.wallet_repo.get(request.wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     # Re-fetch the quote to verify it
     # In production, you'd cache quotes and look up by ID

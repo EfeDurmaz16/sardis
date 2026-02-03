@@ -81,16 +81,9 @@ class PostgresWalletRepository:
 
         async with pool.acquire() as conn:
             async with conn.transaction():
-                # Ensure agent exists (minimal upsert).
-                await conn.execute(
-                    """
-                    INSERT INTO agents (external_id, name)
-                    VALUES ($1, $1)
-                    ON CONFLICT (external_id) DO NOTHING
-                    """,
-                    agent_id,
-                )
                 agent_row = await conn.fetchrow("SELECT id FROM agents WHERE external_id = $1", agent_id)
+                if not agent_row:
+                    raise ValueError("agent_not_found")
                 agent_uuid = str(agent_row["id"])
 
                 row = await conn.fetchrow(
@@ -318,4 +311,3 @@ class PostgresWalletRepository:
         if self._pool is not None:
             await self._pool.close()
             self._pool = None
-
