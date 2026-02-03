@@ -1,12 +1,15 @@
 """Caching layer with Redis/Upstash support and in-memory fallback."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import uuid
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any, Dict, Optional, TypeVar, Generic
+from typing import Any, Dict, Optional, TypeVar, Generic, AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,50 @@ class CacheBackend(ABC):
     @abstractmethod
     async def expire(self, key: str, ttl: int) -> bool:
         """Set TTL on existing key."""
+        pass
+
+    @abstractmethod
+    async def acquire_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """
+        Acquire a distributed lock using SETNX pattern.
+
+        Args:
+            key: Lock key name
+            ttl: Lock TTL in seconds (auto-release)
+            owner: Unique identifier for lock owner
+
+        Returns:
+            True if lock acquired, False if already held
+        """
+        pass
+
+    @abstractmethod
+    async def release_lock(self, key: str, owner: str) -> bool:
+        """
+        Release a distributed lock (only if owner matches).
+
+        Args:
+            key: Lock key name
+            owner: Unique identifier for lock owner
+
+        Returns:
+            True if lock released, False if not held or wrong owner
+        """
+        pass
+
+    @abstractmethod
+    async def extend_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """
+        Extend a lock's TTL (only if owner matches).
+
+        Args:
+            key: Lock key name
+            ttl: New TTL in seconds
+            owner: Unique identifier for lock owner
+
+        Returns:
+            True if extended, False if not held or wrong owner
+        """
         pass
 
 
@@ -90,6 +137,33 @@ class InMemoryCache(CacheBackend):
         value, _ = self._store[key]
         self._store[key] = (value, self._time.time() + ttl)
         return True
+
+    async def acquire_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """Acquire lock using in-memory SETNX simulation."""
+        # Check if lock already exists and is not expired
+        existing = await self.get(key)
+        if existing is not None:
+            return False  # Lock already held
+
+        # Set lock with owner as value
+        await self.set(key, owner, ttl)
+        return True
+
+    async def release_lock(self, key: str, owner: str) -> bool:
+        """Release lock only if owner matches."""
+        current_owner = await self.get(key)
+        if current_owner != owner:
+            return False  # Not the owner or lock doesn't exist
+
+        return await self.delete(key)
+
+    async def extend_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """Extend lock TTL only if owner matches."""
+        current_owner = await self.get(key)
+        if current_owner != owner:
+            return False  # Not the owner or lock doesn't exist
+
+        return await self.expire(key, ttl)
 
 
 class RedisCache(CacheBackend):
@@ -168,6 +242,54 @@ class RedisCache(CacheBackend):
         if self._client:
             await self._client.close()
             self._client = None
+
+    async def acquire_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """Acquire distributed lock using Redis SETNX."""
+        try:
+            client = await self._get_client()
+            # SET key value NX EX ttl - atomic SETNX with expiry
+            result = await client.set(key, owner, nx=True, ex=ttl)
+            return result is not None and result
+        except Exception as e:
+            logger.error(f"Redis acquire_lock error: {e}")
+            return False
+
+    async def release_lock(self, key: str, owner: str) -> bool:
+        """Release lock using Lua script for atomicity (check owner then delete)."""
+        try:
+            client = await self._get_client()
+            # Lua script ensures atomicity: only delete if owner matches
+            # Note: Redis eval() executes Lua scripts server-side for atomic operations
+            lua_script = """
+            if redis.call("get", KEYS[1]) == ARGV[1] then
+                return redis.call("del", KEYS[1])
+            else
+                return 0
+            end
+            """
+            result = await client.eval(lua_script, 1, key, owner)
+            return result == 1
+        except Exception as e:
+            logger.error(f"Redis release_lock error: {e}")
+            return False
+
+    async def extend_lock(self, key: str, ttl: int, owner: str) -> bool:
+        """Extend lock TTL using Lua script (check owner then extend)."""
+        try:
+            client = await self._get_client()
+            # Lua script ensures atomicity: only extend if owner matches
+            lua_script = """
+            if redis.call("get", KEYS[1]) == ARGV[1] then
+                return redis.call("expire", KEYS[1], ARGV[2])
+            else
+                return 0
+            end
+            """
+            result = await client.eval(lua_script, 1, key, owner, ttl)
+            return result == 1
+        except Exception as e:
+            logger.error(f"Redis extend_lock error: {e}")
+            return False
 
 
 class CacheService:
@@ -311,6 +433,118 @@ class CacheService:
         value = await self._backend.get(key)
         current = int(value) if value else 0
         return max(0, limit - current)
+
+    # Distributed locks
+
+    async def acquire_lock(
+        self,
+        resource: str,
+        ttl_seconds: int = 10,
+        owner: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Acquire a distributed lock on a resource.
+
+        Args:
+            resource: Resource identifier to lock
+            ttl_seconds: Lock TTL (auto-release after this time)
+            owner: Optional owner ID (generated if not provided)
+
+        Returns:
+            Lock owner ID if acquired, None if lock already held
+        """
+        lock_owner = owner or str(uuid.uuid4())
+        key = self._key("lock", resource)
+
+        acquired = await self._backend.acquire_lock(key, ttl_seconds, lock_owner)
+        return lock_owner if acquired else None
+
+    async def release_lock(self, resource: str, owner: str) -> bool:
+        """
+        Release a distributed lock.
+
+        Args:
+            resource: Resource identifier
+            owner: Lock owner ID (from acquire_lock)
+
+        Returns:
+            True if released, False if not held or wrong owner
+        """
+        key = self._key("lock", resource)
+        return await self._backend.release_lock(key, owner)
+
+    async def extend_lock(self, resource: str, owner: str, ttl_seconds: int) -> bool:
+        """
+        Extend a lock's TTL.
+
+        Args:
+            resource: Resource identifier
+            owner: Lock owner ID
+            ttl_seconds: New TTL in seconds
+
+        Returns:
+            True if extended, False if not held or wrong owner
+        """
+        key = self._key("lock", resource)
+        return await self._backend.extend_lock(key, ttl_seconds, owner)
+
+    @asynccontextmanager
+    async def lock(
+        self,
+        resource: str,
+        ttl_seconds: int = 10,
+        retry_delay: float = 0.1,
+        max_retries: int = 10,
+    ) -> AsyncIterator[str]:
+        """
+        Context manager for distributed locks with retry logic.
+
+        Usage:
+            async with cache.lock("wallet:transfer:wallet_123", ttl_seconds=30) as lock_id:
+                # Critical section - only one holder at a time
+                await perform_transfer()
+
+        Args:
+            resource: Resource to lock
+            ttl_seconds: Lock TTL
+            retry_delay: Delay between retry attempts (seconds)
+            max_retries: Maximum retry attempts
+
+        Raises:
+            TimeoutError: If lock cannot be acquired after max_retries
+        """
+        owner = None
+        attempts = 0
+
+        # Try to acquire lock with retries
+        while attempts < max_retries:
+            owner = await self.acquire_lock(resource, ttl_seconds)
+            if owner:
+                break
+
+            attempts += 1
+            if attempts < max_retries:
+                await asyncio.sleep(retry_delay)
+
+        if not owner:
+            raise TimeoutError(
+                f"Failed to acquire lock on '{resource}' after {max_retries} attempts"
+            )
+
+        try:
+            yield owner
+        finally:
+            # Always release lock on exit
+            released = await self.release_lock(resource, owner)
+            if not released:
+                logger.warning(
+                    f"Failed to release lock on '{resource}' (owner: {owner[:8]}...)"
+                )
+
+    async def close(self):
+        """Close cache backend connections."""
+        if hasattr(self._backend, "close"):
+            await self._backend.close()
 
 
 def create_cache_service(redis_url: Optional[str] = None) -> CacheService:
