@@ -52,6 +52,7 @@ import FiatRails from './docs/pages/blog/FiatRails.jsx'
 import SardisV07ProductionHardening from './docs/pages/blog/SardisV07ProductionHardening.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
+import Demo from './pages/Demo.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -59,6 +60,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/playground" element={<Playground />} />
+        <Route path="/demo" element={<Demo />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />

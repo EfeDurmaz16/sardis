@@ -17,6 +17,13 @@ const IssueCardSchema = z.object({
   nickname: z.string().optional().describe('Card nickname for identification'),
 });
 
+const CreateCardSchema = z.object({
+  limit: z.number().optional().describe('Card spending limit'),
+  type: z.enum(['single_use', 'merchant_locked', 'multi_use']).optional().describe('Card type'),
+  nickname: z.string().optional().describe('Card nickname'),
+  merchant_categories: z.array(z.string()).optional().describe('Allowed merchant categories'),
+});
+
 const CardIdSchema = z.object({
   card_id: z.string().describe('Card ID'),
 });
@@ -53,6 +60,20 @@ export const cardToolDefinitions: ToolDefinition[] = [
         nickname: { type: 'string', description: 'Card nickname for identification' },
       },
       required: ['wallet_id'],
+    },
+  },
+  {
+    name: 'sardis_create_card',
+    description: 'Create a new virtual card (alias for sardis_issue_card). Cards can be used for online and physical purchases.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Card spending limit' },
+        type: { type: 'string', enum: ['single_use', 'merchant_locked', 'multi_use'], description: 'Card type' },
+        nickname: { type: 'string', description: 'Card nickname for identification' },
+        merchant_categories: { type: 'array', items: { type: 'string' }, description: 'Allowed merchant categories' },
+      },
+      required: [],
     },
   },
   {
@@ -115,6 +136,61 @@ export const cardToolDefinitions: ToolDefinition[] = [
 
 // Tool handlers
 export const cardToolHandlers: Record<string, ToolHandler> = {
+  sardis_create_card: async (args: unknown): Promise<ToolResult> => {
+    const parsed = CreateCardSchema.safeParse(args);
+    if (!parsed.success) {
+      return {
+        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
+        isError: true,
+      };
+    }
+
+    const config = getConfig();
+    const cardId = `card_${Date.now().toString(36)}`;
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            card_id: cardId,
+            wallet_id: config.walletId || 'wallet_simulated',
+            last_four: '4242',
+            network: 'visa',
+            status: 'active',
+            limit: parsed.data.limit?.toString() || 'unlimited',
+            type: parsed.data.type || 'multi_use',
+            nickname: parsed.data.nickname,
+            merchant_categories: parsed.data.merchant_categories,
+            created_at: new Date().toISOString(),
+            message: 'Virtual card created successfully',
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const requestData = {
+        wallet_id: config.walletId,
+        spending_limit: parsed.data.limit?.toString(),
+        nickname: parsed.data.nickname,
+        type: parsed.data.type,
+      };
+      const result = await apiRequest<VirtualCard>('POST', '/api/v2/cards', requestData);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to create card: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
+  },
+
   sardis_issue_card: async (args: unknown): Promise<ToolResult> => {
     const parsed = IssueCardSchema.safeParse(args);
     if (!parsed.success) {
@@ -177,6 +253,7 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            card_id: parsed.data.card_id,
             id: parsed.data.card_id,
             wallet_id: 'wallet_simulated',
             last_four: '4242',
@@ -210,20 +287,21 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
+      const cards = [{
+        id: 'card_simulated',
+        card_id: 'card_simulated',
+        wallet_id: parsed.success ? parsed.data.wallet_id || 'wallet_simulated' : 'wallet_simulated',
+        last_four: '4242',
+        network: 'visa',
+        status: parsed.success && parsed.data.status ? parsed.data.status : 'active',
+        spending_limit: '500.00',
+        created_at: new Date().toISOString(),
+      }];
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            cards: [{
-              id: 'card_simulated',
-              wallet_id: parsed.success ? parsed.data.wallet_id || 'wallet_simulated' : 'wallet_simulated',
-              last_four: '4242',
-              network: 'visa',
-              status: 'active',
-              spending_limit: '500.00',
-              created_at: new Date().toISOString(),
-            }],
-          }, null, 2),
+          text: JSON.stringify(cards, null, 2),
         }],
       };
     }

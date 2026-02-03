@@ -3,14 +3,14 @@
  */
 
 import { BaseResource } from './base.js';
-import type { ExecutePaymentResponse, ExecuteAP2Response } from '../types.js';
+import type { ExecutePaymentResponse, ExecuteAP2Response, RequestOptions } from '../types.js';
 
 export class PaymentsResource extends BaseResource {
   /**
    * Execute a single payment mandate
    */
-  async executeMandate(mandate: Record<string, unknown>): Promise<ExecutePaymentResponse> {
-    return this._post<ExecutePaymentResponse>('/api/v2/mandates/execute', { mandate });
+  async executeMandate(mandate: Record<string, unknown>, options?: RequestOptions): Promise<ExecutePaymentResponse> {
+    return this._post<ExecutePaymentResponse>('/api/v2/mandates/execute', { mandate }, options);
   }
 
   /**
@@ -19,13 +19,14 @@ export class PaymentsResource extends BaseResource {
   async executeAP2(
     intent: Record<string, unknown>,
     cart: Record<string, unknown>,
-    payment: Record<string, unknown>
+    payment: Record<string, unknown>,
+    options?: RequestOptions
   ): Promise<ExecuteAP2Response> {
     return this._post<ExecuteAP2Response>('/api/v2/ap2/payments/execute', {
       intent,
       cart,
       payment,
-    });
+    }, options);
   }
 
   /**

@@ -15,6 +15,8 @@ vi.mock('../config.js', () => ({
     mode: 'simulated',
     agentId: 'agent_test',
   })),
+  getAllowedVendors: vi.fn(() => ['OpenAI', 'Anthropic', 'AWS']),
+  getBlockedVendors: vi.fn(() => ['gambling-site', 'blocked-vendor']),
 }));
 
 describe('Policy Tools', () => {

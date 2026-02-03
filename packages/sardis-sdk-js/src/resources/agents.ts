@@ -13,6 +13,7 @@ import type {
   CreateAgentInput,
   UpdateAgentInput,
   ListAgentsOptions,
+  RequestOptions,
 } from '../types.js';
 
 export class AgentsResource extends BaseResource {
@@ -31,8 +32,8 @@ export class AgentsResource extends BaseResource {
    * });
    * ```
    */
-  async create(input: CreateAgentInput): Promise<Agent> {
-    return this._post<Agent>('/api/v2/agents', input);
+  async create(input: CreateAgentInput, options?: RequestOptions): Promise<Agent> {
+    return this._post<Agent>('/api/v2/agents', input, options);
   }
 
   /**
@@ -44,8 +45,8 @@ export class AgentsResource extends BaseResource {
    * console.log(agent.name, agent.is_active);
    * ```
    */
-  async get(agentId: string): Promise<Agent> {
-    return this._get<Agent>(`/api/v2/agents/${agentId}`);
+  async get(agentId: string, options?: RequestOptions): Promise<Agent> {
+    return this._get<Agent>(`/api/v2/agents/${agentId}`, undefined, options);
   }
 
   /**

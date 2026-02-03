@@ -371,7 +371,8 @@ export class SardisClient {
    */
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
-    this.http.defaults.headers.common['X-API-Key'] = apiKey;
+    // Update the default headers on the axios instance
+    this.http.defaults.headers['X-API-Key'] = apiKey;
   }
 
   /**
@@ -419,6 +420,9 @@ export class SardisClient {
       data: options?.data,
       signal: options?.signal,
       timeout: options?.timeout ?? this.timeout,
+      headers: {
+        'X-API-Key': this.apiKey,
+      },
       _retryCount: 0,
       _startTime: Date.now(),
     };
@@ -518,10 +522,16 @@ export class SardisClient {
             try {
               const newToken = await this.tokenRefreshConfig.refreshToken();
               this.setApiKey(newToken);
-              return this.executeWithRetry<T>({
+              // Update the request config headers with the new token
+              const updatedConfig = {
                 ...config,
+                headers: {
+                  ...config.headers,
+                  'X-API-Key': newToken,
+                },
                 _retryCount: retryCount + 1,
-              });
+              };
+              return this.executeWithRetry<T>(updatedConfig);
             } catch {
               throw new AuthenticationError('Token refresh failed', SardisErrorCode.TOKEN_REFRESH_FAILED);
             }
@@ -798,6 +808,10 @@ export class SardisClient {
             });
             return { success: true as const, data };
           } catch (error) {
+            // If any request was aborted due to signal, throw immediately
+            if (error instanceof AbortError && signal?.aborted) {
+              throw error;
+            }
             if (stopOnError) {
               stopped = true;
             }

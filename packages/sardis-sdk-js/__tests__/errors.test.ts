@@ -17,7 +17,7 @@ describe('Error Classes', () => {
     it('should create error with default values', () => {
       const error = new SardisError('Test error');
       expect(error.message).toBe('Test error');
-      expect(error.code).toBe('SARDIS_ERROR');
+      expect(error.code).toBe('SARDIS_1000');
       expect(error.details).toEqual({});
       expect(error.requestId).toBeUndefined();
       expect(error.name).toBe('SardisError');
@@ -44,23 +44,21 @@ describe('Error Classes', () => {
         'req_123'
       );
       const json = error.toJSON();
-      expect(json).toEqual({
-        code: 'CUSTOM_CODE',
-        message: 'Test error',
-        details: { key: 'value' },
-        request_id: 'req_123',
-      });
+      expect(json.code).toBe('CUSTOM_CODE');
+      expect(json.message).toBe('Test error');
+      expect(json.details).toEqual({ key: 'value' });
+      expect(json.request_id).toBe('req_123');
+      expect(json.timestamp).toBeDefined();
     });
 
     it('should serialize to JSON without request_id', () => {
       const error = new SardisError('Test error');
       const json = error.toJSON();
-      expect(json).toEqual({
-        code: 'SARDIS_ERROR',
-        message: 'Test error',
-        details: {},
-        request_id: undefined,
-      });
+      expect(json.code).toBe('SARDIS_1000');
+      expect(json.message).toBe('Test error');
+      expect(json.details).toEqual({});
+      expect(json.request_id).toBeUndefined();
+      expect(json.timestamp).toBeDefined();
     });
   });
 
@@ -69,7 +67,7 @@ describe('Error Classes', () => {
       const error = new APIError('Not Found', 404);
       expect(error.message).toBe('Not Found');
       expect(error.statusCode).toBe(404);
-      expect(error.code).toBe('API_ERROR');
+      expect(error.code).toBe('SARDIS_3000');
       expect(error.name).toBe('APIError');
     });
 
@@ -125,14 +123,14 @@ describe('Error Classes', () => {
 
     it('should handle empty error object', () => {
       const error = APIError.fromResponse(500, {});
-      expect(error.message).toBe('Unknown error');
+      expect(error.message).toBe('Unknown API error');
     });
 
     it('should handle response with missing message in error object', () => {
       const error = APIError.fromResponse(400, {
         error: { code: 'SOME_CODE' },
       });
-      expect(error.message).toBe('Unknown error');
+      expect(error.message).toBe('Unknown API error');
       expect(error.code).toBe('SOME_CODE');
     });
   });
@@ -141,7 +139,7 @@ describe('Error Classes', () => {
     it('should create with default message', () => {
       const error = new AuthenticationError();
       expect(error.message).toBe('Invalid or missing API key');
-      expect(error.code).toBe('AUTHENTICATION_ERROR');
+      expect(error.code).toBe('SARDIS_2000');
       expect(error.name).toBe('AuthenticationError');
     });
 
@@ -155,7 +153,7 @@ describe('Error Classes', () => {
     it('should create with default message', () => {
       const error = new RateLimitError();
       expect(error.message).toBe('Rate limit exceeded');
-      expect(error.code).toBe('RATE_LIMIT_EXCEEDED');
+      expect(error.code).toBe('SARDIS_3429');
       expect(error.name).toBe('RateLimitError');
       expect(error.retryAfter).toBeUndefined();
     });
@@ -171,17 +169,17 @@ describe('Error Classes', () => {
     it('should create with message only', () => {
       const error = new ValidationError('Invalid email format');
       expect(error.message).toBe('Invalid email format');
-      expect(error.code).toBe('VALIDATION_ERROR');
+      expect(error.code).toBe('SARDIS_5000');
       expect(error.name).toBe('ValidationError');
       expect(error.field).toBeUndefined();
-      expect(error.details).toEqual({ field: undefined });
+      expect(error.details).toEqual({ field: undefined, expected: undefined, received: undefined });
     });
 
     it('should create with field name', () => {
       const error = new ValidationError('Must be a valid email', 'email');
       expect(error.message).toBe('Must be a valid email');
       expect(error.field).toBe('email');
-      expect(error.details).toEqual({ field: 'email' });
+      expect(error.details).toEqual({ field: 'email', expected: undefined, received: undefined });
     });
   });
 
@@ -194,7 +192,7 @@ describe('Error Classes', () => {
         'USDC'
       );
       expect(error.message).toBe('Insufficient USDC balance');
-      expect(error.code).toBe('INSUFFICIENT_BALANCE');
+      expect(error.code).toBe('SARDIS_6000');
       expect(error.name).toBe('InsufficientBalanceError');
       expect(error.required).toBe('100.00');
       expect(error.available).toBe('50.00');
@@ -203,6 +201,7 @@ describe('Error Classes', () => {
         required: '100.00',
         available: '50.00',
         currency: 'USDC',
+        wallet_id: undefined,
       });
     });
   });
@@ -211,7 +210,7 @@ describe('Error Classes', () => {
     it('should create with resource details', () => {
       const error = new NotFoundError('Wallet', 'wallet_123');
       expect(error.message).toBe('Wallet not found: wallet_123');
-      expect(error.code).toBe('NOT_FOUND');
+      expect(error.code).toBe('SARDIS_3404');
       expect(error.name).toBe('NotFoundError');
       expect(error.resourceType).toBe('Wallet');
       expect(error.resourceId).toBe('wallet_123');

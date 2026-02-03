@@ -8,7 +8,6 @@ import {
   Webhook,
   Settings,
   Wallet,
-  Activity,
   Lock,
   FileText,
   LogOut

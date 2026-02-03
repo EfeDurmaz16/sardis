@@ -38,10 +38,12 @@ export async function apiRequest<T>(
 /**
  * Generate unique mandate ID
  */
+let mandateIdCounter = 0;
 export function generateMandateId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 10);
-  return `mnd_${timestamp}${random}`;
+  const counter = (mandateIdCounter++).toString(36).padStart(3, '0');
+  return `mnd_${timestamp}${random}${counter}`;
 }
 
 /**

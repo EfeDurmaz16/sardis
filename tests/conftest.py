@@ -13,7 +13,7 @@ root_dir = Path(__file__).parent.parent
 packages_dir = root_dir / "packages"
 for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol",
             "sardis-chain", "sardis-ledger", "sardis-compliance", "sardis-checkout",
-            "sardis-sdk-python"]:
+            "sardis-cards", "sardis-ramp", "sardis-sdk-python"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))

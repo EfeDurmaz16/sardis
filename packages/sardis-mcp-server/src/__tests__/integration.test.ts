@@ -15,6 +15,8 @@ vi.mock('../config.js', () => ({
     mode: 'simulated',
     agentId: 'agent_test_123',
   })),
+  getAllowedVendors: vi.fn(() => ['OpenAI', 'Anthropic', 'AWS', 'Vercel', 'GitHub']),
+  getBlockedVendors: vi.fn(() => ['gambling-site', 'blocked-vendor']),
 }));
 
 describe('MCP Server Integration', () => {

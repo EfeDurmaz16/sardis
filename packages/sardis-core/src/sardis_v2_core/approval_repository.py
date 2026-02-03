@@ -61,48 +61,15 @@ class Approval:
 class ApprovalRepository:
     """PostgreSQL repository for approval CRUD operations."""
 
-    async def create(
-        self,
-        *,
-        action: str,
-        requested_by: str,
-        expires_at: datetime,
-        urgency: ApprovalUrgency = 'medium',
-        status: ApprovalStatus = 'pending',
-        vendor: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        purpose: Optional[str] = None,
-        reason: Optional[str] = None,
-        card_limit: Optional[Decimal] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-    ) -> Approval:
+    async def create(self, approval: Approval) -> Approval:
         """Create a new approval request.
 
         Args:
-            action: Type of action requiring approval (payment, create_card, etc.)
-            requested_by: Agent ID who requested approval
-            expires_at: When the approval request expires
-            urgency: Urgency level (low, medium, high)
-            status: Initial status (default: pending)
-            vendor: Vendor name for payments
-            amount: Payment amount
-            purpose: Purpose description
-            reason: Reason for approval request
-            card_limit: Card limit for create_card action
-            agent_id: Agent ID for the action
-            wallet_id: Wallet ID for the action
-            organization_id: Organization ID
-            metadata: Additional metadata
+            approval: Approval object to create
 
         Returns:
             Created Approval object
         """
-        approval_id = Approval.generate_id()
-        created_at = datetime.now(timezone.utc)
-
         query = """
             INSERT INTO approvals (
                 id, action, status, urgency, requested_by,
@@ -119,30 +86,14 @@ class ApprovalRepository:
 
         await Database.execute(
             query,
-            approval_id, action, status, urgency, requested_by,
-            created_at, expires_at, vendor, amount, purpose,
-            reason, card_limit, agent_id, wallet_id,
-            organization_id, metadata or {}
+            approval.id, approval.action, approval.status, approval.urgency,
+            approval.requested_by, approval.created_at, approval.expires_at,
+            approval.vendor, approval.amount, approval.purpose, approval.reason,
+            approval.card_limit, approval.agent_id, approval.wallet_id,
+            approval.organization_id, approval.metadata or {}
         )
 
-        return Approval(
-            id=approval_id,
-            action=action,
-            status=status,
-            urgency=urgency,
-            requested_by=requested_by,
-            created_at=created_at,
-            expires_at=expires_at,
-            vendor=vendor,
-            amount=amount,
-            purpose=purpose,
-            reason=reason,
-            card_limit=card_limit,
-            agent_id=agent_id,
-            wallet_id=wallet_id,
-            organization_id=organization_id,
-            metadata=metadata or {},
-        )
+        return approval
 
     async def get(self, approval_id: str) -> Optional[Approval]:
         """Get approval by ID.

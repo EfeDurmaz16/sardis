@@ -633,7 +633,8 @@ describe('PaymentsResource Comprehensive Tests', () => {
                         amount_minor: 100,
                         token: 'USDC',
                         chain: 'base',
-                    }
+                    },
+                    { signal: controller.signal }
                 )
             ).rejects.toThrow();
         });

@@ -127,17 +127,18 @@ export const BalanceCheckSchema = z.object({
 });
 
 export const CreateHoldSchema = z.object({
-  wallet_id: z.string().describe('Wallet ID to create hold on'),
-  amount: z.string().describe('Amount to hold'),
+  wallet_id: z.string().optional().describe('Wallet ID to create hold on'),
+  amount: z.union([z.string(), z.number()]).describe('Amount to hold'),
   token: z.enum(['USDC', 'USDT', 'PYUSD', 'EURC']).optional().default('USDC'),
   merchant_id: z.string().optional().describe('Merchant identifier'),
   purpose: z.string().optional().describe('Purpose of the hold'),
+  expires_in: z.number().optional().describe('Hold duration in seconds'),
   duration_hours: z.number().optional().default(168).describe('Hold duration in hours'),
 });
 
 export const CaptureHoldSchema = z.object({
   hold_id: z.string().describe('Hold ID to capture'),
-  amount: z.string().optional().describe('Amount to capture (defaults to full amount)'),
+  amount: z.union([z.string(), z.number()]).optional().describe('Amount to capture (defaults to full amount)'),
 });
 
 export const VoidHoldSchema = z.object({
@@ -149,7 +150,7 @@ export const GetHoldSchema = z.object({
 });
 
 export const ListHoldsSchema = z.object({
-  wallet_id: z.string().describe('Wallet ID to list holds for'),
+  wallet_id: z.string().optional().describe('Wallet ID to list holds for'),
   status: z.enum(['active', 'captured', 'voided', 'expired']).optional(),
 });
 

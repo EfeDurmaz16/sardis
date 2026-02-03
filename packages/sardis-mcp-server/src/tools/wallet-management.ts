@@ -36,8 +36,20 @@ const UpdatePolicySchema = z.object({
 
 const ListWalletsSchema = z.object({
   agent_id: z.string().optional().describe('Filter by agent ID'),
+  chain: z.string().optional().describe('Filter by blockchain'),
   status: z.enum(['active', 'inactive']).optional().describe('Filter by status'),
   limit: z.number().optional().describe('Maximum wallets to return'),
+});
+
+const UpdateLimitsSchema = z.object({
+  wallet_id: z.string().describe('Wallet ID to update'),
+  limit_per_tx: z.number().optional().describe('Maximum per transaction'),
+  limit_total: z.number().optional().describe('Maximum total/daily limit'),
+});
+
+const ArchiveWalletSchema = z.object({
+  wallet_id: z.string().describe('Wallet ID to archive'),
+  reason: z.string().optional().describe('Reason for archiving'),
 });
 
 // Types
@@ -126,10 +138,36 @@ export const walletManagementToolDefinitions: ToolDefinition[] = [
       type: 'object',
       properties: {
         agent_id: { type: 'string', description: 'Filter by agent ID' },
+        chain: { type: 'string', description: 'Filter by blockchain' },
         status: { type: 'string', enum: ['active', 'inactive'], description: 'Filter by status' },
         limit: { type: 'number', description: 'Maximum wallets to return' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'sardis_update_wallet_limits',
+    description: 'Update spending limits for a wallet.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: { type: 'string', description: 'Wallet ID to update' },
+        limit_per_tx: { type: 'number', description: 'Maximum per transaction' },
+        limit_total: { type: 'number', description: 'Maximum total/daily limit' },
+      },
+      required: ['wallet_id'],
+    },
+  },
+  {
+    name: 'sardis_archive_wallet',
+    description: 'Archive a wallet (deactivate it permanently).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: { type: 'string', description: 'Wallet ID to archive' },
+        reason: { type: 'string', description: 'Reason for archiving' },
+      },
+      required: ['wallet_id'],
     },
   },
 ];
@@ -154,10 +192,12 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            wallet_id: walletId,
             id: walletId,
             name: parsed.data.name,
             address,
             chain: parsed.data.chain || 'base',
+            status: 'active',
             is_active: true,
             balance: '0.00',
             policy: parsed.data.policy || { max_per_tx: '100.00', max_daily: '500.00' },
@@ -233,22 +273,21 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
+      const wallets = [{
+        id: 'wallet_simulated',
+        name: 'Default Wallet',
+        address: '0x' + '0'.repeat(40),
+        chain: 'base',
+        is_active: true,
+        balance: '1000.00',
+        policy: { max_per_tx: '100.00', max_daily: '500.00' },
+        created_at: new Date().toISOString(),
+      }];
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            wallets: [{
-              id: 'wallet_simulated',
-              name: 'Default Wallet',
-              address: '0x' + '0'.repeat(40),
-              chain: 'base',
-              is_active: true,
-              balance: '1000.00',
-              policy: { max_per_tx: '100.00', max_daily: '500.00' },
-              created_at: new Date().toISOString(),
-            }],
-            total: 1,
-          }, null, 2),
+          text: JSON.stringify(wallets, null, 2),
         }],
       };
     }
@@ -257,6 +296,7 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
       const params = new URLSearchParams();
       if (parsed.success) {
         if (parsed.data.agent_id) params.append('agent_id', parsed.data.agent_id);
+        if (parsed.data.chain) params.append('chain', parsed.data.chain);
         if (parsed.data.status) params.append('status', parsed.data.status);
         if (parsed.data.limit) params.append('limit', parsed.data.limit.toString());
       }
@@ -271,6 +311,100 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: `Failed to list wallets: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
+  },
+
+  sardis_update_wallet_limits: async (args: unknown): Promise<ToolResult> => {
+    const parsed = UpdateLimitsSchema.safeParse(args);
+    if (!parsed.success) {
+      return {
+        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
+        isError: true,
+      };
+    }
+
+    const config = getConfig();
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: parsed.data.wallet_id,
+            limit_per_tx: parsed.data.limit_per_tx,
+            limit_total: parsed.data.limit_total,
+            status: 'updated',
+            updated_at: new Date().toISOString(),
+            message: 'Wallet limits updated successfully',
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const result = await apiRequest<Wallet>(
+        'PATCH',
+        `/api/v2/wallets/${parsed.data.wallet_id}/limits`,
+        {
+          limit_per_tx: parsed.data.limit_per_tx?.toString(),
+          limit_total: parsed.data.limit_total?.toString(),
+        }
+      );
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to update limits: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
+  },
+
+  sardis_archive_wallet: async (args: unknown): Promise<ToolResult> => {
+    const parsed = ArchiveWalletSchema.safeParse(args);
+    if (!parsed.success) {
+      return {
+        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
+        isError: true,
+      };
+    }
+
+    const config = getConfig();
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: parsed.data.wallet_id,
+            status: 'archived',
+            reason: parsed.data.reason,
+            archived_at: new Date().toISOString(),
+            message: 'Wallet archived successfully',
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const result = await apiRequest<Wallet>(
+        'POST',
+        `/api/v2/wallets/${parsed.data.wallet_id}/archive`,
+        { reason: parsed.data.reason }
+      );
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to archive wallet: ${error instanceof Error ? error.message : 'Unknown error'}`,
         }],
         isError: true,
       };

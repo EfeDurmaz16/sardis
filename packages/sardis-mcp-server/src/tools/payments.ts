@@ -80,13 +80,14 @@ export async function executePayment(
   };
 
   if (!config.apiKey || config.mode === 'simulated') {
-    // Return simulated result
+    // Return simulated result with unique ID
+    const uniqueId = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
     return {
-      payment_id: `pay_${Date.now().toString(36)}`,
+      payment_id: `pay_${uniqueId}`,
       status: 'completed',
       tx_hash: '0x' + Math.random().toString(16).substring(2).padEnd(64, '0'),
       chain: config.chain,
-      ledger_tx_id: `ltx_${Date.now().toString(36)}`,
+      ledger_tx_id: `ltx_${uniqueId}`,
       audit_anchor: `merkle::${auditHash.substring(0, 16)}`,
     };
   }

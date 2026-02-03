@@ -3,24 +3,25 @@
  */
 
 import { BaseResource } from './base.js';
-import type { Hold, CreateHoldInput, CreateHoldResponse } from '../types.js';
+import type { Hold, CreateHoldInput, CreateHoldResponse, RequestOptions } from '../types.js';
 
 export class HoldsResource extends BaseResource {
   /**
    * Create a hold (pre-authorization) on funds
    */
-  async create(input: CreateHoldInput): Promise<CreateHoldResponse> {
-    return this._post<CreateHoldResponse>('/api/v2/holds', input);
+  async create(input: CreateHoldInput, options?: RequestOptions): Promise<CreateHoldResponse> {
+    return this._post<CreateHoldResponse>('/api/v2/holds', input, options);
   }
 
   /**
    * Get a hold by ID
    *
    * @param holdId - The hold ID
+   * @param options - Request options (signal, timeout)
    * @returns The hold object
    */
-  async get(holdId: string): Promise<Hold> {
-    return this._get<Hold>(`/api/v2/holds/${holdId}`);
+  async get(holdId: string, options?: RequestOptions): Promise<Hold> {
+    return this._get<Hold>(`/api/v2/holds/${holdId}`, undefined, options);
   }
 
   /**

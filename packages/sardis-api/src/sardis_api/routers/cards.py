@@ -59,7 +59,14 @@ router = APIRouter()
 
 # ---- Factory function with dependency injection ----
 
-def create_cards_router(card_repo, card_provider, webhook_secret: str | None = None) -> APIRouter:
+def create_cards_router(
+    card_repo,
+    card_provider,
+    webhook_secret: str | None = None,
+    offramp_service=None,
+    chain_executor=None,
+    wallet_repo=None,
+) -> APIRouter:
     """Create a cards router with injected dependencies."""
     r = APIRouter()
 
@@ -108,6 +115,72 @@ def create_cards_router(card_repo, card_provider, webhook_secret: str | None = N
         card = await card_repo.get_by_card_id(card_id)
         if not card:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+
+        # If offramp_service is available, use real USDC→USD→Lithic flow
+        if offramp_service and chain_executor and wallet_repo and request.source == "stablecoin":
+            wallet_id = card.get("wallet_id")
+            if not wallet_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Card not linked to wallet")
+
+            wallet = await wallet_repo.get(wallet_id)
+            if not wallet:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
+
+            amount_minor = int(request.amount * 10**6)
+
+            # 1. Get offramp quote (USDC→USD)
+            try:
+                quote = await offramp_service.get_quote(
+                    input_token="USDC",
+                    input_amount_minor=amount_minor,
+                    input_chain="base",
+                    output_currency="USD",
+                )
+            except Exception as e:
+                logger.error("Offramp quote failed: %s", e)
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to get offramp quote")
+
+            # 2. Get source address from wallet
+            source_address = wallet.get_address("base") or ""
+            for chain, addr in wallet.addresses.items():
+                if addr:
+                    source_address = addr
+                    break
+
+            if not source_address:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet has no on-chain address")
+
+            # 3. Get destination (Lithic funding account or Bridge deposit)
+            import os
+            funding_account = os.getenv("LITHIC_FUNDING_ACCOUNT_ID", "")
+
+            # 4. Execute offramp (Bridge converts USDC→USD→Lithic)
+            try:
+                tx = await offramp_service.execute(
+                    quote=quote,
+                    source_address=source_address,
+                    destination_account=funding_account,
+                )
+            except Exception as e:
+                logger.error("Offramp execute failed: %s", e)
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to execute offramp")
+
+            # 5. Update card spend limit via Lithic provider
+            try:
+                await card_provider.fund_card(card_id=card_id, amount=float(request.amount))
+            except Exception as e:
+                logger.warning("Lithic fund_card call failed (offramp still processing): %s", e)
+
+            # 6. Update funded_amount in DB
+            current = card.get("funded_amount", 0) or 0
+            row = await card_repo.update_funded_amount(card_id, float(current) + float(request.amount))
+            return {
+                **(row or {}),
+                "offramp_tx_id": tx.transaction_id,
+                "offramp_status": tx.status.value,
+            }
+
+        # Fallback: simple provider-based funding
         await card_provider.fund_card(card_id=card_id, amount=float(request.amount))
         current = card.get("funded_amount", 0) or 0
         row = await card_repo.update_funded_amount(card_id, float(current) + float(request.amount))

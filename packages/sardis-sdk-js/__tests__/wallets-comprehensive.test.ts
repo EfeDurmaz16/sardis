@@ -708,7 +708,7 @@ describe('WalletsResource Comprehensive Tests', () => {
             const controller = new AbortController();
             setTimeout(() => controller.abort(), 50);
 
-            await expect(client.wallets.get('wallet_test')).rejects.toThrow();
+            await expect(client.wallets.get('wallet_test', { signal: controller.signal })).rejects.toThrow();
         });
     });
 });

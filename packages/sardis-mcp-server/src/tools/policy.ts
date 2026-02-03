@@ -289,6 +289,36 @@ export const policyToolDefinitions: ToolDefinition[] = [
       required: ['address', 'amount'],
     },
   },
+  {
+    name: 'sardis_get_policies',
+    description:
+      'Get all active spending policies for the wallet.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: {
+          type: 'string',
+          description: 'Wallet ID (optional, defaults to configured wallet)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'sardis_get_rules',
+    description:
+      'Get detailed policy rules including limits, allowlists, and blocklists.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: {
+          type: 'string',
+          description: 'Wallet ID (optional, defaults to configured wallet)',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // Tool handlers
@@ -314,7 +344,7 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
               vendor,
               amount,
               category: category || 'unspecified',
-              would_be_allowed: result.allowed,
+              allowed: result.allowed,
               reason: result.reason,
               risk_score: result.risk_score,
               checks: result.checks,
@@ -386,5 +416,117 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
         },
       ],
     };
+  },
+
+  sardis_get_policies: async (args: unknown): Promise<ToolResult> => {
+    const config = getConfig();
+    const walletId = typeof args === 'object' && args !== null && 'wallet_id' in args
+      ? (args as { wallet_id?: string }).wallet_id || config.walletId
+      : config.walletId;
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: walletId,
+            policies: [{
+              id: 'policy_default',
+              name: 'Default Spending Policy',
+              max_per_tx: '100.00',
+              max_daily: '500.00',
+              max_monthly: '5000.00',
+              is_active: true,
+              created_at: new Date().toISOString(),
+            }],
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const wallet = await getWalletInfo();
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: wallet.id,
+            policies: [{
+              id: 'policy_active',
+              name: 'Active Policy',
+              max_per_tx: wallet.limit_per_tx,
+              max_daily: wallet.limit_total,
+              is_active: wallet.is_active,
+            }],
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to get policies: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
+  },
+
+  sardis_get_rules: async (args: unknown): Promise<ToolResult> => {
+    const config = getConfig();
+    const walletId = typeof args === 'object' && args !== null && 'wallet_id' in args
+      ? (args as { wallet_id?: string }).wallet_id || config.walletId
+      : config.walletId;
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: walletId,
+            rules: {
+              limits: {
+                per_transaction: '100.00',
+                daily: '500.00',
+                monthly: '5000.00',
+              },
+              allowed_vendors: getAllowedVendors(),
+              blocked_vendors: getBlockedVendors(),
+              blocked_categories: ['gambling', 'adult'],
+              require_approval_above: '500.00',
+            },
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const wallet = await getWalletInfo();
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            wallet_id: wallet.id,
+            rules: {
+              limits: {
+                per_transaction: wallet.limit_per_tx,
+                daily: wallet.limit_total,
+              },
+              allowed_vendors: getAllowedVendors(),
+              blocked_vendors: getBlockedVendors(),
+              is_active: wallet.is_active,
+            },
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to get rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
   },
 };

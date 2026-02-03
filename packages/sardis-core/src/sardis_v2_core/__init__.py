@@ -81,6 +81,7 @@ from .mandates import IntentMandate, CartMandate, PaymentMandate, MandateChain
 from .tokens import TokenType, TokenMetadata
 from .wallets import Wallet, TokenLimit, TokenBalance  # TokenBalance is alias for TokenLimit
 from .spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel, SpendingScope, create_default_policy
+from .spending_policy_store import SpendingPolicyStore
 from .transactions import Transaction, TransactionStatus, OnChainRecord
 from .virtual_card import VirtualCard, CardStatus, CardType, FundingSource
 from .orchestrator import PaymentOrchestrator, PaymentResult, PaymentExecutionError

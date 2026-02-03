@@ -42,7 +42,10 @@ describe('AgentsResource', () => {
     };
 
     beforeEach(() => {
-        client = new SardisClient({ apiKey: 'test-key' });
+        client = new SardisClient({
+            apiKey: 'test-key',
+            retryDelay: 10, // Short delay for testing
+        });
     });
 
     describe('create', () => {
@@ -606,7 +609,7 @@ describe('AgentsResource', () => {
             setTimeout(() => controller.abort(), 50);
 
             await expect(
-                client.agents.get('agent_test123')
+                client.agents.get('agent_test123', { signal: controller.signal })
             ).rejects.toThrow();
         });
     });

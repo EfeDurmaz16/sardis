@@ -116,22 +116,23 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
 
   sardis_get_agent: async (args: unknown): Promise<ToolResult> => {
     const parsed = GetAgentSchema.safeParse(args);
-    if (!parsed.success) {
-      return {
-        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
-        isError: true,
-      };
-    }
-
     const config = getConfig();
+
+    // Allow no args - use default agent_id from config
+    const agentId = parsed.success && parsed.data.agent_id
+      ? parsed.data.agent_id
+      : config.agentId || 'agent_default';
+
     if (!config.apiKey || config.mode === 'simulated') {
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            id: parsed.data.agent_id,
+            agent_id: agentId,
+            id: agentId,
             name: 'Simulated Agent',
             description: 'A simulated agent for testing',
+            status: 'active',
             is_active: true,
             created_at: new Date().toISOString(),
           }, null, 2),
@@ -140,7 +141,7 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
     }
 
     try {
-      const result = await apiRequest<Agent>('GET', `/api/v2/agents/${parsed.data.agent_id}`);
+      const result = await apiRequest<Agent>('GET', `/api/v2/agents/${agentId}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -162,18 +163,18 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
+      const agents = [{
+        id: 'agent_simulated',
+        agent_id: 'agent_simulated',
+        name: 'Simulated Agent',
+        is_active: true,
+        created_at: new Date().toISOString(),
+      }];
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            agents: [{
-              id: 'agent_simulated',
-              name: 'Simulated Agent',
-              is_active: true,
-              created_at: new Date().toISOString(),
-            }],
-            total: 1,
-          }, null, 2),
+          text: JSON.stringify(agents, null, 2),
         }],
       };
     }
@@ -212,8 +213,10 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            agent_id: parsed.data.agent_id,
             id: parsed.data.agent_id,
             name: parsed.data.name || 'Updated Agent',
+            status: 'updated',
             is_active: parsed.data.is_active ?? true,
             updated_at: new Date().toISOString(),
             message: 'Agent updated successfully',

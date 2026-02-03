@@ -1,71 +1,21 @@
-import { useState, useEffect } from 'react'
-import { Search, Clock, CheckCircle, XCircle, AlertTriangle, Lock, Unlock } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, Clock, CheckCircle, XCircle, AlertTriangle, Lock, Loader2 } from 'lucide-react'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
+import { holdsApi } from '../api/client'
 
-// Mock holds data
-const mockHolds = [
-  {
-    hold_id: 'hold_a1b2c3d4e5f6',
-    agent_id: 'agent_compute_001',
-    merchant_id: 'gpu_provider_1',
-    amount: '50.00',
-    currency: 'USDC',
-    purpose: 'GPU Computing: LLM inference job',
-    status: 'active' as const,
-    created_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 1800000).toISOString(), // 30 min
-    captured_amount: null,
-  },
-  {
-    hold_id: 'hold_g7h8i9j0k1l2',
-    agent_id: 'agent_shopping_002',
-    merchant_id: 'electronics_store',
-    amount: '199.99',
-    currency: 'USDC',
-    purpose: 'Pre-auth for electronics purchase',
-    status: 'active' as const,
-    created_at: new Date(Date.now() - 600000).toISOString(),
-    expires_at: new Date(Date.now() + 3600000).toISOString(),
-    captured_amount: null,
-  },
-  {
-    hold_id: 'hold_m3n4o5p6q7r8',
-    agent_id: 'agent_data_003',
-    merchant_id: 'data_provider',
-    amount: '25.00',
-    currency: 'USDC',
-    purpose: 'API access pre-authorization',
-    status: 'captured' as const,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    expires_at: new Date(Date.now() - 1800000).toISOString(),
-    captured_amount: '22.50',
-  },
-  {
-    hold_id: 'hold_s9t0u1v2w3x4',
-    agent_id: 'agent_compute_001',
-    merchant_id: 'gpu_provider_2',
-    amount: '100.00',
-    currency: 'USDC',
-    purpose: 'Large compute job - cancelled',
-    status: 'voided' as const,
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    expires_at: new Date(Date.now() - 3600000).toISOString(),
-    captured_amount: null,
-  },
-  {
-    hold_id: 'hold_y5z6a7b8c9d0',
-    agent_id: 'agent_shopping_004',
-    merchant_id: 'subscription_service',
-    amount: '15.00',
-    currency: 'USDC',
-    purpose: 'Monthly subscription hold',
-    status: 'expired' as const,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    expires_at: new Date(Date.now() - 43200000).toISOString(),
-    captured_amount: null,
-  },
-]
+interface Hold {
+  hold_id: string
+  agent_id: string
+  merchant_id: string
+  amount: string
+  currency: string
+  purpose: string
+  status: 'active' | 'captured' | 'voided' | 'expired'
+  created_at: string
+  expires_at: string
+  captured_amount: string | null
+}
 
 type StatusFilter = 'all' | 'active' | 'captured' | 'voided' | 'expired'
 
@@ -73,14 +23,35 @@ export default function HoldsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [now, setNow] = useState(new Date())
-  
+  const [holds, setHolds] = useState<Hold[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchHolds = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await holdsApi.listActive(100)
+      setHolds(data as Hold[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load holds')
+      setHolds([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchHolds()
+  }, [fetchHolds])
+
   // Update time every minute for expiry countdown
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60000)
     return () => clearInterval(interval)
   }, [])
-  
-  const filteredHolds = mockHolds.filter(hold => {
+
+  const filteredHolds = holds.filter(hold => {
     const matchesSearch = 
       hold.hold_id.toLowerCase().includes(search.toLowerCase()) ||
       hold.agent_id.toLowerCase().includes(search.toLowerCase()) ||
@@ -91,7 +62,7 @@ export default function HoldsPage() {
     return matchesSearch && matchesStatus
   })
   
-  const activeHoldsValue = mockHolds
+  const activeHoldsValue = holds
     .filter(h => h.status === 'active')
     .reduce((sum, h) => sum + parseFloat(h.amount), 0)
   
@@ -136,7 +107,7 @@ export default function HoldsPage() {
             <div>
               <p className="text-sm text-gray-400">Active Holds</p>
               <p className="text-2xl font-bold text-white">
-                {mockHolds.filter(h => h.status === 'active').length}
+                {holds.filter(h => h.status === 'active').length}
               </p>
             </div>
           </div>
@@ -150,13 +121,13 @@ export default function HoldsPage() {
         <div className="card p-4">
           <p className="text-sm text-gray-400">Captured Today</p>
           <p className="text-2xl font-bold text-green-500">
-            {mockHolds.filter(h => h.status === 'captured').length}
+            {holds.filter(h => h.status === 'captured').length}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-sm text-gray-400">Voided/Expired</p>
           <p className="text-2xl font-bold text-gray-500">
-            {mockHolds.filter(h => h.status === 'voided' || h.status === 'expired').length}
+            {holds.filter(h => h.status === 'voided' || h.status === 'expired').length}
           </p>
         </div>
       </div>
@@ -192,8 +163,25 @@ export default function HoldsPage() {
         </div>
       </div>
       
+      {/* Loading / Error States */}
+      {loading && (
+        <div className="card p-12 text-center">
+          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-400">Loading holds...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="card p-6 border-red-500/30">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button onClick={fetchHolds} className="mt-2 text-sm text-sardis-500 hover:underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Holds Table */}
-      <div className="card overflow-hidden">
+      {!loading && !error && <div className="card overflow-hidden">
         <table className="w-full">
           <thead className="bg-dark-300">
             <tr>
@@ -271,10 +259,22 @@ export default function HoldsPage() {
                 <td className="px-6 py-4 text-right">
                   {hold.status === 'active' && (
                     <div className="flex gap-2 justify-end">
-                      <button className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors">
+                      <button
+                        onClick={async () => {
+                          await holdsApi.capture(hold.hold_id, hold.amount)
+                          fetchHolds()
+                        }}
+                        className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors"
+                      >
                         Capture
                       </button>
-                      <button className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors">
+                      <button
+                        onClick={async () => {
+                          await holdsApi.void(hold.hold_id)
+                          fetchHolds()
+                        }}
+                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                      >
                         Void
                       </button>
                     </div>
@@ -291,7 +291,7 @@ export default function HoldsPage() {
             <p className="text-gray-400">No holds found</p>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

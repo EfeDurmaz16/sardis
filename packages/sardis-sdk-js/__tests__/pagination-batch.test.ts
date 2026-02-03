@@ -15,7 +15,10 @@ import { http, HttpResponse } from 'msw';
 import { AbortError } from '../src/errors.js';
 
 describe('SardisClient Pagination', () => {
-    const client = new SardisClient({ apiKey: 'test-key' });
+    const client = new SardisClient({
+        apiKey: 'test-key',
+        retryDelay: 10, // Short delay for testing
+    });
 
     describe('paginate', () => {
         it('should iterate through single page', async () => {
@@ -260,7 +263,10 @@ describe('SardisClient Pagination', () => {
 });
 
 describe('SardisClient Batch Operations', () => {
-    const client = new SardisClient({ apiKey: 'test-key' });
+    const client = new SardisClient({
+        apiKey: 'test-key',
+        retryDelay: 10, // Short delay for testing
+    });
 
     describe('batch', () => {
         it('should execute batch of operations', async () => {

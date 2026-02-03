@@ -81,6 +81,9 @@ dev = [
     "httpx>=0.28.1",
     "python-multipart>=0.0.22",
     "asyncpg>=0.30.0",
+    "ruff>=0.14.14",
+    "mypy>=1.19.1",
+    "pytest-cov>=7.0.0",
 ]
 
 

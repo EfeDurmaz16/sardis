@@ -76,7 +76,7 @@ describe('SardisClient', () => {
         it('should throw RateLimitError on 429', async () => {
             const client = new SardisClient({
                 apiKey: 'test-key',
-                maxRetries: 1, // Disable retries for this test
+                maxRetries: 0, // Don't retry to avoid waiting for Retry-After delay
             });
             await expect(client.request('GET', '/v1/error/429')).rejects.toThrow(
                 RateLimitError
@@ -84,7 +84,11 @@ describe('SardisClient', () => {
         });
 
         it('should throw APIError on 500', async () => {
-            const client = new SardisClient({ apiKey: 'test-key', maxRetries: 1 });
+            const client = new SardisClient({
+                apiKey: 'test-key',
+                maxRetries: 1,
+                retryDelay: 10, // Short delay for testing
+            });
             await expect(client.request('GET', '/v1/error/500')).rejects.toThrow(
                 APIError
             );

@@ -7,8 +7,6 @@ const API_URL = import.meta.env.VITE_API_URL || ''
 const API_V1_BASE = `${API_URL}/api/v1`
 const API_V2_BASE = `${API_URL}/api/v2`
 
-// Use V2 API if available, fall back to V1
-const USE_V2_API = import.meta.env.VITE_USE_V2_API === 'true'
 
 async function request<T>(
   endpoint: string,

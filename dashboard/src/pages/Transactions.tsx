@@ -1,74 +1,49 @@
-import { useState } from 'react'
-import { Search, Filter, ArrowUpRight, ArrowDownLeft, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, ArrowUpRight, ArrowDownLeft, ExternalLink, Loader2 } from 'lucide-react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
+import { ledgerApi } from '../api/client'
 
-// Mock transactions for demo
-const mockTransactions = [
-  {
-    tx_id: 'tx_a1b2c3d4e5f6',
-    from_wallet: 'wallet_agent_001',
-    to_wallet: 'wallet_merchant_tech',
-    amount: '25.50',
-    fee: '0.10',
-    currency: 'USDC',
-    purpose: 'Premium Headphones Purchase',
-    status: 'completed' as const,
-    created_at: new Date().toISOString(),
-  },
-  {
-    tx_id: 'tx_g7h8i9j0k1l2',
-    from_wallet: 'wallet_agent_002',
-    to_wallet: 'wallet_merchant_data',
-    amount: '15.00',
-    fee: '0.10',
-    currency: 'USDC',
-    purpose: 'Weather API Access',
-    status: 'completed' as const,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    tx_id: 'tx_m3n4o5p6q7r8',
-    from_wallet: 'wallet_agent_003',
-    to_wallet: 'wallet_merchant_office',
-    amount: '42.00',
-    fee: '0.10',
-    currency: 'USDC',
-    purpose: 'Office Supplies Order',
-    status: 'pending' as const,
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    tx_id: 'tx_s9t0u1v2w3x4',
-    from_wallet: 'wallet_agent_001',
-    to_wallet: 'wallet_merchant_tech',
-    amount: '89.99',
-    fee: '0.10',
-    currency: 'USDC',
-    purpose: 'Mechanical Keyboard',
-    status: 'failed' as const,
-    created_at: new Date(Date.now() - 14400000).toISOString(),
-  },
-  {
-    tx_id: 'tx_y5z6a7b8c9d0',
-    from_wallet: 'wallet_agent_004',
-    to_wallet: 'wallet_agent_005',
-    amount: '5.00',
-    fee: '0.10',
-    currency: 'USDC',
-    purpose: 'Agent-to-Agent Transfer',
-    status: 'completed' as const,
-    created_at: new Date(Date.now() - 21600000).toISOString(),
-  },
-]
+interface Transaction {
+  tx_id: string
+  from_wallet: string
+  to_wallet: string
+  amount: string
+  fee: string
+  currency: string
+  purpose: string
+  status: 'completed' | 'pending' | 'failed'
+  created_at: string
+}
 
 type StatusFilter = 'all' | 'completed' | 'pending' | 'failed'
 
 export default function TransactionsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  
-  const filteredTransactions = mockTransactions.filter(tx => {
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await ledgerApi.recent(100)
+      setTransactions(data as Transaction[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load transactions')
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
+
+  const filteredTransactions = transactions.filter(tx => {
     const matchesSearch = 
       tx.tx_id.toLowerCase().includes(search.toLowerCase()) ||
       tx.purpose?.toLowerCase().includes(search.toLowerCase())
@@ -78,7 +53,7 @@ export default function TransactionsPage() {
     return matchesSearch && matchesStatus
   })
   
-  const totalVolume = mockTransactions
+  const totalVolume = transactions
     .filter(tx => tx.status === 'completed')
     .reduce((sum, tx) => sum + parseFloat(tx.amount), 0)
   
@@ -103,19 +78,19 @@ export default function TransactionsPage() {
         <div className="card p-4">
           <p className="text-sm text-gray-400">Transactions</p>
           <p className="text-2xl font-bold text-white">
-            {mockTransactions.length}
+            {transactions.length}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-sm text-gray-400">Completed</p>
           <p className="text-2xl font-bold text-green-500">
-            {mockTransactions.filter(t => t.status === 'completed').length}
+            {transactions.filter(t => t.status === 'completed').length}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-sm text-gray-400">Failed</p>
           <p className="text-2xl font-bold text-red-500">
-            {mockTransactions.filter(t => t.status === 'failed').length}
+            {transactions.filter(t => t.status === 'failed').length}
           </p>
         </div>
       </div>
@@ -151,8 +126,25 @@ export default function TransactionsPage() {
         </div>
       </div>
       
+      {/* Loading / Error States */}
+      {loading && (
+        <div className="card p-12 text-center">
+          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-400">Loading transactions...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="card p-6 border-red-500/30">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button onClick={fetchTransactions} className="mt-2 text-sm text-sardis-500 hover:underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Transactions Table */}
-      <div className="card overflow-hidden">
+      {!loading && !error && <div className="card overflow-hidden">
         <table className="w-full">
           <thead className="bg-dark-300">
             <tr>
@@ -249,7 +241,7 @@ export default function TransactionsPage() {
             <p className="text-gray-400">No transactions found</p>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

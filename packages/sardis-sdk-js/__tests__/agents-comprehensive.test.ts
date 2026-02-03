@@ -823,7 +823,7 @@ describe('AgentsResource Comprehensive Tests', () => {
             const controller = new AbortController();
             setTimeout(() => controller.abort(), 50);
 
-            await expect(client.agents.get('agent_test')).rejects.toThrow();
+            await expect(client.agents.get('agent_test', { signal: controller.signal })).rejects.toThrow();
         });
     });
 });

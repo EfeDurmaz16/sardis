@@ -151,3 +151,17 @@ export function getToolSummary(): { category: string; count: number; tools: stri
     tools: [...tools],
   }));
 }
+
+/**
+ * Get all tool definitions (alias for allToolDefinitions)
+ */
+export function getAllTools(): ToolDefinition[] {
+  return allToolDefinitions;
+}
+
+/**
+ * Get all tool handlers (alias for allToolHandlers)
+ */
+export function getAllToolHandlers(): Record<string, ToolHandler> {
+  return allToolHandlers;
+}

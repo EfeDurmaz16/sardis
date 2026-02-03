@@ -773,7 +773,7 @@ describe('HoldsResource Comprehensive Tests', () => {
                     amount_minor: 100000000,
                     token: 'USDC',
                     chain: 'base',
-                })
+                }, { signal: controller.signal })
             ).rejects.toThrow();
         });
     });

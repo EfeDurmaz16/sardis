@@ -28,7 +28,7 @@ export const holdToolDefinitions: ToolDefinition[] = [
       type: 'object',
       properties: {
         wallet_id: { type: 'string', description: 'Wallet ID to create hold on' },
-        amount: { type: 'string', description: 'Amount to hold (e.g., "100.00")' },
+        amount: { type: ['string', 'number'], description: 'Amount to hold (e.g., "100.00" or 100)' },
         token: {
           type: 'string',
           enum: ['USDC', 'USDT', 'PYUSD', 'EURC'],
@@ -36,9 +36,10 @@ export const holdToolDefinitions: ToolDefinition[] = [
         },
         merchant_id: { type: 'string', description: 'Optional merchant identifier' },
         purpose: { type: 'string', description: 'Purpose of the hold' },
+        expires_in: { type: 'number', description: 'Hold duration in seconds (alias for duration_hours * 3600)' },
         duration_hours: { type: 'number', description: 'Hold duration in hours. Defaults to 168 (7 days).' },
       },
-      required: ['wallet_id', 'amount'],
+      required: ['amount'],
     },
   },
   {
@@ -60,6 +61,17 @@ export const holdToolDefinitions: ToolDefinition[] = [
       type: 'object',
       properties: {
         hold_id: { type: 'string', description: 'Hold ID to void' },
+      },
+      required: ['hold_id'],
+    },
+  },
+  {
+    name: 'sardis_release_hold',
+    description: 'Release a hold (alias for sardis_void_hold). Releases the reserved funds without completing payment.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        hold_id: { type: 'string', description: 'Hold ID to release' },
       },
       required: ['hold_id'],
     },
@@ -117,20 +129,28 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
     }
 
     const config = getConfig();
+    const walletId = parsed.data.wallet_id || config.walletId || 'wallet_default';
+    const amount = typeof parsed.data.amount === 'number' ? parsed.data.amount.toString() : parsed.data.amount;
+
     if (!config.apiKey || config.mode === 'simulated') {
       // Simulated response
       const holdId = `hold_${Date.now().toString(36)}`;
-      const expiresAt = new Date(Date.now() + (parsed.data.duration_hours || 168) * 3600000).toISOString();
+      const durationHours = parsed.data.expires_in
+        ? parsed.data.expires_in / 3600
+        : (parsed.data.duration_hours || 168);
+      const expiresAt = new Date(Date.now() + durationHours * 3600000).toISOString();
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
             hold_id: holdId,
+            wallet_id: walletId,
             status: 'active',
-            amount: parsed.data.amount,
+            amount: typeof parsed.data.amount === 'number' ? parsed.data.amount : parseFloat(parsed.data.amount),
             token: parsed.data.token || 'USDC',
+            purpose: parsed.data.purpose,
             expires_at: expiresAt,
-            message: `Hold created for ${parsed.data.amount} ${parsed.data.token || 'USDC'}`,
+            message: `Hold created for ${amount} ${parsed.data.token || 'USDC'}`,
           }, null, 2),
         }],
       };
@@ -237,6 +257,47 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
+  sardis_release_hold: async (args: unknown): Promise<ToolResult> => {
+    // Alias for sardis_void_hold
+    const parsed = VoidHoldSchema.safeParse(args);
+    if (!parsed.success) {
+      return {
+        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
+        isError: true,
+      };
+    }
+
+    const config = getConfig();
+    if (!config.apiKey || config.mode === 'simulated') {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            hold_id: parsed.data.hold_id,
+            status: 'released',
+            released_at: new Date().toISOString(),
+            message: 'Hold released successfully',
+          }, null, 2),
+        }],
+      };
+    }
+
+    try {
+      const result = await apiRequest<Hold>('POST', `/api/v2/holds/${parsed.data.hold_id}/void`, {});
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Failed to release hold: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }],
+        isError: true,
+      };
+    }
+  },
+
   sardis_get_hold: async (args: unknown): Promise<ToolResult> => {
     const parsed = GetHoldSchema.safeParse(args);
     if (!parsed.success) {
@@ -290,20 +351,24 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
     }
 
     const config = getConfig();
+    const walletId = (parsed.success && parsed.data.wallet_id) || config.walletId || 'wallet_default';
+    const statusFilter = parsed.success && parsed.data.status;
+
     if (!config.apiKey || config.mode === 'simulated') {
+      const holds = [{
+        hold_id: 'hold_simulated',
+        id: 'hold_simulated',
+        wallet_id: walletId,
+        amount: '100.00',
+        token: 'USDC',
+        status: statusFilter || 'active',
+        expires_at: new Date(Date.now() + 7 * 24 * 3600000).toISOString(),
+      }];
+
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            holds: [{
-              id: 'hold_simulated',
-              wallet_id: parsed.data.wallet_id,
-              amount: '100.00',
-              token: 'USDC',
-              status: 'active',
-              expires_at: new Date(Date.now() + 7 * 24 * 3600000).toISOString(),
-            }],
-          }, null, 2),
+          text: JSON.stringify(holds, null, 2),
         }],
       };
     }
