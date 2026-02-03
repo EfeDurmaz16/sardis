@@ -27,6 +27,7 @@ from sardis_v2_core import (
     create_default_policy,
     Wallet,
 )
+from sardis_v2_core.tokens import TokenType, normalize_token_amount
 
 # Import all new modules
 from .key_rotation import (
@@ -114,6 +115,10 @@ class PolicyStore(Protocol):
     """Protocol for policy storage."""
     def fetch_policy(self, agent_id: str) -> SpendingPolicy | None: ...
 
+class AsyncPolicyStore(Protocol):
+    """Async policy store (used by API services)."""
+    async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None: ...
+
 
 class EnhancedWalletManager:
     """
@@ -131,6 +136,7 @@ class EnhancedWalletManager:
         self,
         settings: SardisSettings,
         policy_store: PolicyStore | None = None,
+        async_policy_store: AsyncPolicyStore | None = None,
         turnkey_client: Optional[Any] = None,
         # Optional component overrides
         key_rotation_manager: MPCKeyRotationManager | None = None,
@@ -146,6 +152,7 @@ class EnhancedWalletManager:
     ):
         self._settings = settings
         self._policy_store = policy_store
+        self._async_policy_store = async_policy_store
         self._turnkey_client = turnkey_client
 
         # Initialize all managers (use provided or get global instances)
@@ -164,13 +171,42 @@ class EnhancedWalletManager:
     # Policy Validation
     # =========================================================================
 
+    @staticmethod
+    def _amount_from_mandate(mandate: PaymentMandate) -> Decimal:
+        try:
+            token = TokenType(str(mandate.token).upper())
+            return normalize_token_amount(token, int(mandate.amount_minor))
+        except Exception:  # noqa: BLE001
+            # Backwards-compat: fall back to cents-like scaling.
+            return Decimal(mandate.amount_minor) / Decimal(10**2)
+
     def validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
         """Synchronous validation (for backwards compatibility)."""
         policy = self._policy_store.fetch_policy(mandate.subject) if self._policy_store else None
         if not policy:
             policy = create_default_policy(mandate.subject)
 
-        amount = Decimal(mandate.amount_minor) / Decimal(10**2)
+        amount = self._amount_from_mandate(mandate)
+        ok, reason = policy.validate_payment(
+            amount,
+            Decimal("0"),
+            merchant_id=mandate.domain,
+            scope=SpendingScope.ALL,
+        )
+
+        return PolicyEvaluation(allowed=ok, reason=None if ok else reason)
+
+    async def async_validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
+        """Async policy validation (preferred in API services)."""
+        policy: SpendingPolicy | None = None
+        if self._async_policy_store:
+            policy = await self._async_policy_store.fetch_policy(mandate.subject)
+        elif self._policy_store:
+            policy = self._policy_store.fetch_policy(mandate.subject)
+        if not policy:
+            policy = create_default_policy(mandate.subject)
+
+        amount = self._amount_from_mandate(mandate)
         ok, reason = policy.validate_payment(
             amount,
             Decimal("0"),
@@ -229,11 +265,15 @@ class EnhancedWalletManager:
                 )
 
         # Get spending policy
-        policy = self._policy_store.fetch_policy(mandate.subject) if self._policy_store else None
+        policy: SpendingPolicy | None = None
+        if self._async_policy_store:
+            policy = await self._async_policy_store.fetch_policy(mandate.subject)
+        elif self._policy_store:
+            policy = self._policy_store.fetch_policy(mandate.subject)
         if not policy:
             policy = create_default_policy(mandate.subject)
 
-        amount = Decimal(mandate.amount_minor) / Decimal(10**2)
+        amount = self._amount_from_mandate(mandate)
 
         # Check spending policy
         ok, reason = await policy.evaluate(

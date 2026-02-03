@@ -1737,7 +1737,8 @@ class ChainExecutor:
         from_address = None
         if not self._simulated and self._mpc_signer:
             try:
-                from_address = await self._mpc_signer.get_address(mandate.subject, chain)
+                wallet_id = getattr(mandate, "wallet_id", None) or mandate.subject
+                from_address = await self._mpc_signer.get_address(wallet_id, chain)
             except Exception:  # noqa: BLE001
                 from_address = None
 
@@ -2007,7 +2008,7 @@ class ChainExecutor:
         transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
 
         # Get sender address
-        wallet_id = mandate.subject  # Use subject as wallet ID
+        wallet_id = getattr(mandate, "wallet_id", None) or mandate.subject
         sender_address = await self._mpc_signer.get_address(wallet_id, chain)
 
         # Build transaction params for simulation

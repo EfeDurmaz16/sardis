@@ -1,6 +1,7 @@
 """Mandate ingestion + execution endpoints."""
 from __future__ import annotations
 
+from dataclasses import replace
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional, List, Dict, Any
@@ -280,7 +281,7 @@ async def validate_mandate(
         )
     
     # Check spending policies
-    policy_result = deps.wallet_manager.validate_policies(stored.mandate)
+    policy_result = await deps.wallet_manager.async_validate_policies(stored.mandate)
     policy_check = {"allowed": policy_result.allowed, "reason": policy_result.reason}
     
     # Check compliance
@@ -323,18 +324,20 @@ async def execute_stored_mandate(
     if stored.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mandate was cancelled")
 
-    # Check if wallet is frozen (CRITICAL: blocks all transactions)
+    # Resolve wallet + enforce freeze gate (CRITICAL: blocks all transactions)
     wallet = await deps.wallet_repository.get_by_agent(stored.mandate.subject)
-    if wallet:
-        freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
-        if not freeze_ok:
-            stored.status = "failed"
-            stored.updated_at = datetime.now(timezone.utc)
-            await _save_mandate(stored)
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=freeze_reason,
-            )
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        stored.status = "failed"
+        stored.updated_at = datetime.now(timezone.utc)
+        await _save_mandate(stored)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=freeze_reason,
+        )
+    stored.mandate = replace(stored.mandate, wallet_id=wallet.wallet_id)
 
     # Validate if not already validated
     if stored.status != "validated":
@@ -345,7 +348,7 @@ async def execute_stored_mandate(
             await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
 
-        policy_result = deps.wallet_manager.validate_policies(stored.mandate)
+        policy_result = await deps.wallet_manager.async_validate_policies(stored.mandate)
         if not policy_result.allowed:
             stored.status = "failed"
             stored.updated_at = datetime.now(timezone.utc)
@@ -410,19 +413,28 @@ async def execute_payment_mandate(payload: IngestMandateRequest, deps: Dependenc
     if not verification.accepted:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
 
-    policy_result = deps.wallet_manager.validate_policies(payload.mandate)
+    wallet = await deps.wallet_repository.get_by_agent(payload.mandate.subject)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found for agent")
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+
+    mandate = replace(payload.mandate, wallet_id=wallet.wallet_id)
+
+    policy_result = await deps.wallet_manager.async_validate_policies(mandate)
     if not policy_result.allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
 
-    compliance_status = deps.compliance.preflight(payload.mandate)
+    compliance_status = deps.compliance.preflight(mandate)
     if not compliance_status.allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
 
-    tx = await deps.chain_executor.dispatch_payment(payload.mandate)
-    deps.ledger.append(payment_mandate=payload.mandate, chain_receipt=tx)
+    tx = await deps.chain_executor.dispatch_payment(mandate)
+    deps.ledger.append(payment_mandate=mandate, chain_receipt=tx)
 
     return MandateExecutionResponse(
-        mandate_id=payload.mandate.mandate_id,
+        mandate_id=mandate.mandate_id,
         status="submitted",
         tx_hash=tx.tx_hash,
         chain=tx.chain,

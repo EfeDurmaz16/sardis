@@ -403,14 +403,21 @@ async def transfer_crypto(
     import uuid
     import hashlib
     from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
-    amount_minor = int(request.amount * Decimal(10**6))
+    try:
+        amount_minor = to_raw_token_amount(TokenType(request.token.upper()), request.amount)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"unsupported_token: {request.token}",
+        ) from exc
 
     mandate = PaymentMandate(
         mandate_id=f"transfer_{uuid.uuid4().hex[:16]}",
         mandate_type="payment",
         issuer=f"wallet:{wallet_id}",
-        subject=wallet_id,
+        subject=wallet.agent_id,
         expires_at=int(time.time()) + 300,
         nonce=uuid.uuid4().hex,
         proof=VCProof(
@@ -427,10 +434,11 @@ async def transfer_crypto(
         audit_hash=hashlib.sha256(
             f"{wallet_id}:{request.destination}:{amount_minor}:{request.domain}:{request.memo or ''}".encode()
         ).hexdigest(),
+        wallet_id=wallet_id,
     )
 
     if deps.wallet_manager:
-        policy = deps.wallet_manager.validate_policies(mandate)  # type: ignore[call-arg]
+        policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
         if not getattr(policy, "allowed", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

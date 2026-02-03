@@ -331,7 +331,10 @@ class PaymentOrchestrator:
 
         # Phase 1: Policy Validation (fail-fast)
         try:
-            policy = self._wallet_manager.validate_policies(payment)
+            if hasattr(self._wallet_manager, "async_validate_policies"):
+                policy = await getattr(self._wallet_manager, "async_validate_policies")(payment)
+            else:
+                policy = self._wallet_manager.validate_policies(payment)
             if not policy.allowed:
                 self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
                            {"rule_id": getattr(policy, 'rule_id', None)},

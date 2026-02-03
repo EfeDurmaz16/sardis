@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import base64
 import time
-from dataclasses import dataclass, fields
+from dataclasses import MISSING, dataclass, fields
 from typing import Any, Dict, Optional, Type
 
 from sardis_v2_core import SardisSettings
@@ -117,7 +117,20 @@ class MandateVerifier:
         if not isinstance(proof_payload, dict):
             raise ValueError("mandate_missing_proof")
         proof = VCProof(**proof_payload)
-        init_values = {field.name: data[field.name] for field in fields(model) if field.name != "proof"}
+        init_values: Dict[str, Any] = {}
+        for field in fields(model):
+            if field.name == "proof":
+                continue
+            if field.name in data:
+                init_values[field.name] = data[field.name]
+                continue
+            if field.default is not MISSING:
+                init_values[field.name] = field.default
+                continue
+            if field.default_factory is not MISSING:  # type: ignore[comparison-overlap]
+                init_values[field.name] = field.default_factory()  # type: ignore[misc]
+                continue
+            raise ValueError(f"mandate_missing_field:{field.name}")
         return model(proof=proof, **init_values)
 
     def _identity_from_proof(self, mandate: PaymentMandate) -> AgentIdentity | None:

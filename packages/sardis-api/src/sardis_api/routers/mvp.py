@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +15,8 @@ from sardis_ledger.records import LedgerStore
 from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_v2_core import SardisSettings
+from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis_v2_core.wallet_repository import WalletRepository
 
 from sardis_api.authz import require_principal
 
@@ -75,6 +77,7 @@ class Dependencies:
     ledger: LedgerStore
     identity_registry: IdentityRegistry
     settings: SardisSettings
+    wallet_repo: WalletRepository
 
 
 def get_deps() -> Dependencies:
@@ -219,6 +222,14 @@ async def execute_payment(payload: MandatePayload, deps: Dependencies = Depends(
     if not policy_ok:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=policy_reason or "policy_violation")
 
+    wallet = await deps.wallet_repo.get_by_agent(mandate.subject)
+    if not wallet:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+    mandate = replace(mandate, wallet_id=wallet.wallet_id)
+
     try:
         chain_receipt = await deps.chain_executor.dispatch_payment(mandate)
     except Exception as exc:  # noqa: BLE001
@@ -268,5 +279,4 @@ def metrics(deps: Dependencies = Depends(get_deps)):
             "token": ALLOWED_TOKEN,
         },
     }
-
 

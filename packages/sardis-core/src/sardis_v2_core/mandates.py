@@ -56,6 +56,9 @@ class PaymentMandate(MandateBase):
     amount_minor: int
     destination: str
     audit_hash: str
+    # Execution-only hint (not part of AP2 signature payload).
+    # When present, chain executors should use this to select the signing wallet.
+    wallet_id: str | None = None
 
 
 @dataclass(slots=True)

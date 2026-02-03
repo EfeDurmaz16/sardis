@@ -565,7 +565,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.state.policy_store = policy_store
 
-    wallet_mgr = WalletManager(settings=settings, turnkey_client=turnkey_client)
+    wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
+    wallet_mgr = WalletManager(
+        settings=settings,
+        turnkey_client=turnkey_client,
+        async_policy_store=policy_store,
+    )
     chain_exec = ChainExecutor(settings=settings)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     from sardis_compliance.checks import create_audit_store
@@ -606,12 +611,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         verifier=verifier,
         ledger=ledger_store,
         compliance=compliance,
+        wallet_repository=wallet_repo,
     )
     app.include_router(mandates.router, prefix="/api/v2/mandates")
 
     app.dependency_overrides[ap2.get_deps] = lambda: ap2.Dependencies(  # type: ignore[arg-type]
         verifier=verifier,
         orchestrator=orchestrator,
+        wallet_repo=wallet_repo,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -622,6 +629,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger=ledger_store,
         identity_registry=identity_registry,
         settings=settings,
+        wallet_repo=wallet_repo,
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
@@ -703,7 +711,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix="/api/v2/auth")
 
     # Wallet routes
-    wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
         chain_executor=chain_exec,

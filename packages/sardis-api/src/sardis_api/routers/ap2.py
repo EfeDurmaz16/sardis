@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
 from sardis_v2_core.orchestrator import PaymentExecutionError
+from sardis_v2_core.mandates import MandateChain
+from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import require_principal
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
     from sardis_v2_core.orchestrator import PaymentOrchestrator
     from sardis_compliance.kyc import KYCService
     from sardis_compliance.sanctions import SanctionsService
+    from sardis_v2_core.wallet_repository import WalletRepository
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,7 @@ HIGH_VALUE_THRESHOLD_MINOR = 1000000  # $10000 enhanced verification
 class Dependencies:
     verifier: "MandateVerifier"
     orchestrator: "PaymentOrchestrator"
+    wallet_repo: "WalletRepository"
     kyc_service: Optional["KYCService"] = None
     sanctions_service: Optional["SanctionsService"] = None
 
@@ -154,6 +158,20 @@ async def execute_ap2_payment(
         )
     
     chain = verification.chain
+    payment = chain.payment
+
+    # Resolve wallet for the agent (needed for signing in live mode) + freeze gate
+    wallet = await deps.wallet_repo.get_by_agent(payment.subject)
+    if not wallet:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
+    chain = MandateChain(
+        intent=chain.intent,
+        cart=chain.cart,
+        payment=replace(payment, wallet_id=wallet.wallet_id),
+    )
     payment = chain.payment
     
     # Step 2: Perform compliance checks
