@@ -20,11 +20,50 @@ import signal
 import sys
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+
+def _bootstrap_monorepo_sys_path() -> None:
+    """
+    Make monorepo packages importable without requiring PYTHONPATH.
+
+    This helps local dev commands like:
+      `uv run uvicorn sardis_api.main:create_app --factory`
+
+    In a packaged/installed deployment this is a no-op.
+    """
+    here = Path(__file__).resolve()
+    repo_root: Path | None = None
+    for parent in here.parents:
+        if (parent / "packages").is_dir():
+            repo_root = parent
+            break
+    if repo_root is None:
+        return
+
+    packages_dir = repo_root / "packages"
+    for pkg in (
+        "sardis-core",
+        "sardis-wallet",
+        "sardis-chain",
+        "sardis-protocol",
+        "sardis-ledger",
+        "sardis-cards",
+        "sardis-compliance",
+        "sardis-checkout",
+    ):
+        src = packages_dir / pkg / "src"
+        if src.is_dir():
+            p = str(src)
+            if p not in sys.path:
+                sys.path.insert(0, p)
+
+
+_bootstrap_monorepo_sys_path()
 
 from sardis_v2_core import SardisSettings, load_settings, InMemoryPolicyStore, PostgresPolicyStore
 from sardis_v2_core.identity import IdentityRegistry
