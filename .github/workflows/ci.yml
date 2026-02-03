@@ -93,9 +93,9 @@ jobs:
         run: |
           pytest tests/ -v --cov=sardis_v2_core --cov=sardis_api --cov=sardis_chain --cov-report=xml --cov-report=term-missing
       
-      - name: Check coverage threshold
+      - name: Enforce coverage threshold
         run: |
-          coverage report --fail-under=70 || echo "Coverage below 70%, please add more tests"
+          coverage report --fail-under=70
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
