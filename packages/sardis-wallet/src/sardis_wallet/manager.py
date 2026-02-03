@@ -131,6 +131,7 @@ class EnhancedWalletManager:
         self,
         settings: SardisSettings,
         policy_store: PolicyStore | None = None,
+        turnkey_client: Optional[Any] = None,
         # Optional component overrides
         key_rotation_manager: MPCKeyRotationManager | None = None,
         recovery_manager: SocialRecoveryManager | None = None,
@@ -145,6 +146,7 @@ class EnhancedWalletManager:
     ):
         self._settings = settings
         self._policy_store = policy_store
+        self._turnkey_client = turnkey_client
 
         # Initialize all managers (use provided or get global instances)
         self._key_rotation = key_rotation_manager or get_mpc_key_rotation_manager()
@@ -203,6 +205,16 @@ class EnhancedWalletManager:
         """
         warnings = []
         risk_score = 0.0
+
+        # Check if wallet is frozen (CRITICAL: blocks all transactions)
+        if wallet.is_frozen:
+            freeze_info = f"Frozen by {wallet.frozen_by}" if wallet.frozen_by else "Wallet frozen"
+            if wallet.freeze_reason:
+                freeze_info += f": {wallet.freeze_reason}"
+            return PolicyEvaluation(
+                allowed=False,
+                reason=f"wallet_frozen - {freeze_info}",
+            )
 
         # Validate session if provided
         if session_id:
@@ -277,6 +289,58 @@ class EnhancedWalletManager:
             risk_score=risk_score,
             required_approvals=required_approvals,
         )
+
+    # =========================================================================
+    # Turnkey MPC Wallet Creation
+    # =========================================================================
+
+    async def create_turnkey_wallet(
+        self,
+        wallet_name: str,
+        agent_id: str,
+    ) -> Dict[str, Any]:
+        """Create a non-custodial MPC wallet via Turnkey.
+
+        Requires turnkey_client to be configured.
+
+        Returns:
+            Dict with wallet_id, addresses, and public key info.
+        """
+        if not self._turnkey_client:
+            raise RuntimeError(
+                "Turnkey client is not configured. "
+                "Set TURNKEY_API_KEY, TURNKEY_API_PRIVATE_KEY, and TURNKEY_ORGANIZATION_ID."
+            )
+
+        result = await self._turnkey_client.create_wallet(wallet_name)
+        wallet_id = result["walletId"]
+
+        # Create Ethereum account for the wallet
+        accounts = await self._turnkey_client.create_wallet_accounts(
+            wallet_id=wallet_id,
+            chain_type="CHAIN_TYPE_ETHEREUM",
+            count=1,
+        )
+
+        # Audit log
+        await self._audit.log(
+            wallet_id=wallet_id,
+            category=AuditCategory.KEY_MANAGEMENT,
+            action=AuditAction.KEY_CREATED,
+            actor_id=agent_id,
+            resource_type="turnkey_wallet",
+            resource_id=wallet_id,
+            details={
+                "wallet_name": wallet_name,
+                "accounts": len(accounts.get("addresses", [])),
+            },
+        )
+
+        return {
+            "wallet_id": wallet_id,
+            "addresses": accounts.get("addresses", []),
+            "provider": "turnkey",
+        }
 
     # =========================================================================
     # Key Management

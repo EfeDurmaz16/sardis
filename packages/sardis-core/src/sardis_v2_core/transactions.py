@@ -5,8 +5,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from .wallets import Wallet
 
 
 class TransactionStatus(str, Enum):
@@ -95,3 +98,21 @@ class Transaction:
                 for record in self.on_chain_records
             ],
         }
+
+
+def validate_wallet_not_frozen(wallet: "Wallet") -> tuple[bool, str]:
+    """
+    Check if wallet is frozen and reject transaction if so.
+
+    Args:
+        wallet: Wallet to check
+
+    Returns:
+        Tuple of (allowed: bool, reason: str)
+    """
+    if wallet.is_frozen:
+        freeze_info = f"Frozen by {wallet.frozen_by}" if wallet.frozen_by else "Wallet frozen"
+        if wallet.freeze_reason:
+            freeze_info += f": {wallet.freeze_reason}"
+        return False, f"wallet_frozen:{freeze_info}"
+    return True, "OK"

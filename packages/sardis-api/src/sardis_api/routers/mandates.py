@@ -14,6 +14,7 @@ import json
 from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 from sardis_v2_core.mandates import PaymentMandate
 from sardis_v2_core.database import Database
+from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 if TYPE_CHECKING:
     from sardis_wallet.manager import WalletManager
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from sardis_protocol.verifier import MandateVerifier
     from sardis_ledger.records import LedgerStore
     from sardis_compliance.checks import ComplianceEngine
+    from sardis_v2_core.wallet_repository import WalletRepository
 
 router = APIRouter()
 
@@ -184,6 +186,7 @@ class Dependencies:
     verifier: "MandateVerifier"
     ledger: "LedgerStore"
     compliance: "ComplianceEngine"
+    wallet_repository: "WalletRepository"
 
 
 def get_deps() -> Dependencies:
@@ -317,7 +320,20 @@ async def execute_stored_mandate(
     
     if stored.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mandate was cancelled")
-    
+
+    # Check if wallet is frozen (CRITICAL: blocks all transactions)
+    wallet = await deps.wallet_repository.get_by_agent(stored.mandate.subject)
+    if wallet:
+        freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+        if not freeze_ok:
+            stored.status = "failed"
+            stored.updated_at = datetime.now(timezone.utc)
+            await _save_mandate(stored)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=freeze_reason,
+            )
+
     # Validate if not already validated
     if stored.status != "validated":
         verification = deps.verifier.verify(stored.mandate)
