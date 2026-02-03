@@ -12,6 +12,8 @@ from .webhooks import WebhooksResource, AsyncWebhooksResource
 from .marketplace import MarketplaceResource, AsyncMarketplaceResource
 from .transactions import TransactionsResource, AsyncTransactionsResource, GasEstimate, TransactionStatus, ChainInfo
 from .ledger import LedgerResource, AsyncLedgerResource, LedgerEntry
+from .policies import PoliciesResource, AsyncPoliciesResource
+from .cards import CardsResource, AsyncCardsResource
 
 __all__ = [
     # Base classes
@@ -47,4 +49,10 @@ __all__ = [
     "LedgerResource",
     "AsyncLedgerResource",
     "LedgerEntry",
+    # Policies
+    "PoliciesResource",
+    "AsyncPoliciesResource",
+    # Cards
+    "CardsResource",
+    "AsyncCardsResource",
 ]

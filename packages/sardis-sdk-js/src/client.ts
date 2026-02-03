@@ -31,6 +31,8 @@ import { TransactionsResource } from './resources/transactions.js';
 import { LedgerResource } from './resources/ledger.js';
 import { WalletsResource } from './resources/wallets.js';
 import { AgentsResource } from './resources/agents.js';
+import { CardsResource } from './resources/cards.js';
+import { PoliciesResource } from './resources/policies.js';
 import { UCPResource } from './resources/ucp.js';
 import { A2AResource } from './resources/a2a.js';
 import type {
@@ -176,6 +178,18 @@ export class SardisClient {
   public readonly holds: HoldsResource;
 
   /**
+   * Virtual card operations - issue cards and record/simulate purchases.
+   * @see {@link CardsResource}
+   */
+  public readonly cards: CardsResource;
+
+  /**
+   * Policy operations - parse/apply natural language policies.
+   * @see {@link PoliciesResource}
+   */
+  public readonly policies: PoliciesResource;
+
+  /**
    * Webhook subscription operations - manage webhook endpoints.
    * @see {@link WebhooksResource}
    */
@@ -275,6 +289,8 @@ export class SardisClient {
     // Initialize resources
     this.payments = new PaymentsResource(this);
     this.holds = new HoldsResource(this);
+    this.cards = new CardsResource(this);
+    this.policies = new PoliciesResource(this);
     this.webhooks = new WebhooksResource(this);
     this.marketplace = new MarketplaceResource(this);
     this.transactions = new TransactionsResource(this);

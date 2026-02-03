@@ -263,7 +263,9 @@ export interface TokenLimit {
  * they only sign transactions.
  */
 export interface Wallet {
-  /** Unique wallet identifier */
+  /** Unique wallet identifier (API field) */
+  wallet_id: string;
+  /** Backwards-compat alias (older SDKs used `id`) */
   id: string;
   /** ID of the agent that owns this wallet */
   agent_id: string;
@@ -329,6 +331,32 @@ export interface SetAddressInput {
   chain: string;
   /** Wallet address on this chain */
   address: string;
+}
+
+/**
+ * Input for transferring stablecoins from a wallet.
+ *
+ * This is an "agent action": the caller is the agent process using an API key.
+ * Sardis enforces policy + compliance and signs via the agent MPC wallet.
+ */
+export interface WalletTransferInput {
+  destination: string;
+  amount: string; // token units (e.g. "1.00" USDC)
+  token?: Token;
+  chain?: Chain;
+  domain?: string; // policy context label (e.g. "aws.amazon.com")
+  memo?: string;
+}
+
+export interface WalletTransferResponse {
+  tx_hash: string;
+  status: string;
+  from_address: string;
+  to_address: string;
+  amount: string;
+  token: Token;
+  chain: Chain;
+  audit_anchor?: string | null;
 }
 
 // ==================== Payment Types ====================
@@ -907,7 +935,9 @@ export interface AgentPolicy {
  * issue mandates, and be subject to spending policies.
  */
 export interface Agent {
-  /** Unique agent identifier */
+  /** Unique agent identifier (API field) */
+  agent_id: string;
+  /** Backwards-compat alias (older SDKs used `id`) */
   id: string;
   /** Display name */
   name: string;
@@ -955,6 +985,119 @@ export interface CreateAgentInput {
   policy?: AgentPolicy;
   /** Arbitrary metadata */
   metadata?: Record<string, unknown>;
+}
+
+// ==================== Policy Types ====================
+
+export interface PolicySpendingLimit {
+  vendor_pattern: string;
+  max_amount: number;
+  period: string;
+  currency?: string;
+}
+
+export interface ParsedPolicy {
+  name: string;
+  description: string;
+  spending_limits?: PolicySpendingLimit[];
+  requires_approval_above?: number | null;
+  global_daily_limit?: number | null;
+  global_monthly_limit?: number | null;
+  is_active?: boolean;
+  policy_id?: string | null;
+  agent_id?: string | null;
+  // allow additional fields from server
+  [key: string]: unknown;
+}
+
+export interface PolicyPreviewResponse {
+  parsed: ParsedPolicy;
+  warnings: string[];
+  requires_confirmation: boolean;
+  confirmation_message: string;
+}
+
+export interface ApplyPolicyFromNLResponse {
+  success: boolean;
+  policy_id: string;
+  agent_id: string;
+  trust_level?: string;
+  limit_per_tx?: string;
+  limit_total?: string;
+  merchant_rules_count?: number;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface PolicyCheckResponse {
+  allowed: boolean;
+  reason: string;
+  policy_id?: string | null;
+}
+
+// ==================== Cards Types ====================
+
+export type CardStatus = 'pending' | 'active' | 'frozen' | 'cancelled' | string;
+
+export interface Card {
+  id: string; // internal UUID
+  card_id: string; // stable external ID (vc_...)
+  wallet_id: string;
+  provider: string;
+  provider_card_id?: string | null;
+  card_type: string;
+  status: CardStatus;
+  limit_per_tx: number;
+  limit_daily: number;
+  limit_monthly: number;
+  funded_amount?: number;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface IssueCardInput {
+  wallet_id: string;
+  card_type?: string;
+  limit_per_tx?: string;
+  limit_daily?: string;
+  limit_monthly?: string;
+  locked_merchant_id?: string | null;
+  funding_source?: string;
+}
+
+export interface UpdateCardLimitsInput {
+  limit_per_tx?: string;
+  limit_daily?: string;
+  limit_monthly?: string;
+}
+
+export interface SimulateCardPurchaseInput {
+  amount: string;
+  currency?: string;
+  merchant_name?: string;
+  mcc_code?: string;
+  status?: string;
+  decline_reason?: string | null;
+}
+
+export interface CardTransaction {
+  transaction_id: string;
+  card_id: string;
+  amount: string;
+  currency: string;
+  merchant_name: string;
+  merchant_category: string;
+  status: string;
+  created_at: string;
+  settled_at?: string | null;
+  decline_reason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface SimulateCardPurchaseResponse {
+  transaction: CardTransaction;
+  policy: { allowed: boolean; reason: string };
+  card: Card;
 }
 
 /**

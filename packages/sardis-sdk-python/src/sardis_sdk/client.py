@@ -74,10 +74,12 @@ from .models.errors import (
 
 if TYPE_CHECKING:
     from .resources.agents import AgentsResource, AsyncAgentsResource
+    from .resources.cards import AsyncCardsResource, CardsResource
     from .resources.holds import AsyncHoldsResource, HoldsResource
     from .resources.ledger import AsyncLedgerResource, LedgerResource
     from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
     from .resources.payments import AsyncPaymentsResource, PaymentsResource
+    from .resources.policies import AsyncPoliciesResource, PoliciesResource
     from .resources.transactions import AsyncTransactionsResource, TransactionsResource
     from .resources.wallets import AsyncWalletsResource, WalletsResource
     from .resources.webhooks import AsyncWebhooksResource, WebhooksResource
@@ -572,6 +574,8 @@ class AsyncSardisClient(BaseClient):
         self._wallets: Optional["AsyncWalletsResource"] = None
         self._payments: Optional["AsyncPaymentsResource"] = None
         self._holds: Optional["AsyncHoldsResource"] = None
+        self._cards: Optional["AsyncCardsResource"] = None
+        self._policies: Optional["AsyncPoliciesResource"] = None
         self._webhooks: Optional["AsyncWebhooksResource"] = None
         self._marketplace: Optional["AsyncMarketplaceResource"] = None
         self._transactions: Optional["AsyncTransactionsResource"] = None
@@ -608,6 +612,22 @@ class AsyncSardisClient(BaseClient):
             from .resources.holds import AsyncHoldsResource
             self._holds = AsyncHoldsResource(self)
         return self._holds
+
+    @property
+    def cards(self) -> "AsyncCardsResource":
+        """Access the cards resource."""
+        if self._cards is None:
+            from .resources.cards import AsyncCardsResource
+            self._cards = AsyncCardsResource(self)
+        return self._cards
+
+    @property
+    def policies(self) -> "AsyncPoliciesResource":
+        """Access the policies resource."""
+        if self._policies is None:
+            from .resources.policies import AsyncPoliciesResource
+            self._policies = AsyncPoliciesResource(self)
+        return self._policies
 
     @property
     def webhooks(self) -> "AsyncWebhooksResource":
@@ -898,6 +918,8 @@ class SardisClient(BaseClient):
         self._wallets: Optional["WalletsResource"] = None
         self._payments: Optional["PaymentsResource"] = None
         self._holds: Optional["HoldsResource"] = None
+        self._cards: Optional["CardsResource"] = None
+        self._policies: Optional["PoliciesResource"] = None
         self._webhooks: Optional["WebhooksResource"] = None
         self._marketplace: Optional["MarketplaceResource"] = None
         self._transactions: Optional["TransactionsResource"] = None
@@ -934,6 +956,22 @@ class SardisClient(BaseClient):
             from .resources.holds import HoldsResource
             self._holds = HoldsResource(self)
         return self._holds
+
+    @property
+    def cards(self) -> "CardsResource":
+        """Access the cards resource."""
+        if self._cards is None:
+            from .resources.cards import CardsResource
+            self._cards = CardsResource(self)
+        return self._cards
+
+    @property
+    def policies(self) -> "PoliciesResource":
+        """Access the policies resource."""
+        if self._policies is None:
+            from .resources.policies import PoliciesResource
+            self._policies = PoliciesResource(self)
+        return self._policies
 
     @property
     def webhooks(self) -> "WebhooksResource":

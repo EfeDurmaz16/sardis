@@ -250,6 +250,65 @@ console.log(`Balance: ${balance.balance} USDC`);
 await client.wallets.setAddress(wallet.id, 'base', '0x...');
 ```
 
+## Policies (Natural Language → Deterministic Enforcement)
+
+LLMs help **write** policies, but Sardis uses deterministic code to **enforce** them.
+
+```typescript
+// Preview what the system understood (human-in-the-loop)
+const preview = await client.policies.preview(
+  "Max $100 per transaction, block gambling",
+  "agent_demo_001"
+);
+console.log(preview.parsed);
+
+// Apply policy to agent
+const applied = await client.policies.apply(
+  "Max $100 per transaction, block gambling",
+  "agent_demo_001"
+);
+console.log(applied.policy_id);
+```
+
+## Cards (Virtual Cards + Simulated Purchase Demo)
+
+```typescript
+// Issue a virtual card (Lithic-backed)
+const card = await client.cards.issue({
+  wallet_id: wallet.id,
+  limit_per_tx: "100.00",
+});
+
+// Simulate a purchase (e.g. gambling MCC -> policy deny + optional auto-freeze)
+const result = await client.cards.simulatePurchase(card.card_id, {
+  amount: "25.00",
+  currency: "USD",
+  merchant_name: "Demo Casino",
+  mcc_code: "7995",
+});
+console.log(result.policy, result.transaction);
+
+// Show card transactions
+const txs = await client.cards.transactions(card.card_id, 20);
+console.log(txs.length);
+```
+
+## Stablecoin Transfers (Agent is Sender)
+
+This is intended to be called by an agent process using an API key:
+
+```typescript
+const tx = await client.wallets.transfer(wallet.id, {
+  destination: "0x000000000000000000000000000000000000dEaD",
+  amount: "1.00",
+  token: "USDC",
+  chain: "base_sepolia",
+  domain: "localhost",
+  memo: "demo stablecoin transfer",
+});
+console.log(tx.tx_hash);
+```
+
 ## Supported Chains
 
 | Chain | Mainnet | Testnet |

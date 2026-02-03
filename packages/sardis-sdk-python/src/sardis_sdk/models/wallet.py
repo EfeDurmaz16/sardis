@@ -52,6 +52,28 @@ class WalletBalance(SardisModel):
     address: str
 
 
+class WalletTransferRequest(SardisModel):
+    """Request to transfer stablecoins from a wallet (agent is sender)."""
+
+    destination: str
+    amount: Decimal
+    token: str = "USDC"
+    chain: str = "base_sepolia"
+    domain: str = "localhost"
+    memo: str | None = None
+
+
+class WalletTransferResponse(SardisModel):
+    tx_hash: str
+    status: str
+    from_address: str
+    to_address: str
+    amount: Decimal
+    token: str
+    chain: str
+    audit_anchor: str | None = None
+
+
 class CreateWalletRequest(SardisModel):
     """Request to create a non-custodial wallet."""
     agent_id: str

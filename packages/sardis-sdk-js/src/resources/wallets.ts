@@ -11,10 +11,20 @@ import type {
   WalletBalance,
   CreateWalletInput,
   SetAddressInput,
+  WalletTransferInput,
+  WalletTransferResponse,
   RequestOptions,
 } from '../types.js';
 
 export class WalletsResource extends BaseResource {
+  private _normalize(wallet: Wallet): Wallet {
+    // Provide backwards-compatible alias: id := wallet_id
+    if (!wallet.id) {
+      (wallet as unknown as { id: string }).id = wallet.wallet_id;
+    }
+    return wallet;
+  }
+
   /**
    * Create a new non-custodial wallet for an agent.
    *
@@ -23,7 +33,8 @@ export class WalletsResource extends BaseResource {
    * @returns Created wallet
    */
   async create(input: CreateWalletInput, options?: RequestOptions): Promise<Wallet> {
-    return this._post<Wallet>('/api/v2/wallets', input, options);
+    const wallet = await this._post<Wallet>('/api/v2/wallets', input, options);
+    return this._normalize(wallet);
   }
 
   /**
@@ -34,7 +45,8 @@ export class WalletsResource extends BaseResource {
    * @returns Wallet details
    */
   async get(walletId: string, options?: RequestOptions): Promise<Wallet> {
-    return this._get<Wallet>(`/api/v2/wallets/${walletId}`, undefined, options);
+    const wallet = await this._get<Wallet>(`/api/v2/wallets/${walletId}`, undefined, options);
+    return this._normalize(wallet);
   }
 
   /**
@@ -50,7 +62,17 @@ export class WalletsResource extends BaseResource {
     if (agentId) {
       params.agent_id = agentId;
     }
-    return this._get<Wallet[]>('/api/v2/wallets', params, options);
+    const response = await this._get<{ wallets: Wallet[] } | Wallet[]>(
+      '/api/v2/wallets',
+      params,
+      options
+    );
+
+    // Handle both array and object response formats
+    if (Array.isArray(response)) {
+      return response.map((w) => this._normalize(w));
+    }
+    return (response.wallets || []).map((w) => this._normalize(w));
   }
 
   /**
@@ -102,8 +124,27 @@ export class WalletsResource extends BaseResource {
     input: SetAddressInput,
     options?: RequestOptions
   ): Promise<Wallet> {
-    return this._post<Wallet>(
+    const wallet = await this._post<Wallet>(
       `/api/v2/wallets/${walletId}/addresses`,
+      input,
+      options
+    );
+    return this._normalize(wallet);
+  }
+
+  /**
+   * Transfer stablecoins from a wallet (agent is sender).
+   *
+   * This endpoint is intended to be called by an agent process using an API key.
+   * Sardis enforces policy + compliance and signs via the agent MPC wallet.
+   */
+  async transfer(
+    walletId: string,
+    input: WalletTransferInput,
+    options?: RequestOptions
+  ): Promise<WalletTransferResponse> {
+    return this._post<WalletTransferResponse>(
+      `/api/v2/wallets/${walletId}/transfer`,
       input,
       options
     );

@@ -17,6 +17,14 @@ import type {
 } from '../types.js';
 
 export class AgentsResource extends BaseResource {
+  private _normalize(agent: Agent): Agent {
+    // Provide backwards-compatible alias: id := agent_id
+    if (!agent.id) {
+      (agent as unknown as { id: string }).id = agent.agent_id;
+    }
+    return agent;
+  }
+
   /**
    * Create a new agent
    *
@@ -33,7 +41,8 @@ export class AgentsResource extends BaseResource {
    * ```
    */
   async create(input: CreateAgentInput, options?: RequestOptions): Promise<Agent> {
-    return this._post<Agent>('/api/v2/agents', input, options);
+    const agent = await this._post<Agent>('/api/v2/agents', input, options);
+    return this._normalize(agent);
   }
 
   /**
@@ -46,7 +55,8 @@ export class AgentsResource extends BaseResource {
    * ```
    */
   async get(agentId: string, options?: RequestOptions): Promise<Agent> {
-    return this._get<Agent>(`/api/v2/agents/${agentId}`, undefined, options);
+    const agent = await this._get<Agent>(`/api/v2/agents/${agentId}`, undefined, options);
+    return this._normalize(agent);
   }
 
   /**
@@ -84,9 +94,9 @@ export class AgentsResource extends BaseResource {
 
     // Handle both array and object response formats
     if (Array.isArray(response)) {
-      return response;
+      return response.map((a) => this._normalize(a));
     }
-    return response.agents || [];
+    return (response.agents || []).map((a) => this._normalize(a));
   }
 
   /**
@@ -101,7 +111,8 @@ export class AgentsResource extends BaseResource {
    * ```
    */
   async update(agentId: string, input: UpdateAgentInput): Promise<Agent> {
-    return this._patch<Agent>(`/api/v2/agents/${agentId}`, input);
+    const agent = await this._patch<Agent>(`/api/v2/agents/${agentId}`, input);
+    return this._normalize(agent);
   }
 
   /**

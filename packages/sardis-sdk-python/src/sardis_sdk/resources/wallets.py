@@ -9,7 +9,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from ..models import Wallet, WalletBalance, WalletCreate
+from ..models import Wallet, WalletBalance, WalletCreate, WalletTransferResponse
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
@@ -224,6 +224,31 @@ class AsyncWalletsResource(AsyncBaseResource):
         data = await self._patch(f"wallets/{wallet_id}", payload, timeout=timeout)
         return Wallet.model_validate(data)
 
+    async def transfer(
+        self,
+        wallet_id: str,
+        *,
+        destination: str,
+        amount: Decimal,
+        token: str = "USDC",
+        chain: str = "base_sepolia",
+        domain: str = "localhost",
+        memo: Optional[str] = None,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> WalletTransferResponse:
+        """Transfer stablecoins from a wallet (agent is sender)."""
+        payload: Dict[str, Any] = {
+            "destination": destination,
+            "amount": str(amount),
+            "token": token,
+            "chain": chain,
+            "domain": domain,
+        }
+        if memo is not None:
+            payload["memo"] = memo
+        data = await self._post(f"wallets/{wallet_id}/transfer", payload, timeout=timeout)
+        return WalletTransferResponse.model_validate(data)
+
 
 class WalletsResource(SyncBaseResource):
     """Sync resource for managing wallets.
@@ -432,6 +457,31 @@ class WalletsResource(SyncBaseResource):
 
         data = self._patch(f"wallets/{wallet_id}", payload, timeout=timeout)
         return Wallet.model_validate(data)
+
+    def transfer(
+        self,
+        wallet_id: str,
+        *,
+        destination: str,
+        amount: Decimal,
+        token: str = "USDC",
+        chain: str = "base_sepolia",
+        domain: str = "localhost",
+        memo: Optional[str] = None,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> WalletTransferResponse:
+        """Transfer stablecoins from a wallet (agent is sender)."""
+        payload: Dict[str, Any] = {
+            "destination": destination,
+            "amount": str(amount),
+            "token": token,
+            "chain": chain,
+            "domain": domain,
+        }
+        if memo is not None:
+            payload["memo"] = memo
+        data = self._post(f"wallets/{wallet_id}/transfer", payload, timeout=timeout)
+        return WalletTransferResponse.model_validate(data)
 
 
 __all__ = [

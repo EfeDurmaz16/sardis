@@ -119,6 +119,27 @@ export type {
   TokenLimit,
   CreateWalletInput,
   SetAddressInput,
+  WalletTransferInput,
+  WalletTransferResponse,
+} from './types.js';
+
+// Types - Policies
+export type {
+  ParsedPolicy,
+  PolicyPreviewResponse,
+  ApplyPolicyFromNLResponse,
+  PolicyCheckResponse,
+} from './types.js';
+
+// Types - Cards
+export type {
+  Card,
+  CardStatus,
+  IssueCardInput,
+  UpdateCardLimitsInput,
+  SimulateCardPurchaseInput,
+  SimulateCardPurchaseResponse,
+  CardTransaction,
 } from './types.js';
 
 // Types - Payments

@@ -201,7 +201,7 @@ agent = await client.agents.create(
 
 # Update spending limits
 await client.agents.update(
-    agent.id,
+    agent.agent_id,
     spending_limits={"daily": "10000.00"},
 )
 
@@ -216,7 +216,7 @@ Manage non-custodial MPC wallets:
 ```python
 # Create a wallet for an agent
 wallet = await client.wallets.create(
-    agent_id=agent.id,
+    agent_id=agent.agent_id,
     mpc_provider="turnkey",  # or "fireblocks"
     limit_per_tx="500.00",
     limit_total="10000.00",
@@ -224,7 +224,7 @@ wallet = await client.wallets.create(
 
 # Get wallet balance (read from chain)
 balance = await client.wallets.get_balance(
-    wallet_id=wallet.id,
+    wallet_id=wallet.wallet_id,
     chain="base",
     token="USDC",
 )
@@ -232,7 +232,7 @@ print(f"Balance: {balance.balance} USDC")
 
 # Set chain address
 await client.wallets.set_address(
-    wallet_id=wallet.id,
+    wallet_id=wallet.wallet_id,
     chain="base",
     address="0x...",
 )
