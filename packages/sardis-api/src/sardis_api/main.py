@@ -66,7 +66,6 @@ from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
-from sardis_v2_core.scheduler import init_scheduler, get_scheduler
 from sardis_v2_core.jobs.spending_reset import reset_spending_limits
 from sardis_v2_core.jobs.hold_expiry import expire_holds
 from sardis_v2_core.jobs.approval_expiry import expire_approvals
@@ -192,32 +191,45 @@ async def lifespan(app: FastAPI):
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
 
-    # Initialize and start scheduler
-    database_url = os.getenv("DATABASE_URL", "")
-    scheduler = init_scheduler(
-        database_url=database_url if database_url.startswith("postgresql") else None
-    )
+    # Initialize and start background scheduler (optional).
+    #
+    # This is disabled by default for local demos because:
+    # - it requires apscheduler to be installed
+    # - it can hide app-level issues behind background noise
+    #
+    # Enable explicitly with SARDIS_ENABLE_SCHEDULER=1.
+    enable_scheduler = os.getenv("SARDIS_ENABLE_SCHEDULER", "").lower() in ("1", "true", "yes", "on")
+    if enable_scheduler:
+        try:
+            from sardis_v2_core.scheduler import init_scheduler
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Background scheduler disabled (init failed): %s", e)
+        else:
+            database_url = os.getenv("DATABASE_URL", "")
+            scheduler = init_scheduler(
+                database_url=database_url if database_url.startswith("postgresql") else None
+            )
 
-    # Register jobs
-    scheduler.add_cron_job(
-        reset_spending_limits,
-        job_id="spending_reset_daily",
-        hour=0, minute=0,  # Midnight UTC
-    )
-    scheduler.add_interval_job(
-        expire_holds,
-        job_id="hold_expiry_check",
-        seconds=300,  # Every 5 minutes
-    )
-    scheduler.add_interval_job(
-        expire_approvals,
-        job_id="approval_expiry_check",
-        seconds=60,  # Every minute
-    )
+            # Register jobs
+            scheduler.add_cron_job(
+                reset_spending_limits,
+                job_id="spending_reset_daily",
+                hour=0, minute=0,  # Midnight UTC
+            )
+            scheduler.add_interval_job(
+                expire_holds,
+                job_id="hold_expiry_check",
+                seconds=300,  # Every 5 minutes
+            )
+            scheduler.add_interval_job(
+                expire_approvals,
+                job_id="approval_expiry_check",
+                seconds=60,  # Every minute
+            )
 
-    await scheduler.start()
-    app.state.scheduler = scheduler
-    logger.info("Background scheduler started with jobs registered")
+            await scheduler.start()
+            app.state.scheduler = scheduler
+            logger.info("Background scheduler started with jobs registered")
 
     # Mark startup complete
     app.state.startup_time = time.time()
