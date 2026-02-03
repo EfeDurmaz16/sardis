@@ -119,70 +119,38 @@ class ApprovalRepository:
 
         return _row_to_approval(row)
 
-    async def update(
-        self,
-        approval_id: str,
-        *,
-        status: Optional[ApprovalStatus] = None,
-        reviewed_by: Optional[str] = None,
-        reviewed_at: Optional[datetime] = None,
-        metadata: Optional[dict] = None,
-    ) -> Optional[Approval]:
-        """Update approval status and reviewer info.
+    async def update(self, approval_id: str, approval: Approval) -> Optional[Approval]:
+        """Update approval with new state.
 
         Args:
-            approval_id: Approval ID
-            status: New status
-            reviewed_by: Reviewer ID/email
-            reviewed_at: Review timestamp
-            metadata: Updated metadata
+            approval_id: Approval ID to update
+            approval: Updated Approval object
 
         Returns:
             Updated Approval or None if not found
         """
-        # Build dynamic UPDATE query
-        updates = []
-        values = []
-        param_idx = 1
-
-        if status is not None:
-            updates.append(f"status = ${param_idx}")
-            values.append(status)
-            param_idx += 1
-
-        if reviewed_by is not None:
-            updates.append(f"reviewed_by = ${param_idx}")
-            values.append(reviewed_by)
-            param_idx += 1
-
-        if reviewed_at is not None:
-            updates.append(f"reviewed_at = ${param_idx}")
-            values.append(reviewed_at)
-            param_idx += 1
-
-        if metadata is not None:
-            updates.append(f"metadata = ${param_idx}")
-            values.append(metadata)
-            param_idx += 1
-
-        if not updates:
-            # No updates, just fetch current state
-            return await self.get(approval_id)
-
-        # Add approval_id as last parameter
-        values.append(approval_id)
-
-        query = f"""
+        query = """
             UPDATE approvals
-            SET {', '.join(updates)}
-            WHERE id = ${param_idx}
+            SET status = $1,
+                reviewed_by = $2,
+                reviewed_at = $3,
+                metadata = $4
+            WHERE id = $5
             RETURNING id, action, status, urgency, requested_by, reviewed_by,
                       created_at, reviewed_at, expires_at, vendor, amount,
                       purpose, reason, card_limit, agent_id, wallet_id,
                       organization_id, metadata
         """
 
-        row = await Database.fetchrow(query, *values)
+        row = await Database.fetchrow(
+            query,
+            approval.status,
+            approval.reviewed_by,
+            approval.reviewed_at,
+            approval.metadata or {},
+            approval_id
+        )
+
         if not row:
             return None
 
@@ -192,6 +160,7 @@ class ApprovalRepository:
         self,
         *,
         status: Optional[ApprovalStatus] = None,
+        action: Optional[str] = None,
         agent_id: Optional[str] = None,
         wallet_id: Optional[str] = None,
         organization_id: Optional[str] = None,
@@ -204,6 +173,7 @@ class ApprovalRepository:
 
         Args:
             status: Filter by status
+            action: Filter by action type
             agent_id: Filter by agent ID
             wallet_id: Filter by wallet ID
             organization_id: Filter by organization ID
@@ -222,6 +192,11 @@ class ApprovalRepository:
         if status is not None:
             conditions.append(f"status = ${param_idx}")
             values.append(status)
+            param_idx += 1
+
+        if action is not None:
+            conditions.append(f"action = ${param_idx}")
+            values.append(action)
             param_idx += 1
 
         if agent_id is not None:
