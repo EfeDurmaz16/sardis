@@ -309,7 +309,7 @@ class EnhancedWalletManager:
         if not self._turnkey_client:
             raise RuntimeError(
                 "Turnkey client is not configured. "
-                "Set TURNKEY_API_KEY, TURNKEY_API_PRIVATE_KEY, and TURNKEY_ORGANIZATION_ID."
+                "Set TURNKEY_API_PUBLIC_KEY (or TURNKEY_API_KEY), TURNKEY_API_PRIVATE_KEY, and TURNKEY_ORGANIZATION_ID."
             )
 
         result = await self._turnkey_client.create_wallet(wallet_name)

@@ -338,6 +338,12 @@ Extract the policy accurately and completely."""
         # Add category restrictions as deny rules
         if extracted.category_restrictions:
             for blocked_cat in extracted.category_restrictions.blocked_categories:
+                # Prefer MCC-category blocking for card/on-chain flows (mcc_code → category_name).
+                # Keep deny rules too for flows that pass category strings explicitly.
+                if blocked_cat:
+                    normalized = blocked_cat.lower().strip()
+                    if normalized and normalized not in policy.blocked_merchant_categories:
+                        policy.blocked_merchant_categories.append(normalized)
                 rule = MerchantRule(
                     rule_type="deny",
                     category=blocked_cat.lower(),

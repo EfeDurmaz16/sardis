@@ -96,11 +96,12 @@ class Wallet(BaseModel):
         *,
         mpc_provider: str = "turnkey",
         currency: str = "USDC",
+        wallet_id: str | None = None,
     ) -> "Wallet":
         """Create a new non-custodial wallet."""
         from uuid import uuid4
         return Wallet(
-            wallet_id=f"wallet_{uuid4().hex[:16]}",
+            wallet_id=wallet_id or f"wallet_{uuid4().hex[:16]}",
             agent_id=agent_id,
             mpc_provider=mpc_provider,
             currency=currency,

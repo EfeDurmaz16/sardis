@@ -10,6 +10,7 @@ import {
   Wallet,
   Lock,
   FileText,
+  Sparkles,
   LogOut
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -22,6 +23,7 @@ interface LayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
   { name: 'Holds', href: '/holds', icon: Lock },

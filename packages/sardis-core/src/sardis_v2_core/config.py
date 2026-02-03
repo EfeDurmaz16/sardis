@@ -9,6 +9,30 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
+def _normalize_environment(value: str) -> str:
+    """Normalize common environment aliases to SardisSettings.environment values."""
+    v = (value or "").strip().lower()
+    if v in ("development", "dev", "local"):
+        return "dev"
+    if v in ("production", "prod"):
+        return "prod"
+    if v in ("sandbox", "staging"):
+        # Sardis currently uses "sandbox" as a pre-prod environment for demos.
+        return "sandbox"
+    return v
+
+
+def _normalize_chain_mode(value: str) -> str:
+    """Normalize common chain mode aliases to SardisSettings.chain_mode values."""
+    v = (value or "").strip().lower()
+    if v in ("sim", "simulate", "simulated"):
+        return "simulated"
+    # Historical/compose aliases: "testnet"/"mainnet" means "live execution"
+    if v in ("live", "testnet", "mainnet"):
+        return "live"
+    return v
+
+
 class TurnkeyConfig(BaseSettings):
     """Turnkey MPC provider configuration."""
     organization_id: str = ""
@@ -92,6 +116,10 @@ class SardisSettings(BaseSettings):
     
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "prod"
     
     @property
     def turnkey_configured(self) -> bool:
@@ -108,11 +136,25 @@ class SardisSettings(BaseSettings):
         env_file = ".env"
         extra = "ignore"
 
+    @field_validator("environment", mode="before")
+    @classmethod
+    def normalize_environment(cls, v: str) -> str:
+        if not isinstance(v, str):
+            return v
+        return _normalize_environment(v)
+
+    @field_validator("chain_mode", mode="before")
+    @classmethod
+    def normalize_chain_mode(cls, v: str) -> str:
+        if not isinstance(v, str):
+            return v
+        return _normalize_chain_mode(v)
+
     @field_validator("secret_key")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
         import os
-        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        env = _normalize_environment(os.getenv("SARDIS_ENVIRONMENT", "dev"))
         if env != "dev" and (not v or len(v) < 32):
             raise ValueError(
                 "SECRET_KEY must be at least 32 characters in production. "
@@ -132,7 +174,7 @@ class SardisSettings(BaseSettings):
             v = os.getenv("DATABASE_URL", "postgresql://localhost/sardis")
         
         # Warn if using SQLite in production
-        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        env = _normalize_environment(os.getenv("SARDIS_ENVIRONMENT", "dev"))
         if env == "prod" and v.startswith("sqlite"):
             warnings.warn(
                 "SQLite is not recommended for production. "
@@ -186,8 +228,8 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
         if not settings.database_url or settings.database_url.startswith("sqlite"):
             errors.append("DATABASE_URL: PostgreSQL required for production")
 
-        if not os.getenv("REDIS_URL"):
-            errors.append("REDIS_URL: Required for distributed rate limiting")
+        if not (os.getenv("REDIS_URL") or os.getenv("SARDIS_REDIS_URL") or os.getenv("UPSTASH_REDIS_URL")):
+            errors.append("REDIS_URL: Required for distributed rate limiting (or set SARDIS_REDIS_URL/UPSTASH_REDIS_URL)")
 
         # MPC configuration
         if settings.chain_mode == "live":
@@ -215,7 +257,7 @@ def load_settings(env_file: str | None = None) -> SardisSettings:
     settings = SardisSettings(_env_file=env_path)
 
     # Run production validation
-    env = os.getenv("SARDIS_ENVIRONMENT", settings.environment)
+    env = _normalize_environment(os.getenv("SARDIS_ENVIRONMENT", settings.environment))
     if env in ("prod", "sandbox"):
         errors = validate_production_config(settings)
         if errors:

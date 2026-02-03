@@ -495,3 +495,93 @@ export const marketplaceApi = {
   listReviews: (serviceId: string, limit = 50) =>
     requestV2<any[]>(`/marketplace/services/${serviceId}/reviews?limit=${limit}`),
 }
+
+// Demo APIs (V2)
+export const demoApi = {
+  bootstrapApiKey: (data: {
+    name?: string
+    scopes?: string[]
+    rate_limit?: number
+    expires_in_days?: number | null
+    organization_id?: string | null
+  }) =>
+    requestV2<{
+      key: string
+      key_id: string
+      key_prefix: string
+      organization_id: string
+      scopes: string[]
+      rate_limit: number
+      expires_at?: string | null
+    }>('/auth/bootstrap-api-key', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  createWallet: (data: {
+    agent_id: string
+    mpc_provider?: string
+    currency?: string
+    limit_per_tx?: string
+    limit_total?: string
+    wallet_name?: string
+  }) =>
+    requestV2<any>('/wallets', {
+      method: 'POST',
+      body: JSON.stringify({
+        mpc_provider: 'turnkey',
+        currency: 'USDC',
+        limit_per_tx: '100.00',
+        limit_total: '1000.00',
+        ...data,
+      }),
+    }),
+
+  applyPolicy: (data: { agent_id: string; natural_language: string }) =>
+    requestV2<any>('/policies/apply', {
+      method: 'POST',
+      body: JSON.stringify({ ...data, confirm: true }),
+    }),
+
+  getPolicy: (agentId: string) => requestV2<any>(`/policies/${agentId}`),
+
+  checkPolicy: (data: {
+    agent_id: string
+    amount: string
+    currency?: string
+    merchant_id?: string
+    mcc_code?: string
+  }) =>
+    requestV2<{ allowed: boolean; reason: string; policy_id?: string }>('/policies/check', {
+      method: 'POST',
+      body: JSON.stringify({
+        currency: 'USD',
+        ...data,
+      }),
+    }),
+
+  issueCard: (data: { wallet_id: string; limit_per_tx?: string; limit_daily?: string; limit_monthly?: string }) =>
+    requestV2<any>('/cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        limit_per_tx: '100.00',
+        limit_daily: '500.00',
+        limit_monthly: '2000.00',
+        ...data,
+      }),
+    }),
+
+  simulatePurchase: (cardId: string, data: { amount: string; currency?: string; merchant_name?: string; mcc_code?: string }) =>
+    requestV2<any>(`/cards/${cardId}/simulate-purchase`, {
+      method: 'POST',
+      body: JSON.stringify({
+        currency: 'USD',
+        merchant_name: 'Demo Merchant',
+        mcc_code: '5734',
+        ...data,
+      }),
+    }),
+
+  listCardTransactions: (cardId: string, limit = 50) =>
+    requestV2<any[]>(`/cards/${cardId}/transactions?limit=${limit}`),
+}

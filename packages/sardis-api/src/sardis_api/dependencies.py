@@ -49,9 +49,9 @@ class DependencyConfig:
         return cls(
             database_url=database_url,
             use_postgres=use_postgres,
-            redis_url=os.getenv("SARDIS_REDIS_URL") or os.getenv("UPSTASH_REDIS_URL"),
+            redis_url=os.getenv("SARDIS_REDIS_URL") or os.getenv("REDIS_URL") or os.getenv("UPSTASH_REDIS_URL"),
             stripe_enabled=bool(os.getenv("STRIPE_SECRET_KEY")),
-            turnkey_enabled=bool(os.getenv("TURNKEY_API_KEY")),
+            turnkey_enabled=bool(os.getenv("TURNKEY_API_PUBLIC_KEY") or os.getenv("TURNKEY_API_KEY")),
             persona_enabled=bool(os.getenv("PERSONA_API_KEY")),
             elliptic_enabled=bool(os.getenv("ELLIPTIC_API_KEY")),
             lithic_enabled=bool(os.getenv("LITHIC_API_KEY")),

@@ -9,8 +9,9 @@ from pydantic import BaseModel, Field
 
 from sardis_v2_core import Wallet, WalletRepository
 from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
+from sardis_api.authz import require_principal
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # Request/Response Models
@@ -20,6 +21,7 @@ class CreateWalletRequest(BaseModel):
     currency: str = "USDC"
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
+    wallet_name: Optional[str] = Field(default=None, description="Optional provider wallet name (Turnkey)")
 
 
 class UpdateWalletRequest(BaseModel):
@@ -100,9 +102,15 @@ class BalanceResponse(BaseModel):
 
 # Dependency
 class WalletDependencies:
-    def __init__(self, wallet_repo: WalletRepository, chain_executor: ChainExecutor | None = None):
+    def __init__(
+        self,
+        wallet_repo: WalletRepository,
+        chain_executor: ChainExecutor | None = None,
+        wallet_manager: any | None = None,
+    ):
         self.wallet_repo = wallet_repo
         self.chain_executor = chain_executor
+        self.wallet_manager = wallet_manager
 
 
 def get_deps() -> WalletDependencies:
@@ -116,12 +124,53 @@ async def create_wallet(
     deps: WalletDependencies = Depends(get_deps),
 ):
     """Create a new non-custodial wallet for an agent."""
+    wallet_id_override: str | None = None
+    addresses: dict[str, str] | None = None
+
+    if request.mpc_provider == "turnkey":
+        if not deps.wallet_manager:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Turnkey wallet manager not configured",
+            )
+
+        wallet_name = request.wallet_name or f"agent_{request.agent_id}"
+        provider = await deps.wallet_manager.create_turnkey_wallet(  # type: ignore[call-arg]
+            wallet_name=wallet_name,
+            agent_id=request.agent_id,
+        )
+        wallet_id_override = provider.get("wallet_id")
+        addrs = provider.get("addresses") or []
+        first = None
+        if addrs:
+            first = addrs[0].get("address") if isinstance(addrs[0], dict) else addrs[0]
+        if isinstance(first, str) and first:
+            # Same EVM address is valid across supported EVM chains.
+            addresses = {
+                "base_sepolia": first,
+                "base": first,
+                "ethereum": first,
+                "polygon": first,
+                "arbitrum": first,
+                "optimism": first,
+            }
+
+        if wallet_id_override:
+            existing = await deps.wallet_repo.get(wallet_id_override)
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Wallet already exists",
+                )
+
     wallet = await deps.wallet_repo.create(
         agent_id=request.agent_id,
+        wallet_id=wallet_id_override,
         mpc_provider=request.mpc_provider,
         currency=request.currency,
         limit_per_tx=request.limit_per_tx,
         limit_total=request.limit_total,
+        addresses=addresses,
     )
     return WalletResponse.from_wallet(wallet)
 
@@ -350,7 +399,7 @@ async def transfer_crypto(
         mandate_id=f"transfer_{uuid.uuid4().hex[:16]}",
         mandate_type="payment",
         issuer=f"wallet:{wallet_id}",
-        subject=f"transfer:{wallet_id}",
+        subject=wallet_id,
         expires_at=int(time.time()) + 300,
         nonce=uuid.uuid4().hex,
         proof=VCProof(

@@ -9,6 +9,7 @@ import InvoicesPage from './pages/Invoices'
 import WebhooksPage from './pages/Webhooks'
 import SettingsPage from './pages/Settings'
 import LoginPage from './pages/Login'
+import DemoPage from './pages/Demo'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -36,6 +37,7 @@ function AppRoutes() {
                 <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/webhooks" element={<WebhooksPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/demo" element={<DemoPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

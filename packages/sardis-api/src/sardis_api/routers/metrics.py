@@ -1,6 +1,7 @@
 """Prometheus metrics endpoint for monitoring and observability."""
 from __future__ import annotations
 
+import os
 import time
 from typing import Optional
 
@@ -20,7 +21,7 @@ router = APIRouter(tags=["monitoring"])
 
 # Application info
 app_info = Info("sardis_app", "Sardis application information")
-app_info.info({"version": "2.0.0", "environment": "production"})
+app_info.info({"version": "2.0.0", "environment": os.getenv("SARDIS_ENVIRONMENT", "dev")})
 
 # Request metrics
 http_requests_total = Counter(

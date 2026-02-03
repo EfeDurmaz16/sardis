@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Shield } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -22,7 +24,7 @@ export default function Login() {
             formData.append('username', username);
             formData.append('password', password);
 
-            const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+            const response = await fetch(`${API_URL}/api/v2/auth/login`, {
                 method: 'POST',
                 body: formData,
             });

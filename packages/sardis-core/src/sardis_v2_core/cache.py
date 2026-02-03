@@ -392,6 +392,7 @@ class CacheService:
     PREFIX_WALLET = "wallet"
     PREFIX_AGENT = "agent"
     PREFIX_RATE_LIMIT = "rate"
+    PREFIX_AUTH = "auth"
 
     # Default TTLs (seconds)
     TTL_BALANCE = 60  # 1 minute
@@ -440,6 +441,23 @@ class CacheService:
     def _key(self, prefix: str, *parts: str) -> str:
         """Build a cache key."""
         return f"sardis:{prefix}:{':'.join(parts)}"
+
+    # Auth / session security
+
+    async def revoke_jwt_jti(self, jti: str, ttl_seconds: int) -> bool:
+        """
+        Revoke a JWT by its JTI for the remaining token lifetime.
+
+        This enables logout + server-side revocation for otherwise stateless JWTs.
+        """
+        ttl_seconds = max(1, int(ttl_seconds))
+        key = self._key(self.PREFIX_AUTH, "revoked_jti", jti)
+        return await self._backend.set(key, "1", ttl=ttl_seconds)
+
+    async def is_jwt_jti_revoked(self, jti: str) -> bool:
+        """Check if a JWT JTI has been revoked."""
+        key = self._key(self.PREFIX_AUTH, "revoked_jti", jti)
+        return await self._backend.exists(key)
 
     # Balance caching
 

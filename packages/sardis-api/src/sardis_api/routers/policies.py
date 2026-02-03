@@ -1,15 +1,32 @@
 """Policy API endpoints with Natural Language parsing support."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
+from decimal import Decimal
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
+
+
+# ============================================================================
+# Dependencies
+# ============================================================================
+
+@dataclass
+class PolicyDependencies:
+    policy_store: any  # AsyncPolicyStore (in-memory or postgres)
+
+
+def get_deps() -> PolicyDependencies:
+    raise NotImplementedError("Dependency override required")
 
 
 # ============================================================================
@@ -101,6 +118,29 @@ class PolicyPreviewResponse(BaseModel):
     warnings: List[str] = []
     requires_confirmation: bool = True
     confirmation_message: str = ""
+
+
+class PolicyCheckRequest(BaseModel):
+    """Request to evaluate a hypothetical purchase against an agent policy."""
+
+    agent_id: str
+    amount: Decimal = Field(gt=0)
+    currency: str = Field(default="USD")
+    merchant_id: Optional[str] = None
+    merchant_category: Optional[str] = Field(
+        default=None,
+        description="Optional category name (e.g., 'gambling'). Prefer mcc_code when available.",
+    )
+    mcc_code: Optional[str] = Field(
+        default=None,
+        description="4-digit MCC code (e.g., 7995 for gambling).",
+    )
+
+
+class PolicyCheckResponse(BaseModel):
+    allowed: bool
+    reason: str
+    policy_id: Optional[str] = None
 
 
 # ============================================================================
@@ -281,6 +321,7 @@ async def preview_policy_from_nl(
 @router.post("/apply", response_model=dict)
 async def apply_policy_from_nl(
     request: CreatePolicyFromNLRequest,
+    deps: PolicyDependencies = Depends(get_deps),
 ):
     """
     Parse natural language and apply policy to an agent.
@@ -300,22 +341,52 @@ async def apply_policy_from_nl(
         )
 
     try:
-        from sardis_v2_core.nl_policy_parser import NLPolicyParser, HAS_INSTRUCTOR
+        from sardis_v2_core.nl_policy_parser import create_policy_parser
+        from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel
 
-        if not HAS_INSTRUCTOR:
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="LLM policy parsing requires instructor package",
+        parser = create_policy_parser(use_llm=True)
+        if hasattr(parser, "parse_and_convert"):
+            policy = await parser.parse_and_convert(request.natural_language, request.agent_id)  # type: ignore[attr-defined]
+        else:
+            # Regex fallback: build a reasonable SpendingPolicy
+            parsed = parser.parse(request.natural_language)  # type: ignore[attr-defined]
+            policy = SpendingPolicy(
+                agent_id=request.agent_id,
+                trust_level=TrustLevel.MEDIUM,
             )
 
-        parser = NLPolicyParser()
-        policy = await parser.parse_and_convert(
-            request.natural_language,
-            request.agent_id,
-        )
+            for sl in parsed.get("spending_limits", []):
+                vendor_pattern = sl.get("vendor_pattern") or "any"
+                max_amount = Decimal(str(sl.get("max_amount", "0") or "0"))
+                period = sl.get("period") or "daily"
+                policy.merchant_rules.append(
+                    MerchantRule(
+                        rule_type="allow",
+                        merchant_id=vendor_pattern,
+                        max_per_tx=max_amount if period == "per_transaction" else None,
+                        daily_limit=max_amount if period == "daily" else None,
+                        reason=f"Regex policy: max {max_amount} {period}",
+                    )
+                )
+                if period == "per_transaction" and max_amount > 0:
+                    policy.limit_per_tx = min(policy.limit_per_tx, max_amount)
+                if period in ("daily", "weekly", "monthly") and max_amount > 0:
+                    if period == "daily" and not policy.daily_limit:
+                        policy.daily_limit = TimeWindowLimit(window_type="daily", limit_amount=max_amount)
+                    if period == "weekly" and not policy.weekly_limit:
+                        policy.weekly_limit = TimeWindowLimit(window_type="weekly", limit_amount=max_amount)
+                    if period == "monthly" and not policy.monthly_limit:
+                        policy.monthly_limit = TimeWindowLimit(window_type="monthly", limit_amount=max_amount)
+
+            blocked = parsed.get("blocked_categories", []) or []
+            for cat in blocked:
+                c = str(cat).strip().lower()
+                if c and c not in policy.blocked_merchant_categories:
+                    policy.blocked_merchant_categories.append(c)
 
         # In production, this would save to database
-        # For now, return the policy details
+        await deps.policy_store.set_policy(request.agent_id, policy)
+
         logger.info(
             f"Policy applied: agent_id={request.agent_id}, "
             f"policy_id={policy.policy_id}, "
@@ -390,3 +461,41 @@ async def get_policy_examples():
             "use_case": "Agent that uses LLM APIs for its operations",
         },
     ]
+
+
+@router.get("/{agent_id}", response_model=dict)
+async def get_active_policy(agent_id: str, deps: PolicyDependencies = Depends(get_deps)):
+    policy = await deps.policy_store.fetch_policy(agent_id)
+    if not policy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No policy for agent")
+    return {
+        "agent_id": agent_id,
+        "policy_id": policy.policy_id,
+        "trust_level": policy.trust_level.value,
+        "limit_per_tx": str(policy.limit_per_tx),
+        "limit_total": str(policy.limit_total),
+        "blocked_merchant_categories": policy.blocked_merchant_categories,
+        "merchant_rules_count": len(policy.merchant_rules),
+        "require_preauth": policy.require_preauth,
+    }
+
+
+@router.post("/check", response_model=PolicyCheckResponse)
+async def check_policy(request: PolicyCheckRequest, deps: PolicyDependencies = Depends(get_deps)):
+    """
+    Evaluate a hypothetical purchase against the agent's active policy.
+
+    For demo purposes, currency is treated as 1:1 with the policy's default currency.
+    """
+    policy = await deps.policy_store.fetch_policy(request.agent_id)
+    if not policy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No policy for agent")
+
+    ok, reason = policy.validate_payment(
+        amount=request.amount,
+        fee=Decimal("0"),
+        merchant_id=request.merchant_id,
+        merchant_category=request.merchant_category,
+        mcc_code=request.mcc_code,
+    )
+    return PolicyCheckResponse(allowed=ok, reason=reason, policy_id=policy.policy_id)

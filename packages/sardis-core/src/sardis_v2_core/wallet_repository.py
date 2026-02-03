@@ -36,15 +36,19 @@ class WalletRepository:
     async def create(
         self,
         agent_id: str,
+        wallet_id: str | None = None,
         mpc_provider: str = "turnkey",
         currency: str = "USDC",
         limit_per_tx: Decimal = Decimal("100.00"),
         limit_total: Decimal = Decimal("1000.00"),
+        addresses: Optional[dict[str, str]] = None,
     ) -> Wallet:
         """Create a new non-custodial wallet."""
-        wallet = Wallet.new(agent_id, mpc_provider=mpc_provider, currency=currency)
+        wallet = Wallet.new(agent_id, mpc_provider=mpc_provider, currency=currency, wallet_id=wallet_id)
         wallet.limit_per_tx = limit_per_tx
         wallet.limit_total = limit_total
+        if addresses:
+            wallet.addresses.update(addresses)
         self._wallets[wallet.wallet_id] = wallet
         return wallet
 

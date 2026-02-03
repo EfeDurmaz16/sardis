@@ -26,7 +26,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
-from sardis_v2_core import SardisSettings, load_settings
+from sardis_v2_core import SardisSettings, load_settings, InMemoryPolicyStore, PostgresPolicyStore
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_wallet.manager import WalletManager
 from sardis_protocol.verifier import MandateVerifier
@@ -64,6 +64,8 @@ except ImportError:
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
+from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
+from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 from sardis_v2_core.scheduler import init_scheduler, get_scheduler
 from sardis_v2_core.jobs.spending_reset import reset_spending_limits
 from sardis_v2_core.jobs.hold_expiry import expire_holds
@@ -175,6 +177,7 @@ async def lifespan(app: FastAPI):
             logger.info("Database schema initialized")
         except Exception as e:
             logger.warning(f"Could not initialize database schema: {e}")
+
 
     # Setup signal handlers for graceful shutdown
     loop = asyncio.get_running_loop()
@@ -403,8 +406,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=settings.environment,
-                traces_sample_rate=0.1 if settings.environment == "production" else 1.0,
-                profiles_sample_rate=0.1 if settings.environment == "production" else 1.0,
+                traces_sample_rate=0.1 if settings.is_production else 1.0,
+                profiles_sample_rate=0.1 if settings.is_production else 1.0,
                 integrations=[
                     FastApiIntegration(transaction_style="endpoint"),
                     AsyncPGIntegration(),
@@ -512,13 +515,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Initialize Turnkey MPC client if configured
     turnkey_client = None
-    if os.getenv("TURNKEY_API_KEY") and os.getenv("TURNKEY_ORGANIZATION_ID"):
+    turnkey_api_key = os.getenv("TURNKEY_API_PUBLIC_KEY") or os.getenv("TURNKEY_API_KEY") or settings.turnkey.api_public_key
+    turnkey_private_key = os.getenv("TURNKEY_API_PRIVATE_KEY") or settings.turnkey.api_private_key
+    turnkey_org_id = os.getenv("TURNKEY_ORGANIZATION_ID") or settings.turnkey.organization_id
+    if turnkey_api_key and turnkey_private_key and turnkey_org_id:
         try:
             from sardis_wallet.turnkey_client import TurnkeyClient
             turnkey_client = TurnkeyClient(
-                api_key=os.getenv("TURNKEY_API_KEY", ""),
-                api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
-                organization_id=os.getenv("TURNKEY_ORGANIZATION_ID", ""),
+                api_key=turnkey_api_key,
+                api_private_key=turnkey_private_key,
+                organization_id=turnkey_org_id,
             )
             logger.info("Turnkey MPC client initialized")
         except ImportError:
@@ -541,6 +547,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     "SARDIS_CHAIN_MODE=live with MPC=fireblocks but FIREBLOCKS_API_KEY is not set."
                 )
                 raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
+
+    policy_store = (
+        PostgresPolicyStore(database_url) if use_postgres else InMemoryPolicyStore()
+    )
+    app.state.policy_store = policy_store
 
     wallet_mgr = WalletManager(settings=settings, turnkey_client=turnkey_client)
     chain_exec = ChainExecutor(settings=settings)
@@ -646,7 +657,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.webhook_service = webhook_service
 
     # Initialize cache service
-    redis_url = os.getenv("SARDIS_REDIS_URL", settings.redis_url) or None
+    redis_url = (
+        os.getenv("SARDIS_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or os.getenv("UPSTASH_REDIS_URL")
+        or settings.redis_url
+        or None
+    )
     cache_service = create_cache_service(redis_url)
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
@@ -674,10 +691,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix="/api/v2/auth")
 
     # Wallet routes
-    wallet_repo = WalletRepository(dsn=database_url if use_postgres else "memory://")
+    wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
         chain_executor=chain_exec,
+        wallet_manager=wallet_mgr,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
@@ -687,7 +705,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     bridge_api_secret = os.getenv("BRIDGE_API_SECRET")
     if bridge_api_key and bridge_api_secret:
         from sardis_cards.offramp import BridgeOfframpProvider, OfframpService
-        bridge_env = "sandbox" if settings.environment != "production" else "production"
+        bridge_env = "sandbox" if not settings.is_production else "production"
         bridge_provider = BridgeOfframpProvider(
             api_key=bridge_api_key,
             api_secret=bridge_api_secret,
@@ -714,12 +732,77 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
         from sardis_api.repositories.card_repository import CardRepository
-        card_repo = CardRepository(pool=app.state.db_pool if hasattr(app.state, "db_pool") else None)
+        # NOTE: CardRepository uses Postgres automatically if DATABASE_URL is set (otherwise in-memory).
+        card_repo = CardRepository(dsn=database_url if use_postgres else None)
         # Import provider - use Lithic if API key present, else stub
         lithic_api_key = os.getenv("LITHIC_API_KEY")
         if lithic_api_key:
+            from decimal import Decimal
             from sardis_cards.providers.lithic import LithicProvider
-            card_provider = LithicProvider(api_key=lithic_api_key)
+            from sardis_cards.models import CardType
+
+            class CardProviderCompatAdapter:
+                """
+                Adapter to bridge sardis-api's cards router expectations with sardis-cards providers.
+
+                The router expects:
+                  - create_card(card_id=..., wallet_id=..., card_type=str, limit_*: float) -> obj with provider_card_id
+                  - fund_card(card_id=..., amount=float)
+                While the provider expects:
+                  - create_card(wallet_id, card_type: CardType, limit_*: Decimal, ...)
+                  - fund_card(provider_card_id, amount: Decimal, ...)
+                """
+
+                def __init__(self, provider, repo: CardRepository):
+                    self._provider = provider
+                    self._repo = repo
+
+                async def create_card(
+                    self,
+                    card_id: str,
+                    wallet_id: str,
+                    card_type: str,
+                    limit_per_tx: float,
+                    limit_daily: float,
+                    limit_monthly: float,
+                    locked_merchant_id: str | None = None,
+                ):
+                    ct = {
+                        "single_use": CardType.SINGLE_USE,
+                        "multi_use": CardType.MULTI_USE,
+                        "merchant_locked": CardType.MERCHANT_LOCKED,
+                    }.get(card_type, CardType.MULTI_USE)
+                    return await self._provider.create_card(
+                        wallet_id=wallet_id,
+                        card_type=ct,
+                        limit_per_tx=Decimal(str(limit_per_tx)),
+                        limit_daily=Decimal(str(limit_daily)),
+                        limit_monthly=Decimal(str(limit_monthly)),
+                        locked_merchant_id=locked_merchant_id,
+                    )
+
+                async def fund_card(self, card_id: str, amount: float):
+                    card = await self._repo.get_by_card_id(card_id)
+                    if not card or not card.get("provider_card_id"):
+                        raise RuntimeError("Card not found or missing provider_card_id")
+                    return await self._provider.fund_card(
+                        provider_card_id=card["provider_card_id"],
+                        amount=Decimal(str(amount)),
+                    )
+
+                async def freeze_card(self, provider_card_id: str):
+                    return await self._provider.freeze_card(provider_card_id)
+
+                async def unfreeze_card(self, provider_card_id: str):
+                    return await self._provider.unfreeze_card(provider_card_id)
+
+                async def cancel_card(self, provider_card_id: str):
+                    return await self._provider.cancel_card(provider_card_id)
+
+                async def update_limits(self, provider_card_id: str, **kwargs):
+                    return await self._provider.update_limits(provider_card_id, **kwargs)
+
+            card_provider = CardProviderCompatAdapter(LithicProvider(api_key=lithic_api_key), card_repo)
         else:
             card_provider = None
         webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
@@ -729,13 +812,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 offramp_service=offramp_service,
                 chain_executor=chain_exec,
                 wallet_repo=wallet_repo,
+                policy_store=policy_store,
             )
             app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
     # Agent routes
-    agent_repo = AgentRepository(dsn=database_url if use_postgres else "memory://")
+    agent_repo = PostgresAgentRepository(database_url) if use_postgres else AgentRepository(dsn="memory://")
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
@@ -743,8 +827,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
 
     # API Key management routes
-    api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
-    set_api_key_manager(api_key_manager)
     app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
 
     # Checkout routes (Agentic Checkout - Pivot D)
@@ -765,6 +847,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
 
     # Policy routes (Natural Language policy parsing)
+    app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
+        policy_store=policy_store,
+    )
     app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
 
     # Compliance routes (KYC and Sanctions)
@@ -773,7 +858,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         api_key=os.getenv("PERSONA_API_KEY"),
         template_id=os.getenv("PERSONA_TEMPLATE_ID"),
         webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-        environment="sandbox" if settings.environment != "production" else "production",
+        environment="sandbox" if not settings.is_production else "production",
     )
     sanctions_service = create_sanctions_service(
         api_key=os.getenv("ELLIPTIC_API_KEY"),

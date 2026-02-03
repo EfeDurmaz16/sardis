@@ -1052,13 +1052,24 @@ class TurnkeyMPCSigner(MPCSignerPort):
         rlp_encoded = rlp.encode(tx_fields)
         unsigned_tx_hex = "02" + rlp_encoded.hex()  # 0x02 prefix for EIP-1559
         
+        # Turnkey expects signWith to identify the signing account.
+        # For EVM wallets, this is typically the Ethereum address.
+        sign_with = wallet_id
+        try:
+            addr = await self.get_address(wallet_id, tx.chain)
+            if isinstance(addr, str) and addr.startswith("0x") and len(addr) == 42:
+                sign_with = addr
+        except Exception:
+            # Fall back to the wallet_id if address lookup fails
+            pass
+
         # Create sign transaction activity
         activity_body = {
             "type": "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
             "organizationId": self._org_id,
             "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
             "parameters": {
-                "signWith": wallet_id,
+                "signWith": sign_with,
                 "type": "TRANSACTION_TYPE_ETHEREUM",
                 "unsignedTransaction": unsigned_tx_hex,
             },

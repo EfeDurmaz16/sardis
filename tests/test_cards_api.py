@@ -8,6 +8,25 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 
+def _auth_headers() -> dict[str, str]:
+    # Uses the same JWT implementation as the API (no external dependency).
+    import secrets
+    import time
+    from sardis_api.routers.auth import create_jwt_token
+
+    now = int(time.time())
+    token = create_jwt_token(
+        {
+            "sub": "admin",
+            "role": "admin",
+            "exp": now + 3600,
+            "iat": now,
+            "jti": secrets.token_hex(16),
+        }
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture
 def mock_card_repo():
     repo = AsyncMock()
@@ -81,7 +100,7 @@ def test_create_card_calls_provider_and_persists(app_with_cards, mock_card_provi
         "wallet_id": "wallet_1",
         "card_type": "multi_use",
         "limit_daily": 1000,
-    })
+    }, headers=_auth_headers())
     assert resp.status_code == 201
     mock_card_provider.create_card.assert_called_once()
     mock_card_repo.create.assert_called_once()
@@ -89,7 +108,7 @@ def test_create_card_calls_provider_and_persists(app_with_cards, mock_card_provi
 
 def test_freeze_card_calls_provider_and_updates_db(app_with_cards, mock_card_provider, mock_card_repo):
     client = TestClient(app_with_cards)
-    resp = client.post("/api/v2/cards/card_1/freeze")
+    resp = client.post("/api/v2/cards/card_1/freeze", headers=_auth_headers())
     assert resp.status_code == 200
     mock_card_provider.freeze_card.assert_called_once()
     mock_card_repo.update_status.assert_called_once_with("card_1", "frozen")
@@ -97,7 +116,7 @@ def test_freeze_card_calls_provider_and_updates_db(app_with_cards, mock_card_pro
 
 def test_get_card_reads_from_db(app_with_cards, mock_card_repo):
     client = TestClient(app_with_cards)
-    resp = client.get("/api/v2/cards/card_1")
+    resp = client.get("/api/v2/cards/card_1", headers=_auth_headers())
     assert resp.status_code == 200
     mock_card_repo.get_by_card_id.assert_called_once_with("card_1")
 
@@ -105,7 +124,7 @@ def test_get_card_reads_from_db(app_with_cards, mock_card_repo):
 def test_get_card_not_found(app_with_cards, mock_card_repo):
     mock_card_repo.get_by_card_id.return_value = None
     client = TestClient(app_with_cards)
-    resp = client.get("/api/v2/cards/nonexistent")
+    resp = client.get("/api/v2/cards/nonexistent", headers=_auth_headers())
     assert resp.status_code == 404
 
 
@@ -133,7 +152,7 @@ def app_with_webhook_secret(mock_card_repo, mock_card_provider):
 
 def test_webhook_rejects_missing_signature(app_with_webhook_secret):
     client = TestClient(app_with_webhook_secret)
-    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"})
+    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"}, headers=_auth_headers())
     assert resp.status_code == 401
 
 
@@ -142,7 +161,7 @@ def test_webhook_rejects_invalid_signature(app_with_webhook_secret):
     resp = client.post(
         "/api/v2/cards/webhooks",
         json={"event_type": "test"},
-        headers={"x-lithic-hmac": "bad_sig"},
+        headers={**_auth_headers(), "x-lithic-hmac": "bad_sig"},
     )
     assert resp.status_code == 401
 
@@ -154,7 +173,7 @@ def test_webhook_accepts_valid_signature(app_with_webhook_secret, mock_card_repo
     resp = client.post(
         "/api/v2/cards/webhooks",
         content=body,
-        headers={"x-lithic-hmac": sig, "content-type": "application/json"},
+        headers={**_auth_headers(), "x-lithic-hmac": sig, "content-type": "application/json"},
     )
     assert resp.status_code == 200
     mock_card_repo.record_transaction.assert_called_once()
@@ -162,5 +181,5 @@ def test_webhook_accepts_valid_signature(app_with_webhook_secret, mock_card_repo
 
 def test_webhook_no_secret_accepts_all(app_with_cards):
     client = TestClient(app_with_cards)
-    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"})
+    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"}, headers=_auth_headers())
     assert resp.status_code == 200

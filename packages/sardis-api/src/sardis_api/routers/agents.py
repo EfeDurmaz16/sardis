@@ -4,13 +4,13 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import Agent, AgentPolicy, SpendingLimits, AgentRepository, WalletRepository
-from sardis_api.middleware.auth import require_api_key, APIKey
+from sardis_api.authz import Principal, require_principal
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # Request/Response Models
@@ -95,10 +95,10 @@ def get_deps() -> AgentDependencies:
 async def create_agent(
     request: CreateAgentRequest,
     deps: AgentDependencies = Depends(get_deps),
-    api_key: APIKey = Depends(require_api_key),
+    principal: Principal = Depends(require_principal),
 ):
     """Create a new AI agent."""
-    owner_id = api_key.organization_id
+    owner_id = principal.organization_id
     spending_limits = None
     if request.spending_limits:
         spending_limits = SpendingLimits(
@@ -132,7 +132,8 @@ async def create_agent(
     if request.create_wallet:
         wallet = await deps.wallet_repo.create(
             agent_id=agent.agent_id,
-            balance=request.initial_balance,
+            mpc_provider="turnkey",
+            currency="USDC",
             limit_per_tx=spending_limits.per_transaction if spending_limits else Decimal("100.00"),
             limit_total=spending_limits.total if spending_limits else Decimal("1000.00"),
         )
@@ -149,10 +150,12 @@ async def list_agents(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """List all agents."""
+    effective_owner = owner_id if (principal.is_admin and owner_id) else principal.organization_id
     agents = await deps.agent_repo.list(
-        owner_id=owner_id,
+        owner_id=effective_owner,
         is_active=is_active,
         limit=limit,
         offset=offset,
@@ -164,11 +167,14 @@ async def list_agents(
 async def get_agent(
     agent_id: str,
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get agent details."""
     agent = await deps.agent_repo.get(agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return AgentResponse.from_agent(agent)
 
 
@@ -177,8 +183,15 @@ async def update_agent(
     agent_id: str,
     request: UpdateAgentRequest,
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Update agent settings."""
+    existing = await deps.agent_repo.get(agent_id)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and existing.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     spending_limits = None
     if request.spending_limits:
         spending_limits = SpendingLimits(
@@ -217,8 +230,15 @@ async def update_agent(
 async def delete_agent(
     agent_id: str,
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Delete an agent."""
+    existing = await deps.agent_repo.get(agent_id)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and existing.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     deleted = await deps.agent_repo.delete(agent_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -229,8 +249,15 @@ async def bind_wallet_to_agent(
     agent_id: str,
     wallet_id: str = Query(...),
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Bind an existing wallet to an agent."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     # Verify wallet exists
     wallet = await deps.wallet_repo.get(wallet_id)
     if not wallet:
@@ -246,11 +273,14 @@ async def bind_wallet_to_agent(
 async def get_agent_limits(
     agent_id: str,
     deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get current spending limits and usage for an agent."""
     agent = await deps.agent_repo.get(agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     wallet = None
     if agent.wallet_id:
@@ -261,8 +291,7 @@ async def get_agent_limits(
         "spending_limits": agent.spending_limits.model_dump(),
         "wallet": {
             "wallet_id": wallet.wallet_id if wallet else None,
-            "balance": str(wallet.balance) if wallet else "0.00",
-            "spent_total": str(wallet.spent_total) if wallet else "0.00",
-            "remaining_limit": str(wallet.remaining_limit()) if wallet else "0.00",
+            "addresses": wallet.addresses if wallet else {},
+            "mpc_provider": wallet.mpc_provider if wallet else None,
         } if wallet else None,
     }
