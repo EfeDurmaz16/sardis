@@ -61,7 +61,63 @@ class Approval:
 class ApprovalRepository:
     """PostgreSQL repository for approval CRUD operations."""
 
-    async def create(self, approval: Approval) -> Approval:
+    def __init__(self, dsn: str = "memory://"):
+        """Initialize approval repository.
+
+        Args:
+            dsn: Database connection string (postgresql:// or memory://)
+        """
+        self.dsn = dsn
+        # Note: For production, use actual database connection pool
+        # For now, we'll rely on the Database singleton
+
+    async def create(
+        self,
+        *,
+        action: str,
+        status: ApprovalStatus = 'pending',
+        urgency: ApprovalUrgency = 'medium',
+        requested_by: str,
+        created_at: Optional[datetime] = None,
+        expires_at: datetime,
+        vendor: Optional[str] = None,
+        amount: Optional[Decimal] = None,
+        purpose: Optional[str] = None,
+        reason: Optional[str] = None,
+        card_limit: Optional[Decimal] = None,
+        agent_id: Optional[str] = None,
+        wallet_id: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> Approval:
+        """Create a new approval request (alternative signature).
+
+        This overload accepts individual fields instead of an Approval object.
+        """
+        if created_at is None:
+            created_at = datetime.now(timezone.utc)
+
+        approval = Approval(
+            id=Approval.generate_id(),
+            action=action,
+            status=status,
+            urgency=urgency,
+            requested_by=requested_by,
+            created_at=created_at,
+            expires_at=expires_at,
+            vendor=vendor,
+            amount=amount,
+            purpose=purpose,
+            reason=reason,
+            card_limit=card_limit,
+            agent_id=agent_id,
+            wallet_id=wallet_id,
+            organization_id=organization_id,
+            metadata=metadata or {},
+        )
+        return await self._create_approval(approval)
+
+    async def _create_approval(self, approval: Approval) -> Approval:
         """Create a new approval request.
 
         Args:
@@ -119,37 +175,73 @@ class ApprovalRepository:
 
         return _row_to_approval(row)
 
-    async def update(self, approval_id: str, approval: Approval) -> Optional[Approval]:
+    async def update(
+        self,
+        approval_id: str,
+        *,
+        status: Optional[ApprovalStatus] = None,
+        reviewed_by: Optional[str] = None,
+        reviewed_at: Optional[datetime] = None,
+        metadata: Optional[dict] = None,
+    ) -> Optional[Approval]:
         """Update approval with new state.
 
         Args:
             approval_id: Approval ID to update
-            approval: Updated Approval object
+            status: New status (optional)
+            reviewed_by: Reviewer email/ID (optional)
+            reviewed_at: Review timestamp (optional)
+            metadata: Updated metadata (optional)
 
         Returns:
             Updated Approval or None if not found
         """
-        query = """
+        # Get current approval first
+        current = await self.get(approval_id)
+        if not current:
+            return None
+
+        # Build update query dynamically based on provided fields
+        updates = []
+        values = []
+        param_idx = 1
+
+        if status is not None:
+            updates.append(f"status = ${param_idx}")
+            values.append(status)
+            param_idx += 1
+
+        if reviewed_by is not None:
+            updates.append(f"reviewed_by = ${param_idx}")
+            values.append(reviewed_by)
+            param_idx += 1
+
+        if reviewed_at is not None:
+            updates.append(f"reviewed_at = ${param_idx}")
+            values.append(reviewed_at)
+            param_idx += 1
+
+        if metadata is not None:
+            updates.append(f"metadata = ${param_idx}")
+            values.append(metadata)
+            param_idx += 1
+
+        if not updates:
+            return current  # No updates requested
+
+        values.append(approval_id)
+
+        query = f"""
             UPDATE approvals
-            SET status = $1,
-                reviewed_by = $2,
-                reviewed_at = $3,
-                metadata = $4
-            WHERE id = $5
+            SET {', '.join(updates)}
+            WHERE id = ${param_idx}
             RETURNING id, action, status, urgency, requested_by, reviewed_by,
                       created_at, reviewed_at, expires_at, vendor, amount,
                       purpose, reason, card_limit, agent_id, wallet_id,
                       organization_id, metadata
         """
 
-        row = await Database.fetchrow(
-            query,
-            approval.status,
-            approval.reviewed_by,
-            approval.reviewed_at,
-            approval.metadata or {},
-            approval_id
-        )
+        row = await Database.fetchrow(query, *values)
 
         if not row:
             return None
