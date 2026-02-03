@@ -13,12 +13,17 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+class VelocityLimitExceeded(Exception):
+    """Raised when off-ramp velocity limits are exceeded."""
+    pass
 
 
 class OfframpStatus(str, Enum):
@@ -410,17 +415,33 @@ class BridgeOfframpProvider(OfframpProviderBase):
 class OfframpService:
     """
     High-level off-ramp service for Sardis.
-    
-    Manages off-ramp operations with automatic provider selection
-    and status tracking.
+
+    Manages off-ramp operations with automatic provider selection,
+    status tracking, and velocity limit enforcement.
     """
-    
+
+    # Default velocity limits (in cents)
+    DEFAULT_DAILY_LIMIT_CENTS = 10_000_00  # $10,000
+    DEFAULT_WEEKLY_LIMIT_CENTS = 50_000_00  # $50,000
+    DEFAULT_MONTHLY_LIMIT_CENTS = 200_000_00  # $200,000
+
     def __init__(
         self,
         provider: Optional[OfframpProviderBase] = None,
+        daily_limit_cents: Optional[int] = None,
+        weekly_limit_cents: Optional[int] = None,
+        monthly_limit_cents: Optional[int] = None,
     ):
         self._provider = provider or MockOfframpProvider()
         self._transactions: Dict[str, OfframpTransaction] = {}
+
+        # Velocity limits configuration
+        self._daily_limit_cents = daily_limit_cents or self.DEFAULT_DAILY_LIMIT_CENTS
+        self._weekly_limit_cents = weekly_limit_cents or self.DEFAULT_WEEKLY_LIMIT_CENTS
+        self._monthly_limit_cents = monthly_limit_cents or self.DEFAULT_MONTHLY_LIMIT_CENTS
+
+        # Transaction history by wallet (wallet_id -> list of transactions)
+        self._wallet_transactions: Dict[str, List[OfframpTransaction]] = {}
     
     async def get_quote(
         self,
@@ -437,19 +458,117 @@ class OfframpService:
             output_currency=output_currency,
         )
     
+    def _check_velocity_limits(
+        self,
+        wallet_id: str,
+        amount_cents: int,
+    ) -> None:
+        """
+        Check if withdrawal amount would exceed velocity limits.
+
+        Args:
+            wallet_id: Wallet ID to check limits for
+            amount_cents: Amount to withdraw in cents
+
+        Raises:
+            VelocityLimitExceeded: If limits would be exceeded
+        """
+        now = datetime.now(timezone.utc)
+        history = self._wallet_transactions.get(wallet_id, [])
+
+        # Filter to completed transactions only
+        completed_txs = [
+            tx for tx in history
+            if tx.status == OfframpStatus.COMPLETED
+        ]
+
+        # Calculate daily volume (last 24 hours)
+        daily_cutoff = now - timedelta(days=1)
+        daily_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > daily_cutoff
+        )
+
+        if daily_volume + amount_cents > self._daily_limit_cents:
+            raise VelocityLimitExceeded(
+                f"Daily off-ramp limit exceeded. "
+                f"Used: ${daily_volume / 100:.2f}, "
+                f"Limit: ${self._daily_limit_cents / 100:.2f}, "
+                f"Requested: ${amount_cents / 100:.2f}"
+            )
+
+        # Calculate weekly volume (last 7 days)
+        weekly_cutoff = now - timedelta(days=7)
+        weekly_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > weekly_cutoff
+        )
+
+        if weekly_volume + amount_cents > self._weekly_limit_cents:
+            raise VelocityLimitExceeded(
+                f"Weekly off-ramp limit exceeded. "
+                f"Used: ${weekly_volume / 100:.2f}, "
+                f"Limit: ${self._weekly_limit_cents / 100:.2f}, "
+                f"Requested: ${amount_cents / 100:.2f}"
+            )
+
+        # Calculate monthly volume (last 30 days)
+        monthly_cutoff = now - timedelta(days=30)
+        monthly_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > monthly_cutoff
+        )
+
+        if monthly_volume + amount_cents > self._monthly_limit_cents:
+            raise VelocityLimitExceeded(
+                f"Monthly off-ramp limit exceeded. "
+                f"Used: ${monthly_volume / 100:.2f}, "
+                f"Limit: ${self._monthly_limit_cents / 100:.2f}, "
+                f"Requested: ${amount_cents / 100:.2f}"
+            )
+
     async def execute(
         self,
         quote: OfframpQuote,
         source_address: str,
         destination_account: str,
+        wallet_id: Optional[str] = None,
     ) -> OfframpTransaction:
-        """Execute off-ramp and track transaction."""
+        """
+        Execute off-ramp and track transaction.
+
+        Args:
+            quote: Off-ramp quote
+            source_address: Source wallet address
+            destination_account: Destination bank/card account
+            wallet_id: Optional wallet ID for velocity tracking
+
+        Returns:
+            OfframpTransaction
+
+        Raises:
+            VelocityLimitExceeded: If velocity limits would be exceeded
+        """
+        # Check velocity limits if wallet_id provided
+        if wallet_id:
+            self._check_velocity_limits(wallet_id, quote.output_amount_cents)
+
         tx = await self._provider.execute_offramp(
             quote=quote,
             source_address=source_address,
             destination_account=destination_account,
         )
         self._transactions[tx.transaction_id] = tx
+
+        # Track for velocity limits
+        if wallet_id:
+            if wallet_id not in self._wallet_transactions:
+                self._wallet_transactions[wallet_id] = []
+            self._wallet_transactions[wallet_id].append(tx)
+
         return tx
     
     async def get_status(self, transaction_id: str) -> OfframpTransaction:
@@ -489,6 +608,76 @@ class OfframpService:
             tx for tx in self._transactions.values()
             if tx.status in (OfframpStatus.PENDING, OfframpStatus.PROCESSING)
         ]
+
+    def get_velocity_limits(self, wallet_id: str) -> Dict[str, Any]:
+        """
+        Get velocity limit status for a wallet.
+
+        Args:
+            wallet_id: Wallet ID to check
+
+        Returns:
+            dict with daily/weekly/monthly used amounts and remaining limits
+        """
+        now = datetime.now(timezone.utc)
+        history = self._wallet_transactions.get(wallet_id, [])
+
+        # Filter to completed transactions only
+        completed_txs = [
+            tx for tx in history
+            if tx.status == OfframpStatus.COMPLETED
+        ]
+
+        # Calculate daily volume
+        daily_cutoff = now - timedelta(days=1)
+        daily_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > daily_cutoff
+        )
+
+        # Calculate weekly volume
+        weekly_cutoff = now - timedelta(days=7)
+        weekly_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > weekly_cutoff
+        )
+
+        # Calculate monthly volume
+        monthly_cutoff = now - timedelta(days=30)
+        monthly_volume = sum(
+            tx.output_amount_cents
+            for tx in completed_txs
+            if tx.completed_at and tx.completed_at > monthly_cutoff
+        )
+
+        return {
+            "daily": {
+                "used_cents": daily_volume,
+                "limit_cents": self._daily_limit_cents,
+                "remaining_cents": self._daily_limit_cents - daily_volume,
+                "used_usd": daily_volume / 100,
+                "limit_usd": self._daily_limit_cents / 100,
+                "remaining_usd": (self._daily_limit_cents - daily_volume) / 100,
+            },
+            "weekly": {
+                "used_cents": weekly_volume,
+                "limit_cents": self._weekly_limit_cents,
+                "remaining_cents": self._weekly_limit_cents - weekly_volume,
+                "used_usd": weekly_volume / 100,
+                "limit_usd": self._weekly_limit_cents / 100,
+                "remaining_usd": (self._weekly_limit_cents - weekly_volume) / 100,
+            },
+            "monthly": {
+                "used_cents": monthly_volume,
+                "limit_cents": self._monthly_limit_cents,
+                "remaining_cents": self._monthly_limit_cents - monthly_volume,
+                "used_usd": monthly_volume / 100,
+                "limit_usd": self._monthly_limit_cents / 100,
+                "remaining_usd": (self._monthly_limit_cents - monthly_volume) / 100,
+            },
+        }
 
 
 
