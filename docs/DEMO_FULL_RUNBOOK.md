@@ -3,7 +3,7 @@
 Bu runbook’ta “gönderen Sardis değil, **AI agent**” olacak şekilde ilerliyoruz:
 - Agent, Sardis API’yi **X-API-Key** ile çağırır.
 - Sardis, policy/limits/compliance kontrollerinden geçirir.
-- On-chain imza, agent’ın non-custodial MPC cüzdanı (Turnkey) ile atılır.
+- On-chain imza, **agent’ın non‑custodial MPC cüzdanı (Turnkey)** ile atılır (Sardis private key tutmaz).
 
 > Not: Kart satın alımı demo’da **simulated purchase** ile gösterilebilir. Stablecoin tarafında ise Base Sepolia’da **gerçek tx** gösterebiliriz.
 
@@ -144,6 +144,7 @@ Bu demo’nun tek “manual” kısmı: `ADDR` adresine Base Sepolia ETH (gas) +
 ### 5.2 Agent executes a stablecoin transfer (API key ile)
 
 Bu çağrıyı “agent process” yapar: `X-API-Key` kullanır.
+Demo açısından kritik nokta: bu çağrı bir “agent action”dır; tx’i imzalayan anahtar Turnkey’deki agent wallet’ıdır.
 
 ```bash
 DEST=0x000000000000000000000000000000000000dEaD
