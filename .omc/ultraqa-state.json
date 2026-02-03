@@ -1,0 +1,13 @@
+{
+  "active": false,
+  "goal_type": "tests",
+  "goal_pattern": null,
+  "cycle": 3,
+  "max_cycles": 5,
+  "failures": [],
+  "started_at": "2026-02-03T10:30:00Z",
+  "completed_at": "2026-02-03T11:24:00Z",
+  "session_id": "ultraqa-sardis-production",
+  "result": "success",
+  "summary": "348 passed, 23 skipped. All unit tests passing."
+}

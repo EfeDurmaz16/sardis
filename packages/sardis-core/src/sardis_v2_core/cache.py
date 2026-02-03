@@ -75,7 +75,8 @@ class CacheMetrics:
     @property
     def miss_rate(self) -> float:
         """Calculate cache miss rate (0.0 to 1.0)."""
-        return 1.0 - self.hit_rate
+        total = self.hits + self.misses
+        return self.misses / total if total > 0 else 0.0
 
     @property
     def avg_latency_ms(self) -> float:

@@ -79,8 +79,9 @@ class TestApprovalRepository:
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=24)
 
-        approval = Approval(
-            id="appr_test_001",
+        mock_database.execute = AsyncMock()
+
+        result = await repository.create(
             action="payment",
             status="pending",
             urgency="high",
@@ -93,11 +94,9 @@ class TestApprovalRepository:
             reason="Exceeds daily limit",
         )
 
-        mock_database.execute = AsyncMock()
-
-        result = await repository.create(approval)
-
-        assert result == approval
+        assert result.action == "payment"
+        assert result.status == "pending"
+        assert result.requested_by == "agent_001"
         mock_database.execute.assert_called_once()
 
     @pytest.mark.anyio
@@ -148,19 +147,6 @@ class TestApprovalRepository:
         """Test updating an approval."""
         now = datetime.now(timezone.utc)
 
-        approval = Approval(
-            id="appr_test_003",
-            action="payment",
-            status="approved",
-            urgency="medium",
-            requested_by="agent_003",
-            reviewed_by="admin@example.com",
-            created_at=now,
-            reviewed_at=now,
-            expires_at=now + timedelta(hours=24),
-            metadata={"approved_reason": "Legitimate request"},
-        )
-
         mock_row = {
             "id": "appr_test_003",
             "action": "payment",
@@ -184,7 +170,13 @@ class TestApprovalRepository:
 
         mock_database.fetchrow = AsyncMock(return_value=mock_row)
 
-        updated = await repository.update("appr_test_003", approval)
+        updated = await repository.update(
+            "appr_test_003",
+            status="approved",
+            reviewed_by="admin@example.com",
+            reviewed_at=now,
+            metadata={"approved_reason": "Legitimate request"},
+        )
 
         assert updated is not None
         assert updated.status == "approved"
@@ -487,7 +479,7 @@ class TestApprovalService:
         ]
 
         mock_repository.get_expired_pending = AsyncMock(return_value=expired_approvals)
-        mock_repository.update = AsyncMock(side_effect=lambda id, appr: appr)
+        mock_repository.update = AsyncMock(side_effect=expired_approvals)
 
         count = await service.expire_pending()
 
@@ -520,9 +512,13 @@ class TestApprovalService:
         assert all(a.status == "pending" for a in approvals)
         mock_repository.list.assert_called_once_with(
             status="pending",
-            action=None,
+            agent_id=None,
+            wallet_id=None,
+            organization_id=None,
+            requested_by=None,
             urgency="medium",
             limit=10,
+            offset=0,
         )
 
     @pytest.mark.anyio
