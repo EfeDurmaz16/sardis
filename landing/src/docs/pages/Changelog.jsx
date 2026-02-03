@@ -2,9 +2,63 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.0',
+    date: '2026-02-03',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Human Approval Workflows - Full create/approve/deny/expire/cancel lifecycle',
+          'ApprovalRepository with PostgreSQL persistence',
+          'ApprovalService with business logic and webhook notifications',
+          'Approvals API router with REST endpoints (/api/v2/approvals)',
+          'Background Job Scheduler - APScheduler integration with FastAPI lifespan',
+          'Scheduled jobs: approval expiration, hold cleanup, spending limit reset',
+          'Alembic database migration framework with 6 versioned migrations',
+          'Wallet freeze/unfreeze capability with transaction blocking',
+          'Velocity limit checks for off-ramp (daily/weekly/monthly)',
+          'MCC (Merchant Category Code) lookup service',
+          'EIP-2771 meta-transaction support for gasless transactions',
+          'Batch transfer API endpoint',
+          'SAR (Suspicious Activity Report) generation',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Prometheus metrics endpoint for monitoring',
+          'Sentry integration for error tracking',
+          'Structured logging with correlation IDs',
+          'CI/CD deployment workflow with staging/production gates',
+          'GitHub Actions: mypy type checking, 70% coverage enforcement',
+          'Dependabot configuration for automated security updates',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'npm audit vulnerabilities across all packages',
+          'Updated hono to latest secure version',
+          'Updated esbuild to fix CVE vulnerabilities',
+          'SDK tests updated for new RetryConfig API',
+          'Deprecated regex parameter replaced with pattern in routers',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'HMAC webhook verification for card routes',
+          'Feature flags for card API routes',
+          'Health monitoring workflow for E2E card lifecycle',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.7.0',
     date: '2026-02-02',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

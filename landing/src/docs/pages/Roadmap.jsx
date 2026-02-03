@@ -97,7 +97,7 @@ export default function Roadmap() {
     {
       version: 'v0.6.0',
       title: 'Fiat Rails & Virtual Cards',
-      status: 'current',
+      status: 'completed',
       date: 'Jan 2026',
       items: [
         { text: 'Fiat on-ramp via Onramper', done: true },
@@ -106,27 +106,43 @@ export default function Roadmap() {
         { text: 'Unified USDC/USD balance (1:1)', done: true },
         { text: 'KYC integration (Persona)', done: true },
         { text: 'AML screening (Elliptic)', done: true },
-        { text: 'Smart contract audit', done: false },
-        { text: 'Base mainnet deployment', done: false },
       ],
     },
     {
       version: 'v0.7.0',
-      title: 'Production Hardening',
-      status: 'upcoming',
-      date: 'Q1 2026',
+      title: 'Database & Persistence',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
-        { text: 'SOC 2 Type II certification', done: false },
-        { text: 'Multi-chain mainnet deployment', done: false },
-        { text: 'Enhanced rate limiting', done: false },
-        { text: 'Webhook reliability improvements', done: false },
-        { text: 'Dashboard analytics', done: false },
+        { text: 'PostgreSQL-backed mandate store', done: true },
+        { text: 'PostgreSQL-backed checkout sessions', done: true },
+        { text: 'Fireblocks MPC signer integration', done: true },
+        { text: 'Invoices API', done: true },
+        { text: 'ABI revert reason decoding', done: true },
       ],
     },
     {
       version: 'v0.8.0',
+      title: 'Production Hardening',
+      status: 'current',
+      date: 'Feb 2026',
+      items: [
+        { text: 'Human approval workflows (create/approve/deny/expire)', done: true },
+        { text: 'Background job scheduler (APScheduler)', done: true },
+        { text: 'Alembic database migrations', done: true },
+        { text: 'Wallet freeze capability', done: true },
+        { text: 'Velocity limit checks for off-ramp', done: true },
+        { text: 'E2E tests for critical flows', done: true },
+        { text: 'Prometheus metrics endpoint', done: true },
+        { text: 'Sentry error tracking', done: true },
+        { text: 'CI/CD deployment workflows', done: true },
+        { text: 'Security audit fixes (npm/pip)', done: true },
+      ],
+    },
+    {
+      version: 'v0.9.0',
       title: 'Enterprise Features',
-      status: 'planned',
+      status: 'upcoming',
       date: 'Q2 2026',
       items: [
         { text: 'Multi-tenant organization support', done: false },
@@ -165,10 +181,10 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 2, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 4, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
-          { label: 'Planned', count: 2, color: 'bg-slate-400' },
+          { label: 'Planned', count: 1, color: 'bg-slate-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-card/50 rounded-lg shadow-sm p-5 text-center">
             <div className={`w-3 h-3 rounded-full ${stat.color} mx-auto mb-3`} />
