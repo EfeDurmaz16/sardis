@@ -19,6 +19,9 @@ def mock_wallet_repo():
     wallet.limit_per_tx = 100
     wallet.limit_total = 1000
     wallet.is_active = True
+    wallet.is_frozen = False
+    wallet.frozen_by = None
+    wallet.freeze_reason = None
     wallet.get_address.return_value = "0xsender123"
     wallet.created_at = MagicMock(isoformat=lambda: "2026-01-01T00:00:00Z")
     wallet.updated_at = MagicMock(isoformat=lambda: "2026-01-01T00:00:00Z")

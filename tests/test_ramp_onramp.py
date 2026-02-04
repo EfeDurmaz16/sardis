@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from sardis_api.routers.ramp import router as ramp_router, get_deps, RampDependencies
+from sardis_api.routers.ramp import router as ramp_router, public_router as ramp_public_router, get_deps, RampDependencies
 
 
 @pytest.fixture
@@ -51,6 +51,7 @@ def app_with_ramp(mock_wallet_repo, mock_agent_repo, mock_offramp_service):
     )
     app.dependency_overrides[get_deps] = lambda: deps
     app.include_router(ramp_router, prefix="/api/v2/ramp")
+    app.include_router(ramp_public_router, prefix="/api/v2/ramp")
     return app
 
 
