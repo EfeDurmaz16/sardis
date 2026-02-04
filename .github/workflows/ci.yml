@@ -27,10 +27,10 @@ jobs:
           pip install ruff mypy
       
       - name: Run Ruff
-        run: ruff check .
+        run: ruff check api sardis packages scripts tests
 
       - name: Run Ruff format check
-        run: ruff format --check .
+        run: ruff format --check api sardis packages scripts tests
 
       - name: Run mypy type checking
         run: |
@@ -76,13 +76,13 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install -e sardis-core/
-          pip install -e sardis-protocol/
-          pip install -e sardis-wallet/
-          pip install -e sardis-chain/
-          pip install -e sardis-ledger/
-          pip install -e sardis-compliance/
-          pip install -e sardis-api/
+          pip install -e packages/sardis-core
+          pip install -e packages/sardis-protocol
+          pip install -e packages/sardis-wallet
+          pip install -e packages/sardis-chain
+          pip install -e packages/sardis-ledger
+          pip install -e packages/sardis-compliance
+          pip install -e packages/sardis-api
           pip install pytest pytest-asyncio pytest-cov httpx
       
       - name: Run tests
@@ -113,20 +113,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: packages/sardis-sdk-js/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        working-directory: packages/sardis-sdk-js
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
         working-directory: packages/sardis-sdk-js
-        run: npm test
+        run: pnpm test
 
       - name: Build
         working-directory: packages/sardis-sdk-js
-        run: npm run build
+        run: pnpm run build
 
   test-python-sdk:
     name: Test Python SDK
@@ -158,16 +162,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: packages/sardis-mcp-server/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        working-directory: packages/sardis-mcp-server
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         working-directory: packages/sardis-mcp-server
-        run: npm run build
+        run: pnpm run build
 
   build-landing:
     name: Build Landing Page
@@ -179,16 +187,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: landing/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        working-directory: landing
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         working-directory: landing
-        run: npm run build
+        run: pnpm run build
 
   test-dashboard:
     name: Test Dashboard
@@ -200,20 +212,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: dashboard/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        working-directory: dashboard
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
         working-directory: dashboard
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build
         working-directory: dashboard
-        run: npm run build
+        run: pnpm run build
         env:
           VITE_API_URL: http://localhost:8000
 

@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(packages_dir, "sardis-ledger", "src"))
 sys.path.insert(0, os.path.join(packages_dir, "sardis-compliance", "src"))
 sys.path.insert(0, os.path.join(packages_dir, "sardis-cards", "src"))
 
-from sardis_api.main import create_app
+from sardis_api.main import create_app  # noqa: E402
 
 # Create the FastAPI app
 app = create_app()
