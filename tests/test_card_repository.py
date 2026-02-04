@@ -37,11 +37,20 @@ def _make_pool_and_conn():
 @pytest.mark.asyncio
 async def test_create_card_persists_to_db():
     mock_pool, mock_conn = _make_pool_and_conn()
-    mock_conn.fetchrow.return_value = {
-        "id": "uuid-1", "card_id": "card_1", "wallet_id": "wallet_1",
-        "provider": "lithic", "provider_card_id": "li_card_123",
-        "status": "pending", "limit_per_tx": 100, "limit_daily": 1000,
-    }
+    mock_conn.fetchrow.side_effect = [
+        {"id": "wallet-uuid-1"},
+        {
+            "id": "uuid-1",
+            "card_id": "card_1",
+            "wallet_id": "wallet-uuid-1",
+            "wallet_external_id": "wallet_1",
+            "provider": "lithic",
+            "provider_card_id": "li_card_123",
+            "status": "pending",
+            "limit_per_tx": 100,
+            "limit_daily": 1000,
+        },
+    ]
     repo = CardRepository(mock_pool)
     card = await repo.create(
         card_id="card_1", wallet_id="wallet_1", provider="lithic",
@@ -50,7 +59,7 @@ async def test_create_card_persists_to_db():
     )
     assert card["card_id"] == "card_1"
     assert card["provider"] == "lithic"
-    mock_conn.fetchrow.assert_called_once()
+    assert mock_conn.fetchrow.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -85,10 +94,23 @@ async def test_update_status():
 @pytest.mark.asyncio
 async def test_record_transaction():
     mock_pool, mock_conn = _make_pool_and_conn()
-    mock_conn.fetchrow.return_value = {
-        "transaction_id": "tx_1", "card_id": "uuid-1",
-        "amount": 50.00, "status": "pending",
-    }
+    mock_conn.fetchrow.side_effect = [
+        {"id": "uuid-1"},
+        {
+            "id": "txn-uuid-1",
+            "transaction_id": "tx_1",
+            "provider_tx_id": "li_tx_123",
+            "amount": 50.00,
+            "currency": "USD",
+            "merchant_name": "Test Store",
+            "merchant_category": None,
+            "merchant_id": None,
+            "status": "pending",
+            "decline_reason": None,
+            "created_at": "2026-01-01T00:00:00Z",
+            "settled_at": None,
+        },
+    ]
     repo = CardRepository(mock_pool)
     tx = await repo.record_transaction(
         transaction_id="tx_1", card_id="uuid-1",

@@ -16,10 +16,21 @@ def mock_wallet_repo():
     repo = AsyncMock()
     wallet = MagicMock()
     wallet.wallet_id = "wallet_1"
+    wallet.agent_id = "agent_1"
     wallet.get_address.return_value = "0x1234567890abcdef1234567890abcdef12345678"
     wallet.addresses = {"base": "0x1234567890abcdef1234567890abcdef12345678"}
     wallet.is_active = True
     repo.get.return_value = wallet
+    return repo
+
+
+@pytest.fixture
+def mock_agent_repo():
+    repo = AsyncMock()
+    agent = MagicMock()
+    agent.agent_id = "agent_1"
+    agent.owner_id = "org_demo"
+    repo.get.return_value = agent
     return repo
 
 
@@ -29,10 +40,11 @@ def mock_offramp_service():
 
 
 @pytest.fixture
-def app_with_ramp(mock_wallet_repo, mock_offramp_service):
+def app_with_ramp(mock_wallet_repo, mock_agent_repo, mock_offramp_service):
     app = FastAPI()
     deps = RampDependencies(
         wallet_repo=mock_wallet_repo,
+        agent_repo=mock_agent_repo,
         offramp_service=mock_offramp_service,
         onramper_api_key="test_onramper_key",
         onramper_webhook_secret="test_webhook_secret",

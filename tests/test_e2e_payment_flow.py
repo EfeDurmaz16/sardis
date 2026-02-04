@@ -6,6 +6,7 @@ using mocked external providers.
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -13,9 +14,11 @@ from fastapi import FastAPI
 
 def _load_cards_module():
     import importlib.util, sys
+    repo_root = Path(__file__).resolve().parents[1]
+    cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
     spec = importlib.util.spec_from_file_location(
         "cards_router_e2e",
-        "/Users/efebarandurmaz/Desktop/sardis 2/packages/sardis-api/src/sardis_api/routers/cards.py",
+        str(cards_path),
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules["cards_router_e2e"] = mod

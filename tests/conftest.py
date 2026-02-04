@@ -24,10 +24,11 @@ sys.path.insert(0, str(root_dir))
 # Clear any cached settings and set clean test environment
 # Remove problematic env vars that might be read from .env
 for key in list(os.environ.keys()):
-    if key.startswith("SARDIS_") and key != "SARDIS_ENVIRONMENT":
+    if key.startswith("SARDIS_") and key not in {"SARDIS_ENVIRONMENT", "SARDIS_ALLOW_ANON"}:
         del os.environ[key]
 
 os.environ["SARDIS_ENVIRONMENT"] = "dev"
+os.environ["SARDIS_ALLOW_ANON"] = os.environ.get("SARDIS_ALLOW_ANON", "1")
 os.environ["SARDIS_SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 

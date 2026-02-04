@@ -27,6 +27,16 @@ def mock_wallet_repo():
 
 
 @pytest.fixture
+def mock_agent_repo():
+    repo = AsyncMock()
+    agent = MagicMock()
+    agent.agent_id = "agent_1"
+    agent.owner_id = "org_demo"
+    repo.get.return_value = agent
+    return repo
+
+
+@pytest.fixture
 def mock_chain_executor():
     executor = AsyncMock()
     receipt = MagicMock()
@@ -36,10 +46,11 @@ def mock_chain_executor():
 
 
 @pytest.fixture
-def app_with_wallets(mock_wallet_repo, mock_chain_executor):
+def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor):
     app = FastAPI()
     deps = WalletDependencies(
         wallet_repo=mock_wallet_repo,
+        agent_repo=mock_agent_repo,
         chain_executor=mock_chain_executor,
     )
     app.dependency_overrides[get_deps] = lambda: deps
@@ -96,7 +107,12 @@ class TestWalletTransfer:
 
     def test_transfer_no_chain_executor(self, mock_wallet_repo):
         app = FastAPI()
-        deps = WalletDependencies(wallet_repo=mock_wallet_repo, chain_executor=None)
+        agent_repo = AsyncMock()
+        agent = MagicMock()
+        agent.agent_id = "agent_1"
+        agent.owner_id = "org_demo"
+        agent_repo.get.return_value = agent
+        deps = WalletDependencies(wallet_repo=mock_wallet_repo, agent_repo=agent_repo, chain_executor=None)
         app.dependency_overrides[get_deps] = lambda: deps
         app.include_router(wallets_router, prefix="/api/v2/wallets")
         client = TestClient(app)

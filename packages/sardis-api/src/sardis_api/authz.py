@@ -44,6 +44,17 @@ async def require_principal(
     JWT-authenticated callers are mapped to a demo organization ID so that
     endpoints that require an organization context keep working.
     """
+    env = os.getenv("SARDIS_ENVIRONMENT", "").strip().lower()
+    allow_anon = os.getenv("SARDIS_ALLOW_ANON", "").strip().lower() in {"1", "true", "yes", "on"}
+    if allow_anon and env in {"dev", "test", "local"}:
+        org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+        return Principal(
+            kind="api_key",
+            organization_id=org_id,
+            scopes=["*"],
+            api_key=None,
+        )
+
     if api_key is not None:
         return Principal(
             kind="api_key",

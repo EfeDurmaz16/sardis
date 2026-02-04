@@ -3,9 +3,22 @@ import hmac as hmac_mod
 import json
 
 import pytest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
+
+
+def _load_cards_module(module_name: str):
+    import importlib.util, sys
+
+    repo_root = Path(__file__).resolve().parents[1]
+    cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
+    spec = importlib.util.spec_from_file_location(module_name, str(cards_path))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _auth_headers() -> dict[str, str]:
@@ -76,14 +89,7 @@ def mock_card_provider():
 
 @pytest.fixture
 def app_with_cards(mock_card_repo, mock_card_provider):
-    import importlib.util, sys
-    spec = importlib.util.spec_from_file_location(
-        "cards_router",
-        "/Users/efebarandurmaz/Desktop/sardis 2/packages/sardis-api/src/sardis_api/routers/cards.py",
-    )
-    cards_mod = importlib.util.module_from_spec(spec)
-    sys.modules["cards_router"] = cards_mod
-    spec.loader.exec_module(cards_mod)
+    cards_mod = _load_cards_module("cards_router")
     create_cards_router = cards_mod.create_cards_router
     app = FastAPI()
     router = create_cards_router(
@@ -132,14 +138,7 @@ def test_get_card_not_found(app_with_cards, mock_card_repo):
 
 @pytest.fixture
 def app_with_webhook_secret(mock_card_repo, mock_card_provider):
-    import importlib.util, sys
-    spec = importlib.util.spec_from_file_location(
-        "cards_router_wh",
-        "/Users/efebarandurmaz/Desktop/sardis 2/packages/sardis-api/src/sardis_api/routers/cards.py",
-    )
-    cards_mod = importlib.util.module_from_spec(spec)
-    sys.modules["cards_router_wh"] = cards_mod
-    spec.loader.exec_module(cards_mod)
+    cards_mod = _load_cards_module("cards_router_wh")
     app = FastAPI()
     router = cards_mod.create_cards_router(
         card_repo=mock_card_repo,

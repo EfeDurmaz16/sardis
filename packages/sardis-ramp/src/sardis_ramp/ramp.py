@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from decimal import Decimal
 from typing import Literal, Optional
 
@@ -19,6 +20,8 @@ from .ramp_types import (
     ACHDetails,
     WireDetails,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyViolation(Exception):
