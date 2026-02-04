@@ -44,6 +44,7 @@ def mock_chain_executor():
     executor = AsyncMock()
     receipt = MagicMock()
     receipt.tx_hash = "0xtxhash123"
+    receipt.audit_anchor = None
     executor.dispatch_payment.return_value = receipt
     return executor
 
