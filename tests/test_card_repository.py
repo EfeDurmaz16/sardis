@@ -1,13 +1,22 @@
-import sys
-import importlib
 import pytest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 # Import the module directly to avoid sardis_api.__init__ side effects
 import importlib.util
+_repo_root = Path(__file__).resolve().parents[1]
+_module_path = (
+    _repo_root
+    / "packages"
+    / "sardis-api"
+    / "src"
+    / "sardis_api"
+    / "repositories"
+    / "card_repository.py"
+)
 _spec = importlib.util.spec_from_file_location(
     "sardis_api.repositories.card_repository",
-    "/Users/efebarandurmaz/Desktop/sardis 2/packages/sardis-api/src/sardis_api/repositories/card_repository.py",
+    str(_module_path),
 )
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)

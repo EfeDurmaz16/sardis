@@ -2,9 +2,9 @@
 Tests for SardisClient
 """
 import pytest
-from sardis_sdk import SardisClient
+from sardis_sdk import AsyncSardisClient, SardisClient
 from sardis_sdk.client import RetryConfig
-from sardis_sdk.models.errors import APIError, AuthenticationError, RateLimitError
+from sardis_sdk.models.errors import APIError, AuthenticationError, ConnectionError, RateLimitError, TimeoutError
 
 
 class TestClientInitialization:
@@ -69,13 +69,13 @@ class TestContextManager:
 
     async def test_use_as_context_manager(self, api_key, base_url, mock_health_response):
         """Should work as async context manager."""
-        async with SardisClient(api_key=api_key, base_url=base_url) as client:
+        async with AsyncSardisClient(api_key=api_key, base_url=base_url) as client:
             health = await client.health()
             assert health["status"] == "healthy"
 
     async def test_close_client_on_exit(self, api_key, base_url, mock_health_response):
         """Should close client on context exit."""
-        async with SardisClient(api_key=api_key, base_url=base_url) as client:
+        async with AsyncSardisClient(api_key=api_key, base_url=base_url) as client:
             await client.health()
 
         # Client should be closed after context exit
@@ -108,7 +108,7 @@ class TestErrorHandling:
         )
 
         # Use retry=RetryConfig(max_retries=1) to avoid retries for this test
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
         try:
             with pytest.raises(RateLimitError):
                 await client._request("GET", "/v1/error/429")
@@ -124,7 +124,7 @@ class TestErrorHandling:
             json={"error": "Internal server error"},
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
         try:
             with pytest.raises(APIError):
                 await client._request("GET", "/v1/error/500")
@@ -137,7 +137,7 @@ class TestRetryLogic:
 
     async def test_client_supports_retries(self, api_key, base_url):
         """Should support configurable retry count."""
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=3))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=3))
         assert client._retry.max_retries == 3
         await client.close()
 
@@ -158,7 +158,7 @@ class TestRetryLogic:
             json={"success": True},
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
             result = await client._request("GET", "/v1/retry-test")
             assert result["success"] is True
@@ -182,7 +182,7 @@ class TestRetryLogic:
             json={"success": True},
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
             result = await client._request("GET", "/v1/timeout-test")
             assert result["success"] is True
@@ -206,7 +206,7 @@ class TestRetryLogic:
             json={"success": True},
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
             result = await client._request("GET", "/v1/connect-test")
             assert result["success"] is True
@@ -229,9 +229,9 @@ class TestRetryLogic:
             method="GET",
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
-            with pytest.raises(httpx.TimeoutException):
+            with pytest.raises(TimeoutError):
                 await client._request("GET", "/v1/timeout-fail")
         finally:
             await client.close()
@@ -252,9 +252,9 @@ class TestRetryLogic:
             method="GET",
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
-            with pytest.raises(httpx.ConnectError):
+            with pytest.raises(ConnectionError):
                 await client._request("GET", "/v1/connect-fail")
         finally:
             await client.close()
@@ -297,7 +297,7 @@ class TestRequestMethod:
             ],
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
         try:
             with pytest.raises(APIError) as exc_info:
                 await client._request("POST", "/v1/validation-error")
@@ -315,7 +315,7 @@ class TestRequestMethod:
             content=b"<html>Internal Server Error</html>",
         )
 
-        client = SardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
         try:
             with pytest.raises(APIError) as exc_info:
                 await client._request("GET", "/v1/html-error")

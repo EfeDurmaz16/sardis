@@ -2,10 +2,8 @@
 Pytest configuration and fixtures for Sardis SDK tests.
 """
 import pytest
-from unittest.mock import AsyncMock
-import httpx
 
-from sardis_sdk import SardisClient
+from sardis_sdk import AsyncSardisClient
 
 
 # Mock response data
@@ -85,9 +83,9 @@ def base_url() -> str:
 
 
 @pytest.fixture
-async def client(api_key: str, base_url: str) -> SardisClient:
+async def client(api_key: str, base_url: str) -> AsyncSardisClient:
     """Create a test client."""
-    client = SardisClient(api_key=api_key, base_url=base_url)
+    client = AsyncSardisClient(api_key=api_key, base_url=base_url)
     yield client
     await client.close()
 
