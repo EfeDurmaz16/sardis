@@ -136,7 +136,7 @@ const result = await wallet.pay({
 
 ## API Endpoints
 
-Base URL: `https://api.sardis.sh/v2`
+Base URL: `https://sardis.sh/api/v2`
 
 ### Wallets
 - `POST /wallets` - Create a new wallet

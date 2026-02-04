@@ -321,7 +321,7 @@ const quote: FundingQuote = await client.fiat.getQuote({...});`}</pre>
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
             <pre className="text-[var(--sardis-canvas)]">{`// Set environment variables
 // SARDIS_API_KEY=sk_...
-// SARDIS_BASE_URL=https://api.sardis.sh (optional)
+// SARDIS_BASE_URL=https://sardis.sh/api/v2 (optional)
 
 // Client will use them automatically
 const client = new SardisClient();`}</pre>

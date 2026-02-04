@@ -539,14 +539,14 @@ Add to `.cursor/mcp.json`:
 ### Base URL
 
 ```
-Production: https://api.sardis.sh/v2
-Sandbox:    https://sandbox.api.sardis.sh/v2
+Production: https://sardis.sh/api/v2
+Sandbox:    https://sardis.sh/api/v2
 ```
 
 ### Authentication
 
 ```bash
-curl https://api.sardis.sh/v2/wallets \
+curl https://sardis.sh/api/v2/wallets \
   -H "Authorization: Bearer sk_live_..."
 ```
 

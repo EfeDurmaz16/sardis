@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
+import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
@@ -238,19 +239,11 @@ export default function DocsBlog() {
         <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
           Get notified when we publish new articles and release updates.
         </p>
-        <form className="flex gap-3">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="flex-1 px-4 py-2.5 bg-background border border-border rounded-md text-sm font-mono focus:outline-none focus:border-[var(--sardis-orange)]"
-          />
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-[var(--sardis-orange)] text-white font-medium text-sm rounded-md hover:bg-[var(--sardis-orange)]/90 transition-colors"
-          >
-            Subscribe
-          </button>
-        </form>
+        <WaitlistForm
+          ctaLabel="SUBSCRIBE"
+          successTitle="Subscribed"
+          successDescription="You're subscribed. We'll email you when we publish new posts and product updates."
+        />
       </section>
     </article>
   );

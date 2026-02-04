@@ -31,7 +31,7 @@ export default function DocsMCPServer() {
       "args": ["@sardis/mcp-server", "start"],
       "env": {
         "SARDIS_API_KEY": "sk_...",
-        "SARDIS_BASE_URL": "https://api.sardis.sh"
+        "SARDIS_BASE_URL": "https://sardis.sh/api/v2"
       }
     }
   }

@@ -159,7 +159,7 @@ SARDIS_WALLET_FACTORY=0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7
 SARDIS_ESCROW=0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932
 
 # API Configuration
-SARDIS_API_URL=https://api.sardis.sh
+SARDIS_API_URL=https://sardis.sh/api/v2
 SARDIS_API_KEY=sk_test_...
 
 # Network Configuration

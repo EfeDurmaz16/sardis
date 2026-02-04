@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const WaitlistForm = () => {
+const WaitlistForm = ({
+    ctaLabel = 'GET ACCESS',
+    successTitle = "You're on the list",
+    successDescription = "You've been registered for Sardis. We'll reach out soon with your access credentials.",
+}) => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState('idle'); // idle, loading, success, error
     const [errorMessage, setErrorMessage] = useState('');
@@ -54,10 +58,8 @@ const WaitlistForm = () => {
                 <div className="w-12 h-12 bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 font-mono font-bold text-emerald-500">
                     OK
                 </div>
-                <h3 className="text-lg font-bold text-emerald-500 mb-2 font-display">You're on the list</h3>
-                <p className="text-muted-foreground text-sm font-mono">
-                    You've been registered for Sardis. We'll reach out soon with your access credentials.
-                </p>
+                <h3 className="text-lg font-bold text-emerald-500 mb-2 font-display">{successTitle}</h3>
+                <p className="text-muted-foreground text-sm font-mono">{successDescription}</p>
             </motion.div>
         );
     }
@@ -100,7 +102,7 @@ const WaitlistForm = () => {
                     </>
                 ) : (
                     <>
-                        GET ACCESS
+                        {ctaLabel}
                         <span>→</span>
                     </>
                 )}

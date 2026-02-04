@@ -108,7 +108,7 @@ console.log(\`TX: \${payment.txHash}\`);`
   },
   curl: {
     label: 'REST API',
-    code: `curl -X POST https://api.sardis.sh/v2/payments \\
+    code: `curl -X POST https://sardis.sh/api/v2/payments \\
   -H "Authorization: Bearer sk_..." \\
   -H "Content-Type: application/json" \\
   -d '{

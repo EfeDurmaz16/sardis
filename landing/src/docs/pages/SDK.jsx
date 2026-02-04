@@ -29,7 +29,7 @@ export default function DocsSDK() {
 
 client = SardisClient(
     api_key="your_api_key",
-    base_url="https://api.sardis.sh",  # Optional
+    base_url="https://sardis.sh/api/v2",  # Optional
     timeout=30,  # Optional, seconds
     max_retries=3  # Optional
 )`}</pre>
@@ -102,7 +102,7 @@ check.reason         # str (if blocked)`}</pre>
 
 const client = new SardisClient({
   apiKey: 'your_api_key',
-  baseUrl: 'https://api.sardis.sh', // Optional
+  baseUrl: 'https://sardis.sh/api/v2', // Optional
   timeout: 30000, // Optional, milliseconds
   maxRetries: 3 // Optional
 });`}</pre>
