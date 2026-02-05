@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import base64
+import logging
+import os
 import time
 from dataclasses import MISSING, dataclass, fields
 from typing import Any, Dict, Optional, Type
@@ -12,6 +14,13 @@ from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, Man
 from .schemas import AP2PaymentExecuteRequest
 from .storage import MandateArchive, ReplayCache
 from .rate_limiter import AgentRateLimiter, RateLimitConfig, get_rate_limiter
+
+logger = logging.getLogger(__name__)
+
+
+class VerificationError(Exception):
+    """Raised when verification requirements are not met."""
+    pass
 
 
 @dataclass
@@ -43,7 +52,7 @@ class MandateVerifier:
         self._rate_limiter = rate_limiter or get_rate_limiter(rate_limit_config)
         self._identity_registry = identity_registry
 
-    def verify(self, mandate: PaymentMandate) -> VerificationResult:
+    def verify(self, mandate: IntentMandate | CartMandate | PaymentMandate) -> VerificationResult:
         if mandate.is_expired():
             return VerificationResult(False, "mandate_expired")
         if mandate.domain not in self._settings.allowed_domains:
@@ -60,8 +69,17 @@ class MandateVerifier:
         except Exception:  # noqa: BLE001
             return VerificationResult(False, "signature_malformed")
 
-        payload = self._canonical_payment_payload(mandate)
-        if not agent.verify(payload, signature=signature, domain=mandate.domain, nonce=mandate.nonce, purpose="checkout"):
+        # Get canonical payload based on mandate type
+        if isinstance(mandate, PaymentMandate):
+            payload = self._canonical_payment_payload(mandate)
+        elif isinstance(mandate, CartMandate):
+            payload = self._canonical_cart_payload(mandate)
+        elif isinstance(mandate, IntentMandate):
+            payload = self._canonical_intent_payload(mandate)
+        else:
+            return VerificationResult(False, "unknown_mandate_type")
+
+        if not agent.verify(payload, signature=signature, domain=mandate.domain, nonce=mandate.nonce, purpose=mandate.purpose):
             return VerificationResult(False, "signature_invalid")
         return VerificationResult(True)
 
@@ -92,7 +110,9 @@ class MandateVerifier:
 
         if len({intent.subject, cart.subject, payment.subject}) != 1:
             return MandateChainVerification(False, "subject_mismatch")
-        if cart.merchant_domain != payment.domain:
+        if not payment.merchant_domain:
+            return MandateChainVerification(False, "payment_missing_merchant_domain")
+        if cart.merchant_domain != payment.merchant_domain:
             return MandateChainVerification(False, "merchant_domain_mismatch")
 
         # Validate payment amount does not exceed cart total
@@ -103,6 +123,15 @@ class MandateVerifier:
         # Validate intent amount bounds if specified
         if intent.requested_amount is not None and payment.amount_minor > intent.requested_amount:
             return MandateChainVerification(False, "payment_exceeds_intent_amount")
+
+        # Verify signatures for all mandates in the chain
+        intent_result = self.verify(intent)
+        if not intent_result.accepted:
+            return MandateChainVerification(False, f"intent_{intent_result.reason}")
+
+        cart_result = self.verify(cart)
+        if not cart_result.accepted:
+            return MandateChainVerification(False, f"cart_{cart_result.reason}")
 
         payment_result = self.verify(payment)
         if not payment_result.accepted:
@@ -133,7 +162,7 @@ class MandateVerifier:
             raise ValueError(f"mandate_missing_field:{field.name}")
         return model(proof=proof, **init_values)
 
-    def _identity_from_proof(self, mandate: PaymentMandate) -> AgentIdentity | None:
+    def _identity_from_proof(self, mandate: IntentMandate | CartMandate | PaymentMandate) -> AgentIdentity | None:
         method = mandate.proof.verification_method
         try:
             algorithm, public_key = IdentityRegistry.parse_verification_method(method)
@@ -148,6 +177,11 @@ class MandateVerifier:
                 algorithm=algorithm,
             ):
                 return None
+        else:
+            # Fail-closed in production: identity registry must be configured
+            if os.getenv("SARDIS_ENV") == "production":
+                raise VerificationError("Identity registry required in production")
+            logger.warning("Identity registry not configured - skipping identity binding verification (dev mode)")
 
         return AgentIdentity(
             agent_id=mandate.subject,
@@ -157,7 +191,42 @@ class MandateVerifier:
         )
 
     @staticmethod
+    def _canonical_intent_payload(mandate: IntentMandate) -> bytes:
+        """Create canonical payload for Intent mandate signature verification."""
+        fields = [
+            mandate.mandate_id,
+            mandate.subject,
+            mandate.mandate_type,
+            ",".join(sorted(mandate.scope)) if mandate.scope else "",
+            str(mandate.requested_amount) if mandate.requested_amount is not None else "",
+            str(mandate.expires_at),
+        ]
+        return "|".join(fields).encode()
+
+    @staticmethod
+    def _canonical_cart_payload(mandate: CartMandate) -> bytes:
+        """Create canonical payload for Cart mandate signature verification."""
+        # Sort line items by a stable key to ensure consistent ordering
+        sorted_items = sorted(mandate.line_items, key=lambda x: (x.get("item_id", ""), x.get("name", "")))
+        items_str = ",".join(
+            f"{item.get('item_id', '')}:{item.get('name', '')}:{item.get('quantity', 0)}:{item.get('price_minor', 0)}"
+            for item in sorted_items
+        )
+        fields = [
+            mandate.mandate_id,
+            mandate.subject,
+            items_str,
+            str(mandate.subtotal_minor),
+            str(mandate.taxes_minor),
+            mandate.currency,
+            mandate.merchant_domain,
+            str(mandate.expires_at),
+        ]
+        return "|".join(fields).encode()
+
+    @staticmethod
     def _canonical_payment_payload(mandate: PaymentMandate) -> bytes:
+        """Create canonical payload for Payment mandate signature verification."""
         fields = [
             mandate.mandate_id,
             mandate.subject,
@@ -165,6 +234,7 @@ class MandateVerifier:
             mandate.token,
             mandate.chain,
             mandate.destination,
+            mandate.merchant_domain or "",
             mandate.audit_hash,
         ]
         return "|".join(fields).encode()

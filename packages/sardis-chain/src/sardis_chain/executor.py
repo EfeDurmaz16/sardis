@@ -1202,11 +1202,20 @@ class LocalAccountSigner(MPCSignerPort):
     """Local EOA signer for MVP/demo without MPC."""
 
     def __init__(self, private_key: str, address: str | None = None):
+        import os
         from web3 import Web3
         from eth_account import Account
 
         if not private_key:
             raise ValueError("SARDIS_EOA_PRIVATE_KEY is required for local signer")
+
+        # Warn if used in production environment
+        if os.getenv("SARDIS_ENV") == "production":
+            logger.warning(
+                "LocalAccountSigner stores private keys in memory. "
+                "Use TurnkeySigner for production."
+            )
+
         self._w3 = Web3()
         self._account = Account.from_key(private_key)
         self._address = address or self._account.address
@@ -1566,10 +1575,23 @@ class ChainExecutor:
     - Nonce management prevents double-spend and stuck transactions
     """
 
-    # Confirmation requirements
-    CONFIRMATIONS_REQUIRED = 1
+    # Confirmation requirements per chain
+    CHAIN_CONFIRMATIONS = {
+        "ethereum": 12,
+        "base": 3,
+        "base_sepolia": 3,
+        "polygon": 10,
+        "polygon_amoy": 10,
+        "arbitrum": 3,
+        "optimism": 3,
+    }
     CONFIRMATION_TIMEOUT = 120  # seconds
     POLL_INTERVAL = 2  # seconds
+
+    @classmethod
+    def get_confirmations_required(cls, chain: str) -> int:
+        """Get required confirmations for a chain (safe default: 12)."""
+        return cls.CHAIN_CONFIRMATIONS.get(chain.lower(), 12)
 
     def __init__(self, settings: SardisSettings):
         self._settings = settings
@@ -1737,8 +1759,9 @@ class ChainExecutor:
         from_address = None
         if not self._simulated and self._mpc_signer:
             try:
-                wallet_id = getattr(mandate, "wallet_id", None) or mandate.subject
-                from_address = await self._mpc_signer.get_address(wallet_id, chain)
+                wallet_id = getattr(mandate, "wallet_id", None)
+                if wallet_id:
+                    from_address = await self._mpc_signer.get_address(wallet_id, chain)
             except Exception:  # noqa: BLE001
                 from_address = None
 
@@ -1840,32 +1863,18 @@ class ChainExecutor:
         """
         Execute a payment mandate on-chain.
 
-        IMPORTANT: This method enforces a fail-closed compliance policy.
-        Transactions are ONLY executed if:
-        1. Compliance preflight check passes
-        2. Sanctions screening passes for destination address
-        3. Gas price is within acceptable limits (spike protection)
+        NOTE: Compliance checks (preflight and sanctions) are performed by the
+        orchestrator in Phase 2 before calling this method. This executor assumes
+        compliance has already been verified and focuses on chain execution.
 
-        In simulated mode, returns a mock receipt (compliance still checked).
+        In simulated mode, returns a mock receipt.
         In live mode, signs and broadcasts the transaction.
 
         Raises:
-            ComplianceError: If compliance check fails
-            SanctionsError: If destination is sanctioned
             GasPriceSpikeError: If gas price exceeds limits
         """
         chain = mandate.chain or "base_sepolia"
         audit_anchor = f"merkle::{mandate.audit_hash}"
-
-        # === PRE-EXECUTION COMPLIANCE GATE (FAIL-CLOSED) ===
-
-        # Step 1: Run compliance preflight check
-        await self._check_compliance_preflight(mandate)
-
-        # Step 2: Run sanctions screening on destination
-        await self._check_sanctions(mandate.destination, chain)
-
-        # === COMPLIANCE PASSED - PROCEED WITH EXECUTION ===
 
         if self._simulated:
             # Simulated mode - return mock receipt
@@ -1932,7 +1941,7 @@ class ChainExecutor:
             logger.error(f"Compliance service unavailable, blocking mandate {mandate.mandate_id}")
             raise RuntimeError("Compliance service unavailable - transaction blocked (fail-closed policy)")
 
-        result = self._compliance_engine.preflight(mandate)
+        result = await self._compliance_engine.preflight(mandate)
 
         if not result.allowed:
             logger.warning(
@@ -2008,7 +2017,12 @@ class ChainExecutor:
         transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
 
         # Get sender address
-        wallet_id = getattr(mandate, "wallet_id", None) or mandate.subject
+        wallet_id = getattr(mandate, "wallet_id", None)
+        if not wallet_id:
+            raise RuntimeError(
+                "PaymentMandate.wallet_id is required for live signing. "
+                "Use mandate.subject for agent identity and set wallet_id as the execution hint."
+            )
         sender_address = await self._mpc_signer.get_address(wallet_id, chain)
 
         # Build transaction params for simulation
@@ -2089,6 +2103,7 @@ class ChainExecutor:
                 details={"mandate_id": mandate.mandate_id},
             )
 
+        broadcast_success = False
         try:
             # Build transaction request with capped gas prices
             tx_request = TransactionRequest(
@@ -2109,6 +2124,7 @@ class ChainExecutor:
             # Broadcast transaction
             logger.info(f"Broadcasting transaction for mandate {mandate.mandate_id}")
             tx_hash = await rpc.send_raw_transaction(signed_tx)
+            broadcast_success = True
 
             logger.info(f"Transaction submitted: {tx_hash}")
 
@@ -2160,14 +2176,20 @@ class ChainExecutor:
             )
 
         except Exception as e:
-            # Release nonce on failure for potential retry
-            await self._nonce_manager.release_nonce(sender_address, nonce)
-            self._chain_logger.log_nonce_management(
-                address=sender_address,
-                action="released",
-                nonce=nonce,
-                details={"error": str(e)},
-            )
+            # Only release nonce if broadcast failed - if broadcast succeeded, nonce is already consumed on-chain
+            if not broadcast_success:
+                await self._nonce_manager.release_nonce(sender_address, nonce)
+                self._chain_logger.log_nonce_management(
+                    address=sender_address,
+                    action="released",
+                    nonce=nonce,
+                    details={"error": str(e)},
+                )
+            else:
+                logger.error(
+                    f"Confirmation failed after broadcast. Nonce consumed on-chain. "
+                    f"tx_hash={tx_hash}, mandate_id={mandate.mandate_id}"
+                )
             raise
 
     async def _wait_for_confirmation_with_verification(
@@ -2194,7 +2216,7 @@ class ChainExecutor:
                     rpc_client=rpc,
                     timeout_seconds=self.CONFIRMATION_TIMEOUT,
                     poll_interval=self.POLL_INTERVAL,
-                    required_confirmations=self.CONFIRMATIONS_REQUIRED,
+                    required_confirmations=self.get_confirmations_required(chain),
                 )
 
                 if not receipt_validation.is_successful:
@@ -2251,11 +2273,12 @@ class ChainExecutor:
                 current_block = await rpc.get_block_number()
                 confirmations = current_block - tx_block + 1
                 
-                if confirmations >= self.CONFIRMATIONS_REQUIRED:
+                required_confirmations = self.get_confirmations_required(chain)
+                if confirmations >= required_confirmations:
                     logger.info(f"Transaction {tx_hash} confirmed with {confirmations} confirmations")
                     return receipt
-                
-                logger.debug(f"Transaction {tx_hash} has {confirmations} confirmations, waiting for {self.CONFIRMATIONS_REQUIRED}")
+
+                logger.debug(f"Transaction {tx_hash} has {confirmations} confirmations, waiting for {required_confirmations}")
             
             await asyncio.sleep(self.POLL_INTERVAL)
 
@@ -2275,10 +2298,10 @@ class ChainExecutor:
         tx_block = int(receipt.get("blockNumber", "0x0"), 16)
         current_block = await rpc.get_block_number()
         confirmations = current_block - tx_block + 1
-        
-        if confirmations >= self.CONFIRMATIONS_REQUIRED:
+
+        if confirmations >= self.get_confirmations_required(chain):
             return TransactionStatus.CONFIRMED
-        
+
         return TransactionStatus.CONFIRMING
 
     async def validate_chain_connection(self, chain: str) -> bool:

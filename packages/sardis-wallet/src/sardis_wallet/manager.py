@@ -15,9 +15,12 @@ Production-grade wallet orchestration with comprehensive security features:
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 from sardis_v2_core import (
     SardisSettings,
@@ -175,12 +178,13 @@ class EnhancedWalletManager:
 
     @staticmethod
     def _amount_from_mandate(mandate: PaymentMandate) -> Decimal:
-        try:
-            token = TokenType(str(mandate.token).upper())
-            return normalize_token_amount(token, int(mandate.amount_minor))
-        except Exception:  # noqa: BLE001
-            # Backwards-compat: fall back to cents-like scaling.
-            return Decimal(mandate.amount_minor) / Decimal(10**2)
+        token = TokenType(str(mandate.token).upper())
+        return normalize_token_amount(token, int(mandate.amount_minor))
+
+    @staticmethod
+    def _merchant_id_from_mandate(mandate: PaymentMandate) -> str:
+        merchant_domain = getattr(mandate, "merchant_domain", None)
+        return merchant_domain or mandate.domain
 
     def validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
         """Synchronous validation (for backwards compatibility)."""
@@ -189,10 +193,11 @@ class EnhancedWalletManager:
             policy = create_default_policy(mandate.subject)
 
         amount = self._amount_from_mandate(mandate)
+        merchant_id = self._merchant_id_from_mandate(mandate)
         ok, reason = policy.validate_payment(
             amount,
-            Decimal("0"),
-            merchant_id=mandate.domain,
+            Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
+            merchant_id=merchant_id,
             scope=SpendingScope.ALL,
         )
 
@@ -209,10 +214,11 @@ class EnhancedWalletManager:
             policy = create_default_policy(mandate.subject)
 
         amount = self._amount_from_mandate(mandate)
+        merchant_id = self._merchant_id_from_mandate(mandate)
         ok, reason = policy.validate_payment(
             amount,
-            Decimal("0"),
-            merchant_id=mandate.domain,
+            Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
+            merchant_id=merchant_id,
             scope=SpendingScope.ALL,
         )
 
@@ -227,7 +233,15 @@ class EnhancedWalletManager:
         if not self._async_policy_store:
             return
         amount = self._amount_from_mandate(mandate)
-        await self._async_policy_store.record_spend(mandate.subject, amount)
+        try:
+            await self._async_policy_store.record_spend(mandate.subject, amount)
+        except Exception as e:
+            logger.critical(
+                f"CRITICAL: Failed to record spend for mandate {mandate.mandate_id}, "
+                f"agent {mandate.subject}, amount {amount}: {e}. "
+                f"Policy enforcement may be compromised."
+            )
+            raise
 
     async def evaluate_policies(
         self,
@@ -287,15 +301,16 @@ class EnhancedWalletManager:
             policy = create_default_policy(mandate.subject)
 
         amount = self._amount_from_mandate(mandate)
+        merchant_id = self._merchant_id_from_mandate(mandate)
 
         # Check spending policy
         ok, reason = await policy.evaluate(
             wallet=wallet,
             amount=amount,
-            fee=Decimal("0"),
+            fee=Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
             chain=chain,
             token=token,
-            merchant_id=mandate.domain,
+            merchant_id=merchant_id,
             scope=SpendingScope.ALL,
             rpc_client=rpc_client,
         )
@@ -309,7 +324,7 @@ class EnhancedWalletManager:
             amount=amount,
             token=str(token),
             chain=chain,
-            merchant_id=mandate.domain,
+            merchant_id=merchant_id,
         )
 
         if not limits_ok:

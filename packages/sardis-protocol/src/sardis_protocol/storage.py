@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -126,24 +127,26 @@ class ReplayCache:
         self._cleanup_interval = cleanup_interval_seconds
         self._max_entries = max_entries
         self._last_cleanup = time.time()
+        self._lock = threading.Lock()
 
     def check_and_store(self, mandate_id: str, expires_at: int) -> bool:
         """Check if mandate was seen and store if not."""
-        now = int(time.time())
-        
-        # Run periodic cleanup
-        self._maybe_cleanup(now)
-        
-        deadline = self._seen.get(mandate_id)
-        if deadline and deadline > now:
-            return False
-        
-        # Use default TTL if expires_at is not set or too far in future
-        if expires_at <= now:
-            expires_at = now + self._default_ttl
-        
-        self._seen[mandate_id] = expires_at
-        return True
+        with self._lock:
+            now = int(time.time())
+
+            # Run periodic cleanup
+            self._maybe_cleanup(now)
+
+            deadline = self._seen.get(mandate_id)
+            if deadline and deadline > now:
+                return False
+
+            # Use default TTL if expires_at is not set or too far in future
+            if expires_at <= now:
+                expires_at = now + self._default_ttl
+
+            self._seen[mandate_id] = expires_at
+            return True
     
     def _maybe_cleanup(self, now: int) -> None:
         """Run cleanup if interval has passed or at max capacity."""
@@ -156,23 +159,24 @@ class ReplayCache:
     
     def cleanup(self, now: Optional[int] = None) -> int:
         """Remove expired entries.
-        
+
         Returns:
             Number of entries removed.
         """
-        if now is None:
-            now = int(time.time())
-        
-        expired = [
-            mandate_id
-            for mandate_id, expires_at in self._seen.items()
-            if expires_at <= now
-        ]
-        for mandate_id in expired:
-            del self._seen[mandate_id]
-        
-        self._last_cleanup = now
-        return len(expired)
+        with self._lock:
+            if now is None:
+                now = int(time.time())
+
+            expired = [
+                mandate_id
+                for mandate_id, expires_at in self._seen.items()
+                if expires_at <= now
+            ]
+            for mandate_id in expired:
+                del self._seen[mandate_id]
+
+            self._last_cleanup = now
+            return len(expired)
     
     def stats(self) -> dict:
         """Return cache statistics."""

@@ -13,6 +13,7 @@ IMPORTANT: Never bypass this orchestrator to execute payments directly.
 from __future__ import annotations
 
 import logging
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -206,6 +207,13 @@ class InMemoryReconciliationQueue:
     MAX_RETRIES = 5
 
     def __init__(self):
+        import os
+        if os.getenv("SARDIS_ENV", "development") == "production":
+            logger.critical(
+                "InMemoryReconciliationQueue is NOT suitable for production! "
+                "Pending reconciliation entries WILL BE LOST on restart. "
+                "Set reconciliation_queue= to a persistent implementation."
+            )
         self._queue: Dict[str, ReconciliationEntry] = {}
 
     def enqueue(self, entry: ReconciliationEntry) -> str:
@@ -279,7 +287,8 @@ class PaymentOrchestrator:
         self._chain_executor = chain_executor
         self._ledger = ledger
         self._reconciliation_queue = reconciliation_queue or InMemoryReconciliationQueue()
-        self._audit_log: List[ExecutionAuditEntry] = []
+        self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
+        self._executed_mandates: dict[str, PaymentResult] = {}
 
     def _audit(
         self,
@@ -328,6 +337,10 @@ class PaymentOrchestrator:
         payment = chain.payment
         mandate_id = payment.mandate_id
 
+        if mandate_id in self._executed_mandates:
+            logger.warning(f"Duplicate execution blocked: mandate_id={mandate_id}")
+            return self._executed_mandates[mandate_id]
+
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
 
         # Phase 1: Policy Validation (fail-fast)
@@ -355,7 +368,7 @@ class PaymentOrchestrator:
 
         # Phase 2: Compliance Check (fail-fast)
         try:
-            compliance = self._compliance.preflight(payment)
+            compliance = await self._compliance.preflight(payment)
             if not compliance.allowed:
                 self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
                            {"provider": compliance.provider, "rule_id": compliance.rule_id},
@@ -434,7 +447,7 @@ class PaymentOrchestrator:
 
             # Return result with warning - payment DID succeed
             execution_time = (time.time() - start_time) * 1000
-            return PaymentResult(
+            result = PaymentResult(
                 mandate_id=mandate_id,
                 ledger_tx_id="PENDING_RECONCILIATION",
                 chain_tx_hash=receipt.tx_hash,
@@ -445,12 +458,14 @@ class PaymentOrchestrator:
                 compliance_rule=compliance.rule_id,
                 execution_time_ms=execution_time,
             )
+            self._executed_mandates[mandate_id] = result
+            return result
 
         # Success!
         self._audit(mandate_id, ExecutionPhase.COMPLETED, True)
         execution_time = (time.time() - start_time) * 1000
 
-        return PaymentResult(
+        result = PaymentResult(
             mandate_id=mandate_id,
             ledger_tx_id=ledger_tx.tx_id,
             chain_tx_hash=receipt.tx_hash,
@@ -460,6 +475,8 @@ class PaymentOrchestrator:
             compliance_rule=compliance.rule_id,
             execution_time_ms=execution_time,
         )
+        self._executed_mandates[mandate_id] = result
+        return result
 
     async def reconcile_pending(self, limit: int = 10) -> int:
         """
@@ -494,4 +511,4 @@ class PaymentOrchestrator:
         """Get audit log entries, optionally filtered by mandate_id."""
         if mandate_id:
             return [e for e in self._audit_log if e.mandate_id == mandate_id][-limit:]
-        return self._audit_log[-limit:]
+        return list(self._audit_log)[-limit:]

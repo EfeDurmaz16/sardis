@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Sequence, Tuple
 
 from sardis_v2_core.transactions import Transaction, OnChainRecord
+from sardis_v2_core.tokens import normalize_token_amount
 
 from .models import (
     DECIMAL_PRECISION,
@@ -420,50 +421,52 @@ class LedgerStore:
 
     def append(self, payment_mandate, chain_receipt: ChainReceipt) -> Transaction:
         """Append a transaction to the ledger (sync version for SQLite)."""
-        amount = Decimal(payment_mandate.amount_minor) / Decimal(10**2)
-        tx = Transaction(
-            from_wallet=payment_mandate.subject,
-            to_wallet=payment_mandate.destination,
-            amount=amount,
-            currency=payment_mandate.token,
-            audit_anchor=chain_receipt.audit_anchor,
-        )
-        tx.add_on_chain_record(
-            OnChainRecord(
-                chain=chain_receipt.chain,
-                tx_hash=chain_receipt.tx_hash,
-                from_address=payment_mandate.subject,
-                to_address=payment_mandate.destination,
-                block_number=chain_receipt.block_number,
-                status="confirmed" if chain_receipt.block_number else "pending",
+        with self._lock:
+            amount = normalize_token_amount(payment_mandate.token, int(payment_mandate.amount_minor))
+            from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
+            tx = Transaction(
+                from_wallet=from_wallet_id,
+                to_wallet=payment_mandate.destination,
+                amount=amount,
+                currency=payment_mandate.token,
+                audit_anchor=chain_receipt.audit_anchor,
             )
-        )
-        created_at = tx.created_at.isoformat()
-        if self._sqlite_conn:
-            self._sqlite_conn.execute(
-                """
-                INSERT INTO ledger_entries (
-                    tx_id, mandate_id, from_wallet, to_wallet, amount, currency, chain,
-                    chain_tx_hash, audit_anchor, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    tx.tx_id,
-                    payment_mandate.mandate_id,
-                    payment_mandate.subject,
-                    payment_mandate.destination,
-                    str(amount),
-                    payment_mandate.token,
-                    chain_receipt.chain,
-                    chain_receipt.tx_hash,
-                    chain_receipt.audit_anchor,
-                    created_at,
-                ),
+            tx.add_on_chain_record(
+                OnChainRecord(
+                    chain=chain_receipt.chain,
+                    tx_hash=chain_receipt.tx_hash,
+                    from_address=from_wallet_id,
+                    to_address=payment_mandate.destination,
+                    block_number=chain_receipt.block_number,
+                    status="confirmed" if chain_receipt.block_number else "pending",
+                )
             )
-            self._sqlite_conn.commit()
-        else:
-            self._records.append(tx)
-        return tx
+            created_at = tx.created_at.isoformat()
+            if self._sqlite_conn:
+                self._sqlite_conn.execute(
+                    """
+                    INSERT INTO ledger_entries (
+                        tx_id, mandate_id, from_wallet, to_wallet, amount, currency, chain,
+                        chain_tx_hash, audit_anchor, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        tx.tx_id,
+                        payment_mandate.mandate_id,
+                        from_wallet_id,
+                        payment_mandate.destination,
+                        str(amount),
+                        payment_mandate.token,
+                        chain_receipt.chain,
+                        chain_receipt.tx_hash,
+                        chain_receipt.audit_anchor,
+                        created_at,
+                    ),
+                )
+                self._sqlite_conn.commit()
+            else:
+                self._records.append(tx)
+            return tx
 
     def _get_last_root_sqlite(self) -> str:
         cur = self._sqlite_conn.execute("SELECT value FROM ledger_meta WHERE key = 'merkle_root'")
@@ -483,13 +486,22 @@ class LedgerStore:
         - leaf_hash = sha256(mandate_id|tx_hash|timestamp|audit_anchor)
         - merkle_root = sha256(prev_root|leaf_hash)
         Proof contains leaf + previous_root.
+
+        Uses deterministic timestamp from chain receipt if available,
+        otherwise falls back to mandate timestamp for determinism.
         """
-        now = datetime.now(timezone.utc).isoformat()
+        # Use deterministic timestamp: chain receipt timestamp > wall-clock time
+        if chain_receipt.timestamp:
+            timestamp = chain_receipt.timestamp.isoformat()
+        else:
+            # Fallback: use current time but this is less deterministic
+            timestamp = datetime.now(timezone.utc).isoformat()
+
         payload = "|".join(
             [
                 payment_mandate.mandate_id,
                 chain_receipt.tx_hash,
-                now,
+                timestamp,
                 chain_receipt.audit_anchor or "",
             ]
         )
@@ -510,7 +522,7 @@ class LedgerStore:
             "audit_anchor": chain_receipt.audit_anchor,
             "merkle_root": merkle_root,
             "merkle_proof": proof,
-            "timestamp": now,
+            "timestamp": timestamp,
         }
 
         if self._sqlite_conn:
@@ -530,7 +542,7 @@ class LedgerStore:
                     merkle_root,
                     leaf_hash,
                     json.dumps(proof),
-                    now,
+                    timestamp,
                 ),
             )
             self._set_last_root_sqlite(merkle_root)
@@ -563,9 +575,10 @@ class LedgerStore:
     
     async def append_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Transaction:
         """Append a transaction to the ledger (async version for PostgreSQL)."""
-        amount = Decimal(payment_mandate.amount_minor) / Decimal(10**2)
+        amount = normalize_token_amount(payment_mandate.token, int(payment_mandate.amount_minor))
+        from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
         tx = Transaction(
-            from_wallet=payment_mandate.subject,
+            from_wallet=from_wallet_id,
             to_wallet=payment_mandate.destination,
             amount=amount,
             currency=payment_mandate.token,
@@ -575,7 +588,7 @@ class LedgerStore:
             OnChainRecord(
                 chain=chain_receipt.chain,
                 tx_hash=chain_receipt.tx_hash,
-                from_address=payment_mandate.subject,
+                from_address=from_wallet_id,
                 to_address=payment_mandate.destination,
                 block_number=chain_receipt.block_number,
                 status="confirmed" if chain_receipt.block_number else "pending",
@@ -594,9 +607,9 @@ class LedgerStore:
                     """,
                     tx.tx_id,
                     payment_mandate.mandate_id,
-                    payment_mandate.subject,
+                    from_wallet_id,
                     payment_mandate.destination,
-                    float(amount),
+                    str(amount),
                     payment_mandate.token,
                     chain_receipt.chain,
                     chain_receipt.tx_hash,
@@ -639,7 +652,241 @@ class LedgerStore:
                 return self._rows_to_transactions(rows, is_asyncpg=True)
         else:
             return self.list_recent(limit)
-    
+
+    def list_entry_records(
+        self,
+        *,
+        wallet_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Dict[str, Any]]:
+        """
+        List ledger entry records for API responses (sync).
+
+        Returns a stable, JSON-ready representation of ledger rows, including
+        mandate_id when available (SQLite / in-memory).
+
+        For PostgreSQL, use `list_entry_records_async`.
+        """
+        if self._use_postgres:
+            raise RuntimeError("PostgreSQL mode requires list_entry_records_async()")
+
+        with self._lock:
+            if self._sqlite_conn:
+                if wallet_id:
+                    rows = self._sqlite_conn.execute(
+                        """
+                        SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                               chain, chain_tx_hash, audit_anchor, created_at
+                        FROM ledger_entries
+                        WHERE (from_wallet = ? OR to_wallet = ?)
+                        ORDER BY created_at DESC
+                        LIMIT ? OFFSET ?
+                        """,
+                        (wallet_id, wallet_id, limit, offset),
+                    ).fetchall()
+                else:
+                    rows = self._sqlite_conn.execute(
+                        """
+                        SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                               chain, chain_tx_hash, audit_anchor, created_at
+                        FROM ledger_entries
+                        ORDER BY created_at DESC
+                        LIMIT ? OFFSET ?
+                        """,
+                        (limit, offset),
+                    ).fetchall()
+
+                out: list[Dict[str, Any]] = []
+                for row in rows:
+                    created_at = row[9]
+                    out.append(
+                        {
+                            "tx_id": row[0],
+                            "mandate_id": row[1],
+                            "from_wallet": row[2],
+                            "to_wallet": row[3],
+                            "amount": str(row[4]),
+                            "currency": row[5],
+                            "chain": row[6],
+                            "chain_tx_hash": row[7],
+                            "audit_anchor": row[8],
+                            "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+                        }
+                    )
+                return out
+
+            # In-memory fallback: best-effort pagination
+            records: list[Transaction] = self._records
+            if wallet_id:
+                records = [tx for tx in records if tx.from_wallet == wallet_id or tx.to_wallet == wallet_id]
+            sorted_records = sorted(records, key=lambda tx: tx.created_at, reverse=True)
+            sliced = sorted_records[offset : offset + limit]
+            out: list[Dict[str, Any]] = []
+            for tx in sliced:
+                chain = tx.on_chain_records[0].chain if tx.on_chain_records else None
+                chain_tx_hash = tx.on_chain_records[0].tx_hash if tx.on_chain_records else None
+                out.append(
+                    {
+                        "tx_id": tx.tx_id,
+                        "mandate_id": None,
+                        "from_wallet": tx.from_wallet or None,
+                        "to_wallet": tx.to_wallet or None,
+                        "amount": str(tx.amount),
+                        "currency": tx.currency,
+                        "chain": chain,
+                        "chain_tx_hash": chain_tx_hash,
+                        "audit_anchor": tx.audit_anchor,
+                        "created_at": tx.created_at.isoformat(),
+                    }
+                )
+            return out
+
+    async def list_entry_records_async(
+        self,
+        *,
+        wallet_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Dict[str, Any]]:
+        """List ledger entry records for API responses (async; PostgreSQL supported)."""
+        if not self._use_postgres:
+            return self.list_entry_records(wallet_id=wallet_id, limit=limit, offset=offset)
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            if wallet_id:
+                rows = await conn.fetch(
+                    """
+                    SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                           chain, chain_tx_hash, audit_anchor, created_at
+                    FROM ledger_entries
+                    WHERE (from_wallet = $1 OR to_wallet = $1)
+                    ORDER BY created_at DESC
+                    LIMIT $2 OFFSET $3
+                    """,
+                    wallet_id,
+                    limit,
+                    offset,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                           chain, chain_tx_hash, audit_anchor, created_at
+                    FROM ledger_entries
+                    ORDER BY created_at DESC
+                    LIMIT $1 OFFSET $2
+                    """,
+                    limit,
+                    offset,
+                )
+
+        out: list[Dict[str, Any]] = []
+        for row in rows:
+            created_at = row["created_at"]
+            out.append(
+                {
+                    "tx_id": str(row["tx_id"]),
+                    "mandate_id": row["mandate_id"],
+                    "from_wallet": row["from_wallet"],
+                    "to_wallet": row["to_wallet"],
+                    "amount": str(row["amount"]),
+                    "currency": row["currency"],
+                    "chain": row["chain"],
+                    "chain_tx_hash": row["chain_tx_hash"],
+                    "audit_anchor": row["audit_anchor"],
+                    "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+                }
+            )
+        return out
+
+    def get_entry_record(self, tx_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a single ledger entry record for API responses (sync).
+
+        For PostgreSQL, use `get_entry_record_async`.
+        """
+        if self._use_postgres:
+            raise RuntimeError("PostgreSQL mode requires get_entry_record_async()")
+
+        with self._lock:
+            if self._sqlite_conn:
+                row = self._sqlite_conn.execute(
+                    """
+                    SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                           chain, chain_tx_hash, audit_anchor, created_at
+                    FROM ledger_entries
+                    WHERE tx_id = ?
+                    """,
+                    (tx_id,),
+                ).fetchone()
+                if not row:
+                    return None
+                created_at = row[9]
+                return {
+                    "tx_id": row[0],
+                    "mandate_id": row[1],
+                    "from_wallet": row[2],
+                    "to_wallet": row[3],
+                    "amount": str(row[4]),
+                    "currency": row[5],
+                    "chain": row[6],
+                    "chain_tx_hash": row[7],
+                    "audit_anchor": row[8],
+                    "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+                }
+
+            for tx in self._records:
+                if tx.tx_id == tx_id:
+                    chain = tx.on_chain_records[0].chain if tx.on_chain_records else None
+                    chain_tx_hash = tx.on_chain_records[0].tx_hash if tx.on_chain_records else None
+                    return {
+                        "tx_id": tx.tx_id,
+                        "mandate_id": None,
+                        "from_wallet": tx.from_wallet or None,
+                        "to_wallet": tx.to_wallet or None,
+                        "amount": str(tx.amount),
+                        "currency": tx.currency,
+                        "chain": chain,
+                        "chain_tx_hash": chain_tx_hash,
+                        "audit_anchor": tx.audit_anchor,
+                        "created_at": tx.created_at.isoformat(),
+                    }
+            return None
+
+    async def get_entry_record_async(self, tx_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single ledger entry record for API responses (async; PostgreSQL supported)."""
+        if not self._use_postgres:
+            return self.get_entry_record(tx_id)
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT tx_id, mandate_id, from_wallet, to_wallet, amount, currency,
+                       chain, chain_tx_hash, audit_anchor, created_at
+                FROM ledger_entries
+                WHERE tx_id = $1
+                """,
+                tx_id,
+            )
+        if not row:
+            return None
+        created_at = row["created_at"]
+        return {
+            "tx_id": str(row["tx_id"]),
+            "mandate_id": row["mandate_id"],
+            "from_wallet": row["from_wallet"],
+            "to_wallet": row["to_wallet"],
+            "amount": str(row["amount"]),
+            "currency": row["currency"],
+            "chain": row["chain"],
+            "chain_tx_hash": row["chain_tx_hash"],
+            "audit_anchor": row["audit_anchor"],
+            "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+        }
+
     def _rows_to_transactions(self, rows, is_asyncpg: bool = False) -> list[Transaction]:
         """Convert database rows to Transaction objects."""
         entries: list[Transaction] = []
@@ -715,12 +962,20 @@ class LedgerStore:
         now = datetime.now(timezone.utc).isoformat()
 
         if self._sqlite_conn:
+            from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
+            # Preserve original mandate data for reconciliation
+            metadata = {
+                "subject": payment_mandate.subject,
+                "issuer": payment_mandate.issuer,
+                "domain": getattr(payment_mandate, "domain", "sardis.network"),
+                "purpose": getattr(payment_mandate, "purpose", "checkout"),
+            }
             self._sqlite_conn.execute(
                 """
                 INSERT INTO pending_reconciliation (
                     id, mandate_id, chain_tx_hash, chain, audit_anchor,
-                    from_wallet, to_wallet, amount, currency, error, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    from_wallet, to_wallet, amount, currency, error, created_at, metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     entry_id,
@@ -728,12 +983,13 @@ class LedgerStore:
                     chain_receipt.tx_hash,
                     chain_receipt.chain,
                     chain_receipt.audit_anchor,
-                    payment_mandate.subject,
+                    from_wallet_id,
                     payment_mandate.destination,
                     str(payment_mandate.amount_minor),
                     payment_mandate.token,
                     error,
                     now,
+                    json.dumps(metadata),
                 ),
             )
             self._sqlite_conn.commit()
@@ -745,17 +1001,26 @@ class LedgerStore:
             # In-memory fallback
             if not hasattr(self, '_reconciliation_queue'):
                 self._reconciliation_queue = {}
+            from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
+            # Preserve original mandate data for reconciliation
+            metadata = {
+                "subject": payment_mandate.subject,
+                "issuer": payment_mandate.issuer,
+                "domain": getattr(payment_mandate, "domain", "sardis.network"),
+                "purpose": getattr(payment_mandate, "purpose", "checkout"),
+            }
             self._reconciliation_queue[entry_id] = PendingReconciliation(
                 id=entry_id,
                 mandate_id=payment_mandate.mandate_id,
                 chain_tx_hash=chain_receipt.tx_hash,
                 chain=chain_receipt.chain,
                 audit_anchor=chain_receipt.audit_anchor,
-                from_wallet=payment_mandate.subject,
+                from_wallet=from_wallet_id,
                 to_wallet=payment_mandate.destination,
                 amount=str(payment_mandate.amount_minor),
                 currency=payment_mandate.token,
                 error=error,
+                metadata=metadata,
             )
 
         return entry_id
@@ -774,7 +1039,7 @@ class LedgerStore:
                 """
                 SELECT id, mandate_id, chain_tx_hash, chain, audit_anchor,
                        from_wallet, to_wallet, amount, currency, error,
-                       created_at, retry_count, last_retry, resolved, resolved_at
+                       created_at, retry_count, last_retry, resolved, resolved_at, metadata_json
                 FROM pending_reconciliation
                 WHERE resolved = 0 AND retry_count < ?
                 ORDER BY created_at ASC
@@ -800,6 +1065,7 @@ class LedgerStore:
                     last_retry=datetime.fromisoformat(row[12]) if row[12] else None,
                     resolved=bool(row[13]),
                     resolved_at=datetime.fromisoformat(row[14]) if row[14] else None,
+                    metadata=json.loads(row[15]) if row[15] else {},
                 )
                 for row in rows
             ]
@@ -889,16 +1155,40 @@ class LedgerStore:
         for entry in pending:
             try:
                 # Reconstruct minimal mandate and receipt for append
-                from sardis_v2_core.mandates import PaymentMandate
+                import time
+                from sardis_v2_core.mandates import PaymentMandate, VCProof
 
-                # Create minimal mandate with required fields
+                now = int(time.time())
+                proof = VCProof(
+                    verification_method="sardis:reconciliation#key-1",
+                    created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    proof_value="reconciliation",
+                )
+
+                # Restore original mandate data from metadata
+                subject = entry.metadata.get("subject", "agent:unknown") if entry.metadata else "agent:unknown"
+                issuer = entry.metadata.get("issuer", f"wallet:{entry.from_wallet}") if entry.metadata else f"wallet:{entry.from_wallet}"
+                domain = entry.metadata.get("domain", "sardis.network") if entry.metadata else "sardis.network"
+                purpose = entry.metadata.get("purpose", "checkout") if entry.metadata else "checkout"
+
                 mandate = PaymentMandate(
                     mandate_id=entry.mandate_id,
-                    subject=entry.from_wallet,
-                    destination=entry.to_wallet,
-                    amount_minor=int(entry.amount),
-                    token=entry.currency,
+                    mandate_type="payment",
+                    issuer=issuer,
+                    subject=subject,
+                    expires_at=now + 300,
+                    nonce=f"recon:{entry.mandate_id}",
+                    proof=proof,
+                    domain=domain,
+                    purpose=purpose,
                     chain=entry.chain,
+                    token=entry.currency,
+                    amount_minor=int(entry.amount),
+                    destination=entry.to_wallet,
+                    audit_hash=hashlib.sha256(
+                        f"recon:{entry.mandate_id}:{entry.chain_tx_hash}:{entry.audit_anchor}".encode()
+                    ).hexdigest(),
+                    wallet_id=entry.from_wallet,
                 )
 
                 receipt = ChainReceipt(
@@ -1127,11 +1417,12 @@ class LedgerStore:
                     self._sqlite_conn.execute("BEGIN IMMEDIATE")
 
                     for payment_mandate, chain_receipt in entries:
-                        amount = Decimal(payment_mandate.amount_minor) / Decimal(10**2)
+                        amount = normalize_token_amount(payment_mandate.token, int(payment_mandate.amount_minor))
                         amount = to_ledger_decimal(amount)
+                        from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
 
                         tx = Transaction(
-                            from_wallet=payment_mandate.subject,
+                            from_wallet=from_wallet_id,
                             to_wallet=payment_mandate.destination,
                             amount=amount,
                             currency=payment_mandate.token,
@@ -1141,7 +1432,7 @@ class LedgerStore:
                             OnChainRecord(
                                 chain=chain_receipt.chain,
                                 tx_hash=chain_receipt.tx_hash,
-                                from_address=payment_mandate.subject,
+                                from_address=from_wallet_id,
                                 to_address=payment_mandate.destination,
                                 block_number=chain_receipt.block_number,
                                 status="confirmed" if chain_receipt.block_number else "pending",
@@ -1160,7 +1451,7 @@ class LedgerStore:
                                 tx.tx_id,
                                 f"le_{uuid.uuid4().hex[:20]}",
                                 payment_mandate.mandate_id,
-                                payment_mandate.subject,
+                                from_wallet_id,
                                 payment_mandate.destination,
                                 str(amount),
                                 "0",

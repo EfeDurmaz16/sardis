@@ -7,10 +7,12 @@ import uuid
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from inspect import isawaitable
 from typing import Any, Dict, List, Optional, Protocol
 
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate
+from sardis_v2_core.tokens import normalize_token_amount, TokenType
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +114,16 @@ class ComplianceAuditStore:
                 if entry.mandate_id not in self._by_mandate:
                     self._by_mandate[entry.mandate_id] = []
                 self._by_mandate[entry.mandate_id].append(entry.audit_id)
+
+            # Warn when approaching capacity (90%)
+            current_size = len(self._entries)
+            capacity_threshold = int(self.MAX_ENTRIES * 0.9)
+            if current_size >= capacity_threshold:
+                logger.warning(
+                    f"Audit store approaching capacity: {current_size}/{self.MAX_ENTRIES} "
+                    f"({current_size * 100 // self.MAX_ENTRIES}%). "
+                    "Oldest entries will be dropped. Consider migrating to PostgreSQL."
+                )
 
             logger.debug(
                 f"Audit entry recorded: audit_id={entry.audit_id}, "
@@ -481,7 +493,8 @@ class NLPolicyProvider:
         # Evaluate against policy
         try:
             from decimal import Decimal
-            amount = Decimal(str(mandate.amount_minor)) / Decimal("100")  # Convert from minor units
+            token_type = TokenType(mandate.token)
+            amount = normalize_token_amount(token_type, mandate.amount_minor)
             fee = Decimal("0")  # Fee handled separately if needed
 
             # Use synchronous validation (no RPC client needed for compliance check)
@@ -535,7 +548,7 @@ class ComplianceEngine:
         self._provider = provider or SimpleRuleProvider(settings)
         self._audit_store = audit_store or get_audit_store()
 
-    def preflight(self, mandate: PaymentMandate) -> ComplianceResult:
+    async def preflight(self, mandate: PaymentMandate) -> ComplianceResult:
         """
         Run compliance preflight check and record to audit trail.
 
@@ -566,7 +579,8 @@ class ComplianceEngine:
             },
         )
 
-        audit_id = self._audit_store.append(audit_entry)
+        audit_id_or_awaitable = self._audit_store.append(audit_entry)
+        audit_id = await audit_id_or_awaitable if isawaitable(audit_id_or_awaitable) else audit_id_or_awaitable
 
         # Link audit entry to result
         result.audit_id = audit_id
@@ -578,10 +592,12 @@ class ComplianceEngine:
 
         return result
 
-    def get_audit_history(self, mandate_id: str) -> List[ComplianceAuditEntry]:
+    async def get_audit_history(self, mandate_id: str) -> List[ComplianceAuditEntry]:
         """Get audit history for a mandate."""
-        return self._audit_store.get_by_mandate(mandate_id)
+        entries_or_awaitable = self._audit_store.get_by_mandate(mandate_id)
+        return await entries_or_awaitable if isawaitable(entries_or_awaitable) else entries_or_awaitable
 
-    def get_recent_audits(self, limit: int = 100) -> List[ComplianceAuditEntry]:
+    async def get_recent_audits(self, limit: int = 100) -> List[ComplianceAuditEntry]:
         """Get recent audit entries."""
-        return self._audit_store.get_recent(limit)
+        entries_or_awaitable = self._audit_store.get_recent(limit)
+        return await entries_or_awaitable if isawaitable(entries_or_awaitable) else entries_or_awaitable

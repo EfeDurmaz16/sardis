@@ -61,6 +61,7 @@ async def perform_compliance_checks(
     deps: Dependencies,
     agent_id: str,
     destination: str,
+    chain: str,
     amount_minor: int,
 ) -> ComplianceCheckResult:
     """
@@ -75,52 +76,55 @@ async def perform_compliance_checks(
     # Check KYC for high-value transactions
     if deps.kyc_service and amount_minor >= KYC_THRESHOLD_MINOR:
         try:
-            kyc_status = await deps.kyc_service.get_agent_kyc_status(agent_id)
-            
-            if kyc_status == "approved":
+            kyc = await deps.kyc_service.check_verification(agent_id)
+            kyc_status = getattr(getattr(kyc, "status", None), "value", getattr(kyc, "status", None))
+
+            if kyc.is_verified:
                 result.kyc_verified = True
-            elif amount_minor >= HIGH_VALUE_THRESHOLD_MINOR:
-                # Enhanced verification required for very high amounts
-                result.passed = False
-                result.reason = "kyc_required_high_value"
-                result.provider = "persona"
-                result.rule = "high_value_payment"
-                return result
-            elif kyc_status == "denied":
+            elif kyc_status == "declined":
                 result.passed = False
                 result.reason = "kyc_denied"
                 result.provider = "persona"
                 result.rule = "kyc_verification"
                 return result
             else:
-                # Pending or not started - allow low-value but flag
-                logger.info(f"KYC not complete for agent {agent_id}, amount {amount_minor}")
+                # Pending/not started/expired/needs_review:
+                # fail-closed for high value; allow lower-value but flag.
+                if amount_minor >= HIGH_VALUE_THRESHOLD_MINOR:
+                    result.passed = False
+                    result.reason = "kyc_required_high_value"
+                    result.provider = "persona"
+                    result.rule = "high_value_payment"
+                    return result
+                logger.info("KYC not complete for agent %s (amount_minor=%s)", agent_id, amount_minor)
                 result.kyc_verified = False
                 
         except Exception as e:
             logger.error(f"KYC check failed for agent {agent_id}: {e}")
-            # Fail open for service errors on lower amounts
-            if amount_minor >= HIGH_VALUE_THRESHOLD_MINOR:
-                result.passed = False
-                result.reason = "kyc_service_error"
-                return result
+            # Fail closed for all KYC service errors
+            result.passed = False
+            result.reason = "kyc_service_error"
+            result.provider = "persona"
+            result.rule = "kyc_service_error"
+            return result
     
     # Screen destination address for sanctions
     if deps.sanctions_service:
         try:
             # Screen the recipient address
-            screening_result = await deps.sanctions_service.screen_address(destination)
-            
-            if not screening_result.clear:
+            screening_result = await deps.sanctions_service.screen_address(destination, chain=chain)
+
+            if screening_result.should_block:
                 result.passed = False
                 result.sanctions_clear = False
                 result.reason = "sanctions_hit"
-                result.provider = "elliptic"
-                result.rule = screening_result.matched_list or "ofac"
-                
+                result.provider = screening_result.provider
+                result.rule = screening_result.reason or "sanctions"
+
                 logger.warning(
-                    f"Sanctions hit for destination {destination}: "
-                    f"{screening_result.matched_list}"
+                    "Sanctions hit for destination %s: %s",
+                    destination,
+                    screening_result.reason,
                 )
                 return result
                 
@@ -191,6 +195,7 @@ async def execute_ap2_payment(
             deps=deps,
             agent_id=payment.subject,
             destination=payment.destination,
+            chain=payment.chain,
             amount_minor=payment.amount_minor,
         )
 
