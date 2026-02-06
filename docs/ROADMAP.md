@@ -9,6 +9,15 @@ Sardis is the **first programmable stablecoin payment protocol** purpose-built f
 
 This roadmap outlines Sardis's evolution from a **backend-first payment abstraction layer** to a **hybrid on-chain/off-chain financial operating system** for the autonomous economy.
 
+### Latest Update (2026-02-06)
+
+Current focus is **protocol conformance hardening** before production expansion:
+
+- AP2 payment semantics hardened with explicit `ai_agent_presence` and `transaction_modality`
+- TAP validation tightened with algorithm allowlists and linked-object signature checks
+- Protocol source governance added: `docs/release/protocol-source-map.md`
+- Conformance release note: `docs/release/2026-02-06-protocol-conformance-hardening.md`
+
 ---
 
 ## Phase 1: Backend-First Payment Protocol (Present State)

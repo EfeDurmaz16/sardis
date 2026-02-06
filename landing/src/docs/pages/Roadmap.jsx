@@ -122,9 +122,23 @@ export default function Roadmap() {
       ],
     },
     {
+      version: 'v0.8.1',
+      title: 'Protocol Conformance Hardening',
+      status: 'current',
+      date: 'Feb 2026',
+      items: [
+        { text: 'AP2 payment modality and agent-presence signals enforced', done: true },
+        { text: 'TAP algorithm allowlist for message signatures', done: true },
+        { text: 'TAP linked object signature validation hooks', done: true },
+        { text: 'Protocol source map for AP2/TAP/UCP/x402 added', done: true },
+        { text: 'Negative protocol test coverage expanded', done: true },
+        { text: 'CI conformance gate wiring for protocol suites', done: false },
+      ],
+    },
+    {
       version: 'v0.8.0',
       title: 'Production Hardening',
-      status: 'current',
+      status: 'completed',
       date: 'Feb 2026',
       items: [
         { text: 'Human approval workflows (create/approve/deny/expire)', done: true },
@@ -181,7 +195,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 4, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 5, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

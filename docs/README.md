@@ -1,7 +1,18 @@
 # Sardis Strategic Documentation Index
 
-**Last Updated:** January 25, 2026
+**Last Updated:** February 6, 2026
 **Purpose:** Navigation guide for all strategic planning documents
+
+---
+
+## 🆕 Latest Engineering Updates
+
+1. **Protocol Source Map** - `docs/release/protocol-source-map.md`
+   - Canonical AP2/TAP/UCP/x402 references mapped to implementation and tests
+2. **Protocol Hardening Release Note** - `docs/release/2026-02-06-protocol-conformance-hardening.md`
+   - AP2 payment semantics and TAP validation hardening summary
+3. **Start-to-End Engineering Flow** - `docs/release/start-to-end-engineering-flow.md`
+   - Updated staging/testnet delivery flow for developer + finance tracks
 
 ---
 

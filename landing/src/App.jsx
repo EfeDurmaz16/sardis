@@ -160,7 +160,7 @@ function App() {
           <div className="hidden md:flex items-center gap-1">
             <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              PRODUCTION READY
+              STAGING / TESTNET READY
             </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
@@ -205,7 +205,7 @@ function App() {
             </motion.p>
 
             <motion.div variants={fadeInUp} className="flex flex-col items-center gap-4">
-              <CopyCommand command="npx @sardis/mcp-server start" />
+              <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
               <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
                 <Button
                   size="lg"

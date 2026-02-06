@@ -2,9 +2,40 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.1',
+    date: '2026-02-06',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Protocol source map with canonical AP2/TAP/UCP/x402 references and test mappings',
+          'AP2 PaymentMandate visibility signals: ai_agent_presence and transaction_modality',
+          'TAP linked-object signature-base helper for agenticConsumer and agenticPaymentContainer',
+          'New negative tests for TAP algorithm validation and linked-object signature checks',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'AP2 verifier now enforces explicit agent-presence and modality semantics',
+          'TAP header validation now enforces message signature algorithm allowlist',
+          'Start-to-end engineering flow documentation now includes protocol source governance',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Fail-closed behavior for invalid TAP algorithms in headers and signed objects',
+          'Stronger protocol-level guardrails before payment execution',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.0',
     date: '2026-02-03',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

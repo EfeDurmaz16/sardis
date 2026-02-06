@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.8.1: Protocol Conformance Hardening for AP2/TAP',
+    excerpt: 'v0.8.1 focuses on protocol correctness before scale: AP2 payment modality semantics, TAP signature algorithm checks, linked-object signature validation hooks, and a source-mapped conformance baseline for AP2, TAP, UCP, and x402.',
+    date: '2026-02-06',
+    readTime: '7 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-8-1-protocol-conformance',
+  },
+  {
     title: 'Sardis v0.7: Production Hardening and Fireblocks Integration',
     excerpt: 'v0.7 eliminates 24 technical debt items: PostgreSQL-backed mandate and checkout stores, Fireblocks MPC signer, invoices API, auth wiring across all routes, ABI revert decoding, and critical deployment fixes. The biggest step toward production readiness yet.',
     date: '2026-02-02',
