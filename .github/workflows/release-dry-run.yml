@@ -1,0 +1,170 @@
+name: Release Dry Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - ".github/workflows/release-dry-run.yml"
+      - ".github/workflows/release-npm.yml"
+      - ".github/workflows/release-python-sdk.yml"
+      - "scripts/check_release_readiness.sh"
+      - "scripts/check_python_release_readiness.sh"
+      - "scripts/check_design_partner_readiness.py"
+      - "packages/sardis-mcp-server/**"
+      - "packages/sardis-sdk-js/**"
+      - "packages/sardis-ai-sdk/**"
+      - "packages/sardis-sdk-python/**"
+      - "docs/design-partner/**"
+      - "pnpm-lock.yaml"
+      - "pyproject.toml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-dry-run.yml"
+      - ".github/workflows/release-npm.yml"
+      - ".github/workflows/release-python-sdk.yml"
+      - "scripts/check_release_readiness.sh"
+      - "scripts/check_python_release_readiness.sh"
+      - "scripts/check_design_partner_readiness.py"
+      - "packages/sardis-mcp-server/**"
+      - "packages/sardis-sdk-js/**"
+      - "packages/sardis-ai-sdk/**"
+      - "packages/sardis-sdk-python/**"
+      - "docs/design-partner/**"
+      - "pnpm-lock.yaml"
+      - "pyproject.toml"
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  engineering-readiness-gate:
+    name: Engineering Readiness Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python deps for readiness scripts
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install build twine hatchling
+
+      - name: Install JS dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run strict engineering gate
+        run: pnpm run check:release-readiness:strict
+
+  npm-package-dry-run:
+    name: NPM Package Dry Run
+    runs-on: ubuntu-latest
+    needs: [engineering-readiness-gate]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install JS dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build release artifacts
+        run: |
+          pnpm run build:mcp
+          pnpm run build:ts-sdks
+
+      - name: Dry-run package build
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="/tmp/sardis-npm-dry-run"
+          mkdir -p "$OUT"
+          pnpm --filter @sardis/mcp-server pack --pack-destination "$OUT"
+          pnpm --filter @sardis/sdk pack --pack-destination "$OUT"
+          pnpm --filter @sardis/ai-sdk pack --pack-destination "$OUT"
+          ls -la "$OUT"
+
+      - name: Local install smoke check from tarballs
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="/tmp/sardis-npm-dry-run"
+          SMOKE="/tmp/sardis-npm-smoke"
+          rm -rf "$SMOKE"
+          mkdir -p "$SMOKE"
+          cd "$SMOKE"
+          npm init -y >/dev/null
+          npm install \
+            "$OUT"/sardis-sdk-*.tgz \
+            "$OUT"/sardis-ai-sdk-*.tgz \
+            "$OUT"/sardis-mcp-server-*.tgz
+
+          node -e "import('@sardis/sdk').then(() => console.log('sdk-import-ok')).catch((e) => { console.error(e); process.exit(1); })"
+          node -e "import('@sardis/ai-sdk').then(() => console.log('ai-sdk-import-ok')).catch((e) => { console.error(e); process.exit(1); })"
+          npx sardis-mcp --help >/dev/null
+
+  pypi-package-dry-run:
+    name: PyPI Package Dry Run
+    runs-on: ubuntu-latest
+    needs: [engineering-readiness-gate]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install build tooling
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install build twine hatchling
+
+      - name: Build python package artifacts
+        working-directory: packages/sardis-sdk-python
+        run: python3 -m build
+
+      - name: Validate distributions
+        working-directory: packages/sardis-sdk-python
+        run: python3 -m twine check dist/*
+
+      - name: Local wheel smoke install
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/sardis-py-dry-run
+          source /tmp/sardis-py-dry-run/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install packages/sardis-sdk-python/dist/*.whl
+          python - <<'PY'
+          import sardis_sdk
+          print("sardis-sdk-version", sardis_sdk.__version__)
+          assert sardis_sdk.__version__
+          PY
