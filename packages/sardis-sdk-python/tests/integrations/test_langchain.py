@@ -43,14 +43,17 @@ class TestSardisTool:
     async def test_execute_payment_successfully(self, api_key, base_url, httpx_mock, mock_responses):
         """Should execute payment successfully."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/mandates/execute",
+            url="https://api.sardis.network/api/v2/wallets/wallet_123/transfer",
             method="POST",
             json={
-                "payment_id": "pay_abc123",
-                "status": "completed",
+                "status": "submitted",
                 "tx_hash": "0xabcdef",
                 "chain": "base_sepolia",
                 "audit_anchor": "anchor_789",
+                "from_address": "0xfrom",
+                "to_address": "0xto",
+                "amount": "50.0",
+                "token": "USDC",
             },
         )
 
@@ -60,6 +63,7 @@ class TestSardisTool:
         result = await tool._arun(
             amount=50,
             merchant="OpenAI",
+            merchant_address="0xvendor",
             purpose="API credits",
         )
 
@@ -99,7 +103,7 @@ class TestSardisTool:
     async def test_handle_policy_violation(self, api_key, base_url, httpx_mock):
         """Should handle policy violation."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/mandates/execute",
+            url="https://api.sardis.network/api/v2/wallets/wallet_123/transfer",
             method="POST",
             status_code=403,
             json={"error": "Payment blocked by policy: Amount exceeds limit"},
@@ -108,7 +112,7 @@ class TestSardisTool:
         client = SardisClient(api_key=api_key, base_url=base_url)
         tool = SardisTool(client=client, wallet_id="wallet_123")
 
-        result = await tool._arun(amount=10000, merchant="Expensive")
+        result = await tool._arun(amount=10000, merchant="Expensive", merchant_address="0xvendor")
 
         assert "BLOCKED" in result
 

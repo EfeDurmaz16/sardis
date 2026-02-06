@@ -633,6 +633,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     compliance = ComplianceEngine(settings=settings, audit_store=audit_store)
     identity_registry = IdentityRegistry()
 
+    # Compliance vendors (KYC + sanctions) used by both compliance routes and AP2 execution.
+    from sardis_compliance import create_kyc_service, create_sanctions_service
+    kyc_service = create_kyc_service(
+        api_key=os.getenv("PERSONA_API_KEY"),
+        template_id=os.getenv("PERSONA_TEMPLATE_ID"),
+        webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
+        environment="production" if settings.is_production else "sandbox",
+    )
+    sanctions_service = create_sanctions_service(
+        api_key=os.getenv("ELLIPTIC_API_KEY"),
+        api_secret=os.getenv("ELLIPTIC_API_SECRET"),
+    )
+
     # Use PostgreSQL for mandate archive and replay cache if available
     if use_postgres:
         archive = MandateArchive(database_url)
@@ -676,6 +689,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=orchestrator,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
+        kyc_service=kyc_service,
+        sanctions_service=sanctions_service,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -949,17 +964,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
 
     # Compliance routes (KYC and Sanctions)
-    from sardis_compliance import create_kyc_service, create_sanctions_service
-    kyc_service = create_kyc_service(
-        api_key=os.getenv("PERSONA_API_KEY"),
-        template_id=os.getenv("PERSONA_TEMPLATE_ID"),
-        webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-        environment="sandbox" if not settings.is_production else "production",
-    )
-    sanctions_service = create_sanctions_service(
-        api_key=os.getenv("ELLIPTIC_API_KEY"),
-        api_secret=os.getenv("ELLIPTIC_API_SECRET"),
-    )
     app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,

@@ -74,11 +74,14 @@ class LockAcquisitionError(LedgerError):
         )
 
 
-class LockTimeoutError(LedgerError):
+class LockTimeoutError(LockAcquisitionError):
     """Lock acquisition timed out."""
 
     def __init__(self, resource_type: str, resource_id: str, timeout: float):
-        super().__init__(
+        # Timeout is a specific lock acquisition failure subtype so callers
+        # catching LockAcquisitionError also handle timeout conditions.
+        LedgerError.__init__(
+            self,
             f"Lock acquisition timed out after {timeout}s for {resource_type}:{resource_id}",
             code="LOCK_TIMEOUT",
             details={"resource_type": resource_type, "resource_id": resource_id, "timeout": timeout},

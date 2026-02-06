@@ -75,7 +75,7 @@ def mask_value(value: str, show_chars: int = 4) -> str:
     return f"{value[:show_chars]}...{value[-show_chars:]}"
 
 
-def is_sensitive_key(key: str) -> bool:
+def is_sensitive_key(key: Any) -> bool:
     """Check if a key name indicates sensitive data.
 
     Args:
@@ -84,11 +84,32 @@ def is_sensitive_key(key: str) -> bool:
     Returns:
         True if the key likely contains sensitive data
     """
+    if not isinstance(key, str):
+        return False
+
     key_lower = key.lower().replace("-", "_")
-    return key_lower in LoggingConfig.SENSITIVE_FIELDS or any(
-        sensitive in key_lower
-        for sensitive in ("secret", "password", "token", "key", "credential", "auth")
+    if key_lower in LoggingConfig.SENSITIVE_FIELDS:
+        return True
+
+    # Match known sensitive identifiers, but avoid masking container-ish keys
+    # like "credentials" that may hold a nested object with mixed fields.
+    sensitive_tokens = (
+        "secret",
+        "password",
+        "passwd",
+        "passphrase",
+        "token",
+        "api_key",
+        "apikey",
+        "private_key",
+        "client_secret",
+        "authorization",
+        "auth_header",
+        "access_key",
+        "refresh_token",
+        "session_token",
     )
+    return any(token in key_lower for token in sensitive_tokens)
 
 
 def mask_sensitive_data(
@@ -116,9 +137,25 @@ def mask_sensitive_data(
     if isinstance(data, dict):
         result = {}
         for key, value in data.items():
-            if is_sensitive_key(key):
-                result[key] = mask_pattern
-            elif additional_fields and key in additional_fields:
+            key_is_sensitive = is_sensitive_key(key)
+            if key_is_sensitive:
+                # Treat credential containers as nested structures so child
+                # sensitive fields are masked individually.
+                if isinstance(key, str) and key.lower() in {"credentials", "credential"} and isinstance(value, dict):
+                    result[key] = mask_sensitive_data(
+                        value,
+                        additional_fields,
+                        mask_pattern,
+                        _depth + 1,
+                        _max_depth,
+                    )
+                    continue
+                if isinstance(value, str):
+                    masked_value = _mask_inline_patterns(value)
+                    result[key] = masked_value if masked_value != value else mask_pattern
+                else:
+                    result[key] = mask_pattern
+            elif additional_fields and isinstance(key, str) and key in additional_fields:
                 result[key] = mask_pattern
             else:
                 result[key] = mask_sensitive_data(
@@ -486,7 +523,10 @@ def log_response(
         else:
             logger.debug(message, **log_data)
     else:
-        logger.log(level, message, extra={"data": log_data})
+        if level == logging.WARNING:
+            logger.warning(message, extra={"data": log_data})
+        else:
+            logger.debug(message, extra={"data": log_data})
 
 
 # =============================================================================

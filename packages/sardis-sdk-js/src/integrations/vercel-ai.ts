@@ -1,30 +1,5 @@
 import { z } from 'zod';
 import { SardisClient } from '../client.js';
-import type { ExecutePaymentResponse } from '../types.js';
-
-/**
- * Generate a unique mandate ID
- */
-function generateMandateId(): string {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 10);
-    return `mnd_${timestamp}${random}`;
-}
-
-/**
- * Create a SHA-256 hash for audit purposes (browser-compatible)
- */
-async function createAuditHash(data: string): Promise<string> {
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-        const encoder = new TextEncoder();
-        const dataBuffer = encoder.encode(data);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    // Fallback for environments without crypto.subtle
-    return `hash_${Date.now().toString(16)}`;
-}
 
 export interface SardisToolsOptions {
     /** Default wallet ID to use for payments */
@@ -62,7 +37,6 @@ export interface SardisToolsOptions {
 export const createSardisTools = (client?: SardisClient, options: SardisToolsOptions = {}) => {
     const sardis = client;
     const defaultWalletId = options.walletId || process.env.SARDIS_WALLET_ID || '';
-    const defaultAgentId = options.agentId || process.env.SARDIS_AGENT_ID || '';
     const defaultChain = options.chain || 'base_sepolia';
     const defaultToken = options.token || 'USDC';
 
@@ -75,10 +49,12 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
             parameters: z.object({
                 amount: z.number().describe('The amount to pay in USD (or token units).'),
                 vendor: z.string().describe('The name of the merchant or service provider.'),
-                vendorAddress: z.string().optional().describe('The wallet address of the vendor (0x...). If not provided, will attempt to resolve.'),
+                vendorAddress: z.string().optional().describe('The wallet address of the vendor (0x...).'),
                 purpose: z.string().optional().describe('The reason for the payment, used for policy validation.'),
                 walletId: z.string().optional().describe('The wallet ID to pay from. Defaults to configured wallet.'),
                 token: z.enum(['USDC', 'USDT', 'PYUSD', 'EURC']).optional().describe('The stablecoin to use. Defaults to USDC.'),
+                chain: z.string().optional().describe('The chain to use (e.g. base_sepolia). Defaults to configured chain.'),
+                domain: z.string().optional().describe('Policy context label (e.g. aws.amazon.com). Defaults to vendor.'),
             }),
             execute: async ({
                 amount,
@@ -86,7 +62,9 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
                 vendorAddress,
                 purpose,
                 walletId,
-                token
+                token,
+                chain,
+                domain,
             }: {
                 amount: number;
                 vendor: string;
@@ -94,6 +72,8 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
                 purpose?: string;
                 walletId?: string;
                 token?: 'USDC' | 'USDT' | 'PYUSD' | 'EURC';
+                chain?: string;
+                domain?: string;
             }) => {
                 if (!sardis) {
                     return {
@@ -111,58 +91,31 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
                 }
 
                 try {
-                    // Build the payment mandate
-                    const mandateId = generateMandateId();
-                    const timestamp = new Date().toISOString();
                     const effectiveToken = token || defaultToken;
+                    const effectiveChain = chain || defaultChain;
+                    const effectiveDomain = domain || vendor;
 
-                    // Convert amount to minor units (6 decimals for USDC/USDT)
-                    const amountMinor = Math.round(amount * 1_000_000).toString();
+                    if (!vendorAddress) {
+                        return {
+                            success: false,
+                            error: "Missing vendorAddress (destination). Provide a wallet address (0x...) for the vendor."
+                        };
+                    }
 
-                    // Create audit hash from mandate data
-                    const auditData = JSON.stringify({
-                        mandate_id: mandateId,
-                        subject: effectiveWalletId,
-                        destination: vendorAddress || `pending:${vendor}`,
-                        amount_minor: amountMinor,
+                    const result = await sardis.wallets.transfer(effectiveWalletId, {
+                        destination: vendorAddress,
+                        amount: amount.toString(),
                         token: effectiveToken,
-                        purpose: purpose || `Payment to ${vendor}`,
-                        timestamp
+                        chain: effectiveChain as any,
+                        domain: effectiveDomain,
+                        memo: purpose,
                     });
-                    const auditHash = await createAuditHash(auditData);
-
-                    // Build mandate structure matching sardis_v2_core.mandates.PaymentMandate
-                    const mandate = {
-                        mandate_id: mandateId,
-                        subject: effectiveWalletId,
-                        destination: vendorAddress || `pending:${vendor}`,
-                        amount_minor: amountMinor,
-                        token: effectiveToken,
-                        chain: defaultChain,
-                        purpose: purpose || `Payment to ${vendor}`,
-                        vendor_name: vendor,
-                        agent_id: defaultAgentId,
-                        timestamp,
-                        audit_hash: auditHash,
-                        // Policy metadata for validation
-                        metadata: {
-                            vendor,
-                            category: 'saas', // Default category
-                            initiated_by: 'ai_agent',
-                            tool: 'vercel_ai_sdk'
-                        }
-                    };
-
-                    // Execute the mandate via API
-                    const result: ExecutePaymentResponse = await sardis.payments.executeMandate(mandate);
 
                     return {
                         success: true,
                         status: result.status,
-                        paymentId: result.payment_id,
                         transactionHash: result.tx_hash,
                         chain: result.chain,
-                        ledgerTxId: result.ledger_tx_id,
                         auditAnchor: result.audit_anchor,
                         message: `Payment of $${amount} ${effectiveToken} to ${vendor} ${result.status === 'completed' ? 'completed' : 'initiated'} successfully.`
                     };

@@ -10,6 +10,7 @@ Audit fix #2: Add idempotency key support for all operations.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -159,12 +160,43 @@ class IdempotencyManager:
         normalized = json.dumps(request_data, sort_keys=True, default=str)
         return hashlib.sha256(normalized.encode()).hexdigest()
 
+    def _deserialize_cached_response(self, response: Any) -> Any:
+        """Decode cached payload back into caller-facing result."""
+        if not isinstance(response, dict):
+            return response
+
+        if response.get("_sardis_cached_null") is True:
+            return None
+
+        if "_sardis_cached_scalar" in response and len(response) == 1:
+            return response["_sardis_cached_scalar"]
+
+        return response
+
+    def _serialize_result(
+        self,
+        result: Any,
+        serialize_fn: Optional[Callable[[Any], Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Serialize operation results for storage."""
+        if serialize_fn:
+            return serialize_fn(result)
+        if result is None:
+            return {"_sardis_cached_null": True}
+        if isinstance(result, dict):
+            return result
+        if hasattr(result, "__dataclass_fields__"):
+            return asdict(result)
+        if hasattr(result, "__dict__"):
+            return result.__dict__
+        return {"_sardis_cached_scalar": result}
+
     async def check_idempotency(
         self,
         idempotency_key: str,
         operation: str,
         request_data: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Any]:
         """
         Check if an idempotent operation has already been completed.
 
@@ -214,7 +246,7 @@ class IdempotencyManager:
             logger.info(
                 f"Returning cached response for idempotency key '{idempotency_key}'"
             )
-            return record.response
+            return self._deserialize_cached_response(record.response)
 
         # Failed operations can be retried
         if record.status == "failed":
@@ -258,6 +290,7 @@ class IdempotencyManager:
         idempotency_key: str,
         response: Dict[str, Any],
         checkout_id: Optional[str] = None,
+        response_code: Optional[int] = 200,
     ) -> None:
         """Mark an idempotent operation as completed with its response."""
         record = await self.store.get(idempotency_key)
@@ -271,6 +304,11 @@ class IdempotencyManager:
         record.response = response
         record.completed_at = datetime.utcnow()
         record.checkout_id = checkout_id
+        record.response_code = response_code
+        try:
+            record.response_body = json.dumps(response, default=str)
+        except Exception:
+            record.response_body = str(response)
 
         await self.store.update(record)
 
@@ -288,6 +326,11 @@ class IdempotencyManager:
         record.completed_at = datetime.utcnow()
         if error_message:
             record.response = {"error": error_message}
+        record.response_code = 500
+        try:
+            record.response_body = json.dumps(record.response, default=str)
+        except Exception:
+            record.response_body = str(record.response)
 
         await self.store.update(record)
 
@@ -296,10 +339,10 @@ class IdempotencyManager:
         idempotency_key: str,
         operation: str,
         request_data: Dict[str, Any],
-        execute_fn: Callable[[], Awaitable[T]],
+        execute_fn: Callable[[], T | Awaitable[T]],
         serialize_fn: Optional[Callable[[T], Dict[str, Any]]] = None,
         agent_id: Optional[str] = None,
-    ) -> tuple[T, bool]:
+    ) -> T:
         """
         Execute an operation with idempotency guarantees.
 
@@ -312,34 +355,31 @@ class IdempotencyManager:
             agent_id: Optional agent ID for logging
 
         Returns:
-            Tuple of (result, is_duplicate) where is_duplicate indicates
-            if the result was returned from cache
+            Operation result (or cached result for duplicate keys)
         """
         # Check for existing result
         cached = await self.check_idempotency(idempotency_key, operation, request_data)
         if cached is not None:
-            # Return cached result - caller needs to deserialize
-            return cached, True  # type: ignore
+            return cached
 
         # Start new operation
         await self.start_operation(idempotency_key, operation, request_data, agent_id)
 
         try:
             # Execute the operation
-            result = await execute_fn()
+            maybe_result = execute_fn()
+            if inspect.isawaitable(maybe_result):
+                result = await maybe_result
+            else:
+                result = maybe_result
 
             # Serialize and cache the result
-            if serialize_fn:
-                serialized = serialize_fn(result)
-            elif hasattr(result, "__dict__"):
-                serialized = asdict(result) if hasattr(result, "__dataclass_fields__") else result.__dict__
-            else:
-                serialized = {"result": result}
+            serialized = self._serialize_result(result, serialize_fn)
 
             checkout_id = serialized.get("checkout_id")
             await self.complete_operation(idempotency_key, serialized, checkout_id)
 
-            return result, False
+            return result
 
         except Exception as e:
             await self.fail_operation(idempotency_key, str(e))
@@ -393,13 +433,14 @@ def idempotent(
 
             # Execute with idempotency
             op_name = operation or fn.__name__
-            result, is_duplicate = await manager.execute_idempotent(
+            maybe_result = await manager.execute_idempotent(
                 idempotency_key=idempotency_key,
                 operation=op_name,
                 request_data=request_data,
                 execute_fn=lambda: fn(self, *args, **kwargs),
             )
-
+            # Backward compatibility in case manager returns (result, is_duplicate).
+            result = maybe_result[0] if isinstance(maybe_result, tuple) and len(maybe_result) == 2 else maybe_result
             return result
 
         return wrapper

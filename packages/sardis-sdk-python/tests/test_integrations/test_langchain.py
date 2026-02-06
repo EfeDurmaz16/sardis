@@ -22,8 +22,6 @@ from sardis_sdk.integrations.langchain import (
     PayInput,
     PolicyCheckInput,
     BalanceCheckInput,
-    _generate_mandate_id,
-    _create_audit_hash,
     SardisTool,
     SardisPolicyCheckTool,
     SardisBalanceCheckTool,
@@ -75,27 +73,6 @@ class TestInputSchemas:
         assert balance_input.chain == "polygon"
 
 
-class TestHelperFunctions:
-    """Tests for helper functions."""
-
-    def test_generate_mandate_id(self):
-        """Should generate unique mandate IDs."""
-        id1 = _generate_mandate_id()
-        id2 = _generate_mandate_id()
-        assert id1.startswith("mnd_")
-        assert id2.startswith("mnd_")
-        assert id1 != id2
-
-    def test_create_audit_hash(self):
-        """Should create consistent hashes."""
-        hash1 = _create_audit_hash("test")
-        hash2 = _create_audit_hash("test")
-        hash3 = _create_audit_hash("different")
-        assert hash1 == hash2
-        assert hash1 != hash3
-        assert len(hash1) == 64
-
-
 class TestSardisTool:
     """Tests for SardisTool."""
 
@@ -103,7 +80,7 @@ class TestSardisTool:
     def mock_client(self):
         """Create mock client."""
         client = MagicMock()
-        client.payments = MagicMock()
+        client.wallets = MagicMock()
         return client
 
     def test_tool_properties(self, mock_client):
@@ -153,40 +130,39 @@ class TestSardisTool:
     async def test_arun_success(self, mock_client):
         """Should execute payment successfully."""
         mock_result = MagicMock()
-        mock_result.payment_id = "pay_123"
-        mock_result.status = "completed"
+        mock_result.status = "submitted"
         mock_result.tx_hash = "0xabc"
         mock_result.chain = "base_sepolia"
-        mock_result.ledger_tx_id = "ltx_456"
-        mock_client.payments.execute_mandate = AsyncMock(return_value=mock_result)
+        mock_result.audit_anchor = "anchor_1"
+        mock_client.wallets.transfer = AsyncMock(return_value=mock_result)
 
         tool = SardisTool(client=mock_client, wallet_id="wallet_123")
-        result = await tool._arun(50, "OpenAI", purpose="API credits")
+        result = await tool._arun(50, "OpenAI", merchant_address="0xvendor", purpose="API credits")
 
         assert "APPROVED" in result
-        assert "pay_123" in result
+        assert "0xabc" in result
         assert "OpenAI" in result
 
     async def test_arun_policy_blocked(self, mock_client):
         """Should handle policy block."""
-        mock_client.payments.execute_mandate = AsyncMock(
+        mock_client.wallets.transfer = AsyncMock(
             side_effect=Exception("Payment blocked by policy limit")
         )
 
         tool = SardisTool(client=mock_client, wallet_id="wallet_123")
-        result = await tool._arun(1000, "Amazon")
+        result = await tool._arun(1000, "Amazon", merchant_address="0xvendor")
 
         assert "BLOCKED" in result
         assert "PREVENTED" in result
 
     async def test_arun_generic_error(self, mock_client):
         """Should handle generic error."""
-        mock_client.payments.execute_mandate = AsyncMock(
+        mock_client.wallets.transfer = AsyncMock(
             side_effect=Exception("Network timeout")
         )
 
         tool = SardisTool(client=mock_client, wallet_id="wallet_123")
-        result = await tool._arun(50, "OpenAI")
+        result = await tool._arun(50, "OpenAI", merchant_address="0xvendor")
 
         assert "Error" in result
         assert "Network timeout" in result

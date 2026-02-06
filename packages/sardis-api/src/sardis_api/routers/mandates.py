@@ -290,7 +290,7 @@ async def validate_mandate(
     policy_check = {"allowed": policy_result.allowed, "reason": policy_result.reason}
     
     # Check compliance
-    compliance_status = deps.compliance.preflight(stored.mandate)
+    compliance_status = await deps.compliance.preflight(stored.mandate)
     compliance_check = {"allowed": compliance_status.allowed, "reason": compliance_status.reason}
     
     valid = policy_result.allowed and compliance_status.allowed
@@ -361,7 +361,7 @@ async def execute_stored_mandate(
             await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
 
-        compliance_status = deps.compliance.preflight(stored.mandate)
+        compliance_status = await deps.compliance.preflight(stored.mandate)
         if not compliance_status.allowed:
             stored.status = "failed"
             stored.updated_at = datetime.now(timezone.utc)
@@ -447,7 +447,7 @@ async def execute_payment_mandate(
         if not policy_result.allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
 
-        compliance_status = deps.compliance.preflight(mandate)
+        compliance_status = await deps.compliance.preflight(mandate)
         if not compliance_status.allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
 
@@ -470,20 +470,3 @@ async def execute_payment_mandate(
         payload=payload.model_dump(),
         fn=_execute,
     )
-    agent = await deps.agent_repo.get(stored.mandate.subject)
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    agent = await deps.agent_repo.get(stored.mandate.subject)
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    agent = await deps.agent_repo.get(stored.mandate.subject)
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

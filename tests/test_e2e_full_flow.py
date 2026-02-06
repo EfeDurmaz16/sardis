@@ -24,6 +24,8 @@ from sardis_cards.offramp import (
     OfframpQuote, OfframpTransaction, OfframpProvider, OfframpStatus, MockOfframpProvider, OfframpService,
 )
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.fixture
 def wallet_mock():

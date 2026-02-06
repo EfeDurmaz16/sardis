@@ -305,6 +305,15 @@ class WebhookSignatureVerifier:
     TIMESTAMP_HEADER = "X-Sardis-Timestamp"
     TOLERANCE_SECONDS = 300  # 5 minute tolerance for replay protection
 
+    def __init__(
+        self,
+        secret: Optional[str] = None,
+        tolerance_seconds: int = TOLERANCE_SECONDS,
+    ):
+        """Initialize verifier for instance-style usage."""
+        self._secret = secret
+        self._tolerance_seconds = tolerance_seconds
+
     @staticmethod
     def sign(payload: bytes, secret: str, timestamp: Optional[int] = None) -> str:
         """
@@ -334,12 +343,12 @@ class WebhookSignatureVerifier:
         return f"t={timestamp},v1={signature}"
 
     @classmethod
-    def verify(
+    def verify_signature(
         cls,
         payload: bytes,
         signature_header: str,
         secret: str,
-        tolerance: int = None,
+        tolerance: Optional[int] = None,
     ) -> bool:
         """
         Verify a webhook signature.
@@ -393,6 +402,28 @@ class WebhookSignatureVerifier:
             logger.error(f"Webhook signature verification failed: {e}")
             return False
 
+    def generate_signature(self, timestamp: str | int, payload: bytes) -> str:
+        """
+        Generate signature using the instance secret.
+
+        This preserves backwards compatibility with tests and older integrations
+        that instantiate the verifier with a secret.
+        """
+        if not self._secret:
+            raise ValueError("Webhook secret is required to generate signatures")
+        return self.sign(payload, self._secret, int(timestamp))
+
+    def verify(self, signature_header: str, payload: bytes) -> bool:
+        """Verify signature using the instance secret and tolerance."""
+        if not self._secret:
+            return False
+        return self.verify_signature(
+            payload=payload,
+            signature_header=signature_header,
+            secret=self._secret,
+            tolerance=self._tolerance_seconds,
+        )
+
     @classmethod
     def get_signing_headers(
         cls,
@@ -420,10 +451,10 @@ class WebhookSignatureVerifier:
 
 
 def verify_webhook_signature(
-    payload: bytes,
-    request: Request,
-    secret: str,
-) -> None:
+    signature_or_payload: str | bytes,
+    payload_or_request: bytes | Request,
+    secret: Optional[str] = None,
+) -> bool | None:
     """
     FastAPI dependency for verifying webhook signatures.
 
@@ -438,29 +469,62 @@ def verify_webhook_signature(
             verify_webhook_signature(body, request, WEBHOOK_SECRET)
             ...
     """
-    signature = request.headers.get(WebhookSignatureVerifier.SIGNATURE_HEADER)
-
-    if not signature:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "type": "https://api.sardis.io/errors/missing-signature",
-                "title": "Missing Webhook Signature",
-                "status": 400,
-                "detail": f"Missing required header: {WebhookSignatureVerifier.SIGNATURE_HEADER}",
-            }
+    # Mode 1 (bool helper): verify_webhook_signature(signature_header, payload, secret?)
+    if isinstance(signature_or_payload, str) and isinstance(payload_or_request, (bytes, bytearray)):
+        resolved_secret = secret or os.getenv("WEBHOOK_SECRET")
+        if not resolved_secret:
+            return False
+        return WebhookSignatureVerifier.verify_signature(
+            payload=bytes(payload_or_request),
+            signature_header=signature_or_payload,
+            secret=resolved_secret,
         )
 
-    if not WebhookSignatureVerifier.verify(payload, signature, secret):
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "type": "https://api.sardis.io/errors/invalid-signature",
-                "title": "Invalid Webhook Signature",
-                "status": 401,
-                "detail": "The webhook signature is invalid or expired",
-            }
-        )
+    # Mode 2 (FastAPI dependency): verify_webhook_signature(payload, request, secret?)
+    if isinstance(signature_or_payload, (bytes, bytearray)) and isinstance(payload_or_request, Request):
+        payload = bytes(signature_or_payload)
+        request = payload_or_request
+        resolved_secret = secret or os.getenv("WEBHOOK_SECRET")
+        if not resolved_secret:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "type": "https://api.sardis.io/errors/webhook-secret-missing",
+                    "title": "Webhook Secret Not Configured",
+                    "status": 500,
+                    "detail": "WEBHOOK_SECRET is not configured",
+                },
+            )
+
+        signature = request.headers.get(WebhookSignatureVerifier.SIGNATURE_HEADER)
+        if not signature:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "https://api.sardis.io/errors/missing-signature",
+                    "title": "Missing Webhook Signature",
+                    "status": 400,
+                    "detail": f"Missing required header: {WebhookSignatureVerifier.SIGNATURE_HEADER}",
+                },
+            )
+
+        if not WebhookSignatureVerifier.verify_signature(payload, signature, resolved_secret):
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "type": "https://api.sardis.io/errors/invalid-signature",
+                    "title": "Invalid Webhook Signature",
+                    "status": 401,
+                    "detail": "The webhook signature is invalid or expired",
+                },
+            )
+        return None
+
+    raise TypeError(
+        "verify_webhook_signature expects either "
+        "(signature_header: str, payload: bytes, secret?: str) or "
+        "(payload: bytes, request: Request, secret?: str)"
+    )
 
 
 # Constants for common security configurations

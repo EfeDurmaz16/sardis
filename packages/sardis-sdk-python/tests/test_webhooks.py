@@ -106,7 +106,7 @@ class TestListWebhooks:
     async def test_list_webhooks(self, client, httpx_mock):
         """Should list all webhooks."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks",
+            url="https://api.sardis.network/api/v2/webhooks?limit=100",
             method="GET",
             json={"webhooks": [MOCK_WEBHOOK]},
         )
@@ -118,7 +118,7 @@ class TestListWebhooks:
     async def test_list_empty_webhooks(self, client, httpx_mock):
         """Should handle empty webhook list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks",
+            url="https://api.sardis.network/api/v2/webhooks?limit=100",
             method="GET",
             json={"webhooks": []},
         )

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from sardis_ledger.records import LedgerStore
@@ -27,6 +27,20 @@ class TransactionResponse(BaseModel):
     created_at: str
     status: str = "confirmed"
 
+class LedgerEntryResponse(BaseModel):
+    """Ledger entry response model (SDK-compatible)."""
+
+    tx_id: str
+    mandate_id: Optional[str] = None
+    from_wallet: Optional[str] = None
+    to_wallet: Optional[str] = None
+    amount: str
+    currency: str
+    chain: Optional[str] = None
+    chain_tx_hash: Optional[str] = None
+    audit_anchor: Optional[str] = None
+    created_at: str
+
 
 class LedgerDependencies:
     """Dependencies for ledger routes."""
@@ -37,6 +51,63 @@ class LedgerDependencies:
 def get_deps() -> LedgerDependencies:
     """Dependency injection placeholder."""
     raise NotImplementedError("Must be overridden")
+
+@router.get("/entries", response_model=dict)
+async def list_entries(
+    wallet_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    deps: LedgerDependencies = Depends(get_deps),
+):
+    """
+    List ledger entries.
+
+    This is the canonical endpoint used by SDKs.
+    """
+    if hasattr(deps.ledger, "list_entry_records_async"):
+        entries = await deps.ledger.list_entry_records_async(wallet_id=wallet_id, limit=limit, offset=offset)
+    else:
+        entries = deps.ledger.list_entry_records(wallet_id=wallet_id, limit=limit, offset=offset)
+    return {"entries": [LedgerEntryResponse(**e).model_dump() for e in entries]}
+
+
+@router.get("/entries/{tx_id}", response_model=LedgerEntryResponse)
+async def get_entry(
+    tx_id: str,
+    deps: LedgerDependencies = Depends(get_deps),
+):
+    """Get a ledger entry by transaction ID."""
+    if hasattr(deps.ledger, "get_entry_record_async"):
+        entry = await deps.ledger.get_entry_record_async(tx_id)
+    else:
+        entry = deps.ledger.get_entry_record(tx_id)
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ledger entry not found")
+    return LedgerEntryResponse(**entry)
+
+
+@router.get("/entries/{tx_id}/verify", response_model=dict)
+async def verify_entry(
+    tx_id: str,
+    deps: LedgerDependencies = Depends(get_deps),
+):
+    """
+    Verify a ledger entry's audit anchor.
+
+    Current behavior: returns valid=true if the entry exists and has an audit_anchor.
+    """
+    if hasattr(deps.ledger, "get_entry_record_async"):
+        entry = await deps.ledger.get_entry_record_async(tx_id)
+    else:
+        entry = deps.ledger.get_entry_record(tx_id)
+
+    if not entry:
+        return {"valid": False, "reason": "entry_not_found"}
+
+    anchor = entry.get("audit_anchor")
+    if not anchor:
+        return {"valid": False, "reason": "missing_audit_anchor"}
+    return {"valid": True, "anchor": anchor}
 
 
 @router.get("/recent", response_model=List[TransactionResponse])

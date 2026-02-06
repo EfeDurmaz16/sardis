@@ -8,28 +8,28 @@ export default {
     extend: {
       colors: {
         sardis: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
+          50: 'rgb(240 253 244 / <alpha-value>)',
+          100: 'rgb(220 252 231 / <alpha-value>)',
+          200: 'rgb(187 247 208 / <alpha-value>)',
+          300: 'rgb(134 239 172 / <alpha-value>)',
+          400: 'rgb(74 222 128 / <alpha-value>)',
+          500: 'rgb(34 197 94 / <alpha-value>)',
+          600: 'rgb(22 163 74 / <alpha-value>)',
+          700: 'rgb(21 128 61 / <alpha-value>)',
+          800: 'rgb(22 101 52 / <alpha-value>)',
+          900: 'rgb(20 83 45 / <alpha-value>)',
+          950: 'rgb(5 46 22 / <alpha-value>)',
         },
         dark: {
-          100: '#1e293b',
-          200: '#1a2332',
-          300: '#151d29',
-          400: '#111827',
-          500: '#0f172a',
-          600: '#0c1222',
-          700: '#090d18',
-          800: '#060910',
-          900: '#030408',
+          100: 'rgb(30 41 59 / <alpha-value>)',
+          200: 'rgb(26 35 50 / <alpha-value>)',
+          300: 'rgb(21 29 41 / <alpha-value>)',
+          400: 'rgb(17 24 39 / <alpha-value>)',
+          500: 'rgb(15 23 42 / <alpha-value>)',
+          600: 'rgb(12 18 34 / <alpha-value>)',
+          700: 'rgb(9 13 24 / <alpha-value>)',
+          800: 'rgb(6 9 16 / <alpha-value>)',
+          900: 'rgb(3 4 8 / <alpha-value>)',
         }
       },
       fontFamily: {
@@ -50,4 +50,3 @@ export default {
   },
   plugins: [],
 }
-

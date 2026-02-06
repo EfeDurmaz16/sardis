@@ -190,25 +190,28 @@ class TestComplianceEngine:
         assert engine._provider is not None
         assert isinstance(engine._provider, SimpleRuleProvider)
 
-    def test_preflight_allowed(self, engine):
+    @pytest.mark.asyncio
+    async def test_preflight_allowed(self, engine):
         """Test preflight check for allowed payment."""
         mandate = create_test_mandate(token="USDC", amount=10000)
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
         
         assert result.allowed is True
 
-    def test_preflight_denied_token(self, engine):
+    @pytest.mark.asyncio
+    async def test_preflight_denied_token(self, engine):
         """Test preflight check rejects bad token."""
         mandate = create_test_mandate(token="BAD_TOKEN", amount=10000)
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
         
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
 
-    def test_preflight_denied_amount(self, engine):
+    @pytest.mark.asyncio
+    async def test_preflight_denied_amount(self, engine):
         """Test preflight check rejects excessive amount."""
         mandate = create_test_mandate(token="USDC", amount=1_000_000_01)
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
         
         assert result.allowed is False
         assert result.reason == "amount_over_limit"
@@ -265,7 +268,8 @@ class TestCustomComplianceProvider:
         result = provider.evaluate(allowed_mandate)
         assert result.allowed is True
 
-    def test_engine_with_custom_provider(self):
+    @pytest.mark.asyncio
+    async def test_engine_with_custom_provider(self):
         """Test ComplianceEngine with custom provider."""
         from sardis_v2_core import SardisSettings
         
@@ -284,7 +288,7 @@ class TestCustomComplianceProvider:
         
         # Even "bad" token should be allowed
         mandate = create_test_mandate(token="ANY_TOKEN", amount=999999999)
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
         
         assert result.allowed is True
         assert result.provider == "always_allow"
@@ -433,13 +437,13 @@ class TestNLPolicyProvider:
         )
         provider.set_policy_for_agent("test_wallet", policy)
 
-        # Test amount within limit
-        mandate_ok = create_test_mandate(token="USDC", amount=4000)  # $40
+        # Test amount within limit ($40 in USDC 6-decimal minor units)
+        mandate_ok = create_test_mandate(token="USDC", amount=40_000_000)
         result_ok = provider.evaluate(mandate_ok)
         assert result_ok.allowed is True
 
-        # Test amount over limit
-        mandate_over = create_test_mandate(token="USDC", amount=7500)  # $75
+        # Test amount over limit ($75 in USDC 6-decimal minor units)
+        mandate_over = create_test_mandate(token="USDC", amount=75_000_000)
         result_over = provider.evaluate(mandate_over)
         assert result_over.allowed is False
         assert result_over.reason == "per_transaction_limit"
@@ -552,41 +556,42 @@ class TestComplianceEngineAuditTrail:
         store = ComplianceAuditStore()
         return ComplianceEngine(settings, audit_store=store)
 
-    def test_preflight_creates_audit_entry(self, engine):
+    @pytest.mark.asyncio
+    async def test_preflight_creates_audit_entry(self, engine):
         """Test that preflight creates an audit entry."""
         mandate = create_test_mandate()
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
 
         assert result.audit_id is not None
 
         # Check audit store
-        audits = engine.get_audit_history(mandate.mandate_id)
+        audits = await engine.get_audit_history(mandate.mandate_id)
         assert len(audits) == 1
         assert audits[0].mandate_id == mandate.mandate_id
 
-    def test_preflight_records_denial(self, engine):
+    @pytest.mark.asyncio
+    async def test_preflight_records_denial(self, engine):
         """Test that denied mandates are recorded in audit."""
         mandate = create_test_mandate(token="BAD_TOKEN")
-        result = engine.preflight(mandate)
+        result = await engine.preflight(mandate)
 
         assert result.allowed is False
 
-        audits = engine.get_audit_history(mandate.mandate_id)
+        audits = await engine.get_audit_history(mandate.mandate_id)
         assert len(audits) == 1
         assert audits[0].allowed is False
         assert audits[0].reason == "token_not_permitted"
 
-    def test_recent_audits(self, engine):
+    @pytest.mark.asyncio
+    async def test_recent_audits(self, engine):
         """Test getting recent audit entries."""
         # Create several mandates
         for i in range(5):
             mandate = create_test_mandate()
-            engine.preflight(mandate)
+            await engine.preflight(mandate)
 
-        recent = engine.get_recent_audits(3)
+        recent = await engine.get_recent_audits(3)
         assert len(recent) == 3
-
-
 
 
 

@@ -191,6 +191,10 @@ def create_validation_error_response(
 def register_exception_handlers(app: FastAPI) -> None:
     """Register all exception handlers with the FastAPI application."""
 
+    # Ensure middleware-level exceptions are converted to RFC 7807 responses
+    # when this helper is used directly in tests/minimal apps.
+    app.add_middleware(ExceptionHandlerMiddleware)
+
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError

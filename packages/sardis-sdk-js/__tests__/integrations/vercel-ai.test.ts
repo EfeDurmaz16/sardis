@@ -42,32 +42,33 @@ describe('Vercel AI Integration', () => {
 
         it('should execute payment successfully', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.network/api/v2/wallets/wallet_123/transfer', () => {
                     return HttpResponse.json({
-                        status: 'completed',
-                        payment_id: 'pay_123',
+                        status: 'submitted',
                         tx_hash: '0xabc123',
                         chain: 'base_sepolia',
-                        ledger_tx_id: 'ltx_456',
                         audit_anchor: 'anchor_789',
+                        from_address: '0xfrom',
+                        to_address: '0xto',
+                        amount: '50',
+                        token: 'USDC',
                     });
                 })
             );
 
             const tools = createSardisTools(client, {
                 walletId: 'wallet_123',
-                agentId: 'agent_456',
             });
 
             const result = await tools.payVendor.execute({
                 amount: 50,
                 vendor: 'OpenAI',
+                vendorAddress: '0xvendor',
                 purpose: 'API credits',
             });
 
             expect(result.success).toBe(true);
-            expect(result.status).toBe('completed');
-            expect(result.paymentId).toBe('pay_123');
+            expect(result.status).toBe('submitted');
             expect(result.transactionHash).toBe('0xabc123');
         });
 
@@ -97,7 +98,7 @@ describe('Vercel AI Integration', () => {
 
         it('should handle policy violation', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.network/api/v2/wallets/wallet_123/transfer', () => {
                     return HttpResponse.json(
                         { error: 'Payment blocked by policy: Amount exceeds limit' },
                         { status: 403 }
@@ -110,6 +111,7 @@ describe('Vercel AI Integration', () => {
             const result = await tools.payVendor.execute({
                 amount: 10000,
                 vendor: 'ExpensiveVendor',
+                vendorAddress: '0xvendor',
             });
 
             expect(result.success).toBe(false);
@@ -119,12 +121,18 @@ describe('Vercel AI Integration', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/mandates/execute',
+                    'https://api.sardis.network/api/v2/wallets/wallet_123/transfer',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
-                            status: 'completed',
-                            payment_id: 'pay_123',
+                            status: 'submitted',
+                            tx_hash: '0xabc123',
+                            chain: 'base_sepolia',
+                            audit_anchor: 'anchor_789',
+                            from_address: '0xfrom',
+                            to_address: '0xto',
+                            amount: '50',
+                            token: 'USDC',
                         });
                     }
                 )
@@ -138,33 +146,19 @@ describe('Vercel AI Integration', () => {
                 vendorAddress: '0xvendor123456789',
             });
 
-            expect(receivedBody.mandate.destination).toBe('0xvendor123456789');
+            expect(receivedBody.destination).toBe('0xvendor123456789');
         });
 
-        it('should use pending prefix when no vendorAddress', async () => {
-            let receivedBody: any;
-            server.use(
-                http.post(
-                    'https://api.sardis.network/api/v2/mandates/execute',
-                    async ({ request }) => {
-                        receivedBody = await request.json();
-                        return HttpResponse.json({
-                            status: 'completed',
-                            payment_id: 'pay_123',
-                        });
-                    }
-                )
-            );
-
+        it('should return error when vendorAddress is missing', async () => {
             const tools = createSardisTools(client, { walletId: 'wallet_123' });
 
-            await tools.payVendor.execute({
+            const result = await tools.payVendor.execute({
                 amount: 50,
                 vendor: 'GitHub',
             });
 
-            expect(receivedBody.mandate.destination).toContain('pending:');
-            expect(receivedBody.mandate.destination).toContain('GitHub');
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('vendorAddress');
         });
     });
 

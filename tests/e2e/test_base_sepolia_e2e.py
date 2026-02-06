@@ -52,9 +52,9 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
     Uses Base Sepolia (chain_id=84532).
     """
     from sardis_v2_core.identity import IdentityRegistry
-    from sardis_v2_core.mandates import PaymentMandate
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     from sardis_v2_core import SpendingPolicy, create_default_policy
-    from sardis_compliance.checks import ComplianceEngine, get_audit_store
+    from sardis_compliance.checks import ComplianceEngine
     from sardis_ledger.records import LedgerStore
     from sardis_chain.executor import ChainExecutor
 
@@ -80,25 +80,34 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
     # --- 4. Create a mandate ---
     mandate = PaymentMandate(
         mandate_id=f"mandate_e2e_{uuid.uuid4().hex[:8]}",
+        mandate_type="payment",
         issuer=agent_id,
         subject=agent_id,
+        nonce=uuid.uuid4().hex,
+        proof=VCProof(
+            verification_method=f"{agent_id}#key-1",
+            created="2026-01-01T00:00:00Z",
+            proof_value="cHJvb2Y=",
+        ),
         destination="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",  # test address
         amount_minor=1000,  # $10.00
         token="USDC",
         chain="base_sepolia",
         domain="merchant_test",
+        purpose="checkout",
+        audit_hash="hash",
         expires_at=9999999999,
+        wallet_id=wallet_id,
     )
 
     # --- 5. Compliance preflight ---
     compliance = ComplianceEngine(settings=settings)
-    result = compliance.preflight(mandate)
+    result = await compliance.preflight(mandate)
     assert result.allowed, f"Compliance should pass: {result.reason}"
     assert result.audit_id is not None, "Audit trail entry should exist"
 
     # --- 6. Verify audit store recorded the entry ---
-    audit_store = get_audit_store()
-    entries = audit_store.get_by_mandate(mandate.mandate_id)
+    entries = await compliance.get_audit_history(mandate.mandate_id)
     assert len(entries) >= 1, "Audit store should have at least one entry"
 
     # --- 7. Chain execution (simulated mode in test) ---
@@ -129,23 +138,32 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_oversized_payment(settings, agent_id):
     """Verify that compliance correctly blocks payments over the limit."""
-    from sardis_v2_core.mandates import PaymentMandate
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     from sardis_compliance.checks import ComplianceEngine
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_block_{uuid.uuid4().hex[:8]}",
+        mandate_type="payment",
         issuer=agent_id,
         subject=agent_id,
+        nonce=uuid.uuid4().hex,
+        proof=VCProof(
+            verification_method=f"{agent_id}#key-1",
+            created="2026-01-01T00:00:00Z",
+            proof_value="cHJvb2Y=",
+        ),
         destination="0x0000000000000000000000000000000000000001",
         amount_minor=200_000_000,  # $2,000,000 - over limit
         token="USDC",
         chain="base_sepolia",
         domain="merchant_test",
+        purpose="checkout",
+        audit_hash="hash",
         expires_at=9999999999,
     )
 
     compliance = ComplianceEngine(settings=settings)
-    result = compliance.preflight(mandate)
+    result = await compliance.preflight(mandate)
     assert not result.allowed, "Oversized payment should be blocked"
     assert result.audit_id is not None, "Blocked payment should still be audited"
 
@@ -153,21 +171,30 @@ async def test_compliance_blocks_oversized_payment(settings, agent_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_unsupported_token(settings, agent_id):
     """Verify that compliance blocks unsupported tokens."""
-    from sardis_v2_core.mandates import PaymentMandate
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     from sardis_compliance.checks import ComplianceEngine
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_token_{uuid.uuid4().hex[:8]}",
+        mandate_type="payment",
         issuer=agent_id,
         subject=agent_id,
+        nonce=uuid.uuid4().hex,
+        proof=VCProof(
+            verification_method=f"{agent_id}#key-1",
+            created="2026-01-01T00:00:00Z",
+            proof_value="cHJvb2Y=",
+        ),
         destination="0x0000000000000000000000000000000000000001",
         amount_minor=1000,
         token="DOGE",  # Not in allowlist
         chain="base_sepolia",
         domain="merchant_test",
+        purpose="checkout",
+        audit_hash="hash",
         expires_at=9999999999,
     )
 
     compliance = ComplianceEngine(settings=settings)
-    result = compliance.preflight(mandate)
+    result = await compliance.preflight(mandate)
     assert not result.allowed, "Unsupported token should be blocked"

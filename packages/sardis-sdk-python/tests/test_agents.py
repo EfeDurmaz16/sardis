@@ -118,7 +118,7 @@ class TestListAgents:
             ],
         )
 
-        agents = await client.agents.list(limit=10, cursor=5)
+        agents = await client.agents.list(limit=10, offset=5)
         assert len(agents) == 1
         assert agents[0].agent_id == "agent_006"
 
@@ -129,7 +129,7 @@ class TestUpdateAgent:
     async def test_update_agent_name(self, client, httpx_mock):
         """Should update an agent's name."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/agents/agent_001",
+            url="https://api.sardis.network/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",
@@ -146,7 +146,7 @@ class TestUpdateAgent:
     async def test_update_agent_metadata(self, client, httpx_mock):
         """Should update an agent's metadata."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/agents/agent_001",
+            url="https://api.sardis.network/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",
@@ -164,7 +164,7 @@ class TestUpdateAgent:
     async def test_deactivate_agent(self, client, httpx_mock):
         """Should deactivate an agent."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/agents/agent_001",
+            url="https://api.sardis.network/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",

@@ -129,12 +129,34 @@ class VelocityCheckProvider(FraudSignalProvider):
         """Remove entries older than cutoff."""
         return [e for e in entries if (e[0] if isinstance(e, tuple) else e) > cutoff]
 
+    def _cleanup_all_tracking(self, now: datetime) -> None:
+        """Cleanup stale velocity windows across all tracked entities."""
+        hour_ago = now - timedelta(hours=1)
+        day_ago = now - timedelta(days=1)
+
+        self._ip_counts = {
+            key: cleaned
+            for key, values in self._ip_counts.items()
+            if (cleaned := self._cleanup_old_entries(values, hour_ago))
+        }
+        self._device_counts = {
+            key: cleaned
+            for key, values in self._device_counts.items()
+            if (cleaned := self._cleanup_old_entries(values, hour_ago))
+        }
+        self._customer_amounts = {
+            key: cleaned
+            for key, values in self._customer_amounts.items()
+            if (cleaned := self._cleanup_old_entries(values, day_ago))
+        }
+
     async def get_signals(
         self,
         context: FraudCheckContext,
     ) -> List[FraudSignal]:
         signals = []
         now = context.timestamp
+        self._cleanup_all_tracking(now)
         hour_ago = now - timedelta(hours=1)
         day_ago = now - timedelta(days=1)
 

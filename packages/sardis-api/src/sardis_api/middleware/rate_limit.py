@@ -215,6 +215,8 @@ def create_rate_limiter(config: RateLimitConfig):
     if redis_url:
         try:
             limiter = RedisRateLimiter(config, redis_url)
+            # Validate optional dependency eagerly so we can fall back in dev/test.
+            limiter._get_redis()
             logger.info("Using Redis-backed rate limiter for multi-instance support")
             return limiter
         except Exception as e:

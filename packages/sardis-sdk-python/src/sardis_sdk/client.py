@@ -464,6 +464,10 @@ class BaseClient:
         except Exception:
             body = {"detail": response.text}
 
+        # Some frameworks return validation errors as a bare list.
+        if isinstance(body, list):
+            body = {"detail": body}
+
         # Extract error details
         error_data = body.get("error", body.get("detail", body))
 
@@ -664,12 +668,23 @@ class AsyncSardisClient(BaseClient):
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                base_url=self._base_url,
-                timeout=self._timeout.to_httpx_timeout(),
-                limits=self._pool.to_httpx_limits(),
-                http2=True,  # Enable HTTP/2 for better performance
-            )
+            try:
+                self._client = httpx.AsyncClient(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=True,  # Enable HTTP/2 for better performance
+                )
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 dependencies not available; falling back to HTTP/1.1"
+                )
+                self._client = httpx.AsyncClient(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=False,
+                )
         return self._client
 
     async def _request(
@@ -843,6 +858,32 @@ class AsyncSardisClient(BaseClient):
         """
         return await self._request("GET", "/health")
 
+    async def execute_payment(
+        self,
+        mandate: Dict[str, Any],
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Dict[str, Any]:
+        """Legacy convenience wrapper for executing a single mandate."""
+        return await self._request(
+            "POST",
+            "/api/v2/mandates/execute",
+            json={"mandate": mandate},
+            timeout=timeout,
+        )
+
+    async def execute_ap2_payment(
+        self,
+        bundle: Dict[str, Any],
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Dict[str, Any]:
+        """Legacy convenience wrapper for executing an AP2 bundle."""
+        return await self._request(
+            "POST",
+            "/api/v2/ap2/payments/execute",
+            json=bundle,
+            timeout=timeout,
+        )
+
     async def close(self) -> None:
         """Close the HTTP client and release resources."""
         if self._client and not self._client.is_closed:
@@ -1008,12 +1049,23 @@ class SardisClient(BaseClient):
     def _get_client(self) -> httpx.Client:
         """Get or create the HTTP client with connection pooling."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.Client(
-                base_url=self._base_url,
-                timeout=self._timeout.to_httpx_timeout(),
-                limits=self._pool.to_httpx_limits(),
-                http2=True,
-            )
+            try:
+                self._client = httpx.Client(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=True,
+                )
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 dependencies not available; falling back to HTTP/1.1"
+                )
+                self._client = httpx.Client(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=False,
+                )
         return self._client
 
     def _request(
@@ -1186,6 +1238,32 @@ class SardisClient(BaseClient):
             Health status information
         """
         return self._request("GET", "/health")
+
+    def execute_payment(
+        self,
+        mandate: Dict[str, Any],
+        timeout: Optional[Union[float, TimeoutConfig]] = None,
+    ) -> Dict[str, Any]:
+        """Legacy convenience wrapper for executing a single mandate."""
+        return self._request(
+            "POST",
+            "/api/v2/mandates/execute",
+            json={"mandate": mandate},
+            timeout=timeout,
+        )
+
+    def execute_ap2_payment(
+        self,
+        bundle: Dict[str, Any],
+        timeout: Optional[Union[float, TimeoutConfig]] = None,
+    ) -> Dict[str, Any]:
+        """Legacy convenience wrapper for executing an AP2 bundle."""
+        return self._request(
+            "POST",
+            "/api/v2/ap2/payments/execute",
+            json=bundle,
+            timeout=timeout,
+        )
 
     def close(self) -> None:
         """Close the HTTP client and release resources."""

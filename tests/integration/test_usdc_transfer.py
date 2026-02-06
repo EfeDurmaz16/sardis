@@ -8,15 +8,22 @@ import os
 import sys
 from pathlib import Path
 
+# Manual / live-network test: skip unless explicitly enabled.
+import pytest
+
+if os.getenv("SARDIS_RUN_LIVE_CHAIN_TESTS", "").strip().lower() not in {"1", "true", "yes", "on"}:
+    pytest.skip(
+        "Live chain integration test disabled (set SARDIS_RUN_LIVE_CHAIN_TESTS=1 to enable).",
+        allow_module_level=True,
+    )
+
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "packages" / "sardis-core" / "src"))
 sys.path.insert(0, str(project_root / "packages" / "sardis-chain" / "src"))
 
-# Load environment variables
+# Environment variables must be provided explicitly by the test runner.
 os.chdir(project_root)
-from dotenv import load_dotenv
-load_dotenv()
 
 # USDC Contract on Ethereum Sepolia (Circle official)
 USDC_CONTRACT = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"

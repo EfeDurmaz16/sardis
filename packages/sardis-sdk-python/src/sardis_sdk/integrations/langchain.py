@@ -23,18 +23,22 @@ Example:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import os
-import uuid
-from datetime import datetime, timezone
 from decimal import Decimal
+from inspect import isawaitable
 from typing import Any, Optional, Type, TYPE_CHECKING
 
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from ..client import SardisClient
+    from ..client import AsyncSardisClient, SardisClient
+
+
+async def _maybe_await(value: Any) -> Any:
+    if isawaitable(value):
+        return await value
+    return value
 
 
 class PayInput(BaseModel):
@@ -66,18 +70,6 @@ class BalanceCheckInput(BaseModel):
     """Input schema for balance check tool."""
     token: str = Field(default="USDC", description="Token to check balance for.")
     chain: str = Field(default="base_sepolia", description="Chain to check balance on.")
-
-
-def _generate_mandate_id() -> str:
-    """Generate a unique mandate ID."""
-    timestamp = hex(int(datetime.now(timezone.utc).timestamp() * 1000))[2:]
-    random_part = uuid.uuid4().hex[:8]
-    return f"mnd_{timestamp}{random_part}"
-
-
-def _create_audit_hash(data: str) -> str:
-    """Create SHA-256 hash for audit purposes."""
-    return hashlib.sha256(data.encode()).hexdigest()
 
 
 class SardisTool(BaseTool):
@@ -188,50 +180,28 @@ class SardisTool(BaseTool):
         if not self.wallet_id:
             return "Error: No wallet ID configured. Set wallet_id or SARDIS_WALLET_ID env var."
 
+        if not merchant_address:
+            return "Error: merchant_address is required (0x...) for transfers."
+
         try:
-            # Build the payment mandate
-            mandate_id = _generate_mandate_id()
-            timestamp = datetime.now(timezone.utc).isoformat()
-
-            # Convert to minor units (6 decimals for stablecoins)
-            amount_minor = str(int(amount * 1_000_000))
-
-            # Create audit hash
-            audit_data = f"{mandate_id}:{self.wallet_id}:{merchant_address or merchant}:{amount_minor}:{token}:{timestamp}"
-            audit_hash = _create_audit_hash(audit_data)
-
-            # Build mandate structure
-            mandate = {
-                "mandate_id": mandate_id,
-                "subject": self.wallet_id,
-                "destination": merchant_address or f"pending:{merchant}",
-                "amount_minor": amount_minor,
-                "token": token,
-                "chain": self.chain,
-                "purpose": purpose,
-                "vendor_name": merchant,
-                "agent_id": self.agent_id,
-                "timestamp": timestamp,
-                "audit_hash": audit_hash,
-                "metadata": {
-                    "vendor": merchant,
-                    "category": "saas",
-                    "initiated_by": "ai_agent",
-                    "tool": "langchain_python",
-                },
-            }
-
-            # Execute via API
-            result = await self.client.payments.execute_mandate(mandate)
-
+            result = await _maybe_await(
+                self.client.wallets.transfer(
+                    self.wallet_id,
+                    destination=merchant_address,
+                    amount=Decimal(str(amount)),
+                    token=token,
+                    chain=self.chain,
+                    domain=merchant,
+                    memo=purpose,
+                )
+            )
             return (
                 f"APPROVED: Payment of ${amount} {token} to {merchant}\n"
                 f"Purpose: {purpose}\n"
-                f"Payment ID: {result.payment_id}\n"
                 f"Status: {result.status}\n"
                 f"Transaction Hash: {result.tx_hash or 'pending'}\n"
                 f"Chain: {result.chain}\n"
-                f"Ledger TX: {result.ledger_tx_id or 'N/A'}"
+                f"Audit Anchor: {result.audit_anchor or 'N/A'}"
             )
 
         except Exception as e:
@@ -306,7 +276,7 @@ class SardisPolicyCheckTool(BaseTool):
 
         try:
             # Get wallet to check limits
-            wallet = await self.client.wallets.get(self.wallet_id)
+            wallet = await _maybe_await(self.client.wallets.get(self.wallet_id))
 
             checks = []
             all_passed = True
@@ -393,9 +363,7 @@ class SardisBalanceCheckTool(BaseTool):
             return "Error: No wallet ID configured."
 
         try:
-            balance = await self.client.wallets.get_balance(
-                self.wallet_id, chain, token
-            )
+            balance = await _maybe_await(self.client.wallets.get_balance(self.wallet_id, chain, token))
 
             return (
                 f"Wallet Balance:\n"

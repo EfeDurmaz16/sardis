@@ -149,12 +149,14 @@ class KeyRotationEvent:
 class MPCKeyRotationPolicy:
     """Policy configuration for MPC key rotation."""
     # Automatic rotation settings
+    auto_rotate: bool = True  # Backwards-compatible alias used by older tests/callers
     rotation_interval_days: int = 90
     grace_period_hours: int = 48  # Longer grace period for MPC wallets
     max_key_age_days: int = 180
 
     # Notification settings
     notification_threshold_days: int = 14
+    warn_before_days: Optional[int] = None  # Backwards-compatible alias
     send_expiry_warnings: bool = True
 
     # Security settings
@@ -165,6 +167,11 @@ class MPCKeyRotationPolicy:
     # Provider-specific settings
     turnkey_settings: Dict[str, Any] = field(default_factory=dict)
     fireblocks_settings: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Normalize backwards-compatible aliases."""
+        if self.warn_before_days is not None:
+            self.notification_threshold_days = self.warn_before_days
 
     def validate(self) -> List[str]:
         """Validate policy configuration."""

@@ -98,6 +98,10 @@ AUDIT_SUMMARY*.md
 * 2.md
 * 2.py
 * 2.ts
+* 2.tsx
+* 2.json
+* 2.sql
+* 2.sh
 *__init__ 2.py
 *index 2.ts
 

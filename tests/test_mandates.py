@@ -266,7 +266,7 @@ class TestMandateChain:
             mandate_id="payment_chain",
             mandate_type="payment",
             issuer="agent_456",
-            subject="wallet_789",
+            subject="agent_456",
             expires_at=expires,
             nonce="nonce_3",
             proof=proof,
@@ -317,7 +317,6 @@ class TestVCProof:
         
         assert proof.type == "DataIntegrityProof"
         assert proof.proof_purpose == "assertionMethod"
-
 
 
 

@@ -52,12 +52,14 @@ class SardisToolClient {
   private maxPaymentAmount?: number
   private blockedCategories: string[]
   private allowedMerchants?: string[]
+  private resolvedAgentId?: string
+  private resolvingAgentId?: Promise<string>
 
   constructor(config: SardisToolsConfig) {
     this.apiKey = config.apiKey
     this.walletId = config.walletId
     this.agentId = config.agentId
-    this.baseUrl = config.baseUrl || 'https://api.sardis.sh/v2'
+    this.baseUrl = (config.baseUrl || 'https://api.sardis.network').replace(/\/$/, '')
     this.simulationMode = config.simulationMode || false
     this.maxPaymentAmount = config.maxPaymentAmount
     this.blockedCategories = config.blockedCategories || []
@@ -72,21 +74,46 @@ class SardisToolClient {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'X-API-Key': this.apiKey,
         'Content-Type': 'application/json',
-        'X-Wallet-Id': this.walletId,
-        ...(this.agentId && { 'X-Agent-Id': this.agentId }),
         ...(this.simulationMode && { 'X-Simulation-Mode': 'true' }),
       },
       body: body ? JSON.stringify(body) : undefined,
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.message || `API error: ${response.status}`)
+      const error = await response.json().catch(() => null)
+      const message =
+        (error &&
+          typeof error === 'object' &&
+          ('message' in error || 'detail' in error) &&
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ((error as any).message || (error as any).detail)) ||
+        `API error: ${response.status}`
+      throw new Error(message)
     }
 
     return response.json()
+  }
+
+  private async getEffectiveAgentId(): Promise<string> {
+    if (this.agentId) return this.agentId
+    if (this.resolvedAgentId) return this.resolvedAgentId
+
+    if (!this.resolvingAgentId) {
+      this.resolvingAgentId = (async () => {
+        const wallet = await this.request<{ agent_id: string }>(
+          'GET',
+          `/api/v2/wallets/${this.walletId}`
+        )
+        if (!wallet.agent_id) {
+          throw new Error('Wallet has no agent_id')
+        }
+        this.resolvedAgentId = wallet.agent_id
+        return wallet.agent_id
+      })()
+    }
+    return this.resolvingAgentId
   }
 
   /**
@@ -143,31 +170,28 @@ class SardisToolClient {
 
     try {
       const result = await this.request<{
-        transaction_id: string
         tx_hash: string
         status: string
-        block_number?: number
-      }>('POST', '/payments/execute', {
-        wallet_id: this.walletId,
-        to: params.to,
-        amount: params.amount.toString(),
+        chain: string
+        ledger_tx_id?: string
+        audit_anchor?: string | null
+      }>('POST', `/api/v2/wallets/${this.walletId}/transfer`, {
+        destination: params.to,
+        amount: params.amount,
         token: params.token || 'USDC',
         chain: params.chain || 'base',
+        domain: params.merchant || 'unknown',
         memo: params.memo,
-        merchant: params.merchant,
-        category: params.category,
-        idempotency_key: params.idempotencyKey,
       })
 
       return {
         success: true,
-        transactionId: result.transaction_id,
+        transactionId: result.ledger_tx_id,
         txHash: result.tx_hash,
         amount: params.amount,
         token: params.token || 'USDC',
         chain: params.chain || 'base',
-        status: result.status as PaymentResult['status'],
-        blockNumber: result.block_number,
+        status: (result.status === 'submitted' ? 'pending' : (result.status as PaymentResult['status'])),
         timestamp: new Date().toISOString(),
       }
     } catch (error) {
@@ -186,24 +210,41 @@ class SardisToolClient {
   async createHold(params: z.infer<typeof HoldParamsSchema>): Promise<HoldResult> {
     try {
       const result = await this.request<{
-        hold_id: string
-        expires_at: string
-        status: string
-      }>('POST', '/holds', {
+        success: boolean
+        hold?: {
+          hold_id: string
+          amount: string
+          merchant_id?: string | null
+          status: string
+          expires_at?: string | null
+        }
+        error?: string | null
+      }>('POST', '/api/v2/holds', {
         wallet_id: this.walletId,
-        amount: params.amount.toString(),
-        merchant: params.merchant,
-        expires_in_hours: params.expiresInHours || 24,
-        description: params.description,
+        amount: params.amount,
+        token: 'USDC',
+        merchant_id: params.merchant,
+        purpose: params.description,
+        expiration_hours: params.expiresInHours || 24,
       })
+
+      if (!result.success || !result.hold) {
+        return {
+          success: false,
+          amount: params.amount,
+          merchant: params.merchant,
+          status: 'failed',
+          error: result.error || 'Failed to create hold',
+        }
+      }
 
       return {
         success: true,
-        holdId: result.hold_id,
+        holdId: result.hold.hold_id,
         amount: params.amount,
         merchant: params.merchant,
-        expiresAt: result.expires_at,
-        status: result.status as HoldResult['status'],
+        expiresAt: result.hold.expires_at || undefined,
+        status: result.hold.status as HoldResult['status'],
       }
     } catch (error) {
       return {
@@ -219,20 +260,37 @@ class SardisToolClient {
   async captureHold(params: z.infer<typeof CaptureParamsSchema>): Promise<HoldResult> {
     try {
       const result = await this.request<{
-        hold_id: string
-        amount: number
-        merchant: string
-        status: string
-      }>('POST', `/holds/${params.holdId}/capture`, {
-        amount: params.amount?.toString(),
-      })
+        success: boolean
+        hold?: {
+          hold_id: string
+          amount: string
+          merchant_id?: string | null
+          status: string
+        }
+        error?: string | null
+      }>(
+        'POST',
+        `/api/v2/holds/${params.holdId}/capture`,
+        params.amount != null ? { amount: params.amount } : undefined
+      )
+
+      if (!result.success || !result.hold) {
+        return {
+          success: false,
+          holdId: params.holdId,
+          amount: params.amount || 0,
+          merchant: '',
+          status: 'failed',
+          error: result.error || 'Failed to capture hold',
+        }
+      }
 
       return {
         success: true,
-        holdId: result.hold_id,
-        amount: result.amount,
-        merchant: result.merchant,
-        status: 'captured',
+        holdId: result.hold.hold_id,
+        amount: params.amount || parseFloat(result.hold.amount),
+        merchant: result.hold.merchant_id || '',
+        status: result.hold.status as HoldResult['status'],
       }
     } catch (error) {
       return {
@@ -249,17 +307,33 @@ class SardisToolClient {
   async voidHold(holdId: string): Promise<HoldResult> {
     try {
       const result = await this.request<{
-        hold_id: string
-        amount: number
-        merchant: string
-      }>('POST', `/holds/${holdId}/void`, {})
+        success: boolean
+        hold?: {
+          hold_id: string
+          amount: string
+          merchant_id?: string | null
+          status: string
+        }
+        error?: string | null
+      }>('POST', `/api/v2/holds/${holdId}/void`, {})
+
+      if (!result.success || !result.hold) {
+        return {
+          success: false,
+          holdId,
+          amount: 0,
+          merchant: '',
+          status: 'failed',
+          error: result.error || 'Failed to void hold',
+        }
+      }
 
       return {
         success: true,
-        holdId: result.hold_id,
-        amount: result.amount,
-        merchant: result.merchant,
-        status: 'voided',
+        holdId: result.hold.hold_id,
+        amount: parseFloat(result.hold.amount),
+        merchant: result.hold.merchant_id || '',
+        status: result.hold.status as HoldResult['status'],
       }
     } catch (error) {
       return {
@@ -284,24 +358,21 @@ class SardisToolClient {
     }
 
     try {
+      const agentId = await this.getEffectiveAgentId()
       const result = await this.request<{
         allowed: boolean
-        reason?: string
-        remaining_daily_limit?: number
-        remaining_monthly_limit?: number
-        requires_approval?: boolean
-      }>('POST', `/wallets/${this.walletId}/check-policy`, {
-        amount: params.amount.toString(),
-        merchant: params.merchant,
-        category: params.category,
+        reason: string
+        policy_id?: string | null
+      }>('POST', '/api/v2/policies/check', {
+        agent_id: agentId,
+        amount: params.amount,
+        merchant_id: params.merchant,
+        merchant_category: params.category,
       })
 
       return {
         allowed: result.allowed,
         reason: result.reason,
-        remainingDailyLimit: result.remaining_daily_limit,
-        remainingMonthlyLimit: result.remaining_monthly_limit,
-        requiresApproval: result.requires_approval,
       }
     } catch (error) {
       return {
@@ -314,17 +385,18 @@ class SardisToolClient {
   async getBalance(params: z.infer<typeof BalanceParamsSchema>): Promise<BalanceResult> {
     try {
       const result = await this.request<{
-        available: string
-        pending: string
-        held: string
+        balance: string
         token: string
         chain: string
-      }>('GET', `/wallets/${this.walletId}/balance?token=${params.token || 'USDC'}${params.chain ? `&chain=${params.chain}` : ''}`)
+      }>(
+        'GET',
+        `/api/v2/wallets/${this.walletId}/balance?token=${params.token || 'USDC'}${params.chain ? `&chain=${params.chain}` : ''}`
+      )
 
       return {
-        available: parseFloat(result.available),
-        pending: parseFloat(result.pending),
-        held: parseFloat(result.held),
+        available: parseFloat(result.balance),
+        pending: 0,
+        held: 0,
         token: result.token,
         chain: result.chain,
       }
@@ -341,7 +413,36 @@ class SardisToolClient {
     byMerchant: Record<string, number>
   }> {
     try {
-      return await this.request('GET', `/wallets/${this.walletId}/spending/summary`)
+      const response = await this.request<{ entries: Array<{ from_wallet?: string; amount: string; created_at: string }> }>(
+        'GET',
+        `/api/v2/ledger/entries?wallet_id=${this.walletId}&limit=500&offset=0`
+      )
+
+      const now = new Date()
+      const startOfToday = new Date(now)
+      startOfToday.setHours(0, 0, 0, 0)
+
+      const startOfWeek = new Date(startOfToday)
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+      let today = 0
+      let thisWeek = 0
+      let thisMonth = 0
+
+      for (const entry of response.entries || []) {
+        if (entry.from_wallet && entry.from_wallet !== this.walletId) continue
+        const createdAt = new Date(entry.created_at)
+        const amount = Number.parseFloat(entry.amount)
+        if (Number.isNaN(amount)) continue
+
+        if (createdAt >= startOfMonth) thisMonth += amount
+        if (createdAt >= startOfWeek) thisWeek += amount
+        if (createdAt >= startOfToday) today += amount
+      }
+
+      return { today, thisWeek, thisMonth, byCategory: {}, byMerchant: {} }
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to get spending summary')
     }

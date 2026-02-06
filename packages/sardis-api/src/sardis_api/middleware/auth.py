@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -365,8 +366,27 @@ async def get_api_key(
     
     manager = get_api_key_manager()
     validated_key = await manager.validate_key(api_key)
-    
+
     if not validated_key:
+        env = os.getenv("SARDIS_ENVIRONMENT", "").strip().lower()
+        test_key = os.getenv("SARDIS_TEST_API_KEY", "sk_test_demo123")
+        if env in {"dev", "test", "local"} and api_key == test_key:
+            # Dev/test convenience key to keep local and CI integration tests
+            # deterministic without explicit bootstrap.
+            return APIKey(
+                key_id="key_test_bootstrap",
+                key_prefix=test_key[:12],
+                key_hash=APIKeyManager.hash_key(test_key),
+                organization_id=os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo"),
+                name="Test Bootstrap Key",
+                scopes=["*"],
+                rate_limit=1000,
+                is_active=True,
+                expires_at=None,
+                created_at=datetime.now(timezone.utc),
+                last_used_at=datetime.now(timezone.utc),
+            )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired API key",

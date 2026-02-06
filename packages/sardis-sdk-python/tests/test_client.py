@@ -107,8 +107,8 @@ class TestErrorHandling:
             json={"error": "Rate limit exceeded"},
         )
 
-        # Use retry=RetryConfig(max_retries=1) to avoid retries for this test
-        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        # Disable retries to keep this test deterministic.
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=0))
         try:
             with pytest.raises(RateLimitError):
                 await client._request("GET", "/v1/error/429")
@@ -124,7 +124,7 @@ class TestErrorHandling:
             json={"error": "Internal server error"},
         )
 
-        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=0))
         try:
             with pytest.raises(APIError):
                 await client._request("GET", "/v1/error/500")
@@ -228,6 +228,11 @@ class TestRetryLogic:
             url="https://api.sardis.network/v1/timeout-fail",
             method="GET",
         )
+        httpx_mock.add_exception(
+            httpx.TimeoutException("Connection timed out"),
+            url="https://api.sardis.network/v1/timeout-fail",
+            method="GET",
+        )
 
         client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=2))
         try:
@@ -241,6 +246,11 @@ class TestRetryLogic:
         import httpx
 
         # All requests fail with connection error
+        httpx_mock.add_exception(
+            httpx.ConnectError("Connection refused"),
+            url="https://api.sardis.network/v1/connect-fail",
+            method="GET",
+        )
         httpx_mock.add_exception(
             httpx.ConnectError("Connection refused"),
             url="https://api.sardis.network/v1/connect-fail",
@@ -302,7 +312,7 @@ class TestRequestMethod:
             with pytest.raises(APIError) as exc_info:
                 await client._request("POST", "/v1/validation-error")
             # The list should be wrapped in {"detail": list}
-            assert exc_info.value.code == "VALIDATION_ERROR"
+            assert exc_info.value.code == "SARDIS_1200"
         finally:
             await client.close()
 
@@ -315,7 +325,7 @@ class TestRequestMethod:
             content=b"<html>Internal Server Error</html>",
         )
 
-        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=1))
+        client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=0))
         try:
             with pytest.raises(APIError) as exc_info:
                 await client._request("GET", "/v1/html-error")

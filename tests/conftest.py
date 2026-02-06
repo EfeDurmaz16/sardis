@@ -36,6 +36,56 @@ os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 from sardis_v2_core.config import load_settings
 load_settings.cache_clear()
 
+_BASE_SARDIS_ENV: dict[str, str] = {
+    "SARDIS_ENVIRONMENT": os.environ["SARDIS_ENVIRONMENT"],
+    "SARDIS_ALLOW_ANON": os.environ["SARDIS_ALLOW_ANON"],
+    "SARDIS_SECRET_KEY": os.environ["SARDIS_SECRET_KEY"],
+    "SARDIS_CHAIN_MODE": os.environ["SARDIS_CHAIN_MODE"],
+}
+
+_BASE_OTHER_ENV: dict[str, str | None] = {
+    "DATABASE_URL": os.environ.get("DATABASE_URL"),
+    "REDIS_URL": os.environ.get("REDIS_URL"),
+    "UPSTASH_REDIS_URL": os.environ.get("UPSTASH_REDIS_URL"),
+    "SARDIS_REDIS_URL": os.environ.get("SARDIS_REDIS_URL"),
+}
+
+
+@pytest.fixture(autouse=True)
+def _reset_sardis_env_between_tests():
+    """
+    Prevent cross-test leakage via environment variables and cached settings.
+
+    Many components use env vars + cached settings at import/runtime. Without
+    resetting between tests, auth/anon mode and backends can drift and cause
+    flaky failures.
+    """
+    # Reset before test
+    for key in list(os.environ.keys()):
+        if key.startswith("SARDIS_"):
+            del os.environ[key]
+    os.environ.update(_BASE_SARDIS_ENV)
+    for key, value in _BASE_OTHER_ENV.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
+    load_settings.cache_clear()
+
+    yield
+
+    # Reset after test
+    for key in list(os.environ.keys()):
+        if key.startswith("SARDIS_"):
+            del os.environ[key]
+    os.environ.update(_BASE_SARDIS_ENV)
+    for key, value in _BASE_OTHER_ENV.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
+    load_settings.cache_clear()
+
 
 # Check if PostgreSQL database is available
 def has_postgres_db():
@@ -48,6 +98,17 @@ def has_postgres_db():
 def anyio_backend():
     """Use asyncio for async tests."""
     return "asyncio"
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Auto-mark tests under tests/e2e as e2e."""
+    for item in items:
+        try:
+            path = str(item.fspath)
+        except Exception:
+            continue
+        if "/tests/e2e/" in path.replace("\\", "/"):
+            item.add_marker(pytest.mark.e2e)
 
 
 @pytest.fixture

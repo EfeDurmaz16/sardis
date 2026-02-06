@@ -14,7 +14,7 @@ export interface SardisToolsConfig {
   walletId: string
   /** Default agent ID */
   agentId?: string
-  /** Base URL for Sardis API (default: https://api.sardis.sh/v2) */
+  /** Base URL for Sardis API (default: https://api.sardis.network) */
   baseUrl?: string
   /** Enable simulation mode (no real transactions) */
   simulationMode?: boolean

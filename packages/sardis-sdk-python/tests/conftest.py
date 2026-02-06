@@ -1,9 +1,128 @@
 """
 Pytest configuration and fixtures for Sardis SDK tests.
 """
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Any, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+import httpx
 import pytest
 
 from sardis_sdk import AsyncSardisClient
+from sardis_sdk.client import RetryConfig
+
+
+@dataclass
+class _MockEntry:
+    method: str
+    url: str
+    response: Optional[httpx.Response] = None
+    exception: Optional[Exception] = None
+
+
+class _LocalHTTPXMock:
+    """Minimal pytest-httpx-compatible mock used when plugin is unavailable."""
+
+    def __init__(self) -> None:
+        self._entries: list[_MockEntry] = []
+
+    def add_response(
+        self,
+        *,
+        url: str,
+        method: str = "GET",
+        status_code: int = 200,
+        json: Any = None,
+        content: bytes | None = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> None:
+        if content is None and json is not None:
+            content = json_dumps_bytes(json)
+            response_headers = {"content-type": "application/json"}
+            if headers:
+                response_headers.update(headers)
+        else:
+            response_headers = headers or {}
+
+        request = httpx.Request(method.upper(), url)
+        response = httpx.Response(
+            status_code=status_code,
+            headers=response_headers,
+            content=content or b"",
+            request=request,
+        )
+        self._entries.append(
+            _MockEntry(method=method.upper(), url=url, response=response)
+        )
+
+    def add_exception(
+        self,
+        exception: Exception,
+        *,
+        url: str,
+        method: str = "GET",
+    ) -> None:
+        self._entries.append(
+            _MockEntry(method=method.upper(), url=url, exception=exception)
+        )
+
+    def _pop_match(self, method: str, url: str) -> _MockEntry:
+        normalized_method = method.upper()
+        normalized_url = _normalize_url(url)
+        for idx, entry in enumerate(self._entries):
+            if entry.method == normalized_method and _normalize_url(entry.url) == normalized_url:
+                return self._entries.pop(idx)
+        raise AssertionError(
+            f"No mocked response for {normalized_method} {url}. "
+            f"Available: {[f'{e.method} {e.url}' for e in self._entries]}"
+        )
+
+
+def json_dumps_bytes(payload: Any) -> bytes:
+    return json.dumps(payload, default=str).encode("utf-8")
+
+
+def _append_query_params(url: str, params: Optional[dict[str, Any]]) -> str:
+    if not params:
+        return url
+    query = urlencode(params, doseq=True)
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}{query}"
+
+
+def _normalize_url(url: str) -> str:
+    parts = urlsplit(url)
+    normalized_query = urlencode(sorted(parse_qsl(parts.query, keep_blank_values=True)), doseq=True)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, normalized_query, parts.fragment))
+
+
+@pytest.fixture
+def httpx_mock(monkeypatch):
+    """Fallback `httpx_mock` fixture compatible with this test suite."""
+    mock = _LocalHTTPXMock()
+
+    async def _async_request(self, method, url, params=None, **kwargs):
+        full_url = _append_query_params(str(url), params)
+        match = mock._pop_match(method, full_url)
+        if match.exception is not None:
+            raise match.exception
+        assert match.response is not None
+        return match.response
+
+    def _sync_request(self, method, url, params=None, **kwargs):
+        full_url = _append_query_params(str(url), params)
+        match = mock._pop_match(method, full_url)
+        if match.exception is not None:
+            raise match.exception
+        assert match.response is not None
+        return match.response
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", _async_request)
+    monkeypatch.setattr(httpx.Client, "request", _sync_request)
+    return mock
 
 
 # Mock response data
@@ -85,7 +204,8 @@ def base_url() -> str:
 @pytest.fixture
 async def client(api_key: str, base_url: str) -> AsyncSardisClient:
     """Create a test client."""
-    client = AsyncSardisClient(api_key=api_key, base_url=base_url)
+    # Keep non-retry tests deterministic; retry behavior is tested explicitly.
+    client = AsyncSardisClient(api_key=api_key, base_url=base_url, retry=RetryConfig(max_retries=0))
     yield client
     await client.close()
 

@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
 import { PaymentRequestSchema, TransactionQuerySchema } from './types.js';
-import { apiRequest, generateMandateId, createAuditHash } from '../api.js';
+import { apiRequest } from '../api.js';
 import { getConfig } from '../config.js';
 import { checkPolicy } from './policy.js';
 
@@ -21,15 +21,16 @@ interface PaymentResult {
   audit_anchor?: string;
 }
 
-interface Transaction {
-  id: string;
-  payment_id: string;
-  status: string;
+interface LedgerEntry {
+  tx_id: string;
+  mandate_id?: string;
+  from_wallet?: string;
+  to_wallet?: string;
   amount: string;
-  token: string;
-  chain: string;
-  vendor: string;
-  tx_hash?: string;
+  currency: string;
+  chain?: string;
+  chain_tx_hash?: string;
+  audit_anchor?: string;
   created_at: string;
 }
 
@@ -44,40 +45,6 @@ export async function executePayment(
   token: string = 'USDC'
 ): Promise<PaymentResult> {
   const config = getConfig();
-  const mandateId = generateMandateId();
-  const timestamp = new Date().toISOString();
-  const amountMinor = Math.round(amount * 1_000_000).toString();
-
-  const auditData = JSON.stringify({
-    mandate_id: mandateId,
-    subject: config.walletId,
-    destination: vendorAddress || `pending:${vendor}`,
-    amount_minor: amountMinor,
-    token,
-    purpose,
-    timestamp,
-  });
-  const auditHash = await createAuditHash(auditData);
-
-  const mandate = {
-    mandate_id: mandateId,
-    subject: config.walletId,
-    destination: vendorAddress || `pending:${vendor}`,
-    amount_minor: amountMinor,
-    token,
-    chain: config.chain,
-    purpose,
-    vendor_name: vendor,
-    agent_id: config.agentId,
-    timestamp,
-    audit_hash: auditHash,
-    metadata: {
-      vendor,
-      category: 'saas',
-      initiated_by: 'ai_agent',
-      tool: 'mcp_server',
-    },
-  };
 
   if (!config.apiKey || config.mode === 'simulated') {
     // Return simulated result with unique ID
@@ -88,34 +55,58 @@ export async function executePayment(
       tx_hash: '0x' + Math.random().toString(16).substring(2).padEnd(64, '0'),
       chain: config.chain,
       ledger_tx_id: `ltx_${uniqueId}`,
-      audit_anchor: `merkle::${auditHash.substring(0, 16)}`,
+      audit_anchor: `merkle::${uniqueId}`,
     };
   }
 
-  return apiRequest<PaymentResult>('POST', '/api/v2/mandates/execute', { mandate });
+  if (!vendorAddress) {
+    throw new Error('vendorAddress is required in live mode (destination address)');
+  }
+
+  const transfer = await apiRequest<{
+    tx_hash: string;
+    status: string;
+    chain: string;
+    ledger_tx_id?: string;
+    audit_anchor?: string | null;
+  }>('POST', `/api/v2/wallets/${config.walletId}/transfer`, {
+    destination: vendorAddress,
+    amount,
+    token,
+    chain: config.chain,
+    domain: vendor,
+    memo: purpose,
+  });
+
+  const paymentId = transfer.ledger_tx_id || `pay_${Date.now().toString(36)}`;
+  return {
+    payment_id: paymentId,
+    status: transfer.status,
+    tx_hash: transfer.tx_hash,
+    chain: transfer.chain,
+    ledger_tx_id: transfer.ledger_tx_id,
+    audit_anchor: transfer.audit_anchor ?? undefined,
+  };
 }
 
 /**
  * Get transaction by ID
  */
-export async function getTransaction(transactionId: string): Promise<Transaction> {
+export async function getTransaction(transactionId: string): Promise<LedgerEntry> {
   const config = getConfig();
 
   if (!config.apiKey || config.mode === 'simulated') {
     return {
-      id: transactionId,
-      payment_id: `pay_${Date.now().toString(36)}`,
-      status: 'completed',
+      tx_id: transactionId,
       amount: '100.00',
-      token: 'USDC',
+      currency: 'USDC',
       chain: config.chain,
-      vendor: 'simulated_vendor',
-      tx_hash: '0x' + '0'.repeat(64),
+      chain_tx_hash: '0x' + '0'.repeat(64),
       created_at: new Date().toISOString(),
     };
   }
 
-  return apiRequest<Transaction>('GET', `/api/v2/transactions/${transactionId}`);
+  return apiRequest<LedgerEntry>('GET', `/api/v2/ledger/entries/${transactionId}`);
 }
 
 /**
@@ -125,45 +116,43 @@ export async function listTransactions(
   limit: number = 20,
   offset: number = 0,
   status?: string
-): Promise<Transaction[]> {
+): Promise<LedgerEntry[]> {
   const config = getConfig();
 
   if (!config.apiKey || config.mode === 'simulated') {
     return [
       {
-        id: `tx_${Date.now().toString(36)}`,
-        payment_id: `pay_${Date.now().toString(36)}`,
-        status: 'completed',
+        tx_id: `tx_${Date.now().toString(36)}`,
         amount: '50.00',
-        token: 'USDC',
+        currency: 'USDC',
         chain: config.chain,
-        vendor: 'OpenAI',
-        tx_hash: '0x' + '1'.repeat(64),
+        chain_tx_hash: '0x' + '1'.repeat(64),
         created_at: new Date(Date.now() - 3600000).toISOString(),
       },
       {
-        id: `tx_${(Date.now() - 1000).toString(36)}`,
-        payment_id: `pay_${(Date.now() - 1000).toString(36)}`,
-        status: 'completed',
+        tx_id: `tx_${(Date.now() - 1000).toString(36)}`,
         amount: '25.00',
-        token: 'USDC',
+        currency: 'USDC',
         chain: config.chain,
-        vendor: 'Anthropic',
-        tx_hash: '0x' + '2'.repeat(64),
+        chain_tx_hash: '0x' + '2'.repeat(64),
         created_at: new Date(Date.now() - 7200000).toISOString(),
       },
     ];
+  }
+
+  if (status) {
+    // Ledger entries are append-only; status filtering is not currently supported.
+    // Keep the parameter for tool stability.
   }
 
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
   });
-  if (status) {
-    params.append('status', status);
-  }
+  params.append('wallet_id', config.walletId);
 
-  return apiRequest<Transaction[]>('GET', `/api/v2/transactions?${params}`);
+  const response = await apiRequest<{ entries: LedgerEntry[] }>('GET', `/api/v2/ledger/entries?${params}`);
+  return response.entries || [];
 }
 
 // Tool definitions

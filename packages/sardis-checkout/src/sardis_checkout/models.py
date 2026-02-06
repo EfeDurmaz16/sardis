@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional, List, Dict
+import json
 import uuid
 
 
@@ -64,6 +65,8 @@ class FraudRiskLevel(str, Enum):
 
 class FraudDecision(str, Enum):
     """Fraud check decision."""
+    # Legacy decision label used in older integrations/tests.
+    ALLOW = "allow"
     APPROVE = "approve"
     REVIEW = "review"
     DECLINE = "decline"
@@ -203,6 +206,27 @@ class IdempotencyRecord:
     )
     agent_id: Optional[str] = None
     checkout_id: Optional[str] = None
+    # Backward-compatible fields expected by older tests/clients.
+    response_code: Optional[int] = None
+    response_body: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        # Legacy shape -> canonical shape.
+        if self.response is None and self.response_body is not None:
+            try:
+                self.response = json.loads(self.response_body)
+            except Exception:
+                self.response = {"raw": self.response_body}
+
+        # Canonical shape -> legacy fields.
+        if self.response is not None and self.response_body is None:
+            try:
+                self.response_body = json.dumps(self.response, default=str)
+            except Exception:
+                self.response_body = str(self.response)
+
+        if self.response_code is None and self.status == "completed" and self.response is not None:
+            self.response_code = 200
 
 
 # Analytics models (audit fix #3)
@@ -386,11 +410,29 @@ class CheckoutCustomization:
 @dataclass
 class FraudSignal:
     """Individual fraud detection signal."""
-    signal_type: str  # e.g., "velocity", "geolocation", "device"
-    signal_value: Any
-    risk_score: float  # 0.0 to 1.0
-    confidence: float  # 0.0 to 1.0
+    signal_type: str = ""  # e.g., "velocity", "geolocation", "device"
+    signal_value: Any = None
+    risk_score: float = 0.0  # Supports both 0..1 and 0..100 conventions
+    confidence: float = 1.0  # 0.0 to 1.0
     details: Dict[str, Any] = field(default_factory=dict)
+    # Backward-compatible fields
+    name: Optional[str] = None
+    provider: Optional[str] = None
+    description: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Keep old/new names interoperable.
+        if self.name and not self.signal_type:
+            self.signal_type = self.name
+        if not self.name and self.signal_type:
+            self.name = self.signal_type
+
+        # Keep old/new metadata containers interoperable.
+        if self.metadata and not self.details:
+            self.details = dict(self.metadata)
+        elif self.details and not self.metadata:
+            self.metadata = dict(self.details)
 
 
 @dataclass
