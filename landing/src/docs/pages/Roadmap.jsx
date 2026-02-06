@@ -124,7 +124,7 @@ export default function Roadmap() {
     {
       version: 'v0.8.1',
       title: 'Protocol Conformance Hardening',
-      status: 'current',
+      status: 'completed',
       date: 'Feb 2026',
       items: [
         { text: 'AP2 payment modality and agent-presence signals enforced', done: true },
@@ -132,7 +132,21 @@ export default function Roadmap() {
         { text: 'TAP linked object signature validation hooks', done: true },
         { text: 'Protocol source map for AP2/TAP/UCP/x402 added', done: true },
         { text: 'Negative protocol test coverage expanded', done: true },
-        { text: 'CI conformance gate wiring for protocol suites', done: false },
+        { text: 'CI conformance gate wiring for protocol suites', done: true },
+      ],
+    },
+    {
+      version: 'v0.8.2',
+      title: 'Release Readiness Hardening',
+      status: 'current',
+      date: 'Feb 2026',
+      items: [
+        { text: 'Deterministic JS bootstrap preflight (`bootstrap:js`)', done: true },
+        { text: 'Live-chain conformance gate (`check:live-chain`)', done: true },
+        { text: 'Protocol conformance lane isolation (root + package suites)', done: true },
+        { text: 'Conformance report fallback when pytest JSON plugin is unavailable', done: true },
+        { text: 'Design-partner release runbook updated with strict/degraded paths', done: true },
+        { text: 'End-to-end local JS verification in constrained network environments', done: false },
       ],
     },
     {
@@ -195,7 +209,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 5, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 6, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

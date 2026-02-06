@@ -51,6 +51,7 @@ import WhySardis from './docs/pages/blog/WhySardis.jsx'
 import FiatRails from './docs/pages/blog/FiatRails.jsx'
 import SardisV07ProductionHardening from './docs/pages/blog/SardisV07ProductionHardening.jsx'
 import SardisV081ProtocolConformance from './docs/pages/blog/SardisV081ProtocolConformance.jsx'
+import SardisV082ReleaseReadiness from './docs/pages/blog/SardisV082ReleaseReadiness.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
@@ -103,6 +104,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/fiat-rails" element={<FiatRails />} />
           <Route path="blog/sardis-v0-7-production-hardening" element={<SardisV07ProductionHardening />} />
           <Route path="blog/sardis-v0-8-1-protocol-conformance" element={<SardisV081ProtocolConformance />} />
+          <Route path="blog/sardis-v0-8-2-release-readiness" element={<SardisV082ReleaseReadiness />} />
           <Route path="changelog" element={<DocsChangelog />} />
           <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}

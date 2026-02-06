@@ -4,7 +4,7 @@ export default function DocsMCPServer() {
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-500">SDKS & TOOLS</span>
-          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">v0.1.0</span>
+          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">v0.2.0</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">MCP Server</h1>
         <p className="text-xl text-muted-foreground">
@@ -19,6 +19,16 @@ export default function DocsMCPServer() {
 
         <div className="not-prose space-y-4">
           <div className="p-4 border border-border">
+            <h3 className="font-bold text-[var(--sardis-orange)] mb-2">Bootstrap (Recommended)</h3>
+            <p className="text-muted-foreground text-sm mb-3">
+              Generate a local config scaffold first:
+            </p>
+            <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-3 font-mono text-xs overflow-x-auto">
+              <pre className="text-[var(--sardis-canvas)]">$ npx @sardis/mcp-server init --mode simulated</pre>
+            </div>
+          </div>
+
+          <div className="p-4 border border-border">
             <h3 className="font-bold text-[var(--sardis-orange)] mb-2">Claude Desktop</h3>
             <p className="text-muted-foreground text-sm mb-3">
               Add to <code className="px-1 py-0.5 bg-muted font-mono text-xs">~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS):
@@ -28,7 +38,7 @@ export default function DocsMCPServer() {
   "mcpServers": {
     "sardis": {
       "command": "npx",
-      "args": ["@sardis/mcp-server", "start"],
+      "args": ["@sardis/mcp-server", "start", "--env-file", ".env.sardis"],
       "env": {
         "SARDIS_API_KEY": "sk_...",
         "SARDIS_BASE_URL": "https://sardis.sh/api/v2"
@@ -49,7 +59,7 @@ export default function DocsMCPServer() {
   "mcpServers": {
     "sardis": {
       "command": "npx",
-      "args": ["@sardis/mcp-server", "start"],
+      "args": ["@sardis/mcp-server", "start", "--env-file", ".env.sardis"],
       "env": {
         "SARDIS_API_KEY": "sk_..."
       }

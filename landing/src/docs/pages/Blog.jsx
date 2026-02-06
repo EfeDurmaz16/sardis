@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.8.2: Release Readiness Hardening for MCP + SDKs',
+    excerpt: 'v0.8.2 focuses on shipping discipline: deterministic JS bootstrap preflight checks, live-chain conformance gating, protocol test-lane isolation, and resilient report generation for constrained environments.',
+    date: '2026-02-06',
+    readTime: '6 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-8-2-release-readiness',
+  },
+  {
     title: 'Sardis v0.8.1: Protocol Conformance Hardening for AP2/TAP',
     excerpt: 'v0.8.1 focuses on protocol correctness before scale: AP2 payment modality semantics, TAP signature algorithm checks, linked-object signature validation hooks, and a source-mapped conformance baseline for AP2, TAP, UCP, and x402.',
     date: '2026-02-06',

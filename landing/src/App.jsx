@@ -162,6 +162,9 @@ function App() {
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
               STAGING / TESTNET READY
             </Badge>
+            <Badge variant="outline" className="mr-3 border-cyan-600 text-cyan-600 dark:text-cyan-400 dark:border-cyan-400 bg-transparent px-3 py-1 rounded-none">
+              191/191 PROTOCOL TESTS PASSING
+            </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
             </Button>

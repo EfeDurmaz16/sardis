@@ -2,9 +2,39 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.8.1',
+    version: '0.8.2',
     date: '2026-02-06',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'JS bootstrap preflight script (`bootstrap:js`) with DNS/registry checks before install',
+          'Optional live-chain conformance gate (`check:live-chain`) for Turnkey + testnet verification',
+          'Release scripts for strict/degraded readiness flows in constrained local environments',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Protocol conformance lane now isolates root and UCP package scopes to avoid pytest import collisions',
+          'Conformance report generator now supports fallback parsing when pytest JSON plugin is unavailable',
+          'Start-to-end release runbook updated for reproducible MCP + SDK validation workflow',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'False skip/noise in protocol conformance by excluding integration/e2e test trees from the conformance marker lane',
+          'Fragile pass/fail parsing in Python readiness script replaced with summary-based extraction',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.8.1',
+    date: '2026-02-06',
+    tag: '',
     changes: [
       {
         type: 'added',

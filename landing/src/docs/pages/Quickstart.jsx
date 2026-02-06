@@ -33,11 +33,13 @@ export default function DocsQuickstart() {
 
         <div className="not-prose">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm">
-            <div className="text-[var(--sardis-orange)]">$ npx @sardis/mcp-server start</div>
+            <div className="text-[var(--sardis-orange)]">$ npx @sardis/mcp-server init --mode simulated</div>
+            <div className="text-[var(--sardis-canvas)]/70">$ npx @sardis/mcp-server start</div>
           </div>
         </div>
 
         <p className="text-muted-foreground mt-4 mb-4">
+          `init` creates a local <code className="px-1 py-0.5 bg-muted font-mono text-sm">.env.sardis</code> template.
           Then add to your <code className="px-1 py-0.5 bg-muted font-mono text-sm">claude_desktop_config.json</code>:
         </p>
 
@@ -52,6 +54,26 @@ export default function DocsQuickstart() {
   }
 }`}</pre>
           </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Local Engineering Readiness (Repo)
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          If you are running Sardis from source, use these preflight checks before release or design-partner onboarding.
+        </p>
+
+        <div className="not-prose space-y-4">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm">
+            <div className="text-[var(--sardis-orange)]">$ pnpm run bootstrap:js</div>
+            <div className="text-[var(--sardis-canvas)]/70">$ pnpm run check:release-readiness</div>
+            <div className="text-[var(--sardis-canvas)]/70">$ pnpm run check:live-chain   # optional (requires Turnkey/testnet creds)</div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            If your environment blocks npm registry DNS/network, JS package checks are skipped in degraded mode and enforced in CI/strict mode.
+          </p>
         </div>
       </section>
 
