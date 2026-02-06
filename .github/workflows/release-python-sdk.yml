@@ -1,0 +1,173 @@
+name: Release Python SDK
+
+on:
+  push:
+    tags:
+      - "py-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.2.1 or 0.2.1rc1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish to TestPyPI instead of PyPI"
+        required: true
+        type: boolean
+        default: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  PACKAGE_DIR: "packages/sardis-sdk-python"
+  PACKAGE_NAME: "sardis-sdk"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            if [[ "$TAG" != py-sdk-v* ]]; then
+              echo "Unsupported tag format: $TAG"
+              exit 1
+            fi
+            VERSION="${TAG#py-sdk-v}"
+            if [[ "$VERSION" =~ (a|b|rc) ]]; then
+              PRERELEASE="true"
+            else
+              PRERELEASE="false"
+            fi
+          else
+            VERSION="${{ inputs.version }}"
+            PRERELEASE="${{ inputs.prerelease }}"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            echo "repository_url=https://test.pypi.org/legacy/" >> "$GITHUB_OUTPUT"
+          else
+            echo "repository_url=https://upload.pypi.org/legacy/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify package version consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="${{ steps.meta.outputs.version }}"
+          PYPROJECT_VERSION="$(python3 - <<'PY'
+          import tomllib
+          with open("packages/sardis-sdk-python/pyproject.toml", "rb") as f:
+              data = tomllib.load(f)
+          print(data["project"]["version"])
+          PY
+          )"
+          INIT_VERSION="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          content = Path("packages/sardis-sdk-python/src/sardis_sdk/__init__.py").read_text()
+          m = re.search(r'__version__\\s*=\\s*"([^"]+)"', content)
+          print(m.group(1) if m else "")
+          PY
+          )"
+
+          if [[ "$PYPROJECT_VERSION" != "$EXPECTED" ]]; then
+            echo "pyproject version ($PYPROJECT_VERSION) does not match release version ($EXPECTED)"
+            exit 1
+          fi
+          if [[ "$INIT_VERSION" != "$EXPECTED" ]]; then
+            echo "__init__ version ($INIT_VERSION) does not match release version ($EXPECTED)"
+            exit 1
+          fi
+
+      - name: Install build and test dependencies
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install build twine
+
+      - name: Run tests
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: pytest -q
+
+      - name: Build artifacts
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: python3 -m build
+
+      - name: Check artifacts
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: python3 -m twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: steps.meta.outputs.prerelease == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: python3 -m twine upload --repository-url "${{ steps.meta.outputs.repository_url }}" dist/*
+
+      - name: Publish to PyPI
+        if: steps.meta.outputs.prerelease != 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: python3 -m twine upload --repository-url "${{ steps.meta.outputs.repository_url }}" dist/*
+
+      - name: Smoke install from registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+          python3 -m venv /tmp/sardis-py-smoke
+          source /tmp/sardis-py-smoke/bin/activate
+          python -m pip install --upgrade pip
+
+          if [[ "${{ steps.meta.outputs.prerelease }}" == "true" ]]; then
+            for i in {1..6}; do
+              if python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "sardis-sdk==${VERSION}"; then
+                break
+              fi
+              if [[ "$i" -eq 6 ]]; then
+                echo "Failed to install sardis-sdk==${VERSION} from TestPyPI after retries"
+                exit 1
+              fi
+              sleep 20
+            done
+          else
+            for i in {1..6}; do
+              if python -m pip install "sardis-sdk==${VERSION}"; then
+                break
+              fi
+              if [[ "$i" -eq 6 ]]; then
+                echo "Failed to install sardis-sdk==${VERSION} from PyPI after retries"
+                exit 1
+              fi
+              sleep 20
+            done
+          fi
+
+          python - <<'PY'
+          import sardis_sdk
+          print("installed-version", sardis_sdk.__version__)
+          assert sardis_sdk.__version__
+          PY

@@ -2,6 +2,18 @@
   "name": "sardis-monorepo",
   "version": "0.2.0",
   "private": true,
+  "packageManager": "pnpm@10.18.1",
+  "scripts": {
+    "bootstrap": "pnpm install --no-frozen-lockfile",
+    "build:mcp": "pnpm --filter @sardis/mcp-server build",
+    "test:mcp": "pnpm --filter @sardis/mcp-server test",
+    "build:ts-sdks": "pnpm --filter @sardis/sdk build && pnpm --filter @sardis/ai-sdk build",
+    "test:ts-sdks": "pnpm --filter @sardis/sdk test && pnpm --filter @sardis/ai-sdk test",
+    "build:python-sdk": "cd packages/sardis-sdk-python && python3 -m build",
+    "test:python-sdk": "cd packages/sardis-sdk-python && pytest -q",
+    "check:release-readiness": "bash ./scripts/check_release_readiness.sh",
+    "check:release-readiness:strict": "STRICT_MODE=1 bash ./scripts/check_release_readiness.sh"
+  },
   "pnpm": {
     "overrides": {
       "hono": ">=4.11.7",

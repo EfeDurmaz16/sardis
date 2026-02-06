@@ -1,0 +1,226 @@
+name: Release NPM Packages
+
+on:
+  push:
+    tags:
+      - "mcp-v*"
+      - "sdk-js-v*"
+      - "ai-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - mcp-server
+          - sdk-js
+          - ai-sdk
+      version:
+        description: "Version to publish (e.g. 0.2.1 or 0.2.1-rc.1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish with prerelease tag"
+        required: true
+        type: boolean
+        default: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            case "$TAG" in
+              mcp-v*)
+                PACKAGE_KIND="mcp-server"
+                VERSION="${TAG#mcp-v}"
+                ;;
+              sdk-js-v*)
+                PACKAGE_KIND="sdk-js"
+                VERSION="${TAG#sdk-js-v}"
+                ;;
+              ai-sdk-v*)
+                PACKAGE_KIND="ai-sdk"
+                VERSION="${TAG#ai-sdk-v}"
+                ;;
+              *)
+                echo "Unsupported tag format: $TAG"
+                exit 1
+                ;;
+            esac
+
+            if [[ "$VERSION" =~ -(rc|beta|alpha)\. ]]; then
+              PRERELEASE="true"
+            else
+              PRERELEASE="false"
+            fi
+          else
+            PACKAGE_KIND="${{ inputs.package }}"
+            VERSION="${{ inputs.version }}"
+            PRERELEASE="${{ inputs.prerelease }}"
+          fi
+
+          case "$PACKAGE_KIND" in
+            mcp-server)
+              PACKAGE_NAME="@sardis/mcp-server"
+              PACKAGE_DIR="packages/sardis-mcp-server"
+              ;;
+            sdk-js)
+              PACKAGE_NAME="@sardis/sdk"
+              PACKAGE_DIR="packages/sardis-sdk-js"
+              ;;
+            ai-sdk)
+              PACKAGE_NAME="@sardis/ai-sdk"
+              PACKAGE_DIR="packages/sardis-ai-sdk"
+              ;;
+            *)
+              echo "Unsupported package input: $PACKAGE_KIND"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            DIST_TAG="next"
+          else
+            DIST_TAG="latest"
+          fi
+
+          echo "package_kind=$PACKAGE_KIND" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+          echo "Publishing $PACKAGE_NAME version $VERSION with tag $DIST_TAG"
+
+      - name: Verify package version matches release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG_JSON="${{ steps.meta.outputs.package_dir }}/package.json"
+          ACTUAL_VERSION="$(node -p "require('./${PKG_JSON}').version")"
+          EXPECTED_VERSION="${{ steps.meta.outputs.version }}"
+          if [[ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "Version mismatch: package.json has $ACTUAL_VERSION but release expects $EXPECTED_VERSION"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run release quality gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="${{ steps.meta.outputs.package_name }}"
+
+          # ai-sdk depends on @sardis/sdk contracts; validate both when releasing ai-sdk
+          if [[ "$PKG" == "@sardis/ai-sdk" ]]; then
+            pnpm --filter @sardis/sdk test
+            pnpm --filter @sardis/sdk run typecheck
+            pnpm --filter @sardis/sdk run clean || true
+            pnpm --filter @sardis/sdk build
+          fi
+
+          pnpm --filter "$PKG" test
+          pnpm --filter "$PKG" run typecheck
+          pnpm --filter "$PKG" run clean || true
+          pnpm --filter "$PKG" build
+
+      - name: Validate package contents
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: npm pack --dry-run
+
+      - name: Assert built artifacts exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="${{ steps.meta.outputs.package_name }}"
+          DIR="${{ steps.meta.outputs.package_dir }}"
+
+          case "$PKG" in
+            "@sardis/mcp-server")
+              test -f "$DIR/dist/cli.js"
+              ;;
+            "@sardis/sdk")
+              test -f "$DIR/dist/index.js"
+              ;;
+            "@sardis/ai-sdk")
+              test -f "$DIR/dist/index.js"
+              ;;
+            *)
+              echo "Unknown package: $PKG"
+              exit 1
+              ;;
+          esac
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: npm publish --access public --tag ${{ steps.meta.outputs.dist_tag }} --provenance
+
+      - name: Registry smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="${{ steps.meta.outputs.package_name }}"
+          VER="${{ steps.meta.outputs.version }}"
+
+          mkdir -p /tmp/sardis-npm-smoke
+          cd /tmp/sardis-npm-smoke
+          npm init -y
+          for i in {1..6}; do
+            if npm install "${PKG}@${VER}"; then
+              break
+            fi
+            if [[ "$i" -eq 6 ]]; then
+              echo "Failed to install ${PKG}@${VER} from npm after retries"
+              exit 1
+            fi
+            sleep 20
+          done
+
+          if [[ "$PKG" == "@sardis/mcp-server" ]]; then
+            for i in {1..6}; do
+              if npx -y "${PKG}@${VER}" --help >/dev/null; then
+                break
+              fi
+              if [[ "$i" -eq 6 ]]; then
+                echo "Failed to execute ${PKG}@${VER} via npx after retries"
+                exit 1
+              fi
+              sleep 20
+            done
+          else
+            node -e "import('${PKG}').then(() => console.log('import-ok')).catch((e) => { console.error(e); process.exit(1); })"
+          fi
