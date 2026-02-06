@@ -22,6 +22,11 @@ interface PaymentResult {
 }
 
 interface LedgerEntry {
+  id?: string;
+  payment_id?: string;
+  status?: string;
+  vendor?: string;
+  token?: string;
   tx_id: string;
   mandate_id?: string;
   from_wallet?: string;
@@ -97,6 +102,11 @@ export async function getTransaction(transactionId: string): Promise<LedgerEntry
 
   if (!config.apiKey || config.mode === 'simulated') {
     return {
+      id: transactionId,
+      payment_id: transactionId,
+      status: 'completed',
+      vendor: 'simulated-vendor',
+      token: 'USDC',
       tx_id: transactionId,
       amount: '100.00',
       currency: 'USDC',
@@ -106,7 +116,15 @@ export async function getTransaction(transactionId: string): Promise<LedgerEntry
     };
   }
 
-  return apiRequest<LedgerEntry>('GET', `/api/v2/ledger/entries/${transactionId}`);
+  const entry = await apiRequest<LedgerEntry>('GET', `/api/v2/ledger/entries/${transactionId}`);
+  return {
+    ...entry,
+    id: entry.id ?? entry.tx_id,
+    payment_id: entry.payment_id ?? entry.tx_id,
+    token: entry.token ?? entry.currency,
+    status: entry.status ?? 'completed',
+    vendor: entry.vendor ?? 'unknown',
+  };
 }
 
 /**
@@ -122,6 +140,11 @@ export async function listTransactions(
   if (!config.apiKey || config.mode === 'simulated') {
     return [
       {
+        id: `tx_${Date.now().toString(36)}`,
+        payment_id: `tx_${Date.now().toString(36)}`,
+        status: 'completed',
+        vendor: 'simulated-vendor-a',
+        token: 'USDC',
         tx_id: `tx_${Date.now().toString(36)}`,
         amount: '50.00',
         currency: 'USDC',
@@ -130,6 +153,11 @@ export async function listTransactions(
         created_at: new Date(Date.now() - 3600000).toISOString(),
       },
       {
+        id: `tx_${(Date.now() - 1000).toString(36)}`,
+        payment_id: `tx_${(Date.now() - 1000).toString(36)}`,
+        status: 'completed',
+        vendor: 'simulated-vendor-b',
+        token: 'USDC',
         tx_id: `tx_${(Date.now() - 1000).toString(36)}`,
         amount: '25.00',
         currency: 'USDC',
@@ -152,7 +180,14 @@ export async function listTransactions(
   params.append('wallet_id', config.walletId);
 
   const response = await apiRequest<{ entries: LedgerEntry[] }>('GET', `/api/v2/ledger/entries?${params}`);
-  return response.entries || [];
+  return (response.entries || []).map((entry) => ({
+    ...entry,
+    id: entry.id ?? entry.tx_id,
+    payment_id: entry.payment_id ?? entry.tx_id,
+    token: entry.token ?? entry.currency,
+    status: entry.status ?? 'completed',
+    vendor: entry.vendor ?? 'unknown',
+  }));
 }
 
 // Tool definitions
@@ -246,8 +281,31 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
 
     const { vendor, amount, purpose, vendorAddress, token } = parsed.data;
 
-    // Check policy first
-    const policyResult = await checkPolicy(vendor, amount);
+    // Check policy first (fail-closed)
+    let policyResult;
+    try {
+      policyResult = await checkPolicy(vendor, amount);
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: false,
+                status: 'BLOCKED',
+                error: 'POLICY_CHECK_FAILED',
+                message: error instanceof Error ? error.message : 'Policy check failed',
+                prevention: 'Financial Hallucination PREVENTED',
+              },
+              null,
+              2
+            ),
+          },
+        ],
+        isError: false,
+      };
+    }
 
     if (!policyResult.allowed) {
       return {

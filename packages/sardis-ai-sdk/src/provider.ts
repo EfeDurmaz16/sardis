@@ -33,8 +33,7 @@
 
 import { createSardisTools, createMinimalSardisTools, createReadOnlySardisTools } from './tools'
 import type { SardisToolsConfig, PaymentResult, HoldResult, PolicyCheckResult, BalanceResult } from './types'
-import type { CoreTool } from 'ai'
-import { z } from 'zod'
+import type { Tool, ToolExecutionOptions } from 'ai'
 
 /**
  * Extended configuration for SardisProvider.
@@ -73,7 +72,7 @@ export interface TransactionEvent {
  */
 export class SardisProvider {
   private config: SardisProviderConfig
-  private _tools: Record<string, CoreTool>
+  private _tools: Record<string, Tool>
 
   constructor(config: SardisProviderConfig) {
     this.config = config
@@ -99,7 +98,7 @@ export class SardisProvider {
   /**
    * Get the tools for Vercel AI SDK.
    */
-  get tools(): Record<string, CoreTool> {
+  get tools(): Record<string, Tool> {
     return this._tools
   }
 
@@ -236,8 +235,8 @@ export class SardisProvider {
   /**
    * Wrap tools with logging functionality.
    */
-  private wrapToolsWithLogging(tools: Record<string, CoreTool>): Record<string, CoreTool> {
-    const wrapped: Record<string, CoreTool> = {}
+  private wrapToolsWithLogging(tools: Record<string, Tool>): Record<string, Tool> {
+    const wrapped: Record<string, Tool> = {}
 
     for (const [name, tool] of Object.entries(tools)) {
       if (tool && typeof tool.execute === 'function') {
@@ -245,7 +244,7 @@ export class SardisProvider {
 
         wrapped[name] = {
           ...tool,
-          execute: async (params: unknown, options: unknown) => {
+          execute: async (params: unknown, options: ToolExecutionOptions) => {
             const startTime = Date.now()
             let result: unknown
             let success = true
@@ -293,7 +292,7 @@ export class SardisProvider {
 
             return result
           },
-        } as CoreTool
+        } as Tool
       } else {
         wrapped[name] = tool
       }

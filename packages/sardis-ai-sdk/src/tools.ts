@@ -22,9 +22,8 @@
  * ```
  */
 
-import { tool } from 'ai'
+import { tool, type Tool } from 'ai'
 import { z } from 'zod'
-import type { CoreTool } from 'ai'
 import type {
   SardisToolsConfig,
   PaymentResult,
@@ -93,7 +92,7 @@ class SardisToolClient {
       throw new Error(message)
     }
 
-    return response.json()
+    return (await response.json()) as T
   }
 
   private async getEffectiveAgentId(): Promise<string> {
@@ -470,7 +469,7 @@ class SardisToolClient {
  * })
  * ```
  */
-export function createSardisTools(config: SardisToolsConfig): Record<string, CoreTool> {
+export function createSardisTools(config: SardisToolsConfig): Record<string, Tool> {
   const client = new SardisToolClient(config)
 
   return {
@@ -482,7 +481,7 @@ export function createSardisTools(config: SardisToolsConfig): Record<string, Cor
 Always check the policy first for large amounts. The payment is executed on-chain and returns a transaction hash.
 Supported chains: base, polygon, ethereum, arbitrum, optimism.
 Default token is USDC.`,
-      parameters: PaymentParamsSchema,
+      inputSchema: PaymentParamsSchema,
       execute: async (params) => client.executePayment(params),
     }),
 
@@ -493,7 +492,7 @@ Default token is USDC.`,
       description: `Create a hold (pre-authorization) on funds for a future payment.
 Use this when the final amount is not yet known, like hotel reservations or variable-price services.
 The hold reserves funds without transferring them. Capture the hold later to complete the payment.`,
-      parameters: HoldParamsSchema,
+      inputSchema: HoldParamsSchema,
       execute: async (params) => client.createHold(params),
     }),
 
@@ -504,7 +503,7 @@ The hold reserves funds without transferring them. Capture the hold later to com
       description: `Capture a previously created hold to complete the payment.
 You can capture the full amount or a partial amount (for tips, adjustments, etc.).
 If no amount is specified, the full hold amount is captured.`,
-      parameters: CaptureParamsSchema,
+      inputSchema: CaptureParamsSchema,
       execute: async (params) => client.captureHold(params),
     }),
 
@@ -514,7 +513,7 @@ If no amount is specified, the full hold amount is captured.`,
     sardis_void_hold: tool({
       description: `Void (cancel) a hold to release the reserved funds back to the wallet.
 Use this when a transaction is cancelled or no longer needed.`,
-      parameters: z.object({
+      inputSchema: z.object({
         holdId: z.string().describe('ID of the hold to void'),
       }),
       execute: async ({ holdId }) => client.voidHold(holdId),
@@ -527,7 +526,7 @@ Use this when a transaction is cancelled or no longer needed.`,
       description: `Check if a payment would be allowed by the wallet's policy before attempting it.
 Use this to verify spending limits, merchant restrictions, and category rules.
 Always use this before large payments to avoid failed transactions.`,
-      parameters: PolicyCheckParamsSchema,
+      inputSchema: PolicyCheckParamsSchema,
       execute: async (params) => client.checkPolicy(params),
     }),
 
@@ -538,7 +537,7 @@ Always use this before large payments to avoid failed transactions.`,
       description: `Get the current balance of the wallet.
 Returns available balance, pending transactions, and held amounts.
 Default token is USDC. Can check specific chains if needed.`,
-      parameters: BalanceParamsSchema,
+      inputSchema: BalanceParamsSchema,
       execute: async (params) => client.getBalance(params),
     }),
 
@@ -549,7 +548,7 @@ Default token is USDC. Can check specific chains if needed.`,
       description: `Get a summary of spending from the wallet.
 Shows spending by day, week, month, and breakdowns by category and merchant.
 Useful for budget tracking and reporting.`,
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => client.getSpendingSummary(),
     }),
   }
@@ -560,7 +559,7 @@ Useful for budget tracking and reporting.`,
  *
  * Use this for simpler use cases that don't need holds or detailed policy checks.
  */
-export function createMinimalSardisTools(config: SardisToolsConfig): Record<string, CoreTool> {
+export function createMinimalSardisTools(config: SardisToolsConfig): Record<string, Tool> {
   const allTools = createSardisTools(config)
 
   return {
@@ -574,7 +573,7 @@ export function createMinimalSardisTools(config: SardisToolsConfig): Record<stri
  *
  * Use this for analytics, reporting, or view-only access.
  */
-export function createReadOnlySardisTools(config: SardisToolsConfig): Record<string, CoreTool> {
+export function createReadOnlySardisTools(config: SardisToolsConfig): Record<string, Tool> {
   const allTools = createSardisTools(config)
 
   return {

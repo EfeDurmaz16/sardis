@@ -12,17 +12,28 @@ import terser from '@rollup/plugin-terser';
 import json from '@rollup/plugin-json';
 
 const production = process.env.NODE_ENV === 'production';
+const includeMinifiedBundles = process.env.SARDIS_BUILD_MINIFIED === '1';
 
-/** @type {import('rollup').RollupOptions} */
-export default {
-  input: 'src/index.ts',
-  output: [
-    {
-      file: 'dist/browser/index.js',
-      format: 'esm',
-      sourcemap: true,
-      exports: 'named',
+const outputs = [
+  {
+    file: 'dist/browser/index.js',
+    format: 'esm',
+    sourcemap: true,
+    exports: 'named',
+  },
+  {
+    file: 'dist/browser/sardis.umd.js',
+    format: 'umd',
+    name: 'Sardis',
+    sourcemap: true,
+    globals: {
+      axios: 'axios',
     },
+  },
+];
+
+if (includeMinifiedBundles) {
+  outputs.push(
     {
       file: 'dist/browser/index.min.js',
       format: 'esm',
@@ -38,15 +49,6 @@ export default {
           keep_fnames: true,
         },
       })],
-    },
-    {
-      file: 'dist/browser/sardis.umd.js',
-      format: 'umd',
-      name: 'Sardis',
-      sourcemap: true,
-      globals: {
-        axios: 'axios',
-      },
     },
     {
       file: 'dist/browser/sardis.umd.min.js',
@@ -66,8 +68,14 @@ export default {
           keep_fnames: true,
         },
       })],
-    },
-  ],
+    }
+  );
+}
+
+/** @type {import('rollup').RollupOptions} */
+export default {
+  input: 'src/index.ts',
+  output: outputs,
   external: ['axios'],
   plugins: [
     replace({

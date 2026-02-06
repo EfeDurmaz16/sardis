@@ -8,6 +8,7 @@ import { paymentToolHandlers, paymentToolDefinitions } from '../tools/payments.j
 import { policyToolHandlers } from '../tools/policy.js';
 import { approvalToolHandlers } from '../tools/approvals.js';
 import type { PolicyResult } from '../tools/policy.js';
+import * as policyModule from '../tools/policy.js';
 
 // Mock config
 vi.mock('../config.js', () => ({
@@ -139,8 +140,7 @@ describe('Protocol Conformance', () => {
 
     it('payment fails closed on policy check error', async () => {
       // Mock policy check to throw error
-      const { checkPolicy } = await import('../tools/policy.js');
-      vi.mocked(checkPolicy).mockRejectedValueOnce(new Error('Policy service unavailable'));
+      vi.spyOn(policyModule, 'checkPolicy').mockRejectedValueOnce(new Error('Policy service unavailable'));
 
       const handler = paymentToolHandlers['sardis_pay'];
       const result = await handler({
@@ -155,8 +155,6 @@ describe('Protocol Conformance', () => {
       expect(parsed.success).toBe(false);
       expect(parsed.status).toBe('BLOCKED');
 
-      // Restore original mock
-      vi.mocked(checkPolicy).mockRestore();
     });
   });
 

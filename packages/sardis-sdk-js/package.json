@@ -35,7 +35,7 @@
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:browser",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:browser": "rollup -c rollup.config.js",
+    "build:browser": "node ./scripts/build-browser.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
