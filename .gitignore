@@ -44,6 +44,7 @@ env/
 .coverage
 htmlcov/
 .mypy_cache/
+reports/
 
 # Logs
 *.log

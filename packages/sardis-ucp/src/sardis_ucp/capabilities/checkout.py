@@ -39,6 +39,7 @@ class CheckoutSessionStatus(str, Enum):
     COMPLETED = "completed"  # Payment successful
     EXPIRED = "expired"  # Session timed out
     CANCELLED = "cancelled"  # Explicitly cancelled
+    REQUIRES_ESCALATION = "requires_escalation"  # Needs human review
 
 
 class CheckoutError(Exception):
@@ -122,6 +123,10 @@ class CheckoutSession:
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 3600)  # 1 hour
 
+    # Escalation
+    escalation_reason: Optional[str] = None
+    escalation_resolved_at: Optional[datetime] = None
+
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -168,6 +173,8 @@ class CheckoutSession:
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "expires_at": self.expires_at,
+            "escalation_reason": self.escalation_reason,
+            "escalation_resolved_at": self.escalation_resolved_at.isoformat() if self.escalation_resolved_at else None,
             "metadata": self.metadata,
         }
 
@@ -499,6 +506,9 @@ class UCPCheckoutCapability:
             self._store.save(session)
             raise CheckoutSessionExpiredError(session_id)
 
+        if session.status == CheckoutSessionStatus.REQUIRES_ESCALATION:
+            raise InvalidCheckoutOperationError(session_id, "complete", session.status)
+
         if session.status != CheckoutSessionStatus.OPEN:
             raise InvalidCheckoutOperationError(session_id, "complete", session.status)
 
@@ -608,6 +618,48 @@ class UCPCheckoutCapability:
 
         logger.info(f"Checkout cancelled: session_id={session_id}")
 
+        return session
+
+    def escalate_checkout(self, session_id: str, reason: str) -> CheckoutSession:
+        """Escalate a checkout session for human review.
+
+        Transitions: OPEN -> REQUIRES_ESCALATION
+        """
+        session = self._store.get(session_id)
+        if session is None:
+            raise CheckoutSessionNotFoundError(session_id)
+        if session.is_expired():
+            session.status = CheckoutSessionStatus.EXPIRED
+            self._store.save(session)
+            raise CheckoutSessionExpiredError(session_id)
+        if session.status != CheckoutSessionStatus.OPEN:
+            raise InvalidCheckoutOperationError(session_id, "escalate", session.status)
+
+        session.status = CheckoutSessionStatus.REQUIRES_ESCALATION
+        session.escalation_reason = reason
+        session.updated_at = datetime.now(timezone.utc)
+        self._store.save(session)
+
+        logger.info(f"Checkout escalated: session_id={session_id}, reason={reason}")
+        return session
+
+    def resolve_escalation(self, session_id: str) -> CheckoutSession:
+        """Resolve an escalated checkout session back to OPEN.
+
+        Transitions: REQUIRES_ESCALATION -> OPEN
+        """
+        session = self._store.get(session_id)
+        if session is None:
+            raise CheckoutSessionNotFoundError(session_id)
+        if session.status != CheckoutSessionStatus.REQUIRES_ESCALATION:
+            raise InvalidCheckoutOperationError(session_id, "resolve_escalation", session.status)
+
+        session.status = CheckoutSessionStatus.OPEN
+        session.escalation_resolved_at = datetime.now(timezone.utc)
+        session.updated_at = datetime.now(timezone.utc)
+        self._store.save(session)
+
+        logger.info(f"Escalation resolved: session_id={session_id}")
         return session
 
     def _create_cart_mandate(self, session: CheckoutSession) -> UCPCartMandate:

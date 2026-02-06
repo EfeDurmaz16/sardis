@@ -51,6 +51,11 @@ from .security import (
     SECURITY_HEADERS_PERMISSIVE,
     SECURITY_HEADERS_STRICT,
 )
+from .tap import (
+    TapVerificationMiddleware,
+    TapMiddlewareConfig,
+    NonceCache,
+)
 
 __all__ = [
     # Rate limiting
@@ -92,4 +97,8 @@ __all__ = [
     "API_VERSION",
     "SECURITY_HEADERS_PERMISSIVE",
     "SECURITY_HEADERS_STRICT",
+    # TAP (Trust Anchor Protocol)
+    "TapVerificationMiddleware",
+    "TapMiddlewareConfig",
+    "NonceCache",
 ]

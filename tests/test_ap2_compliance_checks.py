@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
+
 from sardis_api.routers.ap2 import (
     HIGH_VALUE_THRESHOLD_MINOR,
     KYC_THRESHOLD_MINOR,

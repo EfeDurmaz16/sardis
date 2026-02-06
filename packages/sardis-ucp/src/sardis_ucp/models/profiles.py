@@ -256,6 +256,63 @@ class UCPPlatformProfile:
         }
 
 
+class UCPSecurityLockMode(str, Enum):
+    """Security lock mode for UCP conformance."""
+
+    ENFORCE = "enforce"
+    LOG_ONLY = "log_only"
+    DISABLED = "disabled"
+
+
+@dataclass(slots=True)
+class UCPConformanceProfile:
+    """Protocol conformance profile wrapping existing business/platform profiles."""
+
+    participant_profile: UCPBusinessProfile | UCPPlatformProfile
+    security_lock_mode: UCPSecurityLockMode = UCPSecurityLockMode.ENFORCE
+    ap2_mandates_extension: bool = True
+    ucp_version: str = "1.0"
+    supported_ucp_versions: list[str] = field(default_factory=lambda: ["1.0"])
+
+    def validate_conformance(self) -> tuple[bool, list[str]]:
+        """Check internal consistency."""
+        issues = []
+        # Check AP2 compliance alignment
+        if self.ap2_mandates_extension:
+            payment_cap = None
+            for cap in self.participant_profile.capabilities:
+                if hasattr(cap, 'ap2_compliant') and not cap.ap2_compliant:
+                    issues.append("ap2_mandates_extension is True but payment capability is not AP2 compliant")
+                if hasattr(cap, 'ap2_compliant'):
+                    payment_cap = cap
+            if payment_cap is None and self.security_lock_mode == UCPSecurityLockMode.ENFORCE:
+                issues.append("security_lock_mode is ENFORCE but no payment capability exists")
+        return len(issues) == 0, issues
+
+    def matches_counterparty(self, other: UCPConformanceProfile) -> tuple[bool, list[str]]:
+        """Check bidirectional compatibility."""
+        reasons = []
+        # Check transport compatibility
+        self_endpoints = self.participant_profile.endpoints
+        other_endpoints = other.participant_profile.endpoints
+        has_common_transport = False
+        if self_endpoints.rest_base_url and other_endpoints.rest_base_url:
+            has_common_transport = True
+        if self_endpoints.mcp_command and other_endpoints.mcp_command:
+            has_common_transport = True
+        if self_endpoints.agent_card_url and other_endpoints.agent_card_url:
+            has_common_transport = True
+        if not has_common_transport:
+            reasons.append("no common transport available")
+
+        # Check version compatibility
+        common_versions = set(self.supported_ucp_versions) & set(other.supported_ucp_versions)
+        if not common_versions:
+            reasons.append(f"no common UCP version: {self.supported_ucp_versions} vs {other.supported_ucp_versions}")
+
+        return len(reasons) == 0, reasons
+
+
 __all__ = [
     "UCPCapabilityType",
     "UCPCapability",
@@ -263,4 +320,6 @@ __all__ = [
     "UCPEndpoints",
     "UCPBusinessProfile",
     "UCPPlatformProfile",
+    "UCPSecurityLockMode",
+    "UCPConformanceProfile",
 ]

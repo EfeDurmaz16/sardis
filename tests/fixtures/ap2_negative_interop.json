@@ -1,0 +1,1228 @@
+[
+  {
+    "id": "missing_intent",
+    "description": "Intent mandate is empty object",
+    "input": {
+      "intent": {},
+      "cart": {
+        "mandate_id": "cart_001",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_001",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDE=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_001",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_001",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDE=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "invalid_payload",
+    "spec_reference": "AP2 Section 3.1 - Intent mandate required"
+  },
+  {
+    "id": "missing_cart",
+    "description": "Cart mandate is empty object",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_002",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_002",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwMg==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {},
+      "payment": {
+        "mandate_id": "payment_002",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_002",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDI=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "invalid_payload",
+    "spec_reference": "AP2 Section 3.2 - Cart mandate required"
+  },
+  {
+    "id": "missing_payment",
+    "description": "Payment mandate is empty object",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_003",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_003",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwMw==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_003",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_003",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDM=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {}
+    },
+    "expected_error": "invalid_payload",
+    "spec_reference": "AP2 Section 3.3 - Payment mandate required"
+  },
+  {
+    "id": "subject_mismatch",
+    "description": "Different subjects across mandates",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_004",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_004",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwNA==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_004",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-002",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_004",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDQ=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_004",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-003",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_004",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDQ=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "subject_mismatch",
+    "spec_reference": "AP2 Section 4.1 - All mandates must share same subject"
+  },
+  {
+    "id": "intent_expired",
+    "description": "Intent expires_at in the past",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_005",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 1000000000,
+        "nonce": "nonce_intent_005",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwNQ==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_005",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_005",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDU=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_005",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_005",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDU=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "mandate_expired",
+    "spec_reference": "AP2 Section 4.2 - Mandates must not be expired"
+  },
+  {
+    "id": "cart_expired",
+    "description": "Cart expires_at in the past",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_006",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_006",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwNg==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_006",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 1000000000,
+        "nonce": "nonce_cart_006",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDY=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_006",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_006",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDY=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "mandate_expired",
+    "spec_reference": "AP2 Section 4.2 - Mandates must not be expired"
+  },
+  {
+    "id": "payment_expired",
+    "description": "Payment expires_at in the past",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_007",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_007",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwNw==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_007",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_007",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDc=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_007",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 1000000000,
+        "nonce": "nonce_payment_007",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDc=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "mandate_expired",
+    "spec_reference": "AP2 Section 4.2 - Mandates must not be expired"
+  },
+  {
+    "id": "amount_overflow",
+    "description": "Payment amount exceeds cart total",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_008",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_008",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 20000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwOA==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_008",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_008",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDg=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_008",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_008",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 10000,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDg=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_exceeds_cart_total",
+    "spec_reference": "AP2 Section 4.3 - Payment must not exceed cart total"
+  },
+  {
+    "id": "domain_mismatch",
+    "description": "Cart merchant_domain does not match payment merchant_domain",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_009",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_009",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAwOQ==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_009",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_009",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMDk=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_009",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_009",
+        "domain": "example.com",
+        "merchant_domain": "different.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMDk=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "merchant_domain_mismatch",
+    "spec_reference": "AP2 Section 4.4 - Merchant domains must match"
+  },
+  {
+    "id": "missing_agent_presence",
+    "description": "Payment ai_agent_presence is false",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_010",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_010",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxMA==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_010",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_010",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTA=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_010",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_010",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": false,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTA=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_agent_presence_required",
+    "spec_reference": "AP2 Section 5.1 - Agent presence must be explicit"
+  },
+  {
+    "id": "invalid_modality",
+    "description": "Payment transaction_modality is invalid",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_011",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_011",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxMQ==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_011",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_011",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTE=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_011",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_011",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "invalid",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTE=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_invalid_modality",
+    "spec_reference": "AP2 Section 5.2 - Valid modalities: human_present, human_not_present"
+  },
+  {
+    "id": "wrong_intent_type",
+    "description": "Intent mandate_type is not 'intent'",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_012",
+        "mandate_type": "cart",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_012",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxMg==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_012",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_012",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTI=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_012",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_012",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTI=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "intent_invalid_type",
+    "spec_reference": "AP2 Section 3.1 - Intent must have type 'intent'"
+  },
+  {
+    "id": "wrong_cart_type",
+    "description": "Cart mandate_type is not 'cart'",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_013",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_013",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxMw==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_013",
+        "mandate_type": "intent",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_013",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTM=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_013",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_013",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTM=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "cart_invalid_type",
+    "spec_reference": "AP2 Section 3.2 - Cart must have type 'cart'"
+  },
+  {
+    "id": "wrong_payment_purpose",
+    "description": "Payment purpose is not 'checkout'",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_014",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_014",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxNA==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_014",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_014",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTQ=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_014",
+        "mandate_type": "payment",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_014",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTQ=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_invalid_type",
+    "spec_reference": "AP2 Section 3.3 - Payment must have purpose 'checkout'"
+  },
+  {
+    "id": "missing_merchant_domain",
+    "description": "Payment merchant_domain is null",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_015",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_015",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 10000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxNQ==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_015",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_015",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTU=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_015",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_015",
+        "domain": "example.com",
+        "merchant_domain": null,
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTU=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_missing_merchant_domain",
+    "spec_reference": "AP2 Section 4.4 - Payment must specify merchant_domain"
+  },
+  {
+    "id": "exceeds_intent_amount",
+    "description": "Payment amount exceeds intent requested_amount",
+    "input": {
+      "intent": {
+        "mandate_id": "intent_016",
+        "mandate_type": "intent",
+        "purpose": "intent",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_intent_016",
+        "domain": "example.com",
+        "scope": ["shopping"],
+        "requested_amount": 5000,
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfaW50ZW50XzAxNg==",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "cart": {
+        "mandate_id": "cart_016",
+        "mandate_type": "cart",
+        "purpose": "cart",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_cart_016",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "line_items": [
+          {
+            "item_id": "item1",
+            "name": "Widget",
+            "quantity": 1,
+            "price_minor": 5000
+          }
+        ],
+        "subtotal_minor": 5000,
+        "taxes_minor": 500,
+        "currency": "USD",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfY2FydF8wMTY=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      },
+      "payment": {
+        "mandate_id": "payment_016",
+        "mandate_type": "payment",
+        "purpose": "checkout",
+        "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+        "subject": "agent-001",
+        "expires_at": 2099999999,
+        "nonce": "nonce_payment_016",
+        "domain": "example.com",
+        "merchant_domain": "shop.example.com",
+        "amount_minor": 5500,
+        "token": "USDC",
+        "chain": "base",
+        "destination": "0x1234567890123456789012345678901234567890",
+        "audit_hash": "abc123",
+        "ai_agent_presence": true,
+        "transaction_modality": "human_not_present",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "verification_method": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#ed25519:abcdef0123456789",
+          "proof_value": "dGVzdF9zaWduYXR1cmVfcGF5bWVudF8wMTY=",
+          "proof_purpose": "assertionMethod",
+          "created": "2026-02-06T00:00:00Z"
+        }
+      }
+    },
+    "expected_error": "payment_exceeds_intent_amount",
+    "spec_reference": "AP2 Section 4.3 - Payment must not exceed intent requested_amount"
+  }
+]

@@ -25,6 +25,8 @@ from .models.profiles import (
     UCPCapability,
     UCPPaymentCapability,
     UCPEndpoints,
+    UCPSecurityLockMode,
+    UCPConformanceProfile,
 )
 from .models.orders import (
     UCPOrder,
@@ -45,6 +47,23 @@ from .capabilities.checkout import (
     InvalidCheckoutOperationError,
 )
 
+# UCP Protocol Version
+UCP_PROTOCOL_VERSION = "1.0"
+UCP_SUPPORTED_VERSIONS = ["1.0"]
+
+
+def validate_ucp_version(version: str) -> tuple[bool, str | None]:
+    """Validate a UCP protocol version string."""
+    if not version:
+        return True, None
+    if version in UCP_SUPPORTED_VERSIONS:
+        return True, None
+    major = version.split(".")[0] if "." in version else version
+    supported_majors = {v.split(".")[0] for v in UCP_SUPPORTED_VERSIONS}
+    if major not in supported_majors:
+        return False, f"ucp_version_unsupported:{version}"
+    return True, None
+
 __all__ = [
     # Mandates
     "UCPCurrency",
@@ -61,6 +80,8 @@ __all__ = [
     "UCPCapability",
     "UCPPaymentCapability",
     "UCPEndpoints",
+    "UCPSecurityLockMode",
+    "UCPConformanceProfile",
     # Orders
     "UCPOrder",
     "UCPOrderStatus",
@@ -77,4 +98,8 @@ __all__ = [
     "CheckoutSessionExpiredError",
     "CheckoutSessionNotFoundError",
     "InvalidCheckoutOperationError",
+    # Version
+    "UCP_PROTOCOL_VERSION",
+    "UCP_SUPPORTED_VERSIONS",
+    "validate_ucp_version",
 ]

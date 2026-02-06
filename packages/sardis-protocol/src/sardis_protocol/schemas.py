@@ -3,9 +3,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from sardis_v2_core.mandates import PaymentMandate
+
+
+# AP2 Protocol Version Constants
+AP2_PROTOCOL_VERSION = "2025.1"
+AP2_SUPPORTED_VERSIONS = ["2025.0", "2025.1"]
 
 
 class IngestMandateRequest(BaseModel):
@@ -34,7 +39,7 @@ class MandateExecutionResponse(BaseModel):
 class AP2PaymentExecuteRequest(BaseModel):
     """
     AP2 payment execution request with Intent+Cart+Payment bundle.
-    
+
     Supports multiple payment methods as per AP2's payment-agnostic design.
     """
     intent: Dict[str, Any]
@@ -44,6 +49,24 @@ class AP2PaymentExecuteRequest(BaseModel):
         default="stablecoin",
         description="Payment method: stablecoin, virtual_card, x402, bank_transfer",
     )
+    ap2_version: str | None = Field(
+        default=None,
+        description="AP2 protocol version (format: YYYY.MINOR, e.g. '2025.1')",
+    )
+    canonicalization_mode: str = Field(
+        default="pipe",
+        description="Canonicalization mode: pipe or jcs",
+    )
+
+    @field_validator("ap2_version")
+    @classmethod
+    def validate_ap2_version(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        import re
+        if not re.match(r"^\d{4}\.\d+$", v):
+            raise ValueError(f"Invalid AP2 version format: {v}. Expected YYYY.MINOR (e.g., '2025.1')")
+        return v
 
 
 class AP2PaymentExecuteResponse(BaseModel):

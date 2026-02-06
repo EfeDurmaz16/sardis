@@ -18,8 +18,10 @@ from typing import Any, Mapping, MutableSet, Sequence
 
 TAP_ALLOWED_TAGS = {"agent-browser-auth", "agent-payer-auth"}
 TAP_MAX_TIME_WINDOW_SECONDS = 8 * 60
-TAP_ALLOWED_MESSAGE_ALGS = {"ed25519"}
+TAP_ALLOWED_MESSAGE_ALGS = {"ed25519", "ecdsa-p256"}
 TAP_ALLOWED_OBJECT_ALGS = {"ed25519", "ps256", "rs256"}
+TAP_PROTOCOL_VERSION = "1.0"
+TAP_SUPPORTED_VERSIONS = ["1.0"]
 
 
 @dataclass(slots=True)
@@ -53,12 +55,26 @@ class TapVerificationResult:
     signature_input: TapSignatureInput | None = None
     signature_b64: str | None = None
     signature_base: str | None = None
+    tap_version: str | None = None
 
 
 _SIG_INPUT_RE = re.compile(r"^\s*(?P<label>[A-Za-z][A-Za-z0-9_-]*)=\((?P<components>[^)]*)\)\s*;(?P<params>.+)$")
 _SIG_RE = re.compile(r"^\s*(?P<label>[A-Za-z][A-Za-z0-9_-]*)=:(?P<sig>[A-Za-z0-9+/=_-]+):\s*$")
 _COMPONENT_RE = re.compile(r'"([^"]+)"')
 _PARAM_RE = re.compile(r"^\s*(?P<key>[A-Za-z0-9_-]+)\s*=\s*(?P<value>.+?)\s*$")
+
+
+def validate_tap_version(version: str) -> tuple[bool, str | None]:
+    """Validate a TAP protocol version string."""
+    if not version:
+        return True, None  # Missing version defaults to current
+    if version in TAP_SUPPORTED_VERSIONS:
+        return True, None
+    major = version.split(".")[0] if "." in version else version
+    supported_majors = {v.split(".")[0] for v in TAP_SUPPORTED_VERSIONS}
+    if major not in supported_majors:
+        return False, f"tap_version_unsupported:{version}"
+    return True, None  # Known major, unknown minor - accept with warning
 
 
 def parse_signature_input(header_value: str) -> TapSignatureInput:
@@ -150,6 +166,7 @@ def validate_tap_headers(
     allowed_algs: Sequence[str] = tuple(TAP_ALLOWED_MESSAGE_ALGS),
     nonce_cache: MutableSet[str] | None = None,
     verify_signature_fn: Any | None = None,
+    tap_version: str | None = None,
 ) -> TapVerificationResult:
     """
     Validate TAP message-signature headers.
@@ -157,6 +174,11 @@ def validate_tap_headers(
     This performs structural and semantic checks. Cryptographic verification can
     be optionally injected via verify_signature_fn(signature_base, signature_b64, keyid, alg).
     """
+    if tap_version is not None:
+        version_valid, version_reason = validate_tap_version(tap_version)
+        if not version_valid:
+            return TapVerificationResult(False, version_reason)
+
     try:
         signature_input = parse_signature_input(signature_input_header)
     except ValueError as exc:
@@ -213,6 +235,7 @@ def validate_tap_headers(
         signature_input=signature_input,
         signature_b64=signature_b64,
         signature_base=signature_base,
+        tap_version=tap_version,
     )
 
 
@@ -332,8 +355,11 @@ __all__ = [
     "TAP_MAX_TIME_WINDOW_SECONDS",
     "TAP_ALLOWED_MESSAGE_ALGS",
     "TAP_ALLOWED_OBJECT_ALGS",
+    "TAP_PROTOCOL_VERSION",
+    "TAP_SUPPORTED_VERSIONS",
     "TapSignatureInput",
     "TapVerificationResult",
+    "validate_tap_version",
     "parse_signature_input",
     "parse_signature_header",
     "build_signature_base",

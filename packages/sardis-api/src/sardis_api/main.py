@@ -120,6 +120,8 @@ from .middleware import (
     RequestBodyLimitMiddleware,
     RequestIdMiddleware,
     SecurityConfig,
+    TapVerificationMiddleware,
+    TapMiddlewareConfig,
     API_VERSION,
 )
 
@@ -530,7 +532,47 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         exclude_paths=exclude_paths,
     )
 
-    # 6. CORS middleware with settings-based origins
+    # 6. TAP verification middleware (before CORS, after rate limiting)
+    tap_enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", "disabled").lower()
+    if tap_enforcement == "enabled":
+        # JWKS provider for TAP signature verification
+        jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
+        jwks_provider = None
+        if jwks_url:
+            # Create JWKS provider that fetches from the configured URL
+            import httpx
+            _jwks_cache: dict[str, dict] = {}
+
+            def _jwks_provider(kid: str) -> dict | None:
+                """Fetch JWKS from configured URL and cache it."""
+                if kid in _jwks_cache:
+                    return _jwks_cache[kid]
+
+                try:
+                    with httpx.Client(timeout=5.0) as client:
+                        resp = client.get(jwks_url)
+                        if resp.status_code == 200:
+                            jwks = resp.json()
+                            _jwks_cache[kid] = jwks
+                            return jwks
+                except Exception as e:
+                    logger.warning(f"Failed to fetch JWKS from {jwks_url}: {e}")
+                return None
+
+            jwks_provider = _jwks_provider
+
+        tap_config = TapMiddlewareConfig.from_environment()
+        tap_config.jwks_provider = jwks_provider
+        app.add_middleware(
+            TapVerificationMiddleware,
+            config=tap_config,
+            jwks_provider=jwks_provider,
+        )
+        logger.info("TAP verification middleware enabled")
+    else:
+        logger.info("TAP verification middleware disabled (set SARDIS_TAP_ENFORCEMENT=enabled to enable)")
+
+    # 7. CORS middleware with settings-based origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
@@ -543,6 +585,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             "X-API-Key",
             "X-Sardis-Signature",
             "X-Sardis-Timestamp",
+            "Signature-Input",
+            "Signature",
+            "TAP-Version",
         ],
         expose_headers=[
             "X-Request-ID",

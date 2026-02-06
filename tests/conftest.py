@@ -13,7 +13,7 @@ root_dir = Path(__file__).parent.parent
 packages_dir = root_dir / "packages"
 for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol",
             "sardis-chain", "sardis-ledger", "sardis-compliance", "sardis-checkout",
-            "sardis-cards", "sardis-ramp", "sardis-sdk-python"]:
+            "sardis-cards", "sardis-ramp", "sardis-sdk-python", "sardis-ucp"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
@@ -98,6 +98,18 @@ def has_postgres_db():
 def anyio_backend():
     """Use asyncio for async tests."""
     return "asyncio"
+
+
+def pytest_configure(config):
+    """Register custom markers for protocol conformance testing."""
+    config.addinivalue_line("markers", "protocol_conformance: Protocol conformance test")
+    config.addinivalue_line("markers", "tap: TAP (Trusted Agent Protocol) test")
+    config.addinivalue_line("markers", "ap2: AP2 (Agent Payment Protocol) test")
+    config.addinivalue_line("markers", "ucp: UCP (Universal Commerce Protocol) test")
+    config.addinivalue_line("markers", "x402: x402 (HTTP 402 Micropayments) test")
+    config.addinivalue_line("markers", "security: Security invariant test")
+    config.addinivalue_line("markers", "sdk: SDK conformance test")
+    config.addinivalue_line("markers", "integration: Integration test")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

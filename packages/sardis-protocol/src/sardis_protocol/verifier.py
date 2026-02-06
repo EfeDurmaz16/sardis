@@ -14,6 +14,7 @@ from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, Man
 from .schemas import AP2PaymentExecuteRequest
 from .storage import MandateArchive, ReplayCache
 from .rate_limiter import AgentRateLimiter, RateLimitConfig, get_rate_limiter
+from .reason_codes import ProtocolReasonCode, map_legacy_reason_to_code
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ class VerificationError(Exception):
 class VerificationResult:
     accepted: bool
     reason: str | None = None
+    sd_jwt_detected: bool = False
+    reason_code: ProtocolReasonCode | None = None
 
 
 @dataclass
@@ -34,6 +37,8 @@ class MandateChainVerification:
     accepted: bool
     reason: str | None = None
     chain: MandateChain | None = None
+    sd_jwt_detected: bool = False
+    reason_code: ProtocolReasonCode | None = None
 
 
 class MandateVerifier:
@@ -52,103 +57,200 @@ class MandateVerifier:
         self._rate_limiter = rate_limiter or get_rate_limiter(rate_limit_config)
         self._identity_registry = identity_registry
 
-    def verify(self, mandate: IntentMandate | CartMandate | PaymentMandate) -> VerificationResult:
+    @staticmethod
+    def _detect_sd_jwt(data: dict) -> bool:
+        """Detect SD-JWT indicators in mandate data.
+
+        Args:
+            data: Mandate payload dictionary
+
+        Returns:
+            True if SD-JWT indicators found, False otherwise
+        """
+        # Check for SD-JWT selective disclosure key
+        if "_sd" in data:
+            return True
+
+        # Check for SD-JWT algorithm declaration
+        if "_sd_alg" in data:
+            return True
+
+        # Check for SD-JWT disclosure separator in proof
+        proof = data.get("proof")
+        if isinstance(proof, dict):
+            proof_value = proof.get("proof_value", "")
+            if "~" in proof_value:
+                return True
+
+        return False
+
+    @staticmethod
+    def _jcs_canonicalize(obj: dict) -> bytes:
+        """RFC 8785 JSON Canonicalization Scheme.
+
+        Rules:
+        - Object keys sorted lexicographically (Unicode code point order)
+        - No whitespace between tokens
+        - Numbers: no leading zeros, no trailing zeros after decimal, no positive sign
+        - Strings: minimal escape sequences
+        - Recursive for nested objects/arrays
+        """
+        import json
+
+        def _sort_recursive(value):
+            if isinstance(value, dict):
+                return {k: _sort_recursive(v) for k, v in sorted(value.items())}
+            if isinstance(value, list):
+                return [_sort_recursive(item) for item in value]
+            return value
+
+        sorted_obj = _sort_recursive(obj)
+        return json.dumps(sorted_obj, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode("utf-8")
+
+    def verify(self, mandate: IntentMandate | CartMandate | PaymentMandate, *, use_jcs: bool = False) -> VerificationResult:
         if mandate.is_expired():
-            return VerificationResult(False, "mandate_expired")
+            reason = "mandate_expired"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
         if mandate.domain not in self._settings.allowed_domains:
-            return VerificationResult(False, "domain_not_authorized")
+            reason = "domain_not_authorized"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
         if not self._replay_cache.check_and_store(mandate.mandate_id, mandate.expires_at):
-            return VerificationResult(False, "mandate_replayed")
+            reason = "mandate_replayed"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
 
         agent = self._identity_from_proof(mandate)
         if not agent:
-            return VerificationResult(False, "identity_not_resolved")
+            reason = "identity_not_resolved"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
 
         try:
             signature = base64.b64decode(mandate.proof.proof_value)
         except Exception:  # noqa: BLE001
-            return VerificationResult(False, "signature_malformed")
+            reason = "signature_malformed"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
 
-        # Get canonical payload based on mandate type
-        if isinstance(mandate, PaymentMandate):
-            payload = self._canonical_payment_payload(mandate)
-        elif isinstance(mandate, CartMandate):
-            payload = self._canonical_cart_payload(mandate)
-        elif isinstance(mandate, IntentMandate):
-            payload = self._canonical_intent_payload(mandate)
+        # Get canonical payload based on mandate type and canonicalization mode
+        if use_jcs:
+            if isinstance(mandate, PaymentMandate):
+                payload = self._jcs_payment_payload(mandate)
+            elif isinstance(mandate, CartMandate):
+                payload = self._jcs_cart_payload(mandate)
+            elif isinstance(mandate, IntentMandate):
+                payload = self._jcs_intent_payload(mandate)
+            else:
+                reason = "unknown_mandate_type"
+                return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
         else:
-            return VerificationResult(False, "unknown_mandate_type")
+            if isinstance(mandate, PaymentMandate):
+                payload = self._canonical_payment_payload(mandate)
+            elif isinstance(mandate, CartMandate):
+                payload = self._canonical_cart_payload(mandate)
+            elif isinstance(mandate, IntentMandate):
+                payload = self._canonical_intent_payload(mandate)
+            else:
+                reason = "unknown_mandate_type"
+                return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
 
         if not agent.verify(payload, signature=signature, domain=mandate.domain, nonce=mandate.nonce, purpose=mandate.purpose):
-            return VerificationResult(False, "signature_invalid")
-        return VerificationResult(True)
+            reason = "signature_invalid"
+            return VerificationResult(False, reason, reason_code=map_legacy_reason_to_code(reason))
+        return VerificationResult(True, reason_code=None)
 
-    def verify_chain(self, bundle: AP2PaymentExecuteRequest) -> MandateChainVerification:
+    def verify_chain(self, bundle: AP2PaymentExecuteRequest, *, canonicalization_mode: str = "pipe") -> MandateChainVerification:
         try:
             intent = self._parse_mandate(bundle.intent, IntentMandate)
             cart = self._parse_mandate(bundle.cart, CartMandate)
             payment = self._parse_mandate(bundle.payment, PaymentMandate)
         except (KeyError, TypeError, ValueError) as exc:
-            return MandateChainVerification(False, f"invalid_payload: {exc}")
-        
+            reason = f"invalid_payload: {exc}"
+            return MandateChainVerification(False, reason, reason_code=map_legacy_reason_to_code(str(exc)))
+
+        # Check if any mandate uses SD-JWT
+        sd_jwt_detected = (
+            self._detect_sd_jwt(bundle.intent)
+            or self._detect_sd_jwt(bundle.cart)
+            or self._detect_sd_jwt(bundle.payment)
+        )
+
         # Check agent rate limits
         agent_id = payment.subject
         rate_result = self._rate_limiter.check_and_increment(agent_id)
         if not rate_result.allowed:
-            return MandateChainVerification(False, rate_result.reason)
+            reason = rate_result.reason
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
         if intent.mandate_type != "intent" or intent.purpose != "intent":
-            return MandateChainVerification(False, "intent_invalid_type")
+            reason = "intent_invalid_type"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if cart.mandate_type != "cart" or cart.purpose != "cart":
-            return MandateChainVerification(False, "cart_invalid_type")
+            reason = "cart_invalid_type"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if payment.mandate_type != "payment" or payment.purpose != "checkout":
-            return MandateChainVerification(False, "payment_invalid_type")
+            reason = "payment_invalid_type"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if payment.ai_agent_presence is not True:
-            return MandateChainVerification(False, "payment_agent_presence_required")
+            reason = "payment_agent_presence_required"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if payment.transaction_modality not in {"human_present", "human_not_present"}:
-            return MandateChainVerification(False, "payment_invalid_modality")
+            reason = "payment_invalid_modality"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
         for mandate in (intent, cart, payment):
             if mandate.is_expired():
-                return MandateChainVerification(False, "mandate_expired")
+                reason = "mandate_expired"
+                return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
         if len({intent.subject, cart.subject, payment.subject}) != 1:
-            return MandateChainVerification(False, "subject_mismatch")
+            reason = "subject_mismatch"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if not payment.merchant_domain:
-            return MandateChainVerification(False, "payment_missing_merchant_domain")
+            reason = "payment_missing_merchant_domain"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         if cart.merchant_domain != payment.merchant_domain:
-            return MandateChainVerification(False, "merchant_domain_mismatch")
+            reason = "merchant_domain_mismatch"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
         # Validate payment amount does not exceed cart total
         cart_total = cart.subtotal_minor + cart.taxes_minor
         if payment.amount_minor > cart_total:
-            return MandateChainVerification(False, "payment_exceeds_cart_total")
-        
+            reason = "payment_exceeds_cart_total"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
+
         # Validate intent amount bounds if specified
         if intent.requested_amount is not None and payment.amount_minor > intent.requested_amount:
-            return MandateChainVerification(False, "payment_exceeds_intent_amount")
+            reason = "payment_exceeds_intent_amount"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
-        # Verify signatures for all mandates in the chain
-        intent_result = self.verify(intent)
+        # Verify signatures for all mandates in the chain with specified canonicalization mode
+        use_jcs = (canonicalization_mode == "jcs")
+        intent_result = self.verify(intent, use_jcs=use_jcs)
         if not intent_result.accepted:
-            return MandateChainVerification(False, f"intent_{intent_result.reason}")
+            reason = f"intent_{intent_result.reason}"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
-        cart_result = self.verify(cart)
+        cart_result = self.verify(cart, use_jcs=use_jcs)
         if not cart_result.accepted:
-            return MandateChainVerification(False, f"cart_{cart_result.reason}")
+            reason = f"cart_{cart_result.reason}"
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
-        payment_result = self.verify(payment)
+        payment_result = self.verify(payment, use_jcs=use_jcs)
         if not payment_result.accepted:
-            return MandateChainVerification(False, payment_result.reason)
+            reason = payment_result.reason
+            return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
         chain = MandateChain(intent=intent, cart=cart, payment=payment)
         if self._archive:
             self._archive.store(chain)
-        return MandateChainVerification(True, chain=chain)
+        return MandateChainVerification(True, chain=chain, sd_jwt_detected=sd_jwt_detected, reason_code=None)
 
     def _parse_mandate(self, data: Dict[str, Any], model: Type[MandateBase]) -> MandateBase:
         proof_payload = data.get("proof")
         if not isinstance(proof_payload, dict):
             raise ValueError("mandate_missing_proof")
+
+        # Check for SD-JWT indicators (awareness only, does not fail)
+        if self._detect_sd_jwt(data):
+            logger.info(f"SD-JWT detected in {model.__name__} mandate")
+
         proof = VCProof(**proof_payload)
         init_values: Dict[str, Any] = {}
         for field in fields(model):
@@ -247,3 +349,50 @@ class MandateVerifier:
             mandate.transaction_modality,
         ]
         return "|".join(fields).encode()
+
+    @staticmethod
+    def _jcs_intent_payload(mandate: IntentMandate) -> bytes:
+        """Create JCS canonical payload for Intent mandate signature verification."""
+        mandate_dict = {
+            "mandate_id": mandate.mandate_id,
+            "subject": mandate.subject,
+            "mandate_type": mandate.mandate_type,
+            "scope": sorted(mandate.scope) if mandate.scope else [],
+            "requested_amount": mandate.requested_amount,
+            "expires_at": mandate.expires_at,
+        }
+        return MandateVerifier._jcs_canonicalize(mandate_dict)
+
+    @staticmethod
+    def _jcs_cart_payload(mandate: CartMandate) -> bytes:
+        """Create JCS canonical payload for Cart mandate signature verification."""
+        # Sort line items by a stable key to ensure consistent ordering
+        sorted_items = sorted(mandate.line_items, key=lambda x: (x.get("item_id", ""), x.get("name", "")))
+        mandate_dict = {
+            "mandate_id": mandate.mandate_id,
+            "subject": mandate.subject,
+            "line_items": sorted_items,
+            "subtotal_minor": mandate.subtotal_minor,
+            "taxes_minor": mandate.taxes_minor,
+            "currency": mandate.currency,
+            "merchant_domain": mandate.merchant_domain,
+            "expires_at": mandate.expires_at,
+        }
+        return MandateVerifier._jcs_canonicalize(mandate_dict)
+
+    @staticmethod
+    def _jcs_payment_payload(mandate: PaymentMandate) -> bytes:
+        """Create JCS canonical payload for Payment mandate signature verification."""
+        mandate_dict = {
+            "mandate_id": mandate.mandate_id,
+            "subject": mandate.subject,
+            "amount_minor": mandate.amount_minor,
+            "token": mandate.token,
+            "chain": mandate.chain,
+            "destination": mandate.destination,
+            "merchant_domain": mandate.merchant_domain or "",
+            "audit_hash": mandate.audit_hash,
+            "ai_agent_presence": mandate.ai_agent_presence,
+            "transaction_modality": mandate.transaction_modality,
+        }
+        return MandateVerifier._jcs_canonicalize(mandate_dict)

@@ -5,7 +5,7 @@ import base64
 from typing import Any, Mapping, Optional
 
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from nacl import signing
 from nacl.exceptions import BadSignatureError
 
@@ -39,6 +39,7 @@ def verify_signature_with_jwk(
     Supported:
       - Ed25519 with JWK kty=OKP, crv=Ed25519, x=<base64url>
       - PS256 with JWK kty=RSA, n/e
+      - ECDSA-P256 (ES256) with JWK kty=EC, crv=P-256, x/y=<base64url>
     """
     try:
         signature = base64.b64decode(signature_b64)
@@ -80,6 +81,27 @@ def verify_signature_with_jwk(
                 padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=hashes.SHA256().digest_size),
                 hashes.SHA256(),
             )
+            return True
+        except Exception:
+            return False
+
+    if normalized_alg in ("ES256", "ECDSA-P256"):
+        if kty != "EC" or str(jwk.get("crv", "")) != "P-256":
+            return False
+        x = jwk.get("x")
+        y = jwk.get("y")
+        if not isinstance(x, str) or not isinstance(y, str):
+            return False
+        try:
+            x_int = int.from_bytes(_b64url_decode(x), "big")
+            y_int = int.from_bytes(_b64url_decode(y), "big")
+            public_numbers = ec.EllipticCurvePublicNumbers(
+                x=x_int,
+                y=y_int,
+                curve=ec.SECP256R1()
+            )
+            public_key = public_numbers.public_key()
+            public_key.verify(signature, signature_base, ec.ECDSA(hashes.SHA256()))
             return True
         except Exception:
             return False

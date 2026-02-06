@@ -1,6 +1,8 @@
 """TAP message signature and linked object validation tests."""
 from __future__ import annotations
 
+import pytest
+
 from sardis_protocol.tap import (
     build_object_signature_base,
     build_signature_base,
@@ -10,6 +12,8 @@ from sardis_protocol.tap import (
     validate_agentic_payment_container,
     validate_tap_headers,
 )
+
+pytestmark = [pytest.mark.protocol_conformance, pytest.mark.tap]
 
 
 def _valid_signature_input(*, now: int, nonce: str = "nonce-1", tag: str = "agent-browser-auth") -> str:

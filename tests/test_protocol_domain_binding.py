@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
 import time
 
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.verifier import MandateVerifier, VerificationResult
 from sardis_v2_core import SardisSettings
+
+pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 
 
 def _proof() -> dict:
@@ -77,7 +80,7 @@ def _bundle(*, payment_overrides: dict | None = None, cart_overrides: dict | Non
 def test_verify_chain_requires_payment_merchant_domain():
     settings = SardisSettings(environment="dev")
     verifier = MandateVerifier(settings=settings)
-    verifier.verify = lambda mandate: VerificationResult(True)  # type: ignore[assignment]
+    verifier.verify = lambda mandate, **kwargs: VerificationResult(True)  # type: ignore[assignment]
 
     result = verifier.verify_chain(_bundle(payment_overrides={"merchant_domain": None}))
     assert result.accepted is False
@@ -87,7 +90,7 @@ def test_verify_chain_requires_payment_merchant_domain():
 def test_verify_chain_rejects_merchant_domain_mismatch():
     settings = SardisSettings(environment="dev")
     verifier = MandateVerifier(settings=settings)
-    verifier.verify = lambda mandate: VerificationResult(True)  # type: ignore[assignment]
+    verifier.verify = lambda mandate, **kwargs: VerificationResult(True)  # type: ignore[assignment]
 
     result = verifier.verify_chain(_bundle(payment_overrides={"merchant_domain": "evil.example"}))
     assert result.accepted is False
@@ -97,7 +100,7 @@ def test_verify_chain_rejects_merchant_domain_mismatch():
 def test_verify_chain_accepts_when_domains_match():
     settings = SardisSettings(environment="dev")
     verifier = MandateVerifier(settings=settings)
-    verifier.verify = lambda mandate: VerificationResult(True)  # type: ignore[assignment]
+    verifier.verify = lambda mandate, **kwargs: VerificationResult(True)  # type: ignore[assignment]
 
     result = verifier.verify_chain(_bundle())
     assert result.accepted is True
@@ -107,7 +110,7 @@ def test_verify_chain_accepts_when_domains_match():
 def test_verify_chain_rejects_missing_agent_presence_signal():
     settings = SardisSettings(environment="dev")
     verifier = MandateVerifier(settings=settings)
-    verifier.verify = lambda mandate: VerificationResult(True)  # type: ignore[assignment]
+    verifier.verify = lambda mandate, **kwargs: VerificationResult(True)  # type: ignore[assignment]
 
     result = verifier.verify_chain(_bundle(payment_overrides={"ai_agent_presence": False}))
     assert result.accepted is False
@@ -117,7 +120,7 @@ def test_verify_chain_rejects_missing_agent_presence_signal():
 def test_verify_chain_rejects_invalid_modality_signal():
     settings = SardisSettings(environment="dev")
     verifier = MandateVerifier(settings=settings)
-    verifier.verify = lambda mandate: VerificationResult(True)  # type: ignore[assignment]
+    verifier.verify = lambda mandate, **kwargs: VerificationResult(True)  # type: ignore[assignment]
 
     result = verifier.verify_chain(_bundle(payment_overrides={"transaction_modality": "invalid"}))
     assert result.accepted is False

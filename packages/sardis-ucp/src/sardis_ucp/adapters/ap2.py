@@ -119,6 +119,11 @@ class AP2MandateChain:
 # ============ Adapter Result Types ============
 
 
+class SecurityLockError(Exception):
+    """Exception raised when Security Lock is triggered due to mandate conversion failure."""
+    pass
+
+
 @dataclass(slots=True)
 class AdapterResult:
     """Result of an adapter operation."""
@@ -135,6 +140,7 @@ class AP2ToUCPResult(AdapterResult):
     cart_mandate: Optional[UCPCartMandate] = None
     checkout_mandate: Optional[UCPCheckoutMandate] = None
     payment_mandate: Optional[UCPPaymentMandate] = None
+    security_locked: bool = False
 
 
 @dataclass(slots=True)
@@ -144,6 +150,7 @@ class UCPToAP2Result(AdapterResult):
     intent_mandate: Optional[AP2IntentMandate] = None
     cart_mandate: Optional[AP2CartMandate] = None
     payment_mandate: Optional[AP2PaymentMandate] = None
+    security_locked: bool = False
 
 
 # ============ Verifier Protocol ============
@@ -315,49 +322,88 @@ class AP2MandateAdapter:
         """
         Convert a complete UCP mandate chain to AP2 format.
 
+        Security Lock Behavior: If ANY individual mandate conversion fails,
+        the ENTIRE chain conversion fails with security_locked=True.
+        Partial mandate conversion is NEVER returned as successful.
+
         Args:
             cart: UCP cart mandate
             checkout: UCP checkout mandate
             payment: UCP payment mandate
 
         Returns:
-            UCPToAP2Result with converted mandates
+            UCPToAP2Result with converted mandates or security_locked=True on failure
         """
+        # Convert cart mandate - fail entire chain if this fails
         try:
             ap2_cart = self.ucp_cart_to_ap2(
                 cart,
                 issuer=cart.merchant_id,
                 subject=checkout.subject,
             )
-            ap2_intent = self.ucp_checkout_to_ap2_intent(checkout)
-            ap2_payment = self.ucp_payment_to_ap2(payment)
+        except Exception as e:
+            logger.error(f"Cart conversion failed: {e}")
+            return UCPToAP2Result(
+                success=False,
+                error=f"Cart conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
+            )
 
-            # Verify chain if verifier is available
-            if self._verifier:
+        # Convert checkout to intent - fail entire chain if this fails
+        try:
+            ap2_intent = self.ucp_checkout_to_ap2_intent(checkout)
+        except Exception as e:
+            logger.error(f"Intent conversion failed: {e}")
+            return UCPToAP2Result(
+                success=False,
+                error=f"Intent conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
+            )
+
+        # Convert payment mandate - fail entire chain if this fails
+        try:
+            ap2_payment = self.ucp_payment_to_ap2(payment)
+        except Exception as e:
+            logger.error(f"Payment conversion failed: {e}")
+            return UCPToAP2Result(
+                success=False,
+                error=f"Payment conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
+            )
+
+        # Verify chain if verifier is available - fail with security lock on verification failure
+        if self._verifier:
+            try:
                 is_valid, error = self._verifier.verify_chain(
                     ap2_intent, ap2_cart, ap2_payment
                 )
                 if not is_valid:
+                    logger.error(f"Mandate chain verification failed: {error}")
                     return UCPToAP2Result(
                         success=False,
                         error=error or "Mandate chain verification failed",
-                        error_code="verification_failed",
+                        error_code="security_lock",
+                        security_locked=True,
                     )
+            except Exception as e:
+                logger.error(f"Verification check failed: {e}")
+                return UCPToAP2Result(
+                    success=False,
+                    error=f"Verification check failed: {e}",
+                    error_code="security_lock",
+                    security_locked=True,
+                )
 
-            return UCPToAP2Result(
-                success=True,
-                intent_mandate=ap2_intent,
-                cart_mandate=ap2_cart,
-                payment_mandate=ap2_payment,
-            )
-
-        except Exception as e:
-            logger.error(f"UCP to AP2 conversion failed: {e}")
-            return UCPToAP2Result(
-                success=False,
-                error=str(e),
-                error_code="conversion_error",
-            )
+        return UCPToAP2Result(
+            success=True,
+            intent_mandate=ap2_intent,
+            cart_mandate=ap2_cart,
+            payment_mandate=ap2_payment,
+            security_locked=False,
+        )
 
     # ============ AP2 -> UCP Conversion ============
 
@@ -478,6 +524,10 @@ class AP2MandateAdapter:
         """
         Convert a complete AP2 mandate chain to UCP format.
 
+        Security Lock Behavior: If ANY individual mandate conversion fails,
+        the ENTIRE chain conversion fails with security_locked=True.
+        Partial mandate conversion is NEVER returned as successful.
+
         Args:
             intent: AP2 intent mandate
             cart: AP2 cart mandate
@@ -486,38 +536,62 @@ class AP2MandateAdapter:
             merchant_name: Merchant display name
 
         Returns:
-            AP2ToUCPResult with converted mandates
+            AP2ToUCPResult with converted mandates or security_locked=True on failure
         """
+        # Convert cart mandate - fail entire chain if this fails
         try:
             ucp_cart = self.ap2_cart_to_ucp(
                 cart,
                 merchant_id=merchant_id,
                 merchant_name=merchant_name,
             )
+        except Exception as e:
+            logger.error(f"Cart conversion failed: {e}")
+            return AP2ToUCPResult(
+                success=False,
+                error=f"Cart conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
+            )
+
+        # Convert intent to checkout - fail entire chain if this fails
+        try:
             ucp_checkout = self.ap2_intent_to_ucp_checkout(
                 intent,
                 cart_mandate_id=ucp_cart.mandate_id,
                 currency=ucp_cart.currency,
             )
+        except Exception as e:
+            logger.error(f"Checkout conversion failed: {e}")
+            return AP2ToUCPResult(
+                success=False,
+                error=f"Checkout conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
+            )
+
+        # Convert payment mandate - fail entire chain if this fails
+        try:
             ucp_payment = self.ap2_payment_to_ucp(
                 payment,
                 checkout_mandate_id=ucp_checkout.mandate_id,
             )
-
-            return AP2ToUCPResult(
-                success=True,
-                cart_mandate=ucp_cart,
-                checkout_mandate=ucp_checkout,
-                payment_mandate=ucp_payment,
-            )
-
         except Exception as e:
-            logger.error(f"AP2 to UCP conversion failed: {e}")
+            logger.error(f"Payment conversion failed: {e}")
             return AP2ToUCPResult(
                 success=False,
-                error=str(e),
-                error_code="conversion_error",
+                error=f"Payment conversion failed: {e}",
+                error_code="security_lock",
+                security_locked=True,
             )
+
+        return AP2ToUCPResult(
+            success=True,
+            cart_mandate=ucp_cart,
+            checkout_mandate=ucp_checkout,
+            payment_mandate=ucp_payment,
+            security_locked=False,
+        )
 
     # ============ Audit Hash Utilities ============
 
@@ -570,6 +644,8 @@ __all__ = [
     "AdapterResult",
     "AP2ToUCPResult",
     "UCPToAP2Result",
+    # Exceptions
+    "SecurityLockError",
     # Protocols
     "MandateVerifier",
     # Main Adapter

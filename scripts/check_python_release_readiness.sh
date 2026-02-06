@@ -30,17 +30,30 @@ echo "Version OK: $PYPROJECT_VERSION"
 echo "[2/5] Running Python SDK test suite"
 python3 -m pytest -q "$PY_SDK_DIR/tests"
 
-echo "[3/5] Running protocol/compliance smoke tests"
-python3 -m pytest -q \
-  "$ROOT_DIR/tests/test_ap2_compliance_checks.py" \
-  "$ROOT_DIR/tests/test_protocol_conformance_basics.py" \
-  "$ROOT_DIR/tests/test_protocol_domain_binding.py" \
-  "$ROOT_DIR/tests/test_audit_f04_v1_signature.py" \
-  "$ROOT_DIR/tests/test_audit_f14_identity_registry.py" \
-  "$ROOT_DIR/tests/test_tap_keys.py" \
-  "$ROOT_DIR/tests/test_tap_signature_validation.py" \
-  "$ROOT_DIR/tests/test_x402_schema_validation.py" \
-  "$ROOT_DIR/tests/test_ledger_entries_api.py"
+echo "[3/5] Running protocol conformance suite"
+python3 -m pytest -m protocol_conformance \
+  "$ROOT_DIR/tests/" \
+  "$ROOT_DIR/packages/sardis-ucp/tests/" \
+  --strict-markers \
+  -v --tb=short \
+  2>&1 | tee /tmp/protocol-results.txt
+
+# Count results
+PASSED=$(grep -c "PASSED" /tmp/protocol-results.txt || true)
+FAILED=$(grep -c "FAILED" /tmp/protocol-results.txt || true)
+SKIPPED=$(grep -c "SKIPPED" /tmp/protocol-results.txt || true)
+
+echo "Protocol conformance: $PASSED passed, $FAILED failed, $SKIPPED skipped"
+
+if [ "$FAILED" -gt 0 ]; then
+  echo "FATAL: Protocol conformance tests failed"
+  exit 1
+fi
+
+if [ "${STRICT_MODE:-0}" = "1" ] && [ "$SKIPPED" -gt 0 ]; then
+  echo "STRICT_MODE: $SKIPPED tests were skipped - treating as failure"
+  exit 1
+fi
 
 echo "[3b/5] Running protocol package suites (A2A/UCP)"
 (

@@ -6,6 +6,8 @@ from pydantic import ValidationError
 
 from sardis_protocol.schemas import X402PaymentExecuteRequest
 
+pytestmark = [pytest.mark.protocol_conformance, pytest.mark.x402]
+
 
 def test_x402_request_accepts_valid_payload():
     req = X402PaymentExecuteRequest(

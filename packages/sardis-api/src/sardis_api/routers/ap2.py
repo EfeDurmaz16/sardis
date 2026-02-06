@@ -160,7 +160,7 @@ async def execute_ap2_payment(
     """
     async def _execute() -> tuple[int, object]:
         # Step 1: Verify mandate chain
-        verification = deps.verifier.verify_chain(payload)
+        verification = deps.verifier.verify_chain(payload, canonicalization_mode=payload.canonicalization_mode)
         if not verification.accepted or not verification.chain:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,

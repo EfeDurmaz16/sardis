@@ -49,6 +49,14 @@ jobs:
                --show-error-codes \
                || echo "mypy found type issues - please fix"
 
+      - name: Strict lint for protocol packages
+        run: |
+          ruff check packages/sardis-protocol/src packages/sardis-ucp/src
+
+      - name: Strict format check for protocol packages
+        run: |
+          ruff format --check packages/sardis-protocol/src packages/sardis-ucp/src
+
   test-python:
     name: Test Python
     runs-on: ubuntu-latest
@@ -94,6 +102,45 @@ jobs:
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
+
+  protocol-conformance:
+    name: Protocol Conformance
+    runs-on: ubuntu-latest
+    needs: [test-python]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e packages/sardis-core
+          pip install -e packages/sardis-protocol
+          pip install -e packages/sardis-ucp
+          pip install -e packages/sardis-wallet
+          pip install -e packages/sardis-chain
+          pip install -e packages/sardis-ledger
+          pip install -e packages/sardis-compliance
+          pip install -e packages/sardis-api
+          pip install pytest pytest-asyncio pytest-cov pytest-json-report httpx
+
+      - name: Run protocol conformance tests
+        env:
+          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
+          SARDIS_ENVIRONMENT: dev
+        run: |
+          pytest -m protocol_conformance tests/ packages/sardis-ucp/tests/ \
+            -v --tb=short \
+            --cov=sardis_protocol --cov=sardis_ucp \
+            --cov-report=xml --cov-report=term-missing \
+            --json-report --json-report-file=protocol-report.json
+
+      - name: Enforce protocol coverage threshold
+        run: |
+          coverage report --fail-under=60
 
   test-typescript-sdk:
     name: Test TypeScript SDK
