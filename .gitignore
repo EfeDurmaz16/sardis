@@ -59,6 +59,7 @@ test_output.txt
 node_modules/
 .next/
 .turbo/
+package-lock.json
 
 # Database
 *.db

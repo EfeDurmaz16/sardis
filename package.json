@@ -26,5 +26,8 @@
       "eslint": "^9.39.2",
       "ai": "^6.0.68"
     }
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
