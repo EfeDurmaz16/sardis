@@ -35,6 +35,8 @@ python3 -m pytest -q \
   "$ROOT_DIR/tests/test_ap2_compliance_checks.py" \
   "$ROOT_DIR/tests/test_protocol_conformance_basics.py" \
   "$ROOT_DIR/tests/test_protocol_domain_binding.py" \
+  "$ROOT_DIR/tests/test_audit_f04_v1_signature.py" \
+  "$ROOT_DIR/tests/test_audit_f14_identity_registry.py" \
   "$ROOT_DIR/tests/test_tap_keys.py" \
   "$ROOT_DIR/tests/test_tap_signature_validation.py" \
   "$ROOT_DIR/tests/test_x402_schema_validation.py" \

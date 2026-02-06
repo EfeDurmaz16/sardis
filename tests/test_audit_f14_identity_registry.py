@@ -31,7 +31,7 @@ def _create_mandate():
     # Build canonical payment payload
     canonical = "|".join([
         mandate_id, agent_id, "1000000", "USDC", "base",
-        destination, merchant_domain, audit_hash,
+        destination, merchant_domain, audit_hash, "1", "human_present",
     ]).encode()
 
     # AgentIdentity.verify wraps: domain|nonce|purpose|canonical
@@ -65,8 +65,10 @@ def _create_mandate():
 def test_production_requires_identity_registry():
     """In production, must raise VerificationError if no identity registry."""
     original_env = os.getenv("SARDIS_ENV")
+    original_environment = os.getenv("SARDIS_ENVIRONMENT")
     try:
         os.environ["SARDIS_ENV"] = "production"
+        os.environ["SARDIS_ENVIRONMENT"] = "production"
         settings = SardisSettings(allowed_domains=["example.com"])
         verifier = MandateVerifier(settings, identity_registry=None)
         mandate, _ = _create_mandate()
@@ -78,13 +80,19 @@ def test_production_requires_identity_registry():
             os.environ.pop("SARDIS_ENV", None)
         else:
             os.environ["SARDIS_ENV"] = original_env
+        if original_environment is None:
+            os.environ.pop("SARDIS_ENVIRONMENT", None)
+        else:
+            os.environ["SARDIS_ENVIRONMENT"] = original_environment
 
 
 def test_dev_mode_allows_missing_identity_registry():
     """In dev mode, verification proceeds with warning."""
     original_env = os.getenv("SARDIS_ENV")
+    original_environment = os.getenv("SARDIS_ENVIRONMENT")
     try:
         os.environ["SARDIS_ENV"] = "development"
+        os.environ["SARDIS_ENVIRONMENT"] = "development"
         settings = SardisSettings(allowed_domains=["example.com"])
         verifier = MandateVerifier(settings, identity_registry=None)
         mandate, _ = _create_mandate()
@@ -96,13 +104,19 @@ def test_dev_mode_allows_missing_identity_registry():
             os.environ.pop("SARDIS_ENV", None)
         else:
             os.environ["SARDIS_ENV"] = original_env
+        if original_environment is None:
+            os.environ.pop("SARDIS_ENVIRONMENT", None)
+        else:
+            os.environ["SARDIS_ENVIRONMENT"] = original_environment
 
 
 def test_unset_env_allows_missing_identity_registry():
-    """When SARDIS_ENV is unset, verification proceeds (dev default)."""
+    """When SARDIS_ENV and SARDIS_ENVIRONMENT are unset, verification proceeds (dev default)."""
     original_env = os.getenv("SARDIS_ENV")
+    original_environment = os.getenv("SARDIS_ENVIRONMENT")
     try:
         os.environ.pop("SARDIS_ENV", None)
+        os.environ.pop("SARDIS_ENVIRONMENT", None)
         settings = SardisSettings(allowed_domains=["example.com"])
         verifier = MandateVerifier(settings, identity_registry=None)
         mandate, _ = _create_mandate()
@@ -114,13 +128,19 @@ def test_unset_env_allows_missing_identity_registry():
             os.environ.pop("SARDIS_ENV", None)
         else:
             os.environ["SARDIS_ENV"] = original_env
+        if original_environment is None:
+            os.environ.pop("SARDIS_ENVIRONMENT", None)
+        else:
+            os.environ["SARDIS_ENVIRONMENT"] = original_environment
 
 
 def test_with_identity_registry_works_in_production():
     """With identity registry provided, production mode works."""
     original_env = os.getenv("SARDIS_ENV")
+    original_environment = os.getenv("SARDIS_ENVIRONMENT")
     try:
         os.environ["SARDIS_ENV"] = "production"
+        os.environ["SARDIS_ENVIRONMENT"] = "production"
         settings = SardisSettings(allowed_domains=["example.com"])
         mandate, pub_key_bytes = _create_mandate()
 
@@ -137,3 +157,7 @@ def test_with_identity_registry_works_in_production():
             os.environ.pop("SARDIS_ENV", None)
         else:
             os.environ["SARDIS_ENV"] = original_env
+        if original_environment is None:
+            os.environ.pop("SARDIS_ENVIRONMENT", None)
+        else:
+            os.environ["SARDIS_ENVIRONMENT"] = original_environment

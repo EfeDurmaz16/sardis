@@ -81,10 +81,10 @@ def test_v2_signature_accepted():
     nonce = "test-nonce"
     purpose = "checkout"
 
-    # Sign V2-style payload (WITH merchant_domain) - correct format
+    # Sign V2-style payload (WITH merchant_domain + AP2 visibility fields) - correct format
     canonical = "|".join([
         mandate_id, agent_id, "1000000", "USDC", "base",
-        destination, merchant_domain, audit_hash,
+        destination, merchant_domain, audit_hash, "1", "human_present",
     ]).encode()
 
     full_payload = b"|".join([domain.encode(), nonce.encode(), purpose.encode(), canonical])

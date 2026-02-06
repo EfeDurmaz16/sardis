@@ -182,8 +182,11 @@ class MandateVerifier:
             ):
                 return None
         else:
-            # Fail-closed in production: identity registry must be configured
-            if os.getenv("SARDIS_ENV") == "production":
+            # Fail-closed in production: identity registry must be configured.
+            # Support both legacy SARDIS_ENV and canonical SARDIS_ENVIRONMENT names.
+            raw_env = (os.getenv("SARDIS_ENVIRONMENT") or os.getenv("SARDIS_ENV") or "dev").strip().lower()
+            is_production = raw_env in {"prod", "production"}
+            if is_production:
                 raise VerificationError("Identity registry required in production")
             logger.warning("Identity registry not configured - skipping identity binding verification (dev mode)")
 

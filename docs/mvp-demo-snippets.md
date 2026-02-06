@@ -28,7 +28,19 @@ def sign_mandate(identity, secret_hex, destination):
     expires = int(time.time()) + 300
     amount_minor = 5_000_000  # 5 USDC (6 decimals)
     audit_hash = f"audit::{mandate_id}"
-    canonical = "|".join([mandate_id, identity["agent_id"], str(amount_minor), "USDC", "base_sepolia", destination, audit_hash]).encode()
+    merchant_domain = "merchant.example"
+    canonical = "|".join([
+        mandate_id,
+        identity["agent_id"],
+        str(amount_minor),
+        "USDC",
+        "base_sepolia",
+        destination,
+        merchant_domain,
+        audit_hash,
+        "1",
+        "human_present",
+    ]).encode()
     payload = b"|".join([identity["domain"].encode(), nonce.encode(), b"checkout", canonical])
     sig = signing.SigningKey(bytes.fromhex(secret_hex)).sign(payload).signature
     proof_val = base64.b64encode(sig).decode()
@@ -45,7 +57,10 @@ def sign_mandate(identity, secret_hex, destination):
         "token": "USDC",
         "amount_minor": amount_minor,
         "destination": destination,
+        "merchant_domain": merchant_domain,
         "audit_hash": audit_hash,
+        "ai_agent_presence": True,
+        "transaction_modality": "human_present",
         "proof": {
             "type": "DataIntegrityProof",
             "verification_method": identity["verification_method"],
@@ -84,6 +99,7 @@ function signMandate(identity, secretHex, destination) {
   const expires = Math.floor(Date.now() / 1000) + 300;
   const amountMinor = 5_000_000; // 5 USDC
   const auditHash = `audit::${mandateId}`;
+  const merchantDomain = "merchant.example";
   const canonical = [
     mandateId,
     identity.agent_id,
@@ -91,7 +107,10 @@ function signMandate(identity, secretHex, destination) {
     "USDC",
     "base_sepolia",
     destination,
+    merchantDomain,
     auditHash,
+    "1",
+    "human_present",
   ].join("|");
   const payload = Buffer.from(
     `${identity.domain}|${nonce}|checkout|${canonical}`,
@@ -113,7 +132,10 @@ function signMandate(identity, secretHex, destination) {
     token: "USDC",
     amount_minor: amountMinor,
     destination,
+    merchant_domain: merchantDomain,
     audit_hash: auditHash,
+    ai_agent_presence: true,
+    transaction_modality: "human_present",
     proof: {
       type: "DataIntegrityProof",
       verification_method: identity.verification_method,
@@ -133,6 +155,5 @@ function signMandate(identity, secretHex, destination) {
   console.log(await (await fetch(`${BASE_URL}/payments/execute`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mandate }) })).json());
 })();
 ```
-
 
 

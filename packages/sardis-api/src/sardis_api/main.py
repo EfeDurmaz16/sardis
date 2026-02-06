@@ -670,6 +670,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_executor=chain_exec,
         ledger=ledger_store,
     )
+    app.state.chain_executor = chain_exec
+    app.state.compliance_engine = compliance
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")
 
@@ -833,91 +835,104 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
+        from decimal import Decimal
+
         from sardis_api.repositories.card_repository import CardRepository
+        from sardis_cards.models import CardType
+
         # NOTE: CardRepository uses Postgres automatically if DATABASE_URL is set (otherwise in-memory).
         card_repo = CardRepository(dsn=database_url if use_postgres else None)
-        # Import provider - use Lithic if API key present, else stub
+
+        class CardProviderCompatAdapter:
+            """
+            Adapter to bridge sardis-api's cards router expectations with sardis-cards providers.
+
+            The router expects:
+              - create_card(card_id=..., wallet_id=..., card_type=str, limit_*: float) -> obj with provider_card_id
+              - fund_card(card_id=..., amount=float)
+            While the provider expects:
+              - create_card(wallet_id, card_type: CardType, limit_*: Decimal, ...)
+              - fund_card(provider_card_id, amount: Decimal, ...)
+            """
+
+            def __init__(self, provider, repo: CardRepository):
+                self._provider = provider
+                self._repo = repo
+
+            async def create_card(
+                self,
+                card_id: str,
+                wallet_id: str,
+                card_type: str,
+                limit_per_tx: float,
+                limit_daily: float,
+                limit_monthly: float,
+                locked_merchant_id: str | None = None,
+            ):
+                ct = {
+                    "single_use": CardType.SINGLE_USE,
+                    "multi_use": CardType.MULTI_USE,
+                    "merchant_locked": CardType.MERCHANT_LOCKED,
+                }.get(card_type, CardType.MULTI_USE)
+                return await self._provider.create_card(
+                    wallet_id=wallet_id,
+                    card_type=ct,
+                    limit_per_tx=Decimal(str(limit_per_tx)),
+                    limit_daily=Decimal(str(limit_daily)),
+                    limit_monthly=Decimal(str(limit_monthly)),
+                    locked_merchant_id=locked_merchant_id,
+                )
+
+            async def fund_card(self, card_id: str, amount: float):
+                card = await self._repo.get_by_card_id(card_id)
+                if not card or not card.get("provider_card_id"):
+                    raise RuntimeError("Card not found or missing provider_card_id")
+                return await self._provider.fund_card(
+                    provider_card_id=card["provider_card_id"],
+                    amount=Decimal(str(amount)),
+                )
+
+            async def freeze_card(self, provider_card_id: str):
+                return await self._provider.freeze_card(provider_card_id)
+
+            async def unfreeze_card(self, provider_card_id: str):
+                return await self._provider.unfreeze_card(provider_card_id)
+
+            async def cancel_card(self, provider_card_id: str):
+                return await self._provider.cancel_card(provider_card_id)
+
+            async def update_limits(self, provider_card_id: str, **kwargs):
+                return await self._provider.update_limits(provider_card_id, **kwargs)
+
+        # Use Lithic provider in configured environments; fallback to mock provider in local/dev.
         lithic_api_key = os.getenv("LITHIC_API_KEY")
         if lithic_api_key:
-            from decimal import Decimal
             from sardis_cards.providers.lithic import LithicProvider
-            from sardis_cards.models import CardType
 
-            class CardProviderCompatAdapter:
-                """
-                Adapter to bridge sardis-api's cards router expectations with sardis-cards providers.
-
-                The router expects:
-                  - create_card(card_id=..., wallet_id=..., card_type=str, limit_*: float) -> obj with provider_card_id
-                  - fund_card(card_id=..., amount=float)
-                While the provider expects:
-                  - create_card(wallet_id, card_type: CardType, limit_*: Decimal, ...)
-                  - fund_card(provider_card_id, amount: Decimal, ...)
-                """
-
-                def __init__(self, provider, repo: CardRepository):
-                    self._provider = provider
-                    self._repo = repo
-
-                async def create_card(
-                    self,
-                    card_id: str,
-                    wallet_id: str,
-                    card_type: str,
-                    limit_per_tx: float,
-                    limit_daily: float,
-                    limit_monthly: float,
-                    locked_merchant_id: str | None = None,
-                ):
-                    ct = {
-                        "single_use": CardType.SINGLE_USE,
-                        "multi_use": CardType.MULTI_USE,
-                        "merchant_locked": CardType.MERCHANT_LOCKED,
-                    }.get(card_type, CardType.MULTI_USE)
-                    return await self._provider.create_card(
-                        wallet_id=wallet_id,
-                        card_type=ct,
-                        limit_per_tx=Decimal(str(limit_per_tx)),
-                        limit_daily=Decimal(str(limit_daily)),
-                        limit_monthly=Decimal(str(limit_monthly)),
-                        locked_merchant_id=locked_merchant_id,
-                    )
-
-                async def fund_card(self, card_id: str, amount: float):
-                    card = await self._repo.get_by_card_id(card_id)
-                    if not card or not card.get("provider_card_id"):
-                        raise RuntimeError("Card not found or missing provider_card_id")
-                    return await self._provider.fund_card(
-                        provider_card_id=card["provider_card_id"],
-                        amount=Decimal(str(amount)),
-                    )
-
-                async def freeze_card(self, provider_card_id: str):
-                    return await self._provider.freeze_card(provider_card_id)
-
-                async def unfreeze_card(self, provider_card_id: str):
-                    return await self._provider.unfreeze_card(provider_card_id)
-
-                async def cancel_card(self, provider_card_id: str):
-                    return await self._provider.cancel_card(provider_card_id)
-
-                async def update_limits(self, provider_card_id: str, **kwargs):
-                    return await self._provider.update_limits(provider_card_id, **kwargs)
-
-            card_provider = CardProviderCompatAdapter(LithicProvider(api_key=lithic_api_key), card_repo)
+            provider_impl = LithicProvider(api_key=lithic_api_key)
+            logger.info("Cards enabled with Lithic provider")
         else:
-            card_provider = None
-        webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
-        if card_provider:
-            injected_router = cards_router.create_cards_router(
-                card_repo, card_provider, webhook_secret,
-                offramp_service=offramp_service,
-                chain_executor=chain_exec,
-                wallet_repo=wallet_repo,
-                policy_store=policy_store,
-                agent_repo=agent_repo,
+            from sardis_cards.providers.mock import MockProvider
+
+            provider_impl = MockProvider()
+            logger.warning(
+                "Cards enabled but LITHIC_API_KEY is missing; using MockProvider "
+                "(set LITHIC_API_KEY to enable real issuer integration)."
             )
-            app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
+
+        card_provider = CardProviderCompatAdapter(provider_impl, card_repo)
+        webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
+        injected_router = cards_router.create_cards_router(
+            card_repo,
+            card_provider,
+            webhook_secret,
+            offramp_service=offramp_service,
+            chain_executor=chain_exec,
+            wallet_repo=wallet_repo,
+            policy_store=policy_store,
+            agent_repo=agent_repo,
+        )
+        app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 

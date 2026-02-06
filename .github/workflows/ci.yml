@@ -125,7 +125,6 @@ jobs:
   test-python-sdk:
     name: Test Python SDK
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -162,8 +161,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Run tests
+        working-directory: packages/sardis-mcp-server
+        run: pnpm test
+
       - name: Build
         working-directory: packages/sardis-mcp-server
+        run: pnpm run build
+
+  test-ai-sdk:
+    name: Test AI SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run tests
+        working-directory: packages/sardis-ai-sdk
+        run: pnpm test
+
+      - name: Build
+        working-directory: packages/sardis-ai-sdk
         run: pnpm run build
 
   build-landing:
