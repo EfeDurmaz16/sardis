@@ -24,7 +24,10 @@ if command -v pnpm >/dev/null 2>&1 && [[ -d "$ROOT_DIR/node_modules" ]] && [[ "$
 else
   node_checks_skipped=1
   echo "[release-readiness] Skipping Node checks (pnpm/node_modules/vitest missing)"
-  echo "  To enable: pnpm install --no-frozen-lockfile"
+  echo "  To enable:"
+  echo "    pnpm run bootstrap:js:install"
+  echo "  or manual:"
+  echo "    pnpm install --no-frozen-lockfile"
 fi
 
 if [[ "$STRICT_MODE" == "1" && "$node_checks_skipped" == "1" ]]; then

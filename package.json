@@ -5,12 +5,17 @@
   "packageManager": "pnpm@10.18.1",
   "scripts": {
     "bootstrap": "pnpm install --no-frozen-lockfile",
+    "bootstrap:js": "bash ./scripts/bootstrap_js_env.sh",
+    "bootstrap:js:install": "bash ./scripts/bootstrap_js_env.sh --install",
+    "bootstrap:js:verify": "bash ./scripts/bootstrap_js_env.sh --install --verify",
     "build:mcp": "pnpm --filter @sardis/mcp-server build",
     "test:mcp": "pnpm --filter @sardis/mcp-server test",
     "build:ts-sdks": "pnpm --filter @sardis/sdk build && pnpm --filter @sardis/ai-sdk build",
     "test:ts-sdks": "pnpm --filter @sardis/sdk test && pnpm --filter @sardis/ai-sdk test",
     "build:python-sdk": "cd packages/sardis-sdk-python && python3 -m build",
     "test:python-sdk": "cd packages/sardis-sdk-python && pytest -q",
+    "check:live-chain": "bash ./scripts/check_live_chain_conformance.sh",
+    "check:live-chain:strict": "STRICT_MODE=1 bash ./scripts/check_live_chain_conformance.sh",
     "check:release-readiness": "bash ./scripts/check_release_readiness.sh",
     "check:release-readiness:strict": "STRICT_MODE=1 bash ./scripts/check_release_readiness.sh"
   },

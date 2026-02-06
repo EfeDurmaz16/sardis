@@ -24,11 +24,12 @@ This runbook defines the canonical release flow for:
 From repo root:
 
 ```bash
-pnpm install --no-frozen-lockfile
+pnpm run bootstrap:js:install
 pnpm run check:release-readiness:strict
 ```
 
 `check:release-readiness:strict` fails immediately if Node package gates cannot run.
+`bootstrap:js:install` performs DNS and npm registry preflight checks before install.
 
 Python package build check:
 
@@ -41,7 +42,20 @@ python3 -m twine check dist/*
 If local network blocks npm/PyPI access, run Python-only readiness checks locally and rely on CI for Node package validation:
 
 ```bash
+pnpm run bootstrap:js
 pnpm run check:release-readiness
+```
+
+Live-chain conformance (Turnkey + testnet RPC) can be run separately:
+
+```bash
+pnpm run check:live-chain
+```
+
+Use strict mode in release environments to fail if live-chain credentials are not provided:
+
+```bash
+pnpm run check:live-chain:strict
 ```
 
 ## 3) Prerelease (Recommended First)

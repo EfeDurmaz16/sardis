@@ -8,8 +8,10 @@ This flow is the engineering reference for design partners using Sardis in pre-p
 2. Ensure approvals router is enabled and reachable (`/api/v2/approvals`).
 3. Ensure policy store is persistent (not in-memory for shared staging).
 4. Run:
+   - `pnpm run bootstrap:js` (network/registry preflight)
    - `pnpm run check:release-readiness` (local degraded mode allowed)
    - `pnpm run check:release-readiness:strict` in CI before release tags
+   - `pnpm run check:live-chain` (optional local; requires Turnkey + testnet credentials)
 
 ## 2) Developer Setup (Partner Side)
 

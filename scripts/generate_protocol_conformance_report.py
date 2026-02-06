@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Generate protocol conformance report from pytest results."""
 import json
+import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPORT_DIR = ROOT / "reports"
+REPORT_DIR = Path(os.getenv("SARDIS_REPORT_DIR", str(ROOT / "reports")))
 REPORT_PATH = REPORT_DIR / "protocol-conformance-report.md"
 
 
@@ -21,27 +23,112 @@ def get_git_sha() -> str:
         return "unknown"
 
 
+def _pytest_supports_json_report() -> bool:
+    """Return True if current pytest environment supports --json-report."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "--help"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return "--json-report" in (result.stdout or "")
+    except Exception:
+        return False
+
+
+def _build_fallback_report(pytest_output: str, returncode: int) -> dict:
+    """
+    Build a minimal report structure when pytest-json-report is unavailable.
+
+    This keeps report generation resilient in local/dev environments.
+    """
+    test_line = re.compile(r"^(?P<nodeid>\S+::\S+)\s+(?P<outcome>PASSED|FAILED|SKIPPED)\b", re.MULTILINE)
+    tests = []
+    for match in test_line.finditer(pytest_output):
+        tests.append(
+            {
+                "nodeid": match.group("nodeid"),
+                "outcome": match.group("outcome").lower(),
+            }
+        )
+
+    output_lower = pytest_output.lower()
+
+    # Prefer pytest summary line counts when available (more reliable than line-level parsing).
+    summary_line = ""
+    for line in output_lower.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("=") and "passed" in stripped:
+            summary_line = stripped
+
+    source = summary_line or output_lower
+
+    def extract_count(label: str) -> int:
+        match = re.search(rf"(\d+)\s+{label}\b", source)
+        return int(match.group(1)) if match else 0
+
+    passed = extract_count("passed")
+    failed = extract_count("failed")
+    skipped = extract_count("skipped")
+    errors = extract_count("error")
+    if errors == 0:
+        errors = extract_count("errors")
+    if errors == 0 and returncode not in (0, 1, 5):
+        errors = 1
+
+    return {
+        "summary": {
+            "total": passed + failed + skipped + errors,
+            "passed": passed,
+            "failed": failed,
+            "skipped": skipped,
+            "error": errors,
+        },
+        "tests": tests,
+    }
+
+
 def run_tests() -> dict:
     """Run protocol conformance tests and return JSON report."""
     report_file = "/tmp/protocol-report.json"
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "-m",
-            "protocol_conformance",
-            "tests/",
-            "packages/sardis-ucp/tests/",
-            "--json-report",
-            f"--json-report-file={report_file}",
-            "-v",
-            "--tb=short",
-        ],
+    supports_json_report = _pytest_supports_json_report()
+    env = os.environ.copy()
+    env.setdefault("SARDIS_ENVIRONMENT", "dev")
+    env.setdefault("SARDIS_SECRET_KEY", "test-secret-key-for-ci-only-32chars")
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-m",
+        "protocol_conformance",
+        "tests/",
+        "--ignore=tests/integration",
+        "--ignore=tests/e2e",
+        "--strict-markers",
+        "-v",
+        "--tb=short",
+    ]
+    if supports_json_report:
+        cmd.extend(["--json-report", f"--json-report-file={report_file}"])
+
+    result = subprocess.run(
+        cmd,
         cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    with open(report_file) as f:
-        return json.load(f)
+    output = f"{result.stdout}\n{result.stderr}"
+
+    if supports_json_report and Path(report_file).exists():
+        with open(report_file) as f:
+            return json.load(f)
+
+    return _build_fallback_report(output, result.returncode)
 
 
 def classify_protocol(test_name: str) -> str:
@@ -216,10 +303,17 @@ def main():
     print("Generating report...")
     report = generate_report(data)
 
-    REPORT_DIR.mkdir(exist_ok=True)
-    REPORT_PATH.write_text(report)
+    output_path = REPORT_PATH
+    try:
+        REPORT_DIR.mkdir(exist_ok=True, parents=True)
+    except PermissionError:
+        fallback_dir = Path("/tmp/sardis-reports")
+        fallback_dir.mkdir(exist_ok=True, parents=True)
+        output_path = fallback_dir / "protocol-conformance-report.md"
+        print(f"Warning: cannot write to {REPORT_DIR}; using fallback {fallback_dir}")
 
-    print(f"Report written to {REPORT_PATH}")
+    output_path.write_text(report)
+    print(f"Report written to {output_path}")
 
     # Exit with appropriate code
     summary = data.get("summary", {})

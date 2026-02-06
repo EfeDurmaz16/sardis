@@ -33,15 +33,37 @@ python3 -m pytest -q "$PY_SDK_DIR/tests"
 echo "[3/5] Running protocol conformance suite"
 python3 -m pytest -m protocol_conformance \
   "$ROOT_DIR/tests/" \
-  "$ROOT_DIR/packages/sardis-ucp/tests/" \
+  --ignore="$ROOT_DIR/tests/integration" \
+  --ignore="$ROOT_DIR/tests/e2e" \
   --strict-markers \
   -v --tb=short \
   2>&1 | tee /tmp/protocol-results.txt
 
-# Count results
-PASSED=$(grep -c "PASSED" /tmp/protocol-results.txt || true)
-FAILED=$(grep -c "FAILED" /tmp/protocol-results.txt || true)
-SKIPPED=$(grep -c "SKIPPED" /tmp/protocol-results.txt || true)
+# Count results from pytest summary (fallback to 0 if missing).
+read -r PASSED FAILED SKIPPED <<<"$(python3 - <<'PY'
+import re
+from pathlib import Path
+
+text = Path("/tmp/protocol-results.txt").read_text().lower()
+
+summary_line = ""
+for line in text.splitlines():
+    stripped = line.strip()
+    if stripped.startswith("=") and "passed" in stripped:
+        summary_line = stripped
+
+def extract_count(label: str, source: str) -> int:
+    match = re.search(rf"(\d+)\s+{label}\b", source)
+    return int(match.group(1)) if match else 0
+
+source = summary_line or text
+
+passed = extract_count("passed", source)
+failed = extract_count("failed", source) + extract_count("error", source)
+skipped = extract_count("skipped", source)
+print(f"{passed} {failed} {skipped}")
+PY
+)"
 
 echo "Protocol conformance: $PASSED passed, $FAILED failed, $SKIPPED skipped"
 

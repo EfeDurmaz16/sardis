@@ -132,11 +132,18 @@ jobs:
           SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
           SARDIS_ENVIRONMENT: dev
         run: |
-          pytest -m protocol_conformance tests/ packages/sardis-ucp/tests/ \
+          pytest -m protocol_conformance tests/ \
+            --ignore=tests/integration \
+            --ignore=tests/e2e \
+            --strict-markers \
             -v --tb=short \
             --cov=sardis_protocol --cov=sardis_ucp \
             --cov-report=xml --cov-report=term-missing \
             --json-report --json-report-file=protocol-report.json
+          (
+            cd packages/sardis-ucp
+            PYTHONPATH=src pytest -q tests
+          )
 
       - name: Enforce protocol coverage threshold
         run: |
