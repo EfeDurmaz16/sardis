@@ -56,6 +56,11 @@ class PaymentMandate(MandateBase):
     amount_minor: int
     destination: str
     audit_hash: str
+    # AP2 ecosystem visibility signals:
+    # - agent presence should always be explicit
+    # - modality distinguishes human-present vs human-not-present flows
+    ai_agent_presence: bool = True
+    transaction_modality: Literal["human_present", "human_not_present"] = "human_present"
     # Execution-only hint (not part of AP2 signature payload).
     # When present, chain executors should use this to select the signing wallet.
     wallet_id: str | None = None

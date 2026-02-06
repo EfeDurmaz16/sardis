@@ -103,6 +103,10 @@ class MandateVerifier:
             return MandateChainVerification(False, "cart_invalid_type")
         if payment.mandate_type != "payment" or payment.purpose != "checkout":
             return MandateChainVerification(False, "payment_invalid_type")
+        if payment.ai_agent_presence is not True:
+            return MandateChainVerification(False, "payment_agent_presence_required")
+        if payment.transaction_modality not in {"human_present", "human_not_present"}:
+            return MandateChainVerification(False, "payment_invalid_modality")
 
         for mandate in (intent, cart, payment):
             if mandate.is_expired():
@@ -236,5 +240,7 @@ class MandateVerifier:
             mandate.destination,
             mandate.merchant_domain or "",
             mandate.audit_hash,
+            "1" if mandate.ai_agent_presence else "0",
+            mandate.transaction_modality,
         ]
         return "|".join(fields).encode()

@@ -27,6 +27,25 @@ from .rate_limiter import (
     get_rate_limiter,
     create_rate_limiter,
 )
+from .tap import (
+    TAP_ALLOWED_TAGS,
+    TAP_MAX_TIME_WINDOW_SECONDS,
+    TAP_ALLOWED_MESSAGE_ALGS,
+    TAP_ALLOWED_OBJECT_ALGS,
+    TapSignatureInput,
+    TapVerificationResult,
+    parse_signature_input,
+    parse_signature_header,
+    build_signature_base,
+    build_object_signature_base,
+    validate_tap_headers,
+    validate_agentic_consumer_object,
+    validate_agentic_payment_container,
+)
+from .tap_keys import (
+    select_jwk_by_kid,
+    verify_signature_with_jwk,
+)
 
 __all__ = [
     # Schemas
@@ -59,4 +78,20 @@ __all__ = [
     "RateLimitResult",
     "get_rate_limiter",
     "create_rate_limiter",
+    # TAP helpers
+    "TAP_ALLOWED_TAGS",
+    "TAP_MAX_TIME_WINDOW_SECONDS",
+    "TAP_ALLOWED_MESSAGE_ALGS",
+    "TAP_ALLOWED_OBJECT_ALGS",
+    "TapSignatureInput",
+    "TapVerificationResult",
+    "parse_signature_input",
+    "parse_signature_header",
+    "build_signature_base",
+    "build_object_signature_base",
+    "validate_tap_headers",
+    "validate_agentic_consumer_object",
+    "validate_agentic_payment_container",
+    "select_jwk_by_kid",
+    "verify_signature_with_jwk",
 ]
