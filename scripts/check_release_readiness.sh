@@ -38,4 +38,9 @@ fi
 echo "[release-readiness] Running Python SDK + protocol checks"
 "$ROOT_DIR/scripts/check_python_release_readiness.sh"
 
+echo "[release-readiness] Verifying design partner checklist (engineering scope)"
+python3 "$ROOT_DIR/scripts/check_design_partner_readiness.py" \
+  --scope engineering \
+  --file "$ROOT_DIR/docs/design-partner/staging-hardening-checklist.json"
+
 echo "[release-readiness] Completed"
