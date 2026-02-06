@@ -162,9 +162,6 @@ function App() {
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
               STAGING / TESTNET READY
             </Badge>
-            <Badge variant="outline" className="mr-3 border-cyan-600 text-cyan-600 dark:text-cyan-400 dark:border-cyan-400 bg-transparent px-3 py-1 rounded-none">
-              191/191 PROTOCOL TESTS PASSING
-            </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
             </Button>
@@ -962,7 +959,7 @@ const payment = await ramp.payMerchantFiat({
             {[
               { label: "INFRASTRUCTURE", value: "Live on Base Sepolia", sub: "Contracts deployed" },
               { label: "COMPLETION", value: "97%", sub: "Production Ready" },
-              { label: "PROTOCOLS", value: "13 Integrations", sub: "5 chains • 8 services" }
+              { label: "PROTOCOLS", value: "AP2 • TAP • UCP • A2A • x402", sub: "5 chains • protocol-native stack" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>
