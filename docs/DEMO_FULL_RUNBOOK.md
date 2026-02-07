@@ -7,6 +7,24 @@ Bu runbook’ta “gönderen Sardis değil, **AI agent**” olacak şekilde iler
 
 > Not: Kart satın alımı demo’da **simulated purchase** ile gösterilebilir. Stablecoin tarafında ise Base Sepolia’da **gerçek tx** gösterebiliriz.
 
+## Quick Investor Demo (recommended)
+
+Tek komutla uçtan uca akış + transcript artifact üretmek için:
+
+```bash
+python3 scripts/investor_demo_flow.py \
+  --api-url http://localhost:8000 \
+  --mode hybrid-live \
+  --chain base_sepolia
+```
+
+Çıktılar:
+- `artifacts/investor-demo/investor-demo-<run-id>.json`
+- `artifacts/investor-demo/investor-demo-<run-id>.md`
+
+Voiceover timeline/script:
+- `docs/release/investor-demo-voiceover-script.md`
+
 ## Required env vars (demo)
 
 Core:

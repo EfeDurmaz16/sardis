@@ -16,6 +16,10 @@ This flow is the engineering reference for design partners using Sardis in pre-p
 ## 2) Developer Setup (Partner Side)
 
 1. Bootstrap MCP:
+   - Recommended one-click identity:
+     - `POST /api/v2/agents/{agent_id}/payment-identity`
+     - then:
+       `npx @sardis/mcp-server init --mode live --api-url <staging-url> --api-key <partner-key> --payment-identity <identity-id>`
    - `npx @sardis/mcp-server init --mode simulated`
    - or live staging:
      `npx @sardis/mcp-server init --mode live --api-url <staging-url> --api-key <partner-key>`
@@ -30,6 +34,7 @@ This flow is the engineering reference for design partners using Sardis in pre-p
    - allowed payment (within limits)
    - blocked payment (merchant/category/limit deny)
    - above-threshold payment (must return approval-required path)
+   - verify deterministic `reason_code` + `decision` envelope in MCP JSON response
 
 ## 3) CFO / FinOps Policy Flow
 
@@ -66,13 +71,14 @@ This flow is the engineering reference for design partners using Sardis in pre-p
 ## 6) Minimum Engineering Exit Gates
 
 1. Policy parsing + enforcement deterministic for limit/merchant/approval.
-2. AP2 approval-required path creates approval records.
-3. Python SDK tests are green.
-4. Protocol smoke negatives are green:
+2. MCP payment + policy outputs include deterministic `reason_code` and decision envelope fields.
+3. AP2 approval-required path creates approval records.
+4. Python SDK tests are green.
+5. Protocol smoke negatives are green:
    - AP2 malformed payload rejection
    - AP2 merchant-domain binding checks
    - TAP signature-input/tag/timestamp/nonce checks
    - payment method parsing (stablecoin/card/x402/bank)
-5. MCP `init` flow works even in constrained local environments.
-6. Protocol source mapping is updated against canonical links:
+6. MCP `init` flow works even in constrained local environments.
+7. Protocol source mapping is updated against canonical links:
    - `docs/release/protocol-source-map.md`
