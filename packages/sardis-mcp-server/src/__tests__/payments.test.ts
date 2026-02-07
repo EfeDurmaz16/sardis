@@ -158,6 +158,9 @@ describe('Payment Tools', () => {
         expect(parsed.amount).toBe(50);
         expect(parsed.payment_id).toBeDefined();
         expect(parsed.transaction_hash).toBeDefined();
+        expect(parsed.reason_code).toBe('SARDIS.PAYMENT.APPROVED');
+        expect(parsed.decision).toBeDefined();
+        expect(parsed.decision.outcome).toBe('APPROVED');
       });
 
       it('should reject payment exceeding policy limit', async () => {
@@ -175,6 +178,8 @@ describe('Payment Tools', () => {
         expect(parsed.success).toBe(false);
         expect(parsed.status).toBe('BLOCKED');
         expect(parsed.error).toBe('POLICY_VIOLATION');
+        expect(parsed.reason_code).toBe('SARDIS.POLICY.VIOLATION');
+        expect(parsed.decision.outcome).toBe('BLOCKED');
         expect(parsed.prevention).toContain('Financial Hallucination PREVENTED');
       });
 

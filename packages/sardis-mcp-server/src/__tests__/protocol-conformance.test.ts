@@ -83,6 +83,8 @@ describe('Protocol Conformance', () => {
       expect(parsed1.success).toBe(false);
       expect(parsed1.status).toBe('BLOCKED');
       expect(parsed1.error).toBe('POLICY_VIOLATION');
+      expect(parsed1.reason_code).toBe('SARDIS.POLICY.VIOLATION');
+      expect(parsed1.decision.outcome).toBe('BLOCKED');
       expect(parsed1.prevention).toContain('Financial Hallucination PREVENTED');
 
       // Test 2: Blocked vendor
@@ -96,6 +98,7 @@ describe('Protocol Conformance', () => {
       expect(parsed2.success).toBe(false);
       expect(parsed2.status).toBe('BLOCKED');
       expect(parsed2.error).toBe('POLICY_VIOLATION');
+      expect(parsed2.reason_code).toBe('SARDIS.POLICY.VIOLATION');
     });
   });
 
@@ -136,6 +139,8 @@ describe('Protocol Conformance', () => {
       // Test 3: Deterministic risk scores
       expect(parsed1.risk_score).toBe(0.8); // Failed checks have 0.8 risk
       expect(parsed2.risk_score).toBe(0.8); // Consistent risk scoring
+      expect(parsed1.reason_code).toMatch(/^SARDIS\.POLICY\./);
+      expect(parsed1.decision).toBeDefined();
     });
 
     it('payment fails closed on policy check error', async () => {
@@ -154,6 +159,8 @@ describe('Protocol Conformance', () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.success).toBe(false);
       expect(parsed.status).toBe('BLOCKED');
+      expect(parsed.reason_code).toBe('SARDIS.POLICY.CHECK_FAILED');
+      expect(parsed.decision.outcome).toBe('BLOCKED');
 
     });
   });

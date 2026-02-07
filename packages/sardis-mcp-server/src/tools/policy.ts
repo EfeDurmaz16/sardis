@@ -28,6 +28,52 @@ interface ComplianceResult {
   risk_level: 'low' | 'medium' | 'high';
 }
 
+interface PolicyDecisionEnvelope {
+  decision_id: string;
+  outcome: 'APPROVED' | 'BLOCKED';
+  reason_code: string;
+  reason: string;
+  context: {
+    agent_id: string | null;
+    wallet_id: string | null;
+    chain: string;
+    mode: 'live' | 'simulated';
+    payment_identity_id: string | null;
+  };
+}
+
+function derivePolicyReasonCode(result: PolicyResult): string {
+  if (result.allowed) return 'SARDIS.POLICY.ALLOW';
+  const checks = result.checks || [];
+  if (checks.some((c) => c.name === 'per_transaction_limit' && !c.passed)) {
+    return 'SARDIS.POLICY.LIMIT_EXCEEDED';
+  }
+  if (checks.some((c) => c.name === 'vendor_allowlist' && !c.passed)) {
+    return 'SARDIS.POLICY.VENDOR_BLOCKED';
+  }
+  if (checks.some((c) => c.name === 'category_check' && !c.passed)) {
+    return 'SARDIS.POLICY.CATEGORY_BLOCKED';
+  }
+  return 'SARDIS.POLICY.DENY';
+}
+
+function buildPolicyDecision(result: PolicyResult): PolicyDecisionEnvelope {
+  const config = getConfig();
+  return {
+    decision_id: `dec_pol_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+    outcome: result.allowed ? 'APPROVED' : 'BLOCKED',
+    reason_code: derivePolicyReasonCode(result),
+    reason: result.reason || (result.allowed ? 'Allowed by policy' : 'Blocked by policy'),
+    context: {
+      agent_id: config.agentId || null,
+      wallet_id: config.walletId || null,
+      chain: config.chain,
+      mode: config.mode,
+      payment_identity_id: process.env.SARDIS_PAYMENT_IDENTITY || null,
+    },
+  };
+}
+
 /**
  * Check policy via API or local validation
  */
@@ -334,6 +380,7 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
 
     const { vendor, amount, category } = parsed.data;
     const result = await checkPolicy(vendor, amount, category);
+    const decision = buildPolicyDecision(result);
 
     return {
       content: [
@@ -346,8 +393,10 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
               category: category || 'unspecified',
               allowed: result.allowed,
               reason: result.reason,
+              reason_code: decision.reason_code,
               risk_score: result.risk_score,
               checks: result.checks,
+              decision,
             },
             null,
             2

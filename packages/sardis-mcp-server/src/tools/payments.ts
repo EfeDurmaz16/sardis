@@ -39,6 +39,48 @@ interface LedgerEntry {
   created_at: string;
 }
 
+interface DecisionEnvelope {
+  decision_id: string;
+  outcome: 'APPROVED' | 'BLOCKED' | 'ERROR';
+  reason_code: string;
+  reason: string;
+  policy_ref?: string;
+  context: {
+    agent_id: string | null;
+    wallet_id: string | null;
+    chain: string;
+    mode: 'live' | 'simulated';
+    payment_identity_id: string | null;
+  };
+}
+
+function buildDecisionEnvelope(input: {
+  outcome: DecisionEnvelope['outcome'];
+  reason_code: string;
+  reason: string;
+  chain: string;
+  payment_id?: string;
+}): DecisionEnvelope {
+  const config = getConfig();
+  const decisionId = input.payment_id
+    ? `dec_${input.payment_id}`
+    : `dec_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+  return {
+    decision_id: decisionId,
+    outcome: input.outcome,
+    reason_code: input.reason_code,
+    reason: input.reason,
+    context: {
+      agent_id: config.agentId || null,
+      wallet_id: config.walletId || null,
+      chain: input.chain,
+      mode: config.mode,
+      payment_identity_id: process.env.SARDIS_PAYMENT_IDENTITY || null,
+    },
+  };
+}
+
 /**
  * Execute payment mandate via API
  */
@@ -286,6 +328,14 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
     try {
       policyResult = await checkPolicy(vendor, amount);
     } catch (error) {
+      const config = getConfig();
+      const reason = error instanceof Error ? error.message : 'Policy check failed';
+      const decision = buildDecisionEnvelope({
+        outcome: 'BLOCKED',
+        reason_code: 'SARDIS.POLICY.CHECK_FAILED',
+        reason,
+        chain: config.chain,
+      });
       return {
         content: [
           {
@@ -295,7 +345,9 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
                 success: false,
                 status: 'BLOCKED',
                 error: 'POLICY_CHECK_FAILED',
-                message: error instanceof Error ? error.message : 'Policy check failed',
+                message: reason,
+                reason_code: decision.reason_code,
+                decision,
                 prevention: 'Financial Hallucination PREVENTED',
               },
               null,
@@ -308,6 +360,14 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
     }
 
     if (!policyResult.allowed) {
+      const config = getConfig();
+      const reason = policyResult.reason || 'Blocked by policy';
+      const decision = buildDecisionEnvelope({
+        outcome: 'BLOCKED',
+        reason_code: 'SARDIS.POLICY.VIOLATION',
+        reason,
+        chain: config.chain,
+      });
       return {
         content: [
           {
@@ -317,9 +377,11 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
                 success: false,
                 status: 'BLOCKED',
                 error: 'POLICY_VIOLATION',
-                message: policyResult.reason,
+                message: reason,
+                reason_code: decision.reason_code,
                 risk_score: policyResult.risk_score,
                 checks: policyResult.checks,
+                decision,
                 prevention: 'Financial Hallucination PREVENTED',
               },
               null,
@@ -339,6 +401,13 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
         vendorAddress,
         token || 'USDC'
       );
+      const decision = buildDecisionEnvelope({
+        outcome: 'APPROVED',
+        reason_code: 'SARDIS.PAYMENT.APPROVED',
+        reason: 'Payment approved and submitted',
+        chain: result.chain,
+        payment_id: result.payment_id,
+      });
 
       return {
         content: [
@@ -357,6 +426,8 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
                 chain: result.chain,
                 ledger_tx_id: result.ledger_tx_id,
                 audit_anchor: result.audit_anchor,
+                reason_code: decision.reason_code,
+                decision,
                 message: `Payment of $${amount} ${token || 'USDC'} to ${vendor} completed.`,
               },
               null,
@@ -373,6 +444,13 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
         errorMessage.toLowerCase().includes('blocked') ||
         errorMessage.toLowerCase().includes('limit')
       ) {
+        const config = getConfig();
+        const decision = buildDecisionEnvelope({
+          outcome: 'BLOCKED',
+          reason_code: 'SARDIS.POLICY.VIOLATION',
+          reason: errorMessage,
+          chain: config.chain,
+        });
         return {
           content: [
             {
@@ -383,6 +461,8 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
                   status: 'BLOCKED',
                   error: 'POLICY_VIOLATION',
                   message: errorMessage,
+                  reason_code: decision.reason_code,
+                  decision,
                   prevention: 'Financial Hallucination PREVENTED',
                 },
                 null,
@@ -394,11 +474,29 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
         };
       }
 
+      const config = getConfig();
+      const decision = buildDecisionEnvelope({
+        outcome: 'ERROR',
+        reason_code: 'SARDIS.PAYMENT.EXECUTION_FAILED',
+        reason: errorMessage,
+        chain: config.chain,
+      });
       return {
         content: [
           {
             type: 'text',
-            text: `Payment execution failed: ${errorMessage}`,
+            text: JSON.stringify(
+              {
+                success: false,
+                status: 'ERROR',
+                error: 'PAYMENT_EXECUTION_FAILED',
+                message: errorMessage,
+                reason_code: decision.reason_code,
+                decision,
+              },
+              null,
+              2
+            ),
           },
         ],
         isError: true,

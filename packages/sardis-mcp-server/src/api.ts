@@ -16,6 +16,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const config = getConfig();
   const url = `${config.apiUrl}${path.startsWith('/') ? path : '/' + path}`;
+  const paymentIdentity = process.env.SARDIS_PAYMENT_IDENTITY;
 
   const response = await fetch(url, {
     method,
@@ -23,6 +24,7 @@ export async function apiRequest<T>(
       'X-API-Key': config.apiKey,
       'Content-Type': 'application/json',
       'User-Agent': 'sardis-mcp-server/0.1.0',
+      ...(paymentIdentity ? { 'X-Sardis-Payment-Identity': paymentIdentity } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
