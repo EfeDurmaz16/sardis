@@ -1,7 +1,13 @@
 """Agent API endpoints."""
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
+import os
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -79,6 +85,30 @@ class AgentResponse(BaseModel):
         )
 
 
+class CreatePaymentIdentityRequest(BaseModel):
+    """One-click payment identity for MCP bootstrap."""
+
+    ttl_seconds: int = Field(default=86400, ge=300, le=604800)
+    mode: str = Field(default="live")
+    chain: str = Field(default="base_sepolia")
+    ensure_wallet: bool = Field(
+        default=True,
+        description="Create + bind a wallet if the agent does not have one.",
+    )
+
+
+class PaymentIdentityResponse(BaseModel):
+    payment_identity_id: str
+    agent_id: str
+    wallet_id: str
+    policy_ref: str
+    mode: str
+    chain: str
+    issued_at: str
+    expires_at: str
+    mcp_init_snippet: str
+
+
 # Dependency
 class AgentDependencies:
     def __init__(self, agent_repo: AgentRepository, wallet_repo: WalletRepository):
@@ -88,6 +118,111 @@ class AgentDependencies:
 
 def get_deps() -> AgentDependencies:
     raise NotImplementedError("Dependency override required")
+
+
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(data: str) -> bytes:
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
+def _identity_secret() -> str:
+    return (
+        os.getenv("SARDIS_SECRET_KEY")
+        or os.getenv("SECRET_KEY")
+        or "sardis-dev-insecure-secret"
+    )
+
+
+def _sign_identity_payload(payload_b64: str) -> str:
+    digest = hmac.new(
+        _identity_secret().encode("utf-8"),
+        payload_b64.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    return _b64url_encode(digest)
+
+
+def _policy_ref(agent: Agent) -> str:
+    policy_payload = json.dumps(
+        agent.policy.model_dump(),
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    digest = hashlib.sha256(policy_payload.encode("utf-8")).hexdigest()[:16]
+    return f"policy_sha256:{digest}"
+
+
+def _build_payment_identity(
+    *,
+    principal: Principal,
+    agent: Agent,
+    wallet_id: str,
+    ttl_seconds: int,
+    mode: str,
+    chain: str,
+) -> PaymentIdentityResponse:
+    issued_at = datetime.now(timezone.utc)
+    expires_at = issued_at + timedelta(seconds=ttl_seconds)
+    payload = {
+        "v": 1,
+        "org_id": principal.organization_id,
+        "agent_id": agent.agent_id,
+        "wallet_id": wallet_id,
+        "policy_ref": _policy_ref(agent),
+        "mode": mode,
+        "chain": chain,
+        "iat": int(issued_at.timestamp()),
+        "exp": int(expires_at.timestamp()),
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    payload_b64 = _b64url_encode(payload_json.encode("utf-8"))
+    signature_b64 = _sign_identity_payload(payload_b64)
+    payment_identity_id = f"spi_{payload_b64}.{signature_b64}"
+
+    return PaymentIdentityResponse(
+        payment_identity_id=payment_identity_id,
+        agent_id=payload["agent_id"],
+        wallet_id=payload["wallet_id"],
+        policy_ref=payload["policy_ref"],
+        mode=payload["mode"],
+        chain=payload["chain"],
+        issued_at=issued_at.isoformat(),
+        expires_at=expires_at.isoformat(),
+        mcp_init_snippet=(
+            "npx @sardis/mcp-server init "
+            f"--mode {mode} --api-url <API_URL> --api-key <API_KEY> "
+            f"--payment-identity {payment_identity_id}"
+        ),
+    )
+
+
+def _decode_payment_identity(payment_identity_id: str) -> dict:
+    if not payment_identity_id.startswith("spi_"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment identity format")
+    token = payment_identity_id[4:]
+    try:
+        payload_b64, signature_b64 = token.split(".", 1)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed payment identity") from exc
+
+    expected = _sign_identity_payload(payload_b64)
+    if not hmac.compare_digest(expected, signature_b64):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid payment identity signature")
+
+    try:
+        payload = json.loads(_b64url_decode(payload_b64))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment identity payload") from exc
+
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    if int(payload.get("exp", 0)) < now_ts:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Payment identity expired")
+    return payload
 
 
 # Endpoints
@@ -242,6 +377,103 @@ async def delete_agent(
     deleted = await deps.agent_repo.delete(agent_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+
+@router.post("/{agent_id}/payment-identity", response_model=PaymentIdentityResponse)
+async def create_payment_identity(
+    agent_id: str,
+    request: CreatePaymentIdentityRequest,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """
+    Create a signed payment identity used by MCP bootstrap.
+
+    This endpoint provides the "one-click" artifact a developer can pass to:
+      npx @sardis/mcp-server init --payment-identity <id>
+    """
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    wallet_id = agent.wallet_id
+    if not wallet_id and request.ensure_wallet:
+        wallet = await deps.wallet_repo.create(
+            agent_id=agent.agent_id,
+            mpc_provider="turnkey",
+            currency="USDC",
+            limit_per_tx=agent.spending_limits.per_transaction,
+            limit_total=agent.spending_limits.total,
+        )
+        wallet_id = wallet.wallet_id
+        await deps.agent_repo.bind_wallet(agent.agent_id, wallet_id)
+        agent.wallet_id = wallet_id
+
+    if not wallet_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Agent has no wallet. Bind or create a wallet before creating payment identity.",
+        )
+
+    return _build_payment_identity(
+        principal=principal,
+        agent=agent,
+        wallet_id=wallet_id,
+        ttl_seconds=request.ttl_seconds,
+        mode=request.mode,
+        chain=request.chain,
+    )
+
+
+@router.get("/payment-identities/{payment_identity_id}", response_model=PaymentIdentityResponse)
+async def resolve_payment_identity(
+    payment_identity_id: str,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Resolve a signed payment identity for MCP initialization."""
+    payload = _decode_payment_identity(payment_identity_id)
+
+    payload_org = str(payload.get("org_id", ""))
+    if not principal.is_admin and payload_org != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    agent_id = str(payload.get("agent_id", ""))
+    wallet_id = str(payload.get("wallet_id", ""))
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    wallet = await deps.wallet_repo.get(wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+
+    issued_at = datetime.fromtimestamp(int(payload.get("iat", 0)), tz=timezone.utc)
+    expires_at = datetime.fromtimestamp(int(payload.get("exp", 0)), tz=timezone.utc)
+
+    mode = str(payload.get("mode") or "live")
+    chain = str(payload.get("chain") or "base_sepolia")
+    policy_ref = str(payload.get("policy_ref") or _policy_ref(agent))
+
+    return PaymentIdentityResponse(
+        payment_identity_id=payment_identity_id,
+        agent_id=agent_id,
+        wallet_id=wallet_id,
+        policy_ref=policy_ref,
+        mode=mode,
+        chain=chain,
+        issued_at=issued_at.isoformat(),
+        expires_at=expires_at.isoformat(),
+        mcp_init_snippet=(
+            "npx @sardis/mcp-server init "
+            f"--mode {mode} --api-url <API_URL> --api-key <API_KEY> "
+            f"--payment-identity {payment_identity_id}"
+        ),
+    )
 
 
 @router.post("/{agent_id}/wallet", response_model=AgentResponse)

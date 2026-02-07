@@ -22,6 +22,7 @@ interface InitOptions {
   mode: InitMode;
   apiUrl: string;
   apiKey: string;
+  paymentIdentity: string;
   agentId: string;
   agentName: string;
   walletId: string;
@@ -85,6 +86,7 @@ ENVIRONMENT VARIABLES:
   SARDIS_API_KEY     Your Sardis API key (optional for simulated mode)
   SARDIS_WALLET_ID   Default wallet ID
   SARDIS_AGENT_ID    Agent ID for this connection
+  SARDIS_PAYMENT_IDENTITY  Signed one-click identity for MCP bootstrap
   SARDIS_MODE        'live' or 'simulated' (default: simulated)
 
 LEARN MORE:
@@ -123,6 +125,8 @@ function parseInitOptions(argv: string[]): InitOptions {
     mode,
     apiUrl: (readArgValue(argv, 'api-url') || process.env.SARDIS_API_URL || 'https://api.sardis.network').replace(/\/$/, ''),
     apiKey: readArgValue(argv, 'api-key') || process.env.SARDIS_API_KEY || '',
+    paymentIdentity:
+      readArgValue(argv, 'payment-identity') || process.env.SARDIS_PAYMENT_IDENTITY || '',
     agentId: readArgValue(argv, 'agent-id') || process.env.SARDIS_AGENT_ID || '',
     agentName: readArgValue(argv, 'agent-name') || `Sardis MCP Agent ${new Date().toISOString().slice(0, 10)}`,
     walletId: readArgValue(argv, 'wallet-id') || process.env.SARDIS_WALLET_ID || '',
@@ -199,17 +203,44 @@ function randomId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
 
+interface PaymentIdentityResolveResponse {
+  payment_identity_id: string;
+  agent_id: string;
+  wallet_id: string;
+  policy_ref?: string;
+  mode?: InitMode;
+  chain?: string;
+  issued_at?: string;
+  expires_at?: string;
+  mcp_init_snippet?: string;
+}
+
 async function runInit(argv: string[]) {
   const options = parseInitOptions(argv);
   const outputFile = path.resolve(process.cwd(), options.output);
 
   let agentId = options.agentId;
   let walletId = options.walletId;
+  let chain = options.chain;
   let cardId: string | null = null;
   const warnings: string[] = [];
 
   if (options.mode === 'live' && options.apiKey) {
     try {
+      if (options.paymentIdentity) {
+        const identity = await apiRequestWithKey<PaymentIdentityResolveResponse>(
+          options.apiUrl,
+          options.apiKey,
+          'GET',
+          `/api/v2/agents/payment-identities/${encodeURIComponent(options.paymentIdentity)}`
+        );
+        agentId = agentId || identity.agent_id || '';
+        walletId = walletId || identity.wallet_id || '';
+        if (identity.chain && !readArgValue(argv, 'chain') && !process.env.SARDIS_CHAIN) {
+          chain = identity.chain;
+        }
+      }
+
       if (!agentId) {
         const createdAgent = await apiRequestWithKey<{ agent_id?: string; id?: string }>(
           options.apiUrl,
@@ -268,8 +299,9 @@ async function runInit(argv: string[]) {
     SARDIS_API_URL: options.apiUrl,
     SARDIS_AGENT_ID: agentId,
     SARDIS_WALLET_ID: walletId,
-    SARDIS_CHAIN: options.chain,
+    SARDIS_CHAIN: chain,
     SARDIS_MODE: options.mode,
+    SARDIS_PAYMENT_IDENTITY: options.paymentIdentity,
   });
 
   console.log('Sardis MCP initialization complete.');
@@ -277,6 +309,7 @@ async function runInit(argv: string[]) {
   console.log(`Mode: ${options.mode}`);
   console.log(`Agent ID: ${agentId}`);
   console.log(`Wallet ID: ${walletId}`);
+  console.log(`Chain: ${chain}`);
   if (cardId) {
     console.log(`Card ID: ${cardId}`);
   }
