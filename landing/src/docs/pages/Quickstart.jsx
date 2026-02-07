@@ -59,6 +59,47 @@ export default function DocsQuickstart() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Product Demo Route
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Use <code className="px-1 py-0.5 bg-muted font-mono text-sm">/demo</code> for pitch and design-partner walkthroughs.
+        </p>
+
+        <div className="not-prose grid md:grid-cols-2 gap-4 mb-4">
+          <div className="p-4 border border-border">
+            <h3 className="font-bold font-display mb-2">Simulated (Public)</h3>
+            <p className="text-sm text-muted-foreground">
+              No secrets required. Safe for public links and first-touch demos.
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h3 className="font-bold font-display mb-2">Live (Private)</h3>
+            <p className="text-sm text-muted-foreground">
+              Requires server env vars and operator password gate. Never expose keys client-side.
+            </p>
+          </div>
+        </div>
+
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# Landing (server-side env)
+SARDIS_API_URL=https://api-staging.sardis.sh
+SARDIS_API_KEY=sk_live_...
+DEMO_OPERATOR_PASSWORD=<shared-password>
+
+# Optional for richer live flow
+DEMO_LIVE_AGENT_ID=agent_demo_01
+DEMO_LIVE_CARD_ID=vc_demo_01`}</pre>
+          </div>
+        </div>
+
+        <p className="text-muted-foreground mt-4 text-sm">
+          Private runbook: <code className="px-1 py-0.5 bg-muted font-mono text-sm">docs/release/investor-demo-operator-kit.md</code>
+        </p>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Local Engineering Readiness (Repo)
         </h2>
         <p className="text-muted-foreground mb-4">

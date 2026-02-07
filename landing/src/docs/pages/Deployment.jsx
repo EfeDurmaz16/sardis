@@ -15,6 +15,35 @@ export default function DocsDeployment() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Recommended Topology
+        </h2>
+
+        <div className="not-prose grid md:grid-cols-2 gap-4">
+          <div className="p-4 border border-border">
+            <h3 className="font-bold font-display mb-2">Landing + Demo UI</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Deploy on Vercel so <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-auth</code>,{' '}
+              <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-proxy</code>, and{' '}
+              <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-events</code> work.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Live mode will not work on static-only hosting.
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h3 className="font-bold font-display mb-2">Sardis API</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Deploy separately (Railway/Fly/Render/Koyeb) with Postgres and partner provider credentials.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Landing should call this backend via server-side proxy using <code className="px-1 py-0.5 bg-muted font-mono text-xs">SARDIS_API_KEY</code>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Prerequisites
         </h2>
 
@@ -178,7 +207,15 @@ vercel login
 vercel --prod
 
 # Configure domain
-vercel domains add sardis.sh`}</pre>
+vercel domains add sardis.sh
+
+# Required env vars for /demo live mode
+vercel env add SARDIS_API_URL production
+vercel env add SARDIS_API_KEY production
+vercel env add DEMO_OPERATOR_PASSWORD production
+
+# Optional telemetry
+vercel env add DATABASE_URL production`}</pre>
           </div>
         </div>
       </section>

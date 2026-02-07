@@ -46,6 +46,7 @@ const navigation = [
       { name: 'Architecture', href: '/docs/architecture' },
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
+      { name: 'Deployment', href: '/docs/deployment' },
       { name: 'FAQ', href: '/docs/faq' },
       { name: 'Blog', href: '/docs/blog' },
       { name: 'Changelog', href: '/docs/changelog' },
