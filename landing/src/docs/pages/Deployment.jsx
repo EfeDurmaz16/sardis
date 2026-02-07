@@ -240,6 +240,23 @@ vercel env add DATABASE_URL production`}</pre>
         </div>
       </section>
 
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Demo Smoke Test
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          After deployment, run the live demo readiness check:
+        </p>
+
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`LANDING_BASE_URL="https://sardis.sh" \\
+DEMO_OPERATOR_PASSWORD="<shared-password>" \\
+bash ./scripts/check_demo_deploy_readiness.sh`}</pre>
+          </div>
+        </div>
+      </section>
+
       <section className="not-prose p-6 border border-border bg-muted/30">
         <h3 className="font-bold font-display mb-2">Production Checklist</h3>
         <ul className="space-y-2">

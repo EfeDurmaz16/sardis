@@ -51,7 +51,15 @@ npx @sardis/mcp-server init \
 - `artifacts/investor-demo/investor-demo-<run-id>.json`
 - `artifacts/investor-demo/investor-demo-<run-id>.md`
 
-## 4) How To Create The 3 Required Variables
+## 4) Post-Deploy Live Demo Smoke Test
+
+```bash
+LANDING_BASE_URL="https://sardis.sh" \
+DEMO_OPERATOR_PASSWORD="<shared-password>" \
+bash ./scripts/check_demo_deploy_readiness.sh
+```
+
+## 5) How To Create The 3 Required Variables
 
 1. `SARDIS_API_URL`
    Use your staging API deployment URL. Confirm `GET ${SARDIS_API_URL}/health` or `/api/v2/metrics/health` returns 200.

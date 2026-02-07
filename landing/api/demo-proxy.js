@@ -19,16 +19,36 @@ function bodyOf(req) {
 }
 
 function getConfig() {
+  const rawBase = String(process.env.SARDIS_API_URL || '').trim();
+  let normalizedBase = rawBase.replace(/\/+$/, '');
+  let invalidBaseUrl = false;
+  if (normalizedBase) {
+    try {
+      new URL(normalizedBase);
+    } catch {
+      invalidBaseUrl = true;
+      normalizedBase = '';
+    }
+  }
   return {
-    baseUrl: String(process.env.SARDIS_API_URL || '').replace(/\/+$/, ''),
+    baseUrl: normalizedBase,
     apiKey: String(process.env.SARDIS_API_KEY || ''),
     defaultAgentId: String(process.env.DEMO_LIVE_AGENT_ID || ''),
     defaultCardId: String(process.env.DEMO_LIVE_CARD_ID || ''),
+    invalidBaseUrl,
   };
 }
 
 async function requestSardis(path, { method = 'GET', body, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
-  const { baseUrl, apiKey } = getConfig();
+  const { baseUrl, apiKey, invalidBaseUrl } = getConfig();
+  if (invalidBaseUrl) {
+    return {
+      ok: false,
+      status: 503,
+      error: 'sardis_api_url_invalid',
+      detail: 'SARDIS_API_URL must be a valid absolute URL (e.g. https://api-staging.sardis.sh)',
+    };
+  }
   if (!baseUrl || !apiKey) {
     return {
       ok: false,
