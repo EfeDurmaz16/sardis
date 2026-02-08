@@ -753,7 +753,14 @@ def create_policy_parser(
         try:
             return NLPolicyParser(api_key=api_key, model=model)
         except (ImportError, ValueError) as e:
-            logger.warning(f"Failed to create LLM parser, falling back to regex: {e}")
+            # SECURITY: Log fallback with error details for forensic review.
+            # Repeated fallbacks may indicate missing config or intentional downgrade.
+            logger.warning(
+                "SECURITY: LLM parser unavailable, falling back to regex. "
+                "error_type=%s error=%s",
+                type(e).__name__,
+                str(e)[:200],
+            )
             return RegexPolicyParser()
     else:
         return RegexPolicyParser()

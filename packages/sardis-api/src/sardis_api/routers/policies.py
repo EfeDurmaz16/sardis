@@ -236,7 +236,21 @@ async def parse_natural_language_policy(
                 return response
 
             except Exception as e:
-                logger.warning(f"LLM parser failed, falling back to regex: {e}")
+                # SECURITY: Structured logging for LLM parser failures.
+                # An attacker may craft input that intentionally crashes the LLM
+                # parser to force the weaker regex fallback path.
+                import hashlib
+                input_hash = hashlib.sha256(
+                    request.natural_language.encode()
+                ).hexdigest()[:16]
+                logger.warning(
+                    "SECURITY: LLM parser failed, falling back to regex. "
+                    "input_hash=%s input_len=%d error_type=%s error=%s",
+                    input_hash,
+                    len(request.natural_language),
+                    type(e).__name__,
+                    str(e)[:200],
+                )
                 # Fall through to regex parser
 
         # Fallback: Use regex parser
