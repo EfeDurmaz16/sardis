@@ -1,7 +1,7 @@
 # Sardis API Server
 # Multi-stage build for production deployment
 
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 
 WORKDIR /app
 
@@ -51,7 +51,7 @@ RUN uv sync --no-dev 2>/dev/null || pip install --no-cache-dir \
     -e packages/sardis-checkout
 
 # Production stage
-FROM python:3.12-slim AS production
+FROM python:3.14-slim AS production
 
 WORKDIR /app
 
