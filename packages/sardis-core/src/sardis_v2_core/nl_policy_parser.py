@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -279,8 +280,26 @@ Extract the policy accurately and completely."""
                 f"Maximum is {NLPolicyParser.MAX_INPUT_LENGTH} characters."
             )
 
+        # SECURITY: Unicode NFKC normalization — converts fullwidth characters
+        # (e.g. ＄ U+FF04 → $), compatibility equivalents, and composed forms
+        # to their canonical representations. This prevents homoglyph attacks
+        # where e.g. "＄99999" bypasses dollar-sign regex but is read as $99999
+        # by the LLM.
+        sanitized = unicodedata.normalize("NFKC", text)
+
+        # SECURITY: Strip Unicode bidirectional override characters.
+        # RLO (U+202E), LRO (U+202D), PDF (U+202C), etc. can reorder displayed
+        # text so "$500" appears as "005$" or vice versa.
+        _BIDI_CHARS = set("\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
+        sanitized = ''.join(ch for ch in sanitized if ch not in _BIDI_CHARS)
+
+        # SECURITY: Strip zero-width characters that can break regex matching
+        # and inject invisible content. E.g. "bl\u200bock" would not match "block".
+        _ZERO_WIDTH = set("\u200b\u200c\u200d\ufeff\u2060")
+        sanitized = ''.join(ch for ch in sanitized if ch not in _ZERO_WIDTH)
+
         # Strip control characters (keep newlines and tabs)
-        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', sanitized)
 
         # Collapse excessive whitespace
         sanitized = re.sub(r'\s{10,}', ' ', sanitized)
