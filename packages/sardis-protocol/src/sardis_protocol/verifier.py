@@ -288,7 +288,7 @@ class MandateVerifier:
             # Only dev/test/local environments are allowed to skip identity verification.
             # Support both legacy SARDIS_ENV and canonical SARDIS_ENVIRONMENT names.
             raw_env = (os.getenv("SARDIS_ENVIRONMENT") or os.getenv("SARDIS_ENV") or "dev").strip().lower()
-            allow_skip = raw_env in {"dev", "test", "local"}
+            allow_skip = raw_env in {"dev", "development", "test", "local"}
             if not allow_skip:
                 raise VerificationError(
                     f"Identity registry required in '{raw_env}' environment. "

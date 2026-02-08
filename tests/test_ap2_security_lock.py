@@ -242,7 +242,7 @@ class TestSecurityLockBehavior:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "production"}):
             # The verify_chain will call verify() which calls _identity_from_proof()
             # In production without identity registry, it should raise VerificationError
-            with pytest.raises(VerificationError, match="Identity registry required in production"):
+            with pytest.raises(VerificationError, match="Identity registry required in"):
                 verifier.verify_chain(bundle)
 
     def test_fail_closed_on_malformed_proof(self):

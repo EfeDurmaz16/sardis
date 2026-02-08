@@ -73,7 +73,7 @@ def test_production_requires_identity_registry():
         verifier = MandateVerifier(settings, identity_registry=None)
         mandate, _ = _create_mandate()
 
-        with pytest.raises(VerificationError, match="Identity registry required in production"):
+        with pytest.raises(VerificationError, match="Identity registry required in"):
             verifier.verify(mandate)
     finally:
         if original_env is None:

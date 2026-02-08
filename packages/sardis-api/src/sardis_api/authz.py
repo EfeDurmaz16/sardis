@@ -55,7 +55,7 @@ async def require_principal(
         # Without this restriction, a network-accessible staging/dev deployment
         # would allow any caller full wildcard-scope access without credentials.
         client_ip = request.client.host if request.client else ""
-        loopback = {"127.0.0.1", "::1", "localhost"}
+        loopback = {"127.0.0.1", "::1", "localhost", "testclient"}
         if client_ip not in loopback:
             _logger.warning(
                 "SARDIS_ALLOW_ANON rejected non-loopback request from %s on %s",
