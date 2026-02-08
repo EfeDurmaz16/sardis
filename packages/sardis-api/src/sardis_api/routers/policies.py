@@ -97,6 +97,12 @@ class ParsedPolicyResponse(BaseModel):
     policy_id: Optional[str] = None
     agent_id: Optional[str] = None
 
+    # SECURITY: Warnings from post-LLM validation or regex fallback
+    warnings: List[str] = Field(
+        default_factory=list,
+        description="Security or parsing warnings (e.g. injection detected, compound policy loss)",
+    )
+
 
 class CreatePolicyFromNLRequest(BaseModel):
     """Request to create a policy from natural language and apply it to an agent."""
@@ -182,6 +188,9 @@ async def parse_natural_language_policy(
                 parser = NLPolicyParser()
                 extracted = await parser.parse(request.natural_language)
 
+                # Collect post-LLM validation warnings
+                parse_warnings = getattr(parser, "_last_warnings", []) or []
+
                 # Convert to response model
                 response = ParsedPolicyResponse(
                     name=extracted.name,
@@ -200,6 +209,7 @@ async def parse_natural_language_policy(
                     global_monthly_limit=extracted.global_monthly_limit,
                     is_active=extracted.is_active,
                     agent_id=request.agent_id,
+                    warnings=parse_warnings,
                 )
 
                 # Add category restrictions if present
@@ -233,6 +243,10 @@ async def parse_natural_language_policy(
         regex_parser = RegexPolicyParser()
         parsed = regex_parser.parse(request.natural_language)
 
+        # SECURITY: Surface regex parser warnings (e.g. compound policy loss)
+        regex_warnings = parsed.get("warnings", [])
+        regex_warnings.append("Used regex fallback parser (LLM unavailable). Results may be incomplete.")
+
         return ParsedPolicyResponse(
             name="Parsed Policy",
             description=request.natural_language,
@@ -245,6 +259,7 @@ async def parse_natural_language_policy(
             ) if parsed.get("blocked_categories") else None,
             requires_approval_above=parsed.get("requires_approval_above"),
             agent_id=request.agent_id,
+            warnings=regex_warnings,
         )
 
     except ImportError as e:
