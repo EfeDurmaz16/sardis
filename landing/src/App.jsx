@@ -958,7 +958,7 @@ const payment = await ramp.payMerchantFiat({
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { label: "INFRASTRUCTURE", value: "Live on Base Sepolia", sub: "Contracts deployed" },
-              { label: "COMPLETION", value: "97%", sub: "Production Ready" },
+              { label: "READINESS", value: "Staging/Testnet", sub: "Design partner onboarding" },
               { label: "PROTOCOLS", value: "AP2 • TAP • UCP • A2A • x402", sub: "5 chains • protocol-native stack" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
@@ -1065,10 +1065,10 @@ const payment = await ramp.payMerchantFiat({
               <div>
                 <h4 className="font-semibold mb-3 text-foreground">Connect</h4>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li><a href="https://github.com/sardis-labs" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">GitHub</a></li>
-                  <li><a href="https://twitter.com/sardisdev" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Twitter</a></li>
-                  <li><a href="https://discord.gg/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Discord</a></li>
-                  <li><a href="mailto:hello@sardis.dev" className="hover:text-[var(--sardis-orange)] transition-colors">Contact</a></li>
+                  <li><a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">GitHub</a></li>
+                  <li><a href="https://x.com/sardisHQ" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">X (Twitter)</a></li>
+                  <li><a href="https://discord.gg/DUTjvA9uf7" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Discord</a></li>
+                  <li><a href="mailto:contact@sardis.sh" className="hover:text-[var(--sardis-orange)] transition-colors">Contact</a></li>
                 </ul>
               </div>
             </div>

@@ -9,34 +9,34 @@ export default function DocsDeployment() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Deployment Guide</h1>
         <p className="text-xl text-muted-foreground">
-          Production deployment guidelines and infrastructure setup.
+          Production-like staging deployment for Sardis API + landing demo live mode.
         </p>
       </div>
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Recommended Topology
+          <span className="text-[var(--sardis-orange)]">#</span> Recommended Architecture
         </h2>
 
-        <div className="not-prose grid md:grid-cols-2 gap-4">
+        <div className="not-prose grid md:grid-cols-3 gap-4">
           <div className="p-4 border border-border">
             <h3 className="font-bold font-display mb-2">Landing + Demo UI</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Deploy on Vercel so <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-auth</code>,{' '}
-              <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-proxy</code>, and{' '}
-              <code className="px-1 py-0.5 bg-muted font-mono text-xs">/api/demo-events</code> work.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Live mode will not work on static-only hosting.
+            <p className="text-sm text-muted-foreground">
+              Deploy on Vercel. Keep API keys server-side only and route live demo calls through
+              <code className="px-1 py-0.5 bg-muted font-mono text-xs"> /api/demo-proxy</code>.
             </p>
           </div>
           <div className="p-4 border border-border">
             <h3 className="font-bold font-display mb-2">Sardis API</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Deploy separately (Railway/Fly/Render/Koyeb) with Postgres and partner provider credentials.
+            <p className="text-sm text-muted-foreground">
+              Deploy containerized API on Cloud Run (recommended) or AWS App Runner.
+              Use Postgres + Redis in staging.
             </p>
-            <p className="text-xs text-muted-foreground">
-              Landing should call this backend via server-side proxy using <code className="px-1 py-0.5 bg-muted font-mono text-xs">SARDIS_API_KEY</code>.
+          </div>
+          <div className="p-4 border border-border">
+            <h3 className="font-bold font-display mb-2">Data Layer</h3>
+            <p className="text-sm text-muted-foreground">
+              Neon Postgres + Upstash Redis is the fastest low-ops stack for design partner staging.
             </p>
           </div>
         </div>
@@ -44,192 +44,109 @@ export default function DocsDeployment() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Prerequisites
-        </h2>
-
-        <div className="not-prose grid md:grid-cols-2 gap-4 mb-6">
-          {[
-            { name: 'PostgreSQL', version: '15+', desc: 'Primary database (Neon or Supabase recommended)' },
-            { name: 'Redis', version: '7+', desc: 'Optional, for rate limiting and caching' },
-            { name: 'Node.js', version: '18+', desc: 'For MCP server and TypeScript SDK' },
-            { name: 'Python', version: '3.10+', desc: 'For API server and Python SDK' },
-          ].map((item) => (
-            <div key={item.name} className="p-4 border border-border">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold font-display">{item.name}</h3>
-                <span className="text-xs font-mono text-muted-foreground">{item.version}</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Environment Variables
-        </h2>
-
-        <div className="not-prose">
-          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`# Required - MPC Wallets
-TURNKEY_API_PUBLIC_KEY=...
-TURNKEY_API_PRIVATE_KEY=...
-TURNKEY_ORGANIZATION_ID=org_...
-
-# Required - Virtual Cards
-LITHIC_API_KEY=...
-
-# Required - Fiat Rails
-BRIDGE_API_KEY=...
-
-# Required - Compliance
-PERSONA_API_KEY=...
-PERSONA_TEMPLATE_ID=...
-ELLIPTIC_API_KEY=...
-ELLIPTIC_API_SECRET=...
-
-# Smart Contracts (Base Sepolia - Already Deployed)
-SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS=0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7
-SARDIS_BASE_SEPOLIA_ESCROW_ADDRESS=0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932
-
-# Infrastructure
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-
-# API Configuration
-API_PORT=8000
-API_HOST=0.0.0.0
-LOG_LEVEL=info
-
-# Security
-JWT_SECRET=...
-CORS_ORIGINS=https://your-domain.com`}</pre>
-          </div>
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Deployment Steps
-        </h2>
-
-        <div className="not-prose space-y-4">
-          {[
-            {
-              step: '1',
-              title: 'Database Setup',
-              commands: [
-                '# Create database',
-                'createdb sardis_production',
-                '',
-                '# Run migrations',
-                'python -m alembic upgrade head'
-              ]
-            },
-            {
-              step: '2',
-              title: 'Deploy API Server',
-              commands: [
-                '# Install dependencies',
-                'pip install -e packages/sardis-api',
-                '',
-                '# Start server (production)',
-                'uvicorn sardis_api.main:create_app --factory --host 0.0.0.0 --port 8000'
-              ]
-            },
-            {
-              step: '3',
-              title: 'Deploy MCP Server',
-              commands: [
-                '# Install globally',
-                'npm install -g @sardis/mcp-server',
-                '',
-                '# Or run via npx',
-                'npx @sardis/mcp-server start'
-              ]
-            },
-            {
-              step: '4',
-              title: 'Configure Turnkey Wallets',
-              commands: [
-                '# Initialize organization',
-                'sardis-cli turnkey init',
-                '',
-                '# Create master wallet',
-                'sardis-cli wallet create --name "Master Wallet"'
-              ]
-            },
-            {
-              step: '5',
-              title: 'Verify Deployment',
-              commands: [
-                '# Health check',
-                'curl https://api.your-domain.com/health',
-                '',
-                '# Expected response',
-                '{"status": "healthy", "version": "1.0.0"}'
-              ]
-            },
-          ].map((item) => (
-            <div key={item.step} className="border border-border">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
-                <div className="w-6 h-6 border border-[var(--sardis-orange)] flex items-center justify-center font-mono font-bold text-[var(--sardis-orange)] text-sm">
-                  {item.step}
-                </div>
-                <h3 className="font-bold font-display">{item.title}</h3>
-              </div>
-              <div className="p-4 bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] font-mono text-sm overflow-x-auto">
-                <pre className="text-[var(--sardis-canvas)]">{item.commands.join('\n')}</pre>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Vercel Deployment
+          <span className="text-[var(--sardis-orange)]">#</span> Required Environment Variables
         </h2>
         <p className="text-muted-foreground mb-4">
-          For the dashboard and landing page, deploy to Vercel:
+          Minimum variables for secure staging:
+        </p>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# API
+DATABASE_URL=postgresql://...
+SARDIS_REDIS_URL=rediss://...
+SARDIS_SECRET_KEY=...
+JWT_SECRET_KEY=...
+SARDIS_ADMIN_PASSWORD=...
+SARDIS_STRICT_CONFIG=true
+
+# Landing live demo (server-side only)
+SARDIS_API_URL=https://<your-api-domain>
+SARDIS_API_KEY=sk_...
+DEMO_OPERATOR_PASSWORD=<shared-password>
+
+# Optional live demo defaults
+DEMO_LIVE_AGENT_ID=agent_demo_01
+DEMO_LIVE_CARD_ID=card_demo_01`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Cloud Run (Recommended)
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Use the built-in deploy script (includes build, deploy, health check, and post-deploy hints):
+        </p>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# 1) Prepare local env file copy
+cp deploy/gcp/staging/env.cloudrun.staging.yaml deploy/gcp/staging/env.cloudrun.staging.local.yaml
+
+# 2) Generate strong secrets
+bash ./scripts/generate_staging_secrets.sh --write deploy/env/.env.generated.secrets
+
+# 3) Deploy
+PROJECT_ID="<gcp-project-id>" \\
+ENV_VARS_FILE="deploy/gcp/staging/env.cloudrun.staging.local.yaml" \\
+bash ./scripts/deploy_gcp_cloudrun_staging.sh`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> AWS App Runner (Alternative)
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          If you prefer AWS credits/stack, use App Runner deployment automation:
+        </p>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# 1) Prepare env
+cp deploy/aws/staging/env.apprunner.staging.json deploy/aws/staging/env.apprunner.staging.local.json
+
+# 2) Deploy
+AWS_REGION="eu-central-1" \\
+AWS_ACCOUNT_ID="<aws-account-id>" \\
+ENV_JSON_FILE="deploy/aws/staging/env.apprunner.staging.local.json" \\
+bash ./scripts/deploy_aws_apprunner_staging.sh`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Frontend Integration (Live Demo)
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          After API deploy, bootstrap API key and inject landing env vars in Vercel project settings.
         </p>
 
         <div className="not-prose">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`# Install Vercel CLI
-npm install -g vercel
+            <pre className="text-[var(--sardis-canvas)]">{`# Bootstrap API key from deployed staging API
+BASE_URL="https://<your-api-domain>" \\
+ADMIN_PASSWORD="<SARDIS_ADMIN_PASSWORD>" \\
+bash ./scripts/bootstrap_staging_api_key.sh
 
-# Login
-vercel login
-
-# Deploy to production
-vercel --prod
-
-# Configure domain
-vercel domains add sardis.sh
-
-# Required env vars for /demo live mode
-vercel env add SARDIS_API_URL production
-vercel env add SARDIS_API_KEY production
-vercel env add DEMO_OPERATOR_PASSWORD production
-
-# Optional telemetry
-vercel env add DATABASE_URL production`}</pre>
+# Add these to Vercel (landing project):
+SARDIS_API_URL=https://<your-api-domain>
+SARDIS_API_KEY=<bootstrap-output>
+DEMO_OPERATOR_PASSWORD=<shared-password>`}</pre>
           </div>
         </div>
       </section>
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Monitoring
+          <span className="text-[var(--sardis-orange)]">#</span> Verification
         </h2>
-
         <div className="not-prose grid md:grid-cols-3 gap-4">
           {[
-            { name: 'Health Endpoint', path: '/health', desc: 'Basic liveness check' },
-            { name: 'Metrics', path: '/metrics', desc: 'Prometheus-compatible metrics' },
-            { name: 'API Docs', path: '/api/v2/docs', desc: 'OpenAPI documentation' },
+            { name: 'API Health', path: '/health', desc: 'Must return 200 before live demo mode' },
+            { name: 'Demo Auth', path: '/api/demo-auth', desc: 'Confirms operator lock + live config status' },
+            { name: 'Demo Flow', path: '/demo', desc: 'Run blocked + approved scenarios end-to-end' },
           ].map((item) => (
             <div key={item.name} className="p-4 border border-border">
               <h3 className="font-bold font-display mb-1">{item.name}</h3>
@@ -240,41 +157,18 @@ vercel env add DATABASE_URL production`}</pre>
         </div>
       </section>
 
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Demo Smoke Test
-        </h2>
-        <p className="text-muted-foreground mb-4">
-          After deployment, run the live demo readiness check:
-        </p>
-
-        <div className="not-prose">
-          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`LANDING_BASE_URL="https://sardis.sh" \\
-DEMO_OPERATOR_PASSWORD="<shared-password>" \\
-bash ./scripts/check_demo_deploy_readiness.sh`}</pre>
-          </div>
-        </div>
-      </section>
-
-      <section className="not-prose p-6 border border-border bg-muted/30">
-        <h3 className="font-bold font-display mb-2">Production Checklist</h3>
-        <ul className="space-y-2">
-          {[
-            'Environment variables configured',
-            'Database migrations applied',
-            'Turnkey organization initialized',
-            'SSL certificates configured',
-            'Rate limiting enabled',
-            'Monitoring and alerting set up',
-            'Backup strategy implemented',
-            'Incident response plan documented',
-          ].map((item) => (
-            <li key={item} className="flex items-center gap-3 text-sm">
-              <span className="w-4 h-4 border border-border flex items-center justify-center text-xs">?</span>
-              <span className="text-muted-foreground">{item}</span>
-            </li>
-          ))}
+      <section className="not-prose p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">
+        <h3 className="font-bold font-display mb-2 text-[var(--sardis-orange)]">Runbook References</h3>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li>
+            → <code className="px-1 py-0.5 bg-muted font-mono text-xs">docs/release/api-deployment-plan-gcp-cloudrun.md</code>
+          </li>
+          <li>
+            → <code className="px-1 py-0.5 bg-muted font-mono text-xs">docs/release/cloud-deployment-and-frontend-integration.md</code>
+          </li>
+          <li>
+            → <code className="px-1 py-0.5 bg-muted font-mono text-xs">docs/release/investor-demo-operator-kit.md</code>
+          </li>
         </ul>
       </section>
     </article>

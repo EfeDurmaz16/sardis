@@ -255,23 +255,14 @@ export default function Demo() {
                   <p className="font-mono text-xs text-muted-foreground">Loading operator auth status...</p>
                 ) : !authState.passwordConfigured ? (
                   <div className="space-y-2">
-                    <p className="font-mono text-xs text-red-600">Set `DEMO_OPERATOR_PASSWORD` to enable private live mode.</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Operator password"
-                        className="border border-border bg-background px-2 py-1.5 font-mono text-xs"
-                      />
-                      <button
-                        onClick={loginOperator}
-                        disabled
-                        className="border border-[var(--sardis-orange)] px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest text-[var(--sardis-orange)] opacity-50"
-                      >
-                        Unlock live mode
-                      </button>
-                    </div>
+                    <p className="font-mono text-xs text-red-600">
+                      Set <code>DEMO_OPERATOR_PASSWORD</code> on the server to enable private live mode.
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      Example:
+                      {' '}
+                      <code>export DEMO_OPERATOR_PASSWORD=&quot;&lt;shared-password&gt;&quot;</code>
+                    </p>
                   </div>
                 ) : authState.authenticated ? (
                   <div className="flex flex-wrap items-center gap-2">

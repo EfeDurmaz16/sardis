@@ -2,9 +2,40 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.3',
+    date: '2026-02-08',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Cloud Run staging deployment automation script with health checks and post-deploy bootstrap instructions',
+          'AWS App Runner staging deployment automation script (ECR build/push + service create/update)',
+          'Unified deployment env templates for GCP and AWS staging',
+          'Cloud deployment + frontend integration runbook for /demo live mode',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Demo live-mode auth UX now shows explicit server-side password setup guidance',
+          'Demo transaction history now persists across browser refreshes (local storage)',
+          'Deployment docs now map directly to repo scripts and required env vars',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'Landing-local Vercel config simplified to avoid route/header config conflicts in local `vercel dev` sessions',
+          'Roadmap/docs alignment updated with current staging hardening milestones',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.2',
     date: '2026-02-06',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

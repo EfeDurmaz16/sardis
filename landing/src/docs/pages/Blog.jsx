@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.8.3: Demo Ops + Cloud Deployment (Cloud Run & AWS)',
+    excerpt: 'v0.8.3 closes key go-to-market gaps: production-like staging deploy scripts, frontend live-mode integration guidance, and demo reliability improvements for investor and design-partner walkthroughs.',
+    date: '2026-02-08',
+    readTime: '6 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-8-3-demo-ops-cloud-deploy',
+  },
+  {
     title: 'Sardis v0.8.2: Release Readiness Hardening for MCP + SDKs',
     excerpt: 'v0.8.2 focuses on shipping discipline: deterministic JS bootstrap preflight checks, live-chain conformance gating, protocol test-lane isolation, and resilient report generation for constrained environments.',
     date: '2026-02-06',

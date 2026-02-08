@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
+import { Analytics } from '@vercel/analytics/react'
 import App from './App.jsx'
 import DocsLayout from './docs/DocsLayout.jsx'
 import DocsOverview from './docs/pages/Overview.jsx'
@@ -52,6 +53,7 @@ import FiatRails from './docs/pages/blog/FiatRails.jsx'
 import SardisV07ProductionHardening from './docs/pages/blog/SardisV07ProductionHardening.jsx'
 import SardisV081ProtocolConformance from './docs/pages/blog/SardisV081ProtocolConformance.jsx'
 import SardisV082ReleaseReadiness from './docs/pages/blog/SardisV082ReleaseReadiness.jsx'
+import SardisV083DemoOpsCloudDeploy from './docs/pages/blog/SardisV083DemoOpsCloudDeploy.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
@@ -59,6 +61,7 @@ import Demo from './pages/Demo.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
+      <Analytics />
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/playground" element={<Playground />} />
@@ -105,6 +108,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/sardis-v0-7-production-hardening" element={<SardisV07ProductionHardening />} />
           <Route path="blog/sardis-v0-8-1-protocol-conformance" element={<SardisV081ProtocolConformance />} />
           <Route path="blog/sardis-v0-8-2-release-readiness" element={<SardisV082ReleaseReadiness />} />
+          <Route path="blog/sardis-v0-8-3-demo-ops-cloud-deploy" element={<SardisV083DemoOpsCloudDeploy />} />
           <Route path="changelog" element={<DocsChangelog />} />
           <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}

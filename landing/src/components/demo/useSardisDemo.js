@@ -15,6 +15,7 @@ const DEMO_TX_HASH_FULL = '0x8a3f7c91d2e4b056a1f38c9d7e2b4a61c8f3d09e7b2d41c'
 const DEMO_WALLET = '0xA91c...3fE8'
 const DEMO_AGENT_ID = 'agent_procurement_01'
 const DEMO_BLOCK = '19284721'
+const DEMO_HISTORY_STORAGE_KEY = 'sardis_demo_history_v1'
 
 const LOG_SEQUENCES = {
   INITIALIZING: [
@@ -99,6 +100,18 @@ function parseJsonSafe(text) {
   }
 }
 
+function loadStoredHistory() {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(DEMO_HISTORY_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 export function useSardisDemo() {
   const DEFAULT_CARD_BALANCE = 500
   const DEFAULT_WALLET_BALANCE = 220
@@ -113,7 +126,7 @@ export function useSardisDemo() {
   const [blockedAttempt, setBlockedAttempt] = useState(null)
   const [fundingEvent, setFundingEvent] = useState(null)
   const [policyUsed, setPolicyUsed] = useState(120)
-  const [history, setHistory] = useState([])
+  const [history, setHistory] = useState(() => loadStoredHistory())
   const [liveStatus, setLiveStatus] = useState({
     loading: false,
     lastError: null,
@@ -149,6 +162,15 @@ export function useSardisDemo() {
   useEffect(() => {
     emitEvent('state_change', { step: state, status: state })
   }, [state, emitEvent])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(DEMO_HISTORY_STORAGE_KEY, JSON.stringify(history.slice(0, 100)))
+    } catch {
+      // best-effort persistence only
+    }
+  }, [history])
 
   const addLogs = useCallback((sequence, onDone) => {
     sequence.forEach(({ text, delay }) => {
@@ -448,6 +470,13 @@ export function useSardisDemo() {
 
   const clearHistory = useCallback(() => {
     setHistory([])
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(DEMO_HISTORY_STORAGE_KEY)
+      } catch {
+        // ignore local storage errors
+      }
+    }
   }, [])
 
   const runApprovedDemo = useCallback(() => runDemo('approved'), [runDemo])

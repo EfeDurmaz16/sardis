@@ -96,6 +96,18 @@ DEMO_LIVE_CARD_ID=vc_demo_01`}</pre>
         <p className="text-muted-foreground mt-4 text-sm">
           Private runbook: <code className="px-1 py-0.5 bg-muted font-mono text-sm">docs/release/investor-demo-operator-kit.md</code>
         </p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Note: local <code className="px-1 py-0.5 bg-muted font-mono text-sm">vite dev</code> is enough for simulated mode.
+          For private live mode, run via Vercel runtime so
+          {' '}
+          <code className="px-1 py-0.5 bg-muted font-mono text-sm">/api/demo-auth</code>
+          {' '}
+          and
+          {' '}
+          <code className="px-1 py-0.5 bg-muted font-mono text-sm">/api/demo-proxy</code>
+          {' '}
+          are available.
+        </p>
       </section>
 
       <section className="mb-12">
