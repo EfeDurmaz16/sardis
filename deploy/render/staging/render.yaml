@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: sardis-api-staging
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: SARDIS_ENVIRONMENT
+        value: sandbox
+      - key: SARDIS_CHAIN_MODE
+        value: simulated
+      - key: SARDIS_API_HOST
+        value: 0.0.0.0
+      - key: SARDIS_API_PORT
+        value: "8000"
+      - key: SARDIS_ALLOWED_ORIGINS
+        value: https://sardis.sh,https://www.sardis.sh,http://localhost:3000
+      - key: SARDIS_TAP_ENFORCEMENT
+        value: enabled
+      - key: SARDIS_STRICT_CONFIG
+        value: "true"
+
+      # Required secrets (set in Render dashboard)
+      - key: DATABASE_URL
+        sync: false
+      - key: SARDIS_REDIS_URL
+        sync: false
+      - key: SARDIS_ADMIN_PASSWORD
+        sync: false
+      - key: SARDIS_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+      # Optional external providers
+      - key: TURNKEY_ORGANIZATION_ID
+        sync: false
+      - key: TURNKEY_API_PUBLIC_KEY
+        sync: false
+      - key: TURNKEY_API_PRIVATE_KEY
+        sync: false
+      - key: LITHIC_API_KEY
+        sync: false
+      - key: LITHIC_WEBHOOK_SECRET
+        sync: false
+      - key: PERSONA_API_KEY
+        sync: false
+      - key: PERSONA_WEBHOOK_SECRET
+        sync: false
+      - key: ELLIPTIC_API_KEY
+        sync: false
+      - key: ELLIPTIC_API_SECRET
+        sync: false
