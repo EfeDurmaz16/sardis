@@ -78,8 +78,11 @@ load_test_*.json
 .omc/
 coverage.json
 
-
 coverage/
+
+# Foundry build artifacts
+contracts/out/
+contracts/cache/
 
 # Local/temporary files
 .serena/
@@ -117,3 +120,8 @@ landing-2/
 fly.toml
 railway.json
 docker-compose.yml
+
+# Staging deploy secrets (local only)
+deploy/gcp/staging/*.local.yaml
+deploy/env/.env.generated.secrets
+deploy/env/.env*.local
