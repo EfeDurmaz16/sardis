@@ -507,14 +507,15 @@ class WebhookService:
         import time
 
         payload = event.to_json()
-        signature = self._sign_payload(payload, subscription.secret)
+        timestamp = int(event.created_at.timestamp())
+        signature = self._sign_payload(payload, subscription.secret, timestamp)
 
         headers = {
             "Content-Type": "application/json",
             "X-Sardis-Signature": signature,
             "X-Sardis-Event-Type": event.event_type.value,
             "X-Sardis-Event-ID": event.event_id,
-            "X-Sardis-Timestamp": str(int(event.created_at.timestamp())),
+            "X-Sardis-Timestamp": str(timestamp),
         }
 
         client = await self._get_client()
@@ -585,19 +586,82 @@ class WebhookService:
             success=False,
         )
 
-    def _sign_payload(self, payload: str, secret: str) -> str:
-        """Create HMAC signature for payload."""
-        signature = hmac.new(
+    def _sign_payload(self, payload: str, secret: str, timestamp: int) -> str:
+        """Create HMAC-SHA256 signature for payload with timestamp.
+
+        SECURITY: The timestamp is included in the signed content so that
+        an attacker who intercepts a delivery cannot replay it at a later
+        time. Follows the Stripe webhook signature pattern:
+            t=<unix_timestamp>,v1=<hex_hmac>
+
+        The receiver MUST:
+        1. Split the header on ","
+        2. Extract t= (timestamp) and v1= (signature)
+        3. Reject if |now - t| > tolerance (e.g., 5 minutes)
+        4. Compute HMAC-SHA256(secret, f"{t}.{payload}") and compare to v1
+        """
+        # Signed content = "<timestamp>.<payload>" (Stripe convention)
+        signed_content = f"{timestamp}.{payload}"
+        sig = hmac.new(
             secret.encode(),
-            payload.encode(),
+            signed_content.encode(),
             hashlib.sha256,
         ).hexdigest()
-        return f"sha256={signature}"
+        return f"t={timestamp},v1={sig}"
 
-    def verify_signature(self, payload: str, signature: str, secret: str) -> bool:
-        """Verify a webhook signature."""
-        expected = self._sign_payload(payload, secret)
-        return hmac.compare_digest(expected, signature)
+    def verify_signature(
+        self,
+        payload: str,
+        signature: str,
+        secret: str,
+        tolerance_seconds: int = 300,
+    ) -> bool:
+        """Verify a webhook signature with replay protection.
+
+        Args:
+            payload: The raw JSON payload body
+            signature: The X-Sardis-Signature header value (t=...,v1=...)
+            secret: The webhook subscription secret
+            tolerance_seconds: Maximum age of the signature (default 5 minutes)
+
+        Returns:
+            True if signature is valid and not expired
+        """
+        import time as _time
+
+        # Parse "t=<timestamp>,v1=<signature>"
+        parts = {}
+        for part in signature.split(","):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                parts[k.strip()] = v.strip()
+
+        ts_str = parts.get("t")
+        sig_hex = parts.get("v1")
+
+        if not ts_str or not sig_hex:
+            # Legacy format: "sha256=<hex>" (no timestamp — reject in strict mode)
+            return False
+
+        try:
+            ts = int(ts_str)
+        except ValueError:
+            return False
+
+        # SECURITY: Reject stale signatures to prevent replay attacks
+        now = int(_time.time())
+        if abs(now - ts) > tolerance_seconds:
+            return False
+
+        # Recompute expected signature
+        signed_content = f"{ts}.{payload}"
+        expected_sig = hmac.new(
+            secret.encode(),
+            signed_content.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+
+        return hmac.compare_digest(expected_sig, sig_hex)
 
     async def close(self):
         """Close HTTP client."""
