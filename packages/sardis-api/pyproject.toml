@@ -50,6 +50,7 @@ dependencies = [
     "asyncpg>=0.29",
     "prometheus-client>=0.19",
     "apscheduler>=3.10",
+    "PyJWT>=2.8",
 ]
 
 [project.optional-dependencies]

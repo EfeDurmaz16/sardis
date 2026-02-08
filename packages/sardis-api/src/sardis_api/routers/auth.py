@@ -1,20 +1,19 @@
-"""Authentication endpoints with JWT support."""
+"""Authentication endpoints with JWT support (PyJWT)."""
 from __future__ import annotations
 
+import hmac
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import jwt as pyjwt
 from fastapi import APIRouter, HTTPException, status, Form, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
-# JWT implementation using built-in modules (no external dependency)
-import hashlib
-import hmac
-import json
-import base64
+_logger = logging.getLogger(__name__)
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -22,8 +21,6 @@ security = HTTPBearer(auto_error=False)
 # JWT configuration - SECURITY CRITICAL
 _jwt_secret_env = os.getenv("JWT_SECRET_KEY", "")
 if not _jwt_secret_env:
-    import logging
-    _logger = logging.getLogger(__name__)
     if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production", "staging"):
         raise RuntimeError(
             "CRITICAL: JWT_SECRET_KEY environment variable is not set. "
@@ -31,7 +28,7 @@ if not _jwt_secret_env:
             "Generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
     _logger.warning(
-        "⚠️ JWT_SECRET_KEY not set - generating random secret. "
+        "JWT_SECRET_KEY not set - generating random secret. "
         "This will invalidate all tokens on restart. Set JWT_SECRET_KEY for persistent sessions."
     )
     _jwt_secret_env = secrets.token_hex(32)
@@ -80,40 +77,9 @@ class BootstrapAPIKeyResponse(BaseModel):
     expires_at: Optional[datetime]
 
 
-def _base64url_encode(data: bytes) -> str:
-    """Encode bytes to base64url string."""
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
-
-def _base64url_decode(data: str) -> bytes:
-    """Decode base64url string to bytes."""
-    padding = 4 - len(data) % 4
-    if padding != 4:
-        data += "=" * padding
-    return base64.urlsafe_b64decode(data)
-
-
 def create_jwt_token(payload: dict) -> str:
-    """
-    Create a JWT token using HMAC-SHA256.
-
-    This is a minimal JWT implementation without external dependencies.
-    For production with advanced features, consider using PyJWT.
-    """
-    header = {"alg": JWT_ALGORITHM, "typ": "JWT"}
-
-    header_b64 = _base64url_encode(json.dumps(header, separators=(",", ":")).encode())
-    payload_b64 = _base64url_encode(json.dumps(payload, separators=(",", ":")).encode())
-
-    message = f"{header_b64}.{payload_b64}"
-    signature = hmac.new(
-        JWT_SECRET.encode(),
-        message.encode(),
-        hashlib.sha256
-    ).digest()
-    signature_b64 = _base64url_encode(signature)
-
-    return f"{message}.{signature_b64}"
+    """Create a JWT token using PyJWT with HMAC-SHA256."""
+    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def verify_jwt_token(token: str) -> Optional[dict]:
@@ -121,52 +87,33 @@ def verify_jwt_token(token: str) -> Optional[dict]:
     Verify a JWT token and return its payload if valid.
 
     Returns None if token is invalid or expired.
+
+    SECURITY: PyJWT's decode() enforces algorithm pinning via the
+    `algorithms` parameter, preventing algorithm confusion attacks
+    (e.g. alg:none, RS256 key confusion). Expiration is checked
+    automatically when "exp" claim is present.
     """
     try:
-        parts = token.split(".")
-        if len(parts) != 3:
+        payload = pyjwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            options={
+                "require": ["sub", "jti", "exp", "iat"],
+            },
+        )
+
+        # Validate required claims are non-empty strings
+        if not isinstance(payload.get("sub"), str) or not payload["sub"]:
             return None
-
-        header_b64, payload_b64, signature_b64 = parts
-
-        # SECURITY: Validate header to prevent algorithm confusion attacks.
-        # An attacker could craft a token with "alg":"none" and an empty
-        # signature, or switch to an asymmetric algorithm if the secret
-        # is a public key. We ONLY accept HS256.
-        try:
-            header = json.loads(_base64url_decode(header_b64))
-        except Exception:
-            return None
-        if not isinstance(header, dict) or header.get("alg") != JWT_ALGORITHM:
-            return None
-
-        # Verify signature
-        message = f"{header_b64}.{payload_b64}"
-        expected_signature = hmac.new(
-            JWT_SECRET.encode(),
-            message.encode(),
-            hashlib.sha256
-        ).digest()
-        actual_signature = _base64url_decode(signature_b64)
-
-        if not hmac.compare_digest(expected_signature, actual_signature):
-            return None
-
-        # Decode payload
-        payload = json.loads(_base64url_decode(payload_b64))
-
-        # Check expiration
-        exp = payload.get("exp")
-        if exp and datetime.now(timezone.utc).timestamp() > exp:
-            return None
-
-        # SECURITY: Validate required claims exist
-        if not isinstance(payload.get("sub"), str) or not payload.get("sub"):
-            return None
-        if not isinstance(payload.get("jti"), str) or not payload.get("jti"):
+        if not isinstance(payload.get("jti"), str) or not payload["jti"]:
             return None
 
         return payload
+    except pyjwt.ExpiredSignatureError:
+        return None
+    except pyjwt.InvalidTokenError:
+        return None
     except Exception:
         return None
 
