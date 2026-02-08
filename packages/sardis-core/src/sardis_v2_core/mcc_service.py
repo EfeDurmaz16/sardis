@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # Load MCC data from embedded JSON
 _MCC_DATA_PATH = Path(__file__).parent / "data" / "mcc_codes.json"
@@ -96,7 +99,10 @@ def is_blocked_category(mcc_code: str, blocked_categories: list[str]) -> bool:
     """
     info = get_mcc_info(mcc_code)
     if not info:
-        return False  # Unknown codes allowed by default
+        # SECURITY: Fail-closed — unknown MCC codes are blocked by default.
+        # A merchant using an unrecognized code must not bypass category restrictions.
+        logger.warning("Unknown MCC code %s — blocking by default (fail-closed)", mcc_code)
+        return True
     return info.category in blocked_categories
 
 

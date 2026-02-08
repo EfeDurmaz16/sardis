@@ -271,8 +271,97 @@ contract SardisWalletFactory is Ownable, Pausable {
         _unpause();
     }
     
+    // ============ Wallet Management (Factory-as-Sardis) ============
+    // SECURITY: The factory is set as the `sardis` address in deployed wallets.
+    // Without these proxy functions, onlySardis wallet methods (setLimits, pause,
+    // unpause, setRecoveryAddress, proposeSardisTransfer) would be uncallable,
+    // making wallets unmanageable after deployment.
+
+    /**
+     * @notice Set spending limits on an agent wallet
+     * @param wallet The wallet address to configure
+     * @param _limitPerTx New per-transaction limit
+     * @param _dailyLimit New daily limit
+     */
+    function setWalletLimits(
+        address wallet,
+        uint256 _limitPerTx,
+        uint256 _dailyLimit
+    ) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).setLimits(_limitPerTx, _dailyLimit);
+    }
+
+    /**
+     * @notice Pause an agent wallet (emergency stop)
+     * @param wallet The wallet address to pause
+     */
+    function pauseWallet(address wallet) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).pause();
+    }
+
+    /**
+     * @notice Unpause an agent wallet
+     * @param wallet The wallet address to unpause
+     */
+    function unpauseWallet(address wallet) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).unpause();
+    }
+
+    /**
+     * @notice Update recovery address on an agent wallet
+     * @param wallet The wallet address
+     * @param _recoveryAddress New recovery address
+     */
+    function setWalletRecoveryAddress(
+        address wallet,
+        address _recoveryAddress
+    ) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).setRecoveryAddress(_recoveryAddress);
+    }
+
+    /**
+     * @notice Propose transfer of Sardis role from factory to a new address
+     * @dev Step 1 of two-step timelock transfer. Used when migrating to a new
+     *      factory or dedicated Sardis address.
+     * @param wallet The wallet to transfer Sardis role on
+     * @param _newSardis The proposed new Sardis address
+     */
+    function proposeWalletSardisTransfer(
+        address wallet,
+        address _newSardis
+    ) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).proposeSardisTransfer(_newSardis);
+    }
+
+    /**
+     * @notice Execute a pending Sardis role transfer on a wallet
+     * @param wallet The wallet to execute transfer on
+     */
+    function executeWalletSardisTransfer(address wallet) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).executeSardisTransfer();
+    }
+
+    /**
+     * @notice Toggle allowlist mode on a wallet
+     * @param wallet The wallet to configure
+     * @param _useAllowlist Whether to use allowlist mode
+     */
+    function setWalletAllowlistMode(
+        address wallet,
+        bool _useAllowlist
+    ) external onlyOwner {
+        require(isValidWallet[wallet], "Not a Sardis wallet");
+        SardisAgentWallet(payable(wallet)).setAllowlistMode(_useAllowlist);
+    }
+
     // ============ View Functions ============
-    
+
     /**
      * @notice Get all wallets for an agent
      */

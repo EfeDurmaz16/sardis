@@ -88,22 +88,32 @@ class APIKeyManager:
     def generate_api_key() -> tuple[str, str, str]:
         """
         Generate a new API key.
-        
+
         Returns:
             (full_key, prefix, hash)
+
+        SECURITY: The hash MUST be produced by hash_key() (HMAC-SHA256 with prefix
+        as salt) so that validate_key() can reproduce it. Previously this method
+        used plain SHA-256 while validate_key used HMAC-SHA256, so newly created
+        keys could never be validated — a critical inconsistency.
         """
-        # Generate 32 random bytes = 256 bits of entropy
-        key_bytes = secrets.token_bytes(32)
         full_key = f"sk_live_{secrets.token_urlsafe(32)}"
         prefix = full_key[:12]  # First 12 chars for lookup
-        key_hash = hashlib.sha256(full_key.encode()).hexdigest()
-        
+        key_hash = APIKeyManager.hash_key(full_key)
+
         return full_key, prefix, key_hash
 
     @staticmethod
     def hash_key(key: str) -> str:
-        """Hash an API key for comparison."""
-        return hashlib.sha256(key.encode()).hexdigest()
+        """Hash an API key for comparison using HMAC-SHA256 with the key prefix as salt.
+
+        SECURITY: Plain SHA-256 without salt allows rainbow table attacks and
+        means identical keys across orgs produce identical hashes. HMAC with
+        the key prefix as salt mitigates both issues while remaining fast enough
+        for API key validation (unlike bcrypt/argon2 which are designed for passwords).
+        """
+        prefix = key[:12] if len(key) >= 12 else key
+        return hmac.new(prefix.encode(), key.encode(), hashlib.sha256).hexdigest()
 
     @staticmethod
     def get_prefix(key: str) -> str:
@@ -369,8 +379,8 @@ async def get_api_key(
 
     if not validated_key:
         env = os.getenv("SARDIS_ENVIRONMENT", "").strip().lower()
-        test_key = os.getenv("SARDIS_TEST_API_KEY", "sk_test_demo123")
-        if env in {"dev", "test", "local"} and api_key == test_key:
+        test_key = os.getenv("SARDIS_TEST_API_KEY", "")
+        if test_key and env in {"dev", "test", "local"} and api_key == test_key:
             # Dev/test convenience key to keep local and CI integration tests
             # deterministic without explicit bootstrap.
             return APIKey(

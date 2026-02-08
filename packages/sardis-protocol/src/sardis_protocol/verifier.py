@@ -284,13 +284,21 @@ class MandateVerifier:
             ):
                 return None
         else:
-            # Fail-closed in production: identity registry must be configured.
+            # Fail-closed in production AND staging: identity registry must be configured.
+            # Only dev/test/local environments are allowed to skip identity verification.
             # Support both legacy SARDIS_ENV and canonical SARDIS_ENVIRONMENT names.
             raw_env = (os.getenv("SARDIS_ENVIRONMENT") or os.getenv("SARDIS_ENV") or "dev").strip().lower()
-            is_production = raw_env in {"prod", "production"}
-            if is_production:
-                raise VerificationError("Identity registry required in production")
-            logger.warning("Identity registry not configured - skipping identity binding verification (dev mode)")
+            allow_skip = raw_env in {"dev", "test", "local"}
+            if not allow_skip:
+                raise VerificationError(
+                    f"Identity registry required in '{raw_env}' environment. "
+                    "Configure an IdentityRegistry or set SARDIS_ENVIRONMENT=dev for development."
+                )
+            logger.warning(
+                "Identity registry not configured - skipping identity binding verification "
+                "(SARDIS_ENVIRONMENT=%s). This is NOT safe for production or staging.",
+                raw_env,
+            )
 
         return AgentIdentity(
             agent_id=mandate.subject,

@@ -127,7 +127,7 @@ class ReplayCache:
         self._cleanup_interval = cleanup_interval_seconds
         self._max_entries = max_entries
         self._last_cleanup = time.time()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def check_and_store(self, mandate_id: str, expires_at: int) -> bool:
         """Check if mandate was seen and store if not."""
@@ -226,27 +226,31 @@ class SqliteReplayCache(ReplayCache):
 
     def check_and_store(self, mandate_id: str, expires_at: int) -> bool:  # type: ignore[override]
         now = int(time.time())
-        
+
         # Periodic cleanup (not on every call)
         if (now - self._last_cleanup) >= self._cleanup_interval:
             self.cleanup(now)
-        
+
         # Use default TTL if expires_at is not set
         if expires_at <= now:
             expires_at = now + self._default_ttl
-        
-        row = self._conn.execute(
-            "SELECT expires_at FROM replay_cache WHERE mandate_id = ?",
-            (mandate_id,),
-        ).fetchone()
-        if row and row[0] > now:
-            return False
-        self._conn.execute(
-            "INSERT OR REPLACE INTO replay_cache (mandate_id, expires_at) VALUES (?, ?)",
-            (mandate_id, expires_at),
-        )
-        self._conn.commit()
-        return True
+
+        # SECURITY: Use lock to prevent TOCTOU race between SELECT and INSERT.
+        # Without this, two concurrent threads could both see "not found" and
+        # both return True, allowing a mandate to be executed twice.
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT expires_at FROM replay_cache WHERE mandate_id = ?",
+                (mandate_id,),
+            ).fetchone()
+            if row and row[0] > now:
+                return False
+            self._conn.execute(
+                "INSERT OR REPLACE INTO replay_cache (mandate_id, expires_at) VALUES (?, ?)",
+                (mandate_id, expires_at),
+            )
+            self._conn.commit()
+            return True
     
     def cleanup(self, now: Optional[int] = None) -> int:
         """Remove expired entries from database."""
@@ -311,41 +315,55 @@ class PostgresReplayCache(ReplayCache):
         return self._pool
 
     async def check_and_store_async(self, mandate_id: str, expires_at: int) -> bool:
-        """Check and store mandate ID (async version for PostgreSQL)."""
+        """Check and store mandate ID (async version for PostgreSQL).
+
+        SECURITY: Uses a single atomic INSERT ... ON CONFLICT to prevent TOCTOU
+        race conditions. The xmax trick detects whether the row was truly inserted
+        (new mandate) vs. updated (already seen).
+        """
         pool = await self._get_pool()
         now = datetime.now(timezone.utc)
         now_ts = int(now.timestamp())
-        
+
         # Use default TTL if expires_at is not set
         if expires_at <= now_ts:
             expires_at = now_ts + self._default_ttl
-        
+
         expires_dt = datetime.fromtimestamp(expires_at, tz=timezone.utc)
-        
+
         async with pool.acquire() as conn:
             # Periodic cleanup (not on every call)
             if (now_ts - self._last_cleanup) >= self._cleanup_interval:
                 await self.cleanup_async()
-            
-            # Check if mandate exists and is not expired
+
+            # Atomic check-and-store: INSERT if not exists, otherwise check expiry.
+            # Returns whether the mandate is new (True) or already seen (False).
             row = await conn.fetchrow(
-                "SELECT expires_at FROM replay_cache WHERE mandate_id = $1",
-                mandate_id,
-            )
-            if row and row['expires_at'] > now:
-                return False
-            
-            # Store the mandate
-            await conn.execute(
                 """
-                INSERT INTO replay_cache (mandate_id, expires_at) 
+                INSERT INTO replay_cache (mandate_id, expires_at)
                 VALUES ($1, $2)
-                ON CONFLICT (mandate_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+                ON CONFLICT (mandate_id) DO UPDATE
+                    SET expires_at = CASE
+                        WHEN replay_cache.expires_at <= $3 THEN EXCLUDED.expires_at
+                        ELSE replay_cache.expires_at
+                    END
+                RETURNING (xmax = 0) AS was_inserted,
+                          expires_at
                 """,
                 mandate_id,
                 expires_dt,
+                now,
             )
-            return True
+            if row is None:
+                return True
+            # was_inserted=True means new row; if existing but expired we updated it
+            if row["was_inserted"]:
+                return True
+            # Existing row — if its expiry is our new value, it was expired and we renewed it
+            if row["expires_at"] == expires_dt:
+                return True
+            # Existing row with a future expiry — mandate already seen
+            return False
     
     async def cleanup_async(self) -> int:
         """Remove expired entries from database."""

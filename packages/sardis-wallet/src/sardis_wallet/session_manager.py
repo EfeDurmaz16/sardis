@@ -368,9 +368,13 @@ class SessionManager:
                 refresh_token=self._generate_refresh_token(),
             )
 
-            # Check if device is trusted
+            # Check if device is trusted (with fingerprint cross-check)
             if device_info:
-                trusted_device = self._get_trusted_device(wallet_id, device_info.device_id)
+                trusted_device = self._get_trusted_device(
+                    wallet_id,
+                    device_info.device_id,
+                    presented_fingerprint=device_info.fingerprint,
+                )
                 if trusted_device:
                     session.mfa_verified = True
                     session.mfa_verified_at = datetime.now(timezone.utc)
@@ -446,13 +450,41 @@ class SessionManager:
         self,
         wallet_id: str,
         device_id: str,
+        presented_fingerprint: Optional[str] = None,
     ) -> Optional[DeviceInfo]:
-        """Get a trusted device."""
+        """Get a trusted device with additional security checks.
+
+        SECURITY: A device_id alone is a client-provided string that can be
+        replayed from logs or API responses. We add:
+        1. Fingerprint cross-check (if the stored device has one)
+        2. Trust expiry (devices trusted > 90 days ago must re-verify MFA)
+        """
         devices = self._devices.get(wallet_id, {})
         device = devices.get(device_id)
-        if device and device.is_trusted:
-            return device
-        return None
+        if not device or not device.is_trusted:
+            return None
+
+        # Check trust expiry: devices trusted more than 90 days ago must re-MFA
+        trust_age = datetime.now(timezone.utc) - device.first_seen_at
+        if trust_age > timedelta(days=90):
+            logger.info(
+                "Trusted device %s for wallet %s expired (age=%s days), requiring re-MFA",
+                device_id, wallet_id, trust_age.days,
+            )
+            device.is_trusted = False
+            return None
+
+        # Cross-check fingerprint if the stored device has one
+        if device.fingerprint and presented_fingerprint:
+            if not hmac.compare_digest(device.fingerprint, presented_fingerprint):
+                logger.warning(
+                    "Device fingerprint mismatch for device %s on wallet %s - "
+                    "possible device_id replay attack",
+                    device_id, wallet_id,
+                )
+                return None
+
+        return device
 
     def _update_device(
         self,

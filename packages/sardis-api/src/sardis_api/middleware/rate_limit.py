@@ -2,15 +2,44 @@
 from __future__ import annotations
 
 import inspect
+import ipaddress
+import logging
+import os
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Optional, Set
 
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+
+_logger = logging.getLogger("sardis.api.rate_limit")
+
+# SECURITY: Only trust X-Forwarded-For from known reverse proxy IPs.
+# Without this, any client can spoof the header to bypass rate limits.
+_TRUSTED_PROXIES: Set[str] = set(
+    filter(None, os.getenv("SARDIS_TRUSTED_PROXIES", "127.0.0.1,::1").split(","))
+)
+
+
+def _get_real_client_ip(request: Request) -> str:
+    """Extract the real client IP, only trusting X-Forwarded-For from known proxies.
+
+    SECURITY: Directly using X-Forwarded-For allows any client to set an arbitrary
+    IP and evade per-IP rate limits. We only honour the header when the immediate
+    connection comes from a trusted reverse proxy (e.g. Vercel, Cloudflare, nginx).
+    """
+    client_host = request.client.host if request.client else "unknown"
+
+    if client_host in _TRUSTED_PROXIES:
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            # Rightmost non-proxy IP is the client (last entry added by our proxy)
+            return forwarded.split(",")[0].strip()
+
+    return client_host
 
 
 @dataclass
@@ -58,11 +87,7 @@ class RedisRateLimiter:
         api_key = request.headers.get("X-API-Key", "")
         if api_key:
             return f"rl:key:{api_key[:8]}"
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        if forwarded:
-            return f"rl:ip:{forwarded.split(',')[0].strip()}"
-        client_host = request.client.host if request.client else "unknown"
-        return f"rl:ip:{client_host}"
+        return f"rl:ip:{_get_real_client_ip(request)}"
 
     async def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
         """Check rate limit using Redis sliding window."""
@@ -133,14 +158,10 @@ class InMemoryRateLimiter:
         api_key = request.headers.get("X-API-Key", "")
         if api_key:
             return f"key:{api_key[:8]}"
-        
-        # Fall back to IP address
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        if forwarded:
-            return f"ip:{forwarded.split(',')[0].strip()}"
-        
-        client_host = request.client.host if request.client else "unknown"
-        return f"ip:{client_host}"
+
+        # SECURITY: Use _get_real_client_ip which only trusts X-Forwarded-For
+        # from known reverse proxies. See module-level comment.
+        return f"ip:{_get_real_client_ip(request)}"
     
     def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
         """

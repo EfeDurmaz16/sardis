@@ -91,9 +91,10 @@ class MerchantRule:
     def matches_merchant(self, merchant_id: str, merchant_category: Optional[str] = None) -> bool:
         if not self.is_active():
             return False
-        if self.merchant_id and self.merchant_id == merchant_id:
+        # SECURITY: Case-insensitive matching prevents bypass via casing tricks
+        if self.merchant_id and self.merchant_id.lower() == merchant_id.lower():
             return True
-        if self.category and merchant_category and self.category == merchant_category:
+        if self.category and merchant_category and self.category.lower() == merchant_category.lower():
             return True
         return False
 

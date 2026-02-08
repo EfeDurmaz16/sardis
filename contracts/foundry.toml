@@ -14,8 +14,17 @@ remappings = [
 ]
 
 # Testing configuration
-fuzz = { runs = 256 }
+# SECURITY: 256 fuzz runs is too low for financial contract invariants.
+# 10,000 runs significantly increases confidence in property-based tests.
+# Use CI profile for deeper testing (50,000 runs).
+fuzz = { runs = 10000 }
 verbosity = 2
+
+[profile.ci]
+fuzz = { runs = 50000 }
+
+[profile.quick]
+fuzz = { runs = 256 }
 
 [profile.default.fmt]
 line_length = 120

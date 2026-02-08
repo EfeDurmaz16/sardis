@@ -210,6 +210,40 @@ export async function createServer() {
     throw new Error(`Unknown resource: ${uri}`);
   });
 
+  // SECURITY: Per-tool rate limiting to prevent abuse by compromised/injected agents.
+  const toolCallCounts = new Map<string, { count: number; windowStart: number }>();
+  const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+  const RATE_LIMITS: Record<string, number> = {
+    // Payment execution: strict limit
+    sardis_pay: 5,
+    sardis_execute_payment: 5,
+    // Wallet mutations
+    sardis_create_wallet: 3,
+    // Hold operations
+    sardis_create_hold: 10,
+    sardis_capture_hold: 10,
+    // Read operations: more lenient
+    _default: 60,
+  };
+
+  function checkRateLimit(toolName: string): boolean {
+    const now = Date.now();
+    const limit = RATE_LIMITS[toolName] ?? RATE_LIMITS._default;
+    const entry = toolCallCounts.get(toolName);
+
+    if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+      toolCallCounts.set(toolName, { count: 1, windowStart: now });
+      return true;
+    }
+
+    if (entry.count >= limit) {
+      return false;
+    }
+
+    entry.count++;
+    return true;
+  }
+
   // Handle tool calls (using modular handlers)
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
@@ -217,6 +251,20 @@ export async function createServer() {
     const handler = allToolHandlers[name];
     if (!handler) {
       throw new Error(`Unknown tool: ${name}`);
+    }
+
+    // Enforce rate limit
+    if (!checkRateLimit(name)) {
+      const limit = RATE_LIMITS[name] ?? RATE_LIMITS._default;
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            error: `Rate limit exceeded for ${name}. Maximum ${limit} calls per minute.`,
+          }),
+        }],
+        isError: true,
+      };
     }
 
     return handler(args);

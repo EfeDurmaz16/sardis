@@ -1,13 +1,73 @@
 """Webhook API routes for subscription management and delivery logs."""
 from __future__ import annotations
 
+import ipaddress
+import logging
 from datetime import datetime
 from typing import List, Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, HttpUrl
 
 from sardis_api.middleware.auth import require_api_key, APIKey
+
+_logger = logging.getLogger("sardis.api.webhooks")
+
+
+def _validate_webhook_url(url: str) -> str:
+    """Validate a webhook URL to prevent SSRF attacks.
+
+    SECURITY: Without this validation, an attacker could register webhook URLs
+    pointing to internal services (e.g., http://169.254.169.254/latest/meta-data/,
+    http://localhost:8080/admin) and exfiltrate data or trigger internal actions
+    when webhook events fire.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook URL",
+        )
+
+    # Require HTTPS in production
+    if parsed.scheme not in ("https", "http"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Webhook URL must use HTTPS (or HTTP for local development)",
+        )
+
+    hostname = parsed.hostname or ""
+
+    # Block obviously internal hostnames
+    blocked_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]", "metadata.google.internal"}
+    if hostname.lower() in blocked_hosts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Webhook URL must not point to a local/internal address",
+        )
+
+    # Block private/reserved IP ranges
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Webhook URL must not point to a private or reserved IP address",
+            )
+    except ValueError:
+        # hostname is not a raw IP — that's fine (e.g., "example.com")
+        pass
+
+    # Block AWS/GCP/Azure metadata endpoints
+    if hostname.startswith("169.254.") or hostname == "metadata.google.internal":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Webhook URL must not point to cloud metadata endpoints",
+        )
+
+    return url
 from sardis_v2_core.webhooks import (
     WebhookRepository,
     WebhookService,
@@ -147,6 +207,8 @@ async def create_webhook(
 ):
     """Create a new webhook subscription."""
     organization_id = api_key.organization_id
+    # SECURITY: Validate URL to prevent SSRF
+    _validate_webhook_url(request.url)
     # Validate event types if provided
     if request.events:
         valid_events = {e.value for e in EventType}
@@ -209,6 +271,10 @@ async def update_webhook(
     existing = await deps.repository.get_subscription(subscription_id)
     if not existing or existing.organization_id != api_key.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook subscription not found")
+
+    # SECURITY: Validate URL to prevent SSRF on update
+    if request.url:
+        _validate_webhook_url(request.url)
 
     # Validate event types if provided
     if request.events:

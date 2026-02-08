@@ -106,9 +106,15 @@ def get_request_id(request: Request) -> str:
 
 
 def is_production() -> bool:
-    """Check if running in production environment."""
-    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-    return env in ("production", "prod")
+    """Check if running in a production-like environment.
+
+    SECURITY: Staging environments should also hide internal details (tracebacks,
+    dependency names, etc.) since they are often network-accessible and may share
+    production data. Only dev/test/local are considered safe for verbose errors.
+    """
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    # Only dev/test/local show verbose errors; everything else is treated as production
+    return env not in ("dev", "test", "local")
 
 
 def create_error_response(

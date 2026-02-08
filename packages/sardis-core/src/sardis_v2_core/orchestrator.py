@@ -403,7 +403,7 @@ class PaymentOrchestrator:
                 chain=payment.chain,
             )
 
-        # Phase 3.5: Persist spending state (best-effort)
+        # Phase 3.5: Persist spending state (mandatory — queue for reconciliation on failure)
         try:
             if hasattr(self._wallet_manager, "async_record_spend"):
                 await getattr(self._wallet_manager, "async_record_spend")(payment)
@@ -416,6 +416,23 @@ class PaymentOrchestrator:
         except Exception as e:
             self._audit(mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, False, error=str(e))
             logger.error("Policy spend-state update failed for mandate=%s: %s", mandate_id, e)
+            # SECURITY: Queue unrecorded spend for reconciliation so limits stay accurate.
+            # Without this, successful on-chain payments would not decrement the agent's
+            # spending allowance, allowing repeated limit overruns.
+            spend_recon = ReconciliationEntry(
+                mandate_id=mandate_id,
+                chain_tx_hash=receipt.tx_hash,
+                chain=receipt.chain,
+                audit_anchor=receipt.audit_anchor,
+                payment_mandate=payment,
+                chain_receipt=receipt,
+                error=f"spend_state_update_failed: {e}",
+            )
+            self._reconciliation_queue.append(spend_recon)
+            logger.warning(
+                "Queued spend-state reconciliation for mandate=%s tx=%s",
+                mandate_id, receipt.tx_hash,
+            )
 
         # Phase 4: Ledger Append (queue for reconciliation on failure)
         ledger_tx = None

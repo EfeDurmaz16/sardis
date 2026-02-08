@@ -80,15 +80,27 @@ export interface SardisOpenAIOptions {
 
 /**
  * Generate a unique mandate ID
+ *
+ * SECURITY: Uses crypto.randomUUID() for cryptographically secure IDs.
+ * Math.random() is not suitable for security-relevant identifiers.
  */
 function generateMandateId(): string {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 10);
-    return `mnd_${timestamp}${random}`;
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID().replace(/-/g, '').substring(0, 16)
+        : Array.from(
+            (typeof crypto !== 'undefined' && crypto.getRandomValues)
+                ? crypto.getRandomValues(new Uint8Array(8))
+                : (() => { throw new Error('No cryptographic RNG available for mandate IDs'); })() as never,
+          ).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+    return `mnd_${id}`;
 }
 
 /**
  * Create a SHA-256 hash for audit purposes
+ *
+ * SECURITY: The fallback uses Node.js crypto module instead of a
+ * predictable timestamp string. Audit hashes must provide collision
+ * resistance for financial integrity.
  */
 async function createAuditHash(data: string): Promise<string> {
     if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -98,7 +110,17 @@ async function createAuditHash(data: string): Promise<string> {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    return `hash_${Date.now().toString(16)}`;
+    // Fallback: use Node.js crypto (always available in Node environments)
+    try {
+        const { createHash } = await import('node:crypto');
+        return createHash('sha256').update(data).digest('hex');
+    } catch {
+        // SECURITY: Refuse to produce a fake hash — fail-closed.
+        throw new Error(
+            'No cryptographic hash function available. '
+            + 'Audit integrity cannot be guaranteed without SHA-256.'
+        );
+    }
 }
 
 /**
@@ -215,7 +237,21 @@ export async function handleSardisFunctionCall(
     options: SardisOpenAIOptions = {}
 ): Promise<string> {
     const { function: func } = toolCall;
-    const args = JSON.parse(func.arguments);
+
+    // SECURITY: LLMs can produce malformed JSON. Without try/catch, a parse
+    // failure during a payment flow crashes the process and may leave the
+    // system in an inconsistent state (e.g., hold created but never captured).
+    let args: Record<string, unknown>;
+    try {
+        args = JSON.parse(func.arguments);
+    } catch (parseError) {
+        return JSON.stringify({
+            success: false,
+            error: 'INVALID_FUNCTION_ARGUMENTS',
+            message: `Failed to parse function arguments: ${parseError instanceof Error ? parseError.message : 'malformed JSON'}`,
+            raw_arguments: func.arguments.substring(0, 200),
+        });
+    }
 
     const defaultWalletId = options.walletId || process.env.SARDIS_WALLET_ID || '';
     const defaultAgentId = options.agentId || process.env.SARDIS_AGENT_ID || '';
@@ -266,11 +302,68 @@ async function handlePayment(
         });
     }
 
+    // SECURITY: Validate LLM-provided arguments before passing to API.
+    // LLMs can produce out-of-range values, injection payloads, or garbage strings.
     const amount = args.amount as number;
     const vendor = args.vendor as string;
     const vendorAddress = args.vendor_address as string | undefined;
     const purpose = args.purpose as string | undefined;
     const token = (args.token as 'USDC' | 'USDT' | 'PYUSD' | 'EURC') || defaultToken;
+
+    // Amount validation: must be positive, finite, and within sane bounds
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+        return JSON.stringify({
+            success: false,
+            error: 'INVALID_AMOUNT',
+            message: 'Amount must be a positive finite number',
+        });
+    }
+    if (amount > 1_000_000) {
+        return JSON.stringify({
+            success: false,
+            error: 'AMOUNT_EXCEEDS_MAXIMUM',
+            message: 'Amount exceeds maximum allowed ($1,000,000). Use the dashboard for larger transfers.',
+        });
+    }
+
+    // Vendor name validation: length limit and safe characters
+    if (typeof vendor !== 'string' || vendor.length === 0 || vendor.length > 200) {
+        return JSON.stringify({
+            success: false,
+            error: 'INVALID_VENDOR',
+            message: 'Vendor name must be 1-200 characters',
+        });
+    }
+
+    // Purpose validation: length limit
+    if (purpose !== undefined && (typeof purpose !== 'string' || purpose.length > 500)) {
+        return JSON.stringify({
+            success: false,
+            error: 'INVALID_PURPOSE',
+            message: 'Purpose must be a string of 500 characters or fewer',
+        });
+    }
+
+    // Vendor address validation: must be a valid hex address if provided
+    if (vendorAddress !== undefined) {
+        if (typeof vendorAddress !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(vendorAddress)) {
+            return JSON.stringify({
+                success: false,
+                error: 'INVALID_VENDOR_ADDRESS',
+                message: 'Vendor address must be a valid Ethereum address (0x followed by 40 hex characters)',
+            });
+        }
+    }
+
+    // Token validation
+    const validTokens = new Set(['USDC', 'USDT', 'PYUSD', 'EURC']);
+    if (!validTokens.has(token)) {
+        return JSON.stringify({
+            success: false,
+            error: 'INVALID_TOKEN',
+            message: `Token must be one of: ${[...validTokens].join(', ')}`,
+        });
+    }
 
     try {
         const mandateId = generateMandateId();

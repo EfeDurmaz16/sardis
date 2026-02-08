@@ -227,6 +227,69 @@ Extract the policy accurately and completely."""
         self._sync_client = instructor.from_openai(OpenAI(api_key=self.api_key))
         self._async_client = instructor.from_openai(AsyncOpenAI(api_key=self.api_key))
 
+    # SECURITY: Hard-coded upper bounds that no LLM output may exceed.
+    # These prevent prompt injection from setting absurdly high limits.
+    MAX_PER_TX = Decimal("100000")       # $100k per transaction
+    MAX_DAILY = Decimal("500000")        # $500k daily
+    MAX_MONTHLY = Decimal("5000000")     # $5M monthly
+    MAX_INPUT_LENGTH = 2000              # Characters
+
+    @staticmethod
+    def _sanitize_input(text: str) -> str:
+        """Sanitize natural language input before sending to LLM.
+
+        SECURITY: Prevents prompt injection by:
+        - Enforcing max length
+        - Stripping control characters
+        - Removing common injection patterns
+        """
+        if len(text) > NLPolicyParser.MAX_INPUT_LENGTH:
+            raise ValueError(
+                f"Policy text too long ({len(text)} chars). "
+                f"Maximum is {NLPolicyParser.MAX_INPUT_LENGTH} characters."
+            )
+
+        # Strip control characters (keep newlines and tabs)
+        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+
+        # Collapse excessive whitespace
+        sanitized = re.sub(r'\s{10,}', ' ', sanitized)
+
+        if not sanitized.strip():
+            raise ValueError("Policy text is empty after sanitization.")
+
+        return sanitized
+
+    def _validate_extracted_amounts(self, extracted: "ExtractedPolicy") -> None:
+        """Deterministic validation of LLM-extracted amounts against hard caps.
+
+        SECURITY: Even if the LLM is tricked into outputting huge numbers,
+        this check will reject them.
+        """
+        for limit in extracted.spending_limits:
+            amount = Decimal(str(limit.max_amount))
+            if limit.period == "per_transaction" and amount > self.MAX_PER_TX:
+                raise ValueError(
+                    f"Extracted per-transaction limit ${amount} exceeds maximum ${self.MAX_PER_TX}"
+                )
+            elif limit.period == "daily" and amount > self.MAX_DAILY:
+                raise ValueError(
+                    f"Extracted daily limit ${amount} exceeds maximum ${self.MAX_DAILY}"
+                )
+            elif limit.period in ("weekly", "monthly") and amount > self.MAX_MONTHLY:
+                raise ValueError(
+                    f"Extracted {limit.period} limit ${amount} exceeds maximum ${self.MAX_MONTHLY}"
+                )
+
+        if extracted.global_daily_limit and Decimal(str(extracted.global_daily_limit)) > self.MAX_DAILY:
+            raise ValueError(
+                f"Extracted global daily limit ${extracted.global_daily_limit} exceeds maximum ${self.MAX_DAILY}"
+            )
+        if extracted.global_monthly_limit and Decimal(str(extracted.global_monthly_limit)) > self.MAX_MONTHLY:
+            raise ValueError(
+                f"Extracted global monthly limit ${extracted.global_monthly_limit} exceeds maximum ${self.MAX_MONTHLY}"
+            )
+
     def parse_sync(self, natural_language_policy: str) -> ExtractedPolicy:
         """
         Parse natural language policy synchronously.
@@ -237,15 +300,18 @@ Extract the policy accurately and completely."""
         Returns:
             ExtractedPolicy with structured constraints
         """
-        return self._sync_client.chat.completions.create(
+        sanitized = self._sanitize_input(natural_language_policy)
+        extracted = self._sync_client.chat.completions.create(
             model=self.model,
             temperature=self.temperature,
             response_model=ExtractedPolicy,
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": f"Parse this policy: {natural_language_policy}"}
+                {"role": "user", "content": f"Parse this policy: {sanitized}"}
             ]
         )
+        self._validate_extracted_amounts(extracted)
+        return extracted
 
     async def parse(self, natural_language_policy: str) -> ExtractedPolicy:
         """
@@ -257,15 +323,18 @@ Extract the policy accurately and completely."""
         Returns:
             ExtractedPolicy with structured constraints
         """
-        return await self._async_client.chat.completions.create(
+        sanitized = self._sanitize_input(natural_language_policy)
+        extracted = await self._async_client.chat.completions.create(
             model=self.model,
             temperature=self.temperature,
             response_model=ExtractedPolicy,
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": f"Parse this policy: {natural_language_policy}"}
+                {"role": "user", "content": f"Parse this policy: {sanitized}"}
             ]
         )
+        self._validate_extracted_amounts(extracted)
+        return extracted
 
     def to_spending_policy(
         self,
@@ -387,6 +456,11 @@ class RegexPolicyParser:
 
     Handles common patterns without LLM dependency. Less accurate but
     works offline and is faster for simple policies.
+
+    SECURITY: This parser only extracts the FIRST amount/vendor/period.
+    Compound policies like "$500 daily on AWS, $200 monthly on OpenAI"
+    will silently lose the second clause. The `warnings` field in the
+    result communicates what was dropped.
     """
 
     AMOUNT_PATTERN = re.compile(r'\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)')
@@ -400,19 +474,38 @@ class RegexPolicyParser:
         Parse policy using regex patterns.
 
         Returns dict with extracted fields (not full ExtractedPolicy).
+        Includes a `warnings` field listing constraints that could not be extracted.
         """
-        result = {
+        # SECURITY: Apply the same input sanitization as the LLM parser
+        sanitized = _sanitize_input(natural_language_policy)
+
+        result: dict = {
             "spending_limits": [],
             "blocked_categories": [],
             "requires_approval_above": None,
+            "warnings": [],
+            "parser": "regex_fallback",
         }
 
-        # Extract amounts
-        amounts = self.AMOUNT_PATTERN.findall(natural_language_policy)
+        # Extract ALL amounts to detect compound policies
+        amounts = self.AMOUNT_PATTERN.findall(sanitized)
         amounts = [float(a.replace(",", "")) for a in amounts]
 
+        # SECURITY: Warn if multiple amounts detected — regex only handles first
+        if len(amounts) > 1:
+            result["warnings"].append(
+                f"Multiple amounts detected ({len(amounts)}). "
+                f"Only the first (${amounts[0]}) will be enforced. "
+                "Use the LLM parser for compound policies."
+            )
+            logger.warning(
+                "RegexPolicyParser: %d amounts in input but only first extracted. "
+                "Compound policies require LLM parser.",
+                len(amounts),
+            )
+
         # Extract period
-        period_match = self.PERIOD_PATTERN.search(natural_language_policy)
+        period_match = self.PERIOD_PATTERN.search(sanitized)
         period = "daily"
         if period_match:
             p = period_match.group(2).lower()
@@ -426,28 +519,39 @@ class RegexPolicyParser:
                 period = "monthly"
 
         # Extract vendor
-        vendor_match = self.VENDOR_PATTERN.search(natural_language_policy)
+        vendor_match = self.VENDOR_PATTERN.search(sanitized)
         vendor = vendor_match.group(1) if vendor_match else "*"
 
-        # Build spending limit
+        # Build spending limit with amount validation
         if amounts:
+            amount = amounts[0]
+            # SECURITY: Apply same hard limits as LLM parser
+            if amount > MAX_PER_TX:
+                result["warnings"].append(
+                    f"Amount ${amount} exceeds maximum ${MAX_PER_TX}. Clamped."
+                )
+                amount = float(MAX_PER_TX)
+
             result["spending_limits"].append({
                 "vendor_pattern": vendor.lower(),
-                "max_amount": amounts[0],
+                "max_amount": amount,
                 "period": period,
                 "currency": "USD",
             })
 
         # Extract blocked categories
-        block_match = self.BLOCK_PATTERN.search(natural_language_policy)
+        block_match = self.BLOCK_PATTERN.search(sanitized)
         if block_match:
             categories = [c.strip().lower() for c in block_match.group(1).split(",")]
-            result["blocked_categories"] = categories
+            result["blocked_categories"] = [c for c in categories if c]
 
         # Extract approval threshold
-        approval_match = self.APPROVAL_PATTERN.search(natural_language_policy)
+        approval_match = self.APPROVAL_PATTERN.search(sanitized)
         if approval_match:
-            result["requires_approval_above"] = float(approval_match.group(1).replace(",", ""))
+            threshold = float(approval_match.group(1).replace(",", ""))
+            if threshold > MAX_PER_TX:
+                threshold = float(MAX_PER_TX)
+            result["requires_approval_above"] = threshold
 
         return result
 

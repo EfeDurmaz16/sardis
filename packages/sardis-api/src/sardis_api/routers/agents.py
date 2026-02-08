@@ -130,11 +130,13 @@ def _b64url_decode(data: str) -> bytes:
 
 
 def _identity_secret() -> str:
-    return (
-        os.getenv("SARDIS_SECRET_KEY")
-        or os.getenv("SECRET_KEY")
-        or "sardis-dev-insecure-secret"
-    )
+    secret = os.getenv("SARDIS_SECRET_KEY") or os.getenv("SECRET_KEY")
+    if not secret:
+        raise RuntimeError(
+            "SARDIS_SECRET_KEY or SECRET_KEY environment variable must be set. "
+            "Payment identity tokens cannot be signed without a secret."
+        )
+    return secret
 
 
 def _sign_identity_payload(payload_b64: str) -> str:

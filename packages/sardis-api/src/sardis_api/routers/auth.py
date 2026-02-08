@@ -129,6 +129,17 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
         header_b64, payload_b64, signature_b64 = parts
 
+        # SECURITY: Validate header to prevent algorithm confusion attacks.
+        # An attacker could craft a token with "alg":"none" and an empty
+        # signature, or switch to an asymmetric algorithm if the secret
+        # is a public key. We ONLY accept HS256.
+        try:
+            header = json.loads(_base64url_decode(header_b64))
+        except Exception:
+            return None
+        if not isinstance(header, dict) or header.get("alg") != JWT_ALGORITHM:
+            return None
+
         # Verify signature
         message = f"{header_b64}.{payload_b64}"
         expected_signature = hmac.new(
@@ -147,6 +158,12 @@ def verify_jwt_token(token: str) -> Optional[dict]:
         # Check expiration
         exp = payload.get("exp")
         if exp and datetime.now(timezone.utc).timestamp() > exp:
+            return None
+
+        # SECURITY: Validate required claims exist
+        if not isinstance(payload.get("sub"), str) or not payload.get("sub"):
+            return None
+        if not isinstance(payload.get("jti"), str) or not payload.get("jti"):
             return None
 
         return payload

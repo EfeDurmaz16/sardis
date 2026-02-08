@@ -238,10 +238,29 @@ async def list_mandates(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
-    """List all mandates."""
+    """List mandates scoped to the caller's organization."""
+    # SECURITY: Non-admin callers can only see mandates for agents they own.
+    effective_subject = subject
+    if not principal.is_admin:
+        # Resolve which agents belong to this org and restrict the query
+        org_agents = await deps.agent_repo.list(owner_id=principal.organization_id, limit=1000)
+        org_agent_ids = {a.agent_id for a in org_agents}
+        if subject and subject not in org_agent_ids:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        # If no subject filter, we still need to restrict to org's agents.
+        # Pass the org's agent IDs as the subject filter.
+        if not subject and org_agent_ids:
+            results: list = []
+            for agent_id in list(org_agent_ids)[:20]:  # Limit to prevent excessive queries
+                batch = await _list_mandates(subject=agent_id, status_filter=status_filter, limit=limit, offset=offset)
+                results.extend(batch)
+            results.sort(key=lambda m: m.created_at, reverse=True)
+            return [MandateResponse.from_stored(m) for m in results[:limit]]
+
     results = await _list_mandates(
-        subject=subject,
+        subject=effective_subject,
         status_filter=status_filter,
         limit=limit,
         offset=offset,
@@ -253,11 +272,17 @@ async def list_mandates(
 async def get_mandate(
     mandate_id: str,
     deps: Dependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
-    """Get mandate details."""
+    """Get mandate details (org-scoped)."""
     stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
+    # SECURITY: Verify the caller owns the agent that created this mandate
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(stored.mandate.subject)
+        if not agent or agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return MandateResponse.from_stored(stored)
 
 

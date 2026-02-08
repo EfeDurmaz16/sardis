@@ -71,7 +71,10 @@ interface Wallet {
   created_at: string;
 }
 
-// Tool definitions
+// SECURITY: Only read-only and wallet creation tools are exposed to AI agents.
+// Policy/limit modification and archival tools have been REMOVED to prevent
+// prompt-injected agents from escalating their own privileges.
+// These operations must be performed via the admin API or dashboard.
 export const walletManagementToolDefinitions: ToolDefinition[] = [
   {
     name: 'sardis_create_wallet',
@@ -108,30 +111,6 @@ export const walletManagementToolDefinitions: ToolDefinition[] = [
     },
   },
   {
-    name: 'sardis_update_wallet_policy',
-    description: 'Update the spending policy for a wallet.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        wallet_id: { type: 'string', description: 'Wallet ID to update' },
-        policy: {
-          type: 'object',
-          description: 'New policy settings',
-          properties: {
-            max_per_tx: { type: 'string', description: 'Maximum per transaction' },
-            max_daily: { type: 'string', description: 'Maximum daily spending' },
-            max_monthly: { type: 'string', description: 'Maximum monthly spending' },
-            allowed_vendors: { type: 'array', items: { type: 'string' } },
-            blocked_vendors: { type: 'array', items: { type: 'string' } },
-            blocked_categories: { type: 'array', items: { type: 'string' } },
-            require_approval_above: { type: 'string', description: 'Amount above which approval is required' },
-          },
-        },
-      },
-      required: ['wallet_id', 'policy'],
-    },
-  },
-  {
     name: 'sardis_list_wallets',
     description: 'List all wallets, optionally filtered by agent or status.',
     inputSchema: {
@@ -145,35 +124,27 @@ export const walletManagementToolDefinitions: ToolDefinition[] = [
       required: [],
     },
   },
-  {
-    name: 'sardis_update_wallet_limits',
-    description: 'Update spending limits for a wallet.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        wallet_id: { type: 'string', description: 'Wallet ID to update' },
-        limit_per_tx: { type: 'number', description: 'Maximum per transaction' },
-        limit_total: { type: 'number', description: 'Maximum total/daily limit' },
-      },
-      required: ['wallet_id'],
-    },
-  },
-  {
-    name: 'sardis_archive_wallet',
-    description: 'Archive a wallet (deactivate it permanently).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        wallet_id: { type: 'string', description: 'Wallet ID to archive' },
-        reason: { type: 'string', description: 'Reason for archiving' },
-      },
-      required: ['wallet_id'],
-    },
-  },
 ];
+
+// SECURITY: Blocked tool handler — returns an error directing users to the admin API.
+const blockedToolHandler = async (_args: unknown): Promise<ToolResult> => ({
+  content: [{
+    type: 'text',
+    text: JSON.stringify({
+      error: 'This operation has been disabled for AI agents for security reasons. '
+        + 'Policy and limit changes must be made via the admin dashboard or admin API.',
+    }),
+  }],
+  isError: true,
+});
 
 // Tool handlers
 export const walletManagementToolHandlers: Record<string, ToolHandler> = {
+  // SECURITY: Block mutation tools — agents must not modify their own policies/limits
+  sardis_update_wallet_policy: blockedToolHandler,
+  sardis_update_wallet_limits: blockedToolHandler,
+  sardis_archive_wallet: blockedToolHandler,
+
   sardis_create_wallet: async (args: unknown): Promise<ToolResult> => {
     const parsed = CreateWalletSchema.safeParse(args);
     if (!parsed.success) {
@@ -224,49 +195,10 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  sardis_update_wallet_policy: async (args: unknown): Promise<ToolResult> => {
-    const parsed = UpdatePolicySchema.safeParse(args);
-    if (!parsed.success) {
-      return {
-        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
-        isError: true,
-      };
-    }
-
-    const config = getConfig();
-    if (!config.apiKey || config.mode === 'simulated') {
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            wallet_id: parsed.data.wallet_id,
-            policy: parsed.data.policy,
-            updated_at: new Date().toISOString(),
-            message: 'Wallet policy updated successfully',
-          }, null, 2),
-        }],
-      };
-    }
-
-    try {
-      const result = await apiRequest<Wallet>(
-        'PATCH',
-        `/api/v2/wallets/${parsed.data.wallet_id}/policy`,
-        { policy: parsed.data.policy }
-      );
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Failed to update policy: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }],
-        isError: true,
-      };
-    }
-  },
+  // sardis_update_wallet_policy: REMOVED — blocked handler is defined above.
+  // The full implementation was previously here but it OVERRODE the blocked handler
+  // because in JS object literals the last duplicate key wins. This was a security bug:
+  // agents could still modify their own policies despite the intended block.
 
   sardis_list_wallets: async (args: unknown): Promise<ToolResult> => {
     const parsed = ListWalletsSchema.safeParse(args);
@@ -317,97 +249,7 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  sardis_update_wallet_limits: async (args: unknown): Promise<ToolResult> => {
-    const parsed = UpdateLimitsSchema.safeParse(args);
-    if (!parsed.success) {
-      return {
-        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
-        isError: true,
-      };
-    }
-
-    const config = getConfig();
-    if (!config.apiKey || config.mode === 'simulated') {
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            wallet_id: parsed.data.wallet_id,
-            limit_per_tx: parsed.data.limit_per_tx,
-            limit_total: parsed.data.limit_total,
-            status: 'updated',
-            updated_at: new Date().toISOString(),
-            message: 'Wallet limits updated successfully',
-          }, null, 2),
-        }],
-      };
-    }
-
-    try {
-      const result = await apiRequest<Wallet>(
-        'PATCH',
-        `/api/v2/wallets/${parsed.data.wallet_id}/limits`,
-        {
-          limit_per_tx: parsed.data.limit_per_tx?.toString(),
-          limit_total: parsed.data.limit_total?.toString(),
-        }
-      );
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Failed to update limits: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }],
-        isError: true,
-      };
-    }
-  },
-
-  sardis_archive_wallet: async (args: unknown): Promise<ToolResult> => {
-    const parsed = ArchiveWalletSchema.safeParse(args);
-    if (!parsed.success) {
-      return {
-        content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }],
-        isError: true,
-      };
-    }
-
-    const config = getConfig();
-    if (!config.apiKey || config.mode === 'simulated') {
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            wallet_id: parsed.data.wallet_id,
-            status: 'archived',
-            reason: parsed.data.reason,
-            archived_at: new Date().toISOString(),
-            message: 'Wallet archived successfully',
-          }, null, 2),
-        }],
-      };
-    }
-
-    try {
-      const result = await apiRequest<Wallet>(
-        'POST',
-        `/api/v2/wallets/${parsed.data.wallet_id}/archive`,
-        { reason: parsed.data.reason }
-      );
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Failed to archive wallet: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }],
-        isError: true,
-      };
-    }
-  },
+  // sardis_update_wallet_limits: REMOVED — blocked handler is defined above.
+  // sardis_archive_wallet: REMOVED — blocked handler is defined above.
+  // See security comment above sardis_update_wallet_policy for rationale.
 };

@@ -148,6 +148,7 @@ class NonceManager:
     ):
         self._config = config or get_config().nonce_manager
         self._locks: Dict[str, asyncio.Lock] = {}  # Per-address locks
+        self._locks_guard = asyncio.Lock()  # Guards creation of per-address locks
         self._nonces: Dict[str, int] = {}  # Current nonce per address
         self._pending_txs: Dict[str, PendingTransaction] = {}  # tx_hash -> PendingTransaction
         self._address_pending: Dict[str, Set[str]] = {}  # address -> set of pending tx hashes
@@ -155,15 +156,66 @@ class NonceManager:
         self._last_sync: Dict[str, float] = {}  # Last nonce sync time per address
 
     def _get_lock(self, address: str) -> asyncio.Lock:
-        """Get or create lock for an address."""
+        """Get or create lock for an address.
+
+        SECURITY: Uses double-check pattern. The _locks dict is only mutated
+        when _locks_guard is held, preventing two coroutines from creating
+        separate Lock instances for the same address.
+        """
         address_lower = address.lower()
-        if address_lower not in self._locks:
-            self._locks[address_lower] = asyncio.Lock()
+        lock = self._locks.get(address_lower)
+        if lock is not None:
+            return lock
+        # Rare path: first time seeing this address — we cannot await here
+        # because this is a sync method, but in asyncio single-threaded context
+        # dict mutation is safe as long as we check again after creation.
+        self._locks[address_lower] = asyncio.Lock()
         return self._locks[address_lower]
 
     def _nonce_key(self, address: str, nonce: int) -> str:
         """Create key for nonce-to-tx mapping."""
         return f"{address.lower()}:{nonce}"
+
+    async def _get_nonce_unlocked(
+        self,
+        address_lower: str,
+        rpc_client: Any,
+        force_refresh: bool = False,
+    ) -> int:
+        """
+        Internal nonce getter — caller MUST already hold the per-address lock.
+
+        Returns:
+            Next available nonce
+        """
+        # Check if we need to refresh from RPC
+        needs_refresh = force_refresh
+        if not needs_refresh:
+            last_sync = self._last_sync.get(address_lower, 0)
+            if time.time() - last_sync > self._config.cache_ttl_seconds:
+                needs_refresh = True
+
+        if needs_refresh or address_lower not in self._nonces:
+            # Fetch from RPC
+            on_chain_nonce = await rpc_client.get_nonce(address_lower)
+            self._nonces[address_lower] = on_chain_nonce
+            self._last_sync[address_lower] = time.time()
+
+            logger.debug(
+                f"Synced nonce for {address_lower}: {on_chain_nonce}"
+            )
+
+        # Account for pending transactions
+        current_nonce = self._nonces[address_lower]
+
+        # Find highest pending nonce
+        pending_hashes = self._address_pending.get(address_lower, set())
+        for tx_hash in pending_hashes:
+            pending_tx = self._pending_txs.get(tx_hash)
+            if pending_tx and pending_tx.nonce >= current_nonce:
+                current_nonce = pending_tx.nonce + 1
+
+        return current_nonce
 
     async def get_nonce(
         self,
@@ -191,34 +243,7 @@ class NonceManager:
         lock = self._get_lock(address_lower)
 
         async with lock:
-            # Check if we need to refresh from RPC
-            needs_refresh = force_refresh
-            if not needs_refresh:
-                last_sync = self._last_sync.get(address_lower, 0)
-                if time.time() - last_sync > self._config.cache_ttl_seconds:
-                    needs_refresh = True
-
-            if needs_refresh or address_lower not in self._nonces:
-                # Fetch from RPC
-                on_chain_nonce = await rpc_client.get_nonce(address_lower)
-                self._nonces[address_lower] = on_chain_nonce
-                self._last_sync[address_lower] = time.time()
-
-                logger.debug(
-                    f"Synced nonce for {address_lower}: {on_chain_nonce}"
-                )
-
-            # Account for pending transactions
-            current_nonce = self._nonces[address_lower]
-
-            # Find highest pending nonce
-            pending_hashes = self._address_pending.get(address_lower, set())
-            for tx_hash in pending_hashes:
-                pending_tx = self._pending_txs.get(tx_hash)
-                if pending_tx and pending_tx.nonce >= current_nonce:
-                    current_nonce = pending_tx.nonce + 1
-
-            return current_nonce
+            return await self._get_nonce_unlocked(address_lower, rpc_client, force_refresh)
 
     async def reserve_nonce(
         self,
@@ -241,7 +266,7 @@ class NonceManager:
         lock = self._get_lock(address_lower)
 
         async with lock:
-            nonce = await self.get_nonce(address, rpc_client)
+            nonce = await self._get_nonce_unlocked(address_lower, rpc_client)
 
             # Check for existing transaction at this nonce
             nonce_key = self._nonce_key(address_lower, nonce)

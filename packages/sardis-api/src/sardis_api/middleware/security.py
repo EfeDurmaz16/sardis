@@ -204,7 +204,12 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
         return self.default_limit
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Check content-length and reject oversized requests."""
+        """Check content-length and enforce body size limits.
+
+        SECURITY: Checks both Content-Length header AND actual streamed body size.
+        Without streaming check, chunked Transfer-Encoding bypasses the limit
+        because chunked requests omit Content-Length.
+        """
         # Skip for excluded paths
         if request.url.path in self.exclude_paths:
             return await call_next(request)
@@ -243,6 +248,33 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
                     )
             except ValueError:
                 pass
+
+        # SECURITY: Also enforce limit on the actual streamed body.
+        # Chunked Transfer-Encoding omits Content-Length, so we must count
+        # bytes as they arrive. This prevents resource exhaustion via chunked requests.
+        transfer_encoding = request.headers.get("transfer-encoding", "").lower()
+        if "chunked" in transfer_encoding or not content_length:
+            body = await request.body()
+            if len(body) > limit:
+                logger.warning(
+                    f"Chunked/streamed body too large: {len(body)} bytes (limit: {limit})",
+                    extra={
+                        "path": request.url.path,
+                        "body_size": len(body),
+                        "limit": limit,
+                    }
+                )
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "type": "https://api.sardis.io/errors/request-entity-too-large",
+                        "title": "Request Entity Too Large",
+                        "status": 413,
+                        "detail": f"Request body exceeds maximum size of {limit} bytes",
+                        "instance": request.url.path,
+                    },
+                    headers={"X-Max-Body-Size": str(limit)},
+                )
 
         return await call_next(request)
 

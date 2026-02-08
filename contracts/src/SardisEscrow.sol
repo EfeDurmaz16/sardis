@@ -295,17 +295,21 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     /**
      * @notice Buyer approves release
+     * @dev SECURITY: nonReentrant is required because _release() performs external
+     *      token transfers. Without it, a malicious token contract could re-enter
+     *      and drain funds or manipulate escrow state.
      */
     function approveRelease(uint256 escrowId)
         external
         onlyBuyer(escrowId)
         inState(escrowId, EscrowState.Funded)
+        nonReentrant
     {
         Escrow storage e = escrows[escrowId];
         e.buyerApproved = true;
-        
+
         emit ReleaseApproved(escrowId);
-        
+
         // If both parties agree, release funds
         if (e.sellerConfirmed) {
             _release(escrowId);
@@ -328,7 +332,11 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
 
     /**
      * @notice Release funds with condition verification
-     * @dev Allows release by providing condition data that hashes to stored conditionHash
+     * @dev Allows release by providing condition data that hashes to stored conditionHash.
+     *      SECURITY: Requires conditionHash to be non-zero. Without this check,
+     *      any authorized party could unilaterally release funds by calling this
+     *      function on escrows with no condition set, bypassing the mutual-approval
+     *      flow (buyerApproved + sellerConfirmed) required by release().
      * @param escrowId The escrow to release
      * @param conditionData The condition data that should hash to conditionHash
      */
@@ -343,11 +351,12 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         Escrow storage e = escrows[escrowId];
         require(msg.sender == e.buyer || msg.sender == e.seller || msg.sender == arbiter, "Not authorized");
 
-        // Verify condition matches (or no condition set)
-        require(
-            e.conditionHash == bytes32(0) || keccak256(conditionData) == e.conditionHash,
-            "Condition not met"
-        );
+        // SECURITY: Require that a condition was actually set for this escrow.
+        // If no condition was set, parties must use the standard approval flow.
+        require(e.conditionHash != bytes32(0), "No condition set - use standard release");
+
+        // Verify condition data matches the stored hash
+        require(keccak256(conditionData) == e.conditionHash, "Condition not met");
 
         emit ReleasedWithCondition(escrowId, e.conditionHash);
         _release(escrowId);

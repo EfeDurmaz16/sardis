@@ -65,6 +65,17 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
 
     /// @notice Total amount held per token (to prevent over-commitment)
     mapping(address => uint256) public totalHeldAmount;
+
+    // ============ Sardis Transfer Timelock ============
+
+    /// @notice Pending new Sardis address (two-step transfer)
+    address public pendingSardis;
+
+    /// @notice Timestamp when the Sardis transfer was proposed
+    uint256 public sardisTransferTimestamp;
+
+    /// @notice Timelock delay for Sardis role transfer (2 days)
+    uint256 public constant SARDIS_TRANSFER_DELAY = 2 days;
     
     // ============ Structs ============
     
@@ -117,6 +128,10 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     event SignatureUsed(bytes32 indexed signatureHash, address indexed signer);
 
     event SardisTransferred(address indexed oldSardis, address indexed newSardis);
+
+    event SardisTransferProposed(address indexed newSardis, uint256 executeAfter);
+
+    event SardisTransferCancelled(address indexed cancelledSardis);
     
     // ============ Modifiers ============
     
@@ -295,6 +310,10 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         _checkMerchant(merchant);
         _checkLimits(amount);
 
+        // SECURITY: Holds MUST count toward daily limits. Without this, an agent
+        // could create unlimited holds to bypass spending limits, then capture them.
+        _updateSpentAmount(amount);
+
         bytes32 holdId = keccak256(abi.encodePacked(
             address(this),
             merchant,
@@ -348,8 +367,18 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         // uncaptured remainder becomes available balance again
         totalHeldAmount[hold.token] -= hold.amount;
 
-        // Update spent amount
-        _updateSpentAmount(captureAmount);
+        // SECURITY: Do NOT call _updateSpentAmount here — the hold amount was
+        // already counted toward the daily limit when the hold was created.
+        // If capture < hold, the difference is "refunded" to the daily limit.
+        if (captureAmount < hold.amount) {
+            uint256 refundedAmount = hold.amount - captureAmount;
+            // Give back the unused portion to the daily limit
+            if (spentToday >= refundedAmount) {
+                spentToday -= refundedAmount;
+            } else {
+                spentToday = 0;
+            }
+        }
 
         // Execute transfer
         IERC20(hold.token).safeTransfer(hold.merchant, captureAmount);
@@ -372,6 +401,13 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
 
         // Release held amount
         totalHeldAmount[hold.token] -= hold.amount;
+
+        // SECURITY: Refund the daily limit since the hold was counted at creation
+        if (spentToday >= hold.amount) {
+            spentToday -= hold.amount;
+        } else {
+            spentToday = 0;
+        }
 
         emit HoldVoided(holdId);
     }
@@ -448,12 +484,30 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     /**
      * @notice Emergency withdrawal to recovery address
+     * @dev SECURITY: Only withdraws available balance (total minus held amounts).
+     *      Held funds belong to merchants with active pre-authorizations.
+     *      Withdrawing held funds would break escrow guarantees.
      * @param token Token to withdraw
      */
-    function emergencyWithdraw(address token) external onlyRecovery {
+    function emergencyWithdraw(address token) external onlyRecovery nonReentrant {
         uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 held = totalHeldAmount[token];
+        uint256 available = balance > held ? balance - held : 0;
+        if (available > 0) {
+            IERC20(token).safeTransfer(recoveryAddress, available);
+        }
+    }
+
+    /**
+     * @notice Emergency withdrawal of native ETH to recovery address
+     * @dev SECURITY: Without this function, ETH sent to the wallet via receive()
+     *      would be permanently locked with no way to retrieve it.
+     */
+    function emergencyWithdrawETH() external onlyRecovery nonReentrant {
+        uint256 balance = address(this).balance;
         if (balance > 0) {
-            IERC20(token).safeTransfer(recoveryAddress, balance);
+            (bool success, ) = recoveryAddress.call{value: balance}("");
+            require(success, "ETH transfer failed");
         }
     }
     
@@ -468,18 +522,57 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Transfer Sardis role to a new address
-     * @dev Only current Sardis can transfer. Enables platform upgrades and migration.
-     * @param _newSardis The new Sardis platform address
+     * @notice Propose transfer of Sardis role to a new address (step 1 of 2)
+     * @dev SECURITY: Two-step timelock prevents instant takeover if Sardis key is
+     *      compromised. The agent/recovery has SARDIS_TRANSFER_DELAY to detect and
+     *      pause the wallet before the transfer completes.
+     * @param _newSardis The proposed new Sardis platform address
      */
-    function transferSardis(address _newSardis) external onlySardis {
+    function proposeSardisTransfer(address _newSardis) external onlySardis {
         require(_newSardis != address(0), "Invalid address");
         require(_newSardis != sardis, "Same address");
 
-        address oldSardis = sardis;
-        sardis = _newSardis;
+        pendingSardis = _newSardis;
+        sardisTransferTimestamp = block.timestamp;
 
-        emit SardisTransferred(oldSardis, _newSardis);
+        emit SardisTransferProposed(_newSardis, block.timestamp + SARDIS_TRANSFER_DELAY);
+    }
+
+    /**
+     * @notice Execute a proposed Sardis role transfer (step 2 of 2)
+     * @dev Can only be called after the timelock delay has passed.
+     */
+    function executeSardisTransfer() external onlySardis {
+        require(pendingSardis != address(0), "No pending transfer");
+        require(
+            block.timestamp >= sardisTransferTimestamp + SARDIS_TRANSFER_DELAY,
+            "Timelock not expired"
+        );
+
+        address oldSardis = sardis;
+        sardis = pendingSardis;
+        pendingSardis = address(0);
+        sardisTransferTimestamp = 0;
+
+        emit SardisTransferred(oldSardis, sardis);
+    }
+
+    /**
+     * @notice Cancel a pending Sardis role transfer
+     * @dev Can be called by current Sardis or recovery address to abort a compromised transfer.
+     */
+    function cancelSardisTransfer() external {
+        require(
+            msg.sender == sardis || msg.sender == recoveryAddress,
+            "Only Sardis or recovery"
+        );
+        require(pendingSardis != address(0), "No pending transfer");
+
+        address cancelled = pendingSardis;
+        pendingSardis = address(0);
+        sardisTransferTimestamp = 0;
+
+        emit SardisTransferCancelled(cancelled);
     }
     
     // ============ View Functions ============

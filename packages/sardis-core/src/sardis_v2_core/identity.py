@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Dict, Literal, Optional, Tuple
@@ -12,6 +14,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from nacl import encoding, signing
 
 from .exceptions import SardisAlgorithmNotSupportedError
+
+_logger = logging.getLogger("sardis.core.identity")
 
 AllowedKeys = Literal["ed25519", "ecdsa-p256"]
 
@@ -97,6 +101,18 @@ class IdentityRegistry:
     def __init__(self):
         self._records: Dict[str, IdentityRecord] = {}
         self._history: Dict[str, list[IdentityRecord]] = {}
+
+        # SECURITY: Warn when using in-memory registry in non-dev environments.
+        # In-memory state is lost on restart → all identity bindings disappear
+        # → non-repudiation is impossible, agents can re-register arbitrary keys.
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env not in ("dev", "test", "local"):
+            _logger.warning(
+                "IdentityRegistry is using IN-MEMORY storage in '%s' environment. "
+                "All identity bindings will be LOST on restart. "
+                "Use a persistent store (PostgreSQL) for production/staging.",
+                env,
+            )
 
     def issue(self, agent_id: str, public_key: bytes, domain: str, algorithm: AllowedKeys = "ed25519") -> IdentityRecord:
         """Issue or rotate an identity. If an active identity exists, mark it revoked."""

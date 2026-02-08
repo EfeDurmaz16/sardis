@@ -120,8 +120,11 @@ export async function checkPolicy(
     const blockedVendors = getBlockedVendors();
     const allowedVendors = getAllowedVendors();
 
-    const isBlocked = blockedVendors.some((b) => normalizedVendor.includes(b.toLowerCase()));
-    const isAllowed = allowedVendors.some((v) => normalizedVendor.includes(v.toLowerCase()));
+    // SECURITY: Use exact match instead of substring to prevent bypass.
+    // Substring matching allows "aws-evil.com" to match "aws" on the allowlist,
+    // or "not-gambling-site" to match "gambling" on the blocklist.
+    const isBlocked = blockedVendors.some((b) => normalizedVendor === b.toLowerCase());
+    const isAllowed = allowedVendors.some((v) => normalizedVendor === v.toLowerCase());
 
     if (isBlocked) {
       checks.push({
@@ -350,21 +353,11 @@ export const policyToolDefinitions: ToolDefinition[] = [
       required: [],
     },
   },
-  {
-    name: 'sardis_get_rules',
-    description:
-      'Get detailed policy rules including limits, allowlists, and blocklists.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        wallet_id: {
-          type: 'string',
-          description: 'Wallet ID (optional, defaults to configured wallet)',
-        },
-      },
-      required: [],
-    },
-  },
+  // SECURITY: sardis_get_rules has been removed from agent-facing tools.
+  // Exposing the full policy ruleset (vendor allowlists, blocklists, limits,
+  // approval thresholds) to AI agents enables prompt-injected agents to
+  // craft requests that precisely bypass policy boundaries.
+  // Policy rules are accessible only via the admin API.
 ];
 
 // Tool handlers
@@ -521,61 +514,15 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  sardis_get_rules: async (args: unknown): Promise<ToolResult> => {
-    const config = getConfig();
-    const walletId = typeof args === 'object' && args !== null && 'wallet_id' in args
-      ? (args as { wallet_id?: string }).wallet_id || config.walletId
-      : config.walletId;
-
-    if (!config.apiKey || config.mode === 'simulated') {
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            wallet_id: walletId,
-            rules: {
-              limits: {
-                per_transaction: '100.00',
-                daily: '500.00',
-                monthly: '5000.00',
-              },
-              allowed_vendors: getAllowedVendors(),
-              blocked_vendors: getBlockedVendors(),
-              blocked_categories: ['gambling', 'adult'],
-              require_approval_above: '500.00',
-            },
-          }, null, 2),
-        }],
-      };
-    }
-
-    try {
-      const wallet = await getWalletInfo();
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            wallet_id: wallet.id,
-            rules: {
-              limits: {
-                per_transaction: wallet.limit_per_tx,
-                daily: wallet.limit_total,
-              },
-              allowed_vendors: getAllowedVendors(),
-              blocked_vendors: getBlockedVendors(),
-              is_active: wallet.is_active,
-            },
-          }, null, 2),
-        }],
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Failed to get rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        }],
-        isError: true,
-      };
-    }
-  },
+  // SECURITY: sardis_get_rules handler removed — see tool definition comment above.
+  sardis_get_rules: async (_args: unknown): Promise<ToolResult> => ({
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        error: 'Policy rule details are not available to AI agents for security reasons. '
+          + 'Use sardis_check_policy to verify if a specific payment would be allowed.',
+      }),
+    }],
+    isError: true,
+  }),
 };

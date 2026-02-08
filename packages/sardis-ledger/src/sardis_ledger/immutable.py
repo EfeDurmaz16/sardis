@@ -98,8 +98,8 @@ class ImmutableConfig:
     # immudb connection
     immudb_host: str = "localhost"
     immudb_port: int = 3322
-    immudb_user: str = "immudb"
-    immudb_password: str = "immudb"
+    immudb_user: str = ""
+    immudb_password: str = ""
     immudb_database: str = "sardis_audit"
 
     # PostgreSQL connection (optional, for hybrid mode)
@@ -418,6 +418,14 @@ class ImmutableAuditTrail:
             self.config.immudb_host,
             self.config.immudb_port,
         )
+
+        # Validate credentials
+        if not self.config.immudb_user or not self.config.immudb_password:
+            raise ImmutableStoreError(
+                "immudb_user and immudb_password must be explicitly configured. "
+                "Do not use default credentials in any environment.",
+                code="MISSING_CREDENTIALS",
+            )
 
         # Login
         self._client.login(
@@ -883,8 +891,8 @@ class BlockchainAnchor:
 def create_audit_trail(
     immudb_host: str = "localhost",
     immudb_port: int = 3322,
-    immudb_user: str = "immudb",
-    immudb_password: str = "immudb",
+    immudb_user: str = "",
+    immudb_password: str = "",
     immudb_database: str = "sardis_audit",
     **kwargs,
 ) -> ImmutableAuditTrail:
@@ -894,8 +902,8 @@ def create_audit_trail(
     Args:
         immudb_host: immudb server host
         immudb_port: immudb server port
-        immudb_user: immudb username
-        immudb_password: immudb password
+        immudb_user: immudb username (required, no default)
+        immudb_password: immudb password (required, no default)
         immudb_database: Database name
         **kwargs: Additional config options
 

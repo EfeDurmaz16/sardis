@@ -485,10 +485,23 @@ contract E2ETest is Test {
         console.log("Step 1: Current Sardis is factory:", address(factory));
         assertEq(wallet.sardis(), address(factory));
 
-        // Step 2: Transfer Sardis role
-        console.log("Step 2: Transferring Sardis role to new address...");
+        // Step 2: Propose Sardis role transfer (two-step timelock)
+        console.log("Step 2: Proposing Sardis role transfer...");
         vm.prank(address(factory));
-        wallet.transferSardis(newSardis);
+        wallet.proposeSardisTransfer(newSardis);
+
+        assertEq(wallet.pendingSardis(), newSardis);
+        // Sardis hasn't changed yet
+        assertEq(wallet.sardis(), address(factory));
+        console.log("  Transfer proposed, pending:", newSardis);
+
+        // Step 2b: Wait for timelock to expire
+        console.log("Step 2b: Waiting for timelock (2 days)...");
+        vm.warp(block.timestamp + 2 days);
+
+        // Step 2c: Execute the transfer
+        vm.prank(address(factory));
+        wallet.executeSardisTransfer();
 
         assertEq(wallet.sardis(), newSardis);
         console.log("  New Sardis:", newSardis);

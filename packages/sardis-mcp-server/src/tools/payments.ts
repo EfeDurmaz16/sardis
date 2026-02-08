@@ -94,15 +94,26 @@ export async function executePayment(
   const config = getConfig();
 
   if (!config.apiKey || config.mode === 'simulated') {
+    // SECURITY: Log a warning when falling into simulated mode.
+    // Without an explicit API key, ALL payments silently succeed without executing
+    // on-chain. If this happens in production due to a missing env var, real
+    // payments appear successful but no money actually moves.
+    if (!config.apiKey) {
+      console.error(
+        '[SARDIS SECURITY WARNING] No API key configured — all payments are SIMULATED. '
+        + 'Set SARDIS_API_KEY to enable real transactions. '
+        + 'If this is intentional, set SARDIS_MODE=simulated explicitly.'
+      );
+    }
     // Return simulated result with unique ID
     const uniqueId = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
     return {
-      payment_id: `pay_${uniqueId}`,
-      status: 'completed',
+      payment_id: `pay_sim_${uniqueId}`,
+      status: 'simulated',
       tx_hash: '0x' + Math.random().toString(16).substring(2).padEnd(64, '0'),
       chain: config.chain,
-      ledger_tx_id: `ltx_${uniqueId}`,
-      audit_anchor: `merkle::${uniqueId}`,
+      ledger_tx_id: `ltx_sim_${uniqueId}`,
+      audit_anchor: `merkle::sim::${uniqueId}`,
     };
   }
 
