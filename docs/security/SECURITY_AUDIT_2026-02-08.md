@@ -558,7 +558,7 @@ return `hash_${Date.now().toString(16)}`; // tahmin edilebilir, çarpışma koru
 | 23 | Webhook SSRF doğrulaması |
 | 24 | X-Forwarded-For rate limit bypass |
 | 25 | Chunked transfer body limit bypass |
-| 26 | JWT custom implementasyonu → PyJWT |
+| 26 | ~~JWT custom implementasyonu → PyJWT~~ DUZELTILDI (Batch 8 #54) |
 | 27 | Session yönetimi kalıcı depolama |
 | 28 | MPC key rotation kalıcı depolama |
 | 29 | Harcama limit yöneticisi kalıcı depolama |
@@ -628,13 +628,13 @@ class PaymentCircuitBreaker:
 | Replay koruması | DUZELTILDI | Batch 1: TOCTOU race fix, atomic upsert |
 | Rate limiting etkili | DUZELTILDI | Batch 4: Trusted proxy + gercek IP dogrulamasi |
 | Hata yanıtları temiz | DUZELTILDI | Batch 5: Staging dahil tum non-dev ortamlarda traceback gizli |
-| Webhook imzaları | KISMEN | Batch 4: SSRF engellendi. Diger provider imzalari hala eksik |
+| Webhook imzaları | DUZELTILDI | Batch 4: SSRF engellendi. Batch 8: Timestamp-based replay protection (Stripe convention) |
 | Body size limiti | DUZELTILDI | Batch 4: Chunked encoding bypass duzeltildi |
 | Atomik harcama kaydı | DUZELTILDI | Batch 1: Reconciliation queue eklendi |
 | Fail-closed tasarım | DUZELTILDI | Batch 1+4: MCC, audit hash, anon access fail-closed |
 | Bağımlılıklar güncel | GECTI | Batch 6: npm audit + pip-audit temiz (0 vulnerability) |
 | Denetim kaydı bütünlüğü | DUZELTILDI | Batch 2+4: SHA-256 fail-closed, crypto.randomUUID |
-| Smart contract audit | KISMEN | Batch 3+5: 8 fix + 10K fuzz runs. Profesyonel audit hala gerekli |
+| Smart contract audit | KISMEN | Batch 3+5: 8 fix + 10K fuzz runs. Profesyonel 3. taraf audit hala gerekli |
 
 ---
 
@@ -731,12 +731,19 @@ class PaymentCircuitBreaker:
 | 51 | `policies.py` (routers) | API response'ta parser uyarilari gosterilmiyor | DUZELTILDI |
 | 52 | `policies.py` + `nl_policy_parser.py` | LLM fallback guvenligi: kasitli crash tespiti icin structured logging | DUZELTILDI |
 
+### Batch 8 - Altyapi Guvenligi (2026-02-08)
+
+| # | Dosya | Sorun | Durum |
+|---|-------|-------|-------|
+| 53 | `webhooks.py` | Webhook outgoing signature'da replay korumasi eksik: timestamp HMAC'e dahil, Stripe t=,v1= formati | DUZELTILDI |
+| 54 | `auth.py` + `pyproject.toml` | JWT custom implementasyonu -> PyJWT: battle-tested algoritma pinleme, required claims, expiration | DUZELTILDI |
+
 ### Kalan Isler
 
 - [ ] Profesyonel 3. taraf smart contract audit
-- [ ] Webhook imza dogrulamasi (Stripe disindakiler icin outgoing signature)
-- [ ] JWT custom implementasyonu -> PyJWT gecisi (opsiyonel, mevcut impl guvenli)
-- [ ] Session/identity/replay cache kalici depolama (PostgreSQL/Redis)
+- [x] ~~Webhook imza dogrulamasi~~ (Batch 8 #53: timestamp-based replay protection, Stripe convention)
+- [x] ~~JWT custom implementasyonu -> PyJWT gecisi~~ (Batch 8 #54: PyJWT>=2.8 ile degistirildi)
+- [x] ~~Session/identity/replay cache kalici depolama~~ (Zaten mevcut: RedisCache + Upstash backend)
 - [x] ~~API key hash migration plani~~ (Batch 6 #43: generate_api_key artik hash_key kullaniyor)
 - [x] ~~pip-audit / npm audit~~ (Batch 6 #45-46: her ikisi temiz)
 - [x] ~~Agent kendi policy'sini degistirme kisitlamasi~~ (Batch 6 #42: duplicate handler'lar kaldirildi)
