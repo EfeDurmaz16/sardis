@@ -24,7 +24,7 @@ jobs:
     name: Validate Deployment
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -43,7 +43,7 @@ jobs:
       name: staging
       url: https://api-staging.sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -94,7 +94,7 @@ jobs:
       name: production
       url: https://api.sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -149,7 +149,7 @@ jobs:
       name: staging
       url: https://staging.sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -186,7 +186,7 @@ jobs:
       name: production
       url: https://sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -224,7 +224,7 @@ jobs:
       name: staging
       url: https://dashboard-staging.sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
@@ -261,7 +261,7 @@ jobs:
       name: production
       url: https://dashboard.sardis.sh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.version || 'main' }}
 
