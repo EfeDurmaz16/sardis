@@ -50,6 +50,8 @@ LLM, gecerli gorunen ama asiri izin veren bir policy cikarabilir.
 4. Regex parser'i cross-check olarak kullan
 5. Her zaman insan onay adimi gerektir (preview → confirm akisi mevcut ama zorunlu degil)
 
+**DURUM: DUZELTILDI** (Batch 7 #47-49): System prompt hardening, XML delimiter izolasyonu, injection pattern detection, Unicode NFKC normalizasyonu, bidi/zero-width strip
+
 ### 1.2 AI Agent'in Kendi Policy'sini Degistirmesi
 
 **Severity:** YUKSEK
@@ -141,6 +143,8 @@ Kullanıcı karmaşık bir policy yazarsa, regex parser sessizce kısıtlamalar�
 1. LLM yokken policy oluşturmayı reddet ve hata dön
 2. Regex parser'ı önemli ölçüde geliştir
 3. Hangi kısıtlamaların çıkarılıp hangilerinin atlandığını kullanıcıya açıkça bildir
+
+**DURUM: DUZELTILDI** (Batch 7 #50-52): Regex parser kirik referanslar duzeltildi, API response'a warnings field eklendi, LLM fallback structured logging eklendi
 
 ### 2.2 Bilinmeyen MCC Kodları ile Kategori Bypass
 
@@ -716,6 +720,17 @@ class PaymentCircuitBreaker:
 | 45 | npm audit | Bagimlilik taramasi | TEMIZ (0 vulnerability) |
 | 46 | pip-audit | Bagimlilik taramasi | TEMIZ (0 vulnerability) |
 
+### Batch 7 - AI Guvenlik Duzeltmeleri (2026-02-08)
+
+| # | Dosya | Sorun | Durum |
+|---|-------|-------|-------|
+| 47 | `nl_policy_parser.py` | Prompt injection korumasi eksik: system prompt hardening + XML delimiter izolasyonu | DUZELTILDI |
+| 48 | `nl_policy_parser.py` | Post-LLM yapisal dogrulama: is_active, vendor wildcard, blocked_categories, XSS | DUZELTILDI |
+| 49 | `nl_policy_parser.py` | Unicode normalizasyonu eksik: NFKC, bidi override, zero-width strip | DUZELTILDI |
+| 50 | `nl_policy_parser.py` | RegexPolicyParser kirik referanslar: _sanitize_input() ve MAX_PER_TX NameError | DUZELTILDI |
+| 51 | `policies.py` (routers) | API response'ta parser uyarilari gosterilmiyor | DUZELTILDI |
+| 52 | `policies.py` + `nl_policy_parser.py` | LLM fallback guvenligi: kasitli crash tespiti icin structured logging | DUZELTILDI |
+
 ### Kalan Isler
 
 - [ ] Profesyonel 3. taraf smart contract audit
@@ -725,3 +740,4 @@ class PaymentCircuitBreaker:
 - [x] ~~API key hash migration plani~~ (Batch 6 #43: generate_api_key artik hash_key kullaniyor)
 - [x] ~~pip-audit / npm audit~~ (Batch 6 #45-46: her ikisi temiz)
 - [x] ~~Agent kendi policy'sini degistirme kisitlamasi~~ (Batch 6 #42: duplicate handler'lar kaldirildi)
+- [x] ~~AI guvenlik arastirmasi: NL policy engine prompt injection/jailbreak/encoding~~ (Batch 7 #47-52)
