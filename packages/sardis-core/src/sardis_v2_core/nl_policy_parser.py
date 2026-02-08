@@ -648,7 +648,7 @@ class RegexPolicyParser:
         Includes a `warnings` field listing constraints that could not be extracted.
         """
         # SECURITY: Apply the same input sanitization as the LLM parser
-        sanitized = _sanitize_input(natural_language_policy)
+        sanitized = NLPolicyParser._sanitize_input(natural_language_policy)
 
         result: dict = {
             "spending_limits": [],
@@ -697,11 +697,12 @@ class RegexPolicyParser:
         if amounts:
             amount = amounts[0]
             # SECURITY: Apply same hard limits as LLM parser
-            if amount > MAX_PER_TX:
+            _max = float(NLPolicyParser.MAX_PER_TX)
+            if amount > _max:
                 result["warnings"].append(
-                    f"Amount ${amount} exceeds maximum ${MAX_PER_TX}. Clamped."
+                    f"Amount ${amount} exceeds maximum ${_max}. Clamped."
                 )
-                amount = float(MAX_PER_TX)
+                amount = _max
 
             result["spending_limits"].append({
                 "vendor_pattern": vendor.lower(),
@@ -720,8 +721,9 @@ class RegexPolicyParser:
         approval_match = self.APPROVAL_PATTERN.search(sanitized)
         if approval_match:
             threshold = float(approval_match.group(1).replace(",", ""))
-            if threshold > MAX_PER_TX:
-                threshold = float(MAX_PER_TX)
+            _max = float(NLPolicyParser.MAX_PER_TX)
+            if threshold > _max:
+                threshold = _max
             result["requires_approval_above"] = threshold
 
         return result
