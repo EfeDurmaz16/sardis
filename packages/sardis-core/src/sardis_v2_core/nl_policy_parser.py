@@ -302,6 +302,99 @@ Extract the policy accurately and completely."""
 
         return sanitized
 
+    # SECURITY: Maximum lengths for free-text fields to prevent XSS / log injection.
+    _MAX_NAME_LENGTH = 200
+    _MAX_DESCRIPTION_LENGTH = 500
+    _MAX_VENDOR_PATTERN_LENGTH = 100
+    _MAX_CATEGORY_LENGTH = 50
+
+    def _validate_extracted_policy(
+        self, extracted: "ExtractedPolicy", original_input: str
+    ) -> list[str]:
+        """Deterministic post-LLM validation of ALL extracted fields.
+
+        SECURITY: The LLM output is untrusted. This method enforces hard
+        invariants that no prompt injection can bypass because it runs
+        AFTER the LLM call and operates on the structured output only.
+
+        Returns a list of warnings (empty if clean).
+        Raises ValueError for hard violations.
+        """
+        warnings: list[str] = []
+
+        # --- 1. Amount hard caps (existing logic) ---
+        self._validate_extracted_amounts(extracted)
+
+        # --- 2. is_active must always be True ---
+        if not extracted.is_active:
+            logger.warning(
+                "SECURITY: LLM returned is_active=False. Forcing to True."
+            )
+            extracted.is_active = True
+            warnings.append("Policy was marked inactive by parser — forced active.")
+
+        # --- 3. Vendor pattern validation ---
+        for limit in extracted.spending_limits:
+            vp = limit.vendor_pattern.strip()
+            if not vp or vp in ("*", "**", ".*", "any", "all", "everything"):
+                logger.warning(
+                    "SECURITY: Wildcard vendor_pattern '%s' detected. "
+                    "Replacing with 'unspecified'.", vp,
+                )
+                limit.vendor_pattern = "unspecified"
+                warnings.append(
+                    f"Wildcard vendor pattern '{vp}' replaced with 'unspecified'."
+                )
+            if len(vp) > self._MAX_VENDOR_PATTERN_LENGTH:
+                limit.vendor_pattern = vp[:self._MAX_VENDOR_PATTERN_LENGTH]
+                warnings.append("Vendor pattern truncated to max length.")
+
+        # --- 4. Blocked categories integrity ---
+        input_lower = original_input.lower()
+        block_keywords = ("block", "deny", "prohibit", "forbid", "ban", "restrict")
+        input_mentions_block = any(kw in input_lower for kw in block_keywords)
+        has_blocked = (
+            extracted.category_restrictions
+            and extracted.category_restrictions.blocked_categories
+        )
+        if input_mentions_block and not has_blocked:
+            logger.warning(
+                "SECURITY: Input mentions blocking but LLM returned no blocked_categories."
+            )
+            warnings.append(
+                "Input mentions blocking categories but none were extracted. "
+                "Review the parsed policy carefully."
+            )
+
+        # --- 5. Category length validation ---
+        if extracted.category_restrictions:
+            for i, cat in enumerate(extracted.category_restrictions.blocked_categories):
+                if len(cat) > self._MAX_CATEGORY_LENGTH:
+                    extracted.category_restrictions.blocked_categories[i] = cat[:self._MAX_CATEGORY_LENGTH]
+            for i, cat in enumerate(extracted.category_restrictions.allowed_categories):
+                if len(cat) > self._MAX_CATEGORY_LENGTH:
+                    extracted.category_restrictions.allowed_categories[i] = cat[:self._MAX_CATEGORY_LENGTH]
+
+        # --- 6. Free-text field sanitization (prevent XSS / log injection) ---
+        if len(extracted.name) > self._MAX_NAME_LENGTH:
+            extracted.name = extracted.name[:self._MAX_NAME_LENGTH]
+        if len(extracted.description) > self._MAX_DESCRIPTION_LENGTH:
+            extracted.description = extracted.description[:self._MAX_DESCRIPTION_LENGTH]
+        # Strip HTML/script tags from name and description
+        extracted.name = re.sub(r'<[^>]+>', '', extracted.name)
+        extracted.description = re.sub(r'<[^>]+>', '', extracted.description)
+
+        # --- 7. requires_approval_above validation ---
+        if extracted.requires_approval_above is not None:
+            if extracted.requires_approval_above <= 0:
+                extracted.requires_approval_above = None
+                warnings.append("Invalid approval threshold (<=0) — removed.")
+            elif Decimal(str(extracted.requires_approval_above)) > self.MAX_PER_TX:
+                extracted.requires_approval_above = float(self.MAX_PER_TX)
+                warnings.append("Approval threshold clamped to max per-tx limit.")
+
+        return warnings
+
     def _validate_extracted_amounts(self, extracted: "ExtractedPolicy") -> None:
         """Deterministic validation of LLM-extracted amounts against hard caps.
 
@@ -361,7 +454,8 @@ Extract the policy accurately and completely."""
                 {"role": "user", "content": user_msg}
             ]
         )
-        self._validate_extracted_amounts(extracted)
+        # SECURITY: Full structural validation (amounts + fields + integrity)
+        self._last_warnings = self._validate_extracted_policy(extracted, natural_language_policy)
         return extracted
 
     async def parse(self, natural_language_policy: str) -> ExtractedPolicy:
@@ -390,7 +484,8 @@ Extract the policy accurately and completely."""
                 {"role": "user", "content": user_msg}
             ]
         )
-        self._validate_extracted_amounts(extracted)
+        # SECURITY: Full structural validation (amounts + fields + integrity)
+        self._last_warnings = self._validate_extracted_policy(extracted, natural_language_policy)
         return extracted
 
     def to_spending_policy(
