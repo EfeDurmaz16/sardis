@@ -352,7 +352,7 @@ export class SardisOnramper {
     }
 
     // Sort by destination amount (highest = best value)
-    return quotes.sort((a, b) => b.destinationAmount - a.destinationAmount)[0]
+    return quotes.sort((a, b) => b.destinationAmount - a.destinationAmount)[0] ?? null
   }
 
   // ===========================================================================

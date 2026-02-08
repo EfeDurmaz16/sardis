@@ -228,7 +228,7 @@ export async function createServer() {
 
   function checkRateLimit(toolName: string): boolean {
     const now = Date.now();
-    const limit = RATE_LIMITS[toolName] ?? RATE_LIMITS._default;
+    const limit = RATE_LIMITS[toolName] ?? RATE_LIMITS._default ?? 60;
     const entry = toolCallCounts.get(toolName);
 
     if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
