@@ -1,3 +1,5 @@
 {
+  "installCommand": "npm ci",
+  "buildCommand": "npx vite build",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
