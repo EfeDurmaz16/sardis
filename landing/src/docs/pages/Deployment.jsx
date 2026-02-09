@@ -13,6 +13,16 @@ export default function DocsDeployment() {
         </p>
       </div>
 
+      <section className="not-prose mb-8 p-4 border border-yellow-500/30 bg-yellow-500/10">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+          <span className="font-bold text-yellow-500">COMING NEXT WEEK</span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          The public staging API and dashboard are launching for testnet. SDKs are already live on <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">PyPI</a> and <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">npm</a>. Join the waitlist for an API key.
+        </p>
+      </section>
+
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Recommended Architecture

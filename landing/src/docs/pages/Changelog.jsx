@@ -2,9 +2,42 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.8.3',
+    version: '0.8.4',
     date: '2026-02-08',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Published all 14 Python packages to PyPI (sardis-sdk, sardis-core, sardis-protocol, sardis-chain, sardis-ledger, sardis-compliance, sardis-api, sardis-wallet, sardis-cards, sardis-cli, sardis-checkout, sardis-ramp, sardis-ucp, sardis-a2a)',
+          'Published all 4 npm packages (@sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp)',
+          'SDK installation section on landing page with early access messaging and package links',
+          'Vercel SPA routing fix for /docs and all sub-routes',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Comprehensive security audit: 54 fixes across 8 batches covering auth, crypto, input validation, SQL injection, rate limiting, CORS, webhook signatures, AI prompt injection, and JWT',
+          'JWT authentication migrated from custom HMAC to PyJWT with proper claim validation',
+          'Identity registry now fail-closed in production and staging environments',
+          'Anonymous access restricted to loopback addresses only',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'TypeScript strict mode fixes for MCP server rate limiter and onramper quote sorting',
+          '.gitignore updated to exclude Foundry build artifacts (contracts/out/, contracts/cache/)',
+          'All 649 Python tests and 91 Solidity tests passing after security hardening',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.8.3',
+    date: '2026-02-08',
+    tag: '',
     changes: [
       {
         type: 'added',

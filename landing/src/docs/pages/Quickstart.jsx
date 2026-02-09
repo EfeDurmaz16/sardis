@@ -138,7 +138,8 @@ DEMO_LIVE_CARD_ID=vc_demo_01`}</pre>
         <h3 className="text-lg font-bold font-display mb-3">Installation</h3>
         <div className="not-prose mb-4">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm">
-            <div className="text-[var(--sardis-orange)]">$ pip install sardis</div>
+            <div className="text-[var(--sardis-orange)]">$ pip install sardis-sdk</div>
+            <div className="text-[var(--sardis-canvas)]/50 mt-1"># or install individual packages: sardis-core, sardis-protocol, sardis-chain</div>
           </div>
         </div>
 

@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.8.4: Packages Live on npm & PyPI + Security Audit',
+    excerpt: 'All 18 Sardis packages are now publicly available on npm and PyPI. This release also includes a comprehensive 54-fix security audit covering auth, crypto, input validation, JWT, and more. The hosted API is launching next week for staging/testnet.',
+    date: '2026-02-08',
+    readTime: '5 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-8-4-packages-live',
+  },
+  {
     title: 'Sardis v0.8.3: Demo Ops + Cloud Deployment (Cloud Run & AWS)',
     excerpt: 'v0.8.3 closes key go-to-market gaps: production-like staging deploy scripts, frontend live-mode integration guidance, and demo reliability improvements for investor and design-partner walkthroughs.',
     date: '2026-02-08',

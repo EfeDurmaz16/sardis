@@ -122,17 +122,34 @@ export default function Roadmap() {
       ],
     },
     {
-      version: 'v0.8.3',
-      title: 'Demo + Deployment Readiness',
+      version: 'v0.8.4',
+      title: 'Public API & Dashboard Launch',
       status: 'current',
       date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'All 14 Python packages published to PyPI', done: true },
+        { text: 'All 4 npm packages published (@sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp)', done: true },
+        { text: 'Comprehensive security audit (54 fixes across 8 batches)', done: true },
+        { text: 'JWT authentication migrated to PyJWT', done: true },
+        { text: 'SDK install section added to landing page with early access messaging', done: true },
+        { text: 'Public staging API deployment (Cloud Run / Vercel)', done: false },
+        { text: 'Dashboard UI deployment for testnet', done: false },
+        { text: 'API key self-service provisioning', done: false },
+        { text: 'Public API documentation (Swagger/OpenAPI)', done: false },
+      ],
+    },
+    {
+      version: 'v0.8.3',
+      title: 'Demo + Deployment Readiness',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'Cloud Run staging deployment script and env templates', done: true },
         { text: 'AWS App Runner staging deployment script and env templates', done: true },
         { text: 'Demo live/private mode auth hardening', done: true },
         { text: 'Demo transaction history persistence and telemetry hooks', done: true },
         { text: 'Frontend ↔ API integration runbook for staging', done: true },
-        { text: 'One-command staging bring-up for partner demos', done: false },
+        { text: 'One-command staging bring-up for partner demos', done: true },
       ],
     },
     {
@@ -185,7 +202,7 @@ export default function Roadmap() {
       version: 'v0.9.0',
       title: 'Enterprise Features',
       status: 'upcoming',
-      date: 'Q2 2026',
+      date: 'Q1-Q2 2026',
       items: [
         { text: 'Multi-tenant organization support', done: false },
         { text: 'Custom policy templates', done: false },
@@ -223,7 +240,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 7, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 8, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

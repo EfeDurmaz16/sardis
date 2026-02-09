@@ -925,6 +925,83 @@ const payment = await ramp.payMerchantFiat({
               ))}
             </div>
           </motion.div>
+
+          {/* Install SDKs Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12"
+          >
+            <div className="text-center mb-8">
+              <Badge variant="outline" className="mb-4 text-yellow-600 dark:text-yellow-400 border-yellow-600/30 dark:border-yellow-400/30 rounded-none font-mono">EARLY ACCESS</Badge>
+              <h3 className="text-2xl font-bold font-display mb-2">Install the SDKs</h3>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Our packages are live on npm and PyPI. The hosted API is launching soon — join the waitlist for early access and an API key.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Python SDKs */}
+              <div className="border border-border p-6 space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 border border-border flex items-center justify-center">
+                    <span className="text-lg font-bold font-mono text-[var(--sardis-orange)]">Py</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold font-display">Python Packages</h4>
+                    <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-[var(--sardis-orange)] font-mono">pypi.org/user/sardis →</a>
+                  </div>
+                </div>
+                <CopyCommand command="pip install sardis-sdk" />
+                <CopyCommand command="pip install sardis-core" />
+                <CopyCommand command="pip install sardis-protocol" />
+                <div className="pt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
+                      <a key={pkg} href={`https://pypi.org/project/${pkg}/`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
+                        {pkg}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* npm SDKs */}
+              <div className="border border-border p-6 space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 border border-border flex items-center justify-center">
+                    <span className="text-lg font-bold font-mono text-[var(--sardis-orange)]">JS</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold font-display">npm Packages</h4>
+                    <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-[var(--sardis-orange)] font-mono">npmjs.com/org/sardis →</a>
+                  </div>
+                </div>
+                <CopyCommand command="npm install @sardis/sdk" />
+                <CopyCommand command="npm install @sardis/mcp-server" />
+                <CopyCommand command="npm install @sardis/ai-sdk" />
+                <div className="pt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["@sardis/ramp"].map((pkg) => (
+                      <a key={pkg} href={`https://www.npmjs.com/package/${pkg}`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
+                        {pkg}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Early access note */}
+            <div className="mt-6 p-4 border border-yellow-600/30 dark:border-yellow-400/30 bg-yellow-500/5">
+              <p className="text-sm text-center text-muted-foreground">
+                <span className="font-bold text-yellow-600 dark:text-yellow-400">Note:</span> SDKs require a Sardis API key to connect to the hosted backend. The API is currently in private beta — <button onClick={() => setIsWaitlistOpen(true)} className="text-[var(--sardis-orange)] hover:underline font-medium">join the waitlist</button> to get early access.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
