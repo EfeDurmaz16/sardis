@@ -22,7 +22,7 @@ describe('HoldsResource', () => {
     describe('create', () => {
         it('should create a hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json(mockHold);
                 })
             );
@@ -42,7 +42,7 @@ describe('HoldsResource', () => {
         it('should send correct creation parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockHold);
                 })
@@ -68,7 +68,7 @@ describe('HoldsResource', () => {
     describe('getById', () => {
         it('should get hold by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/holds/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockHold, id: params.id });
                 })
             );
@@ -81,7 +81,7 @@ describe('HoldsResource', () => {
 
         it('should handle hold not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/:id', () => {
                     return HttpResponse.json(
                         { error: 'Hold not found' },
                         { status: 404 }
@@ -96,7 +96,7 @@ describe('HoldsResource', () => {
     describe('capture', () => {
         it('should capture a hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json({ ...mockHold, status: 'captured' });
                 })
             );
@@ -110,7 +110,7 @@ describe('HoldsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/holds/:id/capture',
+                    'https://api.sardis.sh/api/v2/holds/:id/capture',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
@@ -132,7 +132,7 @@ describe('HoldsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/holds/:id/capture',
+                    'https://api.sardis.sh/api/v2/holds/:id/capture',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({ ...mockHold, status: 'captured' });
@@ -149,7 +149,7 @@ describe('HoldsResource', () => {
     describe('void', () => {
         it('should void a hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json({ ...mockHold, status: 'voided' });
                 })
             );
@@ -161,7 +161,7 @@ describe('HoldsResource', () => {
 
         it('should handle void of already captured hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json(
                         { error: 'Hold already captured' },
                         { status: 409 }
@@ -177,7 +177,7 @@ describe('HoldsResource', () => {
         it('should list holds for a wallet', async () => {
             server.use(
                 http.get(
-                    'https://api.sardis.network/api/v2/holds/wallet/:walletId',
+                    'https://api.sardis.sh/api/v2/holds/wallet/:walletId',
                     () => {
                         return HttpResponse.json({
                             holds: [
@@ -199,7 +199,7 @@ describe('HoldsResource', () => {
         it('should return empty array when no holds', async () => {
             server.use(
                 http.get(
-                    'https://api.sardis.network/api/v2/holds/wallet/:walletId',
+                    'https://api.sardis.sh/api/v2/holds/wallet/:walletId',
                     () => {
                         return HttpResponse.json({ holds: [] });
                     }
@@ -215,7 +215,7 @@ describe('HoldsResource', () => {
     describe('listActive', () => {
         it('should list all active holds', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds', () => {
+                http.get('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json({
                         holds: [mockHold, { ...mockHold, id: 'hold_3' }],
                     });
@@ -229,7 +229,7 @@ describe('HoldsResource', () => {
 
         it('should return empty array when no active holds', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds', () => {
+                http.get('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json({ holds: [] });
                 })
             );

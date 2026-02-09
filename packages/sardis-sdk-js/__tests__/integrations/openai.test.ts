@@ -74,7 +74,7 @@ describe('OpenAI Integration', () => {
         describe('sardis_pay', () => {
             it('should execute payment successfully', async () => {
                 server.use(
-                    http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                    http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                         return HttpResponse.json({
                             status: 'completed',
                             payment_id: 'pay_123',
@@ -129,7 +129,7 @@ describe('OpenAI Integration', () => {
 
             it('should handle policy violation', async () => {
                 server.use(
-                    http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                    http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                         return HttpResponse.json(
                             { error: 'Payment blocked by policy' },
                             { status: 403 }
@@ -158,7 +158,7 @@ describe('OpenAI Integration', () => {
         describe('sardis_check_balance', () => {
             it('should check balance successfully', async () => {
                 server.use(
-                    http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+                    http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', () => {
                         return HttpResponse.json({
                             wallet_id: 'wallet_123',
                             balance: '1000.00',
@@ -189,7 +189,7 @@ describe('OpenAI Integration', () => {
 
             it('should use specified token and chain', async () => {
                 server.use(
-                    http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                    http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                         const url = new URL(request.url);
                         return HttpResponse.json({
                             wallet_id: 'wallet_123',
@@ -222,7 +222,7 @@ describe('OpenAI Integration', () => {
         describe('sardis_get_wallet', () => {
             it('should get wallet information', async () => {
                 server.use(
-                    http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                    http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                         return HttpResponse.json({
                             id: 'wallet_123',
                             agent_id: 'agent_456',
@@ -258,7 +258,7 @@ describe('OpenAI Integration', () => {
         describe('sardis_check_policy', () => {
             it('should check policy and approve', async () => {
                 server.use(
-                    http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                    http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                         return HttpResponse.json({
                             id: 'wallet_123',
                             limit_per_tx: '1000.00',
@@ -288,7 +288,7 @@ describe('OpenAI Integration', () => {
 
             it('should detect policy violation', async () => {
                 server.use(
-                    http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                    http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                         return HttpResponse.json({
                             id: 'wallet_123',
                             limit_per_tx: '100.00',
@@ -361,7 +361,7 @@ describe('OpenAI Integration', () => {
     describe('options handling', () => {
         it('should use default chain from options', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as any;
                     expect(body.mandate.chain).toBe('polygon');
                     return HttpResponse.json({
@@ -388,7 +388,7 @@ describe('OpenAI Integration', () => {
 
         it('should use default token from options', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as any;
                     expect(body.mandate.token).toBe('USDT');
                     return HttpResponse.json({

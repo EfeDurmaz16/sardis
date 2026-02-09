@@ -35,7 +35,7 @@ class TestListEventTypes:
     async def test_list_event_types(self, client, httpx_mock):
         """Should list all available event types."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/event-types",
+            url="https://api.sardis.sh/api/v2/webhooks/event-types",
             method="GET",
             json={
                 "event_types": [
@@ -54,7 +54,7 @@ class TestListEventTypes:
     async def test_list_empty_event_types(self, client, httpx_mock):
         """Should handle empty event types."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/event-types",
+            url="https://api.sardis.sh/api/v2/webhooks/event-types",
             method="GET",
             json={},
         )
@@ -69,7 +69,7 @@ class TestCreateWebhook:
     async def test_create_webhook(self, client, httpx_mock):
         """Should create a webhook subscription."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks",
+            url="https://api.sardis.sh/api/v2/webhooks",
             method="POST",
             json=MOCK_WEBHOOK,
         )
@@ -86,7 +86,7 @@ class TestCreateWebhook:
     async def test_create_webhook_with_org_id(self, client, httpx_mock):
         """Should create a webhook with organization ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks",
+            url="https://api.sardis.sh/api/v2/webhooks",
             method="POST",
             json=MOCK_WEBHOOK,
         )
@@ -106,7 +106,7 @@ class TestListWebhooks:
     async def test_list_webhooks(self, client, httpx_mock):
         """Should list all webhooks."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks?limit=100",
+            url="https://api.sardis.sh/api/v2/webhooks?limit=100",
             method="GET",
             json={"webhooks": [MOCK_WEBHOOK]},
         )
@@ -118,7 +118,7 @@ class TestListWebhooks:
     async def test_list_empty_webhooks(self, client, httpx_mock):
         """Should handle empty webhook list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks?limit=100",
+            url="https://api.sardis.sh/api/v2/webhooks?limit=100",
             method="GET",
             json={"webhooks": []},
         )
@@ -133,7 +133,7 @@ class TestGetWebhook:
     async def test_get_webhook(self, client, httpx_mock):
         """Should get a webhook by ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123",
             method="GET",
             json=MOCK_WEBHOOK,
         )
@@ -148,7 +148,7 @@ class TestUpdateWebhook:
     async def test_update_webhook_url(self, client, httpx_mock):
         """Should update webhook URL."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123",
             method="PATCH",
             json={**MOCK_WEBHOOK, "url": "https://new-url.com/webhook"},
         )
@@ -163,7 +163,7 @@ class TestUpdateWebhook:
     async def test_update_webhook_events(self, client, httpx_mock):
         """Should update webhook events."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123",
             method="PATCH",
             json={**MOCK_WEBHOOK, "events": ["hold.created"]},
         )
@@ -178,7 +178,7 @@ class TestUpdateWebhook:
     async def test_deactivate_webhook(self, client, httpx_mock):
         """Should deactivate a webhook."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123",
             method="PATCH",
             json={**MOCK_WEBHOOK, "is_active": False},
         )
@@ -197,7 +197,7 @@ class TestDeleteWebhook:
     async def test_delete_webhook(self, client, httpx_mock):
         """Should delete a webhook."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123",
             method="DELETE",
             status_code=200,
             json={"success": True},
@@ -213,7 +213,7 @@ class TestTestWebhook:
     async def test_send_test_event(self, client, httpx_mock):
         """Should send a test event."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123/test",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123/test",
             method="POST",
             json=MOCK_DELIVERY,
         )
@@ -229,7 +229,7 @@ class TestListDeliveries:
     async def test_list_deliveries(self, client, httpx_mock):
         """Should list webhook deliveries."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123/deliveries?limit=50",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123/deliveries?limit=50",
             method="GET",
             json={"deliveries": [MOCK_DELIVERY]},
         )
@@ -241,7 +241,7 @@ class TestListDeliveries:
     async def test_list_deliveries_with_limit(self, client, httpx_mock):
         """Should list deliveries with custom limit."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123/deliveries?limit=10",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123/deliveries?limit=10",
             method="GET",
             json={"deliveries": [MOCK_DELIVERY]},
         )
@@ -252,7 +252,7 @@ class TestListDeliveries:
     async def test_list_empty_deliveries(self, client, httpx_mock):
         """Should handle empty deliveries list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123/deliveries?limit=50",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123/deliveries?limit=50",
             method="GET",
             json={"deliveries": []},
         )
@@ -267,7 +267,7 @@ class TestRotateSecret:
     async def test_rotate_secret(self, client, httpx_mock):
         """Should rotate webhook secret."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/webhooks/webhook_123/rotate-secret",
+            url="https://api.sardis.sh/api/v2/webhooks/webhook_123/rotate-secret",
             method="POST",
             json={"secret": "whsec_new_secret"},
         )

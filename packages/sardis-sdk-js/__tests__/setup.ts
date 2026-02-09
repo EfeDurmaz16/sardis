@@ -84,64 +84,64 @@ export const mockResponses = {
 // MSW handlers
 export const handlers = [
     // Health check
-    http.get('https://api.sardis.network/health', () => {
+    http.get('https://api.sardis.sh/health', () => {
         return HttpResponse.json(mockResponses.health);
     }),
 
     // Wallets
-    http.post('https://api.sardis.network/v1/wallets', () => {
+    http.post('https://api.sardis.sh/v1/wallets', () => {
         return HttpResponse.json(mockResponses.wallet);
     }),
-    http.get('https://api.sardis.network/v1/wallets/:id', () => {
+    http.get('https://api.sardis.sh/v1/wallets/:id', () => {
         return HttpResponse.json(mockResponses.wallet);
     }),
-    http.get('https://api.sardis.network/v1/wallets/:id/balance', () => {
+    http.get('https://api.sardis.sh/v1/wallets/:id/balance', () => {
         return HttpResponse.json(mockResponses.balance);
     }),
 
     // Payments
-    http.post('https://api.sardis.network/v1/payments/mandate', () => {
+    http.post('https://api.sardis.sh/v1/payments/mandate', () => {
         return HttpResponse.json(mockResponses.mandate);
     }),
-    http.post('https://api.sardis.network/v1/payments/ap2', () => {
+    http.post('https://api.sardis.sh/v1/payments/ap2', () => {
         return HttpResponse.json(mockResponses.mandate);
     }),
-    http.post('https://api.sardis.network/v1/payments/ap2/bundle', () => {
+    http.post('https://api.sardis.sh/v1/payments/ap2/bundle', () => {
         return HttpResponse.json({
             results: [mockResponses.mandate, mockResponses.mandate],
         });
     }),
 
     // Holds
-    http.post('https://api.sardis.network/v1/holds', () => {
+    http.post('https://api.sardis.sh/v1/holds', () => {
         return HttpResponse.json(mockResponses.hold);
     }),
-    http.get('https://api.sardis.network/v1/holds/:id', () => {
+    http.get('https://api.sardis.sh/v1/holds/:id', () => {
         return HttpResponse.json(mockResponses.hold);
     }),
-    http.post('https://api.sardis.network/v1/holds/:id/capture', () => {
+    http.post('https://api.sardis.sh/v1/holds/:id/capture', () => {
         return HttpResponse.json({ ...mockResponses.hold, status: 'captured' });
     }),
-    http.post('https://api.sardis.network/v1/holds/:id/void', () => {
+    http.post('https://api.sardis.sh/v1/holds/:id/void', () => {
         return HttpResponse.json({ ...mockResponses.hold, status: 'voided' });
     }),
 
     // Webhooks
-    http.post('https://api.sardis.network/v1/webhooks', () => {
+    http.post('https://api.sardis.sh/v1/webhooks', () => {
         return HttpResponse.json(mockResponses.webhook);
     }),
-    http.get('https://api.sardis.network/v1/webhooks', () => {
+    http.get('https://api.sardis.sh/v1/webhooks', () => {
         return HttpResponse.json({ webhooks: [mockResponses.webhook] });
     }),
-    http.get('https://api.sardis.network/v1/webhooks/:id', () => {
+    http.get('https://api.sardis.sh/v1/webhooks/:id', () => {
         return HttpResponse.json(mockResponses.webhook);
     }),
-    http.delete('https://api.sardis.network/v1/webhooks/:id', () => {
+    http.delete('https://api.sardis.sh/v1/webhooks/:id', () => {
         return HttpResponse.json({ success: true });
     }),
 
     // Policy check
-    http.post('https://api.sardis.network/v1/policy/check', async ({ request }) => {
+    http.post('https://api.sardis.sh/v1/policy/check', async ({ request }) => {
         const body = (await request.json()) as { amount_minor?: number };
         if (body.amount_minor && body.amount_minor > 500000000) {
             return HttpResponse.json(mockResponses.policyViolation);
@@ -150,10 +150,10 @@ export const handlers = [
     }),
 
     // Error scenarios
-    http.get('https://api.sardis.network/v1/error/401', () => {
+    http.get('https://api.sardis.sh/v1/error/401', () => {
         return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }),
-    http.get('https://api.sardis.network/v1/error/429', () => {
+    http.get('https://api.sardis.sh/v1/error/429', () => {
         return HttpResponse.json(
             { error: 'Rate limit exceeded' },
             {
@@ -162,78 +162,78 @@ export const handlers = [
             }
         );
     }),
-    http.get('https://api.sardis.network/v1/error/500', () => {
+    http.get('https://api.sardis.sh/v1/error/500', () => {
         return HttpResponse.json({ error: 'Internal server error' }, { status: 500 });
     }),
 
     // Agents - Default handlers (can be overridden in tests)
-    http.get('https://api.sardis.network/api/v2/agents', () => {
+    http.get('https://api.sardis.sh/api/v2/agents', () => {
         return HttpResponse.json([mockResponses.agent]);
     }),
-    http.get('https://api.sardis.network/api/v2/agents/:id', ({ params }) => {
+    http.get('https://api.sardis.sh/api/v2/agents/:id', ({ params }) => {
         return HttpResponse.json({ ...mockResponses.agent, id: params.id });
     }),
-    http.post('https://api.sardis.network/api/v2/agents', () => {
+    http.post('https://api.sardis.sh/api/v2/agents', () => {
         return HttpResponse.json(mockResponses.agent);
     }),
-    http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+    http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
         return HttpResponse.json(mockResponses.agent);
     }),
-    http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+    http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
         return new HttpResponse(null, { status: 204 });
     }),
-    http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+    http.get('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
         return HttpResponse.json(mockResponses.agentWallet);
     }),
-    http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+    http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
         return HttpResponse.json(mockResponses.agentWallet);
     }),
 
     // API v2 Wallets
-    http.get('https://api.sardis.network/api/v2/wallets', () => {
+    http.get('https://api.sardis.sh/api/v2/wallets', () => {
         return HttpResponse.json([mockResponses.wallet]);
     }),
-    http.get('https://api.sardis.network/api/v2/wallets/:id', ({ params }) => {
+    http.get('https://api.sardis.sh/api/v2/wallets/:id', ({ params }) => {
         return HttpResponse.json({ ...mockResponses.wallet, id: params.id });
     }),
-    http.post('https://api.sardis.network/api/v2/wallets', () => {
+    http.post('https://api.sardis.sh/api/v2/wallets', () => {
         return HttpResponse.json(mockResponses.wallet);
     }),
-    http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+    http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', () => {
         return HttpResponse.json(mockResponses.balance);
     }),
-    http.get('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+    http.get('https://api.sardis.sh/api/v2/wallets/:id/addresses', () => {
         return HttpResponse.json({
             base: '0x1234567890abcdef1234567890abcdef12345678',
             polygon: '0xabcdef1234567890abcdef1234567890abcdef12',
         });
     }),
-    http.post('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+    http.post('https://api.sardis.sh/api/v2/wallets/:id/addresses', () => {
         return HttpResponse.json(mockResponses.wallet);
     }),
 
     // API v2 Holds
-    http.get('https://api.sardis.network/api/v2/holds', () => {
+    http.get('https://api.sardis.sh/api/v2/holds', () => {
         return HttpResponse.json({ holds: [mockResponses.hold] });
     }),
-    http.get('https://api.sardis.network/api/v2/holds/:id', ({ params }) => {
+    http.get('https://api.sardis.sh/api/v2/holds/:id', ({ params }) => {
         return HttpResponse.json({ ...mockResponses.hold, id: params.id });
     }),
-    http.post('https://api.sardis.network/api/v2/holds', () => {
+    http.post('https://api.sardis.sh/api/v2/holds', () => {
         return HttpResponse.json(mockResponses.hold);
     }),
-    http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+    http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
         return HttpResponse.json({ ...mockResponses.hold, status: 'captured' });
     }),
-    http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+    http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
         return HttpResponse.json({ ...mockResponses.hold, status: 'voided' });
     }),
-    http.get('https://api.sardis.network/api/v2/holds/wallet/:walletId', () => {
+    http.get('https://api.sardis.sh/api/v2/holds/wallet/:walletId', () => {
         return HttpResponse.json({ holds: [mockResponses.hold] });
     }),
 
     // API v2 Mandates/Payments
-    http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+    http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
         return HttpResponse.json({
             ...mockResponses.mandate,
             chain: 'base',
@@ -243,7 +243,7 @@ export const handlers = [
     }),
 
     // API v2 AP2 Payments
-    http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+    http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
         return HttpResponse.json({
             id: 'ap2_xyz789',
             mandate_id: 'mandate_123',

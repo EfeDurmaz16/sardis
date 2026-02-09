@@ -50,7 +50,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
     describe('executeMandate', () => {
         it('should execute a basic mandate successfully', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(mockMandateResponse);
                 })
             );
@@ -73,7 +73,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should include all mandate fields in request body', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockMandateResponse);
                 })
@@ -105,7 +105,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle policy violation error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -137,7 +137,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle insufficient balance error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -169,7 +169,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle blocked merchant error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -200,7 +200,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle network timeout during execution', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async () => {
                     await new Promise((resolve) => setTimeout(resolve, 5000));
                     return HttpResponse.json(mockMandateResponse);
                 })
@@ -229,7 +229,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
             let receivedChain: string;
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as { mandate: { chain: string } };
                     receivedChain = body.mandate.chain;
                     return HttpResponse.json({ ...mockMandateResponse, chain: receivedChain });
@@ -255,7 +255,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
             let receivedToken: string;
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as { mandate: { token: string } };
                     receivedToken = body.mandate.token;
                     return HttpResponse.json(mockMandateResponse);
@@ -279,7 +279,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should handle concurrent mandate executions', async () => {
             let requestCount = 0;
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async () => {
                     requestCount++;
                     await new Promise((resolve) => setTimeout(resolve, 50));
                     return HttpResponse.json({
@@ -308,7 +308,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
     describe('executeAP2', () => {
         it('should execute AP2 payment with all components', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json(mockAP2Response);
                 })
             );
@@ -337,7 +337,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should include all AP2 components in request body', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAP2Response);
                 })
@@ -370,7 +370,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle AP2 execution failure', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -395,7 +395,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle partial execution failure', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json({
                         ...mockAP2Response,
                         status: 'PARTIAL_FAILURE',
@@ -421,7 +421,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
     describe('executeAP2Bundle', () => {
         it('should execute pre-built AP2 bundle', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json(mockAP2Response);
                 })
             );
@@ -441,7 +441,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should send bundle as single request', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAP2Response);
                 })
@@ -470,7 +470,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should handle bundle with complex nested data', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAP2Response);
                 })
@@ -526,7 +526,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
     describe('error handling', () => {
         it('should handle 400 Bad Request', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         { error: { message: 'Invalid mandate format', code: 'SARDIS_3400' } },
                         { status: 400 }
@@ -552,7 +552,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle 401 Unauthorized', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         { error: { message: 'Invalid API key', code: 'SARDIS_2001' } },
                         { status: 401 }
@@ -580,7 +580,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should handle 500 Internal Server Error with retry', async () => {
             let attempts = 0;
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     attempts++;
                     if (attempts < 3) {
                         return HttpResponse.json(
@@ -615,7 +615,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
     describe('request cancellation', () => {
         it('should support AbortController for mandate execution', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async () => {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     return HttpResponse.json(mockMandateResponse);
                 })
@@ -644,7 +644,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should handle very large amounts', async () => {
             let receivedAmount: number;
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as { mandate: { amount_minor: number } };
                     receivedAmount = body.mandate.amount_minor;
                     return HttpResponse.json(mockMandateResponse);
@@ -668,7 +668,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
         it('should handle special characters in metadata', async () => {
             let receivedMetadata: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', async ({ request }) => {
                     const body = await request.json() as { mandate: { metadata: any } };
                     receivedMetadata = body.mandate.metadata;
                     return HttpResponse.json(mockMandateResponse);
@@ -698,7 +698,7 @@ describe('PaymentsResource Comprehensive Tests', () => {
 
         it('should handle empty cart in AP2', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json(mockAP2Response);
                 })
             );

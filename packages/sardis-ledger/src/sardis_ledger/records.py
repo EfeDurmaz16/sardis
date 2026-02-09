@@ -967,7 +967,7 @@ class LedgerStore:
             metadata = {
                 "subject": payment_mandate.subject,
                 "issuer": payment_mandate.issuer,
-                "domain": getattr(payment_mandate, "domain", "sardis.network"),
+                "domain": getattr(payment_mandate, "domain", "sardis.sh"),
                 "purpose": getattr(payment_mandate, "purpose", "checkout"),
             }
             self._sqlite_conn.execute(
@@ -1006,7 +1006,7 @@ class LedgerStore:
             metadata = {
                 "subject": payment_mandate.subject,
                 "issuer": payment_mandate.issuer,
-                "domain": getattr(payment_mandate, "domain", "sardis.network"),
+                "domain": getattr(payment_mandate, "domain", "sardis.sh"),
                 "purpose": getattr(payment_mandate, "purpose", "checkout"),
             }
             self._reconciliation_queue[entry_id] = PendingReconciliation(
@@ -1168,7 +1168,7 @@ class LedgerStore:
                 # Restore original mandate data from metadata
                 subject = entry.metadata.get("subject", "agent:unknown") if entry.metadata else "agent:unknown"
                 issuer = entry.metadata.get("issuer", f"wallet:{entry.from_wallet}") if entry.metadata else f"wallet:{entry.from_wallet}"
-                domain = entry.metadata.get("domain", "sardis.network") if entry.metadata else "sardis.network"
+                domain = entry.metadata.get("domain", "sardis.sh") if entry.metadata else "sardis.sh"
                 purpose = entry.metadata.get("purpose", "checkout") if entry.metadata else "checkout"
 
                 mandate = PaymentMandate(

@@ -505,7 +505,7 @@ async def transfer_crypto(
                 created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 proof_value="internal-transfer",
             ),
-            domain="sardis.network",
+            domain="sardis.sh",
             purpose="checkout",
             chain=transfer_request.chain,
             token=transfer_request.token,

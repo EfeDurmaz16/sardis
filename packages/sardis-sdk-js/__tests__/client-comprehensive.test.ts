@@ -93,7 +93,7 @@ describe('SardisClient Comprehensive Tests', () => {
         it('should use default base URL when not specified', async () => {
             let requestedUrl = '';
             server.use(
-                http.get('https://api.sardis.network/test', ({ request }) => {
+                http.get('https://api.sardis.sh/test', ({ request }) => {
                     requestedUrl = request.url;
                     return HttpResponse.json({ success: true });
                 })
@@ -101,13 +101,13 @@ describe('SardisClient Comprehensive Tests', () => {
 
             const client = new SardisClient({ apiKey: 'test-key' });
             await client.request('GET', '/test');
-            expect(requestedUrl).toBe('https://api.sardis.network/test');
+            expect(requestedUrl).toBe('https://api.sardis.sh/test');
         });
 
         it('should set proper headers on requests', async () => {
             let receivedHeaders: Record<string, string | null> = {};
             server.use(
-                http.get('https://api.sardis.network/test', ({ request }) => {
+                http.get('https://api.sardis.sh/test', ({ request }) => {
                     receivedHeaders = {
                         'x-api-key': request.headers.get('X-API-Key'),
                         'content-type': request.headers.get('Content-Type'),
@@ -138,7 +138,7 @@ describe('SardisClient Comprehensive Tests', () => {
         it('should use updated API key in requests', async () => {
             let receivedKey = '';
             server.use(
-                http.get('https://api.sardis.network/test', ({ request }) => {
+                http.get('https://api.sardis.sh/test', ({ request }) => {
                     receivedKey = request.headers.get('X-API-Key') || '';
                     return HttpResponse.json({ success: true });
                 })
@@ -158,7 +158,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let interceptorCalled = false;
 
             server.use(
-                http.get('https://api.sardis.network/test', () => {
+                http.get('https://api.sardis.sh/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -192,7 +192,7 @@ describe('SardisClient Comprehensive Tests', () => {
             const order: string[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/test', ({ request }) => {
+                http.get('https://api.sardis.sh/test', ({ request }) => {
                     return HttpResponse.json({
                         header1: request.headers.get('X-Header-1'),
                         header2: request.headers.get('X-Header-2'),
@@ -244,7 +244,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let interceptorCalled = false;
 
             server.use(
-                http.get('https://api.sardis.network/test', () => {
+                http.get('https://api.sardis.sh/test', () => {
                     return HttpResponse.json({ original: true });
                 })
             );
@@ -265,7 +265,7 @@ describe('SardisClient Comprehensive Tests', () => {
             const client = new SardisClient({ apiKey: 'test-key' });
 
             server.use(
-                http.get('https://api.sardis.network/test', () => {
+                http.get('https://api.sardis.sh/test', () => {
                     return HttpResponse.json({ count: 5 });
                 })
             );
@@ -287,7 +287,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let errorHandled = false;
 
             server.use(
-                http.get('https://api.sardis.network/test', () => {
+                http.get('https://api.sardis.sh/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -314,7 +314,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/retry-test', () => {
+                http.get('https://api.sardis.sh/retry-test', () => {
                     requestCount++;
                     const now = Date.now();
                     if (requestCount > 1) {
@@ -347,7 +347,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/retry-test', () => {
+                http.get('https://api.sardis.sh/retry-test', () => {
                     requestCount++;
                     if (requestCount < 5) {
                         return HttpResponse.json({ error: 'Server error' }, { status: 500 });
@@ -376,7 +376,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/retry-test', () => {
+                http.get('https://api.sardis.sh/retry-test', () => {
                     requestCount++;
                     return HttpResponse.json({ error: 'Forbidden' }, { status: 403 });
                 })
@@ -396,7 +396,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/slow-endpoint', async () => {
+                http.get('https://api.sardis.sh/slow-endpoint', async () => {
                     requestCount++;
                     if (requestCount < 2) {
                         await delay(2000); // Simulate slow response
@@ -423,7 +423,7 @@ describe('SardisClient Comprehensive Tests', () => {
             const startTime = Date.now();
 
             server.use(
-                http.get('https://api.sardis.network/rate-limited', () => {
+                http.get('https://api.sardis.sh/rate-limited', () => {
                     requestCount++;
                     if (requestCount < 2) {
                         return HttpResponse.json(
@@ -456,7 +456,7 @@ describe('SardisClient Comprehensive Tests', () => {
 
         it('should throw RateLimitError after max retries', async () => {
             server.use(
-                http.get('https://api.sardis.network/always-limited', () => {
+                http.get('https://api.sardis.sh/always-limited', () => {
                     return HttpResponse.json(
                         { error: 'Rate limited' },
                         {
@@ -504,7 +504,7 @@ describe('SardisClient Comprehensive Tests', () => {
 
         it('should abort request mid-flight', async () => {
             server.use(
-                http.get('https://api.sardis.network/slow', async () => {
+                http.get('https://api.sardis.sh/slow', async () => {
                     await delay(5000);
                     return HttpResponse.json({ success: true });
                 })
@@ -577,7 +577,7 @@ describe('SardisClient Comprehensive Tests', () => {
     describe('batch operations - edge cases', () => {
         it('should handle all failed operations', async () => {
             server.use(
-                http.get('https://api.sardis.network/fail/:id', () => {
+                http.get('https://api.sardis.sh/fail/:id', () => {
                     return HttpResponse.json({ error: 'Failed' }, { status: 500 });
                 })
             );
@@ -598,16 +598,16 @@ describe('SardisClient Comprehensive Tests', () => {
 
         it('should support mixed HTTP methods', async () => {
             server.use(
-                http.get('https://api.sardis.network/items/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/items/:id', ({ params }) => {
                     return HttpResponse.json({ id: params.id, method: 'GET' });
                 }),
-                http.post('https://api.sardis.network/items', () => {
+                http.post('https://api.sardis.sh/items', () => {
                     return HttpResponse.json({ id: 'new', method: 'POST' });
                 }),
-                http.patch('https://api.sardis.network/items/:id', ({ params }) => {
+                http.patch('https://api.sardis.sh/items/:id', ({ params }) => {
                     return HttpResponse.json({ id: params.id, method: 'PATCH' });
                 }),
-                http.delete('https://api.sardis.network/items/:id', () => {
+                http.delete('https://api.sardis.sh/items/:id', () => {
                     return new HttpResponse(null, { status: 204 });
                 })
             );
@@ -634,7 +634,7 @@ describe('SardisClient Comprehensive Tests', () => {
             let currentConcurrent = 0;
 
             server.use(
-                http.get('https://api.sardis.network/item/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/item/:id', async ({ params }) => {
                     currentConcurrent++;
                     maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
                     await delay(20);
@@ -659,7 +659,7 @@ describe('SardisClient Comprehensive Tests', () => {
     describe('health check', () => {
         it('should return health status with version', async () => {
             server.use(
-                http.get('https://api.sardis.network/health', () => {
+                http.get('https://api.sardis.sh/health', () => {
                     return HttpResponse.json({
                         status: 'healthy',
                         version: '2.0.0',
@@ -676,7 +676,7 @@ describe('SardisClient Comprehensive Tests', () => {
 
         it('should handle health check without version', async () => {
             server.use(
-                http.get('https://api.sardis.network/health', () => {
+                http.get('https://api.sardis.sh/health', () => {
                     return HttpResponse.json({ status: 'ok' });
                 })
             );

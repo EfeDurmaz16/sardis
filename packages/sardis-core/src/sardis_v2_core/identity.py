@@ -25,7 +25,7 @@ class AgentIdentity:
     agent_id: str
     public_key: bytes
     algorithm: AllowedKeys = "ed25519"
-    domain: str = "sardis.network"
+    domain: str = "sardis.sh"
     created_at: int = int(time.time())
 
     def verify(self, message: bytes, signature: bytes, domain: str, nonce: str, purpose: str) -> bool:

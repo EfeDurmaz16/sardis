@@ -193,7 +193,7 @@ try {
 
 ```typescript
 const client = new SardisClient({
-  baseUrl: 'https://api.sardis.network', // API base URL (optional)
+  baseUrl: 'https://api.sardis.sh', // API base URL (optional)
   apiKey: 'sk_live_...',                  // Your API key (required)
   timeout: 30000,                         // Request timeout in ms (optional)
   maxRetries: 3,                          // Max retry attempts (optional)
@@ -430,7 +430,7 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 ## Support
 
-- [Documentation](https://docs.sardis.network)
+- [Documentation](https://docs.sardis.sh)
 - [GitHub Issues](https://github.com/sardis-network/sardis-sdk-js/issues)
 - [Discord Community](https://discord.gg/sardis)
 

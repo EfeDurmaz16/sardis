@@ -94,7 +94,7 @@ def get_client(ctx) -> SardisAPIClient:
         raise click.ClickException("Not authenticated. Run 'sardis login' first.")
     
     return SardisAPIClient(
-        base_url=config.get("api_base_url", "https://api.sardis.network"),
+        base_url=config.get("api_base_url", "https://api.sardis.sh"),
         api_key=api_key,
     )
 

@@ -13,7 +13,7 @@
  *
  * Environment Variables:
  * - SARDIS_API_KEY: API key for Sardis API (required)
- * - SARDIS_API_URL: API base URL (default: https://api.sardis.network)
+ * - SARDIS_API_URL: API base URL (default: https://api.sardis.sh)
  * - SARDIS_WALLET_ID: Default wallet ID
  * - SARDIS_AGENT_ID: Agent ID for attribution
  * - SARDIS_CHAIN: Default chain (default: base_sepolia)

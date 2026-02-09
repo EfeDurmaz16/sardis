@@ -11,7 +11,7 @@ class TestExecuteMandate:
     async def test_execute_mandate_successfully(self, client, httpx_mock, mock_responses):
         """Should execute a payment mandate."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/mandates/execute",
+            url="https://api.sardis.sh/api/v2/mandates/execute",
             method="POST",
             json={
                 "payment_id": "pay_abc123",
@@ -40,7 +40,7 @@ class TestExecuteMandate:
     async def test_handle_mandate_failure(self, client, httpx_mock):
         """Should handle mandate execution failure."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/mandates/execute",
+            url="https://api.sardis.sh/api/v2/mandates/execute",
             method="POST",
             status_code=403,
             json={"error": "Policy violation", "code": "POLICY_VIOLATION"},
@@ -65,7 +65,7 @@ class TestExecuteAP2:
     async def test_execute_ap2_successfully(self, client, httpx_mock, mock_responses):
         """Should execute an AP2 payment."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json=mock_responses["mandate"],
         )
@@ -85,7 +85,7 @@ class TestExecuteAP2Bundle:
     async def test_execute_ap2_bundle_successfully(self, client, httpx_mock, mock_responses):
         """Should execute a pre-built AP2 bundle."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json=mock_responses["mandate"],
         )

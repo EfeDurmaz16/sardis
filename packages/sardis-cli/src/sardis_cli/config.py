@@ -11,7 +11,7 @@ CONFIG_DIR = Path.home() / ".sardis"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
-    "api_base_url": "https://api.sardis.network",
+    "api_base_url": "https://api.sardis.sh",
     "default_chain": "base_sepolia",
 }
 

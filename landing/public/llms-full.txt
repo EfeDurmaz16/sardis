@@ -1088,14 +1088,54 @@ npx @sardis/mcp-server start
 }
 ```
 
+## Stablecoin-Only Token Allowlist (On-Chain)
+
+The smart contract enforces a token allowlist at the EVM level:
+
+```solidity
+// Only Sardis (platform) can whitelist tokens
+function allowToken(address token) external onlySardis;
+function removeToken(address token) external onlySardis;
+
+// Enforced in pay(), payWithCoSign(), createHold()
+// Reverts with "Token not allowed (stablecoins only)" for non-whitelisted tokens
+```
+
+**Key guarantees:**
+- Only approved stablecoins (USDC, USDT, EURC, PYUSD) can be transferred out
+- If someone sends NFTs, DOGE, or meme coins to the wallet — they're stuck, the agent can't use them
+- This is an **on-chain guarantee**, not just API filtering
+- Sardis can toggle enforcement off for emergency token recovery
+
 ## Status
 
-- **Current Version**: v0.8.0 (Production Hardening)
-- **Infrastructure**: Live on Base Sepolia testnet
+- **Current Version**: v0.8.4 (Lithic Sandbox + Stablecoin Enforcement)
+- **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
 
-## What's New in v0.8.0 (February 2026)
+## What's New in v0.8.4 (February 2026)
+
+### Lithic Sandbox Cards
+```python
+# Issue a real sandbox card via Lithic
+card = wallet.cards.create(spending_limit="500.00")
+
+# Simulate a purchase — returns real Lithic authorization ID
+tx = card.simulate_purchase(amount="25.00", merchant="Demo Coffee Shop")
+print(tx.provider_tx_id)  # Real Lithic transaction token
+```
+
+### Stablecoin-Only Smart Contract
+On-chain token allowlist prevents non-stablecoin transfers. See "Stablecoin-Only Token Allowlist" section above.
+
+### Goal Drift Detection
+Detect when agent spending patterns deviate from intended goals — alerts before financial hallucinations happen.
+
+### Dashboard Cards Page
+Custom Sardis-branded card UI with issue, freeze, simulate purchase, and transaction history with Lithic TX IDs.
+
+### Previous (v0.8.0)
 
 ### Human Approval Workflows
 ```python
@@ -1162,4 +1202,4 @@ policy = {
 ---
 
 *Last updated: February 2026*
-*Version: 2.2*
+*Version: 2.3*

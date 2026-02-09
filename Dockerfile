@@ -17,7 +17,7 @@ COPY packages/ packages/
 
 # Install all packages in dependency order (non-editable for container)
 RUN pip install --no-cache-dir \
-    packages/sardis-core \
+    "packages/sardis-core[nl-parser]" \
     packages/sardis-protocol \
     packages/sardis-chain \
     packages/sardis-ledger \

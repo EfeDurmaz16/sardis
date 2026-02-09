@@ -271,7 +271,7 @@ describe('SardisClient Batch Operations', () => {
     describe('batch', () => {
         it('should execute batch of operations', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/items/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/items/:id', ({ params }) => {
                     return HttpResponse.json({ id: params.id, name: `Item ${params.id}` });
                 })
             );
@@ -291,7 +291,7 @@ describe('SardisClient Batch Operations', () => {
 
         it('should handle mixed success and failure', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/items/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/items/:id', ({ params }) => {
                     if (params.id === '2') {
                         return HttpResponse.json(
                             { error: 'Not found' },
@@ -318,7 +318,7 @@ describe('SardisClient Batch Operations', () => {
             let maxActiveRequests = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/slow/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/slow/:id', async ({ params }) => {
                     activeRequests++;
                     maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
                     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -342,7 +342,7 @@ describe('SardisClient Batch Operations', () => {
             let maxActiveRequests = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/slow/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/slow/:id', async ({ params }) => {
                     activeRequests++;
                     maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
                     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -365,7 +365,7 @@ describe('SardisClient Batch Operations', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/items/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/items/:id', async ({ params }) => {
                     requestCount++;
                     if (params.id === '2') {
                         return HttpResponse.json({ error: 'Failed' }, { status: 500 });
@@ -392,7 +392,7 @@ describe('SardisClient Batch Operations', () => {
 
         it('should continue on error when stopOnError is false (default)', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/items/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/items/:id', ({ params }) => {
                     if (params.id === '2') {
                         return HttpResponse.json({ error: 'Failed' }, { status: 500 });
                     }
@@ -414,7 +414,7 @@ describe('SardisClient Batch Operations', () => {
 
         it('should support AbortSignal for cancellation', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/slow/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/slow/:id', async ({ params }) => {
                     await new Promise((resolve) => setTimeout(resolve, 200));
                     return HttpResponse.json({ id: params.id });
                 })
@@ -444,7 +444,7 @@ describe('SardisClient Batch Operations', () => {
             let receivedBodies: any[] = [];
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/items', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/items', async ({ request }) => {
                     const body = await request.json();
                     receivedBodies.push(body);
                     return HttpResponse.json({ id: 'new_item', ...(body as object) });
@@ -465,7 +465,7 @@ describe('SardisClient Batch Operations', () => {
 
         it('should support operations with query params', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/search', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/search', ({ request }) => {
                     const url = new URL(request.url);
                     const query = url.searchParams.get('q');
                     return HttpResponse.json({ results: [{ query }] });
@@ -490,7 +490,7 @@ describe('SardisClient Interceptors', () => {
             const interceptorCalls: any[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -514,7 +514,7 @@ describe('SardisClient Interceptors', () => {
             let receivedHeaders: any;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/test', ({ request }) => {
                     receivedHeaders = Object.fromEntries(request.headers);
                     return HttpResponse.json({ success: true });
                 })
@@ -540,7 +540,7 @@ describe('SardisClient Interceptors', () => {
             const executionOrder: number[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -576,7 +576,7 @@ describe('SardisClient Interceptors', () => {
             let interceptorCalled = false;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -622,7 +622,7 @@ describe('SardisClient Interceptors', () => {
             const interceptorCalls: any[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ data: 'test' });
                 })
             );
@@ -644,7 +644,7 @@ describe('SardisClient Interceptors', () => {
             const client = new SardisClient({ apiKey: 'test-key' });
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ original: true });
                 })
             );
@@ -667,7 +667,7 @@ describe('SardisClient Interceptors', () => {
             const executionOrder: number[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -696,7 +696,7 @@ describe('SardisClient Interceptors', () => {
             let interceptorCalled = false;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', () => {
+                http.get('https://api.sardis.sh/api/v2/test', () => {
                     return HttpResponse.json({ success: true });
                 })
             );
@@ -732,7 +732,7 @@ describe('SardisClient Interceptors', () => {
             let receivedApiKey: string | null = null;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/test', ({ request }) => {
                     receivedApiKey = request.headers.get('X-API-Key');
                     return HttpResponse.json({ success: true });
                 })

@@ -58,7 +58,7 @@ class SardisToolClient {
     this.apiKey = config.apiKey
     this.walletId = config.walletId
     this.agentId = config.agentId
-    this.baseUrl = (config.baseUrl || 'https://api.sardis.network').replace(/\/$/, '')
+    this.baseUrl = (config.baseUrl || 'https://api.sardis.sh').replace(/\/$/, '')
     this.simulationMode = config.simulationMode || false
     this.maxPaymentAmount = config.maxPaymentAmount
     this.blockedCategories = config.blockedCategories || []

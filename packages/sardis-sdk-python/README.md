@@ -17,7 +17,7 @@ from sardis_sdk import SardisClient
 
 async def main():
     async with SardisClient(
-        base_url="https://api.sardis.network",
+        base_url="https://api.sardis.sh",
         api_key="your-api-key",
     ) as client:
         # Check API health
@@ -172,7 +172,7 @@ except APIError as e:
 
 ```python
 client = SardisClient(
-    base_url="https://api.sardis.network",  # API base URL
+    base_url="https://api.sardis.sh",  # API base URL
     api_key="sk_live_...",                   # Your API key
     timeout=30,                              # Request timeout (seconds)
     max_retries=3,                           # Max retry attempts

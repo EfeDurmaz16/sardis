@@ -19,14 +19,14 @@ Example usage:
     # Async client (recommended)
     async with AsyncSardisClient(
         api_key="your-api-key",
-        base_url="https://api.sardis.network",
+        base_url="https://api.sardis.sh",
     ) as client:
         result = await client.payments.execute_mandate(mandate)
 
     # Sync client
     with SardisClient(
         api_key="your-api-key",
-        base_url="https://api.sardis.network",
+        base_url="https://api.sardis.sh",
     ) as client:
         result = client.payments.execute_mandate(mandate)
     ```
@@ -356,7 +356,7 @@ class RequestLogger:
 class BaseClient:
     """Base class with shared configuration for sync and async clients."""
 
-    DEFAULT_BASE_URL = "https://api.sardis.network"
+    DEFAULT_BASE_URL = "https://api.sardis.sh"
 
     def __init__(
         self,
@@ -373,7 +373,7 @@ class BaseClient:
 
         Args:
             api_key: Your Sardis API key (required)
-            base_url: API base URL (default: https://api.sardis.network)
+            base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
             retry: Retry configuration
             pool: Connection pool configuration
@@ -552,7 +552,7 @@ class AsyncSardisClient(BaseClient):
 
         Args:
             api_key: Your Sardis API key (required)
-            base_url: API base URL (default: https://api.sardis.network)
+            base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
             retry: Retry configuration
             pool: Connection pool configuration
@@ -933,7 +933,7 @@ class SardisClient(BaseClient):
 
         Args:
             api_key: Your Sardis API key (required)
-            base_url: API base URL (default: https://api.sardis.network)
+            base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
             retry: Retry configuration
             pool: Connection pool configuration

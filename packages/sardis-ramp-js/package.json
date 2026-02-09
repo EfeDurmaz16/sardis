@@ -46,14 +46,14 @@
     "stablecoin",
     "fintech"
   ],
-  "author": "Sardis <support@sardis.network>",
+  "author": "Sardis <support@sardis.sh>",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sardis-network/sardis.git",
     "directory": "packages/sardis-ramp-js"
   },
-  "homepage": "https://sardis.network",
+  "homepage": "https://sardis.sh",
   "bugs": {
     "url": "https://github.com/sardis-network/sardis/issues"
   },

@@ -24,16 +24,16 @@ def _sample_payment_mandate(subject: str = "agent_123") -> PaymentMandate:
     return PaymentMandate(
         mandate_id="mnd_test",
         mandate_type="payment",
-        issuer="did:web:sardis.network",
+        issuer="did:web:sardis.sh",
         subject=subject,
         expires_at=9999999999,
         nonce="nonce",
         proof=VCProof(
-            verification_method="did:web:sardis.network#key-1",
+            verification_method="did:web:sardis.sh#key-1",
             created="2026-01-01T00:00:00Z",
             proof_value="cHJvb2Y=",  # base64-ish placeholder
         ),
-        domain="sardis.network",
+        domain="sardis.sh",
         purpose="checkout",
         chain="base_sepolia",
         token="USDC",

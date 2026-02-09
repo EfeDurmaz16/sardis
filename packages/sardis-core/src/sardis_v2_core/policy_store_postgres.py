@@ -44,6 +44,7 @@ class PostgresPolicyStore(AsyncPolicyStore):
             return spending_policy_from_json(data)
 
     async def set_policy(self, agent_id: str, policy: SpendingPolicy) -> None:
+        import json as _json
         pool = await self._get_pool()
         payload = spending_policy_to_json(policy)
         async with pool.acquire() as conn:
@@ -57,9 +58,9 @@ class PostgresPolicyStore(AsyncPolicyStore):
                 agent_id,
             )
             await conn.execute(
-                "UPDATE agents SET spending_policy = $2, updated_at = NOW() WHERE external_id = $1",
+                "UPDATE agents SET spending_policy = $2::jsonb, updated_at = NOW() WHERE external_id = $1",
                 agent_id,
-                payload,
+                _json.dumps(payload),
             )
 
     async def delete_policy(self, agent_id: str) -> bool:
@@ -77,6 +78,7 @@ class PostgresPolicyStore(AsyncPolicyStore):
 
         Uses row-level locking to prevent concurrent lost updates.
         """
+        import json as _json
         if amount <= 0:
             raise ValueError("amount_must_be_positive")
 
@@ -111,9 +113,9 @@ class PostgresPolicyStore(AsyncPolicyStore):
 
                 payload = spending_policy_to_json(policy)
                 await conn.execute(
-                    "UPDATE agents SET spending_policy = $2, updated_at = NOW() WHERE external_id = $1",
+                    "UPDATE agents SET spending_policy = $2::jsonb, updated_at = NOW() WHERE external_id = $1",
                     agent_id,
-                    payload,
+                    _json.dumps(payload),
                 )
                 return policy
 

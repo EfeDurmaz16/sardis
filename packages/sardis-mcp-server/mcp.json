@@ -6,8 +6,8 @@
   "version": "0.1.0",
   "author": {
     "name": "Sardis",
-    "email": "support@sardis.network",
-    "url": "https://sardis.network"
+    "email": "support@sardis.sh",
+    "url": "https://sardis.sh"
   },
   "license": "MIT",
   "repository": {
@@ -15,8 +15,8 @@
     "url": "https://github.com/sardis-network/sardis",
     "directory": "packages/sardis-mcp-server"
   },
-  "homepage": "https://sardis.network",
-  "documentation": "https://docs.sardis.network",
+  "homepage": "https://sardis.sh",
+  "documentation": "https://docs.sardis.sh",
   "category": "finance",
   "tags": [
     "payments",

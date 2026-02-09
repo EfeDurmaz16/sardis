@@ -276,15 +276,15 @@ Result: {
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SARDIS_API_KEY` | No | - | Your Sardis API key. Get one at [sardis.network](https://sardis.network) |
+| `SARDIS_API_KEY` | No | - | Your Sardis API key. Get one at [sardis.sh](https://sardis.sh) |
 | `SARDIS_WALLET_ID` | No | - | Default wallet ID for operations |
 | `SARDIS_AGENT_ID` | No | - | Agent ID for this MCP connection |
 | `SARDIS_MODE` | No | `simulated` | `live` for real transactions, `simulated` for testing |
-| `SARDIS_API_URL` | No | `https://api.sardis.network` | API endpoint (for enterprise/self-hosted) |
+| `SARDIS_API_URL` | No | `https://api.sardis.sh` | API endpoint (for enterprise/self-hosted) |
 
 ### Getting Your API Key
 
-1. Sign up at [sardis.network](https://sardis.network)
+1. Sign up at [sardis.sh](https://sardis.sh)
 2. Go to Settings > API Keys
 3. Create a new API key with appropriate permissions
 4. Add it to your MCP configuration
@@ -361,10 +361,10 @@ interface ToolResponse {
 
 ## Support
 
-- [Documentation](https://docs.sardis.network)
+- [Documentation](https://docs.sardis.sh)
 - [GitHub Issues](https://github.com/sardis-network/sardis/issues)
 - [Discord Community](https://discord.gg/sardis)
-- Email: support@sardis.network
+- Email: support@sardis.sh
 
 ## Contributing
 

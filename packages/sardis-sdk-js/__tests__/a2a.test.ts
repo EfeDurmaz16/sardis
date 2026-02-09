@@ -101,7 +101,7 @@ describe('A2AResource', () => {
   describe('discoverAgent', () => {
     it('should discover an agent', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/discover', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/discover', () => {
           return HttpResponse.json(mockDiscoveredAgent);
         })
       );
@@ -119,7 +119,7 @@ describe('A2AResource', () => {
     it('should send force_refresh flag', async () => {
       let receivedBody: any;
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/discover', async ({ request }) => {
+        http.post('https://api.sardis.sh/api/v2/a2a/discover', async ({ request }) => {
           receivedBody = await request.json();
           return HttpResponse.json(mockDiscoveredAgent);
         })
@@ -133,7 +133,7 @@ describe('A2AResource', () => {
 
     it('should handle unavailable agent', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/discover', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/discover', () => {
           return HttpResponse.json({
             ...mockDiscoveredAgent,
             available: false,
@@ -152,7 +152,7 @@ describe('A2AResource', () => {
   describe('getAgentCard', () => {
     it('should get our agent card', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/agent-card', () => {
+        http.get('https://api.sardis.sh/api/v2/a2a/agent-card', () => {
           return HttpResponse.json(mockAgentCard);
         })
       );
@@ -170,7 +170,7 @@ describe('A2AResource', () => {
   describe('listAgents', () => {
     it('should list discovered agents', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/agents', () => {
+        http.get('https://api.sardis.sh/api/v2/a2a/agents', () => {
           return HttpResponse.json({
             agents: [mockDiscoveredAgent],
           });
@@ -186,7 +186,7 @@ describe('A2AResource', () => {
     it('should filter agents by capability', async () => {
       let receivedParams: URLSearchParams | null = null;
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/agents', ({ request }) => {
+        http.get('https://api.sardis.sh/api/v2/a2a/agents', ({ request }) => {
           const url = new URL(request.url);
           receivedParams = url.searchParams;
           return HttpResponse.json({ agents: [] });
@@ -205,7 +205,7 @@ describe('A2AResource', () => {
     it('should filter agents by payment support', async () => {
       let receivedParams: URLSearchParams | null = null;
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/agents', ({ request }) => {
+        http.get('https://api.sardis.sh/api/v2/a2a/agents', ({ request }) => {
           const url = new URL(request.url);
           receivedParams = url.searchParams;
           return HttpResponse.json({ agents: [] });
@@ -223,7 +223,7 @@ describe('A2AResource', () => {
 
     it('should handle array response format', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/agents', () => {
+        http.get('https://api.sardis.sh/api/v2/a2a/agents', () => {
           return HttpResponse.json([mockDiscoveredAgent]);
         })
       );
@@ -237,7 +237,7 @@ describe('A2AResource', () => {
   describe('sendPaymentRequest', () => {
     it('should send payment request successfully', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/payment-request', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/payment-request', () => {
           return HttpResponse.json(mockPaymentResponse);
         })
       );
@@ -260,7 +260,7 @@ describe('A2AResource', () => {
 
     it('should handle payment failure', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/payment-request', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/payment-request', () => {
           return HttpResponse.json({
             response_id: 'resp_fail',
             request_id: 'req_fail',
@@ -289,7 +289,7 @@ describe('A2AResource', () => {
       let receivedBody: any;
       server.use(
         http.post(
-          'https://api.sardis.network/api/v2/a2a/payment-request',
+          'https://api.sardis.sh/api/v2/a2a/payment-request',
           async ({ request }) => {
             receivedBody = await request.json();
             return HttpResponse.json(mockPaymentResponse);
@@ -321,7 +321,7 @@ describe('A2AResource', () => {
   describe('verifyCredential', () => {
     it('should verify credential successfully', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/verify-credential', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/verify-credential', () => {
           return HttpResponse.json(mockCredentialResponse);
         })
       );
@@ -344,7 +344,7 @@ describe('A2AResource', () => {
 
     it('should handle invalid credential', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/verify-credential', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/verify-credential', () => {
           return HttpResponse.json({
             response_id: 'resp_invalid',
             request_id: 'req_invalid',
@@ -372,7 +372,7 @@ describe('A2AResource', () => {
       let receivedBody: any;
       server.use(
         http.post(
-          'https://api.sardis.network/api/v2/a2a/verify-credential',
+          'https://api.sardis.sh/api/v2/a2a/verify-credential',
           async ({ request }) => {
             receivedBody = await request.json();
             return HttpResponse.json(mockCredentialResponse);
@@ -398,7 +398,7 @@ describe('A2AResource', () => {
   describe('sendMessage', () => {
     it('should send raw A2A message', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/messages', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/messages', () => {
           return HttpResponse.json(mockA2AMessage);
         })
       );
@@ -415,7 +415,7 @@ describe('A2AResource', () => {
     it('should include recipient URL in request', async () => {
       let receivedBody: any;
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/messages', async ({ request }) => {
+        http.post('https://api.sardis.sh/api/v2/a2a/messages', async ({ request }) => {
           receivedBody = await request.json();
           return HttpResponse.json(mockA2AMessage);
         })
@@ -435,7 +435,7 @@ describe('A2AResource', () => {
   describe('listMessages', () => {
     it('should list messages', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/messages', () => {
+        http.get('https://api.sardis.sh/api/v2/a2a/messages', () => {
           return HttpResponse.json({
             messages: [mockA2AMessage],
           });
@@ -451,7 +451,7 @@ describe('A2AResource', () => {
     it('should filter messages', async () => {
       let receivedParams: URLSearchParams | null = null;
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/messages', ({ request }) => {
+        http.get('https://api.sardis.sh/api/v2/a2a/messages', ({ request }) => {
           const url = new URL(request.url);
           receivedParams = url.searchParams;
           return HttpResponse.json({ messages: [] });
@@ -473,7 +473,7 @@ describe('A2AResource', () => {
 
     it('should handle array response format', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/a2a/messages', () => {
+        http.get('https://api.sardis.sh/api/v2/a2a/messages', () => {
           return HttpResponse.json([mockA2AMessage]);
         })
       );
@@ -487,7 +487,7 @@ describe('A2AResource', () => {
   describe('registerAgent', () => {
     it('should register an agent', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/a2a/agents/register', () => {
+        http.post('https://api.sardis.sh/api/v2/a2a/agents/register', () => {
           return HttpResponse.json(mockDiscoveredAgent);
         })
       );
@@ -506,7 +506,7 @@ describe('A2AResource', () => {
       let receivedBody: any;
       server.use(
         http.post(
-          'https://api.sardis.network/api/v2/a2a/agents/register',
+          'https://api.sardis.sh/api/v2/a2a/agents/register',
           async ({ request }) => {
             receivedBody = await request.json();
             return HttpResponse.json(mockDiscoveredAgent);

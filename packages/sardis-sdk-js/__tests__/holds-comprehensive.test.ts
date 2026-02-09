@@ -42,7 +42,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('create', () => {
         it('should create hold with minimal parameters', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json(mockHold);
                 })
             );
@@ -62,7 +62,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should create hold with all parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockHold);
                 })
@@ -91,7 +91,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle insufficient balance error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -121,7 +121,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle wallet not found error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -146,7 +146,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle inactive wallet error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -175,7 +175,7 @@ describe('HoldsResource Comprehensive Tests', () => {
             for (const token of tokens) {
                 let receivedToken: string;
                 server.use(
-                    http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                    http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                         const body = await request.json() as { token: string };
                         receivedToken = body.token;
                         return HttpResponse.json({ ...mockHold, token });
@@ -199,7 +199,7 @@ describe('HoldsResource Comprehensive Tests', () => {
             for (const chain of chains) {
                 let receivedChain: string;
                 server.use(
-                    http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                    http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                         const body = await request.json() as { chain: string };
                         receivedChain = body.chain;
                         return HttpResponse.json(mockHold);
@@ -221,7 +221,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('getById', () => {
         it('should retrieve hold by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/holds/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockHold, id: params.id as string });
                 })
             );
@@ -235,7 +235,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle hold not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/:id', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -253,7 +253,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should return all hold fields', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/:id', () => {
                     return HttpResponse.json(mockHold);
                 })
             );
@@ -276,7 +276,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('capture', () => {
         it('should capture hold for full amount', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json({
                         ...mockHold,
                         status: 'captured',
@@ -296,7 +296,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should capture hold for partial amount', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockHold,
@@ -316,7 +316,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle capturing already captured hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -334,7 +334,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle capturing expired hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -352,7 +352,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle capturing voided hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -370,7 +370,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle capture amount exceeding hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/capture', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/capture', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -396,7 +396,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('void', () => {
         it('should void an active hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json({
                         ...mockHold,
                         status: 'voided',
@@ -413,7 +413,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle voiding already captured hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -431,7 +431,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle voiding already voided hold', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -449,7 +449,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle voiding expired hold (should succeed)', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds/:id/void', () => {
+                http.post('https://api.sardis.sh/api/v2/holds/:id/void', () => {
                     return HttpResponse.json({
                         ...mockHold,
                         status: 'voided',
@@ -467,7 +467,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('listByWallet', () => {
         it('should list holds for a wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/wallet/:walletId', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/wallet/:walletId', () => {
                     return HttpResponse.json({
                         holds: [
                             mockHold,
@@ -487,7 +487,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should return empty array when no holds exist', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/wallet/:walletId', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/wallet/:walletId', () => {
                     return HttpResponse.json({ holds: [] });
                 })
             );
@@ -500,7 +500,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should handle wallet not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds/wallet/:walletId', () => {
+                http.get('https://api.sardis.sh/api/v2/holds/wallet/:walletId', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -522,7 +522,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('listActive', () => {
         it('should list all active holds', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds', () => {
+                http.get('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json({
                         holds: [
                             mockHold,
@@ -540,7 +540,7 @@ describe('HoldsResource Comprehensive Tests', () => {
 
         it('should return empty array when no active holds', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/holds', () => {
+                http.get('https://api.sardis.sh/api/v2/holds', () => {
                     return HttpResponse.json({ holds: [] });
                 })
             );
@@ -554,7 +554,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('error handling', () => {
         it('should handle network timeout', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async () => {
+                http.post('https://api.sardis.sh/api/v2/holds', async () => {
                     await new Promise((resolve) => setTimeout(resolve, 5000));
                     return HttpResponse.json(mockHold);
                 })
@@ -579,7 +579,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should retry on server errors', async () => {
             let attempts = 0;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', () => {
+                http.post('https://api.sardis.sh/api/v2/holds', () => {
                     attempts++;
                     if (attempts < 3) {
                         return HttpResponse.json(
@@ -613,7 +613,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle very large hold amount', async () => {
             let receivedAmount: number;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     const body = await request.json() as { amount_minor: number };
                     receivedAmount = body.amount_minor;
                     return HttpResponse.json({
@@ -638,7 +638,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle minimum hold amount', async () => {
             let receivedAmount: number;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     const body = await request.json() as { amount_minor: number };
                     receivedAmount = body.amount_minor;
                     return HttpResponse.json({
@@ -662,7 +662,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle hold with very short expiration', async () => {
             let receivedExpiry: number;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     const body = await request.json() as { expires_in_seconds: number };
                     receivedExpiry = body.expires_in_seconds;
                     return HttpResponse.json(mockHold);
@@ -683,7 +683,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle hold with very long expiration', async () => {
             let receivedExpiry: number;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     const body = await request.json() as { expires_in_seconds: number };
                     receivedExpiry = body.expires_in_seconds;
                     return HttpResponse.json(mockHold);
@@ -704,7 +704,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle concurrent hold operations', async () => {
             let requestCount = 0;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async () => {
+                http.post('https://api.sardis.sh/api/v2/holds', async () => {
                     requestCount++;
                     await new Promise((resolve) => setTimeout(resolve, 50));
                     return HttpResponse.json({
@@ -730,7 +730,7 @@ describe('HoldsResource Comprehensive Tests', () => {
         it('should handle special characters in metadata', async () => {
             let receivedMetadata: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/holds', async ({ request }) => {
                     const body = await request.json() as { metadata: any };
                     receivedMetadata = body.metadata;
                     return HttpResponse.json(mockHold);
@@ -758,7 +758,7 @@ describe('HoldsResource Comprehensive Tests', () => {
     describe('request cancellation', () => {
         it('should support AbortController', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/holds', async () => {
+                http.post('https://api.sardis.sh/api/v2/holds', async () => {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     return HttpResponse.json(mockHold);
                 })

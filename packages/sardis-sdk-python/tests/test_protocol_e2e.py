@@ -24,7 +24,7 @@ class TestAP2MandateExecution:
         """Verify client.payments.execute_ap2() constructs correct request body matching AP2 schema."""
         # Mock successful response
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json={
                 "mandate_id": "mandate_123",
@@ -38,7 +38,7 @@ class TestAP2MandateExecution:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -84,7 +84,7 @@ class TestProtocolVerificationResult:
         """Verify MandateChainVerification fields are correctly deserialized."""
         # Mock response with verification metadata
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json={
                 "mandate_id": "mandate_123",
@@ -100,7 +100,7 @@ class TestProtocolVerificationResult:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -132,7 +132,7 @@ class TestDeterministicReasonCodes:
         """Verify specific reason code strings (not generic errors)."""
         # Mock rejection with specific AP2 reason code
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=422,
             json={
@@ -149,7 +149,7 @@ class TestDeterministicReasonCodes:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -173,7 +173,7 @@ class TestDeterministicReasonCodes:
     async def test_mandate_expired_reason_code(self, httpx_mock):
         """Verify expired mandate returns deterministic reason code."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=410,
             json={
@@ -186,7 +186,7 @@ class TestDeterministicReasonCodes:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -211,7 +211,7 @@ class TestUCPCheckoutFlow:
         """Verify UCP checkout API call structure is correct."""
         # Mock UCP session creation
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ucp/sessions",
+            url="https://api.sardis.sh/api/v2/ucp/sessions",
             method="POST",
             json={
                 "session_id": "ucp_session_123",
@@ -226,7 +226,7 @@ class TestUCPCheckoutFlow:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -258,7 +258,7 @@ class TestHTTP402X402Challenge:
         """Parse PaymentRequired header, expose challenge object."""
         # Mock 402 Payment Required response with x402 challenge
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/protected-resource",
+            url="https://api.sardis.sh/api/v2/protected-resource",
             method="GET",
             status_code=402,
             headers={
@@ -282,7 +282,7 @@ class TestHTTP402X402Challenge:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -307,7 +307,7 @@ class TestNoRetryOnProtocolRejection:
         """400/403/422 not retried, 500/502/503 are retried."""
         # Mock 422 validation error (should NOT retry)
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=422,
             json={
@@ -320,7 +320,7 @@ class TestNoRetryOnProtocolRejection:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=3),  # Enable retries
         )
 
@@ -338,19 +338,19 @@ class TestNoRetryOnProtocolRejection:
         """500/502/503 errors are retried."""
         # First two attempts fail with 503, third succeeds
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=503,
             json={"error": "Service temporarily unavailable"},
         )
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=503,
             json={"error": "Service temporarily unavailable"},
         )
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=200,
             json={
@@ -365,7 +365,7 @@ class TestNoRetryOnProtocolRejection:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=3, initial_delay=0.01),
         )
 
@@ -386,7 +386,7 @@ class TestNoRetryOnProtocolRejection:
     async def test_no_retry_on_403_forbidden(self, httpx_mock):
         """403 errors (policy violations) are not retried."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=403,
             json={
@@ -399,7 +399,7 @@ class TestNoRetryOnProtocolRejection:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=3),
         )
 
@@ -418,7 +418,7 @@ class TestTAPHeaderInjection:
         """When tap_signing_key configured, verify Signature + Signature-Input headers added."""
         # Mock successful response
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json={
                 "mandate_id": "mandate_123",
@@ -436,7 +436,7 @@ class TestTAPHeaderInjection:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
             default_headers={
                 "Signature": tap_signature,
@@ -465,7 +465,7 @@ class TestTAPHeaderInjection:
     async def test_tap_signature_rejected(self, httpx_mock):
         """Test TAP signature rejection with specific error code."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=401,
             json={
@@ -482,7 +482,7 @@ class TestTAPHeaderInjection:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
             default_headers={
                 "Signature": "sig1=:invalid:",
@@ -511,7 +511,7 @@ class TestProtocolVersionNegotiation:
     async def test_ap2_version_field_sent(self, httpx_mock):
         """Verify ap2_version field is sent in request when specified."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json={
                 "mandate_id": "mandate_123",
@@ -525,7 +525,7 @@ class TestProtocolVersionNegotiation:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 
@@ -548,7 +548,7 @@ class TestProtocolVersionNegotiation:
     async def test_unsupported_version_rejection(self, httpx_mock):
         """Test rejection of unsupported protocol version."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             status_code=400,
             json={
@@ -565,7 +565,7 @@ class TestProtocolVersionNegotiation:
 
         client = AsyncSardisClient(
             api_key="test-key",
-            base_url="https://api.sardis.network",
+            base_url="https://api.sardis.sh",
             retry=RetryConfig(max_retries=0),
         )
 

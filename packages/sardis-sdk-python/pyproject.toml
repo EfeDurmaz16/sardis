@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-sdk"
-version = "0.2.0"
+version = "0.3.0"
 description = "Production-grade Python SDK for the Sardis stablecoin execution layer"
 readme = "README.md"
 authors = [{name = "Sardis"}]
@@ -56,8 +56,8 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.network"
-Documentation = "https://docs.sardis.network"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh"
 Repository = "https://github.com/sardis-network/sardis-sdk-python"
 Changelog = "https://github.com/sardis-network/sardis-sdk-python/blob/main/CHANGELOG.md"
 

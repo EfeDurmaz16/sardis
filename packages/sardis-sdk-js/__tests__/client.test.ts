@@ -99,7 +99,7 @@ describe('SardisClient', () => {
         it('should retry on network errors', async () => {
             let attempts = 0;
             server.use(
-                http.get('https://api.sardis.network/v1/retry-test', () => {
+                http.get('https://api.sardis.sh/v1/retry-test', () => {
                     attempts++;
                     if (attempts < 2) {
                         return HttpResponse.error();
@@ -117,7 +117,7 @@ describe('SardisClient', () => {
         it('should retry on rate limit with backoff', async () => {
             let attempts = 0;
             server.use(
-                http.get('https://api.sardis.network/v1/rate-limit-test', () => {
+                http.get('https://api.sardis.sh/v1/rate-limit-test', () => {
                     attempts++;
                     if (attempts < 2) {
                         return HttpResponse.json(
@@ -140,7 +140,7 @@ describe('SardisClient', () => {
 
         it('should fail after max retries exceeded', async () => {
             server.use(
-                http.get('https://api.sardis.network/v1/always-fail', () => {
+                http.get('https://api.sardis.sh/v1/always-fail', () => {
                     return HttpResponse.error();
                 })
             );
@@ -153,7 +153,7 @@ describe('SardisClient', () => {
     describe('request method', () => {
         it('should make GET request with params', async () => {
             server.use(
-                http.get('https://api.sardis.network/v1/test', ({ request }) => {
+                http.get('https://api.sardis.sh/v1/test', ({ request }) => {
                     const url = new URL(request.url);
                     const param = url.searchParams.get('foo');
                     return HttpResponse.json({ param });
@@ -169,7 +169,7 @@ describe('SardisClient', () => {
 
         it('should make POST request with data', async () => {
             server.use(
-                http.post('https://api.sardis.network/v1/test', async ({ request }) => {
+                http.post('https://api.sardis.sh/v1/test', async ({ request }) => {
                     const body = await request.json();
                     return HttpResponse.json({ received: body });
                 })

@@ -55,7 +55,7 @@ class TestListCategories:
     async def test_list_categories(self, client, httpx_mock):
         """Should list all categories."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/categories",
+            url="https://api.sardis.sh/api/v2/marketplace/categories",
             method="GET",
             json={"categories": ["payment", "data", "compute"]},
         )
@@ -67,7 +67,7 @@ class TestListCategories:
     async def test_list_empty_categories(self, client, httpx_mock):
         """Should handle empty categories."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/categories",
+            url="https://api.sardis.sh/api/v2/marketplace/categories",
             method="GET",
             json={"categories": []},
         )
@@ -82,7 +82,7 @@ class TestCreateService:
     async def test_create_service(self, client, httpx_mock):
         """Should create a service."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services",
+            url="https://api.sardis.sh/api/v2/marketplace/services",
             method="POST",
             json=MOCK_SERVICE,
         )
@@ -101,7 +101,7 @@ class TestCreateService:
     async def test_create_service_with_all_options(self, client, httpx_mock):
         """Should create a service with all options."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services",
+            url="https://api.sardis.sh/api/v2/marketplace/services",
             method="POST",
             json=MOCK_SERVICE,
         )
@@ -126,7 +126,7 @@ class TestListServices:
     async def test_list_all_services(self, client, httpx_mock):
         """Should list all services."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services?limit=50&offset=0",
+            url="https://api.sardis.sh/api/v2/marketplace/services?limit=50&offset=0",
             method="GET",
             json={"services": [MOCK_SERVICE]},
         )
@@ -138,7 +138,7 @@ class TestListServices:
     async def test_list_services_with_category_filter(self, client, httpx_mock):
         """Should list services with category filter."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services?limit=50&offset=0&category=payment",
+            url="https://api.sardis.sh/api/v2/marketplace/services?limit=50&offset=0&category=payment",
             method="GET",
             json={"services": [MOCK_SERVICE]},
         )
@@ -149,7 +149,7 @@ class TestListServices:
     async def test_list_empty_services(self, client, httpx_mock):
         """Should handle empty services list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services?limit=50&offset=0",
+            url="https://api.sardis.sh/api/v2/marketplace/services?limit=50&offset=0",
             method="GET",
             json={"services": []},
         )
@@ -164,7 +164,7 @@ class TestGetService:
     async def test_get_service(self, client, httpx_mock):
         """Should get a service by ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services/svc_123",
+            url="https://api.sardis.sh/api/v2/marketplace/services/svc_123",
             method="GET",
             json=MOCK_SERVICE,
         )
@@ -180,7 +180,7 @@ class TestSearchServices:
     async def test_search_services(self, client, httpx_mock):
         """Should search services."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services/search",
+            url="https://api.sardis.sh/api/v2/marketplace/services/search",
             method="POST",
             json={"services": [MOCK_SERVICE]},
         )
@@ -191,7 +191,7 @@ class TestSearchServices:
     async def test_search_with_filters(self, client, httpx_mock):
         """Should search with all filters."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services/search",
+            url="https://api.sardis.sh/api/v2/marketplace/services/search",
             method="POST",
             json={"services": [MOCK_SERVICE]},
         )
@@ -209,7 +209,7 @@ class TestSearchServices:
     async def test_search_empty_results(self, client, httpx_mock):
         """Should handle empty search results."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/services/search",
+            url="https://api.sardis.sh/api/v2/marketplace/services/search",
             method="POST",
             json={"services": []},
         )
@@ -224,7 +224,7 @@ class TestCreateOffer:
     async def test_create_offer(self, client, httpx_mock):
         """Should create an offer."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers",
+            url="https://api.sardis.sh/api/v2/marketplace/offers",
             method="POST",
             json=MOCK_OFFER,
         )
@@ -245,7 +245,7 @@ class TestListOffers:
     async def test_list_all_offers(self, client, httpx_mock):
         """Should list all offers."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers",
+            url="https://api.sardis.sh/api/v2/marketplace/offers",
             method="GET",
             json={"offers": [MOCK_OFFER]},
         )
@@ -256,7 +256,7 @@ class TestListOffers:
     async def test_list_offers_as_provider(self, client, httpx_mock):
         """Should list offers as provider."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers?as_provider=true",
+            url="https://api.sardis.sh/api/v2/marketplace/offers?as_provider=true",
             method="GET",
             json={"offers": [MOCK_OFFER]},
         )
@@ -267,7 +267,7 @@ class TestListOffers:
     async def test_list_offers_as_consumer(self, client, httpx_mock):
         """Should list offers as consumer."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers?as_consumer=true",
+            url="https://api.sardis.sh/api/v2/marketplace/offers?as_consumer=true",
             method="GET",
             json={"offers": [MOCK_OFFER]},
         )
@@ -280,7 +280,7 @@ class TestListOffers:
         from sardis_sdk.models.marketplace import OfferStatus
 
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers?status=pending",
+            url="https://api.sardis.sh/api/v2/marketplace/offers?status=pending",
             method="GET",
             json={"offers": [MOCK_OFFER]},
         )
@@ -291,7 +291,7 @@ class TestListOffers:
     async def test_list_empty_offers(self, client, httpx_mock):
         """Should handle empty offers list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers",
+            url="https://api.sardis.sh/api/v2/marketplace/offers",
             method="GET",
             json={"offers": []},
         )
@@ -306,7 +306,7 @@ class TestAcceptOffer:
     async def test_accept_offer(self, client, httpx_mock):
         """Should accept an offer."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers/offer_456/accept",
+            url="https://api.sardis.sh/api/v2/marketplace/offers/offer_456/accept",
             method="POST",
             json={**MOCK_OFFER, "status": "accepted"},
         )
@@ -321,7 +321,7 @@ class TestRejectOffer:
     async def test_reject_offer(self, client, httpx_mock):
         """Should reject an offer."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers/offer_456/reject",
+            url="https://api.sardis.sh/api/v2/marketplace/offers/offer_456/reject",
             method="POST",
             json={**MOCK_OFFER, "status": "rejected"},
         )
@@ -336,7 +336,7 @@ class TestCompleteOffer:
     async def test_complete_offer(self, client, httpx_mock):
         """Should complete an offer."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers/offer_456/complete",
+            url="https://api.sardis.sh/api/v2/marketplace/offers/offer_456/complete",
             method="POST",
             json={**MOCK_OFFER, "status": "completed"},
         )
@@ -351,7 +351,7 @@ class TestCreateReview:
     async def test_create_review(self, client, httpx_mock):
         """Should create a review."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers/offer_456/review",
+            url="https://api.sardis.sh/api/v2/marketplace/offers/offer_456/review",
             method="POST",
             json=MOCK_REVIEW,
         )
@@ -368,7 +368,7 @@ class TestCreateReview:
     async def test_create_review_without_comment(self, client, httpx_mock):
         """Should create a review without comment."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/marketplace/offers/offer_456/review",
+            url="https://api.sardis.sh/api/v2/marketplace/offers/offer_456/review",
             method="POST",
             json={**MOCK_REVIEW, "comment": None, "rating": 4},
         )

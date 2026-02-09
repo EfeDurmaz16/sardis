@@ -23,7 +23,7 @@ class TestListEntries:
     async def test_list_all_entries(self, client, httpx_mock):
         """Should list all ledger entries."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries?limit=50&offset=0",
+            url="https://api.sardis.sh/api/v2/ledger/entries?limit=50&offset=0",
             method="GET",
             json={"entries": [MOCK_LEDGER_ENTRY]},
         )
@@ -36,7 +36,7 @@ class TestListEntries:
     async def test_list_entries_with_wallet_filter(self, client, httpx_mock):
         """Should list entries filtered by wallet."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries?limit=50&offset=0&wallet_id=wallet_sender",
+            url="https://api.sardis.sh/api/v2/ledger/entries?limit=50&offset=0&wallet_id=wallet_sender",
             method="GET",
             json={"entries": [MOCK_LEDGER_ENTRY]},
         )
@@ -47,7 +47,7 @@ class TestListEntries:
     async def test_list_entries_with_pagination(self, client, httpx_mock):
         """Should list entries with pagination."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries?limit=10&offset=5",
+            url="https://api.sardis.sh/api/v2/ledger/entries?limit=10&offset=5",
             method="GET",
             json={"entries": [MOCK_LEDGER_ENTRY]},
         )
@@ -58,7 +58,7 @@ class TestListEntries:
     async def test_list_empty_entries(self, client, httpx_mock):
         """Should handle empty entry list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries?limit=50&offset=0",
+            url="https://api.sardis.sh/api/v2/ledger/entries?limit=50&offset=0",
             method="GET",
             json={"entries": []},
         )
@@ -73,7 +73,7 @@ class TestGetEntry:
     async def test_get_entry(self, client, httpx_mock):
         """Should get a ledger entry by ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries/ltx_123",
+            url="https://api.sardis.sh/api/v2/ledger/entries/ltx_123",
             method="GET",
             json=MOCK_LEDGER_ENTRY,
         )
@@ -92,7 +92,7 @@ class TestGetEntry:
             "created_at": "2025-01-20T00:00:00Z",
         }
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries/ltx_456",
+            url="https://api.sardis.sh/api/v2/ledger/entries/ltx_456",
             method="GET",
             json=minimal_entry,
         )
@@ -109,7 +109,7 @@ class TestVerifyEntry:
     async def test_verify_valid_entry(self, client, httpx_mock):
         """Should verify a valid entry."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries/ltx_123/verify",
+            url="https://api.sardis.sh/api/v2/ledger/entries/ltx_123/verify",
             method="GET",
             json={"valid": True, "anchor": "merkle::abc123"},
         )
@@ -121,7 +121,7 @@ class TestVerifyEntry:
     async def test_verify_invalid_entry(self, client, httpx_mock):
         """Should return invalid for tampered entry."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ledger/entries/ltx_tampered/verify",
+            url="https://api.sardis.sh/api/v2/ledger/entries/ltx_tampered/verify",
             method="GET",
             json={"valid": False, "reason": "Hash mismatch"},
         )

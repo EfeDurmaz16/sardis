@@ -33,7 +33,7 @@ interface InitOptions {
 
 function printHelp() {
   console.log(`
-Sardis MCP Server v0.1.0
+Sardis MCP Server v0.2.0
 The Payment OS for the Agent Economy
 
 USAGE:
@@ -90,13 +90,13 @@ ENVIRONMENT VARIABLES:
   SARDIS_MODE        'live' or 'simulated' (default: simulated)
 
 LEARN MORE:
-  Documentation: https://docs.sardis.network
+  Documentation: https://docs.sardis.sh
   GitHub: https://github.com/sardis-network/sardis
 `);
 }
 
 function printVersion() {
-  console.log('Sardis MCP Server v0.1.0');
+  console.log('Sardis MCP Server v0.2.0');
 }
 
 function readArgValue(argv: string[], name: string): string | undefined {
@@ -123,7 +123,7 @@ function parseInitOptions(argv: string[]): InitOptions {
 
   return {
     mode,
-    apiUrl: (readArgValue(argv, 'api-url') || process.env.SARDIS_API_URL || 'https://api.sardis.network').replace(/\/$/, ''),
+    apiUrl: (readArgValue(argv, 'api-url') || process.env.SARDIS_API_URL || 'https://api.sardis.sh').replace(/\/$/, ''),
     apiKey: readArgValue(argv, 'api-key') || process.env.SARDIS_API_KEY || '',
     paymentIdentity:
       readArgValue(argv, 'payment-identity') || process.env.SARDIS_PAYMENT_IDENTITY || '',
@@ -148,7 +148,7 @@ async function apiRequestWithKey<T>(
     headers: {
       'X-API-Key': apiKey,
       'Content-Type': 'application/json',
-      'User-Agent': 'sardis-mcp-server/0.1.0',
+      'User-Agent': 'sardis-mcp-server/0.2.0',
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -342,7 +342,7 @@ async function main() {
   }
 
   if (args[0] === 'start' || args.length === 0) {
-    console.error('Sardis MCP Server v0.1.0 starting...');
+    console.error('Sardis MCP Server v0.2.0 starting...');
     console.error('Mode: ' + (process.env.SARDIS_MODE || 'simulated'));
     console.error('Tools: 36 tools across 8 categories');
     console.error('Ready. Waiting for MCP client connection...');

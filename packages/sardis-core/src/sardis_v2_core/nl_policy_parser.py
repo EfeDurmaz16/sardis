@@ -209,18 +209,27 @@ SECURITY — MANDATORY RULES (never override):
 
 Extract the policy accurately and completely."""
 
+    # Groq default model (open-source Llama 3.3 70B)
+    GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+    GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "gpt-4o",
+        model: Optional[str] = None,
         temperature: float = 0.1,
     ):
         """
         Initialize the NL Policy Parser.
 
+        Checks for API keys in this order:
+        1. GROQ_API_KEY (open-source Llama 3.3 via Groq — recommended)
+        2. OPENAI_API_KEY (OpenAI GPT models)
+        3. Explicit api_key parameter
+
         Args:
-            api_key: OpenAI API key. If not provided, uses OPENAI_API_KEY env var.
-            model: Model to use for parsing (default: gpt-4o)
+            api_key: API key. If not provided, uses GROQ_API_KEY or OPENAI_API_KEY env var.
+            model: Model to use for parsing. Auto-detected based on provider.
             temperature: Temperature for generation (default: 0.1 for consistency)
         """
         if not HAS_INSTRUCTOR:
@@ -229,16 +238,39 @@ Extract the policy accurately and completely."""
                 "Install with: pip install instructor openai"
             )
 
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OpenAI API key required. Set OPENAI_API_KEY or pass api_key.")
+        # Detect provider: prefer Groq (open-source) over OpenAI
+        groq_key = os.environ.get("GROQ_API_KEY")
+        openai_key = os.environ.get("OPENAI_API_KEY")
 
-        self.model = model
+        if api_key:
+            # Explicit key — assume OpenAI unless model hints at Groq
+            self.api_key = api_key
+            self.model = model or "gpt-4o"
+            self._base_url: Optional[str] = None
+        elif groq_key:
+            # Groq: open-source Llama via fast inference
+            self.api_key = groq_key
+            self.model = model or self.GROQ_DEFAULT_MODEL
+            self._base_url = self.GROQ_BASE_URL
+            logger.info("NL Policy Parser using Groq (Llama 3.3 70B)")
+        elif openai_key:
+            self.api_key = openai_key
+            self.model = model or "gpt-4o"
+            self._base_url = None
+        else:
+            raise ValueError(
+                "API key required. Set GROQ_API_KEY (recommended) or OPENAI_API_KEY."
+            )
+
         self.temperature = temperature
 
-        # Initialize sync and async clients
-        self._sync_client = instructor.from_openai(OpenAI(api_key=self.api_key))
-        self._async_client = instructor.from_openai(AsyncOpenAI(api_key=self.api_key))
+        # Initialize sync and async clients (Groq is OpenAI-compatible)
+        client_kwargs: dict[str, Any] = {"api_key": self.api_key}
+        if self._base_url:
+            client_kwargs["base_url"] = self._base_url
+
+        self._sync_client = instructor.from_openai(OpenAI(**client_kwargs))
+        self._async_client = instructor.from_openai(AsyncOpenAI(**client_kwargs))
 
     # SECURITY: Hard-coded upper bounds that no LLM output may exceed.
     # These prevent prompt injection from setting absurdly high limits.
@@ -736,15 +768,20 @@ class RegexPolicyParser:
 def create_policy_parser(
     use_llm: bool = True,
     api_key: Optional[str] = None,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
 ) -> NLPolicyParser | RegexPolicyParser:
     """
     Create appropriate policy parser based on configuration.
 
+    Automatically selects the best available provider:
+    1. Groq (GROQ_API_KEY) — open-source Llama 3.3 70B, ~200ms
+    2. OpenAI (OPENAI_API_KEY) — GPT-4o
+    3. Regex fallback — no API key needed
+
     Args:
-        use_llm: Whether to use LLM-based parsing (requires OpenAI API key)
-        api_key: OpenAI API key (optional if use_llm=False)
-        model: Model to use for LLM parsing
+        use_llm: Whether to use LLM-based parsing
+        api_key: API key (optional, auto-detects from env)
+        model: Model to use (auto-detected based on provider)
 
     Returns:
         Policy parser instance

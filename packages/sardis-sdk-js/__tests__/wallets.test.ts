@@ -21,7 +21,7 @@ describe('WalletsResource', () => {
     describe('create', () => {
         it('should create a new wallet', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/wallets', () => {
+                http.post('https://api.sardis.sh/api/v2/wallets', () => {
                     return HttpResponse.json(mockWallet);
                 })
             );
@@ -39,7 +39,7 @@ describe('WalletsResource', () => {
         it('should send correct creation parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/wallets', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/wallets', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockWallet);
                 })
@@ -60,7 +60,7 @@ describe('WalletsResource', () => {
     describe('get', () => {
         it('should get wallet by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockWallet, id: params.id });
                 })
             );
@@ -73,7 +73,7 @@ describe('WalletsResource', () => {
 
         it('should handle wallet not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json(
                         { error: 'Wallet not found' },
                         { status: 404 }
@@ -88,7 +88,7 @@ describe('WalletsResource', () => {
     describe('list', () => {
         it('should list all wallets', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets', () => {
                     return HttpResponse.json([mockWallet, { ...mockWallet, id: 'wallet_2' }]);
                 })
             );
@@ -101,7 +101,7 @@ describe('WalletsResource', () => {
 
         it('should filter by agent ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets', ({ request }) => {
                     const url = new URL(request.url);
                     const agentId = url.searchParams.get('agent_id');
                     if (agentId === 'agent_001') {
@@ -119,7 +119,7 @@ describe('WalletsResource', () => {
 
         it('should respect limit parameter', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets', ({ request }) => {
                     const url = new URL(request.url);
                     const limit = url.searchParams.get('limit');
                     expect(limit).toBe('50');
@@ -134,7 +134,7 @@ describe('WalletsResource', () => {
     describe('getBalance', () => {
         it('should get wallet balance', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', () => {
                     return HttpResponse.json({
                         wallet_id: 'wallet_test123',
                         chain: 'base',
@@ -154,7 +154,7 @@ describe('WalletsResource', () => {
 
         it('should specify chain and token', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     const chain = url.searchParams.get('chain');
                     const token = url.searchParams.get('token');
@@ -180,7 +180,7 @@ describe('WalletsResource', () => {
 
         it('should use default chain and token', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     const chain = url.searchParams.get('chain');
                     const token = url.searchParams.get('token');
@@ -203,7 +203,7 @@ describe('WalletsResource', () => {
     describe('getAddresses', () => {
         it('should get all wallet addresses', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/addresses', () => {
                     return HttpResponse.json({
                         base: '0x1234567890abcdef1234567890abcdef12345678',
                         polygon: '0xabcdef1234567890abcdef1234567890abcdef12',
@@ -224,7 +224,7 @@ describe('WalletsResource', () => {
     describe('setAddress', () => {
         it('should set wallet address', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/wallets/:id/addresses', () => {
+                http.post('https://api.sardis.sh/api/v2/wallets/:id/addresses', () => {
                     return HttpResponse.json({
                         ...mockWallet,
                         address: '0xnewaddress1234567890abcdef1234567890abcd',
@@ -244,7 +244,7 @@ describe('WalletsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/wallets/:id/addresses',
+                    'https://api.sardis.sh/api/v2/wallets/:id/addresses',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json(mockWallet);

@@ -57,15 +57,15 @@ X-API-Key: sk_live_your_api_key
 
 ## Environments
 
-- **Production**: `https://api.sardis.network`
-- **Staging**: `https://api.staging.sardis.network`
+- **Production**: `https://api.sardis.sh`
+- **Staging**: `https://api.staging.sardis.sh`
 - **Local**: `http://localhost:8000`
 """
     openapi_schema["info"]["version"] = "2.0.0"
     openapi_schema["info"]["contact"] = {
         "name": "Sardis Support",
-        "email": "support@sardis.network",
-        "url": "https://sardis.network/docs",
+        "email": "support@sardis.sh",
+        "url": "https://sardis.sh/docs",
     }
     openapi_schema["info"]["license"] = {
         "name": "MIT",
@@ -75,11 +75,11 @@ X-API-Key: sk_live_your_api_key
     # Add servers
     openapi_schema["servers"] = [
         {
-            "url": "https://api.sardis.network",
+            "url": "https://api.sardis.sh",
             "description": "Production",
         },
         {
-            "url": "https://api.staging.sardis.network",
+            "url": "https://api.staging.sardis.sh",
             "description": "Staging",
         },
         {

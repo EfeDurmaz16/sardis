@@ -51,7 +51,7 @@ describe('AgentsResource', () => {
     describe('create', () => {
         it('should create a new agent with minimal parameters', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(mockAgent);
                 })
             );
@@ -68,7 +68,7 @@ describe('AgentsResource', () => {
         it('should create an agent with full parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -92,7 +92,7 @@ describe('AgentsResource', () => {
 
         it('should handle creation failure', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(
                         { error: { message: 'Invalid agent configuration' } },
                         { status: 400 }
@@ -105,7 +105,7 @@ describe('AgentsResource', () => {
 
         it('should handle network errors during creation', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.error();
                 })
             );
@@ -119,7 +119,7 @@ describe('AgentsResource', () => {
     describe('get', () => {
         it('should get agent by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockAgent, id: params.id });
                 })
             );
@@ -132,7 +132,7 @@ describe('AgentsResource', () => {
 
         it('should handle agent not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         { error: { message: 'Agent not found', code: 'SARDIS_3404' } },
                         { status: 404 }
@@ -145,7 +145,7 @@ describe('AgentsResource', () => {
 
         it('should return agent with all fields populated', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(mockAgent);
                 })
             );
@@ -165,7 +165,7 @@ describe('AgentsResource', () => {
     describe('list', () => {
         it('should list all agents', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json([
                         mockAgent,
                         { ...mockAgent, id: 'agent_2', name: 'Agent 2' },
@@ -183,7 +183,7 @@ describe('AgentsResource', () => {
 
         it('should handle wrapped response format', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json({
                         agents: [mockAgent, { ...mockAgent, id: 'agent_2' }],
                     });
@@ -197,7 +197,7 @@ describe('AgentsResource', () => {
 
         it('should filter by is_active', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/agents', ({ request }) => {
                     const url = new URL(request.url);
                     const isActive = url.searchParams.get('is_active');
                     if (isActive === 'true') {
@@ -220,7 +220,7 @@ describe('AgentsResource', () => {
 
         it('should respect limit and offset', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/agents', ({ request }) => {
                     const url = new URL(request.url);
                     const limit = url.searchParams.get('limit');
                     const offset = url.searchParams.get('offset');
@@ -235,7 +235,7 @@ describe('AgentsResource', () => {
 
         it('should return empty array when no agents', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json([]);
                 })
             );
@@ -248,7 +248,7 @@ describe('AgentsResource', () => {
 
         it('should handle wrapped empty response', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json({ agents: [] });
                 })
             );
@@ -262,7 +262,7 @@ describe('AgentsResource', () => {
     describe('update', () => {
         it('should update agent name', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json({
                         ...mockAgent,
                         name: 'Updated Agent Name',
@@ -281,7 +281,7 @@ describe('AgentsResource', () => {
         it('should update agent spending limits', async () => {
             let receivedBody: any;
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', async ({ request }) => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockAgent,
@@ -303,7 +303,7 @@ describe('AgentsResource', () => {
 
         it('should deactivate an agent', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json({
                         ...mockAgent,
                         is_active: false,
@@ -320,7 +320,7 @@ describe('AgentsResource', () => {
 
         it('should handle update validation errors', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         { error: { message: 'Invalid spending limit format' } },
                         { status: 422 }
@@ -339,7 +339,7 @@ describe('AgentsResource', () => {
     describe('delete', () => {
         it('should delete (soft delete) an agent', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return new HttpResponse(null, { status: 204 });
                 })
             );
@@ -350,7 +350,7 @@ describe('AgentsResource', () => {
 
         it('should handle delete of non-existent agent', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         { error: { message: 'Agent not found' } },
                         { status: 404 }
@@ -363,7 +363,7 @@ describe('AgentsResource', () => {
 
         it('should handle delete of agent with active transactions', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         { error: { message: 'Cannot delete agent with pending transactions' } },
                         { status: 409 }
@@ -378,7 +378,7 @@ describe('AgentsResource', () => {
     describe('getWallet', () => {
         it('should get agent wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(mockAgentWallet);
                 })
             );
@@ -394,7 +394,7 @@ describe('AgentsResource', () => {
 
         it('should handle agent without wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(
                         { error: { message: 'Agent has no wallet' } },
                         { status: 404 }
@@ -409,7 +409,7 @@ describe('AgentsResource', () => {
     describe('createWallet', () => {
         it('should create wallet for agent with default options', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(mockAgentWallet);
                 })
             );
@@ -425,7 +425,7 @@ describe('AgentsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/agents/:id/wallet',
+                    'https://api.sardis.sh/api/v2/agents/:id/wallet',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json(mockAgentWallet);
@@ -446,7 +446,7 @@ describe('AgentsResource', () => {
 
         it('should handle wallet already exists error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(
                         { error: { message: 'Agent already has a wallet' } },
                         { status: 409 }
@@ -467,7 +467,7 @@ describe('AgentsResource', () => {
                 name: 'Agent with "quotes" & <special> chars',
             };
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(specialAgent);
                 })
             );
@@ -482,7 +482,7 @@ describe('AgentsResource', () => {
         it('should handle very long description', async () => {
             const longDescription = 'A'.repeat(10000);
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     const body = await request.json() as { description: string };
                     return HttpResponse.json({
                         ...mockAgent,
@@ -501,7 +501,7 @@ describe('AgentsResource', () => {
 
         it('should handle empty metadata', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json({
                         ...mockAgent,
                         metadata: {},
@@ -528,7 +528,7 @@ describe('AgentsResource', () => {
             };
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     const body = await request.json() as { metadata: object };
                     return HttpResponse.json({
                         ...mockAgent,
@@ -547,7 +547,7 @@ describe('AgentsResource', () => {
 
         it('should handle zero spending limits', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     const body = await request.json() as { spending_limits: object };
                     return HttpResponse.json({
                         ...mockAgent,
@@ -575,7 +575,7 @@ describe('AgentsResource', () => {
             };
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     const body = await request.json() as { spending_limits: object };
                     return HttpResponse.json({
                         ...mockAgent,
@@ -596,7 +596,7 @@ describe('AgentsResource', () => {
     describe('request cancellation', () => {
         it('should support AbortController for cancellation', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', async () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', async () => {
                     // Simulate slow response
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     return HttpResponse.json(mockAgent);

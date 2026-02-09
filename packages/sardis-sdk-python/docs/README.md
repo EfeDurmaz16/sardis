@@ -16,7 +16,7 @@ from sardis_sdk import SardisClient
 # Initialize client
 client = SardisClient(
     api_key="sk_your_api_key",
-    base_url="https://api.sardis.network",  # Optional
+    base_url="https://api.sardis.sh",  # Optional
 )
 
 # Execute a payment
@@ -37,7 +37,7 @@ print(f"Transaction: {result.chain_tx_hash}")
 
 ```bash
 SARDIS_API_KEY=sk_your_api_key
-SARDIS_API_BASE_URL=https://api.sardis.network
+SARDIS_API_BASE_URL=https://api.sardis.sh
 ```
 
 ### Client Options
@@ -45,7 +45,7 @@ SARDIS_API_BASE_URL=https://api.sardis.network
 ```python
 client = SardisClient(
     api_key="sk_...",
-    base_url="https://api.sardis.network",
+    base_url="https://api.sardis.sh",
     timeout=30.0,
     max_retries=3,
     retry_delay=1.0,

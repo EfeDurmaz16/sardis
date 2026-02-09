@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "Sardis Team", email = "hello@sardis.network" }
+    { name = "Sardis Team", email = "hello@sardis.sh" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

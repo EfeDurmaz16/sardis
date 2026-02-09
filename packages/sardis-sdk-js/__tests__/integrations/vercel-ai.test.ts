@@ -42,7 +42,7 @@ describe('Vercel AI Integration', () => {
 
         it('should execute payment successfully', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/wallets/wallet_123/transfer', () => {
+                http.post('https://api.sardis.sh/api/v2/wallets/wallet_123/transfer', () => {
                     return HttpResponse.json({
                         status: 'submitted',
                         tx_hash: '0xabc123',
@@ -98,7 +98,7 @@ describe('Vercel AI Integration', () => {
 
         it('should handle policy violation', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/wallets/wallet_123/transfer', () => {
+                http.post('https://api.sardis.sh/api/v2/wallets/wallet_123/transfer', () => {
                     return HttpResponse.json(
                         { error: 'Payment blocked by policy: Amount exceeds limit' },
                         { status: 403 }
@@ -121,7 +121,7 @@ describe('Vercel AI Integration', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/wallets/wallet_123/transfer',
+                    'https://api.sardis.sh/api/v2/wallets/wallet_123/transfer',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
@@ -165,7 +165,7 @@ describe('Vercel AI Integration', () => {
     describe('checkBalance tool', () => {
         it('should check wallet balance', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', () => {
                     return HttpResponse.json({
                         wallet_id: 'wallet_123',
                         balance: '1000.00',
@@ -187,7 +187,7 @@ describe('Vercel AI Integration', () => {
 
         it('should check balance with custom token and chain', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     const token = url.searchParams.get('token');
                     const chain = url.searchParams.get('chain');
@@ -226,7 +226,7 @@ describe('Vercel AI Integration', () => {
     describe('getWallet tool', () => {
         it('should get wallet information', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json({
                         id: 'wallet_123',
                         agent_id: 'agent_456',
@@ -254,7 +254,7 @@ describe('Vercel AI Integration', () => {
 
         it('should use provided wallet ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', ({ params }) => {
                     return HttpResponse.json({
                         id: params.id,
                         agent_id: 'agent_789',
@@ -277,7 +277,7 @@ describe('Vercel AI Integration', () => {
         it('should use default chain from options', async () => {
             let requestedChain: string | null = null;
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     requestedChain = url.searchParams.get('chain');
                     return HttpResponse.json({
@@ -302,7 +302,7 @@ describe('Vercel AI Integration', () => {
         it('should use default token from options', async () => {
             let requestedToken: string | null = null;
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     requestedToken = url.searchParams.get('token');
                     return HttpResponse.json({

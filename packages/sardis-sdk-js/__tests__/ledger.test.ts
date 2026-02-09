@@ -6,7 +6,7 @@ import { SardisClient } from '../src/client.js';
 import { server } from './setup.js';
 import { http, HttpResponse } from 'msw';
 
-const BASE_URL = 'https://api.sardis.network';
+const BASE_URL = 'https://api.sardis.sh';
 
 describe('LedgerResource', () => {
   let client: SardisClient;

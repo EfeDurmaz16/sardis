@@ -262,16 +262,31 @@ Available MCP tools (40+ total):
 - `sardis_create_invoice` - Create a merchant invoice
 - `sardis_mcc_lookup` - Look up merchant category codes
 
+### Stablecoin-Only Token Allowlist (On-Chain)
+- Smart contract enforces a token allowlist at the EVM level
+- Only Sardis-approved stablecoins (USDC, USDT, EURC) can be transferred out
+- Agents cannot send NFTs, meme coins, or arbitrary tokens — even if someone sends them to the wallet
+- On-chain guarantee, not just API-level filtering
+- Toggle-able by Sardis for emergency recovery scenarios
+
 ## Status
 
-- **Current Version**: v0.8.0 (Production Hardening)
-- **Infrastructure**: Live on Base Sepolia testnet
+- **Current Version**: v0.8.4 (Lithic Sandbox + Stablecoin Enforcement)
+- **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols**: AP2, UCP, A2A, TAP, x402 all implemented
 
-## What's New in v0.8.0 (February 2026)
+## What's New in v0.8.4 (February 2026)
 
-- **Human Approval Workflows** - Full create/approve/deny/expire/cancel lifecycle with webhooks
+- **Lithic Sandbox Cards** - Real Lithic virtual card issuance and transaction simulation in sandbox
+- **Stablecoin-Only Smart Contract** - On-chain token allowlist prevents non-stablecoin transfers
+- **Human-in-the-Loop Approval Queue** - Full create/approve/deny/expire/cancel lifecycle with webhooks
+- **Goal Drift Detection** - Detect when agent spending patterns deviate from intended goals
+- **Dashboard Cards Page** - Custom Sardis-branded card UI with issue/freeze/simulate/transactions
+- **Live Demo Mode** - Landing page demo connects to real Lithic sandbox for provable transactions
+
+### Previous (v0.8.0)
+
 - **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset
 - **Alembic Migrations** - Database schema versioning with 6 migrations
 - **Wallet Freeze** - Freeze/unfreeze capability with transaction blocking
@@ -286,4 +301,4 @@ Available MCP tools (40+ total):
 ---
 
 *Last updated: February 2026*
-*Version: 2.2*
+*Version: 2.3*

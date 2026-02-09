@@ -58,7 +58,7 @@ describe('UCPResource', () => {
   describe('createCheckout', () => {
     it('should create a checkout session', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout', () => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout', () => {
           return HttpResponse.json(mockCheckoutSession);
         })
       );
@@ -90,7 +90,7 @@ describe('UCPResource', () => {
     it('should include all checkout fields in request', async () => {
       let receivedBody: any;
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout', async ({ request }) => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout', async ({ request }) => {
           receivedBody = await request.json();
           return HttpResponse.json(mockCheckoutSession);
         })
@@ -129,7 +129,7 @@ describe('UCPResource', () => {
   describe('getCheckout', () => {
     it('should get a checkout session', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/checkout/:sessionId', () => {
+        http.get('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId', () => {
           return HttpResponse.json(mockCheckoutSession);
         })
       );
@@ -143,7 +143,7 @@ describe('UCPResource', () => {
 
     it('should handle not found error', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/checkout/:sessionId', () => {
+        http.get('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId', () => {
           return HttpResponse.json(
             { error: 'Session not found', code: 'NOT_FOUND' },
             { status: 404 }
@@ -175,7 +175,7 @@ describe('UCPResource', () => {
       };
 
       server.use(
-        http.patch('https://api.sardis.network/api/v2/ucp/checkout/:sessionId', () => {
+        http.patch('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId', () => {
           return HttpResponse.json(updatedSession);
         })
       );
@@ -206,7 +206,7 @@ describe('UCPResource', () => {
       };
 
       server.use(
-        http.patch('https://api.sardis.network/api/v2/ucp/checkout/:sessionId', () => {
+        http.patch('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId', () => {
           return HttpResponse.json(updatedSession);
         })
       );
@@ -233,7 +233,7 @@ describe('UCPResource', () => {
       };
 
       server.use(
-        http.patch('https://api.sardis.network/api/v2/ucp/checkout/:sessionId', () => {
+        http.patch('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId', () => {
           return HttpResponse.json(updatedSession);
         })
       );
@@ -257,7 +257,7 @@ describe('UCPResource', () => {
   describe('completeCheckout', () => {
     it('should complete checkout successfully', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout/:sessionId/complete', () => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId/complete', () => {
           return HttpResponse.json({
             success: true,
             session_id: 'cs_abc123',
@@ -289,7 +289,7 @@ describe('UCPResource', () => {
 
     it('should handle empty cart error', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout/:sessionId/complete', () => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId/complete', () => {
           return HttpResponse.json({
             success: false,
             session_id: 'cs_abc123',
@@ -315,7 +315,7 @@ describe('UCPResource', () => {
       let receivedBody: any;
       server.use(
         http.post(
-          'https://api.sardis.network/api/v2/ucp/checkout/:sessionId/complete',
+          'https://api.sardis.sh/api/v2/ucp/checkout/:sessionId/complete',
           async ({ request }) => {
             receivedBody = await request.json();
             return HttpResponse.json({
@@ -342,7 +342,7 @@ describe('UCPResource', () => {
   describe('cancelCheckout', () => {
     it('should cancel checkout', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout/:sessionId/cancel', () => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId/cancel', () => {
           return HttpResponse.json({
             ...mockCheckoutSession,
             status: 'cancelled',
@@ -357,7 +357,7 @@ describe('UCPResource', () => {
 
     it('should handle already completed error', async () => {
       server.use(
-        http.post('https://api.sardis.network/api/v2/ucp/checkout/:sessionId/cancel', () => {
+        http.post('https://api.sardis.sh/api/v2/ucp/checkout/:sessionId/cancel', () => {
           return HttpResponse.json(
             {
               error: 'Cannot cancel completed checkout',
@@ -375,7 +375,7 @@ describe('UCPResource', () => {
   describe('getOrder', () => {
     it('should get an order', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/orders/:orderId', () => {
+        http.get('https://api.sardis.sh/api/v2/ucp/orders/:orderId', () => {
           return HttpResponse.json(mockOrder);
         })
       );
@@ -392,7 +392,7 @@ describe('UCPResource', () => {
   describe('listOrders', () => {
     it('should list orders', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/orders', () => {
+        http.get('https://api.sardis.sh/api/v2/ucp/orders', () => {
           return HttpResponse.json({
             orders: [mockOrder],
           });
@@ -408,7 +408,7 @@ describe('UCPResource', () => {
     it('should filter orders by customer_id', async () => {
       let receivedParams: URLSearchParams | null = null;
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/orders', ({ request }) => {
+        http.get('https://api.sardis.sh/api/v2/ucp/orders', ({ request }) => {
           const url = new URL(request.url);
           receivedParams = url.searchParams;
           return HttpResponse.json({ orders: [] });
@@ -426,7 +426,7 @@ describe('UCPResource', () => {
 
     it('should handle array response format', async () => {
       server.use(
-        http.get('https://api.sardis.network/api/v2/ucp/orders', () => {
+        http.get('https://api.sardis.sh/api/v2/ucp/orders', () => {
           return HttpResponse.json([mockOrder]);
         })
       );

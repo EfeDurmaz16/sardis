@@ -18,7 +18,7 @@ import { SardisClient } from '@sardis/sdk';
 // Initialize client
 const client = new SardisClient({
   apiKey: 'sk_your_api_key',
-  baseUrl: 'https://api.sardis.network', // Optional
+  baseUrl: 'https://api.sardis.sh', // Optional
 });
 
 // Execute a payment
@@ -39,7 +39,7 @@ console.log(`Transaction: ${result.chainTxHash}`);
 
 ```bash
 SARDIS_API_KEY=sk_your_api_key
-SARDIS_API_BASE_URL=https://api.sardis.network
+SARDIS_API_BASE_URL=https://api.sardis.sh
 ```
 
 ### Client Options
@@ -47,7 +47,7 @@ SARDIS_API_BASE_URL=https://api.sardis.network
 ```typescript
 const client = new SardisClient({
   apiKey: 'sk_...',
-  baseUrl: 'https://api.sardis.network',
+  baseUrl: 'https://api.sardis.sh',
   timeout: 30000,
   maxRetries: 3,
   retryDelay: 1000,

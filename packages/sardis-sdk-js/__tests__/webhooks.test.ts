@@ -30,7 +30,7 @@ describe('WebhooksResource', () => {
     describe('listEventTypes', () => {
         it('should list all event types', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/webhooks/event-types', () => {
+                http.get('https://api.sardis.sh/api/v2/webhooks/event-types', () => {
                     return HttpResponse.json({
                         event_types: [
                             'payment.completed',
@@ -54,7 +54,7 @@ describe('WebhooksResource', () => {
     describe('create', () => {
         it('should create a webhook', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/webhooks', () => {
+                http.post('https://api.sardis.sh/api/v2/webhooks', () => {
                     return HttpResponse.json(mockWebhook);
                 })
             );
@@ -72,7 +72,7 @@ describe('WebhooksResource', () => {
         it('should send correct creation parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/webhooks', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/webhooks', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockWebhook);
                 })
@@ -92,7 +92,7 @@ describe('WebhooksResource', () => {
     describe('list', () => {
         it('should list all webhooks', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/webhooks', () => {
+                http.get('https://api.sardis.sh/api/v2/webhooks', () => {
                     return HttpResponse.json({
                         webhooks: [mockWebhook, { ...mockWebhook, id: 'webhook_2' }],
                     });
@@ -107,7 +107,7 @@ describe('WebhooksResource', () => {
 
         it('should return empty array when no webhooks', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/webhooks', () => {
+                http.get('https://api.sardis.sh/api/v2/webhooks', () => {
                     return HttpResponse.json({ webhooks: [] });
                 })
             );
@@ -121,7 +121,7 @@ describe('WebhooksResource', () => {
     describe('getById', () => {
         it('should get webhook by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/webhooks/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/webhooks/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockWebhook, id: params.id });
                 })
             );
@@ -135,7 +135,7 @@ describe('WebhooksResource', () => {
     describe('update', () => {
         it('should update a webhook', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/webhooks/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/webhooks/:id', () => {
                     return HttpResponse.json({
                         ...mockWebhook,
                         url: 'https://newurl.com/webhook',
@@ -154,7 +154,7 @@ describe('WebhooksResource', () => {
             let receivedBody: any;
             server.use(
                 http.patch(
-                    'https://api.sardis.network/api/v2/webhooks/:id',
+                    'https://api.sardis.sh/api/v2/webhooks/:id',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
@@ -174,7 +174,7 @@ describe('WebhooksResource', () => {
 
         it('should toggle webhook active status', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/webhooks/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/webhooks/:id', () => {
                     return HttpResponse.json({ ...mockWebhook, active: false });
                 })
             );
@@ -190,7 +190,7 @@ describe('WebhooksResource', () => {
     describe('delete', () => {
         it('should delete a webhook', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/webhooks/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/webhooks/:id', () => {
                     return new HttpResponse(null, { status: 204 });
                 })
             );
@@ -204,7 +204,7 @@ describe('WebhooksResource', () => {
     describe('test', () => {
         it('should send test event', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/webhooks/:id/test', () => {
+                http.post('https://api.sardis.sh/api/v2/webhooks/:id/test', () => {
                     return HttpResponse.json(mockDelivery);
                 })
             );
@@ -220,7 +220,7 @@ describe('WebhooksResource', () => {
         it('should list webhook deliveries', async () => {
             server.use(
                 http.get(
-                    'https://api.sardis.network/api/v2/webhooks/:id/deliveries',
+                    'https://api.sardis.sh/api/v2/webhooks/:id/deliveries',
                     () => {
                         return HttpResponse.json({
                             deliveries: [mockDelivery, { ...mockDelivery, id: 'delivery_002' }],
@@ -238,7 +238,7 @@ describe('WebhooksResource', () => {
         it('should respect limit parameter', async () => {
             server.use(
                 http.get(
-                    'https://api.sardis.network/api/v2/webhooks/:id/deliveries',
+                    'https://api.sardis.sh/api/v2/webhooks/:id/deliveries',
                     ({ request }) => {
                         const url = new URL(request.url);
                         const limit = url.searchParams.get('limit');
@@ -256,7 +256,7 @@ describe('WebhooksResource', () => {
         it('should rotate webhook secret', async () => {
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/webhooks/:id/rotate-secret',
+                    'https://api.sardis.sh/api/v2/webhooks/:id/rotate-secret',
                     () => {
                         return HttpResponse.json({ secret: 'whsec_new_secret_xyz' });
                     }

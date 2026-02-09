@@ -35,7 +35,7 @@ class TestListChains:
     async def test_list_chains(self, client, httpx_mock):
         """Should list supported chains."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/chains",
+            url="https://api.sardis.sh/api/v2/transactions/chains",
             method="GET",
             json={"chains": [MOCK_CHAIN_INFO]},
         )
@@ -48,7 +48,7 @@ class TestListChains:
     async def test_list_empty_chains(self, client, httpx_mock):
         """Should handle empty chain list."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/chains",
+            url="https://api.sardis.sh/api/v2/transactions/chains",
             method="GET",
             json={"chains": []},
         )
@@ -63,7 +63,7 @@ class TestEstimateGas:
     async def test_estimate_gas(self, client, httpx_mock):
         """Should estimate gas for a transaction."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/estimate-gas",
+            url="https://api.sardis.sh/api/v2/transactions/estimate-gas",
             method="POST",
             json=MOCK_GAS_ESTIMATE,
         )
@@ -81,7 +81,7 @@ class TestEstimateGas:
     async def test_estimate_gas_with_token(self, client, httpx_mock):
         """Should estimate gas with specific token."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/estimate-gas",
+            url="https://api.sardis.sh/api/v2/transactions/estimate-gas",
             method="POST",
             json=MOCK_GAS_ESTIMATE,
         )
@@ -102,7 +102,7 @@ class TestGetStatus:
     async def test_get_confirmed_status(self, client, httpx_mock):
         """Should get confirmed transaction status."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/status/0xabc123?chain=base_sepolia",
+            url="https://api.sardis.sh/api/v2/transactions/status/0xabc123?chain=base_sepolia",
             method="GET",
             json=MOCK_TX_STATUS,
         )
@@ -115,7 +115,7 @@ class TestGetStatus:
     async def test_get_pending_status(self, client, httpx_mock):
         """Should get pending transaction status."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/status/0xdef456?chain=base",
+            url="https://api.sardis.sh/api/v2/transactions/status/0xdef456?chain=base",
             method="GET",
             json={
                 "tx_hash": "0xdef456",
@@ -134,7 +134,7 @@ class TestGetStatus:
     async def test_get_failed_status(self, client, httpx_mock):
         """Should get failed transaction status."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/status/0xfailed?chain=base",
+            url="https://api.sardis.sh/api/v2/transactions/status/0xfailed?chain=base",
             method="GET",
             json={
                 "tx_hash": "0xfailed",
@@ -155,7 +155,7 @@ class TestListTokens:
     async def test_list_tokens(self, client, httpx_mock):
         """Should list tokens for a chain."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/tokens/base",
+            url="https://api.sardis.sh/api/v2/transactions/tokens/base",
             method="GET",
             json={
                 "tokens": [
@@ -172,7 +172,7 @@ class TestListTokens:
     async def test_list_empty_tokens(self, client, httpx_mock):
         """Should handle chain with no tokens."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/transactions/tokens/unknown",
+            url="https://api.sardis.sh/api/v2/transactions/tokens/unknown",
             method="GET",
             json={"tokens": []},
         )

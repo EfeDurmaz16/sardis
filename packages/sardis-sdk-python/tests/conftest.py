@@ -198,7 +198,7 @@ def api_key() -> str:
 @pytest.fixture
 def base_url() -> str:
     """Test base URL."""
-    return "https://api.sardis.network"
+    return "https://api.sardis.sh"
 
 
 @pytest.fixture
@@ -220,7 +220,7 @@ def mock_responses() -> dict:
 def mock_health_response(httpx_mock):
     """Mock health endpoint."""
     httpx_mock.add_response(
-        url="https://api.sardis.network/health",
+        url="https://api.sardis.sh/health",
         method="GET",
         json=MOCK_RESPONSES["health"],
     )
@@ -232,19 +232,19 @@ def mock_wallet_endpoints(httpx_mock):
     """Mock wallet endpoints."""
     # Create wallet
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/wallets",
+        url="https://api.sardis.sh/api/v2/wallets",
         method="POST",
         json=MOCK_RESPONSES["wallet"],
     )
     # Get wallet
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/wallets/wallet_test123",
+        url="https://api.sardis.sh/api/v2/wallets/wallet_test123",
         method="GET",
         json=MOCK_RESPONSES["wallet"],
     )
     # Get balance
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/wallets/wallet_test123/balance",
+        url="https://api.sardis.sh/api/v2/wallets/wallet_test123/balance",
         method="GET",
         json=MOCK_RESPONSES["balance"],
     )
@@ -255,12 +255,12 @@ def mock_wallet_endpoints(httpx_mock):
 def mock_payment_endpoints(httpx_mock):
     """Mock payment endpoints."""
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/mandates/execute",
+        url="https://api.sardis.sh/api/v2/mandates/execute",
         method="POST",
         json=MOCK_RESPONSES["mandate"],
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/ap2/payments/execute",
+        url="https://api.sardis.sh/api/v2/ap2/payments/execute",
         method="POST",
         json=MOCK_RESPONSES["mandate"],
     )
@@ -271,22 +271,22 @@ def mock_payment_endpoints(httpx_mock):
 def mock_hold_endpoints(httpx_mock):
     """Mock hold endpoints."""
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/holds",
+        url="https://api.sardis.sh/api/v2/holds",
         method="POST",
         json=MOCK_RESPONSES["hold"],
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/holds/hold_xyz789",
+        url="https://api.sardis.sh/api/v2/holds/hold_xyz789",
         method="GET",
         json=MOCK_RESPONSES["hold"],
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/holds/hold_xyz789/capture",
+        url="https://api.sardis.sh/api/v2/holds/hold_xyz789/capture",
         method="POST",
         json={**MOCK_RESPONSES["hold"], "status": "captured"},
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/holds/hold_xyz789/void",
+        url="https://api.sardis.sh/api/v2/holds/hold_xyz789/void",
         method="POST",
         json={**MOCK_RESPONSES["hold"], "status": "voided"},
     )
@@ -297,22 +297,22 @@ def mock_hold_endpoints(httpx_mock):
 def mock_webhook_endpoints(httpx_mock):
     """Mock webhook endpoints."""
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/webhooks",
+        url="https://api.sardis.sh/api/v2/webhooks",
         method="POST",
         json=MOCK_RESPONSES["webhook"],
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/webhooks",
+        url="https://api.sardis.sh/api/v2/webhooks",
         method="GET",
         json={"webhooks": [MOCK_RESPONSES["webhook"]]},
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/webhooks/webhook_def456",
+        url="https://api.sardis.sh/api/v2/webhooks/webhook_def456",
         method="GET",
         json=MOCK_RESPONSES["webhook"],
     )
     httpx_mock.add_response(
-        url="https://api.sardis.network/api/v2/webhooks/webhook_def456",
+        url="https://api.sardis.sh/api/v2/webhooks/webhook_def456",
         method="DELETE",
         status_code=204,
     )

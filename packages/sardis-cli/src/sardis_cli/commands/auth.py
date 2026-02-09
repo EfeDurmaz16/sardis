@@ -43,7 +43,7 @@ def whoami(ctx):
         return
     
     client = SardisAPIClient(
-        base_url=config.get("api_base_url", "https://api.sardis.network"),
+        base_url=config.get("api_base_url", "https://api.sardis.sh"),
         api_key=api_key,
     )
     

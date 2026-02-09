@@ -75,7 +75,7 @@ export type MPCProvider = 'turnkey' | 'fireblocks' | 'local';
  * ```
  */
 export interface SardisClientOptions {
-  /** API base URL (defaults to https://api.sardis.network) */
+  /** API base URL (defaults to https://api.sardis.sh) */
   baseUrl?: string;
 
   /** API key for authentication (required) */

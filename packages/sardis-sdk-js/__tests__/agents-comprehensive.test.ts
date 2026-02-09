@@ -65,7 +65,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('create', () => {
         it('should create agent with minimal parameters', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(mockAgent);
                 })
             );
@@ -82,7 +82,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should create agent with all parameters', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -118,7 +118,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle duplicate name error', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -138,7 +138,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle invalid key algorithm', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', () => {
+                http.post('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -166,7 +166,7 @@ describe('AgentsResource Comprehensive Tests', () => {
             for (const algorithm of algorithms) {
                 let receivedAlgorithm: string;
                 server.use(
-                    http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                    http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                         const body = await request.json() as { key_algorithm: string };
                         receivedAlgorithm = body.key_algorithm;
                         return HttpResponse.json({ ...mockAgent, key_algorithm: algorithm });
@@ -186,7 +186,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('get', () => {
         it('should retrieve agent by ID', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', ({ params }) => {
                     return HttpResponse.json({ ...mockAgent, id: params.id as string });
                 })
             );
@@ -200,7 +200,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle agent not found', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -218,7 +218,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should return all agent fields', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(mockAgent);
                 })
             );
@@ -245,7 +245,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('list', () => {
         it('should list all agents', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json([
                         mockAgent,
                         { ...mockAgent, id: 'agent_002', name: 'Agent 2' },
@@ -263,7 +263,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should list agents with limit', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/agents', ({ request }) => {
                     const url = new URL(request.url);
                     const limit = parseInt(url.searchParams.get('limit') || '100');
                     const agents = Array.from({ length: limit }, (_, i) => ({
@@ -282,7 +282,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should list agents with offset', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/agents', ({ request }) => {
                     const url = new URL(request.url);
                     const offset = parseInt(url.searchParams.get('offset') || '0');
                     return HttpResponse.json([
@@ -300,7 +300,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should filter agents by active status', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/agents', ({ request }) => {
                     const url = new URL(request.url);
                     const isActive = url.searchParams.get('is_active') === 'true';
                     return HttpResponse.json([
@@ -318,7 +318,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should return empty array when no agents exist', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json([]);
                 })
             );
@@ -334,7 +334,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should update agent name', async () => {
             let receivedBody: any;
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', async ({ request }) => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({ ...mockAgent, ...receivedBody });
                 })
@@ -351,7 +351,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should update agent spending limits', async () => {
             let receivedBody: any;
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', async ({ request }) => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockAgent,
@@ -377,7 +377,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should update agent policy', async () => {
             let receivedBody: any;
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', async ({ request }) => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockAgent,
@@ -401,7 +401,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should deactivate agent', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json({ ...mockAgent, is_active: false });
                 })
             );
@@ -415,7 +415,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should reactivate agent', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json({ ...mockAgent, is_active: true });
                 })
             );
@@ -430,7 +430,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should merge metadata', async () => {
             let receivedBody: any;
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', async ({ request }) => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockAgent,
@@ -450,7 +450,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle agent not found', async () => {
             server.use(
-                http.patch('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.patch('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -473,7 +473,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should delete agent', async () => {
             let deletedId: string;
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', ({ params }) => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', ({ params }) => {
                     deletedId = params.id as string;
                     return new HttpResponse(null, { status: 204 });
                 })
@@ -486,7 +486,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle agent not found', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -504,7 +504,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle deletion of agent with active holds', async () => {
             server.use(
-                http.delete('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.delete('https://api.sardis.sh/api/v2/agents/:id', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -524,7 +524,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('getWallet', () => {
         it('should get agent wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(mockAgentWallet);
                 })
             );
@@ -538,7 +538,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle agent without wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -558,7 +558,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('createWallet', () => {
         it('should create wallet for agent', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(mockAgentWallet);
                 })
             );
@@ -571,7 +571,7 @@ describe('AgentsResource Comprehensive Tests', () => {
 
         it('should handle agent already has wallet', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents/:id/wallet', () => {
+                http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
                     return HttpResponse.json(
                         {
                             error: {
@@ -593,7 +593,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('error handling', () => {
         it('should handle rate limiting', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents', () => {
+                http.get('https://api.sardis.sh/api/v2/agents', () => {
                     return HttpResponse.json(
                         { error: 'Rate limit exceeded' },
                         {
@@ -615,7 +615,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should retry on server errors', async () => {
             let attempts = 0;
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', () => {
                     attempts++;
                     if (attempts < 3) {
                         return HttpResponse.json(
@@ -646,7 +646,7 @@ describe('AgentsResource Comprehensive Tests', () => {
             let receivedName: string;
 
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     const body = await request.json() as { name: string };
                     receivedName = body.name;
                     return HttpResponse.json({ ...mockAgent, name: receivedName });
@@ -661,7 +661,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle special characters in name and description', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -679,7 +679,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle empty metadata', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({ ...mockAgent, metadata: {} });
                 })
@@ -696,7 +696,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle zero spending limits', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json({
                         ...mockAgent,
@@ -720,7 +720,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle very large spending limits', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -741,7 +741,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle agent with all blocked merchants', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -762,7 +762,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle concurrent agent operations', async () => {
             let requestCount = 0;
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', async ({ params }) => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', async ({ params }) => {
                     requestCount++;
                     await new Promise((resolve) => setTimeout(resolve, 50));
                     return HttpResponse.json({ ...mockAgent, id: params.id as string });
@@ -779,7 +779,7 @@ describe('AgentsResource Comprehensive Tests', () => {
         it('should handle nested metadata objects', async () => {
             let receivedBody: any;
             server.use(
-                http.post('https://api.sardis.network/api/v2/agents', async ({ request }) => {
+                http.post('https://api.sardis.sh/api/v2/agents', async ({ request }) => {
                     receivedBody = await request.json();
                     return HttpResponse.json(mockAgent);
                 })
@@ -814,7 +814,7 @@ describe('AgentsResource Comprehensive Tests', () => {
     describe('request cancellation', () => {
         it('should support AbortController', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/agents/:id', async () => {
+                http.get('https://api.sardis.sh/api/v2/agents/:id', async () => {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     return HttpResponse.json(mockAgent);
                 })

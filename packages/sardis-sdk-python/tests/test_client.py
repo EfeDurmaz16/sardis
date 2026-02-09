@@ -88,7 +88,7 @@ class TestErrorHandling:
     async def test_raise_authentication_error_on_401(self, client, httpx_mock):
         """Should raise AuthenticationError on 401."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/error/401",
+            url="https://api.sardis.sh/v1/error/401",
             method="GET",
             status_code=401,
             json={"error": "Unauthorized"},
@@ -100,7 +100,7 @@ class TestErrorHandling:
     async def test_raise_rate_limit_error_on_429(self, api_key, base_url, httpx_mock):
         """Should raise RateLimitError on 429."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/error/429",
+            url="https://api.sardis.sh/v1/error/429",
             method="GET",
             status_code=429,
             headers={"Retry-After": "5"},
@@ -118,7 +118,7 @@ class TestErrorHandling:
     async def test_raise_api_error_on_500(self, api_key, base_url, httpx_mock):
         """Should raise APIError on 500."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/error/500",
+            url="https://api.sardis.sh/v1/error/500",
             method="GET",
             status_code=500,
             json={"error": "Internal server error"},
@@ -145,14 +145,14 @@ class TestRetryLogic:
         """Should retry on 429 and succeed on next attempt."""
         # First request returns 429, second succeeds
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/retry-test",
+            url="https://api.sardis.sh/v1/retry-test",
             method="GET",
             status_code=429,
             headers={"Retry-After": "0"},
             json={"error": "Rate limit"},
         )
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/retry-test",
+            url="https://api.sardis.sh/v1/retry-test",
             method="GET",
             status_code=200,
             json={"success": True},
@@ -172,11 +172,11 @@ class TestRetryLogic:
         # First request times out, second succeeds
         httpx_mock.add_exception(
             httpx.TimeoutException("Connection timed out"),
-            url="https://api.sardis.network/v1/timeout-test",
+            url="https://api.sardis.sh/v1/timeout-test",
             method="GET",
         )
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/timeout-test",
+            url="https://api.sardis.sh/v1/timeout-test",
             method="GET",
             status_code=200,
             json={"success": True},
@@ -196,11 +196,11 @@ class TestRetryLogic:
         # First request has connection error, second succeeds
         httpx_mock.add_exception(
             httpx.ConnectError("Connection refused"),
-            url="https://api.sardis.network/v1/connect-test",
+            url="https://api.sardis.sh/v1/connect-test",
             method="GET",
         )
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/connect-test",
+            url="https://api.sardis.sh/v1/connect-test",
             method="GET",
             status_code=200,
             json={"success": True},
@@ -220,17 +220,17 @@ class TestRetryLogic:
         # All requests timeout
         httpx_mock.add_exception(
             httpx.TimeoutException("Connection timed out"),
-            url="https://api.sardis.network/v1/timeout-fail",
+            url="https://api.sardis.sh/v1/timeout-fail",
             method="GET",
         )
         httpx_mock.add_exception(
             httpx.TimeoutException("Connection timed out"),
-            url="https://api.sardis.network/v1/timeout-fail",
+            url="https://api.sardis.sh/v1/timeout-fail",
             method="GET",
         )
         httpx_mock.add_exception(
             httpx.TimeoutException("Connection timed out"),
-            url="https://api.sardis.network/v1/timeout-fail",
+            url="https://api.sardis.sh/v1/timeout-fail",
             method="GET",
         )
 
@@ -248,17 +248,17 @@ class TestRetryLogic:
         # All requests fail with connection error
         httpx_mock.add_exception(
             httpx.ConnectError("Connection refused"),
-            url="https://api.sardis.network/v1/connect-fail",
+            url="https://api.sardis.sh/v1/connect-fail",
             method="GET",
         )
         httpx_mock.add_exception(
             httpx.ConnectError("Connection refused"),
-            url="https://api.sardis.network/v1/connect-fail",
+            url="https://api.sardis.sh/v1/connect-fail",
             method="GET",
         )
         httpx_mock.add_exception(
             httpx.ConnectError("Connection refused"),
-            url="https://api.sardis.network/v1/connect-fail",
+            url="https://api.sardis.sh/v1/connect-fail",
             method="GET",
         )
 
@@ -276,7 +276,7 @@ class TestRequestMethod:
     async def test_make_get_request_with_params(self, client, httpx_mock):
         """Should make GET request with params."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/test?foo=bar",
+            url="https://api.sardis.sh/v1/test?foo=bar",
             method="GET",
             json={"param": "bar"},
         )
@@ -287,7 +287,7 @@ class TestRequestMethod:
     async def test_make_post_request_with_json(self, client, httpx_mock):
         """Should make POST request with JSON body."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/test",
+            url="https://api.sardis.sh/v1/test",
             method="POST",
             json={"received": True},
         )
@@ -298,7 +298,7 @@ class TestRequestMethod:
     async def test_handle_error_with_list_body(self, api_key, base_url, httpx_mock):
         """Should handle error response with list body."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/validation-error",
+            url="https://api.sardis.sh/v1/validation-error",
             method="POST",
             status_code=422,
             json=[
@@ -319,7 +319,7 @@ class TestRequestMethod:
     async def test_handle_error_with_non_json_body(self, api_key, base_url, httpx_mock):
         """Should handle error response with non-JSON body."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/v1/html-error",
+            url="https://api.sardis.sh/v1/html-error",
             method="GET",
             status_code=500,
             content=b"<html>Internal Server Error</html>",
@@ -341,7 +341,7 @@ class TestLegacyMethods:
     async def test_execute_payment_legacy(self, client, httpx_mock):
         """Should execute payment using legacy method."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/mandates/execute",
+            url="https://api.sardis.sh/api/v2/mandates/execute",
             method="POST",
             json={
                 "payment_id": "pay_123",
@@ -366,7 +366,7 @@ class TestLegacyMethods:
     async def test_execute_ap2_payment_legacy(self, client, httpx_mock):
         """Should execute AP2 payment using legacy method."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/ap2/payments/execute",
+            url="https://api.sardis.sh/api/v2/ap2/payments/execute",
             method="POST",
             json={
                 "mandate_id": "mnd_456",

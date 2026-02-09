@@ -47,7 +47,7 @@ export function loadConfig(): MCPConfig {
 
   return {
     apiKey: process.env.SARDIS_API_KEY || '',
-    apiUrl: (process.env.SARDIS_API_URL || 'https://api.sardis.network').replace(/\/$/, ''),
+    apiUrl: (process.env.SARDIS_API_URL || 'https://api.sardis.sh').replace(/\/$/, ''),
     walletId: process.env.SARDIS_WALLET_ID || '',
     agentId: process.env.SARDIS_AGENT_ID || '',
     chain: process.env.SARDIS_CHAIN || 'base_sepolia',

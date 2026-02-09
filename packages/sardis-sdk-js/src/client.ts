@@ -47,7 +47,7 @@ import type {
 } from './types.js';
 
 /** Default API base URL */
-const DEFAULT_BASE_URL = 'https://api.sardis.network';
+const DEFAULT_BASE_URL = 'https://api.sardis.sh';
 
 /** Default request timeout in milliseconds */
 const DEFAULT_TIMEOUT = 30000;

@@ -117,7 +117,7 @@ If you already have other MCP servers configured:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `SARDIS_API_KEY` | Your API key from sardis.network | `sk_live_abc123...` |
+| `SARDIS_API_KEY` | Your API key from sardis.sh | `sk_live_abc123...` |
 | `SARDIS_WALLET_ID` | Default wallet for operations | `wal_xyz789...` |
 | `SARDIS_AGENT_ID` | Agent ID for this connection | `agt_def456...` |
 | `SARDIS_MODE` | `live` or `simulated` | `simulated` |
@@ -175,6 +175,6 @@ After configuration, Claude will have access to:
 
 ## Support
 
-- Documentation: https://docs.sardis.network
+- Documentation: https://docs.sardis.sh
 - GitHub Issues: https://github.com/sardis-network/sardis/issues
-- Email: support@sardis.network
+- Email: support@sardis.sh

@@ -54,7 +54,7 @@ describe('E2E Protocol Flows', () => {
     // Create client instance
     client = new SardisClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://api.sardis.network',
+      baseUrl: 'https://api.sardis.sh',
       maxRetries: 2,
       retryDelay: 100,
     });
@@ -572,7 +572,7 @@ describe('E2E Protocol Flows', () => {
     it('should add Signature and Signature-Input headers for TAP', async () => {
       const tapClient = new SardisClient({
         apiKey: 'test-api-key',
-        baseUrl: 'https://api.sardis.network',
+        baseUrl: 'https://api.sardis.sh',
       });
 
       // Add interceptor to inject TAP headers
@@ -611,7 +611,7 @@ describe('E2E Protocol Flows', () => {
     it('should support ECDSA-P256 TAP signatures', async () => {
       const tapClient = new SardisClient({
         apiKey: 'test-api-key',
-        baseUrl: 'https://api.sardis.network',
+        baseUrl: 'https://api.sardis.sh',
       });
 
       tapClient.addRequestInterceptor({

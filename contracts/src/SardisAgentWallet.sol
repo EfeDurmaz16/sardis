@@ -66,6 +66,12 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     /// @notice Total amount held per token (to prevent over-commitment)
     mapping(address => uint256) public totalHeldAmount;
 
+    /// @notice Allowed tokens (stablecoin allowlist - only these tokens can be transferred out)
+    mapping(address => bool) public allowedTokens;
+
+    /// @notice Whether token allowlist is enforced (default: true)
+    bool public enforceTokenAllowlist = true;
+
     // ============ Sardis Transfer Timelock ============
 
     /// @notice Pending new Sardis address (two-step transfer)
@@ -132,6 +138,12 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     event SardisTransferProposed(address indexed newSardis, uint256 executeAfter);
 
     event SardisTransferCancelled(address indexed cancelledSardis);
+
+    event TokenAllowed(address indexed token);
+
+    event TokenRemoved(address indexed token);
+
+    event TokenAllowlistToggled(bool enforced);
     
     // ============ Modifiers ============
     
@@ -191,6 +203,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         string calldata purpose
     ) external onlyAgentOrSardis nonReentrant whenNotPaused returns (bytes32) {
         require(amount > 0, "Amount must be greater than zero");
+
+        // Check token allowlist (stablecoin-only enforcement)
+        _checkToken(token);
 
         // Check merchant restrictions
         _checkMerchant(to);
@@ -263,6 +278,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         usedSignatures[messageHash] = true;
         emit SignatureUsed(messageHash, agent);
 
+        // Check token allowlist (stablecoin-only enforcement)
+        _checkToken(token);
+
         // Check merchant restrictions (limits bypassed for co-signed tx)
         _checkMerchant(to);
 
@@ -301,6 +319,9 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     ) external onlyAgentOrSardis returns (bytes32) {
         require(amount > 0, "Amount must be greater than zero");
         require(duration > 0 && duration <= 7 days, "Invalid duration");
+
+        // Check token allowlist (stablecoin-only enforcement)
+        _checkToken(token);
 
         // Check available balance (total balance minus already held amounts)
         uint256 balance = IERC20(token).balanceOf(address(this));
@@ -466,6 +487,45 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         useAllowlist = _useAllowlist;
     }
     
+    // ============ Token Allowlist (Stablecoin-Only) ============
+
+    /**
+     * @notice Add a token to the allowlist (e.g., USDC, USDT, EURC)
+     * @dev Only Sardis can manage the token allowlist. Agents cannot whitelist
+     *      arbitrary tokens — this prevents NFT/meme coin transfers.
+     */
+    function allowToken(address token) external onlySardis {
+        require(token != address(0), "Invalid token");
+        allowedTokens[token] = true;
+        emit TokenAllowed(token);
+    }
+
+    /**
+     * @notice Remove a token from the allowlist
+     */
+    function removeToken(address token) external onlySardis {
+        allowedTokens[token] = false;
+        emit TokenRemoved(token);
+    }
+
+    /**
+     * @notice Toggle token allowlist enforcement
+     * @dev When enabled, only whitelisted tokens (stablecoins) can be transferred.
+     *      When disabled, any ERC20 can be transferred (useful for recovery).
+     */
+    function setTokenAllowlistEnforced(bool _enforced) external onlySardis {
+        enforceTokenAllowlist = _enforced;
+        emit TokenAllowlistToggled(_enforced);
+    }
+
+    /**
+     * @notice Check if a token is allowed for transfers
+     */
+    function isTokenAllowed(address token) external view returns (bool) {
+        if (!enforceTokenAllowlist) return true;
+        return allowedTokens[token];
+    }
+
     // ============ Emergency Functions ============
     
     /**
@@ -636,6 +696,12 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     // ============ Internal Functions ============
     
+    function _checkToken(address token) internal view {
+        if (enforceTokenAllowlist) {
+            require(allowedTokens[token], "Token not allowed (stablecoins only)");
+        }
+    }
+
     function _checkMerchant(address merchant) internal view {
         if (useAllowlist) {
             require(allowedMerchants[merchant], "Merchant not allowed");

@@ -11,7 +11,7 @@ class TestCreateWallet:
     async def test_create_wallet_successfully(self, client, httpx_mock, mock_responses):
         """Should create a new wallet."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets",
+            url="https://api.sardis.sh/api/v2/wallets",
             method="POST",
             json=mock_responses["wallet"],
         )
@@ -29,7 +29,7 @@ class TestCreateWallet:
         from decimal import Decimal
 
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets",
+            url="https://api.sardis.sh/api/v2/wallets",
             method="POST",
             json={
                 **mock_responses["wallet"],
@@ -56,7 +56,7 @@ class TestGetWallet:
     async def test_get_wallet_successfully(self, client, httpx_mock, mock_responses):
         """Should get wallet by ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_test123",
             method="GET",
             json=mock_responses["wallet"],
         )
@@ -68,7 +68,7 @@ class TestGetWallet:
     async def test_handle_wallet_not_found(self, client, httpx_mock):
         """Should handle wallet not found."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/nonexistent",
+            url="https://api.sardis.sh/api/v2/wallets/nonexistent",
             method="GET",
             status_code=404,
             json={"error": "Wallet not found"},
@@ -84,7 +84,7 @@ class TestListWallets:
     async def test_list_all_wallets(self, client, httpx_mock, mock_responses):
         """Should list all wallets."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets?limit=100",
+            url="https://api.sardis.sh/api/v2/wallets?limit=100",
             method="GET",
             json=[mock_responses["wallet"], {**mock_responses["wallet"], "wallet_id": "wallet_2"}],
         )
@@ -96,7 +96,7 @@ class TestListWallets:
     async def test_filter_by_agent_id(self, client, httpx_mock, mock_responses):
         """Should filter wallets by agent ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets?agent_id=agent_001&limit=100",
+            url="https://api.sardis.sh/api/v2/wallets?agent_id=agent_001&limit=100",
             method="GET",
             json=[mock_responses["wallet"]],
         )
@@ -112,7 +112,7 @@ class TestGetBalance:
     async def test_get_balance_successfully(self, client, httpx_mock, mock_responses):
         """Should get wallet balance."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123/balance?chain=base&token=USDC",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_test123/balance?chain=base&token=USDC",
             method="GET",
             json=mock_responses["balance"],
         )
@@ -125,7 +125,7 @@ class TestGetBalance:
     async def test_specify_chain_and_token(self, client, httpx_mock):
         """Should specify chain and token."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123/balance?chain=polygon&token=USDT",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_test123/balance?chain=polygon&token=USDT",
             method="GET",
             json={
                 "wallet_id": "wallet_test123",
@@ -153,7 +153,7 @@ class TestGetAddresses:
     async def test_get_addresses_successfully(self, client, httpx_mock):
         """Should get all wallet addresses."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123/addresses",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_test123/addresses",
             method="GET",
             json={
                 "base": "0x1234567890abcdef1234567890abcdef12345678",
@@ -173,7 +173,7 @@ class TestSetAddress:
     async def test_set_address_successfully(self, client, httpx_mock, mock_responses):
         """Should set wallet address."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_test123/addresses",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_test123/addresses",
             method="POST",
             json=mock_responses["wallet"],
         )

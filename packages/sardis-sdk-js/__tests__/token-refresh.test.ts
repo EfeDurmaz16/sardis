@@ -19,7 +19,7 @@ describe('SardisClient Token Refresh', () => {
             let receivedApiKey: string | null = null;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/protected', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/protected', ({ request }) => {
                     requestCount++;
                     receivedApiKey = request.headers.get('X-API-Key');
 
@@ -56,7 +56,7 @@ describe('SardisClient Token Refresh', () => {
 
         it('should throw AuthenticationError when refresh fails', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/protected', () => {
+                http.get('https://api.sardis.sh/api/v2/protected', () => {
                     return HttpResponse.json(
                         { error: 'Token expired' },
                         { status: 401 }
@@ -82,7 +82,7 @@ describe('SardisClient Token Refresh', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/protected', () => {
+                http.get('https://api.sardis.sh/api/v2/protected', () => {
                     requestCount++;
                     return HttpResponse.json(
                         { error: 'Token expired' },
@@ -112,7 +112,7 @@ describe('SardisClient Token Refresh', () => {
 
         it('should throw AuthenticationError without refresh when not configured', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/protected', () => {
+                http.get('https://api.sardis.sh/api/v2/protected', () => {
                     return HttpResponse.json(
                         { error: 'Token expired' },
                         { status: 401 }
@@ -136,7 +136,7 @@ describe('SardisClient Token Refresh', () => {
             const receivedKeys: string[] = [];
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/test', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/test', ({ request }) => {
                     receivedKeys.push(request.headers.get('X-API-Key') || '');
                     return HttpResponse.json({ success: true });
                 })
@@ -176,7 +176,7 @@ describe('SardisClient Retry Logic', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/flaky', () => {
+                http.get('https://api.sardis.sh/api/v2/flaky', () => {
                     requestCount++;
                     if (requestCount < 3) {
                         return HttpResponse.json(
@@ -205,7 +205,7 @@ describe('SardisClient Retry Logic', () => {
 
         it('should fail after max retries exceeded', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/always-503', () => {
+                http.get('https://api.sardis.sh/api/v2/always-503', () => {
                     return HttpResponse.json(
                         { error: 'Service unavailable' },
                         { status: 503 }
@@ -228,7 +228,7 @@ describe('SardisClient Retry Logic', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/custom-error', () => {
+                http.get('https://api.sardis.sh/api/v2/custom-error', () => {
                     requestCount++;
                     if (requestCount < 2) {
                         return HttpResponse.json(
@@ -260,7 +260,7 @@ describe('SardisClient Retry Logic', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/bad-request', () => {
+                http.get('https://api.sardis.sh/api/v2/bad-request', () => {
                     requestCount++;
                     return HttpResponse.json(
                         { error: 'Bad request' },
@@ -289,7 +289,7 @@ describe('SardisClient Retry Logic', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/network-flaky', () => {
+                http.get('https://api.sardis.sh/api/v2/network-flaky', () => {
                     requestCount++;
                     if (requestCount < 2) {
                         return HttpResponse.error();
@@ -318,7 +318,7 @@ describe('SardisClient Retry Logic', () => {
             let requestCount = 0;
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/network-fail', () => {
+                http.get('https://api.sardis.sh/api/v2/network-fail', () => {
                     requestCount++;
                     return HttpResponse.error();
                 })
@@ -345,7 +345,7 @@ describe('SardisClient Retry Logic', () => {
             const startTime = Date.now();
 
             server.use(
-                http.get('https://api.sardis.network/api/v2/rate-limited', () => {
+                http.get('https://api.sardis.sh/api/v2/rate-limited', () => {
                     requestCount++;
                     if (requestCount < 2) {
                         return HttpResponse.json(
@@ -383,7 +383,7 @@ describe('SardisClient Retry Logic', () => {
 describe('SardisClient Health Check', () => {
     it('should return health status', async () => {
         server.use(
-            http.get('https://api.sardis.network/health', () => {
+            http.get('https://api.sardis.sh/health', () => {
                 return HttpResponse.json({
                     status: 'healthy',
                     version: '1.0.0',
@@ -400,7 +400,7 @@ describe('SardisClient Health Check', () => {
 
     it('should handle unhealthy status', async () => {
         server.use(
-            http.get('https://api.sardis.network/health', () => {
+            http.get('https://api.sardis.sh/health', () => {
                 return HttpResponse.json({
                     status: 'unhealthy',
                     version: '1.0.0',
@@ -416,7 +416,7 @@ describe('SardisClient Health Check', () => {
 
     it('should handle health check failure', async () => {
         server.use(
-            http.get('https://api.sardis.network/health', () => {
+            http.get('https://api.sardis.sh/health', () => {
                 return HttpResponse.json(
                     { error: 'Service unavailable' },
                     { status: 503 }

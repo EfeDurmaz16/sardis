@@ -12,7 +12,7 @@ describe('PaymentsResource', () => {
     describe('executeMandate', () => {
         it('should execute a payment mandate', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json({
                         id: 'mandate_abc123',
                         status: 'EXECUTED',
@@ -37,7 +37,7 @@ describe('PaymentsResource', () => {
 
         it('should handle mandate execution failure', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         {
                             error: 'Policy violation',
@@ -64,7 +64,7 @@ describe('PaymentsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/mandates/execute',
+                    'https://api.sardis.sh/api/v2/mandates/execute',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
@@ -99,7 +99,7 @@ describe('PaymentsResource', () => {
     describe('executeAP2', () => {
         it('should execute an AP2 payment', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json({
                         id: 'ap2_xyz789',
                         status: 'EXECUTED',
@@ -126,7 +126,7 @@ describe('PaymentsResource', () => {
             let receivedBody: any;
             server.use(
                 http.post(
-                    'https://api.sardis.network/api/v2/ap2/payments/execute',
+                    'https://api.sardis.sh/api/v2/ap2/payments/execute',
                     async ({ request }) => {
                         receivedBody = await request.json();
                         return HttpResponse.json({
@@ -152,7 +152,7 @@ describe('PaymentsResource', () => {
     describe('executeAP2Bundle', () => {
         it('should execute a pre-built AP2 bundle', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/ap2/payments/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/ap2/payments/execute', () => {
                     return HttpResponse.json({
                         id: 'ap2_bundle_001',
                         status: 'EXECUTED',

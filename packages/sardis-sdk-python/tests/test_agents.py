@@ -8,7 +8,7 @@ class TestCreateAgent:
     async def test_create_agent_successfully(self, client, httpx_mock):
         """Should create an agent with required fields."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents",
+            url="https://api.sardis.sh/api/v2/agents",
             method="POST",
             json={
                 "id": "agent_001",
@@ -36,7 +36,7 @@ class TestCreateAgent:
     async def test_create_agent_with_minimal_fields(self, client, httpx_mock):
         """Should create an agent with only required name field."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents",
+            url="https://api.sardis.sh/api/v2/agents",
             method="POST",
             json={
                 "id": "agent_002",
@@ -57,7 +57,7 @@ class TestGetAgent:
     async def test_get_agent_successfully(self, client, httpx_mock):
         """Should get an agent by ID."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents/agent_001",
+            url="https://api.sardis.sh/api/v2/agents/agent_001",
             method="GET",
             json={
                 "id": "agent_001",
@@ -78,7 +78,7 @@ class TestListAgents:
     async def test_list_all_agents(self, client, httpx_mock):
         """Should list all agents."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents?limit=100",
+            url="https://api.sardis.sh/api/v2/agents?limit=100",
             method="GET",
             json=[
                 {
@@ -105,7 +105,7 @@ class TestListAgents:
     async def test_list_with_pagination(self, client, httpx_mock):
         """Should list agents with pagination."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents?limit=10&offset=5",
+            url="https://api.sardis.sh/api/v2/agents?limit=10&offset=5",
             method="GET",
             json=[
                 {
@@ -129,7 +129,7 @@ class TestUpdateAgent:
     async def test_update_agent_name(self, client, httpx_mock):
         """Should update an agent's name."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents/agent_001",
+            url="https://api.sardis.sh/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",
@@ -146,7 +146,7 @@ class TestUpdateAgent:
     async def test_update_agent_metadata(self, client, httpx_mock):
         """Should update an agent's metadata."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents/agent_001",
+            url="https://api.sardis.sh/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",
@@ -164,7 +164,7 @@ class TestUpdateAgent:
     async def test_deactivate_agent(self, client, httpx_mock):
         """Should deactivate an agent."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/agents/agent_001",
+            url="https://api.sardis.sh/api/v2/agents/agent_001",
             method="PATCH",
             json={
                 "id": "agent_001",

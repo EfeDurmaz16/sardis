@@ -75,7 +75,7 @@ def login(ctx):
     api_key = click.prompt("Enter your API key", hide_input=True)
     
     # Prompt for API URL (optional)
-    default_url = "https://api.sardis.network"
+    default_url = "https://api.sardis.sh"
     api_url = click.prompt("API URL", default=default_url)
     
     # Save configuration

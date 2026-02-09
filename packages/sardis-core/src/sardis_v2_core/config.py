@@ -73,7 +73,7 @@ class SardisSettings(BaseSettings):
     # CORS - allowed origins for API (use str to handle comma-separated env vars)
     allowed_origins: str = "http://localhost:3005,http://localhost:5173"
     # Mandate domain allowlist
-    allowed_domains: list[str] = Field(default_factory=lambda: ["sardis.network", "localhost"])
+    allowed_domains: list[str] = Field(default_factory=lambda: ["sardis.sh", "localhost"])
     
     @property
     def allowed_origins_list(self) -> List[str]:

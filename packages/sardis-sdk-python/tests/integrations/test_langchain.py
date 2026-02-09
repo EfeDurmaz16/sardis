@@ -43,7 +43,7 @@ class TestSardisTool:
     async def test_execute_payment_successfully(self, api_key, base_url, httpx_mock, mock_responses):
         """Should execute payment successfully."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123/transfer",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_123/transfer",
             method="POST",
             json={
                 "status": "submitted",
@@ -103,7 +103,7 @@ class TestSardisTool:
     async def test_handle_policy_violation(self, api_key, base_url, httpx_mock):
         """Should handle policy violation."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123/transfer",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_123/transfer",
             method="POST",
             status_code=403,
             json={"error": "Payment blocked by policy: Amount exceeds limit"},
@@ -130,7 +130,7 @@ class TestSardisPolicyCheckTool:
     async def test_check_policy_allowed(self, api_key, base_url, httpx_mock, mock_responses):
         """Should return allowed when policy passes."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_123",
             method="GET",
             json=mock_responses["wallet"],
         )
@@ -145,7 +145,7 @@ class TestSardisPolicyCheckTool:
     async def test_check_policy_blocked(self, api_key, base_url, httpx_mock):
         """Should return blocked when amount exceeds limit."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_123",
             method="GET",
             json={
                 "wallet_id": "wallet_123",
@@ -182,7 +182,7 @@ class TestSardisBalanceCheckTool:
     async def test_check_balance_successfully(self, api_key, base_url, httpx_mock, mock_responses):
         """Should check balance successfully."""
         httpx_mock.add_response(
-            url="https://api.sardis.network/api/v2/wallets/wallet_123/balance?chain=base_sepolia&token=USDC",
+            url="https://api.sardis.sh/api/v2/wallets/wallet_123/balance?chain=base_sepolia&token=USDC",
             method="GET",
             json=mock_responses["balance"],
         )

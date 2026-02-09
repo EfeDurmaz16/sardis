@@ -51,7 +51,7 @@ describe('LangChain Integration', () => {
     describe('sardis_pay tool', () => {
         it('should execute payment successfully', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json({
                         status: 'completed',
                         payment_id: 'pay_123',
@@ -82,7 +82,7 @@ describe('LangChain Integration', () => {
 
         it('should return JSON string', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json({
                         status: 'completed',
                         payment_id: 'pay_123',
@@ -112,7 +112,7 @@ describe('LangChain Integration', () => {
 
         it('should handle policy violation', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json(
                         { error: 'Payment blocked by policy' },
                         { status: 403 }
@@ -141,7 +141,7 @@ describe('LangChain Integration', () => {
     describe('sardis_check_balance tool', () => {
         it('should check balance successfully', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', () => {
                     return HttpResponse.json({
                         wallet_id: 'wallet_123',
                         balance: '1000.00',
@@ -164,7 +164,7 @@ describe('LangChain Integration', () => {
 
         it('should respect token and chain parameters', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id/balance', ({ request }) => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id/balance', ({ request }) => {
                     const url = new URL(request.url);
                     return HttpResponse.json({
                         wallet_id: 'wallet_123',
@@ -189,7 +189,7 @@ describe('LangChain Integration', () => {
     describe('sardis_get_wallet tool', () => {
         it('should get wallet information', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json({
                         id: 'wallet_123',
                         agent_id: 'agent_456',
@@ -217,7 +217,7 @@ describe('LangChain Integration', () => {
     describe('sardis_check_policy tool', () => {
         it('should check policy successfully', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json({
                         id: 'wallet_123',
                         limit_per_tx: '1000.00',
@@ -242,7 +242,7 @@ describe('LangChain Integration', () => {
 
         it('should detect policy violation', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json({
                         id: 'wallet_123',
                         limit_per_tx: '100.00',
@@ -268,7 +268,7 @@ describe('LangChain Integration', () => {
 
         it('should detect inactive wallet', async () => {
             server.use(
-                http.get('https://api.sardis.network/api/v2/wallets/:id', () => {
+                http.get('https://api.sardis.sh/api/v2/wallets/:id', () => {
                     return HttpResponse.json({
                         id: 'wallet_123',
                         limit_per_tx: '1000.00',
@@ -302,7 +302,7 @@ describe('LangChain Integration', () => {
 
         it('should execute payment', async () => {
             server.use(
-                http.post('https://api.sardis.network/api/v2/mandates/execute', () => {
+                http.post('https://api.sardis.sh/api/v2/mandates/execute', () => {
                     return HttpResponse.json({
                         status: 'completed',
                         payment_id: 'pay_single',
