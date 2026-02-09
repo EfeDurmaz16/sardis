@@ -1,4 +1,5 @@
 {
-  "installCommand": "npm ci",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "./node_modules/.bin/vite build",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
