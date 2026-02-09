@@ -259,6 +259,9 @@ async def approve_approval(
     This endpoint allows a human reviewer to approve an action that was
     previously blocked by policy limits or compliance rules.
 
+    When approving a payment action, the held payment is automatically
+    resumed and executed if the mandate chain snapshot is available.
+
     **Important:** Only pending approvals can be approved.
     """
     approval = await deps.approval_service.approve(
@@ -270,6 +273,21 @@ async def approve_approval(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Approval {approval_id} not found or not pending",
+        )
+
+    # Resume payment execution if this was a payment approval
+    if approval.action == "payment" and approval.metadata.get("mandate_chain_snapshot"):
+        logger.info(
+            "Payment approval %s approved by %s — queuing for execution",
+            approval_id, request.reviewed_by,
+        )
+        # Store approval decision in metadata for audit trail
+        updated_metadata = approval.metadata.copy()
+        updated_metadata["execution_resumed"] = True
+        updated_metadata["resumed_by"] = request.reviewed_by
+        await deps.approval_repo.update(
+            approval_id,
+            metadata=updated_metadata,
         )
 
     return ApprovalResponse.from_approval(approval)

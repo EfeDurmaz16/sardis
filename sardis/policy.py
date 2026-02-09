@@ -20,8 +20,12 @@ class PolicyResult:
     reason: Optional[str] = None
     checks_passed: list[str] = field(default_factory=list)
     checks_failed: list[str] = field(default_factory=list)
-    
+    requires_approval: bool = False
+    approval_reason: Optional[str] = None
+
     def __repr__(self) -> str:
+        if self.requires_approval:
+            return "PolicyResult(requires_approval)"
         status = "approved" if self.approved else "rejected"
         return f"PolicyResult({status})"
 
@@ -49,6 +53,7 @@ class Policy:
     blocked_destinations: Set[str] = field(default_factory=set)
     allowed_tokens: Set[str] = field(default_factory=lambda: {"USDC", "USDT", "PYUSD"})
     require_purpose: bool = False
+    approval_threshold: Optional[Decimal] = None
     
     def __init__(
         self,
@@ -58,10 +63,11 @@ class Policy:
         blocked_destinations: Optional[Set[str]] = None,
         allowed_tokens: Optional[Set[str]] = None,
         require_purpose: bool = False,
+        approval_threshold: Optional[float | Decimal] = None,
     ):
         """
         Create a spending policy.
-        
+
         Args:
             max_per_tx: Maximum amount per transaction
             max_total: Maximum total spending
@@ -69,6 +75,7 @@ class Policy:
             blocked_destinations: Blacklist of blocked destinations
             allowed_tokens: Set of allowed token types
             require_purpose: Whether transactions must have a purpose
+            approval_threshold: Amount above which human approval is required (None = no approval needed)
         """
         self.max_per_tx = Decimal(str(max_per_tx))
         self.max_total = Decimal(str(max_total))
@@ -76,6 +83,7 @@ class Policy:
         self.blocked_destinations = blocked_destinations or set()
         self.allowed_tokens = allowed_tokens or {"USDC", "USDT", "PYUSD"}
         self.require_purpose = require_purpose
+        self.approval_threshold = Decimal(str(approval_threshold)) if approval_threshold is not None else None
     
     def check(
         self,
@@ -175,7 +183,19 @@ class Policy:
                     checks_passed=checks_passed,
                     checks_failed=checks_failed,
                 )
-        
+
+        # Check approval threshold — all checks passed but human sign-off needed
+        if self.approval_threshold is not None and amount > self.approval_threshold:
+            checks_passed.append("approval_threshold_triggered")
+            return PolicyResult(
+                approved=True,
+                reason=f"Amount {amount} exceeds approval threshold {self.approval_threshold}",
+                checks_passed=checks_passed,
+                checks_failed=checks_failed,
+                requires_approval=True,
+                approval_reason=f"Amount {amount} exceeds approval threshold {self.approval_threshold}",
+            )
+
         return PolicyResult(
             approved=True,
             reason="All policy checks passed",

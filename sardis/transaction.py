@@ -19,6 +19,7 @@ from .policy import Policy, PolicyResult
 class TransactionStatus(str, Enum):
     """Transaction status."""
     PENDING = "pending"
+    PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
     EXECUTED = "executed"
     FAILED = "failed"
@@ -38,6 +39,7 @@ class TransactionResult:
     tx_hash: Optional[str] = None  # On-chain hash (simulated in demo)
     message: Optional[str] = None
     policy_result: Optional[PolicyResult] = None
+    approval_id: Optional[str] = None
     
     @property
     def success(self) -> bool:
@@ -126,7 +128,23 @@ class Transaction:
                 message=policy_result.reason,
                 policy_result=policy_result,
             )
-        
+
+        # Check if human approval is required
+        if policy_result.requires_approval:
+            approval_id = f"appr_{uuid4().hex[:16]}"
+            return TransactionResult(
+                tx_id=self.tx_id,
+                status=TransactionStatus.PENDING_APPROVAL,
+                amount=self.amount,
+                from_wallet=self.from_wallet.wallet_id,
+                to=self.to,
+                currency=self.currency,
+                timestamp=timestamp,
+                message=policy_result.approval_reason or "Awaiting human approval",
+                policy_result=policy_result,
+                approval_id=approval_id,
+            )
+
         # Attempt to spend from wallet
         if not self.from_wallet.spend(self.amount):
             return TransactionResult(

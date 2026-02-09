@@ -80,6 +80,7 @@ class AP2PaymentExecuteResponse(BaseModel):
     payment_method: str = "stablecoin"
     compliance_provider: str | None = None
     compliance_rule: str | None = None
+    approval_id: str | None = None
 
 
 class X402PaymentExecuteRequest(BaseModel):

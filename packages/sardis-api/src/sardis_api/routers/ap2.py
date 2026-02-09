@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from sardis_compliance.kyc import KYCService
     from sardis_compliance.sanctions import SanctionsService
     from sardis_v2_core.wallet_repository import WalletRepository
+    from sardis_v2_core.approval_service import ApprovalService
+    from sardis_v2_core.spending_policy import SpendingPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,7 @@ class Dependencies:
     agent_repo: AgentRepository
     kyc_service: Optional["KYCService"] = None
     sanctions_service: Optional["SanctionsService"] = None
+    approval_service: Optional["ApprovalService"] = None
 
 
 def get_deps() -> Dependencies:
@@ -212,6 +215,66 @@ async def execute_ap2_payment(
                     "rule": compliance.rule,
                 },
             )
+
+        # Step 2.5: Goal drift logging
+        if verification.drift_score > 0:
+            logger.warning(
+                "Goal drift detected for mandate %s: score=%.2f reasons=%s",
+                payment.mandate_id, verification.drift_score,
+                verification.drift_reasons,
+            )
+
+        # Step 2.6: Approval check — if agent has approval threshold configured
+        if deps.approval_service:
+            # Load agent spending policy to check approval_threshold
+            agent_record = await deps.agent_repo.get(payment.subject)
+            approval_threshold = None
+            if agent_record and hasattr(agent_record, 'spending_policy') and agent_record.spending_policy:
+                policy = agent_record.spending_policy
+                approval_threshold = getattr(policy, 'approval_threshold', None)
+
+            if approval_threshold is not None:
+                from decimal import Decimal
+                amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
+                if amount_decimal > approval_threshold:
+                    # Create approval request and return 202
+                    approval = await deps.approval_service.create_approval(
+                        action="payment",
+                        requested_by=payment.subject,
+                        agent_id=payment.subject,
+                        wallet_id=getattr(payment, 'wallet_id', None),
+                        vendor=payment.merchant_domain,
+                        amount=amount_decimal,
+                        purpose=f"AP2 payment to {payment.merchant_domain}",
+                        reason=f"Amount ${amount_decimal} exceeds approval threshold ${approval_threshold}",
+                        urgency='high' if amount_decimal > approval_threshold * 5 else 'medium',
+                        metadata={
+                            "mandate_id": payment.mandate_id,
+                            "mandate_chain_snapshot": {
+                                "intent": payload.intent,
+                                "cart": payload.cart,
+                                "payment": payload.payment,
+                            },
+                            "drift_score": verification.drift_score,
+                            "drift_reasons": verification.drift_reasons,
+                            "canonicalization_mode": payload.canonicalization_mode,
+                        },
+                    )
+                    logger.info(
+                        "Payment %s requires approval (amount=%s, threshold=%s, approval_id=%s)",
+                        payment.mandate_id, amount_decimal, approval_threshold, approval.id,
+                    )
+                    return 202, AP2PaymentExecuteResponse(
+                        mandate_id=payment.mandate_id,
+                        ledger_tx_id="",
+                        chain_tx_hash="",
+                        chain=payment.chain,
+                        audit_anchor="",
+                        status="pending_approval",
+                        compliance_provider=compliance.provider,
+                        compliance_rule=compliance.rule,
+                        approval_id=approval.id,
+                    )
 
         # Step 3: Execute payment
         try:

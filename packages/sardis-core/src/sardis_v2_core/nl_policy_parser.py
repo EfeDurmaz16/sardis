@@ -594,7 +594,7 @@ Extract the policy accurately and completely."""
         # Handle approval threshold
         if extracted.requires_approval_above:
             policy.require_preauth = True
-            # Store approval threshold (could add to SpendingPolicy if needed)
+            policy.approval_threshold = Decimal(str(extracted.requires_approval_above))
 
         return policy
 

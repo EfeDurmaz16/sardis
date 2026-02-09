@@ -39,6 +39,8 @@ class MandateChainVerification:
     chain: MandateChain | None = None
     sd_jwt_detected: bool = False
     reason_code: ProtocolReasonCode | None = None
+    drift_score: float = 0.0
+    drift_reasons: list[str] | None = None
 
 
 class MandateVerifier:
@@ -221,6 +223,16 @@ class MandateVerifier:
             reason = "payment_exceeds_intent_amount"
             return MandateChainVerification(False, reason, sd_jwt_detected=sd_jwt_detected, reason_code=map_legacy_reason_to_code(reason))
 
+        # Goal drift detection
+        drift_score, drift_reasons = self._compute_drift(intent, payment)
+        if drift_score >= 1.0:
+            reason = "goal_drift_scope_mismatch"
+            return MandateChainVerification(
+                False, reason, sd_jwt_detected=sd_jwt_detected,
+                reason_code=map_legacy_reason_to_code(reason),
+                drift_score=drift_score, drift_reasons=drift_reasons,
+            )
+
         # Verify signatures for all mandates in the chain with specified canonicalization mode
         use_jcs = (canonicalization_mode == "jcs")
         intent_result = self.verify(intent, use_jcs=use_jcs)
@@ -240,7 +252,70 @@ class MandateVerifier:
         chain = MandateChain(intent=intent, cart=cart, payment=payment)
         if self._archive:
             self._archive.store(chain)
-        return MandateChainVerification(True, chain=chain, sd_jwt_detected=sd_jwt_detected, reason_code=None)
+        return MandateChainVerification(
+            True, chain=chain, sd_jwt_detected=sd_jwt_detected, reason_code=None,
+            drift_score=drift_score, drift_reasons=drift_reasons if drift_reasons else None,
+        )
+
+    # Scope-to-domain mapping for goal drift detection
+    _SCOPE_DOMAINS: Dict[str, list[str]] = {
+        "cloud": ["aws.amazon.com", "cloud.google.com", "azure.microsoft.com", "digitalocean.com", "vercel.com", "netlify.com", "heroku.com"],
+        "compute": ["aws.amazon.com", "cloud.google.com", "azure.microsoft.com", "digitalocean.com", "linode.com", "vultr.com"],
+        "ai": ["openai.com", "anthropic.com", "cohere.com", "replicate.com", "huggingface.co", "together.ai"],
+        "saas": ["slack.com", "notion.so", "github.com", "atlassian.com", "figma.com", "linear.app"],
+        "data": ["snowflake.com", "databricks.com", "mongodb.com", "elastic.co", "supabase.com"],
+        "hosting": ["vercel.com", "netlify.com", "heroku.com", "fly.io", "railway.app", "render.com"],
+    }
+
+    # Domains that indicate high-risk categories (gambling, adult, etc.)
+    _HIGH_RISK_DOMAINS: list[str] = [
+        "bet365.com", "draftkings.com", "fanduel.com", "pokerstars.com",
+        "casino.com", "888casino.com", "bovada.lv",
+    ]
+
+    @staticmethod
+    def _compute_drift(intent: "IntentMandate", payment: "PaymentMandate") -> tuple[float, list[str]]:
+        """Compute goal drift score between intent and payment.
+
+        Returns:
+            Tuple of (drift_score: float 0.0-1.0, drift_reasons: list[str])
+        """
+        drift_score = 0.0
+        drift_reasons: list[str] = []
+
+        # Amount deviation
+        if intent.requested_amount is not None and intent.requested_amount > 0:
+            deviation = abs(payment.amount_minor - intent.requested_amount) / intent.requested_amount
+            if deviation > 0.1:  # More than 10% deviation
+                amount_drift = min(deviation, 1.0)
+                drift_score = max(drift_score, amount_drift * 0.5)
+                drift_reasons.append(f"amount_deviation:{deviation:.2f}")
+
+        # Scope drift — check if payment merchant_domain aligns with intent scopes
+        if intent.scope and payment.merchant_domain:
+            merchant_domain = payment.merchant_domain.lower()
+            scope_matched = False
+            for scope_name in intent.scope:
+                scope_lower = scope_name.lower()
+                known_domains = MandateVerifier._SCOPE_DOMAINS.get(scope_lower, [])
+                if any(d in merchant_domain for d in known_domains):
+                    scope_matched = True
+                    break
+                # Fuzzy: scope keyword appears in merchant domain
+                if scope_lower in merchant_domain:
+                    scope_matched = True
+                    break
+
+            if not scope_matched:
+                drift_score = max(drift_score, 0.8)
+                drift_reasons.append(f"scope_mismatch:intent={intent.scope},merchant={merchant_domain}")
+
+            # High-risk domain check
+            if any(d in merchant_domain for d in MandateVerifier._HIGH_RISK_DOMAINS):
+                drift_score = 1.0
+                drift_reasons.append(f"high_risk_domain:{merchant_domain}")
+
+        return drift_score, drift_reasons
 
     def _parse_mandate(self, data: Dict[str, Any], model: Type[MandateBase]) -> MandateBase:
         proof_payload = data.get("proof")

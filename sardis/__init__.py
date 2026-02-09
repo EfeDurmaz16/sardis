@@ -12,12 +12,12 @@ Example:
 """
 
 from .wallet import Wallet
-from .transaction import Transaction, TransactionResult
+from .transaction import Transaction, TransactionResult, TransactionStatus
 from .policy import Policy, PolicyResult
 from .agent import Agent
 
 __version__ = "0.1.0"
-__all__ = ["Wallet", "Transaction", "TransactionResult", "Policy", "PolicyResult", "Agent"]
+__all__ = ["Wallet", "Transaction", "TransactionResult", "TransactionStatus", "Policy", "PolicyResult", "Agent"]
 
 
 

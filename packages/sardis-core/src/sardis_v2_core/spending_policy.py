@@ -114,6 +114,8 @@ class SpendingPolicy:
     allowed_scopes: list[SpendingScope] = field(default_factory=lambda: [SpendingScope.ALL])
     blocked_merchant_categories: list[str] = field(default_factory=list)
     require_preauth: bool = False
+    approval_threshold: Optional[Decimal] = None
+    max_drift_score: Optional[Decimal] = field(default_factory=lambda: Decimal("0.5"))
     max_hold_hours: int = 168
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -131,6 +133,7 @@ class SpendingPolicy:
         mcc_code: Optional[str] = None,
         scope: SpendingScope = SpendingScope.ALL,
         rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
+        drift_score: Optional[Decimal] = None,
     ) -> tuple[bool, str]:
         """
         Evaluate payment request against policy (async, with on-chain balance check).
@@ -193,7 +196,16 @@ class SpendingPolicy:
             merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)
             if not merchant_ok:
                 return False, merchant_reason
-        
+
+        # Check drift score
+        if drift_score is not None and self.max_drift_score is not None:
+            if drift_score > self.max_drift_score:
+                return False, "goal_drift_exceeded"
+
+        # Check approval threshold — policy allows but needs human sign-off
+        if self.approval_threshold is not None and amount > self.approval_threshold:
+            return True, "requires_approval"
+
         return True, "OK"
     
     def validate_payment(
@@ -205,6 +217,7 @@ class SpendingPolicy:
         merchant_category: Optional[str] = None,
         mcc_code: Optional[str] = None,
         scope: SpendingScope = SpendingScope.ALL,
+        drift_score: Optional[Decimal] = None,
     ) -> tuple[bool, str]:
         """
         Synchronous validation (for backwards compatibility).
@@ -238,6 +251,16 @@ class SpendingPolicy:
             merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)
             if not merchant_ok:
                 return False, merchant_reason
+
+        # Check drift score
+        if drift_score is not None and self.max_drift_score is not None:
+            if drift_score > self.max_drift_score:
+                return False, "goal_drift_exceeded"
+
+        # Check approval threshold
+        if self.approval_threshold is not None and amount > self.approval_threshold:
+            return True, "requires_approval"
+
         return True, "OK"
 
     def _check_merchant_rules(
