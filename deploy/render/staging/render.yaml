@@ -1,7 +1,7 @@
 services:
   - type: web
     name: sardis-api-staging
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
@@ -17,13 +17,21 @@ services:
       - key: SARDIS_API_HOST
         value: 0.0.0.0
       - key: SARDIS_API_PORT
-        value: "8000"
+        value: "10000"
       - key: SARDIS_ALLOWED_ORIGINS
         value: https://sardis.sh,https://www.sardis.sh,http://localhost:3000
+      - key: SARDIS_ALLOWED_DOMAINS
+        value: sardis.sh,localhost
       - key: SARDIS_TAP_ENFORCEMENT
         value: enabled
       - key: SARDIS_STRICT_CONFIG
+        value: "false"
+      - key: SARDIS_ALLOW_ANON
+        value: "false"
+      - key: SARDIS_PUBLIC_METRICS
         value: "true"
+      - key: PORT
+        value: "10000"
 
       # Required secrets (set in Render dashboard)
       - key: DATABASE_URL
