@@ -15,21 +15,20 @@ COPY pyproject.toml ./
 COPY sardis/ sardis/
 COPY packages/ packages/
 
-# Install all packages in dependency order
+# Install all packages in dependency order (non-editable for container)
 RUN pip install --no-cache-dir \
-    -e packages/sardis-core \
-    -e packages/sardis-protocol \
-    -e packages/sardis-chain \
-    -e packages/sardis-ledger \
-    -e packages/sardis-wallet \
-    -e packages/sardis-compliance \
-    -e packages/sardis-cards \
-    -e packages/sardis-checkout \
-    -e packages/sardis-ramp \
-    -e packages/sardis-ucp \
-    -e packages/sardis-a2a \
-    -e packages/sardis-api \
-    -e .
+    packages/sardis-core \
+    packages/sardis-protocol \
+    packages/sardis-chain \
+    packages/sardis-ledger \
+    packages/sardis-wallet \
+    packages/sardis-compliance \
+    "packages/sardis-cards[lithic]" \
+    packages/sardis-checkout \
+    packages/sardis-ramp \
+    packages/sardis-ucp \
+    packages/sardis-a2a \
+    packages/sardis-api
 
 # Install additional runtime dependencies
 RUN pip install --no-cache-dir \
@@ -75,8 +74,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Run with gunicorn + uvicorn workers for production
 # Uses $PORT env var (Render sets PORT=10000, default 8000)
-CMD gunicorn sardis_api.main:create_app \
-    --factory \
+CMD gunicorn 'sardis_api.main:create_app()' \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers 2 \
     --bind "0.0.0.0:${PORT}" \

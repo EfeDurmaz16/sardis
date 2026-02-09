@@ -31,7 +31,7 @@ export default function DocsProtocols() {
                     ▼           ▼           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  Sardis Protocol Layer                       │
-│      A2A (messages)  │  UCP (commerce)  │  x402 (micro)      │
+│  A2A (messages)│ UCP (commerce)│ x402 (micro) │ ACP (shops) │
 │                         │                                    │
 │                    ┌────┴────┐                               │
 │                    │ AP2/TAP │  ← Verification               │
@@ -40,7 +40,7 @@ export default function DocsProtocols() {
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Base | Polygon | Ethereum | Arbitrum | Optimism      │
+│   Bank Transfer │ Virtual Cards │ Stablecoins (optional)     │
 └─────────────────────────────────────────────────────────────┘`}</pre>
           </div>
         </div>
@@ -87,12 +87,35 @@ export default function DocsProtocols() {
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed pl-14">Cryptographic identity verification. Ed25519/ECDSA signatures.</p>
           </Link>
+
+          <div className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                <Agreement02Icon size={22} className="text-yellow-500" />
+              </div>
+              <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">x402 (HTTP Payments)</h3>
+            </div>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">HTTP-native micropayments via 402 status code. Coinbase-developed standard for pay-per-request APIs.</p>
+          </div>
+
+          <Link to="/docs/acp" className="block p-6 bg-card/50 rounded-lg shadow-sm hover:shadow-md hover:bg-card transition-all group">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[var(--sardis-orange)]/10 flex items-center justify-center">
+                <ShoppingBag01Icon size={22} color="var(--sardis-orange)" />
+              </div>
+              <h3 className="font-bold font-display text-lg">
+                <span className="group-hover:text-[var(--sardis-orange)]">ACP (Agentic Commerce Protocol)</span>
+                <span className="ml-2 px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
+              </h3>
+            </div>
+            <p className="text-muted-foreground text-sm leading-relaxed pl-14">OpenAI's open standard for AI agent commerce. Product feeds, agentic checkout, delegated payments for ChatGPT-native purchasing.</p>
+          </Link>
         </div>
       </section>
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Supported Chains
+          <span className="text-[var(--sardis-orange)]">#</span> Stablecoin Networks (Optional Rail)
         </h2>
         <div className="not-prose">
           <table className="w-full border border-border text-sm">

@@ -31,7 +31,7 @@ const LOG_SEQUENCES = {
     { text: `[AI-Agent]: Intent: Purchase 500 API credits from DataCorp`, delay: 500 },
     { text: `[Sardis-Protocol]: Constructing AP2 mandate chain`, delay: 900 },
     { text: `[Sardis-Protocol]:   → Intent verified (schema v2.1)`, delay: 1200 },
-    { text: `[Sardis-Protocol]:   → Cart: 1 item, total 25.00 USDC`, delay: 1500 },
+    { text: `[Sardis-Protocol]:   → Cart: 1 item, total $25.00`, delay: 1500 },
     { text: `[Sardis-Core]: Checking spending policy...`, delay: 1800 },
     { text: `[Sardis-Core]:   → Daily limit: $500.00 | Used: $120.00`, delay: 2100 },
     { text: `[Sardis-Core]:   → Category: SaaS/API — ✓ Allowed`, delay: 2400 },
@@ -52,7 +52,7 @@ const LOG_SEQUENCES = {
     { text: `[AI-Agent]: Intent: Purchase enterprise license from DataCorp`, delay: 500 },
     { text: `[Sardis-Protocol]: Constructing AP2 mandate chain`, delay: 900 },
     { text: `[Sardis-Protocol]:   → Intent verified (schema v2.1)`, delay: 1200 },
-    { text: `[Sardis-Protocol]:   → Cart: 1 item, total 2,500.00 USDC`, delay: 1500 },
+    { text: `[Sardis-Protocol]:   → Cart: 1 item, total $2,500.00`, delay: 1500 },
     { text: `[Sardis-Core]: Checking spending policy...`, delay: 1800 },
     { text: `[Sardis-Core]:   → Approval threshold: $500.00`, delay: 2100 },
     { text: `[Sardis-Core]:   → Requested amount: $2,500.00`, delay: 2400 },
@@ -72,7 +72,7 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Ledger]: Audit entry written (immutable)`, delay: 2400 },
   ],
   SUCCESS: [
-    { text: `[Sardis-Core]: ✓ Payment complete — 25.00 USDC → DataCorp`, delay: 0 },
+    { text: `[Sardis-Core]: ✓ Payment complete — $25.00 → DataCorp`, delay: 0 },
     { text: `[Sardis-Core]: Agent ${DEMO_AGENT_ID} session closed`, delay: 400 },
   ],
   POLICY_BLOCKED: [
@@ -291,7 +291,7 @@ export function useSardisDemo() {
               type: 'pending_approval',
               to: 'DataCorp',
               amount: '2500.00',
-              token: 'USDC',
+              token: 'USD',
               chain: 'Policy',
               hash: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
               url: null,
@@ -319,20 +319,20 @@ export function useSardisDemo() {
                 hash: DEMO_TX_HASH,
                 hashFull: DEMO_TX_HASH_FULL,
                 amount: '25.00',
-                token: 'USDC',
+                token: 'USD',
                 to: 'DataCorp',
                 block: DEMO_BLOCK,
-                chain: 'Base Sepolia',
-                url: `https://sepolia.basescan.org/tx/${DEMO_TX_HASH_FULL}`,
+                chain: 'Virtual Card (Lithic)',
+                url: null,
               })
               appendHistory({
                 type: 'approved',
                 to: 'DataCorp',
                 amount: '25.00',
-                token: 'USDC',
-                chain: 'Base Sepolia',
+                token: 'USD',
+                chain: 'Virtual Card (Lithic)',
                 hash: DEMO_TX_HASH,
-                url: `https://sepolia.basescan.org/tx/${DEMO_TX_HASH_FULL}`,
+                url: null,
               })
               addLogs(LOG_SEQUENCES.SUCCESS, () => {
                 emitEvent('run_succeeded', { status: 'success', message: 'simulated_ok' })
@@ -464,26 +464,32 @@ export function useSardisDemo() {
         setPolicyUsed((prev) => Number((prev + 25).toFixed(2)))
 
         const liveTx = result.transaction || {}
+        const providerTxId = result.provider_tx_id || liveTx.provider_tx_id || null
         setTransaction({
-          hash: liveTx.hash || 'tx_live_demo',
-          hashFull: liveTx.hashFull || liveTx.hash || 'tx_live_demo',
+          hash: liveTx.hash || providerTxId || 'tx_live_demo',
+          hashFull: liveTx.hashFull || liveTx.hash || providerTxId || 'tx_live_demo',
           amount: liveTx.amount || '25.00',
           token: liveTx.token || 'USD',
           to: liveTx.to || 'DataCorp',
           block: liveTx.block || 'live',
-          chain: liveTx.chain || 'Card Rail',
+          chain: liveTx.chain || 'Card Rail (Lithic Sandbox)',
           url: liveTx.url || null,
+          providerTxId,
         })
         appendHistory({
           type: 'approved',
           to: liveTx.to || 'DataCorp',
           amount: liveTx.amount || '25.00',
           token: liveTx.token || 'USD',
-          chain: liveTx.chain || 'Card Rail',
-          hash: liveTx.hash || 'tx_live_demo',
+          chain: liveTx.chain || 'Card Rail (Lithic Sandbox)',
+          hash: providerTxId || liveTx.hash || 'tx_live_demo',
           url: liveTx.url || null,
+          providerTxId,
         })
 
+        if (providerTxId) {
+          appendLog(`[Sardis-Live]: Lithic Authorization ID: ${providerTxId}`)
+        }
         appendLog('[Sardis-Live]: ✓ Live payment flow completed')
         emitEvent('run_succeeded', { status: 'success', message: 'live_ok' })
         setLiveStatus({
@@ -546,8 +552,8 @@ export function useSardisDemo() {
     setCardBalance((prev) => Number((prev + normalized).toFixed(2)))
     const event = {
       amount: normalized,
-      token: 'USDC',
-      source: 'Stablecoin Wallet',
+      token: 'USD',
+      source: 'Agent Wallet',
       destination: 'Virtual Card',
       timestamp: new Date().toISOString(),
     }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CheckCircle2, Copy, Sparkles, XCircle } from 'lucide-react'
 import clsx from 'clsx'
-import { demoApi } from '../api/client'
+import { agentApi, demoApi } from '../api/client'
 
 type StepStatus = 'idle' | 'running' | 'done' | 'error'
 
@@ -141,7 +141,7 @@ export default function DemoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card
           title="Step 0 — (Optional) Bootstrap API key"
-          subtitle="Admin JWT ile ilk API key’i üretir. Demo’da gerekli değil ama server-to-server göstermek için iyi."
+          subtitle="Generates a server-to-server API key using admin JWT. Optional for demo, useful for programmatic access."
         >
           <div className="flex items-center justify-between gap-3">
             <StatusPill status={bootstrapStatus} />
@@ -193,7 +193,7 @@ export default function DemoPage() {
           </div>
         </Card>
 
-        <Card title="Step 1 — Create Turnkey wallet" subtitle="Turnkey’den gerçek wallet/address oluşturur (non-custodial).">
+        <Card title="Step 1 — Create Turnkey wallet" subtitle="Creates a real non-custodial wallet and address via Turnkey MPC.">
           <div className="flex items-center justify-between gap-3">
             <StatusPill status={walletStatus} />
             {walletId ? <CopyButton value={walletId} /> : null}
@@ -212,15 +212,28 @@ export default function DemoPage() {
                 setWalletError('')
                 setWalletStatus('running')
                 try {
-                  const res = await demoApi.createWallet({
-                    agent_id: agentId,
-                    mpc_provider: 'turnkey',
-                    wallet_name: agentId,
-                  })
-                  setWallet(res)
+                  // Create agent with wallet (create_wallet: true creates a basic wallet automatically)
+                  let agent: any
+                  try {
+                    agent = await agentApi.create({
+                      name: agentId,
+                      description: 'Demo agent created by wizard',
+                      spending_limits: { per_transaction: '100.00', total: '1000.00' },
+                      create_wallet: true,
+                    })
+                  } catch {
+                    // Agent may already exist — fetch it
+                    const agents = await agentApi.list()
+                    agent = agents.find((a: any) => a.name === agentId || a.agent_id === agentId)
+                  }
+                  if (agent?.wallet_id) {
+                    setWallet({ wallet_id: agent.wallet_id, addresses: agent.addresses || {} })
+                  } else {
+                    setWallet({ wallet_id: agent?.agent_id || agentId, addresses: {} })
+                  }
                   setWalletStatus('done')
                 } catch (e: any) {
-                  setWalletError(e?.message || 'Wallet create failed')
+                  setWalletError(e?.message || 'Agent/wallet creation failed')
                   setWalletStatus('error')
                 }
               }}
@@ -250,7 +263,7 @@ export default function DemoPage() {
           </div>
         </Card>
 
-        <Card title="Step 2 — Apply policy" subtitle='Örn: "Max $100 per transaction, block gambling".'>
+        <Card title="Step 2 — Apply policy" subtitle='e.g. "Max $100 per transaction, block gambling".'>
           <div className="flex items-center justify-between gap-3">
             <StatusPill status={policyStatus} />
             {policy?.policy_id ? <CopyButton value={policy.policy_id} /> : null}
@@ -358,7 +371,7 @@ export default function DemoPage() {
         </Card>
       </div>
 
-      <Card title="Step 4 — Simulate purchase + enforcement" subtitle="MCC=7995 → gambling (blocked) → deny + auto-freeze.">
+      <Card title="Step 4 — Simulate purchase + enforcement" subtitle="Gambling merchant → blocked by policy → auto-freeze. Software merchant → approved.">
         <div className="flex items-center justify-between gap-3">
           <StatusPill status={purchaseStatus} />
           {purchaseResult?.transaction?.transaction_id ? <CopyButton value={purchaseResult.transaction.transaction_id} /> : null}
@@ -370,31 +383,31 @@ export default function DemoPage() {
             <TextInput value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="25.00" />
           </div>
           <div>
-            <FieldLabel>MCC</FieldLabel>
+            <FieldLabel>Merchant Category</FieldLabel>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPurchaseMcc('7995')}
                 className={clsx(
-                  'flex-1 px-3 py-3 rounded-lg border text-sm transition-colors',
+                  'flex-1 px-3 py-3 border text-sm transition-colors',
                   purchaseMcc === '7995'
-                    ? 'bg-sardis-500/10 text-sardis-400 border-sardis-500/30'
+                    ? 'bg-red-500/10 text-red-400 border-red-500/30'
                     : 'bg-dark-300 text-gray-300 border-dark-100 hover:bg-dark-200'
                 )}
               >
-                7995 (Gambling)
+                Gambling (Blocked)
               </button>
               <button
                 type="button"
                 onClick={() => setPurchaseMcc('5734')}
                 className={clsx(
-                  'flex-1 px-3 py-3 rounded-lg border text-sm transition-colors',
+                  'flex-1 px-3 py-3 border text-sm transition-colors',
                   purchaseMcc === '5734'
                     ? 'bg-sardis-500/10 text-sardis-400 border-sardis-500/30'
                     : 'bg-dark-300 text-gray-300 border-dark-100 hover:bg-dark-200'
                 )}
               >
-                5734 (Software)
+                Software (Allowed)
               </button>
             </div>
           </div>

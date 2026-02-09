@@ -86,6 +86,7 @@ class PostgresWalletRepository:
                     raise ValueError("agent_not_found")
                 agent_uuid = str(agent_row["id"])
 
+                import json as _json
                 row = await conn.fetchrow(
                     """
                     INSERT INTO wallets (
@@ -111,7 +112,7 @@ class PostgresWalletRepository:
                     currency,
                     str(limit_per_tx),
                     str(limit_total),
-                    addresses,
+                    _json.dumps(addresses),
                 )
                 return self._wallet_from_row(dict(row), agent_id)
 
@@ -217,6 +218,7 @@ class PostgresWalletRepository:
             if addresses:
                 merged.update(addresses)
 
+            import json as _json
             await conn.execute(
                 """
                 UPDATE wallets
@@ -231,7 +233,7 @@ class PostgresWalletRepository:
                 str(limit_per_tx) if limit_per_tx is not None else None,
                 str(limit_total) if limit_total is not None else None,
                 is_active,
-                merged,
+                _json.dumps(merged),
             )
             return await self.get(wallet_id)
 

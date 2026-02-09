@@ -47,30 +47,31 @@ async function requestV2<T>(endpoint: string, options: RequestInit = {}): Promis
   return request<T>(endpoint, options, true)
 }
 
-// Agent APIs
+// Agent APIs (V2)
 export const agentApi = {
-  list: () => request<any[]>('/agents'),
+  list: () => requestV2<any[]>('/agents'),
 
-  get: (agentId: string) => request<any>(`/agents/${agentId}`),
+  get: (agentId: string) => requestV2<any>(`/agents/${agentId}`),
 
   create: (data: {
     name: string
-    owner_id: string
     description?: string
-    initial_balance: string
-    limit_per_tx: string
-    limit_total: string
-  }) => request<any>('/agents', {
+    spending_limits?: {
+      per_transaction?: string
+      total?: string
+    }
+    create_wallet?: boolean
+  }) => requestV2<any>('/agents', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getWallet: (agentId: string) => request<any>(`/agents/${agentId}/wallet`),
+  getWallet: (agentId: string) => requestV2<any>(`/agents/${agentId}/wallet`),
 
   getTransactions: (agentId: string, limit = 50) =>
-    request<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
+    requestV2<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
 
-  instruct: (agentId: string, instruction: string) => request<any>(`/agents/${agentId}/instruct`, {
+  instruct: (agentId: string, instruction: string) => requestV2<any>(`/agents/${agentId}/instruct`, {
     method: 'POST',
     body: JSON.stringify({ instruction }),
   }),
@@ -494,6 +495,54 @@ export const marketplaceApi = {
   // List reviews for a service
   listReviews: (serviceId: string, limit = 50) =>
     requestV2<any[]>(`/marketplace/services/${serviceId}/reviews?limit=${limit}`),
+}
+
+// Cards APIs (V2)
+export const cardsApi = {
+  list: (walletId: string) => requestV2<any[]>(`/cards?wallet_id=${walletId}`),
+
+  get: (cardId: string) => requestV2<any>(`/cards/${cardId}`),
+
+  issue: (data: {
+    wallet_id: string
+    card_type?: string
+    limit_per_tx?: string
+    limit_daily?: string
+    limit_monthly?: string
+  }) => requestV2<any>('/cards', {
+    method: 'POST',
+    body: JSON.stringify({
+      card_type: 'multi_use',
+      limit_per_tx: '100.00',
+      limit_daily: '500.00',
+      limit_monthly: '2000.00',
+      ...data,
+    }),
+  }),
+
+  freeze: (cardId: string) => requestV2<any>(`/cards/${cardId}/freeze`, { method: 'POST' }),
+
+  unfreeze: (cardId: string) => requestV2<any>(`/cards/${cardId}/unfreeze`, { method: 'POST' }),
+
+  cancel: (cardId: string) => requestV2<void>(`/cards/${cardId}`, { method: 'DELETE' }),
+
+  simulatePurchase: (cardId: string, data: {
+    amount: string
+    currency?: string
+    merchant_name?: string
+    mcc_code?: string
+  }) => requestV2<any>(`/cards/${cardId}/simulate-purchase`, {
+    method: 'POST',
+    body: JSON.stringify({
+      currency: 'USD',
+      merchant_name: 'Demo Merchant',
+      mcc_code: '5734',
+      ...data,
+    }),
+  }),
+
+  listTransactions: (cardId: string, limit = 50) =>
+    requestV2<any[]>(`/cards/${cardId}/transactions?limit=${limit}`),
 }
 
 // Demo APIs (V2)

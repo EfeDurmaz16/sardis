@@ -503,6 +503,79 @@ async def bind_wallet_to_agent(
     return AgentResponse.from_agent(agent)
 
 
+class InstructAgentRequest(BaseModel):
+    instruction: str = Field(description="Natural language instruction for the agent")
+
+
+class InstructAgentResponse(BaseModel):
+    agent_id: str
+    instruction: str
+    response: str
+    tool_call: Optional[dict] = None
+    tx_id: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.post("/{agent_id}/instruct", response_model=InstructAgentResponse)
+async def instruct_agent(
+    agent_id: str,
+    request: InstructAgentRequest,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Send a natural language instruction to an agent for policy-checked execution."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    instruction = request.instruction.lower().strip()
+
+    # Simple instruction parsing for demo
+    if any(kw in instruction for kw in ["balance", "how much", "funds", "wallet"]):
+        wallet = None
+        if agent.wallet_id:
+            wallet = await deps.wallet_repo.get(agent.wallet_id)
+        if wallet:
+            return InstructAgentResponse(
+                agent_id=agent_id,
+                instruction=request.instruction,
+                response=f"Your wallet ({wallet.wallet_id}) has spending limits of ${float(wallet.limit_per_tx):.2f} per transaction and ${float(wallet.limit_total):.2f} total. Currency: {wallet.currency}.",
+                tool_call={"name": "get_wallet_balance", "arguments": {"wallet_id": wallet.wallet_id}},
+            )
+        return InstructAgentResponse(
+            agent_id=agent_id,
+            instruction=request.instruction,
+            response="No wallet is currently bound to this agent. Create one via the Dashboard or API.",
+        )
+
+    if any(kw in instruction for kw in ["policy", "limit", "rules", "spending"]):
+        sl = agent.spending_limits
+        return InstructAgentResponse(
+            agent_id=agent_id,
+            instruction=request.instruction,
+            response=f"Current spending policy: ${float(sl.per_transaction):.2f}/tx, ${float(sl.daily):.2f}/day, ${float(sl.monthly):.2f}/month, ${float(sl.total):.2f} total limit.",
+            tool_call={"name": "get_spending_policy", "arguments": {"agent_id": agent_id}},
+        )
+
+    if any(kw in instruction for kw in ["buy", "purchase", "pay", "send", "transfer"]):
+        sl = agent.spending_limits
+        return InstructAgentResponse(
+            agent_id=agent_id,
+            instruction=request.instruction,
+            response=f"I can process payments within my spending policy (${float(sl.per_transaction):.2f}/tx limit). To execute a payment, use the simulate-purchase endpoint or provide a specific amount and merchant.",
+            tool_call={"name": "evaluate_payment_intent", "arguments": {"instruction": request.instruction}},
+        )
+
+    # Default response
+    return InstructAgentResponse(
+        agent_id=agent_id,
+        instruction=request.instruction,
+        response=f"I'm {agent.name}, a Sardis-managed AI agent. I can help with: checking balances, reviewing spending policies, and processing payments within my authorized limits. What would you like to do?",
+    )
+
+
 @router.get("/{agent_id}/limits", response_model=dict)
 async def get_agent_limits(
     agent_id: str,

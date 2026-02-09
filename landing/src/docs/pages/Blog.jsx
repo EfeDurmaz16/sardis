@@ -50,7 +50,7 @@ const posts = [
   },
   {
     title: 'Fiat Rails: Bridging Traditional Banking to Agent Wallets',
-    excerpt: 'The crypto rails for agent payments are ready. But the real world runs on dollars. Today we announce Fiat Rails — a complete on/off ramp solution that bridges traditional banking to agent wallets with full policy enforcement.',
+    excerpt: 'Most businesses run on dollars, not tokens. Today we announce Fiat Rails — a complete bank-to-wallet solution that lets agents fund from bank accounts and pay anywhere, with full policy enforcement.',
     date: '2026-01-24',
     readTime: '8 min read',
     category: 'Feature',
@@ -95,7 +95,7 @@ const posts = [
   },
   {
     title: 'Introducing Sardis: Secure Payments for AI Agents',
-    excerpt: 'Today we announce Sardis, a stablecoin execution layer designed specifically for AI agents. Learn how MPC wallets and policy enforcement enable autonomous financial operations while preventing hallucination-driven spending.',
+    excerpt: 'Today we announce Sardis, a Payment OS designed specifically for AI agents. Learn how MPC wallets and policy enforcement enable autonomous financial operations while preventing hallucination-driven spending.',
     date: '2025-01-15',
     readTime: '5 min read',
     category: 'Announcement',

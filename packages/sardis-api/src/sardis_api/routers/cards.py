@@ -472,11 +472,26 @@ def create_cards_router(
                 except Exception:
                     logger.exception("Failed to auto-freeze card after policy denial")
 
+        # If policy passed, attempt real Lithic sandbox authorization
+        provider_tx_id: str | None = None
+        if ok and card.get("provider_card_id") and hasattr(card_provider, "simulate_authorization"):
+            try:
+                amount_cents = int(amount * 100)
+                lithic_tx = await card_provider.simulate_authorization(
+                    provider_card_id=card.get("provider_card_id"),
+                    amount_cents=amount_cents,
+                    merchant_descriptor=request.merchant_name,
+                )
+                provider_tx_id = lithic_tx.provider_tx_id
+                logger.info("Lithic sandbox authorization: %s", provider_tx_id)
+            except Exception as exc:
+                logger.warning("Lithic simulate_authorization failed (non-fatal): %s", exc)
+
         txn_id = f"txn_sim_{uuid.uuid4().hex[:12]}"
         row = await card_repo.record_transaction(
             card_id=card_id,
             transaction_id=txn_id,
-            provider_tx_id=txn_id,
+            provider_tx_id=provider_tx_id or txn_id,
             amount=float(amount),
             currency=request.currency,
             merchant_name=request.merchant_name,
@@ -488,6 +503,7 @@ def create_cards_router(
             "transaction": row,
             "policy": {"allowed": ok, "reason": reason},
             "card": await card_repo.get_by_card_id(card_id),
+            "provider_tx_id": provider_tx_id,
         }
 
     def _normalize_card_status(value: Any) -> str:

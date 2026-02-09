@@ -337,7 +337,7 @@ function App() {
               {
                 icon: icons.trendingUp,
                 title: "Instant Settlement",
-                description: "Real-time settlement via stablecoins (USDC) and fiat rails. No waiting days."
+                description: "Real-time settlement via bank transfer, virtual card, or stablecoins. No waiting days."
               },
               {
                 icon: icons.shieldLock,
@@ -381,9 +381,9 @@ function App() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">FIAT RAILS</Badge>
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Bridge Fiat & Crypto</h2>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Unified Payment Rails</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Fund agent wallets from traditional banking. Withdraw back to USD. Complete the loop between legacy finance and agentic commerce.
+              Fund agent wallets from your bank account. Pay via virtual card or stablecoins. Withdraw back to USD. One API, every rail.
             </p>
           </div>
 

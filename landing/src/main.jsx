@@ -14,6 +14,7 @@ import DocsAP2 from './docs/pages/AP2.jsx'
 import DocsUCP from './docs/pages/UCP.jsx'
 import DocsA2A from './docs/pages/A2A.jsx'
 import DocsTAP from './docs/pages/TAP.jsx'
+import DocsACP from './docs/pages/ACP.jsx'
 // Core Features
 import DocsWallets from './docs/pages/Wallets.jsx'
 import DocsPayments from './docs/pages/Payments.jsx'
@@ -78,6 +79,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="ucp" element={<DocsUCP />} />
           <Route path="a2a" element={<DocsA2A />} />
           <Route path="tap" element={<DocsTAP />} />
+          <Route path="acp" element={<DocsACP />} />
           {/* Core Features */}
           <Route path="wallets" element={<DocsWallets />} />
           <Route path="payments" element={<DocsPayments />} />

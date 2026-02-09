@@ -1,85 +1,156 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* Cabinet Grotesk + Satoshi — match landing page */
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("https://sardis.sh/fonts/CabinetGrotesk-Extrabold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("https://sardis.sh/fonts/Satoshi-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* === Lydian Protocol Design System === */
+
+@theme {
+  /* Sardis Orange Scale (was green) */
+  --color-sardis-50: #fff7ed;
+  --color-sardis-100: #ffedd5;
+  --color-sardis-200: #fed7aa;
+  --color-sardis-300: #fdba74;
+  --color-sardis-400: #ff7a3d;
+  --color-sardis-500: #ff4f00;
+  --color-sardis-600: #ea580c;
+  --color-sardis-700: #c2410c;
+  --color-sardis-800: #9a3412;
+  --color-sardis-900: #7c2d12;
+  --color-sardis-950: #431407;
+
+  /* Surface Scale — warm anthracite (was blue-navy) */
+  --color-dark-100: #2f2e2c;
+  --color-dark-200: #1f1e1c;
+  --color-dark-300: #141312;
+  --color-dark-400: #0f0e0c;
+  --color-dark-500: #0a0908;
+  --color-dark-600: #080706;
+  --color-dark-700: #050404;
+  --color-dark-800: #030303;
+  --color-dark-900: #010101;
+
+  /* Fonts — match landing */
+  --font-sans: "Satoshi", "Inter", system-ui, sans-serif;
+  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
+  --font-mono: "Geist Mono", "Fira Code", monospace;
+
+  /* Kill all border radius — industrial flat */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
 :root {
-  --sardis-green: #22c55e;
-  --sardis-dark: #0f172a;
+  --sardis-orange: #ff4f00;
+  --sardis-ink: #0f0e0c;
+  --sardis-canvas: #f2f0e9;
 }
 
 body {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  background: #0f0e0c;
+  color: #f2f0e9;
   min-height: 100vh;
+  font-family: "Satoshi", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Cabinet Grotesk", "Geist Mono", sans-serif;
+}
+
+/* Custom scrollbar — warm anthracite */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 4px;
+  background: #141312;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #2f2e2c;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #444341;
 }
 
-/* Glow effects */
+/* Accent glow — orange */
 .glow-green {
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3),
-              0 0 20px rgba(34, 197, 94, 0.2),
-              0 0 30px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 8px rgba(255, 79, 0, 0.3),
+              0 0 16px rgba(255, 79, 0, 0.15);
 }
 
 .glow-green-hover:hover {
-  box-shadow: 0 0 15px rgba(34, 197, 94, 0.4),
-              0 0 30px rgba(34, 197, 94, 0.3),
-              0 0 45px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 12px rgba(255, 79, 0, 0.4),
+              0 0 24px rgba(255, 79, 0, 0.2);
 }
 
-/* Gradient text */
+/* Gradient text — orange */
 .text-gradient {
-  background: linear-gradient(135deg, #22c55e 0%, #4ade80 50%, #86efac 100%);
+  background: linear-gradient(135deg, #ff4f00 0%, #ff7a3d 50%, #fdba74 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Card styles */
+/* Card — flat, industrial, 1px border */
 .card {
-  background-color: rgb(26 35 50 / 0.5); /* dark-200 with 50% opacity */
-  backdrop-filter: blur(4px);
-  border: 1px solid #1e293b; /* dark-100 */
-  border-radius: 0.75rem; /* rounded-xl */
+  background-color: #1f1e1c;
+  border: 1px solid #2f2e2c;
 }
 
 .card-hover {
-  @apply transition-all duration-300 hover:border-sardis-500/30 hover:shadow-lg hover:shadow-sardis-500/10;
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  border-color: rgba(255, 79, 0, 0.4);
 }
 
 /* Status indicators */
 .status-dot {
-  @apply w-2 h-2 rounded-full;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
 }
 
 .status-dot.success {
-  @apply bg-green-500 shadow-lg shadow-green-500/50;
+  background: #ff4f00;
+  box-shadow: 0 0 8px rgba(255, 79, 0, 0.5);
 }
 
 .status-dot.error {
-  @apply bg-red-500 shadow-lg shadow-red-500/50;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
 
 .status-dot.pending {
-  @apply bg-yellow-500 shadow-lg shadow-yellow-500/50 animate-pulse;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Number displays */
@@ -89,114 +160,100 @@ body {
 
 /* Loading skeleton */
 .skeleton {
-  @apply animate-pulse bg-dark-100 rounded;
+  background: #2f2e2c;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 640px) {
-  .card {
-    @apply rounded-lg;
-  }
-  
-  /* Better touch targets on mobile */
-  button, a {
-    min-height: 44px;
-  }
-  
-  /* Stack stat cards on mobile */
-  .stats-grid {
-    @apply grid-cols-2;
-  }
-  
-  /* Hide less important columns on mobile */
-  .hide-mobile {
-    @apply hidden sm:table-cell;
-  }
-  
-  /* Smaller charts on mobile */
-  .chart-container {
-    @apply h-48;
-  }
-}/* Better tablet layout */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .stats-grid {
-    @apply grid-cols-2;
-  }
+/* Override rounded classes globally for industrial look, keep full for circles */
+.rounded-lg, .rounded-xl, .rounded-2xl {
+  border-radius: 0px !important;
 }
 
-/* Custom scrollbar for live feed */
+/* But keep rounded-full for status dots and avatars */
+.rounded-full {
+  border-radius: 9999px !important;
+}
+
+/* Focus states — orange */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #ff4f00;
+  outline-offset: 2px;
+}
+
+/* Input styling override */
+input, textarea, select {
+  border-radius: 0px !important;
+}
+
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: rgba(255, 79, 0, 0.1);
+  color: #ff7a3d;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.badge-info {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+/* Custom scrollbar for panels */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(34, 197, 94, 0.3);
-  border-radius: 2px;
+  background: rgba(255, 79, 0, 0.3);
 }
 
-/* Animated border for new items */
-@keyframes border-glow {
-  0%, 100% { border-color: rgba(34, 197, 94, 0.3); }
-  50% { border-color: rgba(34, 197, 94, 0.6); }
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hide-mobile {
+    display: none;
+  }
 }
 
-.new-item-glow {
-  animation: border-glow 2s ease-in-out;
+@media (min-width: 641px) and (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-/* Smooth chart animations */
-.recharts-wrapper {
-  transition: all 0.3s ease;
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }
 
-/* Better focus states for accessibility */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible {
-  @apply outline-none ring-2 ring-sardis-500 ring-offset-2 ring-offset-dark-300;
-}
-
-/* Loading state for buttons */
-.btn-loading {
-  @apply relative pointer-events-none opacity-70;
-}
-
-.btn-loading::after {
-  content: '';
-  @apply absolute inset-0 flex items-center justify-center;
-  background: inherit;
-}
-
-/* Tooltip improvements */
-.tooltip {
-  @apply bg-dark-300 text-white text-xs px-2 py-1 rounded shadow-lg;
-  z-index: 9999;
-}
-
-/* Quick action buttons */
-.quick-action {
-  @apply flex items-center gap-2 px-4 py-2 bg-dark-200 hover:bg-dark-100 
-         border border-dark-100 hover:border-sardis-500/50 
-         rounded-lg transition-all duration-200;
-}
-
-/* Badge styles */
-.badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-}
-
-.badge-success {
-  @apply bg-green-500/10 text-green-500;
-}
-
-.badge-warning {
-  @apply bg-yellow-500/10 text-yellow-500;
-}
-
-.badge-error {
-  @apply bg-red-500/10 text-red-500;
-}
-
-.badge-info {
-  @apply bg-blue-500/10 text-blue-500;
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

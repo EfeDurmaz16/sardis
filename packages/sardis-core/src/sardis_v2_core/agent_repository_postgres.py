@@ -94,12 +94,13 @@ class PostgresAgentRepository:
         pool = await self._get_pool()
         base_meta = dict(metadata or {})
         base_meta["owner_id"] = owner_id
-        base_meta["spending_limits"] = (spending_limits or SpendingLimits()).model_dump()
-        base_meta["policy"] = (policy or AgentPolicy()).model_dump()
+        base_meta["spending_limits"] = (spending_limits or SpendingLimits()).model_dump(mode="json")
+        base_meta["policy"] = (policy or AgentPolicy()).model_dump(mode="json")
 
         async with pool.acquire() as conn:
             async with conn.transaction():
                 org_id = await self._ensure_org(conn, owner_id)
+                import json as _json
                 row = await conn.fetchrow(
                     """
                     INSERT INTO agents (external_id, organization_id, name, description, metadata, is_active)
@@ -110,7 +111,7 @@ class PostgresAgentRepository:
                     org_id,
                     name,
                     description,
-                    base_meta,
+                    _json.dumps(base_meta),
                 )
 
                 # attach organization_external_id for mapping back to owner_id
@@ -233,10 +234,11 @@ class PostgresAgentRepository:
             if metadata is not None:
                 meta.update(metadata)
             if spending_limits is not None:
-                meta["spending_limits"] = spending_limits.model_dump()
+                meta["spending_limits"] = spending_limits.model_dump(mode="json")
             if policy is not None:
-                meta["policy"] = policy.model_dump()
+                meta["policy"] = policy.model_dump(mode="json")
 
+            import json as _json
             await conn.execute(
                 """
                 UPDATE agents
@@ -251,7 +253,7 @@ class PostgresAgentRepository:
                 name,
                 description,
                 is_active,
-                meta,
+                _json.dumps(meta),
             )
             return await self.get(agent_id)
 

@@ -15,6 +15,9 @@ const releases = [
           'Vercel SPA routing fix for /docs and all sub-routes',
           'Human-in-the-Loop approval queue — payments above policy threshold pause for human sign-off before execution',
           'Goal drift detection — intent scope vs. payment destination mismatch blocking with configurable drift score threshold',
+          'Public staging API deployed to GCP Cloud Run with Neon Postgres + Upstash Redis',
+          'Admin dashboard deployed to Vercel at app.sardis.sh with live API integration',
+          'API key bootstrap script for staging environments',
         ]
       },
       {

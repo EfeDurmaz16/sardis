@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "https://sardis-api-staging-482463483786.us-east1.run.app/$1" }
+  ]
+}

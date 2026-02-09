@@ -41,7 +41,7 @@ export default function StatCard({
       {change && (
         <div className="mt-4 flex items-center gap-2">
           {changeType === 'positive' && (
-            <TrendingUp className="w-4 h-4 text-green-500" />
+            <TrendingUp className="w-4 h-4 text-sardis-400" />
           )}
           {changeType === 'negative' && (
             <TrendingDown className="w-4 h-4 text-red-500" />
@@ -51,7 +51,7 @@ export default function StatCard({
           )}
           <span className={clsx(
             'text-sm font-medium',
-            changeType === 'positive' && 'text-green-500',
+            changeType === 'positive' && 'text-sardis-400',
             changeType === 'negative' && 'text-red-500',
             changeType === 'neutral' && 'text-gray-500'
           )}>

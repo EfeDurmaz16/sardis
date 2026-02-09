@@ -4,12 +4,45 @@ import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '../hooks/useApi'
 import ChatInterface from '../components/ChatInterface'
 
+const SEED_AGENTS = [
+  {
+    agent_id: 'agent_shopping_001',
+    name: 'shopping_agent',
+    description: 'Purchases API credits and cloud resources within budget. Whitelisted for OpenAI, Anthropic, and AWS.',
+    is_active: true,
+    wallet_id: 'wallet_demo_001',
+    owner_id: 'demo',
+    spending_limits: { per_transaction: '50.00', total: '500.00' },
+  },
+  {
+    agent_id: 'agent_research_002',
+    name: 'research_analyst',
+    description: 'Data acquisition agent. Buys datasets, API access, and compute time for ML training pipelines.',
+    is_active: true,
+    wallet_id: 'wallet_demo_002',
+    owner_id: 'demo',
+    spending_limits: { per_transaction: '100.00', total: '1000.00' },
+  },
+  {
+    agent_id: 'agent_ops_003',
+    name: 'devops_automator',
+    description: 'Infrastructure agent managing cloud spend. Handles auto-scaling payments and SaaS subscriptions.',
+    is_active: false,
+    wallet_id: 'wallet_demo_003',
+    owner_id: 'demo',
+    spending_limits: { per_transaction: '200.00', total: '2000.00' },
+  },
+]
+
 export default function AgentsPage() {
-  const { data: agents = [], isLoading } = useAgents()
+  const { data: apiAgents = [], isLoading } = useAgents()
   const createAgent = useCreateAgent()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const [activeChatAgent, setActiveChatAgent] = useState<any>(null)
+
+  // Merge API agents with seed agents (seed only shown if API returns empty)
+  const agents = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
 
   const filteredAgents = agents.filter((agent: any) =>
     agent.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -172,9 +205,7 @@ function CreateAgentModal({
 }) {
   const [formData, setFormData] = useState({
     name: '',
-    owner_id: 'demo_owner',
     description: '',
-    initial_balance: '100.00',
     limit_per_tx: '50.00',
     limit_total: '100.00'
   })
@@ -187,7 +218,15 @@ function CreateAgentModal({
         <form
           onSubmit={async (e) => {
             e.preventDefault()
-            await onSubmit(formData)
+            await onSubmit({
+              name: formData.name,
+              description: formData.description || undefined,
+              spending_limits: {
+                per_transaction: formData.limit_per_tx,
+                total: formData.limit_total,
+              },
+              create_wallet: true,
+            })
           }}
           className="space-y-4"
         >
@@ -218,19 +257,7 @@ function CreateAgentModal({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Balance
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.initial_balance}
-                onChange={(e) => setFormData(d => ({ ...d, initial_balance: e.target.value }))}
-                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">
                 Per TX

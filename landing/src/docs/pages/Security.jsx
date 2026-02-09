@@ -11,7 +11,7 @@ export default function DocsSecurity() {
         <h1 className="text-4xl font-bold font-display mb-4">Security Whitepaper</h1>
         <p className="text-xl text-muted-foreground">
           A comprehensive overview of Sardis security architecture, threat models, and mitigation strategies
-          across crypto, fiat, and card payment rails.
+          across bank transfer, virtual card, and stablecoin payment rails.
         </p>
       </div>
 

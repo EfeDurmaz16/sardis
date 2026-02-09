@@ -50,7 +50,7 @@ const transactionsByChain = [
 ]
 
 const paymentTypes = [
-  { name: 'Agent → Merchant', value: 45, color: '#22c55e' },
+  { name: 'Agent → Merchant', value: 45, color: '#ff4f00' },
   { name: 'Agent → Agent', value: 30, color: '#3b82f6' },
   { name: 'Holds/Pre-auth', value: 15, color: '#f59e0b' },
   { name: 'Refunds', value: 10, color: '#ef4444' },
@@ -111,7 +111,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-sardis-500 rounded-full animate-pulse" />
             <span className="text-sm text-gray-400">Live</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div className={clsx(
                       "w-2 h-2 rounded-full",
-                      tx.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+                      tx.status === 'completed' ? 'bg-sardis-500' : 'bg-yellow-500 animate-pulse'
                     )} />
                     <div>
                       <p className="text-sm font-medium text-white">{tx.agent}</p>
@@ -225,11 +225,11 @@ export default function DashboardPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      background: '#1e293b', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
+                  <Tooltip
+                    contentStyle={{
+                      background: '#1f1e1c',
+                      border: '1px solid #2f2e2c',
+                      borderRadius: '0px',
                       fontSize: '12px'
                     }}
                   />
@@ -260,7 +260,7 @@ export default function DashboardPage() {
               ].map((chain) => (
                 <div key={chain.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-green-500" />
+                    <Globe className="w-4 h-4 text-sardis-400" />
                     <span className="text-sm text-gray-300">{chain.name}</span>
                   </div>
                   <span className="badge badge-success">Healthy</span>
@@ -298,38 +298,38 @@ export default function DashboardPage() {
               <AreaChart data={volumeData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#ff4f00" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#ff4f00" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#64748b" 
+                <CartesianGrid strokeDasharray="3 3" stroke="#2f2e2c" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#444341"
                   fontSize={12}
                   tickLine={false}
                 />
-                <YAxis 
-                  stroke="#64748b" 
+                <YAxis
+                  stroke="#444341"
                   fontSize={12}
                   tickLine={false}
                   tickFormatter={(value) => `$${value}`}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    background: '#1e293b', 
-                    border: '1px solid #334155',
-                    borderRadius: '8px'
+                <Tooltip
+                  contentStyle={{
+                    background: '#1f1e1c',
+                    border: '1px solid #2f2e2c',
+                    borderRadius: '0px'
                   }}
                   labelStyle={{ color: '#94a3b8' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#22c55e" 
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#ff4f00"
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#colorValue)" 
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -349,28 +349,28 @@ export default function DashboardPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={transactionsByChain} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-                <XAxis type="number" stroke="#64748b" fontSize={12} tickLine={false} />
-                <YAxis 
-                  type="category" 
-                  dataKey="chain" 
-                  stroke="#64748b" 
+                <CartesianGrid strokeDasharray="3 3" stroke="#2f2e2c" horizontal={false} />
+                <XAxis type="number" stroke="#444341" fontSize={12} tickLine={false} />
+                <YAxis
+                  type="category"
+                  dataKey="chain"
+                  stroke="#444341"
                   fontSize={12}
                   tickLine={false}
                   width={80}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    background: '#1e293b', 
-                    border: '1px solid #334155',
-                    borderRadius: '8px'
+                <Tooltip
+                  contentStyle={{
+                    background: '#1f1e1c',
+                    border: '1px solid #2f2e2c',
+                    borderRadius: '0px'
                   }}
-                  cursor={{ fill: 'rgba(34, 197, 94, 0.1)' }}
+                  cursor={{ fill: 'rgba(255, 79, 0, 0.1)' }}
                 />
-                <Bar 
-                  dataKey="count" 
-                  fill="#22c55e"
-                  radius={[0, 4, 4, 0]}
+                <Bar
+                  dataKey="count"
+                  fill="#ff4f00"
+                  radius={[0, 0, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -409,12 +409,12 @@ export default function DashboardPage() {
                   <td className="py-3">
                     <span className={clsx(
                       "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
-                      row.status === 'completed' && "bg-green-500/10 text-green-500",
+                      row.status === 'completed' && "bg-sardis-500/10 text-sardis-400",
                       row.status === 'pending' && "bg-yellow-500/10 text-yellow-500"
                     )}>
                       <div className={clsx(
                         "w-1.5 h-1.5 rounded-full",
-                        row.status === 'completed' && "bg-green-500",
+                        row.status === 'completed' && "bg-sardis-500",
                         row.status === 'pending' && "bg-yellow-500 animate-pulse"
                       )} />
                       {row.status}

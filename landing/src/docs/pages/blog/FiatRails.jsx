@@ -42,9 +42,9 @@ export default function FiatRails() {
       {/* Content */}
       <div className="prose prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
-          The crypto rails for agent payments are ready. But the real world runs on dollars.
-          Today we're announcing Fiat Rails — a complete on/off ramp solution that bridges
-          traditional banking to agent wallets with full policy enforcement.
+          Most businesses run on dollars, not tokens. Today we're announcing Fiat Rails — a
+          complete bank-to-wallet solution that lets agents fund from bank accounts and pay
+          anywhere, with full policy enforcement. Stablecoins remain available as an optional settlement rail.
         </p>
 
         <h2>The Bridge Problem</h2>

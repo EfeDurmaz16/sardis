@@ -54,9 +54,9 @@ export default function DocsArchitecture() {
           ┌───────────────┼───────────────┐
           │               │               │
 ┌─────────▼───────┐ ┌─────▼─────┐ ┌───────▼───────┐
-│   ON-CHAIN      │ │   FIAT    │ │   VIRTUAL     │
-│   RAILS         │ │   RAILS   │ │   CARDS       │
-│ (Base,Polygon)  │ │  (Banks)  │ │  (Lithic)     │
+│   BANK          │ │ STABLECOIN│ │   VIRTUAL     │
+│   TRANSFER      │ │   RAILS   │ │   CARDS       │
+│  (ACH/Wire)     │ │  (USDC)   │ │  (Lithic)     │
 └─────────────────┘ └───────────┘ └───────────────┘`}</pre>
           </div>
         </div>

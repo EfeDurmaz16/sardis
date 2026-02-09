@@ -6,7 +6,7 @@ export default function DocsPayments() {
           <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">CORE FEATURES</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Payments</h1>
-        <p className="text-xl text-muted-foreground">Execute stablecoin payments across EVM chains.</p>
+        <p className="text-xl text-muted-foreground">Execute payments via bank transfer, virtual card, or stablecoins — all governed by policy.</p>
       </div>
 
       <section className="mb-12">

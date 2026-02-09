@@ -94,10 +94,37 @@ demo-video/
 *.docx
 *.pptx
 pitch-deck/
+
+# Internal docs (keep locally, not in repo)
+/docs/
+!/docs/README.md
+/demos/sardis-demo-video/
+
+# Root-level internal files
+AUDIT_SUMMARY*.md
+CONTINUE_IMPLEMENTATION.md
+DEPLOYMENT_PLAN.md
+IMPLEMENTATION_STATUS.md
+INVESTMENT_NARRATIVE.md
+INVESTOR_ONEPAGER.md
+NEWPLAN.md
+OPERATIONAL_PLAN.md
+QUICKSTART.md
+RUNBOOK.md
+SARDIS_DEEP_CODE_AUDIT.md
+SARDIS_DEPLOYMENT_INVESTMENT_AUDIT*.md
+SARDIS_TECHNICAL_AUDIT_REPORT.md
+TESTING_GUIDE.md
+YC_APPLICATION.md
+yc_draft.md
+comprehensive_analysis.md
+comprehensive_strategic_analysis_2026.md
 DEMO_VIDEO_SCRIPT.md
 PRODUCTION_DEPLOYMENT_GUIDE.md
-SARDIS_DEPLOYMENT_INVESTMENT_AUDIT*.md
-AUDIT_SUMMARY*.md
+
+# Staging env files (secrets)
+.env.staging.*
+.gcloudignore
 
 # Backup/duplicate files (macOS creates these)
 * 2.md
@@ -125,3 +152,5 @@ docker-compose.yml
 deploy/gcp/staging/*.local.yaml
 deploy/env/.env.generated.secrets
 deploy/env/.env*.local
+.vercel
+.env*.local

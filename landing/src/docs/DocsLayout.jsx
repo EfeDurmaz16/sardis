@@ -21,6 +21,7 @@ const navigation = [
       { name: 'UCP (Commerce)', href: '/docs/ucp' },
       { name: 'A2A (Agent-to-Agent)', href: '/docs/a2a' },
       { name: 'TAP (Trust Anchor)', href: '/docs/tap' },
+      { name: 'ACP (Commerce)', href: '/docs/acp' },
     ],
   },
   {

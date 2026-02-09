@@ -543,7 +543,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
 -- API Keys
 CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key_prefix VARCHAR(8) NOT NULL,
+    key_prefix VARCHAR(12) NOT NULL,
     key_hash VARCHAR(64) NOT NULL,
     organization_id UUID REFERENCES organizations(id) NOT NULL,
     name VARCHAR(255),

@@ -13,14 +13,21 @@ export default function DocsDeployment() {
         </p>
       </div>
 
-      <section className="not-prose mb-8 p-4 border border-yellow-500/30 bg-yellow-500/10">
+      <section className="not-prose mb-8 p-4 border border-emerald-500/30 bg-emerald-500/10">
         <div className="flex items-center gap-2 mb-2">
-          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-          <span className="font-bold text-yellow-500">COMING NEXT WEEK</span>
+          <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+          <span className="font-bold text-emerald-500">STAGING LIVE</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          The public staging API and dashboard are launching for testnet. SDKs are already live on <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">PyPI</a> and <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">npm</a>. Join the waitlist for an API key.
+          The public staging API and dashboard are live. SDKs are on{' '}
+          <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">PyPI</a> and{' '}
+          <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">npm</a>.
         </p>
+        <div className="mt-3 flex flex-wrap gap-3 text-xs font-mono">
+          <a href="https://sardis-api-staging-482463483786.us-east1.run.app/health" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Health</a>
+          <a href="https://sardis-api-staging-482463483786.us-east1.run.app/api/v2/docs" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Docs</a>
+          <a href="https://app.sardis.sh" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">Dashboard</a>
+        </div>
       </section>
 
       <section className="mb-12">

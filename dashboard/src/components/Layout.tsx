@@ -4,12 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
-  ArrowRightLeft,
-  Webhook,
-  Settings,
   Wallet,
-  Lock,
-  FileText,
+  CreditCard,
   Sparkles,
   LogOut
 } from 'lucide-react'
@@ -25,11 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
   { name: 'Agents', href: '/agents', icon: Users },
-  { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
-  { name: 'Holds', href: '/holds', icon: Lock },
-  { name: 'Invoices', href: '/invoices', icon: FileText },
-  { name: 'Webhooks', href: '/webhooks', icon: Webhook },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Cards', href: '/cards', icon: CreditCard },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -50,12 +42,12 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="p-6 border-b border-dark-100">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-sardis-500 rounded-lg flex items-center justify-center glow-green">
+            <div className="w-10 h-10 bg-sardis-500 flex items-center justify-center glow-green">
               <Wallet className="w-6 h-6 text-dark-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gradient">Sardis</h1>
-              <p className="text-xs text-gray-500">AI Payment Network</p>
+              <h1 className="text-xl font-bold font-display text-gradient">Sardis</h1>
+              <p className="text-xs text-gray-500 tracking-wider uppercase">Payment OS</p>
             </div>
           </Link>
         </div>
@@ -69,7 +61,7 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 className={clsx(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200',
+                  'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200',
                   isActive
                     ? 'bg-sardis-500/10 text-sardis-400 border border-sardis-500/30'
                     : 'text-gray-400 hover:text-white hover:bg-dark-200'
@@ -81,13 +73,15 @@ export default function Layout({ children }: LayoutProps) {
             )
           })}
 
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-dark-200 transition-all duration-200"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
+          <div className="pt-4 mt-4 border-t border-dark-100">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-500 hover:text-white hover:bg-dark-200 transition-all duration-200"
+            >
+              <LogOut className="w-5 h-5" />
+              Sign Out
+            </button>
+          </div>
         </nav>
 
         {/* Status */}
@@ -102,7 +96,7 @@ export default function Layout({ children }: LayoutProps) {
             </span>
           </div>
           {health && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-1 font-mono">
               v{health.version}
             </p>
           )}

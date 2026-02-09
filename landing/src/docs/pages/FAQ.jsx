@@ -12,7 +12,7 @@ const faqs = [
       },
       {
         q: 'What protocols does Sardis support?',
-        a: 'Sardis implements: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trust Anchor Protocol) - cryptographic identity verification; and x402 for HTTP micropayments.'
+        a: 'Sardis implements six protocols: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trust Anchor Protocol) - cryptographic identity verification; x402 for HTTP micropayments; and the OpenAI Agentic Commerce Protocol (ACP) for ChatGPT-native commerce.'
       },
       {
         q: 'Is Sardis custodial or non-custodial?',
@@ -20,7 +20,7 @@ const faqs = [
       },
       {
         q: 'What is the Unified Wallet Architecture?',
-        a: 'The Unified Wallet Architecture combines three payment sides under one API: Crypto (USDC, USDT on multi-EVM chains), Fiat (USD, EUR via bank rails), and Virtual Cards (Lithic). All three sides are governed by the same Policy Engine, so "Max $100/day on AWS" applies whether you pay via stablecoin, bank transfer, or card swipe.'
+        a: 'The Unified Wallet Architecture combines three payment rails under one API: Bank Transfer (USD, EUR via ACH/wire), Virtual Cards (Lithic), and Stablecoins (USDC, USDT as an optional settlement rail). All three are governed by the same Policy Engine, so "Max $100/day on AWS" applies whether you pay via bank transfer, card swipe, or stablecoin.'
       },
     ]
   },
@@ -105,27 +105,23 @@ const faqs = [
     ]
   },
   {
-    category: 'Tokens & Chains',
+    category: 'Payment Methods',
     questions: [
       {
-        q: 'Which stablecoins are supported?',
-        a: 'USDC (all chains), USDT (Polygon, Ethereum, Arbitrum, Optimism), EURC (Base, Polygon, Ethereum), and PYUSD (Ethereum). All stablecoins can be auto-converted to fiat for merchant payments.'
+        q: 'What payment methods are supported?',
+        a: 'Sardis supports three payment rails: (1) Bank Transfer — fund from any bank account via ACH or wire, withdraw back to USD. (2) Virtual Cards — issue Visa/Mastercard cards on-demand via Lithic for paying any merchant. (3) Stablecoins — optionally settle via USDC, USDT, EURC, or PYUSD on supported networks. All three rails are governed by the same Policy Engine.'
       },
       {
-        q: 'Which chains are supported?',
-        a: 'Base (primary), Polygon, Ethereum, Arbitrum, and Optimism. Base is recommended for lowest fees. All chains support USDC. See the documentation for token availability per chain.'
+        q: 'Do I need crypto to use Sardis?',
+        a: 'No. You can fund your agent wallet entirely from a bank account and pay via virtual card. Stablecoins are an optional alternative settlement rail — useful for instant cross-border payments or programmable settlement, but not required.'
       },
       {
         q: 'What are the default spending limits?',
-        a: 'Default limits are $100 per transaction and $500 per day. These can be configured per-wallet through the API or dashboard. Enterprise plans support custom limit configurations including fiat-specific limits.'
+        a: 'Default limits are $100 per transaction and $500 per day. These can be configured per-wallet through the API or dashboard. Enterprise plans support custom limit configurations.'
       },
       {
-        q: 'Can I pay fiat merchants with crypto?',
-        a: 'Yes! With unified balance and virtual cards, your agent can pay any merchant that accepts Visa/Mastercard using USDC in the wallet. Sardis automatically converts USDC to USD (1:1) at the point of purchase. This bridges the gap between crypto wallets and traditional commerce—deposit crypto, spend anywhere.'
-      },
-      {
-        q: 'Is the USDC/USD conversion rate really 1:1?',
-        a: 'Yes. Sardis uses Bridge for instant USDC↔USD conversion at 1:1 parity with no slippage, just like Coinbase Exchange treats USDC and USD as equivalent. This is possible because USDC is a regulated stablecoin fully backed by USD reserves.'
+        q: 'How does unified balance work across rails?',
+        a: 'Sardis treats all funding sources as a single unified balance. Whether you deposit via bank transfer or stablecoins, your agent sees one balance and can spend via any rail — virtual card, bank transfer, or stablecoin. Conversion happens automatically at 1:1 parity for USD-backed stablecoins.'
       },
     ]
   },
