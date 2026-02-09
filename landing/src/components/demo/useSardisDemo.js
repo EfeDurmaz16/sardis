@@ -7,6 +7,7 @@ const STATES = {
   SIGNING: 'SIGNING',
   CONFIRMING: 'CONFIRMING',
   POLICY_BLOCKED: 'POLICY_BLOCKED',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
   SUCCESS: 'SUCCESS',
 }
 
@@ -46,6 +47,17 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Core]:   → Requested amount: $5000.00`, delay: 2300 },
     { text: `[Sardis-Core]: ✗ Policy check failed (LIMIT_EXCEEDED)`, delay: 2700 },
   ],
+  PLANNING_APPROVAL: [
+    { text: `[AI-Agent]: Evaluating procurement request...`, delay: 0 },
+    { text: `[AI-Agent]: Intent: Purchase enterprise license from DataCorp`, delay: 500 },
+    { text: `[Sardis-Protocol]: Constructing AP2 mandate chain`, delay: 900 },
+    { text: `[Sardis-Protocol]:   → Intent verified (schema v2.1)`, delay: 1200 },
+    { text: `[Sardis-Protocol]:   → Cart: 1 item, total 2,500.00 USDC`, delay: 1500 },
+    { text: `[Sardis-Core]: Checking spending policy...`, delay: 1800 },
+    { text: `[Sardis-Core]:   → Approval threshold: $500.00`, delay: 2100 },
+    { text: `[Sardis-Core]:   → Requested amount: $2,500.00`, delay: 2400 },
+    { text: `[Sardis-Core]:   → Amount exceeds approval threshold`, delay: 2700 },
+  ],
   SIGNING: [
     { text: `[Sardis-Wallet]: Requesting MPC signature from Turnkey`, delay: 0 },
     { text: `[Sardis-Wallet]: Signer: ${DEMO_WALLET}`, delay: 400 },
@@ -67,6 +79,11 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Core]: Payment blocked before execution`, delay: 0 },
     { text: `[Sardis-Core]: reason_code=SARDIS.POLICY.LIMIT_EXCEEDED`, delay: 400 },
     { text: `[Sardis-Core]: Financial Hallucination PREVENTED`, delay: 800 },
+  ],
+  PENDING_APPROVAL: [
+    { text: `[Sardis-Core]: Creating approval request...`, delay: 0 },
+    { text: `[Sardis-Core]: approval_id=appr_7f3a2b1e9c4d`, delay: 400 },
+    { text: `[Sardis-Core]: ⏸ Transaction paused — awaiting human approval`, delay: 800 },
   ],
 }
 
@@ -223,7 +240,7 @@ export function useSardisDemo() {
     addLogs(LOG_SEQUENCES.INITIALIZING, () => {
       setState(STATES.PLANNING)
       addLogs(
-        nextScenario === 'blocked' ? LOG_SEQUENCES.PLANNING_BLOCKED : LOG_SEQUENCES.PLANNING_APPROVED,
+        nextScenario === 'blocked' ? LOG_SEQUENCES.PLANNING_BLOCKED : nextScenario === 'approval' ? LOG_SEQUENCES.PLANNING_APPROVAL : LOG_SEQUENCES.PLANNING_APPROVED,
         () => {
           if (nextScenario === 'blocked') {
             setState(STATES.POLICY_BLOCKED)
@@ -252,6 +269,38 @@ export function useSardisDemo() {
               loading: false,
               lastError: null,
               lastOutcome: 'blocked',
+              fallbackRecommended: false,
+              lastRunAt: new Date().toISOString(),
+            }))
+            return
+          }
+
+          if (nextScenario === 'approval') {
+            setState(STATES.PENDING_APPROVAL)
+            setBlockedAttempt({
+              vendor: 'DataCorp',
+              amount: 2500,
+              reasonCode: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
+              reason: 'Amount exceeds approval threshold ($500.00) — awaiting human approval',
+              timestamp: new Date().toISOString(),
+            })
+            addLogs(LOG_SEQUENCES.PENDING_APPROVAL, () => {
+              emitEvent('run_approval', { status: 'pending_approval', message: 'simulated_approval_required' })
+            })
+            appendHistory({
+              type: 'pending_approval',
+              to: 'DataCorp',
+              amount: '2500.00',
+              token: 'USDC',
+              chain: 'Policy',
+              hash: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
+              url: null,
+            })
+            setLiveStatus((prev) => ({
+              ...prev,
+              loading: false,
+              lastError: null,
+              lastOutcome: 'pending_approval',
               fallbackRecommended: false,
               lastRunAt: new Date().toISOString(),
             }))
@@ -481,6 +530,7 @@ export function useSardisDemo() {
 
   const runApprovedDemo = useCallback(() => runDemo('approved'), [runDemo])
   const runBlockedDemo = useCallback(() => runDemo('blocked'), [runDemo])
+  const runApprovalDemo = useCallback(() => runDemo('approval'), [runDemo])
 
   const topUpCard = useCallback((amount = 50) => {
     const normalized = Number(amount)
@@ -510,7 +560,8 @@ export function useSardisDemo() {
   const isRunning =
     state !== STATES.IDLE &&
     state !== STATES.SUCCESS &&
-    state !== STATES.POLICY_BLOCKED
+    state !== STATES.POLICY_BLOCKED &&
+    state !== STATES.PENDING_APPROVAL
 
   return {
     STATES,
@@ -530,6 +581,7 @@ export function useSardisDemo() {
     runDemo,
     runApprovedDemo,
     runBlockedDemo,
+    runApprovalDemo,
     runLiveDemo,
     runRecordMode,
     topUpCard,

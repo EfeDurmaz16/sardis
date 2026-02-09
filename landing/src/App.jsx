@@ -322,7 +322,7 @@ function App() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
                 icon: icons.autoRenew,
@@ -338,6 +338,16 @@ function App() {
                 icon: icons.trendingUp,
                 title: "Instant Settlement",
                 description: "Real-time settlement via stablecoins (USDC) and fiat rails. No waiting days."
+              },
+              {
+                icon: icons.shieldLock,
+                title: "Human-in-the-Loop",
+                description: "Payments above your threshold pause for human approval. Your agent proposes, you approve."
+              },
+              {
+                icon: icons.autoRenew,
+                title: "Goal Drift Detection",
+                description: "Sardis detects when agent spending deviates from stated intent. Catch financial hallucinations before they land."
               }
             ].map((feature, i) => (
               <motion.div
@@ -574,7 +584,7 @@ const payment = await ramp.payMerchantFiat({
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {[
               {
                 icon: icons.policy,
@@ -599,6 +609,18 @@ const payment = await ramp.payMerchantFiat({
                 title: "Zero-Config MCP",
                 description: "One command to add 36+ payment tools to Claude or Cursor. No setup required.",
                 unique: false
+              },
+              {
+                icon: icons.shieldLock,
+                title: "Approval Queue",
+                description: "Human-in-the-loop. Agents propose, humans approve. Built into the payment flow, not bolted on.",
+                unique: true
+              },
+              {
+                icon: icons.autoRenew,
+                title: "Goal Drift Guard",
+                description: "AI intent vs. actual payment comparison. Catches when agents go off-script financially.",
+                unique: true
               }
             ].map((item, i) => (
               <motion.div

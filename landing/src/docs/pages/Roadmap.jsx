@@ -132,6 +132,8 @@ export default function Roadmap() {
         { text: 'Comprehensive security audit (54 fixes across 8 batches)', done: true },
         { text: 'JWT authentication migrated to PyJWT', done: true },
         { text: 'SDK install section added to landing page with early access messaging', done: true },
+        { text: 'Human-in-the-Loop approval queue for payments above policy threshold', done: true },
+        { text: 'Goal drift detection — intent vs. payment scope mismatch blocking', done: true },
         { text: 'Public staging API deployment (Cloud Run / Vercel)', done: false },
         { text: 'Dashboard UI deployment for testnet', done: false },
         { text: 'API key self-service provisioning', done: false },
