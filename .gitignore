@@ -60,6 +60,8 @@ node_modules/
 .next/
 .turbo/
 package-lock.json
+!dashboard/package-lock.json
+!landing/package-lock.json
 
 # Database
 *.db
