@@ -30,6 +30,7 @@ class PostgresPolicyStore(AsyncPolicyStore):
         return self._pool
 
     async def fetch_policy(self, agent_id: str) -> Optional[SpendingPolicy]:
+        import json as _json
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -39,6 +40,12 @@ class PostgresPolicyStore(AsyncPolicyStore):
             if not row:
                 return None
             data = row["spending_policy"]
+            # asyncpg may return JSONB as a string; parse if needed
+            if isinstance(data, str):
+                try:
+                    data = _json.loads(data)
+                except (ValueError, TypeError):
+                    return None
             if not isinstance(data, dict):
                 return None
             return spending_policy_from_json(data)
@@ -100,6 +107,11 @@ class PostgresPolicyStore(AsyncPolicyStore):
                     agent_id,
                 )
                 data = row["spending_policy"] if row else None
+                if isinstance(data, str):
+                    try:
+                        data = _json.loads(data)
+                    except (ValueError, TypeError):
+                        data = None
                 policy = spending_policy_from_json(data) if isinstance(data, dict) else create_default_policy(agent_id)
 
                 for window in (policy.daily_limit, policy.weekly_limit, policy.monthly_limit):

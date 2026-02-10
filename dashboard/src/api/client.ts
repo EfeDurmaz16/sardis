@@ -77,10 +77,10 @@ export const agentApi = {
   }),
 }
 
-// Payment APIs
+// Payment APIs (V2)
 export const paymentApi = {
   estimate: (amount: string, currency = 'USDC') =>
-    request<any>(`/payments/estimate?amount=${amount}&currency=${currency}`),
+    requestV2<any>(`/payments/estimate?amount=${amount}&currency=${currency}`),
 
   create: (data: {
     agent_id: string
@@ -89,36 +89,36 @@ export const paymentApi = {
     merchant_id?: string
     recipient_wallet_id?: string
     purpose?: string
-  }) => request<any>('/payments', {
+  }) => requestV2<any>('/payments', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getHistory: (limit = 100) => request<any[]>(`/payments?limit=${limit}`),
+  getHistory: (limit = 100) => requestV2<any[]>(`/payments?limit=${limit}`),
 }
 
-// Merchant APIs
+// Merchant APIs (V2)
 export const merchantApi = {
-  list: () => request<any[]>('/merchants'),
+  list: () => requestV2<any[]>('/merchants'),
 
   create: (data: {
     name: string
     description?: string
     category: string
-  }) => request<any>('/merchants', {
+  }) => requestV2<any>('/merchants', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 }
 
-// Webhook APIs
+// Webhook APIs (V2)
 export const webhookApi = {
-  list: () => request<any[]>('/webhooks'),
+  list: () => requestV2<any[]>('/webhooks'),
 
   create: (data: {
     url: string
     events: string[]
-  }) => request<any>('/webhooks', {
+  }) => requestV2<any>('/webhooks', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -127,22 +127,22 @@ export const webhookApi = {
     url: string
     events: string[]
     is_active: boolean
-  }>) => request<any>(`/webhooks/${subscriptionId}`, {
+  }>) => requestV2<any>(`/webhooks/${subscriptionId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
 
-  delete: (subscriptionId: string) => request<void>(`/webhooks/${subscriptionId}`, {
+  delete: (subscriptionId: string) => requestV2<void>(`/webhooks/${subscriptionId}`, {
     method: 'DELETE',
   }),
 }
 
-// Risk APIs
+// Risk APIs (V2)
 export const riskApi = {
-  getScore: (agentId: string) => request<any>(`/risk/agents/${agentId}/score`),
+  getScore: (agentId: string) => requestV2<any>(`/risk/agents/${agentId}/score`),
 
   authorize: (agentId: string, serviceId: string) =>
-    request<any>(`/risk/agents/${agentId}/authorize`, {
+    requestV2<any>(`/risk/agents/${agentId}/authorize`, {
       method: 'POST',
       body: JSON.stringify({ service_id: serviceId }),
     }),

@@ -89,6 +89,7 @@ export default function DemoPage() {
   const [apiKey, setApiKey] = useState<string>('')
 
   const [agentId, setAgentId] = useState('agent_demo_001')
+  const [agentExternalId, setAgentExternalId] = useState<string>('')
   const [walletStatus, setWalletStatus] = useState<StepStatus>('idle')
   const [walletError, setWalletError] = useState<string>('')
   const [wallet, setWallet] = useState<any>(null)
@@ -103,10 +104,20 @@ export default function DemoPage() {
   const [card, setCard] = useState<any>(null)
 
   const [purchaseAmount, setPurchaseAmount] = useState('25.00')
-  const [purchaseMcc, setPurchaseMcc] = useState<'7995' | '5734'>('7995')
+  const [purchaseMcc, setPurchaseMcc] = useState('7995')
   const [purchaseStatus, setPurchaseStatus] = useState<StepStatus>('idle')
   const [purchaseError, setPurchaseError] = useState<string>('')
   const [purchaseResult, setPurchaseResult] = useState<any>(null)
+
+  const merchantPresets = [
+    { mcc: '7995', name: 'Demo Casino', label: 'Gambling', category: 'gambling' },
+    { mcc: '5734', name: 'Demo Software', label: 'Software', category: 'technology' },
+    { mcc: '5812', name: 'Demo Restaurant', label: 'Restaurant', category: 'dining' },
+    { mcc: '5411', name: 'Demo Grocery', label: 'Grocery', category: 'groceries' },
+    { mcc: '4511', name: 'Demo Airlines', label: 'Airline', category: 'travel' },
+    { mcc: '5921', name: 'Demo Liquor', label: 'Alcohol', category: 'alcohol' },
+  ]
+  const selectedMerchant = merchantPresets.find((m) => m.mcc === purchaseMcc) || merchantPresets[0]
 
   const [txStatus, setTxStatus] = useState<StepStatus>('idle')
   const [txError, setTxError] = useState<string>('')
@@ -226,10 +237,13 @@ export default function DemoPage() {
                     const agents = await agentApi.list()
                     agent = agents.find((a: any) => a.name === agentId || a.agent_id === agentId)
                   }
+                  // Store the real external_id so policy apply uses the correct agent
+                  const realId = agent?.agent_id || agent?.external_id || agentId
+                  setAgentExternalId(realId)
                   if (agent?.wallet_id) {
                     setWallet({ wallet_id: agent.wallet_id, addresses: agent.addresses || {} })
                   } else {
-                    setWallet({ wallet_id: agent?.agent_id || agentId, addresses: {} })
+                    setWallet({ wallet_id: realId, addresses: {} })
                   }
                   setWalletStatus('done')
                 } catch (e: any) {
@@ -282,7 +296,7 @@ export default function DemoPage() {
                 setPolicyError('')
                 setPolicyStatus('running')
                 try {
-                  const res = await demoApi.applyPolicy({ agent_id: agentId, natural_language: policyText })
+                  const res = await demoApi.applyPolicy({ agent_id: agentExternalId || agentId, natural_language: policyText })
                   setPolicy(res)
                   setPolicyStatus('done')
                 } catch (e: any) {
@@ -377,41 +391,35 @@ export default function DemoPage() {
           {purchaseResult?.transaction?.transaction_id ? <CopyButton value={purchaseResult.transaction.transaction_id} /> : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div>
-            <FieldLabel>Amount</FieldLabel>
-            <TextInput value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="25.00" />
-          </div>
-          <div>
-            <FieldLabel>Merchant Category</FieldLabel>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPurchaseMcc('7995')}
-                className={clsx(
-                  'flex-1 px-3 py-3 border text-sm transition-colors',
-                  purchaseMcc === '7995'
-                    ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                    : 'bg-dark-300 text-gray-300 border-dark-100 hover:bg-dark-200'
-                )}
-              >
-                Gambling (Blocked)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPurchaseMcc('5734')}
-                className={clsx(
-                  'flex-1 px-3 py-3 border text-sm transition-colors',
-                  purchaseMcc === '5734'
-                    ? 'bg-sardis-500/10 text-sardis-400 border-sardis-500/30'
-                    : 'bg-dark-300 text-gray-300 border-dark-100 hover:bg-dark-200'
-                )}
-              >
-                Software (Allowed)
-              </button>
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div>
+              <FieldLabel>Amount</FieldLabel>
+              <TextInput value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="25.00" />
+            </div>
+            <div className="lg:col-span-2">
+              <FieldLabel>Merchant Category</FieldLabel>
+              <div className="grid grid-cols-3 gap-2">
+                {merchantPresets.map((m) => (
+                  <button
+                    key={m.mcc}
+                    type="button"
+                    onClick={() => setPurchaseMcc(m.mcc)}
+                    className={clsx(
+                      'px-3 py-2 border text-sm rounded-lg transition-colors',
+                      purchaseMcc === m.mcc
+                        ? 'bg-sardis-500/10 text-sardis-400 border-sardis-500/30'
+                        : 'bg-dark-300 text-gray-300 border-dark-100 hover:bg-dark-200'
+                    )}
+                  >
+                    {m.label}
+                    <span className="block text-xs text-gray-500 mt-0.5">MCC {m.mcc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-end">
+          <div>
             <button
               type="button"
               disabled={purchaseStatus === 'running' || !card?.card_id}
@@ -421,11 +429,19 @@ export default function DemoPage() {
                 try {
                   const res = await demoApi.simulatePurchase(card.card_id, {
                     amount: purchaseAmount,
-                    merchant_name: purchaseMcc === '7995' ? 'Demo Casino' : 'Demo Software',
+                    merchant_name: selectedMerchant.name,
                     mcc_code: purchaseMcc,
                   })
                   setPurchaseResult(res)
                   setPurchaseStatus('done')
+                  // Auto-refresh transaction history
+                  try {
+                    const list = await demoApi.listCardTransactions(card.card_id, 50)
+                    setTransactions(list)
+                    setTxStatus('done')
+                  } catch {
+                    // silent — user can still click Refresh manually
+                  }
                 } catch (e: any) {
                   setPurchaseError(e?.message || 'Simulation failed')
                   setPurchaseStatus('error')
@@ -437,6 +453,7 @@ export default function DemoPage() {
             </button>
           </div>
         </div>
+
 
         {!card?.card_id ? (
           <div className="mt-4 p-3 bg-dark-200 border border-dark-100 rounded-lg text-gray-400 text-sm">

@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://sardis-api-staging-482463483786.us-east1.run.app/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
