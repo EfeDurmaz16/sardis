@@ -183,7 +183,7 @@ const Playground = () => {
                 <span className="hidden sm:inline">Docs</span>
               </Link>
               <a
-                href="https://github.com/sardis-project/sardis"
+                href="https://github.com/EfeDurmaz16/sardis"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
@@ -366,7 +366,7 @@ const Playground = () => {
               Read the Docs
             </Link>
             <a
-              href="https://github.com/sardis-project/sardis"
+              href="https://github.com/EfeDurmaz16/sardis"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3 border border-border text-foreground font-medium hover:border-[var(--sardis-orange)] transition-colors flex items-center gap-2"
@@ -389,7 +389,7 @@ const Playground = () => {
               <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
                 Documentation
               </Link>
-              <a href="https://github.com/sardis-project/sardis" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://github.com/EfeDurmaz16/sardis" className="text-muted-foreground hover:text-foreground transition-colors">
                 GitHub
               </a>
               <a href="https://x.com/sardaborsa" className="text-muted-foreground hover:text-foreground transition-colors">
