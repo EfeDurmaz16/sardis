@@ -281,10 +281,16 @@ class LithicProvider(CardProvider):
         """
         if self._environment != "sandbox":
             raise ValueError("Simulations only available in sandbox")
-        
+
+        # Retrieve full card PAN for sandbox simulation
+        card_details = self._client.cards.retrieve(provider_card_id)
+        pan = card_details.pan
+        if not pan:
+            raise ValueError("Could not retrieve card PAN for sandbox simulation")
+
         result = self._client.transactions.simulate_authorization(
             amount=amount_cents,
-            card_token=provider_card_id,
+            pan=pan,
             descriptor=merchant_descriptor,
         )
         
