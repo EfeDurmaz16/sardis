@@ -248,8 +248,27 @@ class GeoCheckProvider(FraudSignalProvider):
     - VPN/proxy detection
     """
 
-    # Example high-risk countries (this would be configurable in production)
-    HIGH_RISK_COUNTRIES = {"XX", "YY"}  # Placeholder codes
+    # OFAC-sanctioned and FATF high-risk jurisdictions (ISO 3166-1 alpha-2)
+    HIGH_RISK_COUNTRIES = {
+        # OFAC comprehensive sanctions
+        "KP",  # North Korea
+        "IR",  # Iran
+        "SY",  # Syria
+        "CU",  # Cuba
+        # FATF high-risk / call-to-action
+        "MM",  # Myanmar
+        "YE",  # Yemen
+        # Other sanctioned / conflict zones
+        "BY",  # Belarus
+        "RU",  # Russia
+        "VE",  # Venezuela
+        "AF",  # Afghanistan
+        "SO",  # Somalia
+        "LY",  # Libya
+        "SD",  # Sudan
+        "SS",  # South Sudan
+        "CF",  # Central African Republic
+    }
 
     def __init__(
         self,
@@ -374,10 +393,23 @@ class EmailCheckProvider(FraudSignalProvider):
     - Suspicious email patterns
     """
 
-    # Common disposable email domains (would be a larger list in production)
+    # Disposable / temporary email domains commonly used in fraud
     DISPOSABLE_DOMAINS = {
+        # Major disposable email providers
         "tempmail.com", "throwaway.com", "mailinator.com",
         "guerrillamail.com", "10minutemail.com", "temp-mail.org",
+        "yopmail.com", "sharklasers.com", "guerrillamailblock.com",
+        "grr.la", "dispostable.com", "trashmail.com", "trashmail.net",
+        "maildrop.cc", "fakeinbox.com", "tempail.com",
+        "mohmal.com", "burpcollaborator.net", "mailnesia.com",
+        "tempr.email", "discard.email", "discardmail.com",
+        "getairmail.com", "getnada.com", "emailondeck.com",
+        "crazymailing.com", "tmail.ws", "harakirimail.com",
+        "minutemailbox.com", "meltmail.com", "inboxalias.com",
+        "spamgourmet.com", "mytemp.email", "throwam.com",
+        "tmpmail.net", "tmpmail.org", "boun.cr",
+        "mailcatch.com", "nwldx.com", "recursor.net",
+        "safetymail.info", "wh4f.org", "yepmail.net",
     }
 
     def __init__(

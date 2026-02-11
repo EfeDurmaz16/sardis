@@ -276,11 +276,23 @@ class ASAHandler:
 
         # Blocked MCC codes (high-risk categories)
         self._blocked_mccs: set[str] = {
-            "7995",  # Gambling
+            # Gambling
+            "7800",  # Government-owned lotteries
+            "7801",  # Online casinos (government-licensed)
+            "7802",  # Horse/dog racing
+            "7995",  # Betting, casino gambling, lottery tickets
+            # Financial instruments / quasi-cash
+            "6010",  # Manual cash disbursements
+            "6011",  # Automated cash disbursements (ATMs)
+            "6051",  # Quasi-cash: foreign currency, money orders, crypto
+            "6540",  # Stored value card purchase/load (prepaid cards)
+            # High-risk services
             "5933",  # Pawn shops
-            "5912",  # Drug stores (high-risk for fraud)
-            "6051",  # Quasi-cash / crypto purchases
-            "6211",  # Securities/brokers
+            "7273",  # Dating/escort services
+            # Securities (agent should not trade)
+            "6211",  # Security brokers/dealers
+            # Wire transfers (potential for irreversible fund movement)
+            "4829",  # Wire transfers / money orders
         }
 
     def add_blocked_mcc(self, mcc: str) -> None:
