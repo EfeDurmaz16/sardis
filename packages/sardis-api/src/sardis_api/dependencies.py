@@ -112,9 +112,10 @@ class DependencyContainer:
     
     @cached_property
     def identity_registry(self) -> Any:
-        """Get identity registry."""
+        """Get identity registry (DB-backed in production)."""
         from sardis_v2_core.identity import IdentityRegistry
-        return IdentityRegistry()
+        dsn = self.database_url if self.use_postgres else None
+        return IdentityRegistry(dsn=dsn)
     
     @cached_property
     def wallet_manager(self) -> Any:

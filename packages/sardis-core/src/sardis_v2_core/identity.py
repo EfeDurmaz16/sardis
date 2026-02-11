@@ -94,25 +94,36 @@ class IdentityRecord:
 
 class IdentityRegistry:
     """
-    Lightweight in-memory identity registry for TAP issuance/rotation/revocation.
-    Enough for MVP; swap with persistent store later.
+    Identity registry for TAP issuance/rotation/revocation.
+
+    Supports optional PostgreSQL persistence. When a dsn is provided,
+    identity records are written to the identity_records table. Falls back
+    to in-memory storage for dev/test.
     """
 
-    def __init__(self):
+    def __init__(self, dsn: Optional[str] = None):
         self._records: Dict[str, IdentityRecord] = {}
         self._history: Dict[str, list[IdentityRecord]] = {}
+        self._dsn = dsn
+        self._pool = None
 
-        # SECURITY: Warn when using in-memory registry in non-dev environments.
-        # In-memory state is lost on restart → all identity bindings disappear
-        # → non-repudiation is impossible, agents can re-register arbitrary keys.
         env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env not in ("dev", "test", "local"):
+        if env not in ("dev", "test", "local") and not dsn:
             _logger.warning(
                 "IdentityRegistry is using IN-MEMORY storage in '%s' environment. "
                 "All identity bindings will be LOST on restart. "
-                "Use a persistent store (PostgreSQL) for production/staging.",
+                "Pass dsn= for PostgreSQL persistence.",
                 env,
             )
+
+    async def _get_pool(self):
+        if self._pool is None:
+            import asyncpg
+            dsn = self._dsn
+            if dsn and dsn.startswith("postgres://"):
+                dsn = dsn.replace("postgres://", "postgresql://", 1)
+            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
+        return self._pool
 
     def issue(self, agent_id: str, public_key: bytes, domain: str, algorithm: AllowedKeys = "ed25519") -> IdentityRecord:
         """Issue or rotate an identity. If an active identity exists, mark it revoked."""
@@ -130,6 +141,40 @@ class IdentityRegistry:
         self._records[agent_id] = record
         return record
 
+    async def issue_async(self, agent_id: str, public_key: bytes, domain: str, algorithm: AllowedKeys = "ed25519") -> IdentityRecord:
+        """Issue or rotate with DB persistence."""
+        record = self.issue(agent_id, public_key, domain, algorithm)
+        if self._dsn:
+            try:
+                pool = await self._get_pool()
+                async with pool.acquire() as conn:
+                    async with conn.transaction():
+                        # Revoke previous version in DB
+                        if record.version > 1:
+                            await conn.execute(
+                                """
+                                UPDATE identity_records SET revoked_at = NOW()
+                                WHERE agent_id = $1 AND revoked_at IS NULL
+                                """,
+                                agent_id,
+                            )
+                        # Insert new record
+                        await conn.execute(
+                            """
+                            INSERT INTO identity_records (agent_id, public_key, algorithm, domain, version)
+                            VALUES ($1, $2, $3, $4, $5)
+                            ON CONFLICT (agent_id, version) DO NOTHING
+                            """,
+                            agent_id,
+                            public_key.hex(),
+                            algorithm,
+                            domain,
+                            record.version,
+                        )
+            except Exception as e:
+                _logger.warning(f"Failed to persist identity record: {e}")
+        return record
+
     def revoke(self, agent_id: str, reason: str = "revoked") -> Optional[IdentityRecord]:
         record = self._records.get(agent_id)
         if not record:
@@ -140,6 +185,21 @@ class IdentityRegistry:
         self._records.pop(agent_id, None)
         return record
 
+    async def revoke_async(self, agent_id: str, reason: str = "revoked") -> Optional[IdentityRecord]:
+        """Revoke with DB persistence."""
+        record = self.revoke(agent_id, reason)
+        if record and self._dsn:
+            try:
+                pool = await self._get_pool()
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE identity_records SET revoked_at = NOW() WHERE agent_id = $1 AND revoked_at IS NULL",
+                        agent_id,
+                    )
+            except Exception as e:
+                _logger.warning(f"Failed to persist identity revocation: {e}")
+        return record
+
     def _archive(self, record: IdentityRecord, reason: str) -> None:
         record.revoked_at = record.revoked_at or int(time.time())
         record.reason = reason
@@ -147,6 +207,40 @@ class IdentityRegistry:
 
     def get(self, agent_id: str) -> Optional[IdentityRecord]:
         return self._records.get(agent_id)
+
+    async def get_async(self, agent_id: str) -> Optional[IdentityRecord]:
+        """Get identity, falling back to DB if not in memory."""
+        record = self._records.get(agent_id)
+        if record:
+            return record
+        if not self._dsn:
+            return None
+        try:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT agent_id, public_key, algorithm, domain, version, created_at
+                    FROM identity_records
+                    WHERE agent_id = $1 AND revoked_at IS NULL
+                    ORDER BY version DESC LIMIT 1
+                    """,
+                    agent_id,
+                )
+                if row:
+                    record = IdentityRecord(
+                        agent_id=row["agent_id"],
+                        public_key=bytes.fromhex(row["public_key"]),
+                        algorithm=row["algorithm"],
+                        domain=row["domain"],
+                        version=row["version"],
+                        created_at=int(row["created_at"].timestamp()) if row["created_at"] else int(time.time()),
+                    )
+                    self._records[agent_id] = record
+                    return record
+        except Exception as e:
+            _logger.warning(f"Failed to load identity from DB: {e}")
+        return None
 
     def verify_binding(self, agent_id: str, domain: str, public_key: bytes, algorithm: AllowedKeys) -> bool:
         """Check that the presented key matches the active registry entry."""

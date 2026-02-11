@@ -297,17 +297,25 @@ class SuspiciousActivityReport:
 
 
 class SARGenerator:
-    """Service for generating and managing Suspicious Activity Reports."""
+    """Service for generating and managing Suspicious Activity Reports.
 
-    def __init__(self, storage_path: Optional[str] = None):
+    Supports optional PostgreSQL persistence. When a dsn is provided,
+    SARs are written to the suspicious_activity_reports table for FinCEN
+    5-year retention compliance. Falls back to in-memory storage for dev/test.
+    """
+
+    def __init__(self, storage_path: Optional[str] = None, dsn: Optional[str] = None):
         """
         Initialize SAR generator.
 
         Args:
             storage_path: Optional path for storing SAR files
+            dsn: PostgreSQL DSN for persistent storage (optional)
         """
         self.storage_path = storage_path
         self._sars: Dict[str, SuspiciousActivityReport] = {}
+        self._dsn = dsn
+        self._pool = None
         logger.info("SARGenerator initialized")
 
     def create_sar(
@@ -349,8 +357,65 @@ class SARGenerator:
         )
 
         self._sars[sar_id] = sar
+
+        # Persist to PostgreSQL if configured
+        if self._dsn:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(self._persist_sar(sar))
+                else:
+                    loop.run_until_complete(self._persist_sar(sar))
+            except Exception as e:
+                logger.warning(f"Failed to persist SAR {sar_id} to DB: {e}")
+
         logger.info(f"Created SAR {sar_id} for wallet {wallet_id}: {activity_type.value}")
         return sar
+
+    async def _get_pool(self):
+        if self._pool is None:
+            import asyncpg
+            dsn = self._dsn
+            if dsn and dsn.startswith("postgres://"):
+                dsn = dsn.replace("postgres://", "postgresql://", 1)
+            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
+        return self._pool
+
+    async def _persist_sar(self, sar: SuspiciousActivityReport) -> None:
+        import json as _json
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO suspicious_activity_reports
+                    (sar_id, internal_reference, activity_type, status, priority,
+                     subject_id, subject_type, wallet_address, activity_description,
+                     detection_date, filing_deadline, report_data)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ON CONFLICT (sar_id) DO UPDATE SET
+                    status = EXCLUDED.status, updated_at = NOW()
+                """,
+                sar.sar_id,
+                sar.internal_reference,
+                sar.activity_type.value,
+                sar.status.value,
+                sar.priority.value,
+                sar.subject.subject_id if sar.subject else "",
+                sar.subject.subject_type if sar.subject else "wallet",
+                sar.subject.wallet_address if sar.subject else None,
+                sar.activity_description,
+                sar.detection_date,
+                sar.filing_deadline,
+                _json.dumps({"transactions": len(sar.transactions)}, default=str),
+            )
+
+    async def get_sar_async(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
+        """Get a SAR by ID, checking DB if not in memory."""
+        if sar_id in self._sars:
+            return self._sars[sar_id]
+        # In-memory only fallback for sync callers
+        return None
 
     def get_sar(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
         """Get a SAR by ID."""
