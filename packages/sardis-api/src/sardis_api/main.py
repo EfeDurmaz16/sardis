@@ -13,19 +13,17 @@ Production-grade Sardis API with:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
-import signal
 import sys
-import time
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
+
+from sardis_v2_core import SardisSettings, load_settings, InMemoryPolicyStore, PostgresPolicyStore
+
 
 def _bootstrap_monorepo_sys_path() -> None:
     """
@@ -65,7 +63,6 @@ def _bootstrap_monorepo_sys_path() -> None:
 
 _bootstrap_monorepo_sys_path()
 
-from sardis_v2_core import SardisSettings, load_settings, InMemoryPolicyStore, PostgresPolicyStore
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_wallet.manager import WalletManager
 from sardis_protocol.verifier import MandateVerifier
@@ -107,9 +104,6 @@ from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
-from sardis_v2_core.jobs.spending_reset import reset_spending_limits
-from sardis_v2_core.jobs.hold_expiry import expire_holds
-from sardis_v2_core.jobs.approval_expiry import expire_approvals
 from .middleware import (
     RateLimitMiddleware,
     RateLimitConfig,
@@ -127,323 +121,18 @@ from .middleware import (
     API_VERSION,
 )
 
+# Extracted modules
+from .lifespan import lifespan, shutdown_state, get_shutdown_event
+from .openapi_schema import custom_openapi
+from .health import create_health_router
+from .card_adapter import CardProviderCompatAdapter
+
 # Configure structured logging
 setup_logging(
     json_format=os.getenv("SARDIS_ENVIRONMENT", "dev") != "dev",
     level=os.getenv("LOG_LEVEL", "INFO"),
 )
 logger = logging.getLogger("sardis.api")
-
-# Graceful shutdown state
-_shutdown_event: Optional[asyncio.Event] = None
-_active_connections: int = 0
-
-
-def get_shutdown_event() -> asyncio.Event:
-    """Get or create the shutdown event."""
-    global _shutdown_event
-    if _shutdown_event is None:
-        _shutdown_event = asyncio.Event()
-    return _shutdown_event
-
-
-class GracefulShutdownState:
-    """Track state for graceful shutdown."""
-
-    def __init__(self):
-        self.is_shutting_down = False
-        self.active_requests = 0
-        self.shutdown_started_at: Optional[float] = None
-        self.max_shutdown_wait_seconds = 30
-
-    def start_shutdown(self):
-        """Mark shutdown as started."""
-        self.is_shutting_down = True
-        self.shutdown_started_at = time.time()
-        logger.info(
-            "Graceful shutdown initiated",
-            extra={
-                "active_requests": self.active_requests,
-                "max_wait_seconds": self.max_shutdown_wait_seconds,
-            }
-        )
-
-    def request_started(self):
-        """Track a new request starting."""
-        self.active_requests += 1
-
-    def request_finished(self):
-        """Track a request finishing."""
-        self.active_requests = max(0, self.active_requests - 1)
-
-    async def wait_for_requests(self) -> bool:
-        """Wait for active requests to complete. Returns True if successful."""
-        if self.active_requests == 0:
-            return True
-
-        start = time.time()
-        while self.active_requests > 0:
-            if time.time() - start > self.max_shutdown_wait_seconds:
-                logger.warning(
-                    f"Shutdown timeout: {self.active_requests} requests still active"
-                )
-                return False
-            await asyncio.sleep(0.1)
-
-        return True
-
-
-# Global shutdown state
-shutdown_state = GracefulShutdownState()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan handler for startup/shutdown."""
-    # Startup
-    logger.info(
-        "Starting Sardis API...",
-        extra={
-            "version": API_VERSION,
-            "environment": os.getenv("SARDIS_ENVIRONMENT", "dev"),
-            "python_version": sys.version.split()[0],
-        }
-    )
-
-    # Initialize database if using PostgreSQL
-    database_url = os.getenv("DATABASE_URL", "")
-    if database_url and (database_url.startswith("postgresql://") or database_url.startswith("postgres://")):
-        try:
-            from sardis_v2_core.database import init_database
-            await init_database()
-            logger.info("Database schema initialized")
-        except Exception as e:
-            logger.warning(f"Could not initialize database schema: {e}")
-
-
-    # Setup signal handlers for graceful shutdown
-    loop = asyncio.get_running_loop()
-
-    def signal_handler(sig):
-        logger.info(f"Received signal {sig.name}")
-        shutdown_state.start_shutdown()
-        get_shutdown_event().set()
-
-    # Only set signal handlers on Unix systems
-    if sys.platform != "win32":
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
-
-    # Initialize and start background scheduler (optional).
-    #
-    # This is disabled by default for local demos because:
-    # - it requires apscheduler to be installed
-    # - it can hide app-level issues behind background noise
-    #
-    # Enable explicitly with SARDIS_ENABLE_SCHEDULER=1.
-    enable_scheduler = os.getenv("SARDIS_ENABLE_SCHEDULER", "").lower() in ("1", "true", "yes", "on")
-    if enable_scheduler:
-        try:
-            from sardis_v2_core.scheduler import init_scheduler
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Background scheduler disabled (init failed): %s", e)
-        else:
-            database_url = os.getenv("DATABASE_URL", "")
-            scheduler = init_scheduler(
-                database_url=database_url if database_url.startswith("postgresql") else None
-            )
-
-            # Register jobs
-            scheduler.add_cron_job(
-                reset_spending_limits,
-                job_id="spending_reset_daily",
-                hour=0, minute=0,  # Midnight UTC
-            )
-            scheduler.add_interval_job(
-                expire_holds,
-                job_id="hold_expiry_check",
-                seconds=300,  # Every 5 minutes
-            )
-            scheduler.add_interval_job(
-                expire_approvals,
-                job_id="approval_expiry_check",
-                seconds=60,  # Every minute
-            )
-
-            await scheduler.start()
-            app.state.scheduler = scheduler
-            logger.info("Background scheduler started with jobs registered")
-
-    # Mark startup complete
-    app.state.startup_time = time.time()
-    app.state.ready = True
-
-    logger.info("Sardis API started successfully")
-
-    yield
-
-    # Shutdown
-    logger.info("Shutting down Sardis API...")
-    shutdown_state.start_shutdown()
-
-    # Wait for active requests to complete
-    await shutdown_state.wait_for_requests()
-
-    # Shutdown scheduler
-    if hasattr(app.state, "scheduler"):
-        try:
-            await app.state.scheduler.shutdown(wait=True)
-        except Exception as e:
-            logger.warning(f"Error shutting down scheduler: {e}")
-
-    # Cleanup resources
-    if hasattr(app.state, "turnkey_client") and app.state.turnkey_client:
-        try:
-            await app.state.turnkey_client.close()
-        except Exception as e:
-            logger.warning(f"Error closing Turnkey client: {e}")
-
-    if hasattr(app.state, "cache_service"):
-        try:
-            await app.state.cache_service.close()
-        except Exception as e:
-            logger.warning(f"Error closing cache service: {e}")
-
-    logger.info("Sardis API shutdown complete")
-
-
-def custom_openapi(app: FastAPI) -> Dict[str, Any]:
-    """Generate custom OpenAPI schema with security schemes."""
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    openapi_schema = get_openapi(
-        title="Sardis Stablecoin Execution API",
-        version=API_VERSION,
-        description="""
-## Overview
-
-The Sardis API provides a comprehensive platform for stablecoin payment execution
-with built-in compliance, security, and auditability.
-
-## Authentication
-
-All API endpoints require authentication via API key:
-
-```
-X-API-Key: sk_live_your_api_key_here
-```
-
-## Rate Limits
-
-- Standard endpoints: 100 requests/minute, 1000 requests/hour
-- Admin endpoints: 10 requests/minute
-- Burst: Up to 20 requests in quick succession
-
-## Error Responses
-
-All errors follow RFC 7807 Problem Details format:
-
-```json
-{
-  "type": "https://api.sardis.sh/errors/validation-error",
-  "title": "Validation Error",
-  "status": 422,
-  "detail": "One or more fields failed validation",
-  "instance": "/api/v2/mandates",
-  "request_id": "req_abc123",
-  "errors": [...]
-}
-```
-
-## Versioning
-
-Current API version: v2. The API version is included in all response headers:
-`X-API-Version: {version}`
-        """,
-        routes=app.routes,
-    )
-
-    # Add security schemes
-    openapi_schema["components"]["securitySchemes"] = {
-        "ApiKeyAuth": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-API-Key",
-            "description": "API key for authentication. Format: sk_live_xxxxx",
-        },
-        "BearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": "JWT token for dashboard authentication",
-        },
-        "WebhookSignature": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-Sardis-Signature",
-            "description": "HMAC-SHA256 webhook signature. Format: t=<timestamp>,v1=<signature>",
-        },
-    }
-
-    # Apply security globally
-    openapi_schema["security"] = [
-        {"ApiKeyAuth": []},
-    ]
-
-    # Add server URLs
-    openapi_schema["servers"] = [
-        {
-            "url": "https://api.sardis.sh",
-            "description": "Production server",
-        },
-        {
-            "url": "https://api.staging.sardis.sh",
-            "description": "Staging server",
-        },
-        {
-            "url": "http://localhost:8000",
-            "description": "Local development",
-        },
-    ]
-
-    # Add contact and license info
-    openapi_schema["info"]["contact"] = {
-        "name": "Sardis API Support",
-        "email": "support@sardis.sh",
-        "url": "https://docs.sardis.sh",
-    }
-    openapi_schema["info"]["license"] = {
-        "name": "Proprietary",
-        "url": "https://sardis.sh/terms",
-    }
-
-    # Add tags with descriptions
-    openapi_schema["tags"] = [
-        {"name": "health", "description": "Health check endpoints"},
-        {"name": "mandates", "description": "Payment mandate management"},
-        {"name": "ap2", "description": "Agent-to-Agent Protocol v2"},
-        {"name": "mvp", "description": "Minimum Viable Protocol operations"},
-        {"name": "ledger", "description": "Ledger and transaction history"},
-        {"name": "holds", "description": "Pre-authorization holds"},
-        {"name": "approvals", "description": "Human approval workflows for agent actions"},
-        {"name": "webhooks", "description": "Webhook subscription management"},
-        {"name": "transactions", "description": "Transaction status and gas estimation"},
-        {"name": "marketplace", "description": "A2A service discovery"},
-        {"name": "wallets", "description": "Wallet management"},
-        {"name": "agents", "description": "AI agent configuration"},
-        {"name": "api-keys", "description": "API key management"},
-        {"name": "cards", "description": "Virtual card management"},
-        {"name": "checkout", "description": "Agentic checkout flow"},
-        {"name": "policies", "description": "Natural language policy parsing"},
-        {"name": "compliance", "description": "KYC and sanctions screening"},
-        {"name": "admin", "description": "Administrative operations"},
-        {"name": "auth", "description": "Authentication endpoints"},
-        {"name": "ramp", "description": "Fiat on-ramp and off-ramp"},
-    ]
-
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
 
 
 def create_app(settings: SardisSettings | None = None) -> FastAPI:
@@ -493,7 +182,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     docs_paths = ["/api/v2/docs", "/api/v2/openapi.json", "/api/v2/redoc"]
     exclude_paths = health_paths + docs_paths
 
-    # Add middleware in order (outermost first)
+    # -----------------------------------------------------------------------
+    # Middleware stack (outermost first)
+    # -----------------------------------------------------------------------
 
     # 1. Request ID middleware (outermost - ensures all requests have IDs)
     app.add_middleware(RequestIdMiddleware)
@@ -537,19 +228,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # 6. TAP verification middleware (before CORS, after rate limiting)
     tap_enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", "disabled").lower()
     if tap_enforcement == "enabled":
-        # JWKS provider for TAP signature verification
         jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
         jwks_provider = None
         if jwks_url:
-            # Create JWKS provider that fetches from the configured URL
             import httpx
             _jwks_cache: dict[str, dict] = {}
 
             def _jwks_provider(kid: str) -> dict | None:
-                """Fetch JWKS from configured URL and cache it."""
                 if kid in _jwks_cache:
                     return _jwks_cache[kid]
-
                 try:
                     with httpx.Client(timeout=5.0) as client:
                         resp = client.get(jwks_url)
@@ -602,7 +289,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ],
     )
 
-    # Determine storage backend based on DSN
+    # -----------------------------------------------------------------------
+    # Storage backend
+    # -----------------------------------------------------------------------
     database_url = (
         os.getenv("DATABASE_URL")
         or settings.database_url
@@ -612,21 +301,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     use_postgres = database_url.startswith("postgresql://") or database_url.startswith("postgres://")
     if settings.is_production:
         if not database_url:
-            raise RuntimeError(
-                "CRITICAL: DATABASE_URL is required in production."
-            )
+            raise RuntimeError("CRITICAL: DATABASE_URL is required in production.")
         if not use_postgres:
             raise RuntimeError(
                 "CRITICAL: Production requires PostgreSQL. "
                 "Set DATABASE_URL to a postgres/postgresql URL."
             )
 
-    # Store configuration in app state
     app.state.settings = settings
     app.state.database_url = database_url
     app.state.use_postgres = use_postgres
 
-    # Initialize Turnkey MPC client if configured
+    # -----------------------------------------------------------------------
+    # MPC / Turnkey
+    # -----------------------------------------------------------------------
     turnkey_client = None
     turnkey_api_key = os.getenv("TURNKEY_API_PUBLIC_KEY") or os.getenv("TURNKEY_API_KEY") or settings.turnkey.api_public_key
     turnkey_private_key = os.getenv("TURNKEY_API_PRIVATE_KEY") or settings.turnkey.api_private_key
@@ -645,7 +333,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.state.turnkey_client = turnkey_client
 
-    # Validate MPC provider is available for live chain mode
     if getattr(settings, "chain_mode", "simulated") == "live" and turnkey_client is None:
         mpc_name = os.getenv("SARDIS_MPC__NAME", "simulated")
         if mpc_name == "turnkey":
@@ -661,9 +348,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 )
                 raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
 
-    policy_store = (
-        PostgresPolicyStore(database_url) if use_postgres else InMemoryPolicyStore()
-    )
+    # -----------------------------------------------------------------------
+    # Core services
+    # -----------------------------------------------------------------------
+    policy_store = PostgresPolicyStore(database_url) if use_postgres else InMemoryPolicyStore()
     app.state.policy_store = policy_store
 
     wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
@@ -680,7 +368,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     compliance = ComplianceEngine(settings=settings, audit_store=audit_store)
     identity_registry = IdentityRegistry()
 
-    # Compliance vendors (KYC + sanctions) used by both compliance routes and AP2 execution.
     from sardis_compliance import create_kyc_service, create_sanctions_service
     kyc_service = create_kyc_service(
         api_key=os.getenv("PERSONA_API_KEY"),
@@ -693,7 +380,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         api_secret=os.getenv("ELLIPTIC_API_SECRET"),
     )
 
-    # Use PostgreSQL for mandate archive and replay cache if available
     if use_postgres:
         archive = MandateArchive(database_url)
         replay_cache = PostgresReplayCache(database_url)
@@ -722,6 +408,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")
 
+    # -----------------------------------------------------------------------
+    # Router registration
+    # -----------------------------------------------------------------------
     app.dependency_overrides[mandates.get_deps] = lambda: mandates.Dependencies(  # type: ignore[arg-type]
         wallet_manager=wallet_mgr,
         chain_executor=chain_exec,
@@ -743,7 +432,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
-    # MVP router (TAP issuance, mandate validation, execution, receipts)
     app.dependency_overrides[mvp.get_deps] = lambda: mvp.Dependencies(  # type: ignore[arg-type]
         verifier=verifier,
         chain_executor=chain_exec,
@@ -755,20 +443,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
-    # Ledger routes
     app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]
         ledger=ledger_store,
     )
     app.include_router(ledger_router.router, prefix="/api/v2/ledger")
 
-    # Holds routes (pre-authorization)
     holds_repo = HoldsRepository(dsn=database_url if use_postgres else "memory://")
     app.dependency_overrides[holds_router.get_deps] = lambda: holds_router.HoldsDependencies(  # type: ignore[arg-type]
         holds_repo=holds_repo,
     )
     app.include_router(holds_router.router, prefix="/api/v2/holds")
 
-    # Approvals routes (human approval workflows)
     if approvals_router is not None:
         try:
             from sardis_v2_core.approval_repository import ApprovalRepository
@@ -786,7 +471,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("Approvals router not yet available (dependencies not complete)")
 
-    # Webhook routes
     webhook_repo = WebhookRepository(dsn=database_url if use_postgres else "memory://")
     webhook_service = WebhookService(repository=webhook_repo)
     app.dependency_overrides[webhooks_router.get_deps] = lambda: webhooks_router.WebhookDependencies(  # type: ignore[arg-type]
@@ -794,11 +478,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         service=webhook_service,
     )
     app.include_router(webhooks_router.router, prefix="/api/v2/webhooks")
-
-    # Store webhook service for event emission
     app.state.webhook_service = webhook_service
 
-    # Initialize cache service
     redis_url = (
         os.getenv("SARDIS_REDIS_URL")
         or os.getenv("REDIS_URL")
@@ -815,29 +496,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
 
-    # Initialize API key manager
     api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
     set_api_key_manager(api_key_manager)
     app.state.api_key_manager = api_key_manager
 
-    # Transaction routes (gas estimation, status)
     app.dependency_overrides[transactions_router.get_deps] = lambda: transactions_router.TransactionDependencies(  # type: ignore[arg-type]
         chain_executor=chain_exec,
     )
     app.include_router(transactions_router.router, prefix="/api/v2/transactions")
 
-    # Marketplace routes (A2A service discovery)
     marketplace_repo = MarketplaceRepository(dsn=database_url if use_postgres else "memory://")
     app.dependency_overrides[marketplace_router.get_deps] = lambda: marketplace_router.MarketplaceDependencies(  # type: ignore[arg-type]
         repository=marketplace_repo,
     )
     app.include_router(marketplace_router.router, prefix="/api/v2/marketplace")
 
-    # Auth routes (for dashboard login)
     app.include_router(auth.router, prefix="/api/v1/auth")
     app.include_router(auth.router, prefix="/api/v2/auth")
 
-    # Wallet routes
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
@@ -847,7 +523,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
-    # A2A (Agent-to-Agent) routes
     app.dependency_overrides[a2a_router.get_deps] = lambda: a2a_router.A2ADependencies(
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
@@ -858,7 +533,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
 
-    # Initialize OfframpService (used by ramp + cards)
+    # OfframpService (used by ramp + cards)
     offramp_service = None
     bridge_api_key = os.getenv("BRIDGE_API_KEY")
     bridge_api_secret = os.getenv("BRIDGE_API_SECRET")
@@ -893,94 +568,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
-        from decimal import Decimal
-
         from sardis_api.repositories.card_repository import CardRepository
-        from sardis_cards.models import CardType
 
-        # NOTE: CardRepository uses Postgres automatically if DATABASE_URL is set (otherwise in-memory).
         card_repo = CardRepository(dsn=database_url if use_postgres else None)
 
-        class CardProviderCompatAdapter:
-            """
-            Adapter to bridge sardis-api's cards router expectations with sardis-cards providers.
-
-            The router expects:
-              - create_card(card_id=..., wallet_id=..., card_type=str, limit_*: float) -> obj with provider_card_id
-              - fund_card(card_id=..., amount=float)
-            While the provider expects:
-              - create_card(wallet_id, card_type: CardType, limit_*: Decimal, ...)
-              - fund_card(provider_card_id, amount: Decimal, ...)
-            """
-
-            def __init__(self, provider, repo: CardRepository):
-                self._provider = provider
-                self._repo = repo
-
-            async def create_card(
-                self,
-                card_id: str,
-                wallet_id: str,
-                card_type: str,
-                limit_per_tx: float,
-                limit_daily: float,
-                limit_monthly: float,
-                locked_merchant_id: str | None = None,
-            ):
-                ct = {
-                    "single_use": CardType.SINGLE_USE,
-                    "multi_use": CardType.MULTI_USE,
-                    "merchant_locked": CardType.MERCHANT_LOCKED,
-                }.get(card_type, CardType.MULTI_USE)
-                return await self._provider.create_card(
-                    wallet_id=wallet_id,
-                    card_type=ct,
-                    limit_per_tx=Decimal(str(limit_per_tx)),
-                    limit_daily=Decimal(str(limit_daily)),
-                    limit_monthly=Decimal(str(limit_monthly)),
-                    locked_merchant_id=locked_merchant_id,
-                )
-
-            async def fund_card(self, card_id: str, amount: float):
-                card = await self._repo.get_by_card_id(card_id)
-                if not card or not card.get("provider_card_id"):
-                    raise RuntimeError("Card not found or missing provider_card_id")
-                return await self._provider.fund_card(
-                    provider_card_id=card["provider_card_id"],
-                    amount=Decimal(str(amount)),
-                )
-
-            async def freeze_card(self, provider_card_id: str):
-                return await self._provider.freeze_card(provider_card_id)
-
-            async def unfreeze_card(self, provider_card_id: str):
-                return await self._provider.unfreeze_card(provider_card_id)
-
-            async def cancel_card(self, provider_card_id: str):
-                return await self._provider.cancel_card(provider_card_id)
-
-            async def update_limits(self, provider_card_id: str, **kwargs):
-                return await self._provider.update_limits(provider_card_id, **kwargs)
-
-            async def simulate_authorization(self, provider_card_id: str, amount_cents: int, merchant_descriptor: str = "Demo Merchant"):
-                if hasattr(self._provider, "simulate_authorization"):
-                    return await self._provider.simulate_authorization(
-                        provider_card_id=provider_card_id,
-                        amount_cents=amount_cents,
-                        merchant_descriptor=merchant_descriptor,
-                    )
-                return None
-
-        # Use Lithic provider in configured environments; fallback to mock provider in local/dev.
         lithic_api_key = os.getenv("LITHIC_API_KEY")
         if lithic_api_key:
             from sardis_cards.providers.lithic import LithicProvider
-
             provider_impl = LithicProvider(api_key=lithic_api_key)
             logger.info("Cards enabled with Lithic provider")
         else:
             from sardis_cards.providers.mock import MockProvider
-
             provider_impl = MockProvider()
             logger.warning(
                 "Cards enabled but LITHIC_API_KEY is missing; using MockProvider "
@@ -1003,21 +601,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
-    # Agent routes
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
 
-    # API Key management routes
     app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
 
     # Checkout routes (Agentic Checkout - Pivot D)
     from sardis_checkout.orchestrator import CheckoutOrchestrator
     from sardis_checkout.connectors.stripe import StripeConnector
 
-    # Initialize PSP connectors
     stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
     stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
     stripe_connector = (
@@ -1038,14 +633,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if hasattr(checkout_router, "public_router"):
         app.include_router(checkout_router.public_router, prefix="/api/v2/checkout", tags=["checkout"])
 
-    # Policy routes (Natural Language policy parsing)
     app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
         policy_store=policy_store,
         agent_repo=agent_repo,
     )
     app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
 
-    # Compliance routes (KYC and Sanctions)
     app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
@@ -1054,335 +647,34 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if hasattr(compliance_router, "public_router"):
         app.include_router(compliance_router.public_router, prefix="/api/v2/compliance", tags=["compliance"])
 
-    # Invoice routes
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
 
-    # Admin routes (with strict rate limiting)
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
     app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])
 
-    # Dev/testnet utility routes (faucet, etc.) - NOT available in production
+    # Dev/testnet utility routes - NOT available in production
     if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):
         app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
         logger.info("Dev routes enabled (faucet, etc.)")
 
-    # A2A discovery: /.well-known/agent-card.json (standard A2A spec location)
+    # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
     async def well_known_agent_card():
         """A2A agent card for discovery (standard .well-known path)."""
         from .routers.a2a import get_agent_card
         return await get_agent_card()
 
-    # Health check endpoints
-    @app.get("/", tags=["health"])
-    async def root():
-        """Root endpoint with service information."""
-        return {
-            "service": "Sardis API",
-            "version": API_VERSION,
-            "status": "healthy",
-            "docs": "/api/v2/docs",
-            "health": "/health",
-        }
-
-    @app.get("/live", tags=["health"])
-    async def liveness():
-        """
-        Kubernetes liveness probe.
-
-        Returns 200 if the process is alive and can handle requests.
-        This is a simple check that the process is running.
-        """
-        return {"status": "alive"}
-
-    @app.get("/ready", tags=["health"])
-    async def readiness():
-        """
-        Kubernetes readiness probe.
-
-        Returns 200 if the service is ready to accept traffic.
-        Returns 503 if the service is shutting down or not ready.
-        """
-        if shutdown_state.is_shutting_down:
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "shutting_down",
-                    "message": "Service is shutting down",
-                }
-            )
-
-        if not getattr(app.state, "ready", False):
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "status": "not_ready",
-                    "message": "Service is starting up",
-                }
-            )
-
-        return {"status": "ready"}
-
-    @app.get("/health", tags=["health"])
-    async def health_check():
-        """
-        Deep health check endpoint with component status.
-
-        Returns detailed status of all system components:
-        - Database connection
-        - Chain executor (simulated/live)
-        - External providers (Stripe, Turnkey)
-        - Cache service (Redis/in-memory)
-        - Webhook service
-        - API uptime
-
-        This is a "deep" health check that verifies connectivity to dependencies.
-        For lightweight probes, use /live or /ready endpoints.
-        """
-        start_time = time.time()
-
-        # Calculate uptime
-        startup_time = getattr(app.state, "startup_time", time.time())
-        uptime_seconds = int(time.time() - startup_time)
-
-        components = {
-            "api": {
-                "status": "up",
-                "uptime_seconds": uptime_seconds,
-            },
-            "database": {
-                "status": "unknown",
-                "type": "postgresql" if use_postgres else "memory",
-            },
-            "chain_executor": {
-                "status": "up",
-                "mode": settings.chain_mode,
-            },
-            "cache": {
-                "status": "unknown",
-                "type": "unknown",
-            },
-            "stripe": {
-                "status": "unconfigured",
-            },
-            "turnkey": {
-                "status": "unconfigured",
-            },
-            "webhooks": {
-                "status": "unknown",
-            },
-        }
-        overall_healthy = True
-        checks_passed = 0
-        checks_total = 0
-
-        # Database check
-        checks_total += 1
-        try:
-            if use_postgres:
-                import asyncpg
-                conn = await asyncpg.connect(database_url, timeout=5)
-                await conn.execute("SELECT 1")
-                await conn.close()
-                components["database"]["status"] = "connected"
-                components["database"]["latency_ms"] = int((time.time() - start_time) * 1000)
-                checks_passed += 1
-            else:
-                components["database"]["status"] = "in_memory"
-                checks_passed += 1
-        except Exception as e:
-            logger.warning(f"Database health check failed: {e}")
-            components["database"]["status"] = "disconnected"
-            components["database"]["error"] = str(e)
-            overall_healthy = False
-
-        # Cache check
-        checks_total += 1
-        cache_start = time.time()
-        try:
-            cache = getattr(app.state, "cache_service", None)
-            if cache:
-                # Try a simple get to verify connectivity
-                await cache.get("health_check_probe")
-                components["cache"]["status"] = "connected"
-                components["cache"]["type"] = "redis" if redis_url else "in_memory"
-                components["cache"]["latency_ms"] = int((time.time() - cache_start) * 1000)
-                checks_passed += 1
-            else:
-                components["cache"]["status"] = "disabled"
-                components["cache"]["type"] = "none"
-                checks_passed += 1
-        except Exception as e:
-            logger.warning(f"Cache health check failed: {e}")
-            components["cache"]["status"] = "error"
-            components["cache"]["error"] = str(e)
-
-        # Stripe check (if configured)
-        stripe_key = os.getenv("STRIPE_SECRET_KEY")
-        if stripe_key:
-            checks_total += 1
-            stripe_start = time.time()
-            try:
-                import httpx
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    resp = await client.get(
-                        "https://api.stripe.com/v1/balance",
-                        headers={"Authorization": f"Bearer {stripe_key}"}
-                    )
-                    if resp.status_code == 200:
-                        components["stripe"]["status"] = "connected"
-                        components["stripe"]["latency_ms"] = int((time.time() - stripe_start) * 1000)
-                        checks_passed += 1
-                    else:
-                        components["stripe"]["status"] = "auth_error"
-                        components["stripe"]["http_status"] = resp.status_code
-                        overall_healthy = False
-            except Exception as e:
-                logger.warning(f"Stripe health check failed: {e}")
-                components["stripe"]["status"] = "unreachable"
-                components["stripe"]["error"] = str(e)
-                overall_healthy = False
-
-        # Turnkey check (if configured)
-        turnkey_key = os.getenv("TURNKEY_API_KEY")
-        if turnkey_key:
-            checks_total += 1
-            turnkey_start = time.time()
-            try:
-                import httpx
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    resp = await client.post(
-                        "https://api.turnkey.com/public/v1/query/get_whoami",
-                        headers={
-                            "X-Stamp-WebAuthn": "",  # Will fail auth but proves connectivity
-                        },
-                        json={"organizationId": os.getenv("TURNKEY_ORGANIZATION_ID", "")},
-                    )
-                    # Any response (even 401) means the service is reachable
-                    components["turnkey"]["status"] = "reachable"
-                    components["turnkey"]["latency_ms"] = int((time.time() - turnkey_start) * 1000)
-                    checks_passed += 1
-            except Exception as e:
-                logger.warning(f"Turnkey health check failed: {e}")
-                components["turnkey"]["status"] = "unreachable"
-                components["turnkey"]["error"] = str(e)
-                overall_healthy = False
-        else:
-            components["turnkey"]["status"] = "unconfigured"
-
-        # RPC endpoint check
-        checks_total += 1
-        rpc_start = time.time()
-        try:
-            chain_name = settings.chain_mode if settings.chain_mode != "simulated" else "base_sepolia"
-            chain_executor = getattr(app.state, "chain_executor", None)
-            if chain_executor and hasattr(chain_executor, "check_chain_health"):
-                rpc_health = await chain_executor.check_chain_health(chain_name)
-                if rpc_health:
-                    components["rpc"] = {
-                        "status": "connected",
-                        "chain": chain_name,
-                        "latency_ms": int((time.time() - rpc_start) * 1000),
-                    }
-                    checks_passed += 1
-                else:
-                    components["rpc"] = {"status": "unhealthy", "chain": chain_name}
-                    overall_healthy = False
-            else:
-                components["rpc"] = {"status": "not_initialized"}
-                checks_passed += 1  # Not a failure if executor not yet created
-        except Exception as e:
-            logger.warning(f"RPC health check failed: {e}")
-            components["rpc"] = {"status": "error", "error": str(e)}
-            overall_healthy = False
-
-        # Compliance services check
-        try:
-            compliance_engine = getattr(app.state, "compliance_engine", None)
-            if compliance_engine:
-                components["compliance"] = {"status": "configured"}
-            else:
-                env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-                if env in ("prod", "production"):
-                    components["compliance"] = {"status": "missing_in_production"}
-                    overall_healthy = False
-                else:
-                    components["compliance"] = {"status": "disabled_dev_mode"}
-        except Exception as e:
-            components["compliance"] = {"status": "error", "error": str(e)}
-
-        # Smart contract check (verify configured addresses are valid)
-        checks_total += 1
-        try:
-            from sardis_v2_core.config import get_chain_config
-            chain_cfg = get_chain_config(settings.chain_mode if settings.chain_mode != "simulated" else "base_sepolia")
-            contract_addr = getattr(chain_cfg, "wallet_factory_address", None) or os.getenv("SARDIS_WALLET_FACTORY_ADDRESS")
-            if contract_addr and contract_addr.startswith("0x") and len(contract_addr) == 42:
-                components["contracts"] = {"status": "configured", "wallet_factory": contract_addr[:10] + "..."}
-                checks_passed += 1
-            elif contract_addr:
-                components["contracts"] = {"status": "invalid_address", "address": contract_addr}
-                overall_healthy = False
-            else:
-                components["contracts"] = {"status": "unconfigured"}
-                checks_passed += 1  # Not required in dev/simulated mode
-        except Exception as e:
-            components["contracts"] = {"status": "error", "error": str(e)}
-
-        # Webhook service check
-        checks_total += 1
-        try:
-            webhook_svc = getattr(app.state, "webhook_service", None)
-            if webhook_svc:
-                components["webhooks"]["status"] = "up"
-                checks_passed += 1
-            else:
-                components["webhooks"]["status"] = "disabled"
-                checks_passed += 1
-        except Exception as e:
-            components["webhooks"]["status"] = "error"
-            components["webhooks"]["error"] = str(e)
-
-        response_time_ms = int((time.time() - start_time) * 1000)
-
-        # Determine overall status
-        if shutdown_state.is_shutting_down:
-            status = "shutting_down"
-        elif not overall_healthy:
-            status = "degraded"
-        elif checks_passed < checks_total:
-            status = "partial"
-        else:
-            status = "healthy"
-
-        from fastapi.responses import JSONResponse as FastAPIJSONResponse
-        status_code = 200 if status in ("healthy", "partial") else 503
-
-        return FastAPIJSONResponse(
-            status_code=status_code,
-            content={
-                "status": status,
-                "environment": settings.environment,
-                "chain_mode": settings.chain_mode,
-                "version": API_VERSION,
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "response_time_ms": response_time_ms,
-                "checks": {
-                    "passed": checks_passed,
-                    "total": checks_total,
-                },
-                "components": components,
-            }
-        )
-
-    @app.get("/api/v2/health", tags=["health"])
-    async def api_health():
-        """Lightweight API v2 health check."""
-        return {
-            "status": "ok",
-            "version": API_VERSION,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
+    # -----------------------------------------------------------------------
+    # Health endpoints (extracted to health.py)
+    # -----------------------------------------------------------------------
+    health_router = create_health_router(
+        shutdown_state=shutdown_state,
+        use_postgres=use_postgres,
+        database_url=database_url,
+        redis_url=redis_url or "",
+        settings=settings,
+    )
+    app.include_router(health_router)
 
     return app
 
