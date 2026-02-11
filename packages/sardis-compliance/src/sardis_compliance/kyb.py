@@ -17,6 +17,13 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from sardis_compliance.retry import (
+    create_retryable_client,
+    RetryConfig,
+    CircuitBreakerConfig,
+    RateLimitConfig,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,6 +131,22 @@ class PersonaKYBProvider(KYBProvider):
         self._webhook_secret = webhook_secret
         self._environment = environment
         self._http_client = None
+        self._retry_client = create_retryable_client(
+            name="persona_kyb",
+            retry_config=RetryConfig(
+                max_retries=3,
+                initial_delay_seconds=1.0,
+                max_delay_seconds=30.0,
+            ),
+            circuit_config=CircuitBreakerConfig(
+                failure_threshold=5,
+                timeout_seconds=120.0,
+            ),
+            rate_config=RateLimitConfig(
+                requests_per_second=10.0,
+                burst_size=20,
+            ),
+        )
 
     async def _get_client(self):
         if self._http_client is None:
@@ -139,12 +162,24 @@ class PersonaKYBProvider(KYBProvider):
             )
         return self._http_client
 
+    async def _request(self, method: str, path: str, **kwargs):
+        """Make HTTP request with retry and circuit breaker."""
+        client = await self._get_client()
+
+        async def _do_request():
+            response = await getattr(client, method)(path, **kwargs)
+            response.raise_for_status()
+            return response.json()
+
+        result = await self._retry_client.execute(_do_request)
+        if not result.success:
+            raise result.error
+        return result.value
+
     async def create_business_inquiry(
         self,
         request: BusinessVerificationRequest,
     ) -> BusinessInquirySession:
-        client = await self._get_client()
-
         data = {
             "data": {
                 "attributes": {
@@ -177,61 +212,44 @@ class PersonaKYBProvider(KYBProvider):
         if request.address_postal_code:
             fields["business-address-postal-code"] = request.address_postal_code
 
-        try:
-            response = await client.post("/inquiries", json=data)
-            response.raise_for_status()
-            result = response.json()
+        result = await self._request("post", "/inquiries", json=data)
 
-            inquiry_data = result.get("data", {})
-            attributes = inquiry_data.get("attributes", {})
+        inquiry_data = result.get("data", {})
+        attributes = inquiry_data.get("attributes", {})
 
-            session_response = await client.post(
-                f"/inquiries/{inquiry_data['id']}/generate-one-time-link"
-            )
-            session_response.raise_for_status()
-            session_data = session_response.json()
+        session_data = await self._request(
+            "post",
+            f"/inquiries/{inquiry_data['id']}/generate-one-time-link",
+        )
 
-            return BusinessInquirySession(
-                inquiry_id=inquiry_data["id"],
-                session_token=session_data.get("meta", {}).get("session-token", ""),
-                template_id=self._template_id,
-                status=self._map_status(attributes.get("status", "pending")),
-                redirect_url=session_data.get("meta", {}).get("one-time-link"),
-            )
-
-        except Exception as e:
-            logger.error(f"Persona KYB create_business_inquiry failed: {e}")
-            raise
+        return BusinessInquirySession(
+            inquiry_id=inquiry_data["id"],
+            session_token=session_data.get("meta", {}).get("session-token", ""),
+            template_id=self._template_id,
+            status=self._map_status(attributes.get("status", "pending")),
+            redirect_url=session_data.get("meta", {}).get("one-time-link"),
+        )
 
     async def get_inquiry_status(self, inquiry_id: str) -> KYBResult:
-        client = await self._get_client()
+        result = await self._request("get", f"/inquiries/{inquiry_id}")
 
-        try:
-            response = await client.get(f"/inquiries/{inquiry_id}")
-            response.raise_for_status()
-            result = response.json()
+        data = result.get("data", {})
+        attributes = data.get("attributes", {})
 
-            data = result.get("data", {})
-            attributes = data.get("attributes", {})
-
-            return KYBResult(
-                status=self._map_status(attributes.get("status", "pending")),
-                inquiry_id=inquiry_id,
-                provider="persona",
-                verified_at=self._parse_datetime(attributes.get("completed-at")),
-                expires_at=self._parse_datetime(attributes.get("expired-at")),
-                reason=attributes.get("decline-reason"),
-                business_name=attributes.get("fields", {}).get("business-name"),
-                metadata={
-                    "reference_id": attributes.get("reference-id"),
-                    "template_id": attributes.get("inquiry-template-id"),
-                    "checks": attributes.get("checks", []),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Persona KYB get_inquiry_status failed: {e}")
-            raise
+        return KYBResult(
+            status=self._map_status(attributes.get("status", "pending")),
+            inquiry_id=inquiry_id,
+            provider="persona",
+            verified_at=self._parse_datetime(attributes.get("completed-at")),
+            expires_at=self._parse_datetime(attributes.get("expired-at")),
+            reason=attributes.get("decline-reason"),
+            business_name=attributes.get("fields", {}).get("business-name"),
+            metadata={
+                "reference_id": attributes.get("reference-id"),
+                "template_id": attributes.get("inquiry-template-id"),
+                "checks": attributes.get("checks", []),
+            },
+        )
 
     async def verify_webhook(self, payload: bytes, signature: str) -> bool:
         if not self._webhook_secret:

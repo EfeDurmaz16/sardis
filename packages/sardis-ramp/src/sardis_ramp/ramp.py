@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import hmac
 import os
 import logging
 from decimal import Decimal
@@ -113,6 +116,9 @@ class SardisFiatRamp:
             else self.BRIDGE_API_URL
         )
         self.kyc_threshold_usd = kyc_threshold_usd
+        self._webhook_secret = os.environ.get("BRIDGE_WEBHOOK_SECRET")
+        self._max_retries = 3
+        self._retry_delay = 1.0
 
         self._http = httpx.AsyncClient(timeout=30.0)
 
@@ -131,18 +137,46 @@ class SardisFiatRamp:
         return resp.json()
 
     async def _bridge_request(self, method: str, path: str, **kwargs) -> dict:
-        """Make authenticated request to Bridge API."""
-        resp = await self._http.request(
-            method,
-            f"{self.bridge_url}{path}",
-            headers={
-                "Api-Key": self.bridge_api_key,
-                "Content-Type": "application/json",
-            },
-            **kwargs
-        )
-        resp.raise_for_status()
-        return resp.json()
+        """Make authenticated request to Bridge API with retry."""
+        last_error = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                resp = await self._http.request(
+                    method,
+                    f"{self.bridge_url}{path}",
+                    headers={
+                        "Api-Key": self.bridge_api_key,
+                        "Content-Type": "application/json",
+                    },
+                    **kwargs
+                )
+                resp.raise_for_status()
+                return resp.json()
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                # Retry on 429 and 5xx
+                if e.response.status_code in (429, 500, 502, 503, 504):
+                    if attempt < self._max_retries:
+                        delay = self._retry_delay * (2 ** attempt)
+                        logger.warning(
+                            f"Bridge API {method} {path} returned {e.response.status_code}, "
+                            f"retrying in {delay:.1f}s (attempt {attempt + 1}/{self._max_retries})"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                raise
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                last_error = e
+                if attempt < self._max_retries:
+                    delay = self._retry_delay * (2 ** attempt)
+                    logger.warning(
+                        f"Bridge API {method} {path} failed: {e}, "
+                        f"retrying in {delay:.1f}s (attempt {attempt + 1}/{self._max_retries})"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+        raise last_error
 
     async def get_wallet(self, wallet_id: str) -> dict:
         """Get wallet details from Sardis."""
@@ -470,6 +504,32 @@ class SardisFiatRamp:
     async def get_withdrawal_status(self, payout_id: str) -> dict:
         """Get status of a bank withdrawal."""
         return await self._bridge_request("GET", f"/payouts/{payout_id}")
+
+    def verify_webhook(self, payload: bytes, signature: str) -> bool:
+        """
+        Verify Bridge.xyz webhook HMAC-SHA256 signature.
+
+        Args:
+            payload: Raw request body bytes
+            signature: Signature from Bridge-Signature header
+
+        Returns:
+            True if signature is valid
+        """
+        if not self._webhook_secret:
+            logger.warning("Bridge webhook secret not configured")
+            return False
+
+        try:
+            expected = hmac.new(
+                self._webhook_secret.encode(),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+            return hmac.compare_digest(expected, signature)
+        except Exception as e:
+            logger.error(f"Bridge webhook verification failed: {e}")
+            return False
 
     def _chain_to_bridge(self, chain: str) -> str:
         """Convert Sardis chain name to Bridge chain name."""

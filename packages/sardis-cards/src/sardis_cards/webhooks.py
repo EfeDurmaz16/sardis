@@ -262,16 +262,19 @@ class ASAHandler:
         webhook_handler: CardWebhookHandler,
         card_lookup: Optional[Callable[[str], Optional[Any]]] = None,
         policy_check: Optional[Callable[[str, Decimal, str, str], tuple[bool, str]]] = None,
+        redis_client: Optional[Any] = None,
     ):
         """
         Args:
             webhook_handler: Base handler for signature verification
             card_lookup: Async callable(card_token) -> Card or None
             policy_check: Async callable(wallet_id, amount, merchant_mcc, merchant_name) -> (allowed, reason)
+            redis_client: Optional Redis client for persistent idempotency
         """
         self._handler = webhook_handler
         self._card_lookup = card_lookup
         self._policy_check = policy_check
+        self._redis = redis_client
         self._processed: set[str] = set()
 
         # Blocked MCC codes (high-risk categories)
@@ -294,6 +297,16 @@ class ASAHandler:
             # Wire transfers (potential for irreversible fund movement)
             "4829",  # Wire transfers / money orders
         }
+
+    async def _mark_processed(self, token: str) -> None:
+        """Mark token as processed in memory and optionally Redis."""
+        self._processed.add(token)
+        if self._redis:
+            try:
+                await self._redis.sadd("sardis:asa:processed", token)
+                await self._redis.expire("sardis:asa:processed", 86400)  # 24h TTL
+            except Exception:
+                pass  # In-memory set is sufficient fallback
 
     def add_blocked_mcc(self, mcc: str) -> None:
         """Add a merchant category code to the block list."""
@@ -330,8 +343,14 @@ class ASAHandler:
         data = json.loads(payload)
         asa_req = self._parse_asa_request(data)
 
-        # 3. Idempotency check
-        if asa_req.token in self._processed:
+        # 3. Idempotency check (Redis-backed if available, in-memory fallback)
+        is_duplicate = asa_req.token in self._processed
+        if not is_duplicate and self._redis:
+            try:
+                is_duplicate = await self._redis.sismember("sardis:asa:processed", asa_req.token)
+            except Exception:
+                pass  # Fall back to in-memory check
+        if is_duplicate:
             logger.info(f"ASA: Duplicate authorization {asa_req.token}")
             return ASAResponse(
                 decision=ASADecision.APPROVE,
@@ -351,7 +370,7 @@ class ASAHandler:
                 f"ASA: Declined - blocked MCC {asa_req.merchant_mcc} "
                 f"for card {asa_req.card_token}"
             )
-            self._processed.add(asa_req.token)
+            await self._mark_processed(asa_req.token)
             return ASAResponse(
                 decision=ASADecision.DECLINE,
                 reason=f"blocked_merchant_category_{asa_req.merchant_mcc}",
@@ -364,7 +383,7 @@ class ASAHandler:
                 card = await self._card_lookup(asa_req.card_token)
                 if card is None:
                     logger.warning(f"ASA: Card not found {asa_req.card_token}")
-                    self._processed.add(asa_req.token)
+                    await self._mark_processed(asa_req.token)
                     return ASAResponse(
                         decision=ASADecision.DECLINE,
                         reason="card_not_found",
@@ -377,7 +396,7 @@ class ASAHandler:
                 )
                 if not can_authorize:
                     logger.info(f"ASA: Declined by card limits - {card_reason}")
-                    self._processed.add(asa_req.token)
+                    await self._mark_processed(asa_req.token)
                     return ASAResponse(
                         decision=ASADecision.DECLINE,
                         reason=card_reason,
@@ -399,7 +418,7 @@ class ASAHandler:
                 )
                 if not allowed:
                     logger.info(f"ASA: Declined by policy - {policy_reason}")
-                    self._processed.add(asa_req.token)
+                    await self._mark_processed(asa_req.token)
                     return ASAResponse(
                         decision=ASADecision.DECLINE,
                         reason=policy_reason,
@@ -408,7 +427,7 @@ class ASAHandler:
             except Exception as e:
                 logger.error(f"ASA: Policy check failed: {e}")
                 # Fail-closed on policy errors — decline if policy engine is down
-                self._processed.add(asa_req.token)
+                await self._mark_processed(asa_req.token)
                 return ASAResponse(
                     decision=ASADecision.DECLINE,
                     reason="policy_check_failed",
@@ -416,7 +435,7 @@ class ASAHandler:
                 )
 
         # 7. Approved
-        self._processed.add(asa_req.token)
+        await self._mark_processed(asa_req.token)
         logger.info(f"ASA: Approved token={asa_req.token} amount=${asa_req.amount}")
         return ASAResponse(
             decision=ASADecision.APPROVE,
@@ -459,6 +478,7 @@ class AutoConversionWebhookHandler:
         webhook_handler: CardWebhookHandler,
         card_to_wallet_map: dict[str, str],
         on_conversion_needed: Optional[Callable[[str, int, str], None]] = None,
+        redis_client: Optional[Any] = None,
     ):
         """
         Initialize auto-conversion webhook handler.
@@ -468,10 +488,12 @@ class AutoConversionWebhookHandler:
             card_to_wallet_map: Mapping of card_id -> wallet_id
             on_conversion_needed: Callback when conversion is needed.
                 Args: (wallet_id, amount_cents, card_transaction_id)
+            redis_client: Optional Redis client for persistent idempotency
         """
         self._handler = webhook_handler
         self._card_wallet_map = card_to_wallet_map
         self._on_conversion_needed = on_conversion_needed
+        self._redis = redis_client
         self._processed_events: set[str] = set()
 
     def register_card(self, card_id: str, wallet_id: str) -> None:
@@ -504,12 +526,26 @@ class AutoConversionWebhookHandler:
         # Verify and parse event
         event = self._handler.verify_and_parse(payload, signature, timestamp)
 
-        # Skip if already processed (idempotency)
-        if event.event_id in self._processed_events:
+        # Skip if already processed (idempotency - Redis-backed if available)
+        is_duplicate = event.event_id in self._processed_events
+        if not is_duplicate and self._redis:
+            try:
+                is_duplicate = await self._redis.sismember(
+                    "sardis:webhook:processed", event.event_id
+                )
+            except Exception:
+                pass
+        if is_duplicate:
             logger.info(f"Skipping already processed event: {event.event_id}")
             return None
 
         self._processed_events.add(event.event_id)
+        if self._redis:
+            try:
+                await self._redis.sadd("sardis:webhook:processed", event.event_id)
+                await self._redis.expire("sardis:webhook:processed", 86400)
+            except Exception:
+                pass
 
         # Only process transaction created events (authorizations)
         if event.event_type != WebhookEventType.TRANSACTION_CREATED:

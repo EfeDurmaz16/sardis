@@ -436,6 +436,34 @@ CREATE TABLE IF NOT EXISTS kyc_verifications (
 CREATE INDEX IF NOT EXISTS idx_kyc_agent ON kyc_verifications(agent_id);
 CREATE INDEX IF NOT EXISTS idx_kyc_inquiry ON kyc_verifications(inquiry_id);
 
+-- KYB verifications (business entity verification)
+CREATE TABLE IF NOT EXISTS kyb_verifications (
+    id SERIAL PRIMARY KEY,
+    org_id VARCHAR(100) NOT NULL,
+    inquiry_id VARCHAR(100) UNIQUE NOT NULL,
+    provider VARCHAR(50) DEFAULT 'persona',
+    status VARCHAR(20) DEFAULT 'pending',
+    verified_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    reason TEXT,
+    business_name VARCHAR(255),
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_kyb_org ON kyb_verifications(org_id);
+CREATE INDEX IF NOT EXISTS idx_kyb_inquiry ON kyb_verifications(inquiry_id);
+
+-- Sanctions blocklist (persistent address blocklist)
+CREATE TABLE IF NOT EXISTS sanctions_blocklist (
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(66) UNIQUE NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_blocklist_address ON sanctions_blocklist(address);
+
 -- Invoices
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id VARCHAR(100) PRIMARY KEY,

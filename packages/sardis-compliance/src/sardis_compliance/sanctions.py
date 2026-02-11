@@ -22,6 +22,13 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from sardis_compliance.retry import (
+    create_retryable_client,
+    RetryConfig,
+    CircuitBreakerConfig,
+    RateLimitConfig,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -160,6 +167,22 @@ class EllipticProvider(SanctionsProvider):
         self._api_secret = api_secret
         self._risk_threshold = risk_threshold
         self._http_client = None
+        self._retry_client = create_retryable_client(
+            name="elliptic",
+            retry_config=RetryConfig(
+                max_retries=3,
+                initial_delay_seconds=1.0,
+                max_delay_seconds=30.0,
+            ),
+            circuit_config=CircuitBreakerConfig(
+                failure_threshold=5,
+                timeout_seconds=120.0,
+            ),
+            rate_config=RateLimitConfig(
+                requests_per_second=5.0,
+                burst_size=10,
+            ),
+        )
 
     async def _get_client(self):
         """Get or create HTTP client."""
@@ -221,40 +244,18 @@ class EllipticProvider(SanctionsProvider):
         body_str = json.dumps(body)
         headers = self._sign_request("POST", path, body_str)
         
-        try:
+        async def _do_screen():
             response = await client.post(path, content=body_str, headers=headers)
             response.raise_for_status()
-            result = response.json()
-            
-            # Parse Elliptic response
-            risk_score = result.get("risk_score", 0)
-            risk_level = self._map_risk_score(risk_score)
-            
-            # Check for sanctioned entities
-            sanctioned_entities = result.get("sanctioned_entity_exposures", [])
-            is_sanctioned = len(sanctioned_entities) > 0
-            
-            matches = []
-            for entity in sanctioned_entities:
-                matches.append({
-                    "list": entity.get("source"),
-                    "name": entity.get("name"),
-                    "category": entity.get("category"),
-                    "exposure_value": entity.get("exposure_value"),
-                })
-            
-            return ScreeningResult(
-                risk_level=risk_level,
-                is_sanctioned=is_sanctioned,
-                entity_id=request.address,
-                entity_type=EntityType.WALLET,
-                provider="elliptic",
-                matches=matches,
-                reason="Sanctioned entity exposure" if is_sanctioned else None,
+            return response.json()
+
+        retry_result = await self._retry_client.execute(_do_screen)
+
+        if not retry_result.success:
+            logger.error(
+                f"Elliptic screen_wallet failed after {retry_result.attempts} "
+                f"attempts: {retry_result.error}"
             )
-            
-        except Exception as e:
-            logger.error(f"Elliptic screen_wallet failed: {e}")
             # Fail closed - block on error
             return ScreeningResult(
                 risk_level=SanctionsRisk.BLOCKED,
@@ -262,8 +263,37 @@ class EllipticProvider(SanctionsProvider):
                 entity_id=request.address,
                 entity_type=EntityType.WALLET,
                 provider="elliptic",
-                reason=f"Screening failed: {str(e)}",
+                reason=f"Screening failed: {str(retry_result.error)}",
             )
+
+        result = retry_result.value
+
+        # Parse Elliptic response
+        risk_score = result.get("risk_score", 0)
+        risk_level = self._map_risk_score(risk_score)
+
+        # Check for sanctioned entities
+        sanctioned_entities = result.get("sanctioned_entity_exposures", [])
+        is_sanctioned = len(sanctioned_entities) > 0
+
+        matches = []
+        for entity in sanctioned_entities:
+            matches.append({
+                "list": entity.get("source"),
+                "name": entity.get("name"),
+                "category": entity.get("category"),
+                "exposure_value": entity.get("exposure_value"),
+            })
+
+        return ScreeningResult(
+            risk_level=risk_level,
+            is_sanctioned=is_sanctioned,
+            entity_id=request.address,
+            entity_type=EntityType.WALLET,
+            provider="elliptic",
+            matches=matches,
+            reason="Sanctioned entity exposure" if is_sanctioned else None,
+        )
 
     async def screen_transaction(
         self,
@@ -318,19 +348,40 @@ class EllipticProvider(SanctionsProvider):
         address: str,
         reason: str,
     ) -> bool:
-        """Add address to Elliptic custom list."""
-        # Elliptic doesn't have a direct blocklist API
-        # This would typically be stored in our own database
-        logger.info(f"Address {address} would be added to blocklist: {reason}")
-        return True
+        """Add address to persistent blocklist in PostgreSQL."""
+        try:
+            from sardis_v2_core.database import Database
+            await Database.execute(
+                """
+                INSERT INTO sanctions_blocklist (address, reason, created_at)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (address) DO UPDATE SET reason = $2, updated_at = NOW()
+                """,
+                address.lower(),
+                reason,
+            )
+            logger.info(f"Address {address} added to blocklist: {reason}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to persist blocklist entry: {e}")
+            return False
 
     async def remove_from_blocklist(
         self,
         address: str,
     ) -> bool:
-        """Remove address from blocklist."""
-        logger.info(f"Address {address} would be removed from blocklist")
-        return True
+        """Remove address from persistent blocklist."""
+        try:
+            from sardis_v2_core.database import Database
+            await Database.execute(
+                "DELETE FROM sanctions_blocklist WHERE address = $1",
+                address.lower(),
+            )
+            logger.info(f"Address {address} removed from blocklist")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to remove blocklist entry: {e}")
+            return False
 
     def _map_chain_to_subject(self, chain: str) -> str:
         """Map chain name to Elliptic subject type."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -131,7 +132,8 @@ class LithicProvider(CardProvider):
         # Convert limit to cents
         spend_limit = int(limit_daily * 100)
         
-        lithic_card = self._client.cards.create(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.create,
             type=lithic_type,
             spend_limit=spend_limit,
             spend_limit_duration="TRANSACTION",
@@ -148,13 +150,16 @@ class LithicProvider(CardProvider):
     
     async def get_card(self, provider_card_id: str) -> Optional[Card]:
         try:
-            lithic_card = self._client.cards.retrieve(provider_card_id)
+            lithic_card = await asyncio.to_thread(
+                self._client.cards.retrieve, provider_card_id
+            )
             return self._lithic_card_to_model(lithic_card)
         except Exception:
             return None
-    
+
     async def activate_card(self, provider_card_id: str) -> Card:
-        lithic_card = self._client.cards.update(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.update,
             provider_card_id,
             state="OPEN",
         )
@@ -163,7 +168,8 @@ class LithicProvider(CardProvider):
         return card
     
     async def freeze_card(self, provider_card_id: str) -> Card:
-        lithic_card = self._client.cards.update(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.update,
             provider_card_id,
             state="PAUSED",
         )
@@ -172,14 +178,16 @@ class LithicProvider(CardProvider):
         return card
     
     async def unfreeze_card(self, provider_card_id: str) -> Card:
-        lithic_card = self._client.cards.update(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.update,
             provider_card_id,
             state="OPEN",
         )
         return self._lithic_card_to_model(lithic_card)
     
     async def cancel_card(self, provider_card_id: str) -> Card:
-        lithic_card = self._client.cards.update(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.update,
             provider_card_id,
             state="CLOSED",
         )
@@ -197,11 +205,12 @@ class LithicProvider(CardProvider):
         # Lithic uses a single spend_limit, we use the daily limit
         spend_limit = int((limit_daily or Decimal("2000")) * 100)
         
-        lithic_card = self._client.cards.update(
+        lithic_card = await asyncio.to_thread(
+            self._client.cards.update,
             provider_card_id,
             spend_limit=spend_limit,
         )
-        
+
         card = self._lithic_card_to_model(lithic_card)
         if limit_per_tx:
             card.limit_per_tx = limit_per_tx
@@ -209,9 +218,9 @@ class LithicProvider(CardProvider):
             card.limit_daily = limit_daily
         if limit_monthly:
             card.limit_monthly = limit_monthly
-        
+
         return card
-    
+
     async def fund_card(
         self,
         provider_card_id: str,
@@ -251,7 +260,8 @@ class LithicProvider(CardProvider):
         new_limit = current_limit + amount_cents
         
         try:
-            lithic_card = self._client.cards.update(
+            lithic_card = await asyncio.to_thread(
+                self._client.cards.update,
                 provider_card_id,
                 spend_limit=new_limit,
             )
@@ -283,12 +293,15 @@ class LithicProvider(CardProvider):
             raise ValueError("Simulations only available in sandbox")
 
         # Retrieve full card PAN for sandbox simulation
-        card_details = self._client.cards.retrieve(provider_card_id)
+        card_details = await asyncio.to_thread(
+            self._client.cards.retrieve, provider_card_id
+        )
         pan = card_details.pan
         if not pan:
             raise ValueError("Could not retrieve card PAN for sandbox simulation")
 
-        result = self._client.transactions.simulate_authorization(
+        result = await asyncio.to_thread(
+            self._client.transactions.simulate_authorization,
             amount=amount_cents,
             pan=pan,
             descriptor=merchant_descriptor,
@@ -315,7 +328,7 @@ class LithicProvider(CardProvider):
         Used for reconciliation and balance monitoring.
         """
         try:
-            balance = self._client.balance.list()
+            balance = await asyncio.to_thread(self._client.balance.list)
             if balance:
                 # Return first balance (usually the main account)
                 return Decimal(str(balance[0].available_amount / 100))
@@ -330,7 +343,8 @@ class LithicProvider(CardProvider):
         offset: int = 0,
     ) -> list[CardTransaction]:
         # Lithic uses pagination differently
-        lithic_txs = self._client.transactions.list(
+        lithic_txs = await asyncio.to_thread(
+            self._client.transactions.list,
             card_token=provider_card_id,
             page_size=limit,
         )
@@ -342,7 +356,9 @@ class LithicProvider(CardProvider):
         provider_tx_id: str,
     ) -> Optional[CardTransaction]:
         try:
-            lithic_tx = self._client.transactions.retrieve(provider_tx_id)
+            lithic_tx = await asyncio.to_thread(
+                self._client.transactions.retrieve, provider_tx_id
+            )
             return self._lithic_tx_to_model(lithic_tx)
         except Exception:
             return None
