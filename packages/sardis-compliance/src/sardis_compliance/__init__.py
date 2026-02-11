@@ -122,6 +122,17 @@ from .dashboard import (
     ComplianceDashboard,
     create_dashboard,
 )
+from .travel_rule import (
+    TravelRuleStatus,
+    VASPProtocol,
+    OriginatorInfo,
+    BeneficiaryInfo,
+    TravelRuleTransfer,
+    TravelRuleProvider,
+    ManualTravelRuleProvider,
+    TravelRuleService,
+    create_travel_rule_service,
+)
 from .batch import (
     BatchStatus,
     ItemStatus,
@@ -257,6 +268,16 @@ __all__ = [
     "MetricsCollector",
     "ComplianceDashboard",
     "create_dashboard",
+    # Travel Rule
+    "TravelRuleStatus",
+    "VASPProtocol",
+    "OriginatorInfo",
+    "BeneficiaryInfo",
+    "TravelRuleTransfer",
+    "TravelRuleProvider",
+    "ManualTravelRuleProvider",
+    "TravelRuleService",
+    "create_travel_rule_service",
     # Batch Processing
     "BatchStatus",
     "ItemStatus",
