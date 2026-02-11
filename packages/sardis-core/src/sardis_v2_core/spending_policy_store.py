@@ -2,6 +2,9 @@
 
 Ensures spending limits are enforced atomically in the database,
 preventing races in multi-instance deployments.
+
+SECURITY: Without this, a process restart resets all spending limits to zero,
+allowing agents to bypass total and daily/weekly/monthly limits.
 """
 from __future__ import annotations
 
@@ -29,7 +32,10 @@ class SpendingPolicyStore:
     async def _get_pool(self):
         if self._pool is None:
             import asyncpg
-            self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+            dsn = self._dsn
+            if dsn.startswith("postgres://"):
+                dsn = dsn.replace("postgres://", "postgresql://", 1)
+            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
         return self._pool
 
     async def record_spend_atomic(
@@ -37,6 +43,7 @@ class SpendingPolicyStore:
         agent_id: str,
         amount: Decimal,
         currency: str = "USDC",
+        merchant_id: Optional[str] = None,
     ) -> tuple[bool, str]:
         """Atomically check limits and record a spend.
 
@@ -143,6 +150,17 @@ class SpendingPolicyStore:
                         window["id"],
                     )
 
+                # Record velocity entry
+                await conn.execute(
+                    """
+                    INSERT INTO spending_velocity (policy_id, tx_timestamp, amount, merchant_id)
+                    VALUES ($1, NOW(), $2, $3)
+                    """,
+                    policy["id"],
+                    float(amount),
+                    merchant_id,
+                )
+
                 logger.info(
                     "Spend recorded atomically",
                     extra={
@@ -152,6 +170,90 @@ class SpendingPolicyStore:
                     },
                 )
                 return True, "OK"
+
+    async def check_velocity(
+        self,
+        agent_id: str,
+        max_per_minute: int = 5,
+        max_per_hour: int = 60,
+    ) -> tuple[bool, str]:
+        """Check if agent is within velocity limits.
+
+        Prevents rapid-fire small transactions that individually pass
+        per-tx limits but collectively represent abuse.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            policy = await conn.fetchrow(
+                "SELECT id FROM spending_policies WHERE agent_id = $1::uuid",
+                agent_id,
+            )
+            if not policy:
+                return False, "no_policy_found"
+
+            count_minute = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM spending_velocity
+                WHERE policy_id = $1 AND tx_timestamp > NOW() - INTERVAL '1 minute'
+                """,
+                policy["id"],
+            )
+            if count_minute >= max_per_minute:
+                return False, "velocity_limit_per_minute"
+
+            count_hour = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM spending_velocity
+                WHERE policy_id = $1 AND tx_timestamp > NOW() - INTERVAL '1 hour'
+                """,
+                policy["id"],
+            )
+            if count_hour >= max_per_hour:
+                return False, "velocity_limit_per_hour"
+
+            return True, "OK"
+
+    async def load_state(self, agent_id: str) -> Optional[dict]:
+        """Load current spending state from the database.
+
+        Returns dict with spent_total and per-window current_spent,
+        or None if no policy exists for this agent.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            policy = await conn.fetchrow(
+                """
+                SELECT id, spent_total, limit_per_tx, limit_total
+                FROM spending_policies
+                WHERE agent_id = $1::uuid
+                """,
+                agent_id,
+            )
+            if not policy:
+                return None
+
+            windows = await conn.fetch(
+                """
+                SELECT window_type, current_spent, limit_amount, window_start
+                FROM time_window_limits
+                WHERE policy_id = $1
+                """,
+                policy["id"],
+            )
+
+            state = {
+                "spent_total": Decimal(str(policy["spent_total"])),
+                "limit_per_tx": Decimal(str(policy["limit_per_tx"])),
+                "limit_total": Decimal(str(policy["limit_total"])),
+                "windows": {},
+            }
+            for w in windows:
+                state["windows"][w["window_type"]] = {
+                    "current_spent": Decimal(str(w["current_spent"])),
+                    "limit_amount": Decimal(str(w["limit_amount"])),
+                    "window_start": w["window_start"],
+                }
+            return state
 
     async def get_remaining(self, agent_id: str) -> Optional[dict]:
         """Get remaining spend capacity for an agent."""
@@ -188,6 +290,26 @@ class SpendingPolicyStore:
                 result[f"remaining_{w['window_type']}"] = max(Decimal("0"), remaining)
 
             return result
+
+    async def cleanup_velocity(self, max_age_hours: int = 24) -> int:
+        """Remove velocity records older than max_age_hours.
+
+        Call periodically (e.g. via pg_cron or a scheduled task).
+        Returns number of deleted records.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                """
+                DELETE FROM spending_velocity
+                WHERE tx_timestamp < NOW() - ($1 || ' hours')::INTERVAL
+                """,
+                str(max_age_hours),
+            )
+            count = int(result.split()[-1]) if result else 0
+            if count > 0:
+                logger.info(f"Cleaned up {count} velocity records older than {max_age_hours}h")
+            return count
 
     async def close(self):
         if self._pool:

@@ -134,6 +134,7 @@ class SpendingPolicy:
         scope: SpendingScope = SpendingScope.ALL,
         rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
         drift_score: Optional[Decimal] = None,
+        policy_store: Optional[Any] = None,  # SpendingPolicyStore for DB-backed enforcement
     ) -> tuple[bool, str]:
         """
         Evaluate payment request against policy (async, with on-chain balance check).
@@ -149,6 +150,10 @@ class SpendingPolicy:
             mcc_code: Merchant Category Code (4-digit code, optional)
             scope: Spending scope
             rpc_client: RPC client for balance queries (optional)
+            drift_score: Goal drift score (optional)
+            policy_store: SpendingPolicyStore for DB-backed atomic enforcement (optional).
+                When provided, spent_total and window limits are read from the database
+                instead of in-memory state, preventing bypass on process restart.
 
         Returns:
             Tuple of (approved: bool, reason: str)
@@ -174,23 +179,49 @@ class SpendingPolicy:
         # Check per-transaction limit
         if amount > self.limit_per_tx:
             return False, "per_transaction_limit"
-        
-        # Check total limit (spent_total is tracked in database, not wallet)
-        if self.spent_total + amount > self.limit_total:
-            return False, "total_limit_exceeded"
-        
-        # Check time-window limits
-        for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
-            ok, reason = window_limit.can_spend(amount)
-            if not ok:
-                return ok, reason
-        
+
+        # --- Spending limit checks ---
+        # When a policy_store is provided, use DB state (race-safe).
+        # Otherwise fall back to in-memory state (dev/test only).
+        if policy_store is not None:
+            # Velocity check (rapid-fire prevention)
+            vel_ok, vel_reason = await policy_store.check_velocity(self.agent_id)
+            if not vel_ok:
+                return False, vel_reason
+
+            # Load authoritative state from database
+            db_state = await policy_store.load_state(self.agent_id)
+            if db_state is not None:
+                # Total limit check from DB
+                if db_state["spent_total"] + amount > self.limit_total:
+                    return False, "total_limit_exceeded"
+                # Time-window checks from DB
+                for wtype, wdata in db_state["windows"].items():
+                    if wdata["current_spent"] + amount > wdata["limit_amount"]:
+                        return False, f"{wtype}_limit_exceeded"
+            else:
+                # No DB state yet — fall back to in-memory for first-time evaluation
+                if self.spent_total + amount > self.limit_total:
+                    return False, "total_limit_exceeded"
+                for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
+                    ok, reason = window_limit.can_spend(amount)
+                    if not ok:
+                        return ok, reason
+        else:
+            # In-memory fallback (dev/test)
+            if self.spent_total + amount > self.limit_total:
+                return False, "total_limit_exceeded"
+            for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
+                ok, reason = window_limit.can_spend(amount)
+                if not ok:
+                    return ok, reason
+
         # Check on-chain balance (non-custodial)
         if rpc_client:
             balance = await wallet.get_balance(chain, token, rpc_client)
             if balance < total_cost:
                 return False, "insufficient_balance"
-        
+
         # Check merchant rules
         if merchant_id:
             merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)

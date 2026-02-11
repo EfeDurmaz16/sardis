@@ -239,6 +239,18 @@ CREATE TABLE IF NOT EXISTS merchant_rules (
 CREATE INDEX IF NOT EXISTS idx_merchant_rules_policy ON merchant_rules(policy_id);
 CREATE INDEX IF NOT EXISTS idx_merchant_rules_merchant ON merchant_rules(merchant_id);
 
+-- Spending Velocity (rapid-fire transaction detection)
+CREATE TABLE IF NOT EXISTS spending_velocity (
+    id BIGSERIAL PRIMARY KEY,
+    policy_id UUID REFERENCES spending_policies(id) ON DELETE CASCADE NOT NULL,
+    tx_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    amount NUMERIC(20,6) NOT NULL,
+    merchant_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_velocity_policy_time
+    ON spending_velocity(policy_id, tx_timestamp DESC);
+
 -- Transactions
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

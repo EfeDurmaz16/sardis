@@ -129,6 +129,23 @@ class PostgresPolicyStore(AsyncPolicyStore):
                     agent_id,
                     _json.dumps(payload),
                 )
+
+                # Also record velocity entry if spending_velocity table exists
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO spending_velocity (policy_id, tx_timestamp, amount)
+                        SELECT sp.id, NOW(), $2
+                        FROM spending_policies sp WHERE sp.agent_id = (
+                            SELECT a.id FROM agents a WHERE a.external_id = $1
+                        )
+                        """,
+                        agent_id,
+                        float(amount),
+                    )
+                except Exception:
+                    pass  # Table may not exist yet (pre-migration 009)
+
                 return policy
 
     async def close(self) -> None:

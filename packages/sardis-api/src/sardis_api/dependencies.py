@@ -228,6 +228,14 @@ class DependencyContainer:
         return MarketplaceRepository(dsn=dsn)
     
     @cached_property
+    def spending_policy_store(self) -> Any:
+        """Get spending policy state store (DB-backed atomic enforcement)."""
+        from sardis_v2_core.spending_policy_store import SpendingPolicyStore
+        if self.use_postgres:
+            return SpendingPolicyStore(dsn=self.database_url)
+        return None  # In-memory fallback handled by SpendingPolicy itself
+
+    @cached_property
     def cache_service(self) -> Any:
         """Get cache service (Redis or in-memory)."""
         from sardis_v2_core.cache import create_cache_service
