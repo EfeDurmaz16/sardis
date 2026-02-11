@@ -35,13 +35,19 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     /// @notice Maximum amount per transaction (in base units)
     uint256 public limitPerTx;
-    
+
     /// @notice Maximum amount per day (in base units)
     uint256 public dailyLimit;
-    
+
+    /// @notice Maximum amount per co-signed transaction (higher than limitPerTx)
+    uint256 public coSignLimitPerTx;
+
+    /// @notice Maximum co-signed spend per day (higher than dailyLimit)
+    uint256 public coSignDailyLimit;
+
     /// @notice Amount spent today
     uint256 public spentToday;
-    
+
     /// @notice Timestamp of last daily reset
     uint256 public lastResetDay;
     
@@ -121,7 +127,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     event HoldVoided(bytes32 indexed holdId);
     
-    event LimitsUpdated(uint256 limitPerTx, uint256 dailyLimit);
+    event LimitsUpdated(uint256 limitPerTx, uint256 dailyLimit, uint256 coSignLimitPerTx, uint256 coSignDailyLimit);
     
     event MerchantAllowed(address indexed merchant);
     
@@ -178,12 +184,15 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     ) {
         require(_agent != address(0), "Invalid agent");
         require(_sardis != address(0), "Invalid sardis");
-        
+
         agent = _agent;
         sardis = _sardis;
         recoveryAddress = _recoveryAddress;
         limitPerTx = _limitPerTx;
         dailyLimit = _dailyLimit;
+        // Co-sign limits default to 10x normal limits
+        coSignLimitPerTx = _limitPerTx * 10;
+        coSignDailyLimit = _dailyLimit * 10;
         lastResetDay = block.timestamp / 1 days;
     }
     
@@ -281,8 +290,14 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
         // Check token allowlist (stablecoin-only enforcement)
         _checkToken(token);
 
-        // Check merchant restrictions (limits bypassed for co-signed tx)
+        // Check merchant restrictions
         _checkMerchant(to);
+
+        // Check co-sign spending limits (higher than normal but still bounded)
+        _checkCoSignLimits(amount);
+
+        // Update spent amount (co-signed tx count against daily totals)
+        _updateSpentAmount(amount);
 
         // Execute transfer
         IERC20(token).safeTransfer(to, amount);
@@ -301,7 +316,7 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
 
         return txHash;
     }
-    
+
     // ============ Hold Functions (Pre-Authorization) ============
     
     /**
@@ -442,12 +457,18 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
      */
     function setLimits(
         uint256 _limitPerTx,
-        uint256 _dailyLimit
+        uint256 _dailyLimit,
+        uint256 _coSignLimitPerTx,
+        uint256 _coSignDailyLimit
     ) external onlySardis {
+        require(_coSignLimitPerTx >= _limitPerTx, "Co-sign per-tx limit must be >= normal");
+        require(_coSignDailyLimit >= _dailyLimit, "Co-sign daily limit must be >= normal");
         limitPerTx = _limitPerTx;
         dailyLimit = _dailyLimit;
-        
-        emit LimitsUpdated(_limitPerTx, _dailyLimit);
+        coSignLimitPerTx = _coSignLimitPerTx;
+        coSignDailyLimit = _coSignDailyLimit;
+
+        emit LimitsUpdated(_limitPerTx, _dailyLimit, _coSignLimitPerTx, _coSignDailyLimit);
     }
     
     /**
@@ -711,10 +732,18 @@ contract SardisAgentWallet is ReentrancyGuard, Pausable {
     
     function _checkLimits(uint256 amount) internal view {
         require(amount <= limitPerTx, "Exceeds per-tx limit");
-        
+
         uint256 today = block.timestamp / 1 days;
         uint256 todaySpent = today > lastResetDay ? 0 : spentToday;
         require(todaySpent + amount <= dailyLimit, "Exceeds daily limit");
+    }
+
+    function _checkCoSignLimits(uint256 amount) internal view {
+        require(amount <= coSignLimitPerTx, "Exceeds co-sign per-tx limit");
+
+        uint256 today = block.timestamp / 1 days;
+        uint256 todaySpent = today > lastResetDay ? 0 : spentToday;
+        require(todaySpent + amount <= coSignDailyLimit, "Exceeds co-sign daily limit");
     }
     
     function _updateSpentAmount(uint256 amount) internal {

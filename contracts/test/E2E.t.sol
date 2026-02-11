@@ -510,13 +510,13 @@ contract E2ETest is Test {
         console.log("Step 3: Verifying old Sardis has no control...");
         vm.prank(address(factory));
         vm.expectRevert("Only Sardis");
-        wallet.setLimits(2000 * 10**6, 10000 * 10**6);
+        wallet.setLimits(2000 * 10**6, 10000 * 10**6, 20000 * 10**6, 100000 * 10**6);
         console.log("  Old Sardis correctly rejected");
 
         // Step 4: New Sardis can control wallet
         console.log("Step 4: New Sardis setting new limits...");
         vm.prank(newSardis);
-        wallet.setLimits(2000 * 10**6, 10000 * 10**6);
+        wallet.setLimits(2000 * 10**6, 10000 * 10**6, 20000 * 10**6, 100000 * 10**6);
 
         assertEq(wallet.limitPerTx(), 2000 * 10**6);
         assertEq(wallet.dailyLimit(), 10000 * 10**6);

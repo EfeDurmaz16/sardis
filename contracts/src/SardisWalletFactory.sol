@@ -282,14 +282,20 @@ contract SardisWalletFactory is Ownable, Pausable {
      * @param wallet The wallet address to configure
      * @param _limitPerTx New per-transaction limit
      * @param _dailyLimit New daily limit
+     * @param _coSignLimitPerTx New co-sign per-transaction limit
+     * @param _coSignDailyLimit New co-sign daily limit
      */
     function setWalletLimits(
         address wallet,
         uint256 _limitPerTx,
-        uint256 _dailyLimit
+        uint256 _dailyLimit,
+        uint256 _coSignLimitPerTx,
+        uint256 _coSignDailyLimit
     ) external onlyOwner {
         require(isValidWallet[wallet], "Not a Sardis wallet");
-        SardisAgentWallet(payable(wallet)).setLimits(_limitPerTx, _dailyLimit);
+        SardisAgentWallet(payable(wallet)).setLimits(
+            _limitPerTx, _dailyLimit, _coSignLimitPerTx, _coSignDailyLimit
+        );
     }
 
     /**

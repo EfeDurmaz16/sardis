@@ -291,18 +291,22 @@ contract SardisAgentWalletTest is Test {
     function testSetLimits() public {
         uint256 newLimitPerTx = 2000 * 10**6;
         uint256 newDailyLimit = 10000 * 10**6;
-        
+        uint256 newCoSignLimitPerTx = 20000 * 10**6;
+        uint256 newCoSignDailyLimit = 100000 * 10**6;
+
         vm.prank(sardis);
-        wallet.setLimits(newLimitPerTx, newDailyLimit);
-        
+        wallet.setLimits(newLimitPerTx, newDailyLimit, newCoSignLimitPerTx, newCoSignDailyLimit);
+
         assertEq(wallet.limitPerTx(), newLimitPerTx);
         assertEq(wallet.dailyLimit(), newDailyLimit);
+        assertEq(wallet.coSignLimitPerTx(), newCoSignLimitPerTx);
+        assertEq(wallet.coSignDailyLimit(), newCoSignDailyLimit);
     }
-    
+
     function testSetLimitsOnlySardis() public {
         vm.prank(agent);
         vm.expectRevert("Only Sardis");
-        wallet.setLimits(100, 100);
+        wallet.setLimits(100, 100, 1000, 1000);
     }
     
     // ============ Emergency Functions ============
