@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-11
+
+### Added
+- Per-organization rate limiting with configurable tier overrides via `org_overrides`
+- Extracted lifespan management into dedicated `lifespan.py` module
+- Extracted OpenAPI schema customization into `openapi_schema.py`
+- Extracted health check endpoints into `health.py` with factory pattern
+- Extracted `CardProviderCompatAdapter` into `card_adapter.py`
+
+### Changed
+- Refactored main.py from 1392 to 683 lines (51% reduction) via module extraction
+- Rate limiter now keys by `org:{org_id}` when organization context is available
+- Both Redis and in-memory rate limiters support per-org configuration
+
+### Security
+- Rate limiting respects organization-specific quotas for enterprise customers
+
 ## [0.1.0] - 2025-01-27
 
 ### Added

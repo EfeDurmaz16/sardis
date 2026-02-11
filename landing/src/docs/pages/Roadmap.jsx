@@ -201,6 +201,24 @@ export default function Roadmap() {
       ],
     },
     {
+      version: 'v0.8.5',
+      title: 'Security & Architecture Hardening',
+      status: 'completed',
+      date: 'Feb 2026',
+      items: [
+        { text: 'Travel Rule (FATF R.16) compliance for cross-border transfers', done: true },
+        { text: 'Lithic ASA real-time card authorization handler', done: true },
+        { text: 'PostgreSQL persistence for spending policy, SAR, identity, and ledger', done: true },
+        { text: 'Redis-backed velocity monitoring with atomic operations', done: true },
+        { text: 'KYB verification via Persona for org onboarding', done: true },
+        { text: 'Centralized price oracle for gas cost estimation', done: true },
+        { text: 'Per-org rate limiting with tier overrides', done: true },
+        { text: 'Expanded OFAC/FATF country lists, MCC blocklists, disposable email detection', done: true },
+        { text: 'Smart contract hardening: co-sign limits + TimelockController', done: true },
+        { text: 'API refactoring: main.py split + Turnkey client consolidation', done: true },
+      ],
+    },
+    {
       version: 'v0.9.0',
       title: 'Enterprise Features',
       status: 'upcoming',
@@ -242,7 +260,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 8, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 9, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

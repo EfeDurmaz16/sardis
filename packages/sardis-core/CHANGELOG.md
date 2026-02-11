@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-11
+
+### Added
+- Velocity checks at policy layer: per-transaction, daily, weekly, monthly limits
+- Gas fee estimation integrated into spending policy evaluation
+- PostgreSQL persistence for spending policy state (replaces in-memory)
+- MCC 4829 (Wire Transfers) added to data file as high-risk, default blocked
+
+### Changed
+- MCC codes 6051 (quasi-cash), 6540 (stored value), 5933 (pawn shops) now default blocked
+- Unified sardis package as single SDK entry point (resolves dual-SDK confusion)
+
+### Security
+- Expanded disposable email domain detection from 6 to 40 providers
+- Expanded OFAC/FATF high-risk country list from placeholder to 16 real codes
+
 ## [0.1.0] - 2025-01-27
 
 ### Added

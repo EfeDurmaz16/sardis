@@ -6,7 +6,7 @@ export default function DocsSecurity() {
           <span className="px-2 py-1 bg-red-500/10 border border-red-500/30 text-red-500">
             SECURITY
           </span>
-          <span>v2.0 — January 2026</span>
+          <span>v2.1 — February 2026</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Security Whitepaper</h1>
         <p className="text-xl text-muted-foreground">
@@ -252,6 +252,79 @@ export default function DocsSecurity() {
             <p className="text-sm text-muted-foreground">
               Conversions happen instantly at card authorization time. No delayed settlement
               risk—the USD is available before the card transaction settles.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Travel Rule (FATF R.16)
+          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
+        </h2>
+        <p className="text-muted-foreground leading-relaxed mb-4">
+          Cross-border transfers exceeding $3,000 require originator and beneficiary identification under
+          FATF Recommendation 16. Sardis enforces this at the protocol layer before execution.
+        </p>
+
+        <div className="not-prose space-y-4 mb-6">
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">Automatic Threshold Detection</h4>
+            <p className="text-sm text-muted-foreground">
+              Transactions are automatically screened against the $3,000 threshold. When triggered,
+              originator identity (name, account, address) and beneficiary identity must be attached
+              before the transaction proceeds.
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">VASP-to-VASP Data Exchange</h4>
+            <p className="text-sm text-muted-foreground">
+              When both parties are virtual asset service providers, Travel Rule data is exchanged
+              in a structured format compliant with the IVMS101 standard.
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">Fail-Closed Enforcement</h4>
+            <p className="text-sm text-muted-foreground">
+              Transfers that exceed the threshold without complete Travel Rule data are blocked.
+              No exceptions, no manual overrides in production.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Card Authorization Safety (ASA)
+          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
+        </h2>
+        <p className="text-muted-foreground leading-relaxed mb-4">
+          Virtual card transactions are screened in real-time via Lithic's ASA (Authorization Stream Access)
+          webhook before approval. This provides a critical safety net for agent-initiated card payments.
+        </p>
+
+        <div className="not-prose space-y-4 mb-6">
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">MCC Blocking</h4>
+            <p className="text-sm text-muted-foreground">
+              13 high-risk merchant category codes are blocked by default: gambling (7800-7802),
+              cash advances (6010-6011), stored value cards (6540), wire transfers (4829),
+              escort services (7273), dating services (5765), and pawn shops (5933).
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">Velocity Limits</h4>
+            <p className="text-sm text-muted-foreground">
+              Per-card transaction velocity is enforced in real-time. Configurable daily and
+              per-transaction limits prevent runaway agent spending.
+            </p>
+          </div>
+          <div className="p-4 border border-border">
+            <h4 className="font-bold font-display mb-2">OFAC/FATF Country Screening</h4>
+            <p className="text-sm text-muted-foreground">
+              Transactions from 16 sanctioned or high-risk jurisdictions (DPRK, Iran, Syria, Cuba,
+              Myanmar, Yemen, Belarus, Russia, Venezuela, Afghanistan, Somalia, Libya, Sudan, South Sudan,
+              Central African Republic) are automatically declined.
             </p>
           </div>
         </div>

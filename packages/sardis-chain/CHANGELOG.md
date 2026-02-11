@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-11
+
+### Added
+- Centralized price oracle for gas cost estimation across all supported chains
+- Gas fee inclusion in policy evaluation (total cost = amount + estimated gas)
+
+### Changed
+- `TurnkeyMPCSigner` now delegates HTTP calls through shared `TurnkeyClient` from sardis-wallet
+- `ChainExecutor.__init__` accepts optional `turnkey_client` parameter for dependency injection
+- Removed ~100 lines of duplicated Turnkey stamp/HTTP code
+
+### Security
+- Turnkey P-256 stamp format corrected to match official SDK (base64url JSON envelope)
+
 ## [0.2.0] - 2025-01-27
 
 ### Added

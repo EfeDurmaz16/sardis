@@ -2,9 +2,50 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.5',
+    date: '2026-02-11',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'security',
+        items: [
+          'Travel Rule (FATF R.16) compliance module for cross-border transfers exceeding $3,000',
+          'Lithic ASA real-time authorization handler with MCC blocking and velocity checks',
+          'Expanded high-risk MCC blocklist: gambling (7800-7802), cash advances (6010-6011), stored value (6540), wire transfers (4829), escorts (7273)',
+          'Replaced placeholder country list with 16 real OFAC/FATF high-risk country codes (KP, IR, SY, CU, etc.)',
+          'Expanded disposable email domain detection from 6 to 40 providers',
+          'Co-sign threshold limits added to SardisAgentWallet.sol smart contract',
+          'Factory owner secured with OpenZeppelin TimelockController (48-hour delay)',
+          'Gas fee now included in policy evaluation (total cost = amount + estimated gas)',
+          'Velocity checks at policy layer: per-transaction, daily, weekly, and monthly limits',
+        ]
+      },
+      {
+        type: 'added',
+        items: [
+          'PostgreSQL persistence for spending policy state (replaces in-memory)',
+          'PostgreSQL persistence for SAR storage, identity registry, and ledger engine',
+          'Redis-backed velocity monitoring with atomic increment/check operations',
+          'KYB (Know Your Business) verification via Persona for organizational onboarding',
+          'Centralized price oracle for gas cost estimation across all supported chains',
+          'Per-organization rate limiting with configurable tier overrides',
+          'Async PostgreSQL support for ledger receipts and reconciliation',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Refactored API main.py into focused modules (1392 to 683 lines: lifespan, health, OpenAPI, card adapter)',
+          'Consolidated duplicate Turnkey MPC clients into single canonical client with correct P-256 stamp format',
+          'Resolved dual-SDK confusion with unified sardis package as single entry point',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.4',
     date: '2026-02-08',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

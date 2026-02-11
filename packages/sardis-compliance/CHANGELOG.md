@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-11
+
+### Added
+- Travel Rule (FATF R.16) compliance module for cross-border transfers >$3,000
+- KYB (Know Your Business) verification via Persona for organizational onboarding
+- PostgreSQL persistence for SAR (Suspicious Activity Report) storage
+- PostgreSQL persistence for IdentityRegistry
+
+### Security
+- Travel Rule enforcement is fail-closed: transfers without complete data are blocked
+- Originator and beneficiary identity required for cross-border transfers above threshold
+
 ## [0.2.0] - 2025-01-27
 
 ### Added
