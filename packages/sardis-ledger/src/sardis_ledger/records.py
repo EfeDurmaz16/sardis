@@ -572,6 +572,159 @@ class LedgerStore:
                 "timestamp": row[7],
             }
         return self._receipt_mem.get(receipt_id)
+
+    async def create_receipt_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Dict[str, Any]:
+        """Create receipt with Merkle proof (async, PostgreSQL supported)."""
+        if not self._use_postgres:
+            return self.create_receipt(payment_mandate, chain_receipt)
+
+        if chain_receipt.timestamp:
+            timestamp = chain_receipt.timestamp.isoformat()
+        else:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+        payload = "|".join([
+            payment_mandate.mandate_id,
+            chain_receipt.tx_hash,
+            timestamp,
+            chain_receipt.audit_anchor or "",
+        ])
+        leaf_hash = hashlib.sha256(payload.encode()).hexdigest()
+
+        # Get previous root from DB
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT value FROM ledger_meta WHERE key = 'merkle_root'"
+            )
+            prev_root = row["value"] if row else "0" * 64
+
+        merkle_root = hashlib.sha256(f"{prev_root}{leaf_hash}".encode()).hexdigest()
+        receipt_id = f"rct_{leaf_hash[:20]}"
+        proof = {"leaf": leaf_hash, "previous_root": prev_root}
+
+        receipt = {
+            "receipt_id": receipt_id,
+            "mandate_id": payment_mandate.mandate_id,
+            "tx_hash": chain_receipt.tx_hash,
+            "chain": chain_receipt.chain,
+            "audit_anchor": chain_receipt.audit_anchor,
+            "merkle_root": merkle_root,
+            "merkle_proof": proof,
+            "timestamp": timestamp,
+        }
+
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO receipts (
+                        tx_id, receipt_id, mandate_id, tx_hash, chain, audit_anchor,
+                        merkle_root, leaf_hash, proof_json, status, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                    ON CONFLICT (tx_id) DO UPDATE SET
+                        merkle_root = EXCLUDED.merkle_root,
+                        leaf_hash = EXCLUDED.leaf_hash,
+                        proof_json = EXCLUDED.proof_json
+                    """,
+                    chain_receipt.tx_hash,
+                    receipt_id,
+                    payment_mandate.mandate_id,
+                    chain_receipt.tx_hash,
+                    chain_receipt.chain,
+                    chain_receipt.audit_anchor,
+                    merkle_root,
+                    leaf_hash,
+                    json.dumps(proof),
+                    "confirmed",
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO ledger_meta (key, value, updated_at)
+                    VALUES ('merkle_root', $1, NOW())
+                    ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()
+                    """,
+                    merkle_root,
+                )
+
+        return receipt
+
+    async def get_receipt_async(self, receipt_id: str) -> Optional[Dict[str, Any]]:
+        """Get receipt by ID (async, PostgreSQL supported)."""
+        if not self._use_postgres:
+            return self.get_receipt(receipt_id)
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT receipt_id, mandate_id, tx_hash, chain, audit_anchor,
+                       merkle_root, proof_json, created_at
+                FROM receipts WHERE receipt_id = $1
+                """,
+                receipt_id,
+            )
+        if not row:
+            return None
+        proof = row["proof_json"] if isinstance(row["proof_json"], dict) else json.loads(row["proof_json"] or "{}")
+        created_at = row["created_at"]
+        return {
+            "receipt_id": row["receipt_id"],
+            "mandate_id": row["mandate_id"],
+            "tx_hash": row["tx_hash"],
+            "chain": row["chain"],
+            "audit_anchor": row["audit_anchor"],
+            "merkle_root": row["merkle_root"],
+            "merkle_proof": proof,
+            "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+        }
+
+    async def queue_for_reconciliation_async(
+        self,
+        payment_mandate,
+        chain_receipt: ChainReceipt,
+        error: str,
+    ) -> str:
+        """Queue a failed ledger append for reconciliation (async, PostgreSQL)."""
+        if not self._use_postgres:
+            return self.queue_for_reconciliation(payment_mandate, chain_receipt, error)
+
+        from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
+        metadata = {
+            "subject": payment_mandate.subject,
+            "issuer": payment_mandate.issuer,
+            "domain": getattr(payment_mandate, "domain", "sardis.sh"),
+            "purpose": getattr(payment_mandate, "purpose", "checkout"),
+        }
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO pending_reconciliation (
+                    mandate_id, chain_tx_hash, chain, audit_anchor,
+                    from_wallet, to_wallet, amount, currency, error,
+                    metadata_json
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                RETURNING id
+                """,
+                payment_mandate.mandate_id,
+                chain_receipt.tx_hash,
+                chain_receipt.chain,
+                chain_receipt.audit_anchor,
+                from_wallet_id,
+                payment_mandate.destination,
+                float(payment_mandate.amount_minor),
+                payment_mandate.token,
+                error,
+                json.dumps(metadata),
+            )
+        entry_id = str(row["id"])
+        logger.warning(
+            f"Queued for reconciliation (async): id={entry_id}, "
+            f"mandate={payment_mandate.mandate_id}, tx={chain_receipt.tx_hash}"
+        )
+        return entry_id
     
     async def append_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Transaction:
         """Append a transaction to the ledger (async version for PostgreSQL)."""
