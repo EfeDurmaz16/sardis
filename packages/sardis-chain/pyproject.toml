@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-chain"
-version = "0.2.0"
+version = "0.3.0"
 description = "Production-grade multi-chain stablecoin executor for Sardis"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

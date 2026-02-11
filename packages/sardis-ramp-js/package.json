@@ -1,6 +1,6 @@
 {
   "name": "@sardis/ramp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Sardis Fiat Ramp SDK - Bridge crypto wallets to traditional banking with fiat on/off ramp functionality",
   "type": "module",
   "main": "dist/index.cjs",
