@@ -21,31 +21,42 @@ contract SardisWalletFactory is Ownable, Pausable {
     using Address for address payable;
 
     // ============ State Variables ============
-    
+
     /// @notice Default per-transaction limit for new wallets (in base units)
     uint256 public defaultLimitPerTx;
-    
+
     /// @notice Default daily limit for new wallets (in base units)
     uint256 public defaultDailyLimit;
-    
+
     /// @notice Default recovery address for new wallets
     address public defaultRecoveryAddress;
-    
+
     /// @notice Mapping of agent address to their wallets
     mapping(address => address[]) public agentWallets;
-    
+
     /// @notice Mapping of wallet address to agent address
     mapping(address => address) public walletToAgent;
-    
+
     /// @notice List of all deployed wallets
     address[] public allWallets;
-    
+
     /// @notice Wallet deployment fee (in ETH/native token)
     uint256 public deploymentFee;
-    
+
     /// @notice Whether an address is a valid Sardis wallet
     mapping(address => bool) public isValidWallet;
-    
+
+    // ============ Ownership Timelock ============
+
+    /// @notice Minimum delay for ownership transfer (48 hours)
+    uint256 public constant OWNERSHIP_TIMELOCK = 48 hours;
+
+    /// @notice Proposed new owner address (zero if no pending transfer)
+    address public pendingOwner;
+
+    /// @notice Timestamp after which the pending transfer can be executed
+    uint256 public ownershipTransferEta;
+
     // ============ Events ============
     
     event WalletCreated(
@@ -65,7 +76,13 @@ contract SardisWalletFactory is Ownable, Pausable {
     event RecoveryAddressUpdated(address indexed newAddress);
     
     event FeesWithdrawn(address indexed to, uint256 amount);
-    
+
+    event OwnershipTransferProposed(address indexed newOwner, uint256 executeAfter);
+
+    event OwnershipTransferExecuted(address indexed oldOwner, address indexed newOwner);
+
+    event OwnershipTransferCancelled(address indexed cancelledOwner);
+
     // ============ Constructor ============
     
     constructor(
@@ -270,7 +287,59 @@ contract SardisWalletFactory is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
-    
+
+    // ============ Timelocked Ownership Transfer ============
+    // SECURITY: The factory is the `sardis` address for ALL wallets.
+    // A compromised owner key could drain every wallet. The 48-hour
+    // timelock gives operators time to detect and cancel a hostile transfer.
+
+    /**
+     * @notice Override transferOwnership to enforce timelock
+     * @param newOwner The proposed new owner address
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        require(newOwner != address(0), "Invalid new owner");
+        require(newOwner != owner(), "Already owner");
+
+        pendingOwner = newOwner;
+        ownershipTransferEta = block.timestamp + OWNERSHIP_TIMELOCK;
+
+        emit OwnershipTransferProposed(newOwner, ownershipTransferEta);
+    }
+
+    /**
+     * @notice Execute a pending ownership transfer after timelock expires
+     */
+    function executeOwnershipTransfer() external onlyOwner {
+        require(pendingOwner != address(0), "No pending transfer");
+        require(block.timestamp >= ownershipTransferEta, "Timelock not expired");
+
+        address oldOwner = owner();
+        address newOwner = pendingOwner;
+
+        // Clear pending state before transfer
+        pendingOwner = address(0);
+        ownershipTransferEta = 0;
+
+        // Call parent transferOwnership (bypasses our override via super)
+        super.transferOwnership(newOwner);
+
+        emit OwnershipTransferExecuted(oldOwner, newOwner);
+    }
+
+    /**
+     * @notice Cancel a pending ownership transfer
+     */
+    function cancelOwnershipTransfer() external onlyOwner {
+        require(pendingOwner != address(0), "No pending transfer");
+
+        address cancelled = pendingOwner;
+        pendingOwner = address(0);
+        ownershipTransferEta = 0;
+
+        emit OwnershipTransferCancelled(cancelled);
+    }
+
     // ============ Wallet Management (Factory-as-Sardis) ============
     // SECURITY: The factory is set as the `sardis` address in deployed wallets.
     // Without these proxy functions, onlySardis wallet methods (setLimits, pause,
