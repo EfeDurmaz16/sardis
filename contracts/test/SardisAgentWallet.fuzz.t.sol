@@ -39,6 +39,10 @@ contract SardisAgentWalletFuzzTest is Test {
         );
         // Fund wallet
         usdc.mint(address(wallet), FUND_AMOUNT);
+
+        // Whitelist MockUSDC on the token allowlist
+        vm.prank(sardis);
+        wallet.allowToken(address(usdc));
     }
 
     // ============ Fuzz: Holds ============

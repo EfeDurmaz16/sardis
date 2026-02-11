@@ -164,7 +164,9 @@ def test_split_payment_aggregate_exceeds_policy():
         ),
     )
 
-    # First 10 payments of $100 each should work initially
+    # Try 10 payments of $100 each (with $1 fee each, effective $101/payment)
+    # Gas fee is included in policy evaluation, so $101 * 9 = $909 fits,
+    # but $101 * 10 = $1010 exceeds the $1000 daily limit.
     payments_processed = 0
     for i in range(10):
         amount = Decimal("100.00")
@@ -183,8 +185,8 @@ def test_split_payment_aggregate_exceeds_policy():
         else:
             break
 
-    # Should process exactly 10 payments ($1000 total) and reject 11th
-    assert payments_processed == 10
+    # 9 payments fit ($909 spent); 10th is rejected because $909 + $101 > $1000
+    assert payments_processed == 9
 
     # 11th payment should fail due to daily limit
     ok, reason = policy.validate_payment(

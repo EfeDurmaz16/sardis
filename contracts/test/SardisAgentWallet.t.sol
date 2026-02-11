@@ -61,6 +61,10 @@ contract SardisAgentWalletTest is Test {
         
         // Fund wallet with USDC
         usdc.transfer(address(wallet), 10000 * 10**6);
+
+        // Whitelist MockUSDC on the token allowlist
+        vm.prank(sardis);
+        wallet.allowToken(address(usdc));
     }
     
     // ============ Constructor Tests ============

@@ -87,6 +87,10 @@ contract E2ETest is Test {
         assertEq(wallet.sardis(), address(factory), "Factory should be Sardis");
         console.log("  Wallet created at:", walletAddr);
 
+        // Whitelist MockUSDC on the token allowlist
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
+
         // Step 2: Fund wallet with USDC
         console.log("Step 2: Funding wallet with 10,000 USDC...");
         usdc.transfer(walletAddr, 10_000 * 10**6);
@@ -144,6 +148,8 @@ contract E2ETest is Test {
         // Setup: Create and fund wallet
         address walletAddr = factory.createWallet(agent1);
         SardisAgentWallet wallet = SardisAgentWallet(payable(walletAddr));
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
         usdc.transfer(walletAddr, 5000 * 10**6);
 
         // Step 1: Create a hold
@@ -201,6 +207,8 @@ contract E2ETest is Test {
         // Setup
         address walletAddr = factory.createWallet(agent1);
         SardisAgentWallet wallet = SardisAgentWallet(payable(walletAddr));
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
         usdc.transfer(walletAddr, 5000 * 10**6);
 
         address allowedMerchant = address(0x5001);
@@ -433,6 +441,8 @@ contract E2ETest is Test {
         // Setup: Create and fund wallet
         address walletAddr = factory.createWallet(agent1);
         SardisAgentWallet wallet = SardisAgentWallet(payable(walletAddr));
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
         usdc.transfer(walletAddr, 5000 * 10**6);
 
         // Step 1: Pause wallet (emergency)
@@ -480,6 +490,8 @@ contract E2ETest is Test {
         // Setup
         address walletAddr = factory.createWallet(agent1);
         SardisAgentWallet wallet = SardisAgentWallet(payable(walletAddr));
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
         usdc.transfer(walletAddr, 1000 * 10**6);
 
         console.log("Step 1: Current Sardis is factory:", address(factory));
@@ -588,6 +600,8 @@ contract E2ETest is Test {
         // Step 3: Verify wallet is functional
         console.log("Step 3: Verifying wallet functionality...");
         SardisAgentWallet wallet = SardisAgentWallet(payable(actual));
+        vm.prank(address(factory));
+        wallet.allowToken(address(usdc));
         assertEq(wallet.agent(), agent1);
         assertTrue(factory.isValidWallet(actual));
         console.log("  Wallet is valid and functional");
