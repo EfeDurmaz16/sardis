@@ -94,6 +94,8 @@ from .routers import compliance as compliance_router
 from .routers import admin as admin_router
 from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
+from .routers import dev as dev_router
+from .routers import a2a as a2a_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -845,6 +847,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
+    # A2A (Agent-to-Agent) routes
+    app.dependency_overrides[a2a_router.get_deps] = lambda: a2a_router.A2ADependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        chain_executor=chain_exec,
+        wallet_manager=wallet_mgr,
+        ledger=ledger_store,
+    )
+    app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
+    app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
+
     # Initialize OfframpService (used by ramp + cards)
     offramp_service = None
     bridge_api_key = os.getenv("BRIDGE_API_KEY")
@@ -1038,6 +1051,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Admin routes (with strict rate limiting)
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
     app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])
+
+    # Dev/testnet utility routes (faucet, etc.) - NOT available in production
+    if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):
+        app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
+        logger.info("Dev routes enabled (faucet, etc.)")
+
+    # A2A discovery: /.well-known/agent-card.json (standard A2A spec location)
+    @app.get("/.well-known/agent-card.json", tags=["a2a"])
+    async def well_known_agent_card():
+        """A2A agent card for discovery (standard .well-known path)."""
+        from .routers.a2a import get_agent_card
+        return await get_agent_card()
 
     # Health check endpoints
     @app.get("/", tags=["health"])
