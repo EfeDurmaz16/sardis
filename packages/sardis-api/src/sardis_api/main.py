@@ -962,6 +962,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             async def update_limits(self, provider_card_id: str, **kwargs):
                 return await self._provider.update_limits(provider_card_id, **kwargs)
 
+            async def simulate_authorization(self, provider_card_id: str, amount_cents: int, merchant_descriptor: str = "Demo Merchant"):
+                if hasattr(self._provider, "simulate_authorization"):
+                    return await self._provider.simulate_authorization(
+                        provider_card_id=provider_card_id,
+                        amount_cents=amount_cents,
+                        merchant_descriptor=merchant_descriptor,
+                    )
+                return None
+
         # Use Lithic provider in configured environments; fallback to mock provider in local/dev.
         lithic_api_key = os.getenv("LITHIC_API_KEY")
         if lithic_api_key:
