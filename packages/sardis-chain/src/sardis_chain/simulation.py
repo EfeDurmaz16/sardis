@@ -336,9 +336,8 @@ class GasEstimator:
         config: Optional[GasEstimationConfig] = None,
     ):
         self._config = config or get_config().gas_estimation
-        self._eth_price_cache: Optional[Decimal] = None
-        self._eth_price_timestamp: float = 0
-        self._price_cache_ttl: int = 300  # 5 minutes
+        from .price_oracle import get_price_oracle
+        self._oracle = get_price_oracle()
 
     async def estimate(
         self,
@@ -462,36 +461,8 @@ class GasEstimator:
         return base_fee_wei, priority_fee_wei
 
     async def _get_eth_price(self) -> Optional[Decimal]:
-        """Get ETH price in USD with caching."""
-        import time
-        import os
-
-        now = time.time()
-        if (
-            self._eth_price_cache is not None
-            and now - self._eth_price_timestamp < self._price_cache_ttl
-        ):
-            return self._eth_price_cache
-
-        # Try environment variable
-        price_str = os.getenv("ETH_PRICE_USD")
-        if price_str:
-            try:
-                self._eth_price_cache = Decimal(price_str)
-                self._eth_price_timestamp = now
-                return self._eth_price_cache
-            except Exception:
-                pass
-
-        # Fallback to conservative estimate
-        # In production, this should integrate with a price oracle
-        self._eth_price_cache = Decimal("2000")
-        self._eth_price_timestamp = now
-
-        logger.debug(
-            "Using fallback ETH price. Set ETH_PRICE_USD for accurate estimates."
-        )
-        return self._eth_price_cache
+        """Get ETH price in USD via centralized price oracle."""
+        return await self._oracle.get_price_usd("ETH")
 
     def apply_gas_cap(
         self,

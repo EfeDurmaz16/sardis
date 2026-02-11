@@ -66,6 +66,11 @@ from .wallet_manager import (
     WalletManager,
     WalletInfo,
 )
+from .price_oracle import (
+    PriceOracle,
+    get_price_oracle,
+    CHAIN_NATIVE_TOKEN,
+)
 from .logging_utils import (
     get_chain_logger,
     ChainLogger,
@@ -125,6 +130,10 @@ __all__ = [
     # Wallet Manager
     "WalletManager",
     "WalletInfo",
+    # Price Oracle
+    "PriceOracle",
+    "get_price_oracle",
+    "CHAIN_NATIVE_TOKEN",
     # Logging
     "get_chain_logger",
     "ChainLogger",
