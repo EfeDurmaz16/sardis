@@ -795,107 +795,26 @@ class SimulatedMPCSigner(MPCSignerPort):
 
 class TurnkeyMPCSigner(MPCSignerPort):
     """
-    Turnkey MPC signing integration with proper Ed25519 API authentication.
-    
-    Turnkey uses a stamp-based authentication where each request is signed
-    with the API private key (Ed25519) and includes the public key + timestamp + signature.
-    
-    Environment variables required:
-    - TURNKEY_ORGANIZATION_ID: Your Turnkey organization ID
-    - TURNKEY_API_PUBLIC_KEY: Hex-encoded Ed25519 public key
-    - TURNKEY_API_PRIVATE_KEY: Hex-encoded Ed25519 private key (or path to PEM file)
+    Turnkey MPC signing integration delegating to the canonical TurnkeyClient.
+
+    Accepts a ``TurnkeyClient`` from sardis-wallet which owns the single HTTP
+    connection and P-256 stamp authentication.  This class adds chain-specific
+    logic: EIP-1559 RLP encoding, activity polling, and address resolution.
     """
-    
-    # Retry configuration
-    MAX_RETRIES = 3
-    RETRY_DELAY = 1.0  # seconds
-    
+
     # Activity polling configuration
     ACTIVITY_POLL_INTERVAL = 0.5  # seconds
     ACTIVITY_TIMEOUT = 30  # seconds
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1.0  # seconds
 
-    def __init__(
-        self,
-        api_base: str,
-        organization_id: str,
-        api_public_key: str,
-        api_private_key: str,
-    ):
-        self._api_base = api_base.rstrip("/")
-        self._org_id = organization_id
-        self._api_public_key = api_public_key
-        self._api_private_key = api_private_key
-        self._http_client = None
-        self._signing_key = None
-        
-        # Initialize signing key
-        self._init_signing_key()
-    
-    def _init_signing_key(self):
-        """Initialize P256 (ECDSA) signing key from Turnkey API credentials.
-        
-        Uses cryptography library exactly like Turnkey's official Python stamper.
+    def __init__(self, turnkey_client):
         """
-        if not self._api_private_key:
-            logger.warning("No Turnkey API private key provided")
-            return
-        
-        try:
-            from cryptography.hazmat.primitives.asymmetric import ec
-            
-            # Derive private key from hex string (as integer)
-            # Turnkey's stamper.py: ec.derive_private_key(int(API_PRIVATE_KEY, 16), ec.SECP256R1())
-            private_key_int = int(self._api_private_key, 16)
-            self._signing_key = ec.derive_private_key(private_key_int, ec.SECP256R1())
-            
-            logger.info("Turnkey P256 signing key initialized successfully (using cryptography library)")
-                
-        except ImportError:
-            logger.error("cryptography library not installed. Install with: pip install cryptography")
-        except Exception as e:
-            logger.error(f"Failed to initialize Turnkey signing key: {e}")
-    
-    def _create_stamp(self, body: str) -> str:
+        Args:
+            turnkey_client: A ``TurnkeyClient`` instance from sardis-wallet.
         """
-        Create Turnkey API stamp for request authentication using P256/ECDSA.
-        
-        Uses cryptography library exactly like Turnkey's official Python stamper.
-        
-        Reference: https://github.com/tkhq/python-sdk
-        """
-        import base64
-        import json
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.asymmetric import ec
-        
-        if not self._signing_key:
-            raise ValueError("Turnkey signing key not initialized")
-        
-        # Sign payload with ECDSA SHA256 (exactly like Turnkey's stamper.py)
-        signature = self._signing_key.sign(body.encode(), ec.ECDSA(hashes.SHA256()))
-        
-        # Create stamp payload
-        stamp_payload = {
-            "publicKey": self._api_public_key,
-            "scheme": "SIGNATURE_SCHEME_TK_API_P256",
-            "signature": signature.hex(),
-        }
-        
-        # Base64URL encode the stamp (without padding)
-        stamp_json = json.dumps(stamp_payload)
-        stamp_b64 = base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
-        
-        return stamp_b64
-
-    async def _get_client(self):
-        """Get or create HTTP client with retry configuration."""
-        if self._http_client is None:
-            import httpx
-            self._http_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0, connect=10.0),
-                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
-            )
-        return self._http_client
+        self._client = turnkey_client
+        self._org_id = turnkey_client.organization_id
 
     async def _make_request(
         self,
@@ -904,42 +823,9 @@ class TurnkeyMPCSigner(MPCSignerPort):
         body: Dict[str, Any],
         retry_count: int = 0,
     ) -> Dict[str, Any]:
-        """Make authenticated request to Turnkey API with retry logic."""
-        import json
-        
-        body_str = json.dumps(body, separators=(",", ":"))
-        
-        headers = {
-            "Content-Type": "application/json",
-            "X-Stamp": self._create_stamp(body_str),
-        }
-        
-        client = await self._get_client()
-        url = f"{self._api_base}{path}"
-        
+        """Make an API request via the shared TurnkeyClient with retry logic."""
         try:
-            if method.upper() == "POST":
-                response = await client.post(url, content=body_str, headers=headers)
-            else:
-                response = await client.get(url, headers=headers)
-            
-            if response.status_code == 429:  # Rate limited
-                if retry_count < self.MAX_RETRIES:
-                    await asyncio.sleep(self.RETRY_DELAY * (retry_count + 1))
-                    return await self._make_request(method, path, body, retry_count + 1)
-                raise Exception("Rate limited by Turnkey API")
-            
-            # Log detailed error for 4xx responses
-            if response.status_code >= 400:
-                try:
-                    error_body = response.json()
-                    logger.error(f"Turnkey API error {response.status_code}: {error_body}")
-                except:
-                    logger.error(f"Turnkey API error {response.status_code}: {response.text}")
-            
-            response.raise_for_status()
-            return response.json()
-            
+            return await self._client.post(path, body)
         except Exception as e:
             if retry_count < self.MAX_RETRIES:
                 logger.warning(f"Turnkey request failed (attempt {retry_count + 1}): {e}")
@@ -1561,9 +1447,10 @@ class ChainExecutor:
         """Get required confirmations for a chain (safe default: 12)."""
         return cls.CHAIN_CONFIRMATIONS.get(chain.lower(), 12)
 
-    def __init__(self, settings: SardisSettings):
+    def __init__(self, settings: SardisSettings, turnkey_client=None):
         self._settings = settings
         self._simulated = settings.chain_mode == "simulated"
+        self._turnkey_client = turnkey_client
 
         # Production-grade RPC clients with failover
         self._rpc_clients: Dict[str, ProductionRPCClient] = {}
@@ -1634,12 +1521,19 @@ class ChainExecutor:
                 logger.error(f"Local signer initialization failed, falling back to simulated: {exc}")
 
         if mpc_config.name == "turnkey":
-            self._mpc_signer = TurnkeyMPCSigner(
-                api_base=mpc_config.api_base or "https://api.turnkey.com",
-                organization_id=mpc_config.credential_id,
-                api_public_key=os.getenv("TURNKEY_API_PUBLIC_KEY", ""),
-                api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
-            )
+            if self._turnkey_client is not None:
+                # Use the shared TurnkeyClient from sardis-wallet (single connection)
+                self._mpc_signer = TurnkeyMPCSigner(self._turnkey_client)
+            else:
+                # Fallback: create a standalone client (e.g. in tests)
+                from sardis_wallet.turnkey_client import TurnkeyClient
+                standalone = TurnkeyClient(
+                    api_key=os.getenv("TURNKEY_API_PUBLIC_KEY", ""),
+                    api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
+                    organization_id=mpc_config.credential_id,
+                    base_url=mpc_config.api_base or "https://api.turnkey.com",
+                )
+                self._mpc_signer = TurnkeyMPCSigner(standalone)
         elif mpc_config.name == "fireblocks":
             from .fireblocks_signer import FireblocksSigner
             self._mpc_signer = FireblocksSigner()

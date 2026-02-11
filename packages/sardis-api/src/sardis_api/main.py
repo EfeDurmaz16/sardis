@@ -361,7 +361,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         turnkey_client=turnkey_client,
         async_policy_store=policy_store,
     )
-    chain_exec = ChainExecutor(settings=settings)
+    chain_exec = ChainExecutor(settings=settings, turnkey_client=turnkey_client)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)

@@ -2,9 +2,13 @@
 
 Handles P-256 stamp authentication and communicates with the Turnkey v1 API
 to create wallets, sign transactions, and manage wallet accounts.
+
+The stamp format follows the official Turnkey Python SDK:
+  base64url(json({"publicKey": ..., "scheme": "SIGNATURE_SCHEME_TK_API_P256", "signature": ...}))
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import logging
@@ -19,7 +23,11 @@ TURNKEY_BASE_URL = "https://api.turnkey.com"
 
 
 class TurnkeyClient:
-    """Async HTTP client for the Turnkey API with P-256 stamp authentication."""
+    """Async HTTP client for the Turnkey API with P-256 stamp authentication.
+
+    This is the single authoritative Turnkey client for all packages.
+    Use `post()` for raw API calls or the higher-level helpers for common operations.
+    """
 
     def __init__(
         self,
@@ -32,70 +40,88 @@ class TurnkeyClient:
         self._api_private_key = api_private_key
         self._organization_id = organization_id
         self._base_url = base_url.rstrip("/")
+        self._signing_key = None
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             timeout=30.0,
             headers={"Content-Type": "application/json"},
         )
 
-    def _stamp_request(self, body: str) -> Dict[str, str]:
-        """Create a P-256 stamp for request authentication.
+        # Eagerly init signing key so errors surface early
+        self._init_signing_key()
 
-        The stamp authenticates the request body by signing its SHA-256 hash
-        with the API private key using ECDSA P-256.
-        """
+    # ------------------------------------------------------------------
+    # Authentication
+    # ------------------------------------------------------------------
+
+    def _init_signing_key(self):
+        """Initialize the P-256 ECDSA signing key from API credentials."""
+        if not self._api_private_key:
+            return
         try:
-            from cryptography.hazmat.primitives.asymmetric import ec, utils
-            from cryptography.hazmat.primitives import hashes, serialization
-            import base64
+            from cryptography.hazmat.primitives.asymmetric import ec
 
-            body_hash = hashlib.sha256(body.encode()).digest()
-
-            # Load the private key (PEM or raw hex)
-            if self._api_private_key.startswith("-----"):
-                private_key = serialization.load_pem_private_key(
-                    self._api_private_key.encode(), password=None
-                )
-            else:
-                # Assume hex-encoded raw key
-                key_bytes = bytes.fromhex(self._api_private_key)
-                private_key = ec.derive_private_key(
-                    int.from_bytes(key_bytes, "big"), ec.SECP256R1()
-                )
-
-            signature = private_key.sign(body_hash, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
-
-            stamp = base64.urlsafe_b64encode(signature).decode().rstrip("=")
-
-            return {
-                "X-Stamp": stamp,
-                "X-Stamp-Key": self._api_key,
-            }
+            private_key_int = int(self._api_private_key, 16)
+            self._signing_key = ec.derive_private_key(private_key_int, ec.SECP256R1())
         except ImportError:
             raise RuntimeError(
                 "cryptography package is required for Turnkey P-256 stamps. "
                 "Install with: pip install cryptography"
             )
 
-    async def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        """Send an authenticated POST request to the Turnkey API."""
-        body_json = json.dumps(body, separators=(",", ":"), sort_keys=True)
-        stamp_headers = self._stamp_request(body_json)
+    def _create_stamp(self, body: str) -> str:
+        """Create an official Turnkey API stamp (base64url JSON envelope).
 
-        response = await self._client.post(
-            path,
-            content=body_json,
-            headers=stamp_headers,
-        )
+        Matches the format from https://github.com/tkhq/python-sdk
+        """
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        if not self._signing_key:
+            raise ValueError("Turnkey signing key not initialized")
+
+        signature = self._signing_key.sign(body.encode(), ec.ECDSA(hashes.SHA256()))
+
+        stamp_payload = {
+            "publicKey": self._api_key,
+            "scheme": "SIGNATURE_SCHEME_TK_API_P256",
+            "signature": signature.hex(),
+        }
+
+        stamp_json = json.dumps(stamp_payload)
+        return base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
+
+    def _stamp_headers(self, body_json: str) -> Dict[str, str]:
+        """Return HTTP headers with the X-Stamp for a serialised request body."""
+        return {"X-Stamp": self._create_stamp(body_json)}
+
+    # ------------------------------------------------------------------
+    # Low-level HTTP
+    # ------------------------------------------------------------------
+
+    async def post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """Send an authenticated POST request to the Turnkey API.
+
+        This is the public entry point used both internally and by
+        external callers (e.g. ``TurnkeyMPCSigner`` in sardis-chain).
+        """
+        body_json = json.dumps(body, separators=(",", ":"), sort_keys=True)
+        headers = self._stamp_headers(body_json)
+
+        response = await self._client.post(path, content=body_json, headers=headers)
         response.raise_for_status()
         return response.json()
 
-    async def create_wallet(self, wallet_name: str) -> Dict[str, Any]:
-        """Create a new HD wallet.
+    @property
+    def organization_id(self) -> str:
+        return self._organization_id
 
-        Returns:
-            Dict with walletId and other wallet metadata.
-        """
+    # ------------------------------------------------------------------
+    # High-level helpers
+    # ------------------------------------------------------------------
+
+    async def create_wallet(self, wallet_name: str) -> Dict[str, Any]:
+        """Create a new HD wallet."""
         body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET",
             "timestampMs": str(int(time.time() * 1000)),
@@ -105,7 +131,7 @@ class TurnkeyClient:
             },
         }
 
-        result = await self._post("/public/v1/submit/create_wallet", body)
+        result = await self.post("/public/v1/submit/create_wallet", body)
         activity = result.get("activity", {})
         wallet_result = activity.get("result", {}).get("createWalletResult", {})
 
@@ -118,16 +144,7 @@ class TurnkeyClient:
         chain_type: str = "CHAIN_TYPE_ETHEREUM",
         count: int = 1,
     ) -> Dict[str, Any]:
-        """Create accounts (addresses) for an existing wallet.
-
-        Args:
-            wallet_id: The wallet to add accounts to.
-            chain_type: Chain type (CHAIN_TYPE_ETHEREUM, CHAIN_TYPE_SOLANA, etc.)
-            count: Number of accounts to create.
-
-        Returns:
-            Dict with addresses list.
-        """
+        """Create accounts (addresses) for an existing wallet."""
         body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET_ACCOUNTS",
             "timestampMs": str(int(time.time() * 1000)),
@@ -146,7 +163,7 @@ class TurnkeyClient:
             },
         }
 
-        result = await self._post("/public/v1/submit/create_wallet_accounts", body)
+        result = await self.post("/public/v1/submit/create_wallet_accounts", body)
         activity = result.get("activity", {})
         return activity.get("result", {}).get("createWalletAccountsResult", {})
 
@@ -156,16 +173,7 @@ class TurnkeyClient:
         unsigned_transaction: str,
         sign_with: str,
     ) -> Dict[str, Any]:
-        """Sign a transaction with a wallet address.
-
-        Args:
-            wallet_id: Wallet containing the signing key.
-            unsigned_transaction: Hex-encoded unsigned transaction.
-            sign_with: Address to sign with.
-
-        Returns:
-            Dict with signedTransaction.
-        """
+        """Sign a transaction with a wallet address."""
         body = {
             "type": "ACTIVITY_TYPE_SIGN_TRANSACTION",
             "timestampMs": str(int(time.time() * 1000)),
@@ -177,22 +185,17 @@ class TurnkeyClient:
             },
         }
 
-        result = await self._post("/public/v1/submit/sign_transaction", body)
+        result = await self.post("/public/v1/submit/sign_transaction", body)
         activity = result.get("activity", {})
         return activity.get("result", {}).get("signTransactionResult", {})
 
     async def get_wallet(self, wallet_id: str) -> Dict[str, Any]:
-        """Get wallet details.
-
-        Returns:
-            Dict with wallet metadata and accounts.
-        """
+        """Get wallet details."""
         body = {
             "organizationId": self._organization_id,
             "walletId": wallet_id,
         }
-
-        return await self._post("/public/v1/query/get_wallet", body)
+        return await self.post("/public/v1/query/get_wallet", body)
 
     async def close(self) -> None:
         """Close the HTTP client."""

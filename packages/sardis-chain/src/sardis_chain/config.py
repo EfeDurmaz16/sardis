@@ -66,7 +66,12 @@ class RPCConfig:
 
 @dataclass
 class TurnkeyConfig:
-    """Turnkey MPC configuration placeholder for API compatibility."""
+    """Turnkey MPC configuration placeholder for API compatibility.
+
+    NOTE: The canonical TurnkeyClient lives in sardis-wallet.  This dataclass
+    exists only so that chain config code can reference the type without an
+    import cycle.  All authentication is handled by sardis_wallet.turnkey_client.
+    """
     api_key: str = ""
     organization_id: str = ""
 
