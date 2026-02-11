@@ -44,10 +44,29 @@ def _get_real_client_ip(request: Request) -> str:
 
 @dataclass
 class RateLimitConfig:
-    """Rate limit configuration."""
+    """Rate limit configuration.
+
+    ``org_overrides`` maps organisation IDs to custom rate limits so that
+    enterprise customers can get higher quotas while free-tier orgs stay at
+    the default.
+    """
     requests_per_minute: int = 100
     requests_per_hour: int = 1000
     burst_size: int = 20  # Allow short bursts
+    org_overrides: dict = field(default_factory=dict)
+    # org_overrides example:
+    #   {"org_abc": {"requests_per_minute": 500, "requests_per_hour": 5000}}
+
+    def for_org(self, org_id: str) -> "RateLimitConfig":
+        """Return org-specific config, falling back to defaults."""
+        override = self.org_overrides.get(org_id)
+        if not override:
+            return self
+        return RateLimitConfig(
+            requests_per_minute=override.get("requests_per_minute", self.requests_per_minute),
+            requests_per_hour=override.get("requests_per_hour", self.requests_per_hour),
+            burst_size=override.get("burst_size", self.burst_size),
+        )
 
 
 @dataclass
@@ -82,17 +101,21 @@ class RedisRateLimiter:
                 )
         return self._redis
 
-    def _get_client_key(self, request: Request) -> str:
-        """Get a unique key for the client."""
+    def _get_client_key(self, request: Request) -> tuple[str, str | None]:
+        """Get a unique key for the client plus optional org_id."""
+        org_id = getattr(request.state, "org_id", None) if hasattr(request, "state") else None
         api_key = request.headers.get("X-API-Key", "")
+        if org_id:
+            return f"rl:org:{org_id}", org_id
         if api_key:
-            return f"rl:key:{api_key[:8]}"
-        return f"rl:ip:{_get_real_client_ip(request)}"
+            return f"rl:key:{api_key[:8]}", None
+        return f"rl:ip:{_get_real_client_ip(request)}", None
 
     async def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
-        """Check rate limit using Redis sliding window."""
+        """Check rate limit using Redis sliding window with per-org support."""
         now = time.time()
-        client_key = self._get_client_key(request)
+        client_key, org_id = self._get_client_key(request)
+        effective_config = self.config.for_org(org_id) if org_id else self.config
         redis_client = self._get_redis()
 
         # Sliding window keys
@@ -123,21 +146,21 @@ class RedisRateLimiter:
         hour_count = results[5]
 
         headers = {
-            "X-RateLimit-Limit": str(self.config.requests_per_minute),
-            "X-RateLimit-Remaining": str(max(0, self.config.requests_per_minute - minute_count)),
+            "X-RateLimit-Limit": str(effective_config.requests_per_minute),
+            "X-RateLimit-Remaining": str(max(0, effective_config.requests_per_minute - minute_count)),
             "X-RateLimit-Reset": str(int(now + 60)),
         }
 
         # Check limits
-        if minute_count > self.config.requests_per_minute:
+        if minute_count > effective_config.requests_per_minute:
             headers["Retry-After"] = "60"
             return False, headers
 
-        if hour_count > self.config.requests_per_hour:
+        if hour_count > effective_config.requests_per_hour:
             headers["Retry-After"] = "3600"
             return False, headers
 
-        headers["X-RateLimit-Remaining"] = str(max(0, self.config.requests_per_minute - minute_count))
+        headers["X-RateLimit-Remaining"] = str(max(0, effective_config.requests_per_minute - minute_count))
         return True, headers
 
 
@@ -152,70 +175,73 @@ class InMemoryRateLimiter:
         self.config = config
         self._states: dict[str, RateLimitState] = defaultdict(RateLimitState)
     
-    def _get_client_key(self, request: Request) -> str:
-        """Get a unique key for the client."""
-        # Try to get API key first
+    def _get_client_key(self, request: Request) -> tuple[str, str | None]:
+        """Get a unique key for the client plus optional org_id."""
+        org_id = getattr(request.state, "org_id", None) if hasattr(request, "state") else None
         api_key = request.headers.get("X-API-Key", "")
+        if org_id:
+            return f"org:{org_id}", org_id
         if api_key:
-            return f"key:{api_key[:8]}"
+            return f"key:{api_key[:8]}", None
 
         # SECURITY: Use _get_real_client_ip which only trusts X-Forwarded-For
         # from known reverse proxies. See module-level comment.
-        return f"ip:{_get_real_client_ip(request)}"
-    
+        return f"ip:{_get_real_client_ip(request)}", None
+
     def check_rate_limit(self, request: Request) -> tuple[bool, dict]:
         """
-        Check if request is within rate limits.
-        
+        Check if request is within rate limits (with per-org support).
+
         Returns:
             Tuple of (allowed, headers) where headers contain rate limit info.
         """
         now = time.time()
-        client_key = self._get_client_key(request)
+        client_key, org_id = self._get_client_key(request)
+        effective_config = self.config.for_org(org_id) if org_id else self.config
         state = self._states[client_key]
-        
+
         # Reset minute counter if needed
         if now >= state.minute_reset:
             state.minute_count = 0
             state.minute_reset = now + 60
-        
+
         # Reset hour counter if needed
         if now >= state.hour_reset:
             state.hour_count = 0
             state.hour_reset = now + 3600
-        
+
         # Token bucket refill
         time_passed = now - state.last_update if state.last_update else 0
         state.tokens = min(
-            self.config.burst_size,
-            state.tokens + time_passed * (self.config.requests_per_minute / 60)
+            effective_config.burst_size,
+            state.tokens + time_passed * (effective_config.requests_per_minute / 60)
         )
         state.last_update = now
-        
+
         # Check limits
         headers = {
-            "X-RateLimit-Limit": str(self.config.requests_per_minute),
-            "X-RateLimit-Remaining": str(max(0, self.config.requests_per_minute - state.minute_count)),
+            "X-RateLimit-Limit": str(effective_config.requests_per_minute),
+            "X-RateLimit-Remaining": str(max(0, effective_config.requests_per_minute - state.minute_count)),
             "X-RateLimit-Reset": str(int(state.minute_reset)),
         }
-        
+
         # Check if over limit
-        if state.minute_count >= self.config.requests_per_minute:
+        if state.minute_count >= effective_config.requests_per_minute:
             if state.tokens < 1:
                 headers["Retry-After"] = str(int(state.minute_reset - now))
                 return False, headers
-        
-        if state.hour_count >= self.config.requests_per_hour:
+
+        if state.hour_count >= effective_config.requests_per_hour:
             headers["Retry-After"] = str(int(state.hour_reset - now))
             return False, headers
-        
+
         # Consume a token and increment counters
         state.tokens -= 1
         state.minute_count += 1
         state.hour_count += 1
-        
-        headers["X-RateLimit-Remaining"] = str(max(0, self.config.requests_per_minute - state.minute_count))
-        
+
+        headers["X-RateLimit-Remaining"] = str(max(0, effective_config.requests_per_minute - state.minute_count))
+
         return True, headers
 
 
