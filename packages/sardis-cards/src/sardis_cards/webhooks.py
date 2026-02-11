@@ -213,6 +213,227 @@ class CardWebhookHandler:
         return self.parse_event(payload)
 
 
+class ASADecision(str, Enum):
+    """Lithic ASA authorization decision."""
+    APPROVE = "APPROVE"
+    DECLINE = "DECLINE"
+
+
+@dataclass
+class ASARequest:
+    """Parsed Lithic ASA (Authorization Stream Access) request."""
+    token: str
+    card_token: str
+    amount_cents: int
+    currency: str
+    merchant_descriptor: str
+    merchant_mcc: str
+    merchant_id: str
+    status: str
+    raw_data: dict[str, Any]
+
+    @property
+    def amount(self) -> Decimal:
+        return Decimal(self.amount_cents) / 100
+
+
+@dataclass
+class ASAResponse:
+    """Response to an ASA authorization request."""
+    decision: ASADecision
+    reason: str
+    token: str  # echo back the transaction token
+
+
+class ASAHandler:
+    """
+    Lithic Authorization Stream Access (ASA) handler.
+
+    Receives real-time authorization requests from Lithic and makes
+    approve/decline decisions based on Sardis spending policies.
+
+    This is a synchronous decision endpoint — Lithic waits for a
+    response before approving or declining the card transaction at
+    the network level.
+    """
+
+    def __init__(
+        self,
+        webhook_handler: CardWebhookHandler,
+        card_lookup: Optional[Callable[[str], Optional[Any]]] = None,
+        policy_check: Optional[Callable[[str, Decimal, str, str], tuple[bool, str]]] = None,
+    ):
+        """
+        Args:
+            webhook_handler: Base handler for signature verification
+            card_lookup: Async callable(card_token) -> Card or None
+            policy_check: Async callable(wallet_id, amount, merchant_mcc, merchant_name) -> (allowed, reason)
+        """
+        self._handler = webhook_handler
+        self._card_lookup = card_lookup
+        self._policy_check = policy_check
+        self._processed: set[str] = set()
+
+        # Blocked MCC codes (high-risk categories)
+        self._blocked_mccs: set[str] = {
+            "7995",  # Gambling
+            "5933",  # Pawn shops
+            "5912",  # Drug stores (high-risk for fraud)
+            "6051",  # Quasi-cash / crypto purchases
+            "6211",  # Securities/brokers
+        }
+
+    def add_blocked_mcc(self, mcc: str) -> None:
+        """Add a merchant category code to the block list."""
+        self._blocked_mccs.add(mcc)
+
+    async def handle_authorization(
+        self,
+        payload: bytes,
+        signature: str,
+    ) -> ASAResponse:
+        """
+        Handle a Lithic ASA authorization request.
+
+        Must respond quickly (< 2 seconds) or Lithic will use its
+        default decision.
+
+        Args:
+            payload: Raw request body
+            signature: Lithic webhook signature
+
+        Returns:
+            ASAResponse with approve/decline decision
+        """
+        # 1. Verify signature
+        if not self._handler.verify_signature(payload, signature):
+            logger.warning("ASA: Invalid webhook signature")
+            return ASAResponse(
+                decision=ASADecision.DECLINE,
+                reason="invalid_signature",
+                token="",
+            )
+
+        # 2. Parse authorization request
+        data = json.loads(payload)
+        asa_req = self._parse_asa_request(data)
+
+        # 3. Idempotency check
+        if asa_req.token in self._processed:
+            logger.info(f"ASA: Duplicate authorization {asa_req.token}")
+            return ASAResponse(
+                decision=ASADecision.APPROVE,
+                reason="duplicate_approved",
+                token=asa_req.token,
+            )
+
+        logger.info(
+            f"ASA: Authorization request token={asa_req.token} "
+            f"card={asa_req.card_token} amount=${asa_req.amount} "
+            f"merchant={asa_req.merchant_descriptor} mcc={asa_req.merchant_mcc}"
+        )
+
+        # 4. Check blocked MCCs
+        if asa_req.merchant_mcc in self._blocked_mccs:
+            logger.warning(
+                f"ASA: Declined - blocked MCC {asa_req.merchant_mcc} "
+                f"for card {asa_req.card_token}"
+            )
+            self._processed.add(asa_req.token)
+            return ASAResponse(
+                decision=ASADecision.DECLINE,
+                reason=f"blocked_merchant_category_{asa_req.merchant_mcc}",
+                token=asa_req.token,
+            )
+
+        # 5. Look up card and check spending limits
+        if self._card_lookup:
+            try:
+                card = await self._card_lookup(asa_req.card_token)
+                if card is None:
+                    logger.warning(f"ASA: Card not found {asa_req.card_token}")
+                    self._processed.add(asa_req.token)
+                    return ASAResponse(
+                        decision=ASADecision.DECLINE,
+                        reason="card_not_found",
+                        token=asa_req.token,
+                    )
+
+                can_authorize, card_reason = card.can_authorize(
+                    asa_req.amount,
+                    merchant_id=asa_req.merchant_id,
+                )
+                if not can_authorize:
+                    logger.info(f"ASA: Declined by card limits - {card_reason}")
+                    self._processed.add(asa_req.token)
+                    return ASAResponse(
+                        decision=ASADecision.DECLINE,
+                        reason=card_reason,
+                        token=asa_req.token,
+                    )
+            except Exception as e:
+                logger.error(f"ASA: Card lookup failed: {e}")
+                # Fail-open for card lookup errors to avoid blocking all transactions
+                # The card-level limits at Lithic will still apply
+
+        # 6. Check spending policy (if configured)
+        if self._policy_check:
+            try:
+                allowed, policy_reason = await self._policy_check(
+                    asa_req.card_token,
+                    asa_req.amount,
+                    asa_req.merchant_mcc,
+                    asa_req.merchant_descriptor,
+                )
+                if not allowed:
+                    logger.info(f"ASA: Declined by policy - {policy_reason}")
+                    self._processed.add(asa_req.token)
+                    return ASAResponse(
+                        decision=ASADecision.DECLINE,
+                        reason=policy_reason,
+                        token=asa_req.token,
+                    )
+            except Exception as e:
+                logger.error(f"ASA: Policy check failed: {e}")
+                # Fail-closed on policy errors — decline if policy engine is down
+                self._processed.add(asa_req.token)
+                return ASAResponse(
+                    decision=ASADecision.DECLINE,
+                    reason="policy_check_failed",
+                    token=asa_req.token,
+                )
+
+        # 7. Approved
+        self._processed.add(asa_req.token)
+        logger.info(f"ASA: Approved token={asa_req.token} amount=${asa_req.amount}")
+        return ASAResponse(
+            decision=ASADecision.APPROVE,
+            reason="approved",
+            token=asa_req.token,
+        )
+
+    def _parse_asa_request(self, data: dict) -> ASARequest:
+        """Parse Lithic ASA webhook payload."""
+        payload = data.get("payload", data)
+        merchant = payload.get("merchant", {})
+        return ASARequest(
+            token=payload.get("token", ""),
+            card_token=payload.get("card_token", payload.get("card", {}).get("token", "")),
+            amount_cents=abs(payload.get("amount", 0)),
+            currency=merchant.get("currency", "USD"),
+            merchant_descriptor=merchant.get("descriptor", ""),
+            merchant_mcc=merchant.get("mcc", ""),
+            merchant_id=merchant.get("acceptor_id", ""),
+            status=payload.get("status", ""),
+            raw_data=data,
+        )
+
+    def clear_processed(self, max_size: int = 10000) -> None:
+        """Prevent unbounded memory growth."""
+        if len(self._processed) > max_size:
+            self._processed.clear()
+
+
 class AutoConversionWebhookHandler:
     """
     Webhook handler that integrates with auto-conversion service.
