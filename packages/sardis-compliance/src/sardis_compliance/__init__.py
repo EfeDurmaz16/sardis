@@ -25,6 +25,17 @@ from .kyc import (
     InquirySession,
     create_kyc_service,
 )
+from .kyb import (
+    KYBStatus,
+    KYBResult,
+    KYBService,
+    KYBProvider,
+    PersonaKYBProvider,
+    MockKYBProvider,
+    BusinessVerificationRequest,
+    BusinessInquirySession,
+    create_kyb_service,
+)
 from .sanctions import (
     SanctionsRisk,
     SanctionsList,
@@ -166,6 +177,16 @@ __all__ = [
     "VerificationRequest",
     "InquirySession",
     "create_kyc_service",
+    # KYB
+    "KYBStatus",
+    "KYBResult",
+    "KYBService",
+    "KYBProvider",
+    "PersonaKYBProvider",
+    "MockKYBProvider",
+    "BusinessVerificationRequest",
+    "BusinessInquirySession",
+    "create_kyb_service",
     # Sanctions
     "SanctionsRisk",
     "SanctionsList",
