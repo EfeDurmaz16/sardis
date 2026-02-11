@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "sardis-core"
 version = "0.1.0"
 description = "Core AP2/TAP-aligned domain primitives for the Sardis stablecoin execution layer"
-authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
@@ -67,8 +67,8 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.io"
-Documentation = "https://docs.sardis.io"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh"
 Repository = "https://github.com/sardis-io/sardis-core"
 Changelog = "https://github.com/sardis-io/sardis-core/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/sardis-io/sardis-core/issues"

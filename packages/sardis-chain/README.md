@@ -196,7 +196,7 @@ sardis-chain/
 
 ## Documentation
 
-Full documentation is available at [docs.sardis.io/chain](https://docs.sardis.io/chain).
+Full documentation is available at [docs.sardis.sh/chain](https://docs.sardis.sh/chain).
 
 ## License
 

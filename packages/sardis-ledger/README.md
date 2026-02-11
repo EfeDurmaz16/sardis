@@ -242,7 +242,7 @@ sardis-ledger/
 
 ## Documentation
 
-Full documentation is available at [docs.sardis.io/ledger](https://docs.sardis.io/ledger).
+Full documentation is available at [docs.sardis.sh/ledger](https://docs.sardis.sh/ledger).
 
 ## License
 

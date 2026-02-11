@@ -284,7 +284,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             import time
             # RFC 7807 Problem Details format
             error_content = {
-                "type": "https://api.sardis.io/errors/rate-limit-exceeded",
+                "type": "https://api.sardis.sh/errors/rate-limit-exceeded",
                 "title": "Rate Limit Exceeded",
                 "status": 429,
                 "detail": "Too many requests. Please wait before making another request.",

@@ -346,7 +346,7 @@ All errors follow RFC 7807 Problem Details format:
 
 ```json
 {
-  "type": "https://api.sardis.io/errors/validation-error",
+  "type": "https://api.sardis.sh/errors/validation-error",
   "title": "Validation Error",
   "status": 422,
   "detail": "One or more fields failed validation",
@@ -394,11 +394,11 @@ Current API version: v2. The API version is included in all response headers:
     # Add server URLs
     openapi_schema["servers"] = [
         {
-            "url": "https://api.sardis.io",
+            "url": "https://api.sardis.sh",
             "description": "Production server",
         },
         {
-            "url": "https://api.staging.sardis.io",
+            "url": "https://api.staging.sardis.sh",
             "description": "Staging server",
         },
         {
@@ -410,12 +410,12 @@ Current API version: v2. The API version is included in all response headers:
     # Add contact and license info
     openapi_schema["info"]["contact"] = {
         "name": "Sardis API Support",
-        "email": "support@sardis.io",
-        "url": "https://docs.sardis.io",
+        "email": "support@sardis.sh",
+        "url": "https://docs.sardis.sh",
     }
     openapi_schema["info"]["license"] = {
         "name": "Proprietary",
-        "url": "https://sardis.io/terms",
+        "url": "https://sardis.sh/terms",
     }
 
     # Add tags with descriptions

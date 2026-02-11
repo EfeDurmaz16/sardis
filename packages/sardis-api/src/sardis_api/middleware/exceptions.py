@@ -9,7 +9,7 @@ Provides RFC 7807 Problem Details compliant error responses with:
 
 RFC 7807 Problem Details Format:
 {
-    "type": "https://api.sardis.io/errors/<error-type>",
+    "type": "https://api.sardis.sh/errors/<error-type>",
     "title": "Human-readable error title",
     "status": 400,
     "detail": "Detailed error description",
@@ -46,7 +46,7 @@ from sardis_v2_core.exceptions import (
 logger = logging.getLogger(__name__)
 
 # Base URL for error type URIs
-ERROR_TYPE_BASE = "https://api.sardis.io/errors"
+ERROR_TYPE_BASE = "https://api.sardis.sh/errors"
 
 
 @dataclass

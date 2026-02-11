@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "sardis-api"
 version = "0.1.0"
 description = "FastAPI gateway for Sardis stablecoin execution"
-authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,8 +64,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.io"
-Documentation = "https://docs.sardis.io/api"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh/api"
 Repository = "https://github.com/sardis-io/sardis-api"
 Changelog = "https://github.com/sardis-io/sardis-api/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/sardis-io/sardis-api/issues"

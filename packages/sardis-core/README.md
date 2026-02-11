@@ -162,7 +162,7 @@ sardis-core/
 
 ## Documentation
 
-Full documentation is available at [docs.sardis.io](https://docs.sardis.io).
+Full documentation is available at [docs.sardis.sh](https://docs.sardis.sh).
 
 ## License
 

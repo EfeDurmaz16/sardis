@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "sardis-compliance"
 version = "0.2.0"
 description = "Compliance and monitoring services for Sardis - KYC, Sanctions, PEP, Risk Scoring, and Reporting"
-authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
@@ -62,8 +62,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.io"
-Documentation = "https://docs.sardis.io/compliance"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh/compliance"
 Repository = "https://github.com/sardis-io/sardis-compliance"
 Changelog = "https://github.com/sardis-io/sardis-compliance/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/sardis-io/sardis-compliance/issues"

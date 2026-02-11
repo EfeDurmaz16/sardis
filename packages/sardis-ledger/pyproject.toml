@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "sardis-ledger"
 version = "0.3.0"
 description = "Production-grade append-only ledger with row-level locking, batch processing, and blockchain reconciliation"
-authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 requires-python = ">=3.11"
 readme = "README.md"
 license = {text = "MIT"}
@@ -63,8 +63,8 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.io"
-Documentation = "https://docs.sardis.io/ledger"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh/ledger"
 Repository = "https://github.com/sardis-io/sardis-ledger"
 Changelog = "https://github.com/sardis-io/sardis-ledger/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/sardis-io/sardis-ledger/issues"

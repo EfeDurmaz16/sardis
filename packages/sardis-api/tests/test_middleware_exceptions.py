@@ -54,7 +54,7 @@ class TestRFC7807Error:
     def test_basic_error(self):
         """Should create basic RFC 7807 error."""
         error = RFC7807Error(
-            type="https://api.sardis.io/errors/validation-error",
+            type="https://api.sardis.sh/errors/validation-error",
             title="Validation Error",
             status=400,
             detail="Invalid input provided",
@@ -62,7 +62,7 @@ class TestRFC7807Error:
             request_id="req_abc123",
         )
 
-        assert error.type == "https://api.sardis.io/errors/validation-error"
+        assert error.type == "https://api.sardis.sh/errors/validation-error"
         assert error.title == "Validation Error"
         assert error.status == 400
         assert error.detail == "Invalid input provided"
@@ -72,7 +72,7 @@ class TestRFC7807Error:
     def test_to_dict(self):
         """Should convert to RFC 7807 compliant dictionary."""
         error = RFC7807Error(
-            type="https://api.sardis.io/errors/not-found",
+            type="https://api.sardis.sh/errors/not-found",
             title="Not Found",
             status=404,
             detail="Resource not found",
@@ -82,7 +82,7 @@ class TestRFC7807Error:
 
         result = error.to_dict()
 
-        assert result["type"] == "https://api.sardis.io/errors/not-found"
+        assert result["type"] == "https://api.sardis.sh/errors/not-found"
         assert result["title"] == "Not Found"
         assert result["status"] == 404
         assert result["detail"] == "Resource not found"
@@ -93,7 +93,7 @@ class TestRFC7807Error:
     def test_to_dict_with_extensions(self):
         """Should include extensions in dict."""
         error = RFC7807Error(
-            type="https://api.sardis.io/errors/validation-error",
+            type="https://api.sardis.sh/errors/validation-error",
             title="Validation Error",
             status=422,
             detail="Field validation failed",

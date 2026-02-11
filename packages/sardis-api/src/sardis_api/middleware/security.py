@@ -238,7 +238,7 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(
                         status_code=413,
                         content={
-                            "type": "https://api.sardis.io/errors/request-entity-too-large",
+                            "type": "https://api.sardis.sh/errors/request-entity-too-large",
                             "title": "Request Entity Too Large",
                             "status": 413,
                             "detail": f"Request body exceeds maximum size of {limit} bytes",
@@ -267,7 +267,7 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=413,
                     content={
-                        "type": "https://api.sardis.io/errors/request-entity-too-large",
+                        "type": "https://api.sardis.sh/errors/request-entity-too-large",
                         "title": "Request Entity Too Large",
                         "status": 413,
                         "detail": f"Request body exceeds maximum size of {limit} bytes",
@@ -521,7 +521,7 @@ def verify_webhook_signature(
             raise HTTPException(
                 status_code=500,
                 detail={
-                    "type": "https://api.sardis.io/errors/webhook-secret-missing",
+                    "type": "https://api.sardis.sh/errors/webhook-secret-missing",
                     "title": "Webhook Secret Not Configured",
                     "status": 500,
                     "detail": "WEBHOOK_SECRET is not configured",
@@ -533,7 +533,7 @@ def verify_webhook_signature(
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "type": "https://api.sardis.io/errors/missing-signature",
+                    "type": "https://api.sardis.sh/errors/missing-signature",
                     "title": "Missing Webhook Signature",
                     "status": 400,
                     "detail": f"Missing required header: {WebhookSignatureVerifier.SIGNATURE_HEADER}",
@@ -544,7 +544,7 @@ def verify_webhook_signature(
             raise HTTPException(
                 status_code=401,
                 detail={
-                    "type": "https://api.sardis.io/errors/invalid-signature",
+                    "type": "https://api.sardis.sh/errors/invalid-signature",
                     "title": "Invalid Webhook Signature",
                     "status": 401,
                     "detail": "The webhook signature is invalid or expired",

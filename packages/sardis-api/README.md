@@ -161,7 +161,7 @@ sardis-api/
 
 ## Documentation
 
-Full documentation is available at [docs.sardis.io/api](https://docs.sardis.io/api).
+Full documentation is available at [docs.sardis.sh/api](https://docs.sardis.sh/api).
 
 ## License
 

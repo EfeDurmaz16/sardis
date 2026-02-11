@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "sardis-chain"
 version = "0.2.0"
 description = "Production-grade multi-chain stablecoin executor for Sardis"
-authors = [{name = "Sardis Team", email = "dev@sardis.io"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.io"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 requires-python = ">=3.11"
 readme = "README.md"
@@ -55,8 +55,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://sardis.io"
-Documentation = "https://docs.sardis.io/chain"
+Homepage = "https://sardis.sh"
+Documentation = "https://docs.sardis.sh/chain"
 Repository = "https://github.com/sardis-io/sardis-chain"
 Changelog = "https://github.com/sardis-io/sardis-chain/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/sardis-io/sardis-chain/issues"

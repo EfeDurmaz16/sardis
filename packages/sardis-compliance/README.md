@@ -243,7 +243,7 @@ sardis-compliance/
 
 ## Documentation
 
-Full documentation is available at [docs.sardis.io/compliance](https://docs.sardis.io/compliance).
+Full documentation is available at [docs.sardis.sh/compliance](https://docs.sardis.sh/compliance).
 
 ## License
 
