@@ -24,8 +24,8 @@ export default function DocsDeployment() {
           <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-[var(--sardis-orange)] hover:underline">npm</a>.
         </p>
         <div className="mt-3 flex flex-wrap gap-3 text-xs font-mono">
-          <a href="https://sardis-api-staging-482463483786.us-east1.run.app/health" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Health</a>
-          <a href="https://sardis-api-staging-482463483786.us-east1.run.app/api/v2/docs" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Docs</a>
+          <a href="https://sardis-api-staging-ogq6bgc5rq-ue.a.run.app/health" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Health</a>
+          <a href="https://sardis-api-staging-ogq6bgc5rq-ue.a.run.app/api/v2/docs" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">API Docs</a>
           <a href="https://app.sardis.sh" target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors">Dashboard</a>
         </div>
       </section>

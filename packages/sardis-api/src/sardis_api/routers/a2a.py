@@ -483,7 +483,7 @@ async def get_agent_card():
     """
     import os
 
-    api_base = os.getenv("SARDIS_API_BASE_URL", "https://sardis-api-staging-482463483786.us-east1.run.app")
+    api_base = os.getenv("SARDIS_API_BASE_URL", "https://sardis-api-staging-ogq6bgc5rq-ue.a.run.app")
 
     return {
         "agent_id": "sardis-platform",
