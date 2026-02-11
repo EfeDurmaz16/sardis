@@ -176,11 +176,11 @@ class SpendingPolicy:
             if not mcc_ok:
                 return False, mcc_reason
 
-        # Check per-transaction limit
-        if amount > self.limit_per_tx:
+        # Check per-transaction limit (includes fee — audit-F08)
+        if total_cost > self.limit_per_tx:
             return False, "per_transaction_limit"
 
-        # --- Spending limit checks ---
+        # --- Spending limit checks (all use total_cost = amount + fee) ---
         # When a policy_store is provided, use DB state (race-safe).
         # Otherwise fall back to in-memory state (dev/test only).
         if policy_store is not None:
@@ -193,26 +193,26 @@ class SpendingPolicy:
             db_state = await policy_store.load_state(self.agent_id)
             if db_state is not None:
                 # Total limit check from DB
-                if db_state["spent_total"] + amount > self.limit_total:
+                if db_state["spent_total"] + total_cost > self.limit_total:
                     return False, "total_limit_exceeded"
                 # Time-window checks from DB
                 for wtype, wdata in db_state["windows"].items():
-                    if wdata["current_spent"] + amount > wdata["limit_amount"]:
+                    if wdata["current_spent"] + total_cost > wdata["limit_amount"]:
                         return False, f"{wtype}_limit_exceeded"
             else:
                 # No DB state yet — fall back to in-memory for first-time evaluation
-                if self.spent_total + amount > self.limit_total:
+                if self.spent_total + total_cost > self.limit_total:
                     return False, "total_limit_exceeded"
                 for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
-                    ok, reason = window_limit.can_spend(amount)
+                    ok, reason = window_limit.can_spend(total_cost)
                     if not ok:
                         return ok, reason
         else:
             # In-memory fallback (dev/test)
-            if self.spent_total + amount > self.limit_total:
+            if self.spent_total + total_cost > self.limit_total:
                 return False, "total_limit_exceeded"
             for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
-                ok, reason = window_limit.can_spend(amount)
+                ok, reason = window_limit.can_spend(total_cost)
                 if not ok:
                     return ok, reason
 
@@ -270,12 +270,13 @@ class SpendingPolicy:
             if not mcc_ok:
                 return False, mcc_reason
 
-        if amount > self.limit_per_tx:
+        # Per-tx limit includes fee (audit-F08)
+        if total_cost > self.limit_per_tx:
             return False, "per_transaction_limit"
-        if self.spent_total + amount > self.limit_total:
+        if self.spent_total + total_cost > self.limit_total:
             return False, "total_limit_exceeded"
         for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
-            ok, reason = window_limit.can_spend(amount)
+            ok, reason = window_limit.can_spend(total_cost)
             if not ok:
                 return ok, reason
         if merchant_id:
