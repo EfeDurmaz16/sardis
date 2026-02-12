@@ -32,7 +32,7 @@ from sardis import AgentGroup as SardisAgentGroup
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
 
 # Create a shared group budget for the finance team
 group = sardis.groups.create(
@@ -103,14 +103,14 @@ def sardis_pay(to: str, amount: str, token: str, purpose: str) -> str:
 @tool("sardis_group_status")
 def sardis_group_status() -> str:
     """Check the group budget status including spending across all agents."""
-    info = sardis.groups.get(group.id)
+    info = sardis.groups.get_status(group.id)
     return (
-        f"Group: {info.name}\n"
-        f"Daily budget: ${info.budget_daily}\n"
-        f"Spent today: ${info.spent_daily}\n"
-        f"Remaining: ${info.daily_remaining}\n"
-        f"Active agents: {len(info.agent_ids)}\n"
-        f"Transactions today: {info.tx_count_daily}"
+        f"Group: {info['name']}\n"
+        f"Daily budget: ${info['budget_daily']}\n"
+        f"Spent today: ${info['spent_daily']}\n"
+        f"Remaining: ${info['daily_remaining']}\n"
+        f"Active agents: {info['agent_count']}\n"
+        f"Transactions today: {info['tx_count_daily']}"
     )
 
 
@@ -118,13 +118,15 @@ def sardis_group_status() -> str:
 def sardis_audit_log() -> str:
     """Retrieve recent transaction audit log for the group."""
     entries = sardis.ledger.list(group_id=group.id, limit=10)
+    if not entries:
+        return "No transactions yet."
     lines = []
     for entry in entries:
         lines.append(
-            f"  [{entry.timestamp}] {entry.agent_name}: "
+            f"  [{entry.timestamp:%H:%M}] {entry.agent_name}: "
             f"${entry.amount} to {entry.merchant} — {entry.status}"
         )
-    return f"Recent transactions:\n" + "\n".join(lines) if lines else "No transactions yet."
+    return "Recent transactions:\n" + "\n".join(lines)
 
 
 # --- CrewAI Agents ----------------------------------------------------------
@@ -213,7 +215,7 @@ if __name__ == "__main__":
     print("CrewAI Finance Team + Sardis Group Budgets")
     print("=" * 60)
     print()
-    print(f"Group: {group.id}")
+    print(f"Group: {group.name} ({group.id})")
     print(f"Daily budget: $1,000")
     print(f"Agents: researcher, purchaser, auditor")
     print()

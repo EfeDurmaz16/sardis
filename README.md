@@ -57,9 +57,9 @@ npm install @sardis/sdk
 ```
 
 ```typescript
-import { Sardis } from '@sardis/sdk';
+import { SardisClient } from '@sardis/sdk';
 
-const client = new Sardis({ apiKey: 'sk_...' });
+const client = new SardisClient({ apiKey: 'sk_...' });
 const wallet = await client.wallets.create({ name: 'my-agent', chain: 'base' });
 const tx = await wallet.pay({ to: '0x...', amount: '25.00', token: 'USDC' });
 ```

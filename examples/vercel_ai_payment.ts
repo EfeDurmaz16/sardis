@@ -17,7 +17,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { SardisClient } from "@sardis/sdk";
 
-const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY! });
+const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY ?? "sim_demo" });
 
 async function main() {
   // Create a wallet with a natural language spending policy

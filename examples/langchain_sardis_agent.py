@@ -30,7 +30,7 @@ from sardis import SardisClient
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
 
 wallet = sardis.wallets.create(
     name="langchain-agent",
@@ -75,12 +75,12 @@ def sardis_pay(to: str, amount: str, token: str, purpose: str) -> str:
 @tool
 def sardis_balance() -> str:
     """Check the current wallet balance and spending limits."""
-    info = sardis.wallets.get(wallet.id)
+    info = sardis.wallets.get_balance(wallet.id)
     return (
-        f"Balance: {info.balance} USDC | "
-        f"Spent today: {info.spent_daily} | "
-        f"Daily limit: {info.daily_limit} | "
-        f"Remaining: {info.daily_remaining}"
+        f"Balance: {info['balance']} USDC | "
+        f"Spent: {info['spent_total']} | "
+        f"Limit: {info['limit_total']} | "
+        f"Remaining: {info['remaining']}"
     )
 
 

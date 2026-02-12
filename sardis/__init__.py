@@ -1,41 +1,24 @@
 """
 Sardis: Payment OS for the Agent Economy
 
-This package provides two interfaces:
+Quick start::
 
-1. **Quick-start (local simulation):**
-   Simple classes for prototyping agent payment flows without an API key.
+    >>> from sardis import SardisClient
+    >>> client = SardisClient(api_key="sk_...")
+    >>> wallet = client.wallets.create(name="my-agent", chain="base", policy="Max $100/day")
+    >>> tx = wallet.pay(to="openai.com", amount="25.00", token="USDC")
+    >>> print(tx.success)  # True
 
-       >>> from sardis import Wallet, Transaction
-       >>> wallet = Wallet(initial_balance=100)
-       >>> tx = Transaction(from_wallet=wallet, to="merchant:api", amount=25)
+The SardisClient works in two modes:
 
-2. **Production SDK (recommended):**
-   Full API client for the Sardis platform. Requires ``sardis-sdk`` package.
+1. **Simulation mode** (default): All operations run locally, no API key needed.
+   Great for prototyping and testing agent payment flows.
 
-       >>> from sardis import SardisClient
-       >>> client = SardisClient(api_key="sk_...")
-       >>> wallet = client.wallets.create(chain="base", token="USDC")
-
-   Install the production SDK: ``pip install sardis-sdk``
+2. **Production mode**: When ``sardis-sdk`` is installed and a real API key is
+   provided, operations delegate to the Sardis platform.
 """
 
 __version__ = "0.3.0"
-
-# ---------------------------------------------------------------------------
-# Production SDK re-exports (available when sardis-sdk is installed)
-# ---------------------------------------------------------------------------
-try:
-    from sardis_sdk import (
-        SardisClient,
-        AsyncSardisClient,
-        RetryConfig,
-        TimeoutConfig,
-    )
-
-    _HAS_SDK = True
-except ImportError:
-    _HAS_SDK = False
 
 # ---------------------------------------------------------------------------
 # Quick-start / simulation classes (always available)
@@ -45,8 +28,27 @@ from .transaction import Transaction, TransactionResult, TransactionStatus
 from .policy import Policy, PolicyResult
 from .agent import Agent
 from .group import AgentGroup
+from .client import SardisClient, ManagedWallet, ManagedGroup, LedgerEntry
+
+# ---------------------------------------------------------------------------
+# Production SDK re-exports (available when sardis-sdk is installed)
+# ---------------------------------------------------------------------------
+try:
+    from sardis_sdk import (
+        AsyncSardisClient,
+        RetryConfig,
+        TimeoutConfig,
+    )
+    _HAS_SDK = True
+except ImportError:
+    _HAS_SDK = False
 
 __all__ = [
+    # Client (always available — simulation or production)
+    "SardisClient",
+    "ManagedWallet",
+    "ManagedGroup",
+    "LedgerEntry",
     # Quick-start classes
     "Wallet",
     "Transaction",
@@ -60,7 +62,6 @@ __all__ = [
 
 if _HAS_SDK:
     __all__ += [
-        "SardisClient",
         "AsyncSardisClient",
         "RetryConfig",
         "TimeoutConfig",

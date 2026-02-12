@@ -27,7 +27,7 @@ from sardis import SardisClient
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
 
 # Create a wallet with a natural language spending policy
 wallet = sardis.wallets.create(
