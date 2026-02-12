@@ -250,7 +250,7 @@ if (!result.success) {
 - [Documentation](https://sardis.sh/docs)
 - [API Reference](https://sardis.sh/docs/api)
 - [GitHub](https://github.com/sardis-project/sardis)
-- [Discord](https://discord.gg/sardis)
+- [Discord](https://discord.gg/XMA9JwDJ)
 
 ## License
 

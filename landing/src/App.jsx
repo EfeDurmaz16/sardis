@@ -1167,7 +1167,7 @@ const payment = await ramp.payMerchantFiat({
                 <ul className="space-y-2 text-muted-foreground">
                   <li><a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">GitHub</a></li>
                   <li><a href="https://x.com/sardisHQ" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">X (Twitter)</a></li>
-                  <li><a href="https://discord.gg/DUTjvA9uf7" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Discord</a></li>
+                  <li><a href="https://discord.gg/XMA9JwDJ" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Discord</a></li>
                   <li><a href="mailto:contact@sardis.sh" className="hover:text-[var(--sardis-orange)] transition-colors">Contact</a></li>
                 </ul>
               </div>

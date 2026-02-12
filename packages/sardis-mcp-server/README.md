@@ -363,7 +363,7 @@ interface ToolResponse {
 
 - [Documentation](https://docs.sardis.sh)
 - [GitHub Issues](https://github.com/sardis-network/sardis/issues)
-- [Discord Community](https://discord.gg/sardis)
+- [Discord Community](https://discord.gg/XMA9JwDJ)
 - Email: support@sardis.sh
 
 ## Contributing

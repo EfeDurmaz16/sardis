@@ -432,7 +432,7 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 - [Documentation](https://docs.sardis.sh)
 - [GitHub Issues](https://github.com/sardis-network/sardis-sdk-js/issues)
-- [Discord Community](https://discord.gg/sardis)
+- [Discord Community](https://discord.gg/XMA9JwDJ)
 
 ## License
 

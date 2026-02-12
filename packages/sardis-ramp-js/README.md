@@ -459,7 +459,7 @@ import type {
 
 - [Documentation](https://docs.sardis.network)
 - [GitHub Issues](https://github.com/sardis-network/sardis/issues)
-- [Discord Community](https://discord.gg/sardis)
+- [Discord Community](https://discord.gg/XMA9JwDJ)
 
 ## License
 
