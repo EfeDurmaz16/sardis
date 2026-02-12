@@ -12,5 +12,10 @@
     "No API key needed for simulated/sandbox mode",
     "All transactions are policy-checked before execution",
     "Supported tokens: USDC, USDT, EURC, PYUSD (stablecoins only)"
-  ]
+  ],
+
+  "context7": {
+    "url": "https://context7.com/efedurmaz16/sardis",
+    "public_key": "pk_XEDhNMQHzBfXXn7gGCdfe"
+  }
 }
