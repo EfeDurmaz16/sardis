@@ -5,6 +5,10 @@
 [![Status: Beta](https://img.shields.io/badge/Status-Beta-yellow)](https://sardis.sh)
 [![License: Open Core](https://img.shields.io/badge/License-Open--Core-blue)](LICENSE.txt)
 [![MCP: Native](https://img.shields.io/badge/MCP-Native-orange)](https://modelcontextprotocol.io)
+[![npm](https://img.shields.io/npm/v/@sardis/mcp-server)](https://www.npmjs.com/package/@sardis/mcp-server)
+[![npm downloads](https://img.shields.io/npm/dt/@sardis/mcp-server)](https://www.npmjs.com/package/@sardis/mcp-server)
+[![Chains: 5](https://img.shields.io/badge/Chains-5-brightgreen)](https://sardis.sh/docs)
+[![Tools: 46](https://img.shields.io/badge/MCP%20Tools-46-blue)](https://sardis.sh/docs)
 
 > **AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.**
 

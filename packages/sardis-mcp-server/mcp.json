@@ -3,7 +3,7 @@
   "name": "sardis",
   "displayName": "Sardis",
   "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
-  "version": "0.1.0",
+  "version": "0.2.5",
   "author": {
     "name": "Sardis",
     "email": "support@sardis.sh",
@@ -12,11 +12,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sardis-network/sardis",
+    "url": "https://github.com/EfeDurmaz16/sardis",
     "directory": "packages/sardis-mcp-server"
   },
   "homepage": "https://sardis.sh",
-  "documentation": "https://docs.sardis.sh",
+  "documentation": "https://sardis.sh/docs",
   "category": "finance",
   "tags": [
     "payments",

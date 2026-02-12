@@ -30,6 +30,8 @@ import {
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { getConfig } from './config.js';
@@ -44,12 +46,13 @@ export async function createServer() {
   const server = new Server(
     {
       name: 'sardis-mcp-server',
-      version: '0.2.0',
+      version: '0.2.5',
     },
     {
       capabilities: {
         tools: {},
         resources: {},
+        prompts: {},
       },
     }
   );
@@ -210,6 +213,91 @@ export async function createServer() {
     throw new Error(`Unknown resource: ${uri}`);
   });
 
+  // Prompt templates
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    return {
+      prompts: [
+        {
+          name: 'pay-vendor',
+          description: 'Make a payment to a vendor with policy validation',
+          arguments: [
+            { name: 'vendor', description: 'Vendor name (e.g., openai, anthropic)', required: true },
+            { name: 'amount', description: 'Amount in USD', required: true },
+            { name: 'purpose', description: 'Payment purpose', required: false },
+          ],
+        },
+        {
+          name: 'check-balance',
+          description: 'Check wallet balance and spending limits',
+          arguments: [],
+        },
+        {
+          name: 'sandbox-tour',
+          description: 'Guided tour of Sardis sandbox capabilities',
+          arguments: [
+            {
+              name: 'category',
+              description: 'Focus area: quickstart, payments, cards, policy, holds, fiat, or all',
+              required: false,
+            },
+          ],
+        },
+      ],
+    };
+  });
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: promptArgs } = request.params;
+
+    if (name === 'pay-vendor') {
+      const vendor = promptArgs?.vendor || 'openai';
+      const amount = promptArgs?.amount || '50';
+      const purpose = promptArgs?.purpose || 'API usage';
+      return {
+        messages: [
+          {
+            role: 'user' as const,
+            content: {
+              type: 'text' as const,
+              text: `Please pay $${amount} to ${vendor} for "${purpose}". First check the policy with sardis_check_policy, then execute with sardis_pay if allowed.`,
+            },
+          },
+        ],
+      };
+    }
+
+    if (name === 'check-balance') {
+      return {
+        messages: [
+          {
+            role: 'user' as const,
+            content: {
+              type: 'text' as const,
+              text: 'Check my Sardis wallet balance using sardis_get_balance, then show my spending limits with sardis_validate_limits for a $100 payment.',
+            },
+          },
+        ],
+      };
+    }
+
+    if (name === 'sandbox-tour') {
+      const category = promptArgs?.category || 'quickstart';
+      return {
+        messages: [
+          {
+            role: 'user' as const,
+            content: {
+              type: 'text' as const,
+              text: `Run sardis_sandbox_demo with category="${category}" and then walk me through each step interactively. Execute the example commands one by one and explain the results.`,
+            },
+          },
+        ],
+      };
+    }
+
+    throw new Error(`Unknown prompt: ${name}`);
+  });
+
   // SECURITY: Per-tool rate limiting to prevent abuse by compromised/injected agents.
   const toolCallCounts = new Map<string, { count: number; windowStart: number }>();
   const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
@@ -267,7 +355,27 @@ export async function createServer() {
       };
     }
 
-    return handler(args);
+    const result = await handler(args);
+
+    // In simulated mode, inject _sandbox metadata into JSON responses
+    const config = getConfig();
+    if (config.mode === 'simulated' && result.content?.length > 0) {
+      result.content = result.content.map((item) => {
+        if (item.type === 'text') {
+          try {
+            const parsed = JSON.parse(item.text);
+            parsed._sandbox = true;
+            parsed._notice = 'Simulated response — no real funds were moved';
+            return { ...item, text: JSON.stringify(parsed, null, 2) };
+          } catch {
+            // Not JSON, skip injection
+          }
+        }
+        return item;
+      });
+    }
+
+    return result;
   });
 
   return server;
@@ -281,7 +389,7 @@ export async function runServer() {
   const config = getConfig();
 
   // Log configuration status
-  console.error('Sardis MCP Server v0.2.0 running on stdio');
+  console.error('Sardis MCP Server v0.2.5 running on stdio');
   console.error(`Mode: ${config.mode}`);
   console.error(`API URL: ${config.apiUrl}`);
   console.error(`API Key configured: ${config.apiKey ? 'yes' : 'no'}`);

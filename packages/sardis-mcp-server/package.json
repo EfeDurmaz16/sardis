@@ -1,6 +1,6 @@
 {
   "name": "@sardis/mcp-server",
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "Model Context Protocol (MCP) server for Sardis - Enable AI agents (Claude, Cursor, etc.) to execute secure payments with policy validation",
   "type": "module",
   "main": "dist/index.js",

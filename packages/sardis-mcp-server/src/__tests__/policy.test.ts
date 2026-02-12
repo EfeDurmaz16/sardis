@@ -51,10 +51,10 @@ describe('Policy Tools', () => {
       expect(policiesTool).toBeDefined();
     });
 
-    it('should have sardis_get_rules tool', () => {
+    it('should NOT expose sardis_get_rules (security: prevents policy leaking)', () => {
       const rulesTool = policyToolDefinitions.find(t => t.name === 'sardis_get_rules');
 
-      expect(rulesTool).toBeDefined();
+      expect(rulesTool).toBeUndefined();
     });
   });
 
@@ -98,12 +98,12 @@ describe('Policy Tools', () => {
     });
 
     describe('sardis_get_rules', () => {
-      it('should return policy rules', async () => {
+      it('should return security error (blocked for agents)', async () => {
         const handler = policyToolHandlers['sardis_get_rules'];
         const result = await handler({});
 
         expect(result).toBeDefined();
-        expect(result.isError).toBeFalsy();
+        expect(result.isError).toBe(true);
       });
     });
   });

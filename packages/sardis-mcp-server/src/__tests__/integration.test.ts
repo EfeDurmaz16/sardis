@@ -100,7 +100,8 @@ describe('MCP Server Integration', () => {
         t.name.includes('policy') || t.name.includes('rules')
       );
 
-      expect(policyTools.length).toBeGreaterThanOrEqual(3);
+      // sardis_get_rules removed for security; sardis_check_policy matches filter
+      expect(policyTools.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should have hold tools', () => {

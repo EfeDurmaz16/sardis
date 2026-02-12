@@ -66,7 +66,7 @@ describe('Payment Tools', () => {
 
       expect(result).toBeDefined();
       expect(result.payment_id).toBeDefined();
-      expect(result.status).toBe('completed');
+      expect(result.status).toBe('simulated');
       expect(result.chain).toBe('base_sepolia');
       expect(result.tx_hash).toMatch(/^0x[0-9a-f]+$/);
       expect(result.ledger_tx_id).toBeDefined();

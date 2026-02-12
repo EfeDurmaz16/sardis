@@ -18,6 +18,7 @@ import { fiatToolDefinitions, fiatToolHandlers } from './fiat.js';
 import { approvalToolDefinitions, approvalToolHandlers } from './approvals.js';
 import { spendingToolDefinitions, spendingToolHandlers } from './spending.js';
 import { walletManagementToolDefinitions, walletManagementToolHandlers } from './wallet-management.js';
+import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
 
 // Re-export types
 export * from './types.js';
@@ -41,6 +42,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...approvalToolDefinitions,
   ...spendingToolDefinitions,
   ...walletManagementToolDefinitions,
+  ...sandboxToolDefinitions,
 ];
 
 /**
@@ -57,6 +59,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...approvalToolHandlers,
   ...spendingToolHandlers,
   ...walletManagementToolHandlers,
+  ...sandboxToolHandlers,
 };
 
 /**

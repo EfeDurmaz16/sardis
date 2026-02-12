@@ -517,7 +517,7 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-### Full Tool List (40+ tools)
+### Full Tool List (46 tools)
 
 | Category | Tools |
 |----------|-------|
@@ -531,6 +531,7 @@ Add to `.cursor/mcp.json`:
 | Fiat | `fund_wallet`, `withdraw_to_bank`, `get_funding_status` |
 | Approvals | `create_approval`, `get_approval`, `list_approvals`, `approve`, `deny`, `cancel_approval` |
 | Invoices | `create_invoice`, `get_invoice`, `list_invoices`, `update_invoice` |
+| Sandbox | `sandbox_demo` - Guided walkthrough of all capabilities |
 
 ---
 
@@ -1109,10 +1110,25 @@ function removeToken(address token) external onlySardis;
 
 ## Status
 
-- **Current Version**: v0.8.4 (Lithic Sandbox + Stablecoin Enforcement)
+- **Current Version**: v0.8.5 (Production Retry + Async Wrapping)
+- **MCP Server**: v0.2.5 on npm (1,000+ installs, 46 tools)
 - **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
+
+## What's New in v0.8.5 (February 2026)
+
+### Production-Grade Retry & Async Wrapping
+All external provider calls now use configurable retry with exponential backoff, circuit breakers, and rate limiting.
+
+### Sandbox Demo Tool
+```bash
+# In MCP server, call sardis_sandbox_demo for a guided tour
+# Categories: quickstart, payments, cards, policy, holds, fiat, all
+```
+
+### SAR Persistence
+Suspicious Activity Reports now persisted to PostgreSQL with FinCEN 5-year retention compliance.
 
 ## What's New in v0.8.4 (February 2026)
 

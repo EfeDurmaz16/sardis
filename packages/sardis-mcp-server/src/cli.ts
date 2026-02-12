@@ -33,7 +33,7 @@ interface InitOptions {
 
 function printHelp() {
   console.log(`
-Sardis MCP Server v0.2.0
+Sardis MCP Server v0.2.5
 The Payment OS for the Agent Economy
 
 USAGE:
@@ -44,7 +44,7 @@ USAGE:
 
 DESCRIPTION:
   Sardis MCP Server enables AI agents to execute secure payments
-  using Model Context Protocol. It exposes 36 tools across 8 categories:
+  using Model Context Protocol. It exposes 46 tools across 10 categories:
 
   Wallet (5):     sardis_get_wallet, sardis_get_balance, sardis_create_wallet,
                   sardis_update_wallet_policy, sardis_list_wallets
@@ -96,7 +96,7 @@ LEARN MORE:
 }
 
 function printVersion() {
-  console.log('Sardis MCP Server v0.2.0');
+  console.log('Sardis MCP Server v0.2.5');
 }
 
 function readArgValue(argv: string[], name: string): string | undefined {
@@ -148,7 +148,7 @@ async function apiRequestWithKey<T>(
     headers: {
       'X-API-Key': apiKey,
       'Content-Type': 'application/json',
-      'User-Agent': 'sardis-mcp-server/0.2.0',
+      'User-Agent': 'sardis-mcp-server/0.2.5',
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -342,9 +342,27 @@ async function main() {
   }
 
   if (args[0] === 'start' || args.length === 0) {
-    console.error('Sardis MCP Server v0.2.0 starting...');
-    console.error('Mode: ' + (process.env.SARDIS_MODE || 'simulated'));
-    console.error('Tools: 36 tools across 8 categories');
+    const mode = process.env.SARDIS_MODE || 'simulated';
+    const isSandbox = mode === 'simulated';
+
+    if (isSandbox) {
+      console.error('');
+      console.error('╔══════════════════════════════════════════════════════════════╗');
+      console.error('║  Sardis MCP Server v0.2.5 — SANDBOX MODE                   ║');
+      console.error('║                                                             ║');
+      console.error('║  All transactions are SIMULATED (no real funds move)        ║');
+      console.error('║  Policy validation runs REAL logic                          ║');
+      console.error('║  46 tools available across 10 categories                    ║');
+      console.error('║                                                             ║');
+      console.error('║  Set SARDIS_API_KEY + SARDIS_MODE=live for real txns        ║');
+      console.error('║  Try: sardis_sandbox_demo for a guided walkthrough          ║');
+      console.error('╚══════════════════════════════════════════════════════════════╝');
+      console.error('');
+    } else {
+      console.error('Sardis MCP Server v0.2.0 starting...');
+      console.error('Mode: live');
+      console.error('Tools: 46 tools across 10 categories');
+    }
     console.error('Ready. Waiting for MCP client connection...');
     await runServer();
   } else {

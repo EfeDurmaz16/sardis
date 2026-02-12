@@ -32,16 +32,16 @@ describe('Wallet Management Tools', () => {
       expect(listTool).toBeDefined();
     });
 
-    it('should have sardis_update_wallet_limits tool', () => {
+    it('should NOT expose sardis_update_wallet_limits (security: prevents privilege escalation)', () => {
       const updateTool = walletManagementToolDefinitions.find(t => t.name === 'sardis_update_wallet_limits');
 
-      expect(updateTool).toBeDefined();
+      expect(updateTool).toBeUndefined();
     });
 
-    it('should have sardis_archive_wallet tool', () => {
+    it('should NOT expose sardis_archive_wallet (security: prevents privilege escalation)', () => {
       const archiveTool = walletManagementToolDefinitions.find(t => t.name === 'sardis_archive_wallet');
 
-      expect(archiveTool).toBeDefined();
+      expect(archiveTool).toBeUndefined();
     });
   });
 
@@ -116,7 +116,7 @@ describe('Wallet Management Tools', () => {
     });
 
     describe('sardis_update_wallet_limits', () => {
-      it('should update wallet limits', async () => {
+      it('should return security error (blocked for agents)', async () => {
         const handler = walletManagementToolHandlers['sardis_update_wallet_limits'];
         const result = await handler({
           wallet_id: 'wallet_test_123',
@@ -125,25 +125,15 @@ describe('Wallet Management Tools', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.isError).toBeFalsy();
+        expect(result.isError).toBe(true);
 
         const parsed = JSON.parse(result.content[0].text);
-        expect(parsed.status).toBeDefined();
-      });
-
-      it('should error without wallet_id', async () => {
-        const handler = walletManagementToolHandlers['sardis_update_wallet_limits'];
-        const result = await handler({
-          limit_per_tx: 100,
-        });
-
-        // Should either error or use default wallet_id
-        expect(result).toBeDefined();
+        expect(parsed.error).toContain('security');
       });
     });
 
     describe('sardis_archive_wallet', () => {
-      it('should archive wallet', async () => {
+      it('should return security error (blocked for agents)', async () => {
         const handler = walletManagementToolHandlers['sardis_archive_wallet'];
         const result = await handler({
           wallet_id: 'wallet_test_123',
@@ -151,17 +141,10 @@ describe('Wallet Management Tools', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.isError).toBeFalsy();
+        expect(result.isError).toBe(true);
 
         const parsed = JSON.parse(result.content[0].text);
-        expect(parsed.status).toContain('archived');
-      });
-
-      it('should error without wallet_id', async () => {
-        const handler = walletManagementToolHandlers['sardis_archive_wallet'];
-        const result = await handler({});
-
-        expect(result.isError).toBe(true);
+        expect(parsed.error).toContain('security');
       });
     });
   });

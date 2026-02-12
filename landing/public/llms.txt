@@ -285,6 +285,13 @@ Available MCP tools (40+ total):
 - **Dashboard Cards Page** - Custom Sardis-branded card UI with issue/freeze/simulate/transactions
 - **Live Demo Mode** - Landing page demo connects to real Lithic sandbox for provable transactions
 
+### v0.8.5
+
+- **Production-Grade Retry** - Configurable retry with exponential backoff and circuit breakers for all providers
+- **SAR Persistence** - Suspicious Activity Reports persisted to PostgreSQL (FinCEN 5-year retention)
+- **MCP Server v0.2.5** - 46 tools, sandbox demo walkthrough, prompts capability
+- **Sandbox Demo Tool** - `sardis_sandbox_demo` for guided capability walkthrough
+
 ### Previous (v0.8.0)
 
 - **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset

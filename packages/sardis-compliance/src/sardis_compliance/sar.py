@@ -407,19 +407,88 @@ class SARGenerator:
                 sar.activity_description,
                 sar.detection_date,
                 sar.filing_deadline,
-                _json.dumps({"transactions": len(sar.transactions)}, default=str),
+                _json.dumps(sar.to_dict(), default=str),
             )
 
     async def get_sar_async(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
         """Get a SAR by ID, checking DB if not in memory."""
         if sar_id in self._sars:
             return self._sars[sar_id]
-        # In-memory only fallback for sync callers
+        if self._dsn:
+            try:
+                pool = await self._get_pool()
+                async with pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        "SELECT * FROM suspicious_activity_reports WHERE sar_id = $1",
+                        sar_id,
+                    )
+                    if row:
+                        sar = self._row_to_sar(row)
+                        self._sars[sar_id] = sar
+                        return sar
+            except Exception as e:
+                logger.warning(f"Failed to fetch SAR {sar_id} from DB: {e}")
         return None
+
+    def _row_to_sar(self, row) -> SuspiciousActivityReport:
+        """Convert a database row to a SuspiciousActivityReport."""
+        return SuspiciousActivityReport(
+            sar_id=row["sar_id"],
+            internal_reference=row["internal_reference"],
+            activity_type=SuspiciousActivityType(row["activity_type"]),
+            status=SARStatus(row["status"]),
+            priority=SARPriority(row["priority"]),
+            activity_description=row["activity_description"],
+            detection_date=row["detection_date"],
+            filing_deadline=row.get("filing_deadline"),
+            filed_at=row.get("filed_date"),
+            created_at=row.get("created_at", datetime.now(timezone.utc)),
+            subject=SubjectInformation(
+                subject_id=row.get("subject_id", ""),
+                subject_type=row.get("subject_type", "wallet"),
+                wallet_address=row.get("wallet_address"),
+            ),
+        )
 
     def get_sar(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
         """Get a SAR by ID."""
         return self._sars.get(sar_id)
+
+    async def list_sars_async(
+        self,
+        status: Optional[SARStatus] = None,
+        priority: Optional[SARPriority] = None,
+        overdue_only: bool = False,
+        limit: int = 100,
+    ) -> List[SuspiciousActivityReport]:
+        """List SARs from database with optional filtering."""
+        if not self._dsn:
+            return self.list_sars(status=status, priority=priority, overdue_only=overdue_only)
+        try:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                conditions = []
+                params: list = []
+                idx = 1
+                if status:
+                    conditions.append(f"status = ${idx}")
+                    params.append(status.value)
+                    idx += 1
+                if priority:
+                    conditions.append(f"priority = ${idx}")
+                    params.append(priority.value)
+                    idx += 1
+                if overdue_only:
+                    conditions.append(f"filing_deadline < NOW() AND status != 'filed'")
+
+                where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+                params.append(limit)
+                query = f"SELECT * FROM suspicious_activity_reports {where} ORDER BY created_at DESC LIMIT ${idx}"
+                rows = await conn.fetch(query, *params)
+                return [self._row_to_sar(row) for row in rows]
+        except Exception as e:
+            logger.warning(f"Failed to list SARs from DB: {e}")
+            return self.list_sars(status=status, priority=priority, overdue_only=overdue_only)
 
     def list_sars(
         self,
@@ -428,7 +497,7 @@ class SARGenerator:
         overdue_only: bool = False,
     ) -> List[SuspiciousActivityReport]:
         """
-        List SARs with optional filtering.
+        List SARs with optional filtering (in-memory fallback).
 
         Args:
             status: Filter by status

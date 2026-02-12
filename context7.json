@@ -1,0 +1,16 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Sardis",
+  "description": "Payment OS for the Agent Economy - Non-custodial MPC wallets with natural language spending policies for AI agents. Supports 5 chains, virtual cards, and 5 payment protocols (AP2, TAP, UCP, A2A, x402).",
+  "folders": ["landing/public", "packages/sardis-mcp-server"],
+  "excludeFolders": ["node_modules", ".venv", "contracts/lib", "dist", "out", "__pycache__"],
+  "excludeFiles": [],
+  "rules": [
+    "Use AsyncSardisClient for async Python SDK operations",
+    "Use SardisClient for sync Python SDK operations",
+    "MCP server runs with: npx @sardis/mcp-server start",
+    "No API key needed for simulated/sandbox mode",
+    "All transactions are policy-checked before execution",
+    "Supported tokens: USDC, USDT, EURC, PYUSD (stablecoins only)"
+  ]
+}

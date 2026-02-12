@@ -160,7 +160,7 @@ function App() {
           <div className="hidden md:flex items-center gap-1">
             <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              STAGING / TESTNET READY
+              LIVE ON TESTNET • 1K+ INSTALLS
             </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
@@ -1056,9 +1056,9 @@ const payment = await ramp.payMerchantFiat({
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { label: "INFRASTRUCTURE", value: "Live on Base Sepolia", sub: "Contracts deployed" },
-              { label: "READINESS", value: "Staging/Testnet", sub: "Design partner onboarding" },
-              { label: "PROTOCOLS", value: "AP2 • TAP • UCP • A2A • x402", sub: "5 chains • protocol-native stack" }
+              { label: "ADOPTION", value: "1,000+", sub: "npm installs • 46 MCP tools live" },
+              { label: "PARTNERS", value: "Design Partners", sub: "Active onboarding" },
+              { label: "INFRASTRUCTURE", value: "5 Chains • 5 Protocols", sub: "AP2 • TAP • UCP • A2A • x402" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>
