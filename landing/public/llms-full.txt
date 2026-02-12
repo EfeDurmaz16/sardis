@@ -19,6 +19,8 @@
 10. Compliance
 11. Error Handling
 12. Best Practices
+13. Multi-Agent Spending Governance
+14. Policy Engine Architecture
 
 ---
 
@@ -1038,6 +1040,767 @@ except ApprovalRequired as e:
 2. **Implement retries with backoff** - For network errors
 3. **Log everything** - Keep your own audit trail
 4. **Test policy changes in sandbox first** - Before production
+
+---
+
+## 13. Multi-Agent Spending Governance
+
+### Overview
+
+Sardis is built for multi-agent deployments where each agent has its own wallet, spending policy, and trust level. The policy engine enforces per-agent limits, merchant restrictions, time-window budgets, and approval thresholds — all evaluated before every transaction through the `PaymentOrchestrator` pipeline. Agents are grouped by `owner_id` (organization), enabling org-wide visibility and coordinated governance across agent fleets.
+
+### Per-Agent Policy Engine (Core)
+
+Every agent wallet has an independent `SpendingPolicy` with layered enforcement:
+
+```python
+from sardis import Sardis
+
+client = Sardis(api_key="sk_live_...")
+
+# Create agents with individual spending policies
+infra_agent = client.create_wallet(
+    name="infra-agent",
+    chain="base",
+    policy={
+        "trust_level": "medium",           # LOW | MEDIUM | HIGH | UNLIMITED
+        "max_per_tx": "200.00",            # Per-transaction cap
+        "max_daily": "500.00",             # Rolling 24h limit
+        "max_weekly": "2000.00",           # Rolling 7d limit
+        "max_monthly": "8000.00",          # Rolling 30d limit
+        "max_total": "50000.00",           # Lifetime cap
+        "allowed_scopes": ["compute", "digital"],  # Spending categories
+        "blocked_merchant_categories": ["gambling", "adult"],
+        "allowed_merchants": ["aws.amazon.com", "cloud.google.com"],
+        "approval_threshold": "150.00",    # Human approval above this
+        "max_drift_score": 0.3             # Goal drift tolerance
+    }
+)
+
+api_agent = client.create_wallet(
+    name="api-credits-agent",
+    chain="base",
+    policy={
+        "trust_level": "low",
+        "max_per_tx": "100.00",
+        "max_daily": "300.00",
+        "max_weekly": "1500.00",
+        "max_monthly": "5000.00",
+        "allowed_merchants": ["openai.com", "anthropic.com", "cohere.com"],
+        "approval_threshold": "75.00"
+    }
+)
+
+research_agent = client.create_wallet(
+    name="research-agent",
+    chain="base",
+    policy={
+        "trust_level": "low",
+        "max_per_tx": "50.00",
+        "max_daily": "200.00",
+        "max_monthly": "3000.00",
+        "allowed_scopes": ["data", "services"],
+        "allowed_merchants": ["arxiv.org", "semantic-scholar.org"]
+    }
+)
+```
+
+### Trust Level Tiers
+
+Default limits scale with trust level, providing progressive autonomy:
+
+```python
+# Built-in trust tiers (customizable per wallet)
+# LOW:       $50/tx,   $100/day,   $500/week,   $1,000/month,   $5,000 total
+# MEDIUM:    $500/tx,  $1,000/day, $5,000/week, $10,000/month,  $50,000 total
+# HIGH:      $5,000/tx,$10,000/day,$50,000/week,$100,000/month, $500,000 total
+# UNLIMITED: No enforced limits (enterprise, requires explicit opt-in)
+
+# Upgrade trust level based on agent track record
+wallet.update_policy(trust_level="medium")
+```
+
+### Policy Evaluation Pipeline
+
+Every transaction flows through a strict sequential pipeline before execution:
+
+```
+Transaction Request
+       ↓
+┌──────────────────────────────┐
+│ 1. Policy Validation         │  SpendingPolicy.evaluate()
+│    - Amount limits           │  Per-tx, daily, weekly, monthly, total
+│    - Scope check             │  Is this spending category allowed?
+│    - MCC code screening      │  Merchant Category Code blocking
+│    - Merchant rules          │  Allow/deny list matching
+│    - Drift score check       │  Is agent staying on-task?
+│    - Velocity check          │  Rapid-fire prevention (DB-backed)
+│    - Approval threshold      │  Flag for human review if needed
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 2. Compliance Check          │  KYC/AML/sanctions screening
+│    - Persona KYC             │  Identity verification
+│    - Elliptic AML            │  Sanctions & risk scoring
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 3. On-Chain Execution        │  MPC-signed transaction
+│    - Balance verification    │  Non-custodial balance check
+│    - Chain routing           │  Optimal chain selection
+│    - MPC co-signing          │  Turnkey-backed signing
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 4. State Update + Ledger     │  Atomic spend recording
+│    - Spending tracker update │  Decrement remaining limits
+│    - Append-only audit log   │  Immutable transaction record
+│    - Reconciliation queue    │  Recovery on partial failures
+└──────────────────────────────┘
+       ↓
+   ALLOW / DENY
+```
+
+Any phase failure is **fail-closed** — the transaction is denied and the reason is recorded in the audit log.
+
+### Merchant Category Code (MCC) Blocking
+
+```python
+# Block entire merchant categories by MCC code
+wallet.update_policy(
+    blocked_merchant_categories=["gambling", "adult", "crypto_exchange"]
+)
+
+# Or allow only specific MCC ranges
+wallet.update_policy(
+    merchant_rules={
+        "mode": "allowlist",
+        "mcc_codes": ["5734", "7372"],  # Software, computer programming
+    }
+)
+
+# High-risk MCC codes are blocked by default (gambling, pawn shops, etc.)
+# Override with explicit allowlist if needed for legitimate use cases
+```
+
+### Human-in-the-Loop Approvals
+
+```python
+# Set approval threshold — transactions above this need human sign-off
+wallet.update_policy(approval_threshold="100.00")
+
+# Agent attempts large purchase
+tx = wallet.pay(to="0x...", amount="250.00", token="USDC")
+# Returns: {"status": "requires_approval", "approval_id": "apr_abc123"}
+
+# Human approves via dashboard or API
+client.approvals.approve("apr_abc123")
+
+# Transaction executes after approval
+# If no approval within timeout → transaction is denied (fail-closed)
+```
+
+### Goal Drift Detection
+
+```python
+# Configure drift detection to keep agents on-task
+wallet.update_policy(max_drift_score=0.3)  # 0.0 = on-task, 1.0 = fully off-task
+
+# The drift score is computed by comparing the current transaction
+# against the agent's declared purpose and recent spending patterns.
+# If drift_score > max_drift_score → transaction denied with "goal_drift_exceeded"
+
+# Example: An agent tasked with "buy cloud compute" tries to purchase
+# a music subscription → drift_score = 0.85 → DENIED
+```
+
+### Organization-Level Agent Fleet Visibility
+
+Agents are grouped by `owner_id`, providing org-wide spending visibility:
+
+```python
+# List all agents in an organization
+agents = client.agents.list(owner_id="org_engineering")
+# Returns all agents with their current spending state
+
+# Query individual agent spending
+for agent in agents:
+    wallet = client.wallets.get(agent.wallet_id)
+    remaining = wallet.remaining_total()
+    print(f"{agent.name}: ${remaining} remaining of ${agent.spending_limits.total}")
+
+# Output:
+# infra-agent: $47,500.00 remaining of $50,000.00
+# api-credits-agent: $4,800.00 remaining of $5,000.00
+# research-agent: $2,975.00 remaining of $3,000.00
+```
+
+### Agent-to-Agent Payments
+
+The `AGENT_TO_AGENT` spending scope enables controlled inter-agent transfers:
+
+```python
+# Enable agent-to-agent payments in policy
+wallet_a.update_policy(
+    allowed_scopes=["compute", "agent_to_agent"]  # Must explicitly opt in
+)
+
+# Agent A pays Agent B (both under same org)
+tx = wallet_a.pay(
+    to=wallet_b.address,
+    amount="50.00",
+    token="USDC",
+    scope="agent_to_agent",
+    metadata={"reason": "Payment for completed research task", "task_id": "task_789"}
+)
+
+# Agent A's outbound policy is evaluated:
+# - Per-tx limit, daily limit, merchant rules all apply
+# - Scope must include "agent_to_agent"
+# - Goal drift is checked (is paying another agent on-task?)
+```
+
+### Multi-Agent Governance: Coordinated Budgets (Roadmap)
+
+The per-agent policy primitives are designed to compose into group-level governance. The following capabilities build on the existing `owner_id` grouping and `SpendingPolicy` evaluation:
+
+```python
+# PLANNED: Agent groups with shared budget pools
+# Extends the existing owner_id grouping with aggregate budget enforcement
+
+group = client.agent_groups.create(
+    name="engineering-agents",
+    owner_id="org_engineering",
+    budget={
+        "total_daily": "1000.00",     # Shared daily cap across all agents
+        "total_monthly": "20000.00"
+    }
+)
+
+# Individual agent limits are enforced FIRST, then group budget is checked
+# This is a natural extension of the existing pipeline:
+# Step 1: SpendingPolicy.evaluate() → per-agent check (EXISTS)
+# Step 2: GroupPolicy.evaluate()    → aggregate budget check (PLANNED)
+# Step 3: Compliance check          → KYC/AML (EXISTS)
+# Step 4: Chain execution           → on-chain (EXISTS)
+
+# Query group-level spending (aggregates per-agent data)
+group_spending = client.agent_groups.get_spending(group.id)
+# {
+#   "daily_total": "425.00",
+#   "daily_remaining": "575.00",
+#   "agents": {
+#     "infra-agent": {"daily_spent": "300.00"},
+#     "api-credits-agent": {"daily_spent": "100.00"},
+#     "research-agent": {"daily_spent": "25.00"}
+#   }
+# }
+```
+
+### Hierarchical Policy Inheritance (Roadmap)
+
+Policies cascade from organization → group → wallet, with the most restrictive rule winning:
+
+```python
+# PLANNED: Organization-level policy (applies to ALL agents under this org)
+org_policy = client.policies.set_org_policy({
+    "max_per_tx": "500.00",          # No single tx > $500 for any agent
+    "blocked_categories": ["gambling", "adult"],  # Global blocks
+    "require_compliance": True,       # All agents must pass KYC/AML
+    "allowed_tokens": ["USDC", "USDT", "EURC"]  # Stablecoins only
+})
+
+# Group-level policy (inherits org, adds restrictions)
+group_policy = client.policies.set_group_policy(group.id, {
+    "max_daily": "1000.00",          # Group daily cap
+    "require_approval_above": "200.00"
+})
+
+# Wallet-level policy (most specific, inherits all above)
+# This layer ALREADY EXISTS in SpendingPolicy
+wallet_policy = {
+    "max_daily": "300.00",           # Tighter than group
+    "max_per_tx": "100.00",          # Tighter than org
+    "allowed_merchants": ["openai.com"]  # Very specific
+}
+
+# Effective policy resolution (most restrictive wins):
+# - max_per_tx: min(org=500, wallet=100) → $100
+# - max_daily: min(group=1000, wallet=300) → $300
+# - blocked_categories: union(org blocks) → ["gambling", "adult"]
+# - DENY always wins over ALLOW (fail-closed principle)
+```
+
+### Treasury Management (Roadmap)
+
+```python
+# PLANNED: Shared treasury with automated fund distribution
+treasury = client.treasury.create(
+    name="engineering-treasury",
+    funding_wallet="wallet_treasury_main",
+    auto_refill={
+        "enabled": True,
+        "target_balance": "500.00",  # Keep each agent wallet at $500
+        "refill_amount": "250.00",
+        "check_interval": 3600,      # Check hourly
+        "conditions": {
+            "min_treasury_balance": "5000.00"  # Don't refill if treasury low
+        }
+    }
+)
+
+# Attach agents to treasury for automated funding
+treasury.add_agents(["infra-agent", "api-credits-agent", "research-agent"])
+```
+
+### Architecture: Why Multi-Agent Governance is a Natural Extension
+
+The existing architecture makes group governance a composable addition, not a rewrite:
+
+```
+Existing Primitives          →  Group Governance Extension
+─────────────────────────────────────────────────────────────
+Agent.owner_id               →  Natural org grouping key
+SpendingPolicy per wallet    →  Individual limits (unchanged)
+PaymentOrchestrator pipeline →  Add GroupPolicy phase between
+                                 policy and compliance checks
+SpendingScope.AGENT_TO_AGENT →  Inter-agent transfer rules
+approval_threshold           →  Cascading multi-level approvals
+TimeWindowLimit (daily/wk/mo)→  Aggregate across group members
+MerchantRule allow/deny      →  Inherit + merge from org/group
+TrustLevel tiers             →  Group-level trust inheritance
+```
+
+The `PaymentOrchestrator` uses Protocol-based interfaces (`WalletPolicyEngine`, `CompliancePort`, `ChainExecutorPort`, `LedgerPort`), making it straightforward to inject a `GroupPolicyEngine` as an additional evaluation phase without modifying the existing pipeline.
+
+---
+
+## 14. Policy Engine Architecture
+
+### Overview
+
+The Sardis Policy Engine is a multi-layer evaluation pipeline that transforms natural language spending rules into deterministic, enforceable constraints. It supports context-dependent rules, external data sources, webhook-based evaluation, and real-time market data integration.
+
+### Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Transaction Request                    │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 1: NL Parser (LLM-powered)                       │
+│  "Max $100/day on cloud" → structured policy rules       │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 2: Static Rule Engine                            │
+│  Amount limits, merchant lists, time windows, categories │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: Dynamic Context Engine                        │
+│  Spending velocity, historical patterns, goal drift      │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 4: External Evaluators (Webhooks & APIs)         │
+│  Custom logic, market data, org-specific rules           │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 5: Compliance Gate                               │
+│  KYC/AML screening, sanctions, SAR generation            │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 6: On-Chain Enforcement                          │
+│  Smart contract token allowlist, co-signer validation    │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+                  ALLOW / DENY
+```
+
+### Layer 1: Natural Language Policy Parser
+
+```python
+# Parse natural language to structured rules
+from sardis.policies import PolicyParser
+
+parser = PolicyParser()
+
+# Simple parsing
+structured = parser.parse(
+    "Max $100 per day on cloud services, "
+    "only approved vendors like AWS and Google Cloud, "
+    "require manager approval for anything over $50, "
+    "block all transactions on weekends"
+)
+
+# Result:
+# {
+#   "max_daily": "100.00",
+#   "allowed_categories": ["cloud_services"],
+#   "allowed_merchants": ["aws.amazon.com", "cloud.google.com"],
+#   "require_approval_above": "50.00",
+#   "blocked_days": ["sat", "sun"],
+#   "parsed_confidence": 0.95,
+#   "original_text": "Max $100 per day on cloud services..."
+# }
+
+# Preview policy effects before applying
+preview = parser.preview(structured, wallet_id="wallet_123")
+# {
+#   "would_block_recent": 3,       # 3 recent txs would have been blocked
+#   "blocked_examples": [...],
+#   "estimated_daily_capacity": "100.00",
+#   "coverage_gaps": ["No per-tx limit set"]
+# }
+
+# Apply with validation
+wallet.update_policy(structured)
+```
+
+### Layer 2: Static Rule Evaluation
+
+```python
+# Built-in rule types evaluated in order
+rules = {
+    # Amount limits (checked against spending tracker)
+    "amount_limits": {
+        "max_per_tx": "50.00",
+        "max_daily": "200.00",
+        "max_weekly": "1000.00",
+        "max_monthly": "3000.00"
+    },
+
+    # Merchant restrictions
+    "merchant_rules": {
+        "mode": "allowlist",  # or "blocklist"
+        "merchants": ["openai.com", "anthropic.com"],
+        "mcc_codes": ["5734", "7372"],  # Software, computer programming
+        "mcc_blocked": ["7995", "5933"]  # Gambling, pawn shops
+    },
+
+    # Time-based rules
+    "time_rules": {
+        "allowed_hours": {"start": "09:00", "end": "18:00"},
+        "timezone": "America/New_York",
+        "allowed_days": ["mon", "tue", "wed", "thu", "fri"],
+        "blackout_dates": ["2026-12-25", "2026-01-01"]
+    },
+
+    # Token restrictions
+    "token_rules": {
+        "allowed_tokens": ["USDC", "EURC"],
+        "max_per_token": {
+            "USDC": "5000.00",
+            "EURC": "2000.00"
+        }
+    },
+
+    # Chain restrictions
+    "chain_rules": {
+        "allowed_chains": ["base", "polygon"],
+        "preferred_chain": "base"  # Route here when possible
+    }
+}
+```
+
+### Layer 3: Dynamic Context Engine
+
+The context engine evaluates spending patterns, velocity, and goal drift in real-time:
+
+```python
+# Configure dynamic context rules
+context_rules = {
+    # Velocity detection - flag unusual spending speed
+    "velocity": {
+        "max_transactions_per_hour": 10,
+        "max_transactions_per_minute": 3,
+        "cooldown_after_large_tx": 300,  # 5 min cooldown after big tx
+        "action": "flag_and_require_approval"  # or "block"
+    },
+
+    # Goal drift detection - alert when spending deviates from purpose
+    "goal_drift": {
+        "expected_categories": ["cloud_services", "api_credits"],
+        "drift_threshold": 0.3,  # 30% deviation triggers alert
+        "lookback_window": "7d",
+        "action": "alert_and_continue"  # or "block"
+    },
+
+    # Anomaly detection - statistical outlier detection
+    "anomaly": {
+        "enabled": True,
+        "baseline_window": "30d",
+        "z_score_threshold": 2.5,  # Flag transactions 2.5σ from mean
+        "factors": ["amount", "merchant", "time_of_day", "frequency"]
+    },
+
+    # Budget pacing - spread budget evenly across time period
+    "pacing": {
+        "enabled": True,
+        "period": "monthly",
+        "budget": "3000.00",
+        "warn_at": 0.8,   # Warn at 80% spent
+        "block_at": 0.95,  # Block at 95% spent
+        "allow_burst": True  # Allow up to 2x daily average
+    }
+}
+
+wallet.update_policy(context_rules=context_rules)
+
+# Query context engine state
+context = wallet.get_spending_context()
+# {
+#   "velocity": {"tx_last_hour": 4, "status": "normal"},
+#   "goal_drift": {"drift_score": 0.12, "status": "on_track"},
+#   "anomaly": {"recent_flags": 0, "status": "clean"},
+#   "pacing": {
+#     "budget_used": 0.45,
+#     "days_elapsed": 14,
+#     "days_remaining": 14,
+#     "daily_budget_remaining": "96.43",
+#     "status": "on_pace"
+#   }
+# }
+```
+
+### Layer 4: External Evaluators (Webhooks & Custom APIs)
+
+Extend the policy engine with custom evaluation logic:
+
+```python
+# Register a webhook-based policy evaluator
+evaluator = client.policies.register_evaluator(
+    name="custom-purchase-approval",
+    type="webhook",
+    url="https://your-api.com/sardis/evaluate",
+    timeout=5000,  # 5 second timeout
+    fallback="deny",  # deny if webhook fails (fail-closed)
+    headers={"Authorization": "Bearer your-token"},
+    triggers={
+        "amount_above": "25.00",    # Only call for txs > $25
+        "merchants": ["*"],          # All merchants
+        "categories": ["software"]   # Only software purchases
+    }
+)
+
+# Your webhook receives:
+# POST https://your-api.com/sardis/evaluate
+# {
+#   "transaction": {
+#     "wallet_id": "wallet_123",
+#     "amount": "75.00",
+#     "token": "USDC",
+#     "merchant": "newvendor.com",
+#     "agent_id": "agent_456"
+#   },
+#   "context": {
+#     "daily_spent": "125.00",
+#     "daily_remaining": "75.00",
+#     "recent_transactions": [...]
+#   }
+# }
+#
+# Your webhook responds:
+# {
+#   "decision": "allow",  // or "deny" or "require_approval"
+#   "reason": "Vendor approved in internal procurement system",
+#   "metadata": {"procurement_id": "PO-2026-001"}
+# }
+
+# Register a market-data evaluator for price-sensitive purchases
+market_evaluator = client.policies.register_evaluator(
+    name="price-check",
+    type="webhook",
+    url="https://your-api.com/sardis/price-check",
+    timeout=3000,
+    fallback="allow",  # Allow if price check fails
+    triggers={
+        "categories": ["cloud_services", "api_credits"],
+        "amount_above": "50.00"
+    }
+)
+
+# Example: Your price-check webhook could:
+# 1. Query current market rates for the service
+# 2. Compare against historical pricing
+# 3. Flag if the agent is overpaying
+# 4. Suggest waiting for off-peak pricing
+```
+
+### Real-Time Data Integration for Policy Decisions
+
+```python
+# Configure external data sources for context-dependent rules
+data_sources = client.policies.configure_data_sources({
+    # Exchange rate source for cross-currency policies
+    "exchange_rates": {
+        "provider": "coingecko",
+        "refresh_interval": 60,  # Refresh every 60 seconds
+        "cache_ttl": 300,
+        "usage": "Convert all amounts to USD for limit comparison"
+    },
+
+    # Internal budget system integration
+    "budget_api": {
+        "type": "rest",
+        "url": "https://internal.company.com/api/budgets",
+        "auth": {"type": "bearer", "token_env": "BUDGET_API_TOKEN"},
+        "refresh_interval": 3600,
+        "usage": "Check remaining department budget before approving"
+    },
+
+    # Vendor approval database
+    "vendor_db": {
+        "type": "rest",
+        "url": "https://internal.company.com/api/vendors",
+        "auth": {"type": "api_key", "header": "X-API-Key", "key_env": "VENDOR_API_KEY"},
+        "refresh_interval": 86400,  # Daily refresh
+        "usage": "Verify merchant is in approved vendor list"
+    }
+})
+
+# Use data sources in policy rules
+policy_with_external_data = {
+    "max_daily": "100.00",
+    "custom_rules": [
+        {
+            "name": "budget_check",
+            "data_source": "budget_api",
+            "condition": "data.remaining_budget > transaction.amount",
+            "on_fail": "deny",
+            "message": "Department budget exhausted"
+        },
+        {
+            "name": "vendor_check",
+            "data_source": "vendor_db",
+            "condition": "transaction.merchant in data.approved_vendors",
+            "on_fail": "require_approval",
+            "message": "Vendor not in approved list"
+        }
+    ]
+}
+```
+
+### Policy Evaluation Pipeline (Internal)
+
+How Sardis evaluates each transaction internally:
+
+```python
+# The evaluation pipeline runs in order, short-circuiting on DENY:
+
+evaluation_result = {
+    "decision": "allow",
+    "pipeline": [
+        {"layer": "rate_limit", "result": "pass", "latency_ms": 1},
+        {"layer": "static_rules", "result": "pass", "latency_ms": 2,
+         "details": {
+             "amount_check": "pass (25.00 < 100.00 daily limit)",
+             "merchant_check": "pass (openai.com in allowlist)",
+             "time_check": "pass (14:30 within 09:00-18:00)"
+         }},
+        {"layer": "spending_tracker", "result": "pass", "latency_ms": 5,
+         "details": {"daily_spent": "45.00", "remaining": "55.00"}},
+        {"layer": "context_engine", "result": "pass", "latency_ms": 8,
+         "details": {
+             "velocity": "normal (2 tx/hr)",
+             "goal_drift": "0.05 (on track)",
+             "anomaly_score": "0.3 (normal)"
+         }},
+        {"layer": "external_evaluator", "result": "pass", "latency_ms": 120,
+         "details": {"evaluator": "custom-purchase-approval", "response": "allow"}},
+        {"layer": "compliance", "result": "pass", "latency_ms": 45,
+         "details": {"aml_screen": "clear", "sanctions": "clear"}},
+        {"layer": "on_chain", "result": "pass", "latency_ms": 0,
+         "details": {"token_allowed": True, "co_signer": "ready"}}
+    ],
+    "total_latency_ms": 181
+}
+
+# Access evaluation details via API
+details = wallet.check_policy(
+    amount="25.00",
+    merchant="openai.com",
+    verbose=True  # Return full pipeline results
+)
+```
+
+### Performance and Reliability
+
+```python
+# Policy evaluation performance characteristics:
+# - Static rules: < 5ms (in-memory evaluation)
+# - Spending tracker: < 10ms (Redis-backed)
+# - Context engine: < 15ms (pre-computed metrics)
+# - External evaluators: configurable timeout (default 5s)
+# - Compliance screening: < 100ms (cached, async refresh)
+# - Total typical latency: < 200ms
+
+# Circuit breaker for external evaluators
+evaluator_config = {
+    "circuit_breaker": {
+        "failure_threshold": 5,     # Open circuit after 5 failures
+        "recovery_timeout": 60,     # Try again after 60 seconds
+        "half_open_requests": 2     # Allow 2 test requests
+    },
+    "retry": {
+        "max_retries": 2,
+        "backoff": "exponential",
+        "base_delay_ms": 100,
+        "max_delay_ms": 2000
+    },
+    "fallback": "deny"  # What to do when circuit is open
+}
+
+# Rate limiting on policy evaluation
+rate_limits = {
+    "per_wallet": {
+        "evaluations_per_second": 10,
+        "evaluations_per_minute": 100,
+        "burst_size": 20
+    },
+    "per_organization": {
+        "evaluations_per_second": 100,
+        "evaluations_per_minute": 1000
+    }
+}
+```
+
+### Extending the Policy Engine
+
+```python
+# Register a custom policy function (serverless)
+custom_fn = client.policies.register_function(
+    name="seasonal-budget-adjuster",
+    runtime="python3.12",
+    code="""
+def evaluate(transaction, context, data_sources):
+    import datetime
+    month = datetime.datetime.now().month
+
+    # Q4 gets higher budget for annual renewals
+    if month in [10, 11, 12]:
+        adjusted_limit = float(context['max_daily']) * 1.5
+    else:
+        adjusted_limit = float(context['max_daily'])
+
+    if float(transaction['amount']) > adjusted_limit:
+        return {
+            'decision': 'deny',
+            'reason': f'Exceeds seasonal limit of ${adjusted_limit:.2f}'
+        }
+
+    return {'decision': 'allow'}
+    """,
+    triggers={"amount_above": "0.01"}  # Run on every transaction
+)
+
+# Attach to wallet
+wallet.update_policy(custom_functions=[custom_fn.id])
+```
 
 ---
 
