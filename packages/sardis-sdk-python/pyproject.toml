@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-sdk"
-version = "0.3.2"
+version = "0.3.3"
 description = "Production-grade Python SDK for the Sardis stablecoin execution layer"
 readme = "README.md"
 authors = [{name = "Sardis"}]
