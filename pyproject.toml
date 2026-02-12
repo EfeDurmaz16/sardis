@@ -4,88 +4,77 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis"
-version = "0.1.0"
-description = "Programmable Payment Protocol for AI Agents"
+version = "0.3.0"
+description = "Payment OS for the Agent Economy — non-custodial MPC wallets with natural language spending policies for AI agents"
 readme = "README.md"
-license = {text = "Proprietary"}
-requires-python = ">=3.10"
+license = {text = "MIT"}
+requires-python = ">=3.11"
 authors = [
-    { name = "Sardis Team" }
+    { name = "Efe Baran Durmaz", email = "efe@sardis.dev" }
 ]
 keywords = [
+    "sardis",
     "payments",
     "ai-agents",
     "stablecoin",
     "blockchain",
     "fintech",
+    "mcp",
+    "langchain",
+    "wallet",
+    "policy",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Office/Business :: Financial",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
 ]
 dependencies = [
-    "click>=8.3.1",
-    "rich>=14.2.0",
+    "sardis-sdk>=0.3",
+    "sardis-core>=0.3",
+    "sardis-cli>=0.1",
     "pydantic>=2.6",
-    "pydantic-settings>=2.0",
-    "httpx>=0.28.1",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
+chain = ["sardis-chain>=0.3"]
+compliance = ["sardis-compliance>=0.3"]
+ledger = ["sardis-ledger>=0.3"]
+wallet = ["sardis-wallet>=0.3"]
+cards = ["sardis-cards>=0.3"]
+ramp = ["sardis-ramp>=0.1"]
+api = ["sardis-api>=0.3"]
+protocols = [
+    "sardis-protocol>=0.1",
+    "sardis-a2a>=0.1",
+    "sardis-ucp>=0.1",
+]
+checkout = ["sardis-checkout>=0.1"]
+all = [
+    "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout]",
+]
 dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-json-report>=1.5.0",
-    "httpx>=0.28.1",
-    "asyncpg>=0.30.0",
-    "mypy>=1.19.1",
-    "ruff>=0.14.14",
-]
-api = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.23.0",
-    "pydantic>=2.6.0",
-    "httpx>=0.28.1",
-    "asyncpg>=0.30.0",
-    "python-multipart>=0.0.22",
-    "sentry-sdk[fastapi]>=2.0",
-    "alembic>=1.13",
-    "prometheus-client>=0.19",
-]
-mpc = [
-    "PyNaCl>=1.5",
-    "cryptography>=41.0",
-]
-blockchain = [
-    "web3>=6.0",
-    "eth-account>=0.9",
-]
-scheduler = [
-    "apscheduler>=3.10",
-]
-cache = [
-    "redis>=5.0",
-]
-nlp = [
-    "instructor>=1.0",
-    "openai>=1.0",
-]
-full = [
-    "sardis[dev,api,mpc,blockchain,scheduler,cache,nlp]",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.2",
 ]
 
 [project.urls]
-Homepage = "https://github.com/sardis-protocol/sardis"
-Documentation = "https://github.com/sardis-protocol/sardis#readme"
-Repository = "https://github.com/sardis-protocol/sardis"
+Homepage = "https://sardis.sh"
+Documentation = "https://sardis.sh/docs"
+Repository = "https://github.com/EfeDurmaz16/sardis"
+Changelog = "https://sardis.sh/docs/changelog"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sardis"]
@@ -106,27 +95,11 @@ ignore = ["E501"]
 
 [dependency-groups]
 dev = [
-    "fastapi>=0.115.0",
-    "httpx>=0.28.1",
-    "python-multipart>=0.0.22",
-    "asyncpg>=0.30.0",
-    "ruff>=0.14.14",
-    "mypy>=1.19.1",
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-json-report>=1.5.0",
-    "apscheduler>=3.10",
-    "alembic>=1.13",
-    "sentry-sdk[fastapi]>=2.0",
-    "prometheus-client>=0.19",
-    "PyNaCl>=1.5",
-    "cryptography>=41.0",
-    "web3>=6.0",
-    "eth-account>=0.9",
-    "redis>=5.0",
-    "instructor>=1.0",
-    "openai>=1.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.2",
 ]
 
 
