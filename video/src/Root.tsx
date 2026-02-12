@@ -5,10 +5,10 @@ export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
-        id="SardisDemo"
+        id="SardisYCDemo"
         component={SardisDemo}
-        durationInFrames={1800} // 60 seconds at 30fps
-        fps={30}
+        durationInFrames={5400}
+        fps={60}
         width={1920}
         height={1080}
       />

@@ -1,0 +1,227 @@
+# Sardis - Payment OS for the Agent Economy
+
+> Sardis enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.
+
+## Quick Start
+
+### Python (pip install sardis)
+
+```python
+from sardis import Wallet, Transaction
+
+# Local simulation (no API key needed)
+wallet = Wallet(initial_balance=100, currency="USDC")
+tx = Transaction(from_wallet=wallet, to="openai:api", amount=25, purpose="API credits")
+result = tx.execute()
+print(f"TX: {result.tx_hash} Status: {result.status.value}")
+```
+
+### Production SDK (pip install sardis-sdk)
+
+```python
+from sardis_sdk import AsyncSardisClient
+
+async with AsyncSardisClient(api_key="sk_...") as client:
+    # Create agent
+    agent = await client.agents.create(name="my-agent")
+
+    # Create wallet
+    wallet = await client.wallets.create(chain="base", token="USDC")
+
+    # Set spending policy (natural language)
+    await client.policies.apply_from_nl(
+        wallet_id=wallet.id,
+        policy="max $100 per transaction, only SaaS vendors, block gambling"
+    )
+
+    # Execute payment
+    payment = await client.payments.execute(
+        wallet_id=wallet.id,
+        to="openai",
+        amount=29.99,
+        token="USDC",
+        purpose="API credits"
+    )
+
+    # Issue virtual card
+    card = await client.cards.create(wallet_id=wallet.id, limit_daily=500)
+
+    # Fund wallet from bank (fiat on-ramp)
+    funding = await client.ramp.fund_wallet(wallet_id=wallet.id, amount_usd=100, method="bank")
+
+    # Create payment hold (escrow)
+    hold = await client.holds.create(wallet_id=wallet.id, amount=50, purpose="SaaS subscription")
+    await client.holds.capture(hold_id=hold.id)
+```
+
+### TypeScript SDK (npm install @sardis/sdk)
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const sardis = new SardisClient({ apiKey: 'sk_...' });
+
+const wallet = await sardis.wallets.create({ chain: 'base', token: 'USDC' });
+const payment = await sardis.payments.execute({
+  walletId: wallet.id,
+  to: 'anthropic',
+  amount: 50,
+  purpose: 'Claude API usage',
+});
+```
+
+### MCP Server (npx @sardis/mcp-server start)
+
+Enables Claude Desktop, Cursor, and other MCP clients to use Sardis tools directly.
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_WALLET_ID": "wallet_demo_001",
+        "SARDIS_AGENT_ID": "agent_demo_001",
+        "SARDIS_MODE": "simulated"
+      }
+    }
+  }
+}
+```
+
+46 tools across 10 categories: Wallet, Payment, Policy, Hold, Agent, Card, Fiat, Approval, Spending Analytics, Sandbox.
+
+## Core Concepts
+
+### Wallets
+Non-custodial MPC wallets powered by Turnkey. The agent never holds private keys.
+
+- `client.wallets.create(chain, token)` - Create wallet
+- `client.wallets.get(wallet_id)` - Get wallet details
+- `client.wallets.balance(wallet_id)` - Check balance
+
+### Spending Policies
+Deterministic rules enforced before every transaction. Defined in natural language, compiled to on-chain constraints.
+
+- Per-transaction limits (e.g., max $100/tx)
+- Daily/monthly limits
+- Vendor allowlist/blocklist
+- Category restrictions
+- Tiered approval thresholds
+
+```python
+# Natural language policy
+await client.policies.apply_from_nl(
+    wallet_id="wallet_123",
+    policy="max $500 daily, allow openai anthropic aws, block gambling adult, require approval above $200"
+)
+
+# Check before payment
+check = await client.policies.check(wallet_id="wallet_123", vendor="openai", amount=50)
+# check.allowed = True
+```
+
+### Payments
+Stablecoin payments (USDC, USDT, PYUSD, EURC) across Base, Polygon, Ethereum, Arbitrum, Optimism.
+
+```python
+payment = await client.payments.execute(
+    wallet_id="wallet_123",
+    to="vendor_address_or_name",
+    amount=29.99,
+    token="USDC",
+    purpose="API credits"
+)
+# payment.tx_hash, payment.status, payment.ledger_tx_id
+```
+
+### Payment Holds (Escrow)
+Two-phase commit: hold funds, then capture or void.
+
+```python
+hold = await client.holds.create(wallet_id="wallet_123", amount=100, purpose="subscription")
+# Later:
+await client.holds.capture(hold_id=hold.id, amount=95)  # partial capture
+# Or:
+await client.holds.void(hold_id=hold.id)  # release funds
+```
+
+### Virtual Cards (Lithic)
+Issue virtual Visa/Mastercard for AI agents. Funded from stablecoin balance.
+
+```python
+card = await client.cards.create(
+    wallet_id="wallet_123",
+    card_type="SINGLE_USE",  # or MULTI_USE, MERCHANT_LOCKED
+    limit_per_tx=100,
+    limit_daily=500
+)
+# card.card_number_last4, card.expiry_month, card.expiry_year
+await client.cards.freeze(card_id=card.id)
+await client.cards.unfreeze(card_id=card.id)
+```
+
+### Fiat On/Off Ramp (Bridge.xyz)
+Fund wallets from bank accounts, withdraw to bank.
+
+```python
+# Fund from bank (ACH)
+funding = await client.ramp.fund_wallet(wallet_id="wallet_123", amount_usd=100, method="bank")
+# funding.ach_instructions.routing_number, funding.ach_instructions.account_number
+
+# Withdraw to bank
+withdrawal = await client.ramp.withdraw_to_bank(
+    wallet_id="wallet_123",
+    amount_usd=50,
+    bank_account={"account_holder_name": "John Doe", "account_number": "123", "routing_number": "021000021"}
+)
+```
+
+### Compliance (KYC/KYB/AML)
+Persona for KYC/KYB, Elliptic for sanctions screening. Fail-closed in production.
+
+### Audit Trail
+Append-only ledger with Merkle tree anchoring for cryptographic proof of all transactions.
+
+## Supported Chains & Tokens
+
+| Chain | Tokens |
+|-------|--------|
+| Base | USDC, EURC |
+| Polygon | USDC, USDT, EURC |
+| Ethereum | USDC, USDT, PYUSD, EURC |
+| Arbitrum | USDC, USDT |
+| Optimism | USDC, USDT |
+
+## Architecture
+
+- **sardis** - Simple Python SDK (local simulation)
+- **sardis-sdk** - Production Python SDK (full API client)
+- **@sardis/sdk** - TypeScript SDK
+- **@sardis/mcp-server** - MCP server for AI code editors
+- **sardis-core** - Domain models, config, database
+- **sardis-api** - FastAPI REST endpoints
+- **sardis-wallet** - MPC wallet management (Turnkey)
+- **sardis-cards** - Virtual cards (Lithic)
+- **sardis-compliance** - KYC/KYB (Persona) + AML (Elliptic)
+- **sardis-ramp** - Fiat on/off ramp (Bridge.xyz)
+- **sardis-ledger** - Append-only audit trail
+- **sardis-chain** - Blockchain execution, chain routing
+
+## Environment Variables
+
+```
+SARDIS_API_KEY=sk_...           # API key
+SARDIS_WALLET_ID=wallet_...     # Default wallet
+SARDIS_AGENT_ID=agent_...       # Agent identity
+SARDIS_MODE=simulated|live      # Mode (default: simulated)
+SARDIS_CHAIN=base               # Default chain
+```
+
+## Links
+
+- Website: https://sardis.sh
+- GitHub: https://github.com/EfeDurmaz16/sardis
+- npm: @sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp
+- PyPI: sardis, sardis-sdk
