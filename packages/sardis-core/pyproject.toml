@@ -68,10 +68,10 @@ all = [
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Documentation = "https://docs.sardis.sh"
-Repository = "https://github.com/sardis-io/sardis-core"
-Changelog = "https://github.com/sardis-io/sardis-core/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/sardis-io/sardis-core/issues"
+Documentation = "https://sardis.sh/docs"
+Repository = "https://github.com/EfeDurmaz16/sardis"
+Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_v2_core"]

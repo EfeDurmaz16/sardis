@@ -23,12 +23,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sardis-project/sardis.git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
     "directory": "packages/sardis-ai-sdk"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/sardis-project/sardis/issues"
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "type": "module",
   "main": "./dist/index.js",

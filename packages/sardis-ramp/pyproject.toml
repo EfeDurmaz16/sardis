@@ -4,15 +4,14 @@ version = "0.1.0"
 description = "Sardis Fiat Ramp - Bridge crypto wallets to traditional banking"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
-authors = [
-    { name = "Sardis", email = "support@sardis.sh" }
-]
+license = {text = "MIT"}
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 keywords = ["sardis", "fiat", "ramp", "crypto", "bridge", "payments", "ai-agents"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

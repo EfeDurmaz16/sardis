@@ -65,10 +65,10 @@ dev = [
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Documentation = "https://docs.sardis.sh/api"
-Repository = "https://github.com/sardis-io/sardis-api"
-Changelog = "https://github.com/sardis-io/sardis-api/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/sardis-io/sardis-api/issues"
+Documentation = "https://sardis.sh/docs"
+Repository = "https://github.com/EfeDurmaz16/sardis"
+Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.metadata]
 allow-direct-references = true

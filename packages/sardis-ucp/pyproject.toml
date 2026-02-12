@@ -6,8 +6,25 @@ build-backend = "hatchling.build"
 name = "sardis-ucp"
 version = "0.1.0"
 description = "Universal Commerce Protocol (UCP) integration for Sardis"
-authors = [{name = "Sardis"}]
+authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+license = {text = "MIT"}
+readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["sardis", "ucp", "universal-commerce-protocol", "checkout", "payments", "ai-agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "sardis-core",
     "sardis-protocol",
@@ -19,6 +36,13 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
 ]
+
+[project.urls]
+Homepage = "https://sardis.sh"
+Documentation = "https://sardis.sh/docs"
+Repository = "https://github.com/EfeDurmaz16/sardis"
+Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.metadata]
 allow-direct-references = true
