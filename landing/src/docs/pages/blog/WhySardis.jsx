@@ -217,7 +217,7 @@ export default function WhySardis() {
 
         <div className="not-prose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] p-4 font-mono text-sm mb-6 border border-border">
           <div className="text-emerald-400">$ npx @sardis/mcp-server start</div>
-          <div className="text-muted-foreground mt-2"># That's it. 36+ payment tools available.</div>
+          <div className="text-muted-foreground mt-2"># That's it. 46 payment tools available.</div>
         </div>
 
         <p>

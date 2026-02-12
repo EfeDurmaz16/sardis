@@ -22,13 +22,6 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wal
 
 **The Problem We Solve:** Financial Hallucination — agents accidentally spending $10k instead of $100 due to retry loops, decimal errors, or logic bugs. Sardis prevents this with a real-time policy firewall.
 
-<!-- Demo GIF — Replace with actual recording of examples/simple_payment.py -->
-<p align="center">
-  <img src="https://sardis.sh/demo.gif" alt="Sardis demo — agent payment with policy enforcement" width="600" />
-  <br/>
-  <em>An AI agent executes a payment → Sardis policy firewall checks → approved or blocked in real time</em>
-</p>
-
 ---
 
 ## What's New
