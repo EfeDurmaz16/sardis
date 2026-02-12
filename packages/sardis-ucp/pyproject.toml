@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ucp"
-version = "0.1.0"
+version = "0.1.2"
 description = "Universal Commerce Protocol (UCP) integration for Sardis"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

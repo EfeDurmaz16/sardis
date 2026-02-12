@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-cards"
-version = "0.2.0"
+version = "0.2.1"
 description = "Virtual card integration for Sardis payment platform"
 readme = "README.md"
 requires-python = ">=3.11"
