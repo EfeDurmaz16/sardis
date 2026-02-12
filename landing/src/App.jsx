@@ -1150,6 +1150,7 @@ const payment = await ramp.payMerchantFiat({
                   <li><a href="/docs/changelog" className="hover:text-[var(--sardis-orange)] transition-colors">Changelog</a></li>
                   <li><a href="/docs/roadmap" className="hover:text-[var(--sardis-orange)] transition-colors">Roadmap</a></li>
                   <li><a href="/docs/security" className="hover:text-[var(--sardis-orange)] transition-colors">Security</a></li>
+                  <li><a href="https://context7.com/EfeDurmaz16/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Context7 (AI Docs)</a></li>
                 </ul>
               </div>
               <div>

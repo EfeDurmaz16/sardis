@@ -9,6 +9,7 @@
 [![npm downloads](https://img.shields.io/npm/dt/@sardis/mcp-server)](https://www.npmjs.com/package/@sardis/mcp-server)
 [![Chains: 5](https://img.shields.io/badge/Chains-5-brightgreen)](https://sardis.sh/docs)
 [![Tools: 46](https://img.shields.io/badge/MCP%20Tools-46-blue)](https://sardis.sh/docs)
+[![Context7](https://img.shields.io/badge/Docs-Context7-5A67D8)](https://context7.com/EfeDurmaz16/sardis)
 
 > **AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.**
 
