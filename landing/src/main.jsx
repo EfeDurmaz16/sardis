@@ -25,6 +25,7 @@ import DocsSDKPython from './docs/pages/SDKPython.jsx'
 import DocsSDKTypeScript from './docs/pages/SDKTypeScript.jsx'
 import DocsMCPServer from './docs/pages/MCPServer.jsx'
 import DocsSDK from './docs/pages/SDK.jsx'
+import APIReference from './docs/pages/APIReference.jsx'
 // Resources
 import DocsArchitecture from './docs/pages/Architecture.jsx'
 import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
@@ -90,6 +91,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="sdk-typescript" element={<DocsSDKTypeScript />} />
           <Route path="mcp-server" element={<DocsMCPServer />} />
           <Route path="sdk" element={<DocsSDK />} />
+          <Route path="api-reference" element={<APIReference />} />
           {/* Resources */}
           <Route path="architecture" element={<DocsArchitecture />} />
           <Route path="whitepaper" element={<DocsWhitepaper />} />

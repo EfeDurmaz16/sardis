@@ -39,6 +39,7 @@ const navigation = [
       { name: 'Python SDK', href: '/docs/sdk-python' },
       { name: 'TypeScript SDK', href: '/docs/sdk-typescript' },
       { name: 'MCP Server', href: '/docs/mcp-server' },
+      { name: 'API Reference', href: '/docs/api-reference' },
     ],
   },
   {
