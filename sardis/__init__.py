@@ -44,6 +44,7 @@ from .wallet import Wallet
 from .transaction import Transaction, TransactionResult, TransactionStatus
 from .policy import Policy, PolicyResult
 from .agent import Agent
+from .group import AgentGroup
 
 __all__ = [
     # Quick-start classes
@@ -54,6 +55,7 @@ __all__ = [
     "Policy",
     "PolicyResult",
     "Agent",
+    "AgentGroup",
 ]
 
 if _HAS_SDK:

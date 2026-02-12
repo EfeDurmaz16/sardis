@@ -1260,12 +1260,12 @@ tx = wallet_a.pay(
 # - Goal drift is checked (is paying another agent on-task?)
 ```
 
-### Multi-Agent Governance: Coordinated Budgets (Roadmap)
+### Multi-Agent Governance: Coordinated Budgets
 
-The per-agent policy primitives are designed to compose into group-level governance. The following capabilities build on the existing `owner_id` grouping and `SpendingPolicy` evaluation:
+The per-agent policy primitives compose into group-level governance. Agent groups enforce shared budgets across multiple agents using the existing `owner_id` grouping and `SpendingPolicy` evaluation:
 
 ```python
-# PLANNED: Agent groups with shared budget pools
+# Agent groups with shared budget pools
 # Extends the existing owner_id grouping with aggregate budget enforcement
 
 group = client.agent_groups.create(
@@ -1278,11 +1278,11 @@ group = client.agent_groups.create(
 )
 
 # Individual agent limits are enforced FIRST, then group budget is checked
-# This is a natural extension of the existing pipeline:
-# Step 1: SpendingPolicy.evaluate() → per-agent check (EXISTS)
-# Step 2: GroupPolicy.evaluate()    → aggregate budget check (PLANNED)
-# Step 3: Compliance check          → KYC/AML (EXISTS)
-# Step 4: Chain execution           → on-chain (EXISTS)
+# The pipeline phases:
+# Step 1: SpendingPolicy.evaluate() → per-agent check
+# Step 2: GroupPolicy.evaluate()    → aggregate budget check
+# Step 3: Compliance check          → KYC/AML
+# Step 4: Chain execution           → on-chain
 
 # Query group-level spending (aggregates per-agent data)
 group_spending = client.agent_groups.get_spending(group.id)
@@ -1297,12 +1297,12 @@ group_spending = client.agent_groups.get_spending(group.id)
 # }
 ```
 
-### Hierarchical Policy Inheritance (Roadmap)
+### Hierarchical Policy Inheritance
 
 Policies cascade from organization → group → wallet, with the most restrictive rule winning:
 
 ```python
-# PLANNED: Organization-level policy (applies to ALL agents under this org)
+# Organization-level policy (applies to ALL agents under this org)
 org_policy = client.policies.set_org_policy({
     "max_per_tx": "500.00",          # No single tx > $500 for any agent
     "blocked_categories": ["gambling", "adult"],  # Global blocks
@@ -1334,7 +1334,7 @@ wallet_policy = {
 ### Treasury Management (Roadmap)
 
 ```python
-# PLANNED: Shared treasury with automated fund distribution
+# Shared treasury with automated fund distribution
 treasury = client.treasury.create(
     name="engineering-treasury",
     funding_wallet="wallet_treasury_main",

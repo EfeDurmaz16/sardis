@@ -22,6 +22,7 @@ from .policy import (
     PolicyExample,
 )
 from .card import Card, CardTransaction, SimulateCardPurchaseResponse
+from .group import AgentGroup as AgentGroupModel, CreateGroupRequest, UpdateGroupRequest, GroupCreate, GroupUpdate, GroupBudget, GroupMerchantPolicy
 from .errors import (
     SardisError, APIError, ValidationError, InsufficientBalanceError, 
     AuthenticationError, RateLimitError
@@ -71,6 +72,13 @@ __all__ = [
     "Card",
     "CardTransaction",
     "SimulateCardPurchaseResponse",
+    "AgentGroupModel",
+    "CreateGroupRequest",
+    "UpdateGroupRequest",
+    "GroupCreate",
+    "GroupUpdate",
+    "GroupBudget",
+    "GroupMerchantPolicy",
     "SardisError",
     "APIError",
     "ValidationError",

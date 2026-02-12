@@ -19,6 +19,7 @@ import { approvalToolDefinitions, approvalToolHandlers } from './approvals.js';
 import { spendingToolDefinitions, spendingToolHandlers } from './spending.js';
 import { walletManagementToolDefinitions, walletManagementToolHandlers } from './wallet-management.js';
 import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
+import { groupToolDefinitions, groupToolHandlers } from './groups.js';
 
 // Re-export types
 export * from './types.js';
@@ -43,6 +44,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...spendingToolDefinitions,
   ...walletManagementToolDefinitions,
   ...sandboxToolDefinitions,
+  ...groupToolDefinitions,
 ];
 
 /**
@@ -60,6 +62,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...spendingToolHandlers,
   ...walletManagementToolHandlers,
   ...sandboxToolHandlers,
+  ...groupToolHandlers,
 };
 
 /**
@@ -121,6 +124,14 @@ export const toolCategories = {
   approval: [
     'sardis_request_approval',
     'sardis_get_approval_status',
+  ],
+  group: [
+    'sardis_create_group',
+    'sardis_get_group',
+    'sardis_list_groups',
+    'sardis_add_agent_to_group',
+    'sardis_remove_agent_from_group',
+    'sardis_get_group_spending',
   ],
   spending: [
     'sardis_get_spending_summary',

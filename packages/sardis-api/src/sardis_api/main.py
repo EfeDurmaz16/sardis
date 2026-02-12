@@ -93,6 +93,7 @@ from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
+from .routers import groups as groups_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -101,6 +102,7 @@ except ImportError:
     approvals_router = None  # type: ignore
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core.agent_groups import AgentGroupRepository
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
@@ -606,6 +608,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
+
+    group_repo = AgentGroupRepository(dsn="memory://")
+    app.dependency_overrides[groups_router.get_deps] = lambda: groups_router.GroupDependencies(  # type: ignore[arg-type]
+        group_repo=group_repo,
+    )
+    app.include_router(groups_router.router, prefix="/api/v2/groups", tags=["groups"])
 
     app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
 

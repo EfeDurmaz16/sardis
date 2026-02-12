@@ -75,6 +75,7 @@ from .models.errors import (
 if TYPE_CHECKING:
     from .resources.agents import AgentsResource, AsyncAgentsResource
     from .resources.cards import AsyncCardsResource, CardsResource
+    from .resources.groups import AsyncGroupsResource, GroupsResource
     from .resources.holds import AsyncHoldsResource, HoldsResource
     from .resources.ledger import AsyncLedgerResource, LedgerResource
     from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
@@ -584,6 +585,15 @@ class AsyncSardisClient(BaseClient):
         self._marketplace: Optional["AsyncMarketplaceResource"] = None
         self._transactions: Optional["AsyncTransactionsResource"] = None
         self._ledger: Optional["AsyncLedgerResource"] = None
+        self._groups: Optional["AsyncGroupsResource"] = None
+
+    @property
+    def groups(self) -> "AsyncGroupsResource":
+        """Access the groups resource."""
+        if self._groups is None:
+            from .resources.groups import AsyncGroupsResource
+            self._groups = AsyncGroupsResource(self)
+        return self._groups
 
     @property
     def agents(self) -> "AsyncAgentsResource":
@@ -965,6 +975,15 @@ class SardisClient(BaseClient):
         self._marketplace: Optional["MarketplaceResource"] = None
         self._transactions: Optional["TransactionsResource"] = None
         self._ledger: Optional["LedgerResource"] = None
+        self._groups: Optional["GroupsResource"] = None
+
+    @property
+    def groups(self) -> "GroupsResource":
+        """Access the groups resource."""
+        if self._groups is None:
+            from .resources.groups import GroupsResource
+            self._groups = GroupsResource(self)
+        return self._groups
 
     @property
     def agents(self) -> "AgentsResource":

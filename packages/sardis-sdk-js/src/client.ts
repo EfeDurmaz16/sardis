@@ -33,6 +33,7 @@ import { WalletsResource } from './resources/wallets.js';
 import { AgentsResource } from './resources/agents.js';
 import { CardsResource } from './resources/cards.js';
 import { PoliciesResource } from './resources/policies.js';
+import { GroupsResource } from './resources/groups.js';
 import { UCPResource } from './resources/ucp.js';
 import { A2AResource } from './resources/a2a.js';
 import type {
@@ -220,6 +221,12 @@ export class SardisClient {
   public readonly wallets: WalletsResource;
 
   /**
+   * Group operations - create and manage agent groups for multi-agent governance.
+   * @see {@link GroupsResource}
+   */
+  public readonly groups: GroupsResource;
+
+  /**
    * Agent operations - create and manage agents.
    * @see {@link AgentsResource}
    */
@@ -296,6 +303,7 @@ export class SardisClient {
     this.transactions = new TransactionsResource(this);
     this.ledger = new LedgerResource(this);
     this.wallets = new WalletsResource(this);
+    this.groups = new GroupsResource(this);
     this.agents = new AgentsResource(this);
     this.ucp = new UCPResource(this);
     this.a2a = new A2AResource(this);

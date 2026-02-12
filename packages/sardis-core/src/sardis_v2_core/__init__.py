@@ -103,6 +103,8 @@ from .webhooks import (
 )
 from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
 from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
+from .agent_groups import AgentGroup, AgentGroupRepository, GroupSpendingLimits, GroupMerchantPolicy
+from .group_policy import GroupPolicyEvaluator, GroupPolicyResult, GroupPolicyPort, InMemoryGroupSpendingTracker
 from .wallet_repository import WalletRepository
 from .agent_repository_postgres import PostgresAgentRepository
 from .wallet_repository_postgres import PostgresWalletRepository
@@ -296,6 +298,14 @@ __all__ = [
     "AgentPolicy",
     "SpendingLimits",
     "AgentRepository",
+    "AgentGroup",
+    "AgentGroupRepository",
+    "GroupSpendingLimits",
+    "GroupMerchantPolicy",
+    "GroupPolicyEvaluator",
+    "GroupPolicyResult",
+    "GroupPolicyPort",
+    "InMemoryGroupSpendingTracker",
     "WalletRepository",
     # Utilities
     "TTLDict",

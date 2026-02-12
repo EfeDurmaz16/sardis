@@ -184,6 +184,21 @@ class LedgerPort(Protocol):
     def append(self, payment_mandate: PaymentMandate, chain_receipt: "ChainReceipt") -> "Transaction": ...
 
 
+class GroupPolicyPort(Protocol):
+    """Interface for group-level policy evaluation."""
+
+    async def evaluate(
+        self,
+        agent_id: str,
+        amount: Any,
+        fee: Any,
+        merchant_id: Optional[str] = None,
+        merchant_category: Optional[str] = None,
+    ) -> Any: ...
+
+    async def record_spend(self, agent_id: str, amount: Any) -> None: ...
+
+
 class ReconciliationQueuePort(Protocol):
     """Interface for reconciliation queue storage."""
 
@@ -281,12 +296,14 @@ class PaymentOrchestrator:
         chain_executor: ChainExecutorPort,
         ledger: LedgerPort,
         reconciliation_queue: ReconciliationQueuePort | None = None,
+        group_policy: GroupPolicyPort | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
         self._chain_executor = chain_executor
         self._ledger = ledger
         self._reconciliation_queue = reconciliation_queue or InMemoryReconciliationQueue()
+        self._group_policy = group_policy
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
         self._executed_mandates: dict[str, PaymentResult] = {}
 
@@ -365,6 +382,43 @@ class PaymentOrchestrator:
         except Exception as e:
             self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False, error=str(e))
             raise PolicyViolationError(f"Policy validation error: {e}", mandate_id=mandate_id)
+
+        # Phase 1.5: Group Policy Check (optional, fail-fast)
+        if self._group_policy is not None:
+            try:
+                agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
+                if agent_id:
+                    from decimal import Decimal as _Decimal
+                    pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
+                    pay_fee = getattr(payment, 'fee', None) or _Decimal("0")
+                    merchant_id = getattr(payment, 'merchant_id', None)
+                    merchant_category = getattr(payment, 'merchant_category', None)
+
+                    group_result = await self._group_policy.evaluate(
+                        agent_id=agent_id,
+                        amount=_Decimal(str(pay_amount)),
+                        fee=_Decimal(str(pay_fee)),
+                        merchant_id=merchant_id,
+                        merchant_category=merchant_category,
+                    )
+                    if not group_result.allowed:
+                        self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                                   {"group_id": getattr(group_result, 'group_id', None),
+                                    "group_reason": group_result.reason},
+                                   f"group_policy_denied: {group_result.reason}")
+                        raise PolicyViolationError(
+                            f"Group policy denied: {group_result.reason}",
+                            mandate_id=mandate_id,
+                            rule_id=f"group:{getattr(group_result, 'group_id', 'unknown')}",
+                        )
+                    self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, True,
+                               {"group_policy": "passed"})
+            except PolicyViolationError:
+                raise
+            except Exception as e:
+                # Fail-closed: group policy errors = deny
+                self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False, error=f"group_policy_error: {e}")
+                raise PolicyViolationError(f"Group policy error: {e}", mandate_id=mandate_id)
 
         # Phase 2: Compliance Check (fail-fast)
         try:

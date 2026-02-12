@@ -14,6 +14,7 @@ from .transactions import TransactionsResource, AsyncTransactionsResource, GasEs
 from .ledger import LedgerResource, AsyncLedgerResource, LedgerEntry
 from .policies import PoliciesResource, AsyncPoliciesResource
 from .cards import CardsResource, AsyncCardsResource
+from .groups import GroupsResource, AsyncGroupsResource
 
 __all__ = [
     # Base classes
@@ -55,4 +56,7 @@ __all__ = [
     # Cards
     "CardsResource",
     "AsyncCardsResource",
+    # Groups
+    "GroupsResource",
+    "AsyncGroupsResource",
 ]

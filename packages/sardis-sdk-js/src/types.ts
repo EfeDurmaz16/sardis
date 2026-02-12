@@ -1103,6 +1103,104 @@ export interface SimulateCardPurchaseResponse {
 /**
  * Input for updating an agent.
  */
+// ==================== Agent Group Types ====================
+
+/**
+ * Budget limits for an agent group.
+ */
+export interface GroupBudget {
+  /** Per-transaction limit */
+  per_transaction?: string;
+  /** Daily spending limit */
+  daily?: string;
+  /** Monthly spending limit */
+  monthly?: string;
+  /** Total spending limit */
+  total?: string;
+}
+
+/**
+ * Merchant policy for an agent group.
+ */
+export interface GroupMerchantPolicy {
+  /** Allowed merchants (whitelist mode) */
+  allowed_merchants?: string[];
+  /** Blocked merchants */
+  blocked_merchants?: string[];
+  /** Allowed categories */
+  allowed_categories?: string[];
+  /** Blocked categories */
+  blocked_categories?: string[];
+}
+
+/**
+ * An agent group with shared budget and policies.
+ */
+export interface AgentGroup {
+  /** Unique group identifier */
+  group_id: string;
+  /** Display name */
+  name: string;
+  /** Organization/user who owns this group */
+  owner_id: string;
+  /** Shared budget limits */
+  budget: GroupBudget;
+  /** Merchant policy */
+  merchant_policy: GroupMerchantPolicy;
+  /** IDs of agents in this group */
+  agent_ids: string[];
+  /** Arbitrary metadata */
+  metadata: Record<string, unknown>;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * Input for creating an agent group.
+ */
+export interface CreateGroupInput {
+  /** Display name (required) */
+  name: string;
+  /** Budget limits */
+  budget?: GroupBudget;
+  /** Merchant policy */
+  merchant_policy?: GroupMerchantPolicy;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Input for updating an agent group.
+ */
+export interface UpdateGroupInput {
+  /** Display name */
+  name?: string;
+  /** Budget limits */
+  budget?: GroupBudget;
+  /** Merchant policy */
+  merchant_policy?: GroupMerchantPolicy;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Spending summary for a group.
+ */
+export interface GroupSpending {
+  /** Group ID */
+  group_id: string;
+  /** Group name */
+  name: string;
+  /** Budget configuration */
+  budget: GroupBudget;
+  /** Number of agents in the group */
+  agent_count: number;
+  /** Agent IDs */
+  agent_ids: string[];
+}
+
 export interface UpdateAgentInput {
   /** Display name */
   name?: string;
