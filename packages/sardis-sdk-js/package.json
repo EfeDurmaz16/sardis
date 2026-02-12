@@ -1,6 +1,6 @@
 {
   "name": "@sardis/sdk",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Official TypeScript SDK for the Sardis stablecoin execution layer - Enable AI agents to execute programmable payments using stablecoins",
   "type": "module",
   "main": "dist/cjs/index.cjs",

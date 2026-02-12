@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-core"
-version = "0.2.1"
+version = "0.2.2"
 description = "Core AP2/TAP-aligned domain primitives for the Sardis stablecoin execution layer"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

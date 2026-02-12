@@ -1,6 +1,6 @@
 [project]
 name = "sardis-ramp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Sardis Fiat Ramp - Bridge crypto wallets to traditional banking"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-protocol"
-version = "0.1.2"
+version = "0.1.3"
 description = "AP2/TAP mandate schemas and verifiers for Sardis"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
