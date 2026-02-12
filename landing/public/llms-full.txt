@@ -193,8 +193,15 @@ hold.release()
 ### Installation
 
 ```bash
-pip install sardis
+pip install sardis          # Meta-package: SDK + Core + CLI
+pip install sardis[all]     # All 15 packages
+pip install sardis[cards]   # + virtual cards (Lithic)
+pip install sardis[ramp]    # + fiat on/off-ramp
+pip install sardis[chain]   # + multi-chain execution
+pip install sardis[compliance]  # + KYC/AML/SAR
 ```
+
+Individual packages also available: `sardis-sdk`, `sardis-core`, `sardis-chain`, `sardis-compliance`, `sardis-ledger`, `sardis-wallet`, `sardis-cards`, `sardis-api`, `sardis-protocol`, `sardis-a2a`, `sardis-ucp`, `sardis-ramp`, `sardis-cli`, `sardis-checkout`.
 
 ### Initialization
 
@@ -319,9 +326,10 @@ agent = create_react_agent(
 ### Installation
 
 ```bash
-npm install @sardis/sdk
-# or
-pnpm add @sardis/sdk
+npm install @sardis/sdk          # TypeScript SDK
+npm install @sardis/mcp-server   # MCP server (46 tools)
+npm install @sardis/ai-sdk       # Vercel AI SDK integration
+npm install @sardis/ramp         # Fiat on/off-ramp
 ```
 
 ### Initialization
@@ -1213,7 +1221,9 @@ policy = {
 - Website: https://sardis.sh
 - Documentation: https://sardis.sh/docs
 - GitHub: https://github.com/EfeDurmaz16/sardis
+- PyPI: https://pypi.org/project/sardis/
 - npm: https://www.npmjs.com/package/@sardis/mcp-server
+- Context7: https://context7.com/efedurmaz16/sardis
 
 ---
 

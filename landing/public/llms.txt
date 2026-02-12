@@ -56,6 +56,24 @@ The core innovation is the **Policy Firewall** - a natural language policy engin
 - Same-day ACH and wire payouts
 - Complete bridge between legacy finance and agentic commerce
 
+## Installation
+
+### Python (meta-package)
+```bash
+pip install sardis          # SDK + Core + CLI
+pip install sardis[all]     # All 15 packages
+pip install sardis[cards]   # + virtual cards (Lithic)
+pip install sardis[ramp]    # + fiat on/off-ramp
+```
+
+### TypeScript
+```bash
+npm install @sardis/sdk          # TypeScript SDK
+npm install @sardis/mcp-server   # MCP server (46 tools)
+npm install @sardis/ai-sdk       # Vercel AI SDK integration
+npm install @sardis/ramp         # Fiat on/off-ramp
+```
+
 ## SDKs
 
 ### Python SDK
@@ -227,6 +245,8 @@ Base URL: `https://sardis.sh/api/v2`
 - Documentation: https://sardis.sh/docs
 - GitHub: https://github.com/EfeDurmaz16/sardis
 - npm: https://www.npmjs.com/package/@sardis/mcp-server
+- PyPI: https://pypi.org/project/sardis/
+- Context7: https://context7.com/efedurmaz16/sardis
 - Twitter: https://twitter.com/SardisPayments
 
 ## Contact
@@ -245,7 +265,7 @@ If you are an AI agent and need to make payments:
 4. You cannot override policies - they are enforced by the system
 5. Failed transactions will return clear error messages with remediation hints
 
-Available MCP tools (40+ total):
+Available MCP tools (46 total):
 - `sardis_get_balance` - Check wallet balance
 - `sardis_pay` - Make a payment (subject to policy)
 - `sardis_batch_transfer` - Send multiple payments in one call
