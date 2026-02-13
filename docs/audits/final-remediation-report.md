@@ -52,13 +52,11 @@ Key validated metrics and claims are tracked in:
 - Network-dependent verification still requires online runs:
   - external links + badges
   - awesome-list target activity checks
-- Remaining codebase quality debt still open:
-  - broad exception usage reductions in some production paths
-  - additional type-hint coverage improvements
-  - TypeScript `any` reduction and error typing normalization
+- SQL dynamic query composition review completed:
+  - `docs/audits/sql-query-composition-review.md`
 - Optional structural cleanup remains:
   - removing brittle runtime path bootstrap fallbacks where safe
-  - final Alembic/SQL migration alignment verification pass
+  - broader exception/type-hint hardening outside critical production paths
 
 ## Recommended Launch Gate
 

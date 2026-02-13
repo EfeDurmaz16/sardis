@@ -16,18 +16,18 @@ Legend:
 - [ ] Validate all external links and badge targets in a network-enabled check.
 
 ## 2. Code Quality & Consistency
-- [ ] Reduce broad `except Exception` usage in production paths.
-- [ ] Add/complete type hints on public Python APIs where missing.
-- [ ] Normalize async API consistency (remove unnecessary async stubs or add awaits).
-- [ ] Remove or reduce explicit `any` in TypeScript packages and dashboard.
-- [ ] Standardize error typing and handling patterns across TS packages.
+- [x] Reduce broad `except Exception` usage in production paths.
+- [x] Add/complete type hints on public Python APIs where missing.
+- [x] Normalize async API consistency (remove unnecessary async stubs or add awaits).
+- [x] Remove or reduce explicit `any` in TypeScript packages and dashboard.
+- [x] Standardize error typing and handling patterns across TS packages.
 
 ## 3. Security
-- [~] Confirm no hardcoded secrets in tracked files with repeatable scanning.
+- [x] Confirm no hardcoded secrets in tracked files with repeatable scanning.
 - [x] Align env variable docs with runtime config names.
-- [~] Review and harden API auth defaults (dev vs prod behavior).
+- [x] Review and harden API auth defaults (dev vs prod behavior).
 - [x] Verify webhook signature checks are fail-closed for all providers.
-- [~] Validate SQL query composition safety in all dynamic query builders.
+- [x] Validate SQL query composition safety in all dynamic query builders.
 - [x] Confirm production rate limiting hard-requires Redis.
 - [x] Remove insecure cryptography placeholders from wallet modules.
 - [x] Validate CORS policy and trusted origin handling.
