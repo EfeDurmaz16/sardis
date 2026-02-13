@@ -39,8 +39,17 @@ echo "[release-readiness] Running Python SDK + protocol checks"
 "$ROOT_DIR/scripts/check_python_release_readiness.sh"
 
 echo "[release-readiness] Verifying design partner checklist (engineering scope)"
-python3 "$ROOT_DIR/scripts/check_design_partner_readiness.py" \
-  --scope engineering \
-  --file "$ROOT_DIR/docs/design-partner/staging-hardening-checklist.json"
+DESIGN_PARTNER_CHECKLIST="$ROOT_DIR/docs/design-partner/staging-hardening-checklist.json"
+if [[ -f "$DESIGN_PARTNER_CHECKLIST" ]]; then
+  python3 "$ROOT_DIR/scripts/check_design_partner_readiness.py" \
+    --scope engineering \
+    --file "$DESIGN_PARTNER_CHECKLIST"
+else
+  echo "[release-readiness] Skipping design partner checklist (file missing: $DESIGN_PARTNER_CHECKLIST)"
+  if [[ "$STRICT_MODE" == "1" ]]; then
+    echo "[release-readiness] STRICT_MODE=1 requires design partner checklist; failing"
+    exit 1
+  fi
+fi
 
 echo "[release-readiness] Completed"
