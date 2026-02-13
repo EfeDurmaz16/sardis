@@ -60,8 +60,16 @@ def _bootstrap_monorepo_sys_path() -> None:
             if p not in sys.path:
                 sys.path.insert(0, p)
 
+def _should_bootstrap_monorepo_sys_path() -> bool:
+    """Keep monorepo import bootstrapping for local dev only."""
+    if os.getenv("SARDIS_DISABLE_MONOREPO_BOOTSTRAP", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return False
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    return env in {"dev", "development", "sandbox", "staging", "test"}
 
-_bootstrap_monorepo_sys_path()
+
+if _should_bootstrap_monorepo_sys_path():
+    _bootstrap_monorepo_sys_path()
 
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_wallet.manager import WalletManager

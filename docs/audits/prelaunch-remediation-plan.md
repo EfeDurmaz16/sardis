@@ -67,8 +67,8 @@ Legend:
 
 ## 9. Infrastructure & Deployment
 - [x] Align Alembic migration head with SQL migration set.
-- [ ] Verify Vercel config and deployment workflows are consistent.
-- [ ] Remove brittle runtime path hacks where possible.
+- [x] Verify Vercel config and deployment workflows are consistent.
+- [x] Remove brittle runtime path hacks where possible.
 - [x] Ensure env var documentation matches actual runtime usage.
 
 ## 10. Investor Readiness

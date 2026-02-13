@@ -47,6 +47,11 @@ if ! bash scripts/release/migration_alignment_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating deployment config consistency"
+if ! bash scripts/release/deployment_config_check.sh; then
+  failures=$((failures + 1))
+fi
+
 tmp_pytest="$(mktemp)"
 trap 'rm -f "$tmp_pytest"' EXIT
 
