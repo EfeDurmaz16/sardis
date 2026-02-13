@@ -3,6 +3,7 @@ import { Plus, Webhook, Trash2, CheckCircle, XCircle, Play } from 'lucide-react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { useWebhooks, useCreateWebhook, useDeleteWebhook } from '../hooks/useApi'
+import type { WebhookSubscription } from '../types'
 
 const availableEvents = [
   'payment.completed',
@@ -66,7 +67,7 @@ export default function WebhooksPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {webhooks.map((webhook: any) => (
+          {webhooks.map((webhook) => (
             <WebhookCard
               key={webhook.subscription_id}
               webhook={webhook}
@@ -95,7 +96,7 @@ function WebhookCard({
   webhook, 
   onDelete 
 }: { 
-  webhook: any
+  webhook: WebhookSubscription
   onDelete: () => void 
 }) {
   return (
@@ -149,15 +150,15 @@ function WebhookCard({
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span>{webhook.successful_deliveries || 0} delivered</span>
           </div>
-          {webhook.failed_attempts > 0 && (
+          {(webhook.failed_attempts || 0) > 0 && (
             <div className="flex items-center gap-2 text-gray-400">
               <XCircle className="w-4 h-4 text-red-500" />
-              <span>{webhook.failed_attempts} failed</span>
+              <span>{webhook.failed_attempts || 0} failed</span>
             </div>
           )}
-          {webhook.last_triggered_at && (
+          {(webhook.last_triggered_at || webhook.last_delivery_at) && (
             <span className="text-gray-500">
-              Last: {format(new Date(webhook.last_triggered_at), 'MMM d, HH:mm')}
+              Last: {format(new Date(webhook.last_triggered_at || webhook.last_delivery_at || ''), 'MMM d, HH:mm')}
             </span>
           )}
         </div>
@@ -184,7 +185,7 @@ function CreateWebhookModal({
   isLoading
 }: {
   onClose: () => void
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (data: { url: string; events: string[] }) => Promise<void>
   isLoading: boolean
 }) {
   const [url, setUrl] = useState('')
@@ -268,4 +269,3 @@ function CreateWebhookModal({
     </div>
   )
 }
-
