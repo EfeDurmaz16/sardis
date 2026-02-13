@@ -3,6 +3,12 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { useInstructAgent } from '../hooks/useApi'
+import { getErrorMessage } from '../utils/errors'
+
+type ToolCall = {
+    name?: string
+    arguments?: Record<string, unknown>
+}
 
 interface Message {
     id: string
@@ -10,7 +16,7 @@ interface Message {
     content: string
     timestamp: Date
     status?: 'sending' | 'sent' | 'error'
-    toolCall?: any
+    toolCall?: ToolCall
     txId?: string
 }
 
@@ -92,14 +98,14 @@ export default function ChatInterface({ agentId, agentName, onClose }: ChatInter
                 }])
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             setMessages(prev => prev.map(m =>
                 m.id === userMessage.id ? { ...m, status: 'error' } : m
             ))
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: 'agent',
-                content: `Failed to process request: ${error.message}`,
+                content: `Failed to process request: ${getErrorMessage(error, 'Unknown error')}`,
                 timestamp: new Date(),
                 status: 'error'
             }])

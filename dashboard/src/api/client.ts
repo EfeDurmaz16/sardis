@@ -1,11 +1,24 @@
 // API Client for Sardis Dashboard
 
 import { getCurrentToken } from '../auth/AuthContext'
+import type { Agent, Merchant, RiskScore, Transaction, Wallet, WebhookSubscription } from '../types'
 
 // API base URL - can be overridden by environment variable
 const API_URL = import.meta.env.VITE_API_URL || ''
 const API_V1_BASE = `${API_URL}/api/v1`
 const API_V2_BASE = `${API_URL}/api/v2`
+
+type JsonObject = Record<string, unknown>
+
+export interface AgentInstructionResponse {
+  response?: string
+  error?: string
+  tool_call?: {
+    name?: string
+    arguments?: Record<string, unknown>
+  }
+  tx_id?: string
+}
 
 
 async function request<T>(
@@ -49,9 +62,9 @@ async function requestV2<T>(endpoint: string, options: RequestInit = {}): Promis
 
 // Agent APIs (V2)
 export const agentApi = {
-  list: () => requestV2<any[]>('/agents'),
+  list: () => requestV2<Agent[]>('/agents'),
 
-  get: (agentId: string) => requestV2<any>(`/agents/${agentId}`),
+  get: (agentId: string) => requestV2<Agent>(`/agents/${agentId}`),
 
   create: (data: {
     name: string
@@ -61,17 +74,17 @@ export const agentApi = {
       total?: string
     }
     create_wallet?: boolean
-  }) => requestV2<any>('/agents', {
+  }) => requestV2<Agent>('/agents', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getWallet: (agentId: string) => requestV2<any>(`/agents/${agentId}/wallet`),
+  getWallet: (agentId: string) => requestV2<Wallet>(`/agents/${agentId}/wallet`),
 
   getTransactions: (agentId: string, limit = 50) =>
-    requestV2<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
+    requestV2<Transaction[]>(`/payments/agent/${agentId}?limit=${limit}`),
 
-  instruct: (agentId: string, instruction: string) => requestV2<any>(`/agents/${agentId}/instruct`, {
+  instruct: (agentId: string, instruction: string) => requestV2<AgentInstructionResponse>(`/agents/${agentId}/instruct`, {
     method: 'POST',
     body: JSON.stringify({ instruction }),
   }),
@@ -80,7 +93,7 @@ export const agentApi = {
 // Payment APIs (V2)
 export const paymentApi = {
   estimate: (amount: string, currency = 'USDC') =>
-    requestV2<any>(`/payments/estimate?amount=${amount}&currency=${currency}`),
+    requestV2<JsonObject>(`/payments/estimate?amount=${amount}&currency=${currency}`),
 
   create: (data: {
     agent_id: string
@@ -89,23 +102,23 @@ export const paymentApi = {
     merchant_id?: string
     recipient_wallet_id?: string
     purpose?: string
-  }) => requestV2<any>('/payments', {
+  }) => requestV2<JsonObject>('/payments', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getHistory: (limit = 100) => requestV2<any[]>(`/payments?limit=${limit}`),
+  getHistory: (limit = 100) => requestV2<Transaction[]>(`/payments?limit=${limit}`),
 }
 
 // Merchant APIs (V2)
 export const merchantApi = {
-  list: () => requestV2<any[]>('/merchants'),
+  list: () => requestV2<Merchant[]>('/merchants'),
 
   create: (data: {
     name: string
     description?: string
     category: string
-  }) => requestV2<any>('/merchants', {
+  }) => requestV2<Merchant>('/merchants', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -113,12 +126,12 @@ export const merchantApi = {
 
 // Webhook APIs (V2)
 export const webhookApi = {
-  list: () => requestV2<any[]>('/webhooks'),
+  list: () => requestV2<WebhookSubscription[]>('/webhooks'),
 
   create: (data: {
     url: string
     events: string[]
-  }) => requestV2<any>('/webhooks', {
+  }) => requestV2<WebhookSubscription>('/webhooks', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -127,7 +140,7 @@ export const webhookApi = {
     url: string
     events: string[]
     is_active: boolean
-  }>) => requestV2<any>(`/webhooks/${subscriptionId}`, {
+  }>) => requestV2<WebhookSubscription>(`/webhooks/${subscriptionId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -139,10 +152,10 @@ export const webhookApi = {
 
 // Risk APIs (V2)
 export const riskApi = {
-  getScore: (agentId: string) => requestV2<any>(`/risk/agents/${agentId}/score`),
+  getScore: (agentId: string) => requestV2<RiskScore>(`/risk/agents/${agentId}/score`),
 
   authorize: (agentId: string, serviceId: string) =>
-    requestV2<any>(`/risk/agents/${agentId}/authorize`, {
+    requestV2<JsonObject>(`/risk/agents/${agentId}/authorize`, {
       method: 'POST',
       body: JSON.stringify({ service_id: serviceId }),
     }),
@@ -159,8 +172,8 @@ export const ap2Api = {
   // Execute an AP2 payment bundle
   execute: (data: {
     mandate_chain: {
-      intent?: any
-      cart?: any
+      intent?: JsonObject
+      cart?: JsonObject
       payment: {
         mandate_id: string
         issuer: string
@@ -169,7 +182,7 @@ export const ap2Api = {
         amount_minor: number
         token: string
         expires_at: number
-        proof?: any
+        proof?: JsonObject
       }
     }
   }) => requestV2<{
@@ -183,7 +196,7 @@ export const ap2Api = {
   }),
 
   // Verify a mandate without executing
-  verify: (data: { mandate_chain: any }) => requestV2<{
+  verify: (data: { mandate_chain: JsonObject }) => requestV2<{
     valid: boolean
     errors?: string[]
   }>('/mandates/verify', {

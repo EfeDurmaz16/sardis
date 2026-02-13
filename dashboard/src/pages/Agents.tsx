@@ -3,6 +3,25 @@ import { Plus, Search, User, Wallet, ArrowRight } from 'lucide-react'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '../hooks/useApi'
 import ChatInterface from '../components/ChatInterface'
+import type { Agent } from '../types'
+
+type AgentListItem = Omit<Agent, 'created_at'> & {
+  created_at?: string
+  spending_limits?: {
+    per_transaction?: string
+    total?: string
+  }
+}
+
+type CreateAgentInput = {
+  name: string
+  description?: string
+  spending_limits?: {
+    per_transaction?: string
+    total?: string
+  }
+  create_wallet?: boolean
+}
 
 const SEED_AGENTS = [
   {
@@ -39,12 +58,12 @@ export default function AgentsPage() {
   const createAgent = useCreateAgent()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
-  const [activeChatAgent, setActiveChatAgent] = useState<any>(null)
+  const [activeChatAgent, setActiveChatAgent] = useState<AgentListItem | null>(null)
 
   // Merge API agents with seed agents (seed only shown if API returns empty)
-  const agents = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
+  const agents: AgentListItem[] = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
 
-  const filteredAgents = agents.filter((agent: any) =>
+  const filteredAgents = agents.filter((agent) =>
     agent.name?.toLowerCase().includes(search.toLowerCase()) ||
     agent.agent_id?.toLowerCase().includes(search.toLowerCase())
   )
@@ -110,7 +129,7 @@ export default function AgentsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAgents.map((agent: any) => (
+          {filteredAgents.map((agent) => (
             <AgentCard
               key={agent.agent_id}
               agent={agent}
@@ -144,7 +163,7 @@ export default function AgentsPage() {
   )
 }
 
-function AgentCard({ agent, onChat }: { agent: any, onChat: () => void }) {
+function AgentCard({ agent, onChat }: { agent: AgentListItem; onChat: () => void }) {
   return (
     <div className="card card-hover p-6">
       <div className="flex items-start justify-between mb-4">
@@ -200,7 +219,7 @@ function CreateAgentModal({
   isLoading
 }: {
   onClose: () => void
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (data: CreateAgentInput) => Promise<void>
   isLoading: boolean
 }) {
   const [formData, setFormData] = useState({
@@ -305,4 +324,3 @@ function CreateAgentModal({
     </div>
   )
 }
-
