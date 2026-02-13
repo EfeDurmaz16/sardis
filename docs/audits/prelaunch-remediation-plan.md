@@ -11,8 +11,8 @@ Legend:
 - [x] Align Python quick-start with actual SDK API.
 - [x] Align TypeScript quick-start with actual SDK API.
 - [x] Remove hardcoded MCP tool count claims and source from runtime.
-- [ ] Rework competitor comparison language to defensible, sourced claims.
-- [ ] Update "What's New" to current factual state.
+- [x] Rework competitor comparison language to defensible, sourced claims.
+- [x] Update "What's New" to current factual state.
 - [ ] Validate all external links and badge targets in a network-enabled check.
 
 ## 2. Code Quality & Consistency

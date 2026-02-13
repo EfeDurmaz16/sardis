@@ -24,13 +24,13 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wal
 
 ---
 
-## What's New
+## What's New (Snapshot: 2026-02-13)
 
 - **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
-- **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups
-- **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented
-- **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
-- **Framework Examples** — OpenAI, LangChain, Vercel AI SDK, CrewAI integrations
+- **MCP Tooling** — `52` tools with definition/handler parity checks in CI/release scripts
+- **Protocol Surface** — AP2, TAP, UCP, A2A, x402 modules present and wired in package exports
+- **SDK + Docs Contract Tests** — Quick-start/examples now have smoke tests against real SDK methods
+- **Security Hardening** — production fail-closed checks for webhook signatures, CORS, and Redis-backed rate limiting
 
 ---
 
@@ -163,16 +163,15 @@ Sardis: Policy Check -> Retail Category BLOCKED
 
 ## Why Sardis?
 
-| Feature | Sardis | Skyfire | Payman | Locus |
-|---------|--------|---------|--------|-------|
-| **NL Policy Engine** | Core feature | Spending caps | Basic limits | Basic limits |
-| **MPC Wallets** | Yes (Turnkey) | Yes | No (custodial) | Unknown |
-| **Chains** | Base, Poly, ETH, Arb, OP | Polygon, Base | USDC + ACH | Base only |
-| **Virtual Cards** | Yes (Lithic) | No | No | No |
-| **MCP Server** | Zero-config (52 tools) | Yes | No | Demo only |
-| **Group Governance** | Yes | No | No | No |
+| Capability | Sardis Approach | Verifiable In-Repo Evidence |
+|---------|--------|-------|
+| **Policy-First Payments** | Natural language + structured spending policy enforcement before execution | `packages/sardis-core/src/sardis_v2_core/spending_policy.py` |
+| **Agent-Native Access** | MCP server + Python/TypeScript SDKs for agent frameworks | `packages/sardis-mcp-server/src/tools/index.ts`, `packages/sardis-sdk-python`, `packages/sardis-sdk-js` |
+| **Execution Rails** | On-chain settlement + fiat rails (cards / ramp connectors) behind policy checks | `packages/sardis-chain`, `packages/sardis-cards`, `packages/sardis-ramp`, `packages/sardis-checkout` |
+| **Governance + Controls** | Group budgets, holds/approvals, replay protection, and audit-oriented ledger flows | `packages/sardis-api/src/sardis_api/routers/groups.py`, `packages/sardis-api/src/sardis_api/routers/holds.py`, `packages/sardis-ledger` |
+| **Claim Verification** | Launch-facing counts validated via repeatable scripts | `scripts/release/readiness_check.sh`, `docs/audits/claims-evidence.md` |
 
-> **TL;DR:** Competitors build payment rails or identity layers. Sardis builds a **policy intelligence engine** with natural language interfaces — the only platform that prevents financial hallucination before it happens.
+> **Positioning TL;DR:** Sardis is designed as a policy and control plane for AI-agent payments, not only a wallet API or only a payment rail.
 
 ---
 
