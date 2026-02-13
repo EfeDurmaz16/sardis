@@ -52,8 +52,8 @@ Legend:
 - [x] Tighten CI lint/type gates (remove `continue-on-error` and permissive flags).
 - [x] Raise minimum coverage threshold from current baseline.
 - [x] Add smoke tests for quick-start and examples.
-- [ ] Confirm integration coverage for payment execution, policy enforcement, wallet lifecycle.
-- [ ] Confirm smart contract tests still pass after changes.
+- [x] Confirm integration coverage for payment execution, policy enforcement, wallet lifecycle.
+- [x] Confirm smart contract tests still pass after changes.
 
 ## 7. Documentation Accuracy
 - [x] Reconcile claims: tests count, chains count, tool count, package count, protocol count.

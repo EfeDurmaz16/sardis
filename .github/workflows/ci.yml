@@ -94,6 +94,12 @@ jobs:
       - name: Enforce coverage threshold
         run: |
           coverage report --fail-under=50
+
+      - name: Run critical-path integration smoke checks
+        env:
+          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
+          SARDIS_ENVIRONMENT: dev
+        run: bash scripts/release/critical_path_check.sh
       
       - name: Upload coverage
         uses: codecov/codecov-action@v5
@@ -146,6 +152,20 @@ jobs:
       - name: Enforce protocol coverage threshold
         run: |
           coverage report --fail-under=60
+
+  test-contracts:
+    name: Test Smart Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run smart contract tests
+        run: FOUNDRY_OFFLINE=true forge test --root contracts
 
   test-typescript-sdk:
     name: Test TypeScript SDK
