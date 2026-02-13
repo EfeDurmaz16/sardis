@@ -82,11 +82,12 @@ class TestIdempotencyBasic:
         response1 = await client.post("/api/v2/mandates/execute", json=payload1)
         response2 = await client.post("/api/v2/mandates/execute", json=payload2)
 
-        # Both should be processed (may succeed or fail based on policy/validation)
-        # but they should be treated as separate requests
+        # Both should be processed (or consistently rejected by auth/policy),
+        # but they should still be treated as separate requests.
         # 422 = validation error (e.g., wallet not found in test mode)
-        assert response1.status_code in (200, 400, 403, 422)
-        assert response2.status_code in (200, 400, 403, 422)
+        # 401 = API key/auth enforcement in hardened environments
+        assert response1.status_code in (200, 400, 401, 403, 422)
+        assert response2.status_code in (200, 400, 401, 403, 422)
 
     @pytest.mark.asyncio
     async def test_idempotency_key_header(self, client, test_wallet_id):
