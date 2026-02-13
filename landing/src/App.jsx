@@ -607,7 +607,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.terminal,
                 title: "Zero-Config MCP",
-                description: "One command to add 46 payment tools to Claude or Cursor. No setup required.",
+                description: "One command to add 52 payment tools to Claude or Cursor. No setup required.",
                 unique: false
               },
               {
@@ -869,7 +869,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 46 tools for payments, wallets, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 52 tools for payments, wallets, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }
@@ -1057,7 +1057,7 @@ const payment = await ramp.payMerchantFiat({
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { label: "ADOPTION", value: "3,500+", sub: "package installs (npm + PyPI) • 19 packages" },
-              { label: "MCP SERVER", value: "46 Tools", sub: "Live on npm • zero-config for Claude & Cursor" },
+              { label: "MCP SERVER", value: "52 Tools", sub: "Live on npm • zero-config for Claude & Cursor" },
               { label: "INFRASTRUCTURE", value: "5 Chains • 5 Protocols", sub: "AP2 • TAP • UCP • A2A • x402" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">

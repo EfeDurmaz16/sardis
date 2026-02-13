@@ -81,7 +81,7 @@
 > Open-core & developer-first:
 >
 > • 19 packages on npm + PyPI
-> • 46 MCP tools
+> • 52 MCP tools
 > • 5 protocols (AP2, TAP, UCP, A2A, x402)
 > • MIT licensed SDKs
 > • 5 lines of code to add payments to any agent
@@ -140,7 +140,7 @@ The MCP server works with any LLM (Claude, local models via Cursor, etc.):
 ```
 npx @sardis/mcp-server start
 ```
-46 tools, zero config. Your agent gets a wallet with policy enforcement.
+52 tools, zero config. Your agent gets a wallet with policy enforcement.
 
 Python SDK:
 ```python
@@ -213,7 +213,7 @@ Technical details:
 - Virtual cards via Lithic (pay anywhere Visa is accepted)
 - 5 chains (Base, Polygon, ETH, Arbitrum, Optimism)
 - 5 protocols (AP2, TAP, UCP, A2A, x402)
-- MCP server with 46 tools (zero-config for Claude/Cursor)
+- MCP server with 52 tools (zero-config for Claude/Cursor)
 - Group governance for multi-agent shared budgets
 
 Open-core: MIT licensed SDKs, 19 packages on npm + PyPI.
@@ -233,7 +233,7 @@ https://github.com/EfeDurmaz16/sardis
 >
 > **What's new since last update:**
 > - Group governance: shared budgets across multi-agent teams
-> - 46 MCP tools (up from 36)
+> - 52 MCP tools (up from 36)
 > - Virtual cards for fiat payments
 > - 5 protocols: AP2, TAP, UCP, A2A, x402
 >
