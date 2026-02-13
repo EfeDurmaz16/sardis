@@ -90,7 +90,7 @@ export function getAllToolNames(): string[] {
  * Tool categories for organization
  */
 export const toolCategories = {
-  wallet: ['sardis_get_wallet', 'sardis_get_balance', 'sardis_create_wallet', 'sardis_update_wallet_policy', 'sardis_list_wallets'],
+  wallet: ['sardis_get_wallet', 'sardis_get_balance', 'sardis_create_wallet', 'sardis_list_wallets'],
   payment: ['sardis_pay', 'sardis_get_transaction', 'sardis_list_transactions'],
   policy: ['sardis_check_policy', 'sardis_validate_limits', 'sardis_check_compliance'],
   hold: [

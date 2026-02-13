@@ -21,35 +21,11 @@ const CreateWalletSchema = z.object({
   }).optional().describe('Spending policy'),
 });
 
-const UpdatePolicySchema = z.object({
-  wallet_id: z.string().describe('Wallet ID to update'),
-  policy: z.object({
-    max_per_tx: z.string().optional(),
-    max_daily: z.string().optional(),
-    max_monthly: z.string().optional(),
-    allowed_vendors: z.array(z.string()).optional(),
-    blocked_vendors: z.array(z.string()).optional(),
-    blocked_categories: z.array(z.string()).optional(),
-    require_approval_above: z.string().optional(),
-  }).describe('New policy settings'),
-});
-
 const ListWalletsSchema = z.object({
   agent_id: z.string().optional().describe('Filter by agent ID'),
   chain: z.string().optional().describe('Filter by blockchain'),
   status: z.enum(['active', 'inactive']).optional().describe('Filter by status'),
   limit: z.number().optional().describe('Maximum wallets to return'),
-});
-
-const UpdateLimitsSchema = z.object({
-  wallet_id: z.string().describe('Wallet ID to update'),
-  limit_per_tx: z.number().optional().describe('Maximum per transaction'),
-  limit_total: z.number().optional().describe('Maximum total/daily limit'),
-});
-
-const ArchiveWalletSchema = z.object({
-  wallet_id: z.string().describe('Wallet ID to archive'),
-  reason: z.string().optional().describe('Reason for archiving'),
 });
 
 // Types
@@ -126,25 +102,8 @@ export const walletManagementToolDefinitions: ToolDefinition[] = [
   },
 ];
 
-// SECURITY: Blocked tool handler — returns an error directing users to the admin API.
-const blockedToolHandler = async (_args: unknown): Promise<ToolResult> => ({
-  content: [{
-    type: 'text',
-    text: JSON.stringify({
-      error: 'This operation has been disabled for AI agents for security reasons. '
-        + 'Policy and limit changes must be made via the admin dashboard or admin API.',
-    }),
-  }],
-  isError: true,
-});
-
 // Tool handlers
 export const walletManagementToolHandlers: Record<string, ToolHandler> = {
-  // SECURITY: Block mutation tools — agents must not modify their own policies/limits
-  sardis_update_wallet_policy: blockedToolHandler,
-  sardis_update_wallet_limits: blockedToolHandler,
-  sardis_archive_wallet: blockedToolHandler,
-
   sardis_create_wallet: async (args: unknown): Promise<ToolResult> => {
     const parsed = CreateWalletSchema.safeParse(args);
     if (!parsed.success) {
@@ -249,7 +208,6 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  // sardis_update_wallet_limits: REMOVED — blocked handler is defined above.
-  // sardis_archive_wallet: REMOVED — blocked handler is defined above.
-  // See security comment above sardis_update_wallet_policy for rationale.
+  // SECURITY: mutation tools remain intentionally unavailable to agents.
+  // Use admin API/dashboard for policy, limits, and archival operations.
 };

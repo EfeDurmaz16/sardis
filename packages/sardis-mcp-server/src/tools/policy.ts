@@ -514,15 +514,5 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  // SECURITY: sardis_get_rules handler removed — see tool definition comment above.
-  sardis_get_rules: async (_args: unknown): Promise<ToolResult> => ({
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        error: 'Policy rule details are not available to AI agents for security reasons. '
-          + 'Use sardis_check_policy to verify if a specific payment would be allowed.',
-      }),
-    }],
-    isError: true,
-  }),
+  // SECURITY: sardis_get_rules remains intentionally unavailable to agents.
 };
