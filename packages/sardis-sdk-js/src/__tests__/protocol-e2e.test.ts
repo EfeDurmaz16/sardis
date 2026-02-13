@@ -41,7 +41,7 @@ describe('E2E Protocol Flows', () => {
         headers: {
           'X-API-Key': 'test-api-key',
           'Content-Type': 'application/json',
-          'User-Agent': '@sardis/sdk/0.2.0',
+          'User-Agent': '@sardis/sdk/0.3.4',
         },
       },
     };

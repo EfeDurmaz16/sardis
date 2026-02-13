@@ -41,12 +41,13 @@ import {
   getWalletInfo,
   getWalletBalance,
 } from './tools/index.js';
+import { MCP_SERVER_VERSION } from './version.js';
 
 export async function createServer() {
   const server = new Server(
     {
       name: 'sardis-mcp-server',
-      version: '0.2.5',
+      version: MCP_SERVER_VERSION,
     },
     {
       capabilities: {
@@ -389,7 +390,7 @@ export async function runServer() {
   const config = getConfig();
 
   // Log configuration status
-  console.error('Sardis MCP Server v0.2.5 running on stdio');
+  console.error(`Sardis MCP Server v${MCP_SERVER_VERSION} running on stdio`);
   console.error(`Mode: ${config.mode}`);
   console.error(`API URL: ${config.apiUrl}`);
   console.error(`API Key configured: ${config.apiKey ? 'yes' : 'no'}`);

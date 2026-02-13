@@ -95,12 +95,11 @@
   "mcp": {
     "name": "sardis",
     "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
-    "version": "0.2.1",
+    "version": "0.2.7",
     "tools": [
       "sardis_get_wallet",
       "sardis_get_balance",
       "sardis_create_wallet",
-      "sardis_update_wallet_policy",
       "sardis_list_wallets",
       "sardis_pay",
       "sardis_get_transaction",

@@ -14,6 +14,7 @@ import path from 'node:path';
 
 import { runServer } from './index.js';
 import { getValidatedToolCount, toolCategories, validateToolRegistry } from './tools/index.js';
+import { MCP_SERVER_VERSION } from './version.js';
 
 const args = process.argv.slice(2);
 
@@ -37,7 +38,7 @@ function printHelp() {
   const categoryCount = Object.keys(toolCategories).length;
 
   console.log(`
-Sardis MCP Server v0.2.5
+Sardis MCP Server v${MCP_SERVER_VERSION}
 The Payment OS for the Agent Economy
 
 USAGE:
@@ -100,7 +101,7 @@ LEARN MORE:
 }
 
 function printVersion() {
-  console.log('Sardis MCP Server v0.2.5');
+  console.log(`Sardis MCP Server v${MCP_SERVER_VERSION}`);
 }
 
 function readArgValue(argv: string[], name: string): string | undefined {
@@ -152,7 +153,7 @@ async function apiRequestWithKey<T>(
     headers: {
       'X-API-Key': apiKey,
       'Content-Type': 'application/json',
-      'User-Agent': 'sardis-mcp-server/0.2.5',
+      'User-Agent': `sardis-mcp-server/${MCP_SERVER_VERSION}`,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -355,7 +356,7 @@ async function main() {
     if (isSandbox) {
       console.error('');
       console.error('╔══════════════════════════════════════════════════════════════╗');
-      console.error('║  Sardis MCP Server v0.2.5 — SANDBOX MODE                   ║');
+      console.error(`║  Sardis MCP Server v${MCP_SERVER_VERSION} — SANDBOX MODE                   ║`);
       console.error('║                                                             ║');
       console.error('║  All transactions are SIMULATED (no real funds move)        ║');
       console.error('║  Policy validation runs REAL logic                          ║');
@@ -368,7 +369,7 @@ async function main() {
       console.error('╚══════════════════════════════════════════════════════════════╝');
       console.error('');
     } else {
-      console.error('Sardis MCP Server v0.2.0 starting...');
+      console.error(`Sardis MCP Server v${MCP_SERVER_VERSION} starting...`);
       console.error('Mode: live');
       console.error(`Tools: ${toolCount} tools across ${categoryCount} categories`);
     }

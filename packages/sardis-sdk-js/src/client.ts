@@ -63,7 +63,7 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000;
 
 /** SDK version for User-Agent header */
-const SDK_VERSION = '0.2.0';
+const SDK_VERSION = '0.3.4';
 
 /**
  * Internal request configuration with retry tracking

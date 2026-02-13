@@ -5,6 +5,7 @@
  */
 
 import { getConfig } from './config.js';
+import { MCP_SERVER_VERSION } from './version.js';
 
 /**
  * Make an API request to Sardis
@@ -23,7 +24,7 @@ export async function apiRequest<T>(
     headers: {
       'X-API-Key': config.apiKey,
       'Content-Type': 'application/json',
-      'User-Agent': 'sardis-mcp-server/0.1.0',
+      'User-Agent': `sardis-mcp-server/${MCP_SERVER_VERSION}`,
       ...(paymentIdentity ? { 'X-Sardis-Payment-Identity': paymentIdentity } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
