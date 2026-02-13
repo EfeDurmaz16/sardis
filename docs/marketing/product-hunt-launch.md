@@ -14,7 +14,7 @@
 
 > Hey PH! I'm Efe, founder of Sardis.
 >
-> **The problem:** AI agents can now reason, browse, and code — but when they handle money, things go wrong fast. Retry loops that spend $10k instead of $100. Decimal errors. Agents confidently purchasing from the wrong merchant. We call this **financial hallucination**.
+> **The problem:** AI agents can now reason, browse, and code — but money handling has failure modes: retry loops that overspend, decimal normalization mistakes, and merchant/domain mismatches. We call this **financial hallucination**.
 >
 > **What we built:** Sardis gives AI agents non-custodial MPC wallets with natural language spending policies. Instead of writing code for spending rules, you just say: *"Max $100/day, only SaaS vendors, block weekends."*
 >
@@ -23,12 +23,12 @@
 > **What makes us different:**
 > - Natural language policy engine (not just spending caps)
 > - Non-custodial MPC wallets (Turnkey) — we never hold your keys
-> - Virtual cards via Lithic — agents can pay anywhere Visa is accepted
+> - Virtual cards via Lithic for card-rail spending controls
 > - 5 chains (Base, Polygon, Ethereum, Arbitrum, Optimism)
 > - MCP native — one command to add payments to Claude/Cursor
 > - Group governance — shared budgets across agent teams
 >
-> We're open-core: SDKs and MCP server are MIT licensed, 19 packages live on npm + PyPI, 52 MCP tools.
+> We're open-core: SDKs and MCP server are MIT licensed, 19 packages published across npm + PyPI, 52 MCP tools (see `docs/audits/claims-evidence.md`).
 >
 > Would love your feedback! Ask me anything about agent payments, MPC wallets, or the agent economy.
 
@@ -39,7 +39,7 @@
 - Non-custodial MPC wallets (Turnkey) — your keys, always
 - Natural language spending policies: "Max $100/day for SaaS only"
 - Financial hallucination firewall — blocks bad transactions before they execute
-- Virtual cards (Lithic) — agents pay anywhere Visa is accepted
+- Virtual cards (Lithic) for card-rail payments
 - 5 blockchain networks: Base, Polygon, Ethereum, Arbitrum, Optimism
 - MCP native: `npx @sardis/mcp-server start` — zero-config for Claude/Cursor
 - Group governance: shared budgets across multi-agent teams
@@ -110,7 +110,7 @@
 
 **Tuesday or Wednesday** — highest PH traffic days.
 
-**Why launch now:**
+**Why launch now (verified snapshot as of 2026-02-13):**
 - 19 packages live on npm + PyPI
 - 52 MCP tools working
 - 5 chains, 5 protocols
@@ -118,6 +118,6 @@
 - Group governance (differentiator)
 - Virtual cards + fiat rails
 - Landing page + docs complete
-- 404 commits of substance
+- Release-readiness checks are green (`bash scripts/release/readiness_check.sh`)
 
 Waiting longer gives diminishing returns. Launch, get feedback, iterate.

@@ -110,6 +110,12 @@ Add to your `claude_desktop_config.json`:
 
 **That's it.** Your agent now has a wallet with spending limits.
 
+### Simulation vs Production
+
+- **Default local mode:** quick-start flows are intended for simulation/sandbox development.
+- **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
+- **Proof commands:** run `bash scripts/release/readiness_check.sh` and `bash scripts/release/critical_path_check.sh` before production rollouts.
+
 ---
 
 ## How It Works

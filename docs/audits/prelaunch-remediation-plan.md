@@ -61,8 +61,8 @@ Legend:
 - [x] Add a central claims-evidence document with reproducible references.
 
 ## 8. Marketing & Launch Materials
-- [ ] Remove/replace unverifiable claims in launch assets.
-- [ ] Update product-hunt and social copy with verified metrics.
+- [x] Remove/replace unverifiable claims in launch assets.
+- [x] Update product-hunt and social copy with verified metrics.
 - [ ] Verify awesome-list targets and submission details (network-enabled run).
 
 ## 9. Infrastructure & Deployment
@@ -72,7 +72,7 @@ Legend:
 - [x] Ensure env var documentation matches actual runtime usage.
 
 ## 10. Investor Readiness
-- [ ] Separate demo/simulated defaults from production narrative.
-- [ ] Add objective proof points for all investor-facing claims.
-- [ ] Provide clone-and-run script that validates first-run experience.
-- [ ] Publish final remediation report with residual risks.
+- [x] Separate demo/simulated defaults from production narrative.
+- [x] Add objective proof points for all investor-facing claims.
+- [x] Provide clone-and-run script that validates first-run experience.
+- [x] Publish final remediation report with residual risks.
