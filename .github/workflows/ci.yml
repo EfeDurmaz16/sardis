@@ -14,7 +14,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       
@@ -28,10 +27,10 @@ jobs:
           pip install ruff mypy
       
       - name: Run Ruff
-        run: ruff check api sardis packages scripts tests --exit-zero
+        run: ruff check api sardis packages scripts tests
 
       - name: Run Ruff format check
-        run: ruff format --check api sardis packages scripts tests || true
+        run: ruff format --check api sardis packages scripts tests
 
       - name: Run mypy type checking
         run: |
@@ -46,8 +45,7 @@ jobs:
                --ignore-missing-imports \
                --no-strict-optional \
                --warn-unused-ignores \
-               --show-error-codes \
-               || echo "mypy found type issues - please fix"
+               --show-error-codes
 
       - name: Strict lint for protocol packages
         run: |
@@ -95,7 +93,7 @@ jobs:
       
       - name: Enforce coverage threshold
         run: |
-          coverage report --fail-under=40
+          coverage report --fail-under=50
       
       - name: Upload coverage
         uses: codecov/codecov-action@v5
@@ -328,3 +326,6 @@ jobs:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --only-verified
+
+      - name: Run repo security sanity checks
+        run: bash scripts/release/security_check.sh
