@@ -57,7 +57,7 @@ Legend:
 
 ## 7. Documentation Accuracy
 - [x] Reconcile claims: tests count, chains count, tool count, package count, protocol count.
-- [ ] Remove stale version references across README/landing/docs.
+- [x] Remove stale version references across README/landing/docs.
 - [x] Add a central claims-evidence document with reproducible references.
 
 ## 8. Marketing & Launch Materials

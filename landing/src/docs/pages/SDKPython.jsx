@@ -4,7 +4,7 @@ export default function DocsSDKPython() {
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-500">SDKS & TOOLS</span>
-          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">v0.6</span>
+          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">v0.3.3</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Python SDK</h1>
         <p className="text-xl text-muted-foreground">
