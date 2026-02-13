@@ -5,7 +5,7 @@ import WaitlistForm from '../../components/WaitlistForm';
 const posts = [
   {
     title: 'Sardis v0.8.4: Packages Live on npm & PyPI + Security Audit',
-    excerpt: 'All 18 Sardis packages are now publicly available on npm and PyPI. This release also includes a comprehensive 54-fix security audit covering auth, crypto, input validation, JWT, and more. The hosted API is launching next week for staging/testnet.',
+    excerpt: 'All 19 Sardis packages are now publicly available on npm and PyPI. This release also includes a comprehensive 54-fix security audit covering auth, crypto, input validation, JWT, and more. The hosted API is in private beta with staging/testnet access.',
     date: '2026-02-08',
     readTime: '5 min read',
     category: 'Release',
@@ -85,13 +85,13 @@ const posts = [
     slug: 'understanding-ap2',
   },
   {
-    title: 'MCP Server: 36+ Tools for AI Payments',
-    excerpt: 'Our MCP server has expanded from 4 tools to 36+. From checkout sessions to agent discovery, learn how to add comprehensive payment capabilities to Claude Desktop and Cursor without writing code.',
+    title: 'MCP Server: 46 Tools for AI Payments',
+    excerpt: 'Our MCP server expanded from 4 tools to full-stack payment operations. From checkout sessions to agent discovery, learn how to add comprehensive payment capabilities to Claude Desktop and Cursor without writing code.',
     date: '2026-01-18',
     readTime: '5 min read',
     category: 'Tutorial',
     featured: false,
-    slug: 'mcp-36-tools',
+    slug: 'mcp-46-tools',
   },
   {
     title: 'Introducing Sardis: Secure Payments for AI Agents',

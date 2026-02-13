@@ -975,7 +975,7 @@ const payment = await ramp.payMerchantFiat({
                     <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-[var(--sardis-orange)] font-mono">pypi.org/user/sardis →</a>
                   </div>
                 </div>
-                <CopyCommand command="pip install sardis-sdk" />
+                <CopyCommand command="pip install sardis" />
                 <CopyCommand command="pip install sardis-core" />
                 <CopyCommand command="pip install sardis-protocol" />
                 <div className="pt-3 border-t border-border">

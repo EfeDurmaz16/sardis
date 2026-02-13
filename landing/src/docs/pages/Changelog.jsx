@@ -2,9 +2,33 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.6',
+    date: '2026-02-13',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'improved',
+        items: [
+          'SardisClient convenience wrapper added to reduce SDK onboarding friction',
+          'Landing/docs claims synchronized around package count (19), chain count (5), and MCP tool count (46)',
+          'README and launch materials updated with validated link/badge checks',
+          'Landing production deployment completed and aliased to www.sardis.sh',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'Python SDK version constant aligned with package metadata (0.3.3 parity)',
+          'Release-readiness script now degrades gracefully when optional design-partner checklist file is absent',
+          'Launch documentation now records URL/badge validation outcomes and npm curl 403 caveat',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.5',
     date: '2026-02-11',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'security',
@@ -50,7 +74,7 @@ const releases = [
       {
         type: 'added',
         items: [
-          'Published all 14 Python packages to PyPI (sardis-sdk, sardis-core, sardis-protocol, sardis-chain, sardis-ledger, sardis-compliance, sardis-api, sardis-wallet, sardis-cards, sardis-cli, sardis-checkout, sardis-ramp, sardis-ucp, sardis-a2a)',
+          'Published all 15 Python packages to PyPI (sardis meta-package + sardis-sdk, sardis-core, sardis-protocol, sardis-chain, sardis-ledger, sardis-compliance, sardis-api, sardis-wallet, sardis-cards, sardis-cli, sardis-checkout, sardis-ramp, sardis-ucp, sardis-a2a)',
           'Published all 4 npm packages (@sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp)',
           'SDK installation section on landing page with early access messaging and package links',
           'Vercel SPA routing fix for /docs and all sub-routes',

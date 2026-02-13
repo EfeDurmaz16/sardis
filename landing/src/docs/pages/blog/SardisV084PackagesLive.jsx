@@ -38,7 +38,7 @@ export default function SardisV084PackagesLive() {
       </header>
 
       <p className="text-lg text-muted-foreground leading-relaxed">
-        Today we published all 18 Sardis packages to public registries. Every SDK, protocol implementation,
+        Today we published all 19 Sardis packages to public registries. Every SDK, protocol implementation,
         and tool is now installable with a single command. This release also includes the results of a
         comprehensive security audit: 54 fixes across 8 batches covering every layer of the stack.
       </p>
@@ -53,13 +53,14 @@ export default function SardisV084PackagesLive() {
       <h3>npm (4 packages)</h3>
       <ul>
         <li><code>@sardis/sdk</code> - TypeScript SDK for wallets, payments, policies, and holds</li>
-        <li><code>@sardis/mcp-server</code> - MCP server with 40+ payment tools for Claude and Cursor</li>
+        <li><code>@sardis/mcp-server</code> - MCP server with 46 payment tools for Claude and Cursor</li>
         <li><code>@sardis/ai-sdk</code> - Vercel AI SDK integration for agent payment flows</li>
         <li><code>@sardis/ramp</code> - Fiat on/off ramp integration (Onramper, Bridge)</li>
       </ul>
 
-      <h3>PyPI (14 packages)</h3>
+      <h3>PyPI (15 packages)</h3>
       <ul>
+        <li><code>sardis</code> - Meta-package (SDK + core + CLI)</li>
         <li><code>sardis-sdk</code> - Full Python SDK</li>
         <li><code>sardis-core</code> - Domain models, config, database layer</li>
         <li><code>sardis-protocol</code> - AP2/TAP mandate verification pipeline</li>
@@ -130,7 +131,7 @@ export default function SardisV084PackagesLive() {
       <div className="not-prose">
         <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
           <pre className="text-[var(--sardis-canvas)]">{`# Python
-pip install sardis-sdk
+pip install sardis
 
 # TypeScript
 npm install @sardis/sdk

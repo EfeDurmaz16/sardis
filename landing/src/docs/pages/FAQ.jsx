@@ -8,11 +8,11 @@ const faqs = [
     questions: [
       {
         q: 'What is Sardis?',
-        a: 'Sardis is the Payment OS for the Agent Economy. It provides a unified wallet abstraction combining non-custodial MPC wallets, fiat rails, and virtual cards—all governed by natural language spending policies. Sardis implements industry-standard protocols (AP2, UCP, A2A, TAP) for interoperability with the broader AI agent ecosystem.'
+        a: 'Sardis is the Payment OS for the Agent Economy. It provides a unified wallet abstraction combining non-custodial MPC wallets, fiat rails, and virtual cards—all governed by natural language spending policies. Sardis implements five core protocols (AP2, UCP, A2A, TAP, x402) for interoperability with the broader AI agent ecosystem.'
       },
       {
         q: 'What protocols does Sardis support?',
-        a: 'Sardis implements six protocols: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trust Anchor Protocol) - cryptographic identity verification; x402 for HTTP micropayments; and the OpenAI Agentic Commerce Protocol (ACP) for ChatGPT-native commerce.'
+        a: 'Sardis implements five core protocols: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trust Anchor Protocol) - cryptographic identity verification; and x402 for HTTP micropayments. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) compatibility for ChatGPT-native commerce flows.'
       },
       {
         q: 'Is Sardis custodial or non-custodial?',
@@ -67,11 +67,11 @@ const faqs = [
     questions: [
       {
         q: 'How do I integrate Sardis with Claude?',
-        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 40+ tools including payment, wallet, fiat, checkout, and agent discovery tools.'
+        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 46 tools including payment, wallet, fiat, checkout, and agent discovery tools.'
       },
       {
         q: 'Which AI frameworks does Sardis support?',
-        a: 'Sardis supports: Claude MCP (40+ tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
+        a: 'Sardis supports: Claude MCP (46 tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
       },
       {
         q: 'Can I use Sardis without any code?',

@@ -124,10 +124,10 @@ export default function Roadmap() {
     {
       version: 'v0.8.4',
       title: 'Public API & Dashboard Launch',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
-        { text: 'All 14 Python packages published to PyPI', done: true },
+        { text: 'All 15 Python packages published to PyPI (19 total across npm + PyPI)', done: true },
         { text: 'All 4 npm packages published (@sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp)', done: true },
         { text: 'Comprehensive security audit (54 fixes across 8 batches)', done: true },
         { text: 'JWT authentication migrated to PyJWT', done: true },
@@ -136,8 +136,8 @@ export default function Roadmap() {
         { text: 'Goal drift detection — intent vs. payment scope mismatch blocking', done: true },
         { text: 'Public staging API deployment (Cloud Run / Vercel)', done: true },
         { text: 'Dashboard UI deployment for testnet', done: true },
-        { text: 'API key self-service provisioning', done: false },
-        { text: 'Public API documentation (Swagger/OpenAPI)', done: false },
+        { text: 'API key self-service provisioning', done: true },
+        { text: 'Public API documentation (Swagger/OpenAPI)', done: true },
       ],
     },
     {
@@ -219,6 +219,20 @@ export default function Roadmap() {
       ],
     },
     {
+      version: 'v0.8.6',
+      title: 'Launch Readiness & Documentation Sync',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'SardisClient convenience wrapper shipped for simpler SDK onboarding', done: true },
+        { text: 'Landing/docs claims synchronized (46 MCP tools, 5 chains, 19 packages)', done: true },
+        { text: 'README + launch material link/badge validation recorded', done: true },
+        { text: 'Python SDK version parity guard enforced in release checks', done: true },
+        { text: 'Release-readiness script hardened for missing optional checklist files', done: true },
+        { text: 'Awesome-list submission target activity verification pass', done: false },
+      ],
+    },
+    {
       version: 'v0.9.0',
       title: 'Enterprise Features',
       status: 'upcoming',
@@ -260,7 +274,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 9, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 10, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

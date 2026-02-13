@@ -18,12 +18,12 @@ export default function DocsSDKPython() {
         </h2>
         <div className="not-prose">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm">
-            <div className="text-muted-foreground"># Core SDK</div>
-            <div className="text-[var(--sardis-orange)]">$ pip install sardis-sdk</div>
+            <div className="text-muted-foreground"># Meta package (recommended)</div>
+            <div className="text-[var(--sardis-orange)]">$ pip install sardis</div>
             <div className="text-muted-foreground mt-3"># With fiat rails support</div>
-            <div className="text-[var(--sardis-orange)]">$ pip install sardis-sdk sardis-ramp</div>
+            <div className="text-[var(--sardis-orange)]">$ pip install sardis sardis-ramp</div>
             <div className="text-muted-foreground mt-3"># or with uv</div>
-            <div className="text-[var(--sardis-orange)]">$ uv add sardis-sdk sardis-ramp</div>
+            <div className="text-[var(--sardis-orange)]">$ uv add sardis sardis-ramp</div>
           </div>
         </div>
       </section>

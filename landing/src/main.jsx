@@ -107,6 +107,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/policy-engine-deep-dive" element={<PolicyEngineDeepDive />} />
           <Route path="blog/sardis-v0-5-protocols" element={<SardisV05Protocols />} />
           <Route path="blog/understanding-ap2" element={<UnderstandingAP2 />} />
+          <Route path="blog/mcp-46-tools" element={<MCP36Tools />} />
           <Route path="blog/mcp-36-tools" element={<MCP36Tools />} />
           <Route path="blog/why-sardis" element={<WhySardis />} />
           <Route path="blog/fiat-rails" element={<FiatRails />} />

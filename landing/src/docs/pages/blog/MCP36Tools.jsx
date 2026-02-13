@@ -23,7 +23,7 @@ export default function MCP36Tools() {
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-5 leading-tight">
-          MCP Server: 40+ Tools for AI Payments
+          MCP Server: 46 Tools for AI Payments
         </h1>
         <div className="flex items-center gap-5 text-sm text-muted-foreground font-mono">
           <span className="flex items-center gap-1.5">
@@ -40,7 +40,7 @@ export default function MCP36Tools() {
       {/* Content */}
       <div className="prose prose-invert max-w-none prose-p:leading-7 prose-li:leading-7">
         <p className="lead text-xl text-muted-foreground leading-8">
-          Our MCP server has grown from 4 tools to over 40. From fiat on-ramps to virtual cards,
+          Our MCP server has grown from 4 tools to 46. From fiat on-ramps to virtual cards,
           learn how to give Claude or Cursor complete payment capabilities without writing any code.
         </p>
 
@@ -50,7 +50,7 @@ export default function MCP36Tools() {
           get balance, make payment, list transactions, and request approval.
         </p>
         <p>
-          Today, we're shipping 40+ tools that cover the entire payment lifecycle—including
+          Today, we're shipping 46 tools that cover the entire payment lifecycle—including
           the new Fiat Rails (v0.6) for bank on-ramp/off-ramp and Virtual Cards via Lithic.
           Your AI agent can now manage wallets, fund from banks, issue virtual cards, and
           pay anywhere Visa is accepted.
@@ -75,7 +75,7 @@ export default function MCP36Tools() {
           </pre>
         </div>
 
-        <p>Restart your app, and you now have 40+ payment tools available.</p>
+        <p>Restart your app, and you now have 46 payment tools available.</p>
 
         <h2>Tool Categories</h2>
 
