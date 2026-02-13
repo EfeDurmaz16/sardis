@@ -34,7 +34,7 @@ Legend:
 - [x] Run dependency CVE checks in CI (`pip-audit`, `npm audit` or equivalent).
 
 ## 4. SDK Accuracy
-- [ ] Reconcile `sardis` root exports with documented API.
+- [x] Reconcile `sardis` root exports with documented API.
 - [x] Fix Python SDK version constant mismatch.
 - [x] Fix TypeScript SDK internal version constant mismatch.
 - [x] Fix all broken examples in `examples/` to use real SDK methods.
