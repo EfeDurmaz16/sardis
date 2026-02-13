@@ -13,6 +13,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { runServer } from './index.js';
+import { getValidatedToolCount, toolCategories, validateToolRegistry } from './tools/index.js';
 
 const args = process.argv.slice(2);
 
@@ -32,6 +33,9 @@ interface InitOptions {
 }
 
 function printHelp() {
+  const toolCount = getValidatedToolCount();
+  const categoryCount = Object.keys(toolCategories).length;
+
   console.log(`
 Sardis MCP Server v0.2.5
 The Payment OS for the Agent Economy
@@ -44,7 +48,7 @@ USAGE:
 
 DESCRIPTION:
   Sardis MCP Server enables AI agents to execute secure payments
-  using Model Context Protocol. It exposes 46 tools across 10 categories:
+  using Model Context Protocol. It exposes ${toolCount} tools across ${categoryCount} categories:
 
   Wallet (5):     sardis_get_wallet, sardis_get_balance, sardis_create_wallet,
                   sardis_update_wallet_policy, sardis_list_wallets
@@ -342,6 +346,9 @@ async function main() {
   }
 
   if (args[0] === 'start' || args.length === 0) {
+    const registryValidation = validateToolRegistry();
+    const toolCount = registryValidation.definitionCount;
+    const categoryCount = Object.keys(toolCategories).length;
     const mode = process.env.SARDIS_MODE || 'simulated';
     const isSandbox = mode === 'simulated';
 
@@ -352,7 +359,9 @@ async function main() {
       console.error('║                                                             ║');
       console.error('║  All transactions are SIMULATED (no real funds move)        ║');
       console.error('║  Policy validation runs REAL logic                          ║');
-      console.error('║  46 tools available across 10 categories                    ║');
+      console.error(
+        `║  ${String(toolCount).padEnd(2, ' ')} tools available across ${String(categoryCount).padEnd(2, ' ')} categories                ║`
+      );
       console.error('║                                                             ║');
       console.error('║  Set SARDIS_API_KEY + SARDIS_MODE=live for real txns        ║');
       console.error('║  Try: sardis_sandbox_demo for a guided walkthrough          ║');
@@ -361,7 +370,13 @@ async function main() {
     } else {
       console.error('Sardis MCP Server v0.2.0 starting...');
       console.error('Mode: live');
-      console.error('Tools: 46 tools across 10 categories');
+      console.error(`Tools: ${toolCount} tools across ${categoryCount} categories`);
+    }
+
+    if (!registryValidation.isValid) {
+      console.error(
+        `Warning: tool registry mismatch (definitions=${registryValidation.definitionCount}, handlers=${registryValidation.handlerCount})`
+      );
     }
     console.error('Ready. Waiting for MCP client connection...');
     await runServer();
