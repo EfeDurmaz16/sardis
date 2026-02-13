@@ -6,12 +6,12 @@ This package provides the REST API for the Sardis payment infrastructure:
 - Ledger queries and compliance feeds
 - Agent management and policies
 
-Version: 0.1.0
+Version: 0.2.2
 """
 
 from .main import create_app
 
-__version__ = "0.1.0"
+__version__ = "0.2.2"
 
 __all__ = [
     "__version__",

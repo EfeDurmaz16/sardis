@@ -1,6 +1,6 @@
 """Core domain primitives shared across Sardis services.
 
-Version: 0.1.0
+Version: 0.2.3
 
 This package provides the foundational components for the Sardis payment
 infrastructure, including:
@@ -411,4 +411,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.3"

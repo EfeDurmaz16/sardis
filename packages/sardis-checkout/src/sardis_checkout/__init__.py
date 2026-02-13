@@ -277,4 +277,4 @@ __all__ = [
     "DEFAULT_PAYMENT_LINK_EXPIRATION_HOURS",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"

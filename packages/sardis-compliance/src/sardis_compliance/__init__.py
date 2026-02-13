@@ -2,7 +2,7 @@
 
 Sardis Compliance - KYC, Sanctions, PEP, Risk Scoring, and Reporting.
 
-Version: 0.2.0
+Version: 0.3.2
 """
 
 from .checks import (
@@ -305,4 +305,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.2"

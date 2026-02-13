@@ -4,28 +4,46 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY_SDK_DIR="$ROOT_DIR/packages/sardis-sdk-python"
 
-echo "[1/5] Checking Python SDK version consistency"
-PYPROJECT_VERSION="$(python3 - <<'PY'
+echo "[1/5] Checking Python package version consistency"
+python3 - <<'PY'
+import re
 import tomllib
 from pathlib import Path
-data = tomllib.loads(Path("packages/sardis-sdk-python/pyproject.toml").read_text())
-print(data["project"]["version"])
+
+errors = []
+checked = 0
+
+for pyproject in sorted(Path("packages").glob("*/pyproject.toml")):
+    data = tomllib.loads(pyproject.read_text())
+    project = data.get("project", {})
+    name = project.get("name")
+    version = project.get("version")
+    if not name or not version:
+        continue
+
+    src_dir = pyproject.parent / "src"
+    version_files = []
+    if src_dir.exists():
+        for init_file in src_dir.rglob("__init__.py"):
+            match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', init_file.read_text())
+            if match:
+                version_files.append((init_file, match.group(1)))
+
+    for init_file, init_version in version_files:
+        checked += 1
+        if init_version != version:
+            errors.append(
+                f"{name}: pyproject={version} vs {init_file.as_posix()}={init_version}"
+            )
+
+if errors:
+    print("Version mismatches detected:")
+    for err in errors:
+        print(f"  - {err}")
+    raise SystemExit(1)
+
+print(f"Version consistency OK ({checked} package __init__ files checked).")
 PY
-)"
-INIT_VERSION="$(python3 - <<'PY'
-from pathlib import Path
-text = Path("packages/sardis-sdk-python/src/sardis_sdk/__init__.py").read_text()
-needle = '__version__ = "'
-start = text.index(needle) + len(needle)
-end = text.index('"', start)
-print(text[start:end])
-PY
-)"
-if [[ "$PYPROJECT_VERSION" != "$INIT_VERSION" ]]; then
-  echo "Version mismatch: pyproject=$PYPROJECT_VERSION __init__=$INIT_VERSION"
-  exit 1
-fi
-echo "Version OK: $PYPROJECT_VERSION"
 
 echo "[2/5] Running Python SDK test suite"
 python3 -m pytest -q "$PY_SDK_DIR/tests"

@@ -10,7 +10,7 @@ from .ramp_types import (
     FundingMethod,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 __all__ = [
     "SardisFiatRamp",
     "FundingResult",

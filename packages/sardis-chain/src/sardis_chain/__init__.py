@@ -7,7 +7,7 @@ This package provides the blockchain execution layer for stablecoin operations:
 - Nonce management and confirmation tracking
 - MEV protection and deposit monitoring
 
-Version: 0.2.0
+Version: 0.3.2
 """
 
 from .config import (
@@ -77,7 +77,7 @@ from .logging_utils import (
     log_operation,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.2"
 
 __all__ = [
     # Version

@@ -38,27 +38,27 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-sdk>=0.3",
-    "sardis-core>=0.3",
-    "sardis-cli>=0.1",
+    "sardis-sdk>=0.3.3",
+    "sardis-core>=0.2.3",
+    "sardis-cli>=0.1.3",
     "pydantic>=2.6",
     "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
-chain = ["sardis-chain>=0.3"]
-compliance = ["sardis-compliance>=0.3"]
-ledger = ["sardis-ledger>=0.3"]
-wallet = ["sardis-wallet>=0.3"]
-cards = ["sardis-cards>=0.3"]
-ramp = ["sardis-ramp>=0.1"]
-api = ["sardis-api>=0.3"]
+chain = ["sardis-chain>=0.3.2"]
+compliance = ["sardis-compliance>=0.3.2"]
+ledger = ["sardis-ledger>=0.4.2"]
+wallet = ["sardis-wallet>=0.2.2"]
+cards = ["sardis-cards>=0.2.2"]
+ramp = ["sardis-ramp>=0.1.2"]
+api = ["sardis-api>=0.2.2"]
 protocols = [
-    "sardis-protocol>=0.1",
-    "sardis-a2a>=0.1",
-    "sardis-ucp>=0.1",
+    "sardis-protocol>=0.1.3",
+    "sardis-a2a>=0.1.3",
+    "sardis-ucp>=0.1.3",
 ]
-checkout = ["sardis-checkout>=0.1"]
+checkout = ["sardis-checkout>=0.2.2"]
 all = [
     "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout]",
 ]
@@ -101,7 +101,6 @@ dev = [
     "mypy>=1.8",
     "ruff>=0.2",
 ]
-
 
 
 
