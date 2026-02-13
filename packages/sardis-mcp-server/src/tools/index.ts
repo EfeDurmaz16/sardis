@@ -155,6 +155,56 @@ export function getToolCount(): number {
   return allToolDefinitions.length;
 }
 
+export type ToolRegistryValidationResult = {
+  definitionCount: number;
+  handlerCount: number;
+  isValid: boolean;
+  missingHandlersForDefinitions: string[];
+  missingDefinitionsForHandlers: string[];
+  duplicateDefinitions: string[];
+};
+
+/**
+ * Validate tool registry consistency between definitions and handlers.
+ *
+ * This is the authoritative source for all "tool count" claims in docs/CLI.
+ */
+export function validateToolRegistry(): ToolRegistryValidationResult {
+  const definitionNames = allToolDefinitions.map((d) => d.name);
+  const definitionSet = new Set(definitionNames);
+  const handlerNames = Object.keys(allToolHandlers);
+  const handlerSet = new Set(handlerNames);
+
+  const duplicateDefinitions = definitionNames.filter(
+    (name, idx) => definitionNames.indexOf(name) !== idx
+  );
+
+  const missingHandlersForDefinitions = definitionNames.filter(
+    (name) => !handlerSet.has(name)
+  );
+  const missingDefinitionsForHandlers = handlerNames.filter(
+    (name) => !definitionSet.has(name)
+  );
+
+  const isValid =
+    duplicateDefinitions.length === 0 &&
+    missingHandlersForDefinitions.length === 0 &&
+    missingDefinitionsForHandlers.length === 0;
+
+  return {
+    definitionCount: definitionNames.length,
+    handlerCount: handlerNames.length,
+    isValid,
+    missingHandlersForDefinitions,
+    missingDefinitionsForHandlers,
+    duplicateDefinitions,
+  };
+}
+
+export function getValidatedToolCount(): number {
+  return validateToolRegistry().definitionCount;
+}
+
 /**
  * Get tool summary for documentation
  */
