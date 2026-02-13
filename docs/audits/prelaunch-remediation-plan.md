@@ -26,7 +26,7 @@ Legend:
 - [~] Confirm no hardcoded secrets in tracked files with repeatable scanning.
 - [ ] Align env variable docs with runtime config names.
 - [ ] Review and harden API auth defaults (dev vs prod behavior).
-- [~] Verify webhook signature checks are fail-closed for all providers.
+- [x] Verify webhook signature checks are fail-closed for all providers.
 - [ ] Validate SQL query composition safety in all dynamic query builders.
 - [ ] Confirm production rate limiting hard-requires Redis.
 - [ ] Remove insecure cryptography placeholders from wallet modules.
