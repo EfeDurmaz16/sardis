@@ -2,8 +2,62 @@ import { useMemo, useState } from 'react'
 import { CheckCircle2, Copy, Sparkles, XCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { agentApi, demoApi } from '../api/client'
+import { getErrorMessage } from '../utils/errors'
 
 type StepStatus = 'idle' | 'running' | 'done' | 'error'
+
+type AgentWithAddress = {
+  name?: string
+  agent_id?: string
+  external_id?: string
+  wallet_id?: string
+  addresses?: Record<string, string>
+}
+
+type DemoWallet = {
+  wallet_id: string
+  addresses: Record<string, string>
+  card_id?: string
+  id?: string
+}
+
+type DemoPolicy = {
+  policy_id?: string
+  limit_per_tx?: string
+  limit_total?: string
+}
+
+type DemoCard = {
+  card_id?: string
+  cardId?: string
+  id?: string
+  status?: string
+}
+
+type DemoPurchaseResult = {
+  policy?: {
+    allowed?: boolean
+    reason?: string
+  }
+  transaction?: {
+    transaction_id?: string
+    amount?: string
+    currency?: string
+  }
+  card?: {
+    status?: string
+    provider_card_id?: string
+  }
+}
+
+type DemoTransaction = {
+  transaction_id: string
+  status?: string
+  merchant_name?: string
+  merchant_category?: string
+  amount?: string
+  currency?: string
+}
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -92,22 +146,22 @@ export default function DemoPage() {
   const [agentExternalId, setAgentExternalId] = useState<string>('')
   const [walletStatus, setWalletStatus] = useState<StepStatus>('idle')
   const [walletError, setWalletError] = useState<string>('')
-  const [wallet, setWallet] = useState<any>(null)
+  const [wallet, setWallet] = useState<DemoWallet | null>(null)
 
   const [policyText, setPolicyText] = useState('Max $100 per transaction, block gambling')
   const [policyStatus, setPolicyStatus] = useState<StepStatus>('idle')
   const [policyError, setPolicyError] = useState<string>('')
-  const [policy, setPolicy] = useState<any>(null)
+  const [policy, setPolicy] = useState<DemoPolicy | null>(null)
 
   const [cardStatus, setCardStatus] = useState<StepStatus>('idle')
   const [cardError, setCardError] = useState<string>('')
-  const [card, setCard] = useState<any>(null)
+  const [card, setCard] = useState<DemoCard | null>(null)
 
   const [purchaseAmount, setPurchaseAmount] = useState('25.00')
   const [purchaseMcc, setPurchaseMcc] = useState('7995')
   const [purchaseStatus, setPurchaseStatus] = useState<StepStatus>('idle')
   const [purchaseError, setPurchaseError] = useState<string>('')
-  const [purchaseResult, setPurchaseResult] = useState<any>(null)
+  const [purchaseResult, setPurchaseResult] = useState<DemoPurchaseResult | null>(null)
 
   const merchantPresets = [
     { mcc: '7995', name: 'Demo Casino', label: 'Gambling', category: 'gambling' },
@@ -121,7 +175,7 @@ export default function DemoPage() {
 
   const [txStatus, setTxStatus] = useState<StepStatus>('idle')
   const [txError, setTxError] = useState<string>('')
-  const [transactions, setTransactions] = useState<any[]>([])
+  const [transactions, setTransactions] = useState<DemoTransaction[]>([])
 
   const walletId = wallet?.wallet_id || wallet?.card_id || wallet?.id
   const cardId = card?.card_id || card?.cardId || card?.id
@@ -179,8 +233,8 @@ export default function DemoPage() {
                   })
                   setApiKey(res.key)
                   setBootstrapStatus('done')
-                } catch (e: any) {
-                  setBootstrapError(e?.message || 'Bootstrap failed')
+                } catch (error: unknown) {
+                  setBootstrapError(getErrorMessage(error, 'Bootstrap failed'))
                   setBootstrapStatus('error')
                 }
               }}
@@ -224,7 +278,7 @@ export default function DemoPage() {
                 setWalletStatus('running')
                 try {
                   // Create agent with wallet (create_wallet: true creates a basic wallet automatically)
-                  let agent: any
+                  let agent: AgentWithAddress | undefined
                   try {
                     agent = await agentApi.create({
                       name: agentId,
@@ -235,7 +289,7 @@ export default function DemoPage() {
                   } catch {
                     // Agent may already exist — fetch it
                     const agents = await agentApi.list()
-                    agent = agents.find((a: any) => a.name === agentId || a.agent_id === agentId)
+                    agent = agents.find((existingAgent) => existingAgent.name === agentId || existingAgent.agent_id === agentId)
                   }
                   // Store the real external_id so policy apply uses the correct agent
                   const realId = agent?.agent_id || agent?.external_id || agentId
@@ -246,8 +300,8 @@ export default function DemoPage() {
                     setWallet({ wallet_id: realId, addresses: {} })
                   }
                   setWalletStatus('done')
-                } catch (e: any) {
-                  setWalletError(e?.message || 'Agent/wallet creation failed')
+                } catch (error: unknown) {
+                  setWalletError(getErrorMessage(error, 'Agent/wallet creation failed'))
                   setWalletStatus('error')
                 }
               }}
@@ -297,10 +351,10 @@ export default function DemoPage() {
                 setPolicyStatus('running')
                 try {
                   const res = await demoApi.applyPolicy({ agent_id: agentExternalId || agentId, natural_language: policyText })
-                  setPolicy(res)
+                  setPolicy(res as DemoPolicy)
                   setPolicyStatus('done')
-                } catch (e: any) {
-                  setPolicyError(e?.message || 'Policy apply failed')
+                } catch (error: unknown) {
+                  setPolicyError(getErrorMessage(error, 'Policy apply failed'))
                   setPolicyStatus('error')
                 }
               }}
@@ -345,10 +399,10 @@ export default function DemoPage() {
                 setCardStatus('running')
                 try {
                   const res = await demoApi.issueCard({ wallet_id: wallet.wallet_id, limit_per_tx: '100.00' })
-                  setCard(res)
+                  setCard(res as DemoCard)
                   setCardStatus('done')
-                } catch (e: any) {
-                  setCardError(e?.message || 'Card issue failed')
+                } catch (error: unknown) {
+                  setCardError(getErrorMessage(error, 'Card issue failed'))
                   setCardStatus('error')
                 }
               }}
@@ -432,18 +486,18 @@ export default function DemoPage() {
                     merchant_name: selectedMerchant.name,
                     mcc_code: purchaseMcc,
                   })
-                  setPurchaseResult(res)
+                  setPurchaseResult(res as DemoPurchaseResult)
                   setPurchaseStatus('done')
                   // Auto-refresh transaction history
                   try {
                     const list = await demoApi.listCardTransactions(card.card_id, 50)
-                    setTransactions(list)
+                    setTransactions(list as DemoTransaction[])
                     setTxStatus('done')
                   } catch {
                     // silent — user can still click Refresh manually
                   }
-                } catch (e: any) {
-                  setPurchaseError(e?.message || 'Simulation failed')
+                } catch (error: unknown) {
+                  setPurchaseError(getErrorMessage(error, 'Simulation failed'))
                   setPurchaseStatus('error')
                 }
               }}
@@ -515,10 +569,10 @@ export default function DemoPage() {
               setTxStatus('running')
               try {
                 const list = await demoApi.listCardTransactions(card.card_id, 50)
-                setTransactions(list)
+                setTransactions(list as DemoTransaction[])
                 setTxStatus('done')
-              } catch (e: any) {
-                setTxError(e?.message || 'Failed to load transactions')
+              } catch (error: unknown) {
+                setTxError(getErrorMessage(error, 'Failed to load transactions'))
                 setTxStatus('error')
               }
             }}
@@ -553,7 +607,7 @@ export default function DemoPage() {
                   </td>
                 </tr>
               ) : (
-                transactions.map((t: any) => (
+                transactions.map((t) => (
                   <tr key={t.transaction_id} className="bg-dark-300/20">
                     <td className="px-4 py-3">
                       <span
@@ -583,4 +637,3 @@ export default function DemoPage() {
     </div>
   )
 }
-
