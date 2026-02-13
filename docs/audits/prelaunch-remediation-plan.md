@@ -42,7 +42,7 @@ Legend:
 - [x] Reconcile MCP tool definition/handler count mismatches.
 
 ## 5. Package Publishing Readiness
-- [ ] Ensure every publishable package has complete metadata.
+- [x] Ensure every publishable package has complete metadata.
 - [x] Resolve `workspace:` dependency for npm publish compatibility.
 - [x] Synchronize package versions and internal version constants.
 - [x] Add missing per-package LICENSE files.

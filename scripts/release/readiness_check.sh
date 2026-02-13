@@ -37,6 +37,11 @@ if ! bash scripts/release/version_consistency_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating package metadata and licenses"
+if ! bash scripts/release/package_metadata_check.sh; then
+  failures=$((failures + 1))
+fi
+
 tmp_pytest="$(mktemp)"
 trap 'rm -f "$tmp_pytest"' EXIT
 

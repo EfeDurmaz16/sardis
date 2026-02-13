@@ -16,6 +16,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | `Env docs match runtime usage` | `.env.example` | `bash scripts/release/env_doc_check.sh` | `documented all runtime env vars (runtime=74, documented=97)` |
 | `SDK versions are metadata-consistent` | `packages/sardis-sdk-python/pyproject.toml`, `packages/sardis-sdk-js/package.json` | `bash scripts/release/version_consistency_check.sh` | `root=0.3.1`, `python-sdk=0.3.3`, `ts-sdk=0.3.4` all matched constants |
 | `Dependency CVE checks enforced in CI` | `.github/workflows/ci.yml` | `bash scripts/release/dependency_audit.sh` | CI `security` job runs `pip-audit` + `pnpm audit --audit-level high --prod` |
+| `Publishable package metadata is complete` | `packages/*/pyproject.toml`, `packages/*/package.json` | `bash scripts/release/package_metadata_check.sh` | pyproject/package.json required fields and per-package `LICENSE` files all validated |
 | `Critical path coverage exists for payment/policy/wallet lifecycle` | `tests/test_protocol_stack_integration.py`, `tests/test_cross_tenant_isolation.py`, `tests/integration/test_full_scenario.py` | `bash scripts/release/critical_path_check.sh` | Targeted smoke suite passes and is wired into CI |
 | `Smart contract tests pass post-remediation` | `contracts/test/*.t.sol` | `FOUNDRY_OFFLINE=true forge test --root contracts` | `91 passed, 0 failed, 0 skipped` |
 
