@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 from decimal import Decimal
 from typing import Optional, List, Any
 import uuid
@@ -81,6 +82,7 @@ def create_cards_router(
     card_repo,
     card_provider,
     webhook_secret: str | None = None,
+    environment: str | None = None,
     offramp_service=None,
     chain_executor=None,
     wallet_repo=None,
@@ -529,6 +531,13 @@ def create_cards_router(
     @r.post("/webhooks", status_code=status.HTTP_200_OK)
     async def receive_card_webhook(request: Request):
         body = await request.body()
+        effective_env = (environment or os.getenv("SARDIS_ENVIRONMENT", "dev")).strip().lower()
+
+        if not webhook_secret and effective_env in {"prod", "production"}:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="LITHIC_WEBHOOK_SECRET is required in production",
+            )
 
         if webhook_secret:
             signature = request.headers.get("x-lithic-hmac")

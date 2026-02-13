@@ -593,6 +593,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             card_repo,
             card_provider,
             webhook_secret,
+            environment=settings.environment,
             offramp_service=offramp_service,
             chain_executor=chain_exec,
             wallet_repo=wallet_repo,

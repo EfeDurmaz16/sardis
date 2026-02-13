@@ -100,6 +100,20 @@ def app_with_cards(mock_card_repo, mock_card_provider):
     return app
 
 
+@pytest.fixture
+def app_with_cards_prod_no_secret(mock_card_repo, mock_card_provider):
+    cards_mod = _load_cards_module("cards_router_prod")
+    create_cards_router = cards_mod.create_cards_router
+    app = FastAPI()
+    router = create_cards_router(
+        card_repo=mock_card_repo,
+        card_provider=mock_card_provider,
+        environment="prod",
+    )
+    app.include_router(router, prefix="/api/v2/cards")
+    return app
+
+
 def test_create_card_calls_provider_and_persists(app_with_cards, mock_card_provider, mock_card_repo):
     client = TestClient(app_with_cards)
     resp = client.post("/api/v2/cards", json={
@@ -182,3 +196,9 @@ def test_webhook_no_secret_accepts_all(app_with_cards):
     client = TestClient(app_with_cards)
     resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"}, headers=_auth_headers())
     assert resp.status_code == 200
+
+
+def test_webhook_no_secret_rejected_in_production(app_with_cards_prod_no_secret):
+    client = TestClient(app_with_cards_prod_no_secret)
+    resp = client.post("/api/v2/cards/webhooks", json={"event_type": "test"}, headers=_auth_headers())
+    assert resp.status_code == 500
