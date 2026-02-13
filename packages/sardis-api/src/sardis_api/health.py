@@ -28,7 +28,7 @@ def create_health_router(
     health_router = APIRouter(tags=["health"])
 
     @health_router.get("/")
-    async def root():
+    def root():
         """Root endpoint with service information."""
         return {
             "service": "Sardis API",
@@ -39,12 +39,12 @@ def create_health_router(
         }
 
     @health_router.get("/live")
-    async def liveness():
+    def liveness():
         """Kubernetes liveness probe."""
         return {"status": "alive"}
 
     @health_router.get("/ready")
-    async def readiness():
+    def readiness():
         """Kubernetes readiness probe."""
         from fastapi import Request
 
@@ -93,7 +93,7 @@ def create_health_router(
             else:
                 components["database"]["status"] = "in_memory"
                 checks_passed += 1
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
             logger.warning(f"Database health check failed: {e}")
             components["database"]["status"] = "disconnected"
             components["database"]["error"] = str(e)
@@ -111,7 +111,7 @@ def create_health_router(
                 components["cache"]["status"] = "in_memory"
                 components["cache"]["type"] = "in_memory"
             checks_passed += 1
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.warning(f"Cache health check failed: {e}")
             components["cache"]["status"] = "error"
             components["cache"]["error"] = str(e)
@@ -138,7 +138,7 @@ def create_health_router(
                         components["stripe"]["status"] = "auth_error"
                         components["stripe"]["http_status"] = resp.status_code
                         overall_healthy = False
-            except Exception as e:
+            except (ImportError, OSError, TimeoutError, RuntimeError, ValueError) as e:
                 logger.warning(f"Stripe health check failed: {e}")
                 components["stripe"]["status"] = "unreachable"
                 components["stripe"]["error"] = str(e)
@@ -162,7 +162,7 @@ def create_health_router(
                         (time.time() - turnkey_start) * 1000
                     )
                     checks_passed += 1
-            except Exception as e:
+            except (ImportError, OSError, TimeoutError, RuntimeError, ValueError) as e:
                 logger.warning(f"Turnkey health check failed: {e}")
                 components["turnkey"]["status"] = "unreachable"
                 components["turnkey"]["error"] = str(e)
@@ -178,7 +178,7 @@ def create_health_router(
             )
             components["rpc"] = {"status": "not_initialized"}
             checks_passed += 1
-        except Exception as e:
+        except (AttributeError, OSError, RuntimeError, ValueError) as e:
             logger.warning(f"RPC health check failed: {e}")
             components["rpc"] = {"status": "error", "error": str(e)}
             overall_healthy = False
@@ -190,7 +190,7 @@ def create_health_router(
                 components["compliance"] = {"status": "check_required"}
             else:
                 components["compliance"] = {"status": "disabled_dev_mode"}
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             components["compliance"] = {"status": "error", "error": str(e)}
 
         # Smart contracts
@@ -216,7 +216,7 @@ def create_health_router(
             else:
                 components["contracts"] = {"status": "unconfigured"}
                 checks_passed += 1
-        except Exception as e:
+        except (ImportError, AttributeError, OSError, RuntimeError, ValueError) as e:
             components["contracts"] = {"status": "error", "error": str(e)}
 
         # Webhooks
@@ -252,7 +252,7 @@ def create_health_router(
         )
 
     @health_router.get("/api/v2/health")
-    async def api_health():
+    def api_health():
         """Lightweight API v2 health check."""
         return {
             "status": "ok",

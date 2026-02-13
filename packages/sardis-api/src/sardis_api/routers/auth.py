@@ -110,11 +110,7 @@ def verify_jwt_token(token: str) -> Optional[dict]:
             return None
 
         return payload
-    except pyjwt.ExpiredSignatureError:
-        return None
-    except pyjwt.InvalidTokenError:
-        return None
-    except Exception:
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, TypeError, ValueError):
         return None
 
 
@@ -357,7 +353,7 @@ async def logout(
             )
         try:
             revoked = await cache.revoke_jwt_jti(jti, ttl_seconds=ttl_seconds)
-        except Exception:
+        except (RuntimeError, ConnectionError, TimeoutError, OSError):
             revoked = False
         if not revoked:
             raise HTTPException(
