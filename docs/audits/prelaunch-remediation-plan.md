@@ -23,10 +23,10 @@ Legend:
 - [ ] Standardize error typing and handling patterns across TS packages.
 
 ## 3. Security
-- [ ] Confirm no hardcoded secrets in tracked files with repeatable scanning.
+- [~] Confirm no hardcoded secrets in tracked files with repeatable scanning.
 - [ ] Align env variable docs with runtime config names.
 - [ ] Review and harden API auth defaults (dev vs prod behavior).
-- [ ] Verify webhook signature checks are fail-closed for all providers.
+- [~] Verify webhook signature checks are fail-closed for all providers.
 - [ ] Validate SQL query composition safety in all dynamic query builders.
 - [ ] Confirm production rate limiting hard-requires Redis.
 - [ ] Remove insecure cryptography placeholders from wallet modules.
@@ -43,10 +43,10 @@ Legend:
 
 ## 5. Package Publishing Readiness
 - [ ] Ensure every publishable package has complete metadata.
-- [ ] Resolve `workspace:` dependency for npm publish compatibility.
-- [ ] Synchronize package versions and internal version constants.
-- [ ] Add missing per-package LICENSE files.
-- [ ] Verify there are no private/internal-only dependencies in published manifests.
+- [x] Resolve `workspace:` dependency for npm publish compatibility.
+- [x] Synchronize package versions and internal version constants.
+- [x] Add missing per-package LICENSE files.
+- [x] Verify there are no private/internal-only dependencies in published manifests.
 
 ## 6. Test Coverage & CI
 - [ ] Tighten CI lint/type gates (remove `continue-on-error` and permissive flags).
