@@ -51,7 +51,7 @@ Legend:
 ## 6. Test Coverage & CI
 - [x] Tighten CI lint/type gates (remove `continue-on-error` and permissive flags).
 - [x] Raise minimum coverage threshold from current baseline.
-- [ ] Add smoke tests for quick-start and examples.
+- [x] Add smoke tests for quick-start and examples.
 - [ ] Confirm integration coverage for payment execution, policy enforcement, wallet lifecycle.
 - [ ] Confirm smart contract tests still pass after changes.
 
