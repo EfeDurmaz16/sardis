@@ -13,6 +13,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | `19 packages on npm + PyPI` | `docs/marketing/product-hunt-launch.md:31`, `landing/src/App.jsx:1059` | `bash scripts/release/readiness_check.sh` | `package count: 19 (python=15, js=4)` |
 | `5 chains` | `README.md:254`, `docs/marketing/product-hunt-launch.md:27` | `bash scripts/release/readiness_check.sh` | `mainnet chain count: 5` |
 | `5 protocols (AP2, TAP, UCP, A2A, x402)` | `README.md:31`, `README.md:261` | file presence + exports | AP2 (`packages/sardis-protocol/src/sardis_protocol/schemas.py:12`), TAP (`packages/sardis-protocol/src/sardis_protocol/tap.py:23`), UCP (`packages/sardis-ucp/src/sardis_ucp/__init__.py:51`), A2A (`packages/sardis-a2a/src/sardis_a2a/__init__.py:1`), x402 (`packages/sardis-protocol/src/sardis_protocol/x402.py:1`) |
+| `Env docs match runtime usage` | `.env.example` | `bash scripts/release/env_doc_check.sh` | `documented all runtime env vars (runtime=74, documented=97)` |
 
 ## Canonical Verification Command
 
@@ -24,6 +25,8 @@ Current expected output:
 
 ```text
 [readiness] starting checks
+[readiness] validating env documentation parity
+[env-doc][pass] documented all runtime env vars (runtime=74, documented=97)
 [readiness][pass] MCP registry parity: 52 definitions = 52 handlers
 [readiness][pass] pytest collected items: 840 (selected: 778)
 [readiness][pass] package count: 19 (python=15, js=4)

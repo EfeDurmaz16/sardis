@@ -27,6 +27,11 @@ if [[ "$failures" -gt 0 ]]; then
   exit 1
 fi
 
+echo "[readiness] validating env documentation parity"
+if ! bash scripts/release/env_doc_check.sh; then
+  failures=$((failures + 1))
+fi
+
 tmp_pytest="$(mktemp)"
 trap 'rm -f "$tmp_pytest"' EXIT
 

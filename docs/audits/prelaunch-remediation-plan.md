@@ -24,7 +24,7 @@ Legend:
 
 ## 3. Security
 - [~] Confirm no hardcoded secrets in tracked files with repeatable scanning.
-- [ ] Align env variable docs with runtime config names.
+- [x] Align env variable docs with runtime config names.
 - [~] Review and harden API auth defaults (dev vs prod behavior).
 - [x] Verify webhook signature checks are fail-closed for all providers.
 - [~] Validate SQL query composition safety in all dynamic query builders.
@@ -69,7 +69,7 @@ Legend:
 - [ ] Align Alembic migration head with SQL migration set.
 - [ ] Verify Vercel config and deployment workflows are consistent.
 - [ ] Remove brittle runtime path hacks where possible.
-- [ ] Ensure env var documentation matches actual runtime usage.
+- [x] Ensure env var documentation matches actual runtime usage.
 
 ## 10. Investor Readiness
 - [ ] Separate demo/simulated defaults from production narrative.
