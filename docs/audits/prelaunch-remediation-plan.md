@@ -35,8 +35,8 @@ Legend:
 
 ## 4. SDK Accuracy
 - [ ] Reconcile `sardis` root exports with documented API.
-- [ ] Fix Python SDK version constant mismatch.
-- [ ] Fix TypeScript SDK internal version constant mismatch.
+- [x] Fix Python SDK version constant mismatch.
+- [x] Fix TypeScript SDK internal version constant mismatch.
 - [x] Fix all broken examples in `examples/` to use real SDK methods.
 - [x] Add SDK contract smoke tests for docs/examples.
 - [x] Reconcile MCP tool definition/handler count mismatches.

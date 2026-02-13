@@ -32,6 +32,11 @@ if ! bash scripts/release/env_doc_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating SDK/package version consistency"
+if ! bash scripts/release/version_consistency_check.sh; then
+  failures=$((failures + 1))
+fi
+
 tmp_pytest="$(mktemp)"
 trap 'rm -f "$tmp_pytest"' EXIT
 
