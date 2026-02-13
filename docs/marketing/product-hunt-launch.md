@@ -82,7 +82,24 @@
 - [ ] Submit PH listing (scheduled for 12:01 AM PT Tuesday)
 - [ ] Prepare all social media posts (see social-launch-kit.md)
 - [ ] Brief supporters — ask them to upvote + comment at launch
-- [ ] Test all links: website, docs, GitHub, npm, PyPI
+- [x] Test all links: website, docs, GitHub, npm, PyPI
+
+### Link + Badge Validation Snapshot (2026-02-13)
+
+- Scope: README + launch/marketing URLs and badge targets
+- Result: 24 URLs validated with `200 OK`
+- npm package pages (`/package/@sardis/*`) return `403` to `curl` due bot/WAF behavior, but npm badges resolve (`200`) and pages load in browser
+- Broken links detected: `0`
+
+Verified categories:
+- Shields.io badges
+- sardis.sh + docs
+- GitHub repo + Actions
+- Discord invite
+- Context7
+- PyPI
+- modelcontextprotocol.io
+- Placeholder logo SVG URLs in README comment block
 
 ### Launch Day (Tuesday)
 | Time (PT) | Action |
