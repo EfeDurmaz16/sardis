@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
@@ -299,7 +299,7 @@ class DependencyContainer:
         if self.has_stripe:
             try:
                 orchestrator.register_connector("stripe", self.stripe_connector)
-            except Exception as e:
+            except (SardisDependencyNotConfiguredError, RuntimeError, ValueError, TypeError) as e:
                 logger.warning(f"Failed to register Stripe connector: {e}")
         
         return orchestrator
@@ -325,13 +325,13 @@ class DependencyContainer:
             return getter
         except SardisDependencyNotConfiguredError:
             raise
-        except Exception as e:
+        except (ImportError, ModuleNotFoundError, RuntimeError, ValueError, TypeError, OSError) as e:
             raise SardisDependencyNotConfiguredError(
                 name,
                 f"Failed to initialize {name}: {e}",
             ) from e
     
-    def get_optional(self, name: str, default: T = None) -> Optional[T]:
+    def get_optional(self, name: str, default: Optional[T] = None) -> Optional[T]:
         """
         Get an optional dependency by name.
         

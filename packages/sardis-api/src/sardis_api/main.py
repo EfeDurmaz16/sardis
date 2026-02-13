@@ -254,7 +254,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                             jwks = resp.json()
                             _jwks_cache[kid] = jwks
                             return jwks
-                except Exception as e:
+                except (httpx.HTTPError, ValueError, TypeError) as e:
                     logger.warning(f"Failed to fetch JWKS from {jwks_url}: {e}")
                 return None
 
