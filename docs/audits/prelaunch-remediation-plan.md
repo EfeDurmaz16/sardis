@@ -66,7 +66,7 @@ Legend:
 - [ ] Verify awesome-list targets and submission details (network-enabled run).
 
 ## 9. Infrastructure & Deployment
-- [ ] Align Alembic migration head with SQL migration set.
+- [x] Align Alembic migration head with SQL migration set.
 - [ ] Verify Vercel config and deployment workflows are consistent.
 - [ ] Remove brittle runtime path hacks where possible.
 - [x] Ensure env var documentation matches actual runtime usage.

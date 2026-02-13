@@ -42,6 +42,11 @@ if ! bash scripts/release/package_metadata_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating migration alignment"
+if ! bash scripts/release/migration_alignment_check.sh; then
+  failures=$((failures + 1))
+fi
+
 tmp_pytest="$(mktemp)"
 trap 'rm -f "$tmp_pytest"' EXIT
 
