@@ -20,16 +20,17 @@ import { SardisClient } from "@sardis/sdk";
 const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY ?? "sim_demo" });
 
 async function main() {
-  // Create a wallet with a natural language spending policy
-  const wallet = await sardis.wallets.create({
+  const agent = await sardis.agents.create({
     name: "vercel-ai-agent",
-    chain: "base",
-    token: "USDC",
-    policy: `
-      Max $100 per transaction.
-      Daily limit $500.
-      Only allow SaaS, developer tools, and API services.
-    `,
+    description: "Vercel AI SDK procurement example agent",
+  });
+
+  // Create a wallet for the agent
+  const wallet = await sardis.wallets.create({
+    agent_id: agent.agent_id,
+    currency: "USDC",
+    limit_per_tx: "100.00",
+    limit_total: "500.00",
   });
 
   const { text, toolResults } = await generateText({
@@ -50,18 +51,19 @@ async function main() {
           purpose: z.string().describe("Reason for the payment"),
         }),
         execute: async ({ to, amount, token, purpose }) => {
-          const result = await sardis.payments.send({
-            walletId: wallet.id,
-            to,
+          const result = await sardis.wallets.transfer(wallet.wallet_id, {
+            destination: to,
             amount,
             token,
+            chain: "base_sepolia",
+            domain: "vercel-ai.local",
             memo: purpose,
           });
           return {
             status: result.status,
-            txHash: result.txHash,
+            txHash: result.tx_hash,
             amount: result.amount,
-            policyResult: result.policyResult,
+            chain: result.chain,
           };
         },
       }),
@@ -69,12 +71,12 @@ async function main() {
         description: "Check the wallet balance and remaining limits",
         parameters: z.object({}),
         execute: async () => {
-          const info = await sardis.wallets.get(wallet.id);
+          const info = await sardis.wallets.getBalance(wallet.wallet_id, "base_sepolia", "USDC");
           return {
             balance: info.balance,
-            spentToday: info.spentDaily,
-            dailyLimit: info.dailyLimit,
-            remaining: info.dailyRemaining,
+            chain: info.chain,
+            token: info.token,
+            walletId: info.wallet_id,
           };
         },
       }),
