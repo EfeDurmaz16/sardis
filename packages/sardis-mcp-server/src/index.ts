@@ -46,7 +46,7 @@ export async function createServer() {
   const server = new Server(
     {
       name: 'sardis-mcp-server',
-      version: '0.2.5',
+      version: '0.2.7',
     },
     {
       capabilities: {
@@ -389,7 +389,7 @@ export async function runServer() {
   const config = getConfig();
 
   // Log configuration status
-  console.error('Sardis MCP Server v0.2.5 running on stdio');
+  console.error('Sardis MCP Server v0.2.7 running on stdio');
   console.error(`Mode: ${config.mode}`);
   console.error(`API URL: ${config.apiUrl}`);
   console.error(`API Key configured: ${config.apiKey ? 'yes' : 'no'}`);

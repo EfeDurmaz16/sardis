@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-02-13
+
+### Changed
+
+- Synchronized package/server/catalog version metadata to `0.2.7`
+- Updated embedded MCP tool catalog to match current registered tool set
+- Refreshed CLI/help copy to reflect current tool coverage and canonical docs/GitHub URLs
+- Updated tool category mapping to include newer wallet, sandbox, approval, spending, and group tools
+
 ## [0.1.0] - 2025-01-27
 
 ### Added
@@ -66,4 +75,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Risk scoring for each payment request
 - Human-in-the-loop approval workflows
 
-[0.1.0]: https://github.com/sardis-network/sardis/releases/tag/mcp-server-v0.1.0
+[0.2.7]: https://github.com/EfeDurmaz16/sardis/releases/tag/mcp-server-v0.2.7
+[0.1.0]: https://github.com/EfeDurmaz16/sardis/releases/tag/mcp-server-v0.1.0

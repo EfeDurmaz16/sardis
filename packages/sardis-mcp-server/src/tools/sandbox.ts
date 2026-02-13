@@ -216,7 +216,7 @@ function fullGuide(): object {
     title: 'Sardis Sandbox — Complete Guide',
     mode: 'simulated',
     description:
-      'You are running in sandbox mode. All 36+ tools work with simulated responses. ' +
+      'You are running in sandbox mode. All 50+ tools work with simulated responses. ' +
       'Policy validation (vendor checks, spending limits) runs real logic.',
     categories: {
       quickstart: quickstartGuide(),

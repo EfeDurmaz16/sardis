@@ -3,7 +3,7 @@
   "name": "sardis",
   "displayName": "Sardis",
   "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "author": {
     "name": "Sardis",
     "email": "support@sardis.sh",
@@ -35,7 +35,10 @@
     "npm": {
       "package": "@sardis/mcp-server",
       "command": "npx",
-      "args": ["@sardis/mcp-server", "start"]
+      "args": [
+        "@sardis/mcp-server",
+        "start"
+      ]
     }
   },
   "configuration": {
@@ -57,7 +60,10 @@
         },
         "SARDIS_MODE": {
           "type": "string",
-          "enum": ["live", "simulated"],
+          "enum": [
+            "live",
+            "simulated"
+          ],
           "default": "simulated",
           "description": "Operating mode - 'live' for real transactions, 'simulated' for testing"
         }
@@ -81,59 +87,9 @@
   },
   "tools": [
     {
-      "name": "sardis_get_wallet",
-      "description": "Get wallet details and configuration including balance, policy, and metadata",
-      "category": "Wallet"
-    },
-    {
       "name": "sardis_get_balance",
       "description": "Get current wallet balance and spending limits (daily/monthly remaining)",
       "category": "Wallet"
-    },
-    {
-      "name": "sardis_create_wallet",
-      "description": "Create a new MPC wallet with optional spending policy",
-      "category": "Wallet"
-    },
-    {
-      "name": "sardis_update_wallet_policy",
-      "description": "Update the spending policy for a wallet (limits, allowed vendors, etc.)",
-      "category": "Wallet"
-    },
-    {
-      "name": "sardis_list_wallets",
-      "description": "List all wallets, optionally filtered by agent or status",
-      "category": "Wallet"
-    },
-    {
-      "name": "sardis_pay",
-      "description": "Execute a secure payment with policy validation. Returns virtual card details if approved.",
-      "category": "Payment"
-    },
-    {
-      "name": "sardis_get_transaction",
-      "description": "Get transaction status and details by transaction ID",
-      "category": "Payment"
-    },
-    {
-      "name": "sardis_list_transactions",
-      "description": "List recent transactions for a wallet with optional filters",
-      "category": "Payment"
-    },
-    {
-      "name": "sardis_check_policy",
-      "description": "Check if a payment would be allowed before executing (dry run)",
-      "category": "Policy"
-    },
-    {
-      "name": "sardis_validate_limits",
-      "description": "Validate spending against daily and monthly limits",
-      "category": "Policy"
-    },
-    {
-      "name": "sardis_check_compliance",
-      "description": "Check vendor against compliance rules and blocklists",
-      "category": "Policy"
     },
     {
       "name": "sardis_create_hold",
@@ -148,6 +104,11 @@
     {
       "name": "sardis_void_hold",
       "description": "Void/cancel a hold without capturing (release the funds)",
+      "category": "Hold"
+    },
+    {
+      "name": "sardis_release_hold",
+      "description": "Release Hold tool.",
       "category": "Hold"
     },
     {
@@ -191,6 +152,11 @@
       "category": "Card"
     },
     {
+      "name": "sardis_create_card",
+      "description": "Create Card tool.",
+      "category": "Card"
+    },
+    {
       "name": "sardis_get_card",
       "description": "Get virtual card details (card number is masked for security)",
       "category": "Card"
@@ -216,6 +182,41 @@
       "category": "Card"
     },
     {
+      "name": "sardis_pay",
+      "description": "Execute a secure payment with policy validation. Returns virtual card details if approved.",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_get_transaction",
+      "description": "Get transaction status and details by transaction ID",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_list_transactions",
+      "description": "List recent transactions for a wallet with optional filters",
+      "category": "Payment"
+    },
+    {
+      "name": "sardis_check_policy",
+      "description": "Check if a payment would be allowed before executing (dry run)",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_validate_limits",
+      "description": "Validate spending against daily and monthly limits",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_check_compliance",
+      "description": "Check vendor against compliance rules and blocklists",
+      "category": "Policy"
+    },
+    {
+      "name": "sardis_get_policies",
+      "description": "Get Policies tool.",
+      "category": "Policy"
+    },
+    {
       "name": "sardis_fund_wallet",
       "description": "Fund a wallet from bank account, wire transfer, or card",
       "category": "Fiat"
@@ -223,6 +224,11 @@
     {
       "name": "sardis_withdraw_to_bank",
       "description": "Withdraw funds from wallet to a bank account",
+      "category": "Fiat"
+    },
+    {
+      "name": "sardis_withdraw",
+      "description": "Withdraw tool.",
       "category": "Fiat"
     },
     {
@@ -236,6 +242,11 @@
       "category": "Fiat"
     },
     {
+      "name": "sardis_list_funding_transactions",
+      "description": "List Funding Transactions tool.",
+      "category": "Fiat"
+    },
+    {
       "name": "sardis_request_approval",
       "description": "Request human approval for payments exceeding limits or requiring review",
       "category": "Approval"
@@ -246,8 +257,28 @@
       "category": "Approval"
     },
     {
+      "name": "sardis_check_approval",
+      "description": "Check Approval tool.",
+      "category": "Approval"
+    },
+    {
+      "name": "sardis_list_pending_approvals",
+      "description": "List Pending Approvals tool.",
+      "category": "Approval"
+    },
+    {
+      "name": "sardis_cancel_approval",
+      "description": "Cancel Approval tool.",
+      "category": "Approval"
+    },
+    {
       "name": "sardis_get_spending_summary",
       "description": "Get spending summary with totals, limits, and trends",
+      "category": "Analytics"
+    },
+    {
+      "name": "sardis_get_spending",
+      "description": "Get Spending tool.",
       "category": "Analytics"
     },
     {
@@ -259,6 +290,61 @@
       "name": "sardis_get_spending_by_category",
       "description": "Get spending breakdown by category (SaaS, Cloud, API, etc.)",
       "category": "Analytics"
+    },
+    {
+      "name": "sardis_get_spending_trends",
+      "description": "Get Spending Trends tool.",
+      "category": "Analytics"
+    },
+    {
+      "name": "sardis_create_wallet",
+      "description": "Create a new MPC wallet with optional spending policy",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_list_wallets",
+      "description": "List all wallets, optionally filtered by agent or status",
+      "category": "Wallet"
+    },
+    {
+      "name": "sardis_sandbox_demo",
+      "description": "Sandbox Demo tool.",
+      "category": "Sandbox"
+    },
+    {
+      "name": "sardis_create_group",
+      "description": "Create Group tool.",
+      "category": "Group"
+    },
+    {
+      "name": "sardis_get_group",
+      "description": "Get Group tool.",
+      "category": "Group"
+    },
+    {
+      "name": "sardis_list_groups",
+      "description": "List Groups tool.",
+      "category": "Group"
+    },
+    {
+      "name": "sardis_add_agent_to_group",
+      "description": "Add Agent To Group tool.",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_remove_agent_from_group",
+      "description": "Remove Agent From Group tool.",
+      "category": "Agent"
+    },
+    {
+      "name": "sardis_get_group_spending",
+      "description": "Get Group Spending tool.",
+      "category": "Analytics"
+    },
+    {
+      "name": "sardis_get_wallet",
+      "description": "Get wallet details and configuration including balance, policy, and metadata",
+      "category": "Wallet"
     }
   ],
   "capabilities": {

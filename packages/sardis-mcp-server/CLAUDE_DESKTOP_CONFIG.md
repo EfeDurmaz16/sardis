@@ -151,30 +151,21 @@ After configuration, restart Claude Desktop. You should see Sardis tools availab
 2. Check your wallet ID exists
 3. Ensure sufficient balance for operations
 
-## Available Tools (36)
+## Available Tools (50+)
 
-After configuration, Claude will have access to:
+After configuration, Claude gets access to wallet, payment, policy, hold,
+card, fiat, approval, analytics, group-governance, and sandbox tools.
 
-**Wallet**: sardis_get_wallet, sardis_get_balance, sardis_create_wallet, sardis_update_wallet_policy, sardis_list_wallets
+To inspect the exact current tool catalog in your environment, run:
 
-**Payment**: sardis_pay, sardis_get_transaction, sardis_list_transactions
+```bash
+npx @sardis/mcp-server start
+```
 
-**Policy**: sardis_check_policy, sardis_validate_limits, sardis_check_compliance
-
-**Hold**: sardis_create_hold, sardis_capture_hold, sardis_void_hold, sardis_get_hold, sardis_list_holds, sardis_extend_hold
-
-**Agent**: sardis_create_agent, sardis_get_agent, sardis_list_agents, sardis_update_agent
-
-**Card**: sardis_issue_card, sardis_get_card, sardis_list_cards, sardis_freeze_card, sardis_unfreeze_card, sardis_cancel_card
-
-**Fiat**: sardis_fund_wallet, sardis_withdraw_to_bank, sardis_get_funding_status, sardis_get_withdrawal_status
-
-**Approval**: sardis_request_approval, sardis_get_approval_status
-
-**Analytics**: sardis_get_spending_summary, sardis_get_spending_by_vendor, sardis_get_spending_by_category
+Then query the `sardis://tools` MCP resource from your client.
 
 ## Support
 
-- Documentation: https://docs.sardis.sh
-- GitHub Issues: https://github.com/sardis-network/sardis/issues
+- Documentation: https://sardis.sh/docs
+- GitHub Issues: https://github.com/EfeDurmaz16/sardis/issues
 - Email: support@sardis.sh

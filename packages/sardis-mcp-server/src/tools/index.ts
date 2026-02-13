@@ -2,7 +2,7 @@
  * Sardis MCP Server - Tool Registry
  *
  * Aggregates all tool definitions and handlers from domain-specific modules.
- * Total: 36+ tools across 9 categories.
+ * Total: 50+ tools across 12 modules.
  */
 
 import type { ToolDefinition, ToolHandler } from './types.js';
@@ -90,13 +90,26 @@ export function getAllToolNames(): string[] {
  * Tool categories for organization
  */
 export const toolCategories = {
-  wallet: ['sardis_get_wallet', 'sardis_get_balance', 'sardis_create_wallet', 'sardis_update_wallet_policy', 'sardis_list_wallets'],
+  wallet: [
+    'sardis_get_wallet',
+    'sardis_get_balance',
+  ],
+  wallet_management: [
+    'sardis_create_wallet',
+    'sardis_list_wallets',
+  ],
   payment: ['sardis_pay', 'sardis_get_transaction', 'sardis_list_transactions'],
-  policy: ['sardis_check_policy', 'sardis_validate_limits', 'sardis_check_compliance'],
+  policy: [
+    'sardis_check_policy',
+    'sardis_validate_limits',
+    'sardis_check_compliance',
+    'sardis_get_policies',
+  ],
   hold: [
     'sardis_create_hold',
     'sardis_capture_hold',
     'sardis_void_hold',
+    'sardis_release_hold',
     'sardis_get_hold',
     'sardis_list_holds',
     'sardis_extend_hold',
@@ -109,6 +122,7 @@ export const toolCategories = {
   ],
   card: [
     'sardis_issue_card',
+    'sardis_create_card',
     'sardis_get_card',
     'sardis_list_cards',
     'sardis_freeze_card',
@@ -118,13 +132,19 @@ export const toolCategories = {
   fiat: [
     'sardis_fund_wallet',
     'sardis_withdraw_to_bank',
+    'sardis_withdraw',
     'sardis_get_funding_status',
     'sardis_get_withdrawal_status',
+    'sardis_list_funding_transactions',
   ],
   approval: [
     'sardis_request_approval',
     'sardis_get_approval_status',
+    'sardis_check_approval',
+    'sardis_list_pending_approvals',
+    'sardis_cancel_approval',
   ],
+  sandbox: ['sardis_sandbox_demo'],
   group: [
     'sardis_create_group',
     'sardis_get_group',
@@ -135,8 +155,10 @@ export const toolCategories = {
   ],
   spending: [
     'sardis_get_spending_summary',
+    'sardis_get_spending',
     'sardis_get_spending_by_vendor',
     'sardis_get_spending_by_category',
+    'sardis_get_spending_trends',
   ],
 } as const;
 

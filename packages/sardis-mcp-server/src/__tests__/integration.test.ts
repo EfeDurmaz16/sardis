@@ -21,10 +21,10 @@ vi.mock('../config.js', () => ({
 
 describe('MCP Server Integration', () => {
   describe('Tool Registry', () => {
-    it('should have 36+ tools registered', () => {
+    it('should have 50+ tools registered', () => {
       const tools = getAllTools();
 
-      expect(tools.length).toBeGreaterThanOrEqual(36);
+      expect(tools.length).toBeGreaterThanOrEqual(50);
     });
 
     it('should have unique tool names', () => {
