@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 
 from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus
 from sardis_checkout.orchestrator import CheckoutOrchestrator
-from sardis_checkout.connectors.stripe import StripeConnector
 from sardis_v2_core.wallets import Wallet
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope
@@ -198,6 +197,7 @@ async def handle_psp_webhook(
     This endpoint processes payment status updates from PSPs.
     """
     try:
+        psp = psp.strip().lower()
         raw = await request.body()
         headers = dict(request.headers)
 
@@ -206,15 +206,17 @@ async def handle_psp_webhook(
         if connector is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"PSP {psp} not configured")
 
-        if psp == "stripe":
-            sig = headers.get("stripe-signature", "")
-            if not sig:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Stripe signature")
-            if not isinstance(connector, StripeConnector):
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Stripe connector misconfigured")
-            ok = await connector.verify_webhook(raw, sig)
-            if not ok:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Stripe signature")
+        signature_header = "stripe-signature" if psp == "stripe" else f"x-{psp}-signature"
+        signature = headers.get(signature_header, "")
+        if not signature:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Missing {signature_header} header",
+            )
+
+        ok = await connector.verify_webhook(raw, signature)
+        if not ok:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
 
         payload = _json.loads(raw)
 
