@@ -8,9 +8,9 @@ Legend:
 - [x] Done
 
 ## 1. README & First Impressions
-- [ ] Align Python quick-start with actual SDK API.
-- [ ] Align TypeScript quick-start with actual SDK API.
-- [ ] Remove hardcoded MCP tool count claims and source from runtime.
+- [x] Align Python quick-start with actual SDK API.
+- [x] Align TypeScript quick-start with actual SDK API.
+- [x] Remove hardcoded MCP tool count claims and source from runtime.
 - [ ] Rework competitor comparison language to defensible, sourced claims.
 - [ ] Update "What's New" to current factual state.
 - [ ] Validate all external links and badge targets in a network-enabled check.
@@ -37,9 +37,9 @@ Legend:
 - [ ] Reconcile `sardis` root exports with documented API.
 - [ ] Fix Python SDK version constant mismatch.
 - [ ] Fix TypeScript SDK internal version constant mismatch.
-- [ ] Fix all broken examples in `examples/` to use real SDK methods.
-- [ ] Add SDK contract smoke tests for docs/examples.
-- [ ] Reconcile MCP tool definition/handler count mismatches.
+- [x] Fix all broken examples in `examples/` to use real SDK methods.
+- [x] Add SDK contract smoke tests for docs/examples.
+- [x] Reconcile MCP tool definition/handler count mismatches.
 
 ## 5. Package Publishing Readiness
 - [ ] Ensure every publishable package has complete metadata.
@@ -56,9 +56,9 @@ Legend:
 - [ ] Confirm smart contract tests still pass after changes.
 
 ## 7. Documentation Accuracy
-- [ ] Reconcile claims: tests count, chains count, tool count, package count, protocol count.
+- [x] Reconcile claims: tests count, chains count, tool count, package count, protocol count.
 - [ ] Remove stale version references across README/landing/docs.
-- [ ] Add a central claims-evidence document with reproducible references.
+- [x] Add a central claims-evidence document with reproducible references.
 
 ## 8. Marketing & Launch Materials
 - [ ] Remove/replace unverifiable claims in launch assets.
