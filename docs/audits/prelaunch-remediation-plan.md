@@ -25,12 +25,12 @@ Legend:
 ## 3. Security
 - [~] Confirm no hardcoded secrets in tracked files with repeatable scanning.
 - [ ] Align env variable docs with runtime config names.
-- [ ] Review and harden API auth defaults (dev vs prod behavior).
+- [~] Review and harden API auth defaults (dev vs prod behavior).
 - [x] Verify webhook signature checks are fail-closed for all providers.
-- [ ] Validate SQL query composition safety in all dynamic query builders.
-- [ ] Confirm production rate limiting hard-requires Redis.
-- [ ] Remove insecure cryptography placeholders from wallet modules.
-- [ ] Validate CORS policy and trusted origin handling.
+- [~] Validate SQL query composition safety in all dynamic query builders.
+- [x] Confirm production rate limiting hard-requires Redis.
+- [x] Remove insecure cryptography placeholders from wallet modules.
+- [x] Validate CORS policy and trusted origin handling.
 - [ ] Run dependency CVE checks in CI (`pip-audit`, `npm audit` or equivalent).
 
 ## 4. SDK Accuracy

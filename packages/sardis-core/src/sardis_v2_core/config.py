@@ -228,6 +228,20 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
         if not settings.database_url or settings.database_url.startswith("sqlite"):
             errors.append("DATABASE_URL: PostgreSQL required for production")
 
+        # CORS hardening: require explicit HTTPS origins in production-like envs.
+        origins = settings.allowed_origins_list
+        if not origins:
+            errors.append("SARDIS_ALLOWED_ORIGINS: Must define at least one allowed origin")
+        if "*" in origins:
+            errors.append("SARDIS_ALLOWED_ORIGINS: Wildcard '*' is not allowed with credentials enabled")
+        if settings.environment == "prod":
+            for origin in origins:
+                o = origin.strip().lower()
+                if o.startswith(("http://localhost", "http://127.0.0.1", "http://0.0.0.0")):
+                    errors.append(f"SARDIS_ALLOWED_ORIGINS: Localhost origin not allowed in production ({origin})")
+                if o.startswith("http://") and not o.startswith(("http://localhost", "http://127.0.0.1", "http://0.0.0.0")):
+                    errors.append(f"SARDIS_ALLOWED_ORIGINS: Non-HTTPS origin not allowed in production ({origin})")
+
         if not (os.getenv("REDIS_URL") or os.getenv("SARDIS_REDIS_URL") or os.getenv("UPSTASH_REDIS_URL")):
             errors.append("REDIS_URL: Required for distributed rate limiting (or set SARDIS_REDIS_URL/UPSTASH_REDIS_URL)")
 
