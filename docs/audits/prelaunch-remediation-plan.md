@@ -31,7 +31,7 @@ Legend:
 - [x] Confirm production rate limiting hard-requires Redis.
 - [x] Remove insecure cryptography placeholders from wallet modules.
 - [x] Validate CORS policy and trusted origin handling.
-- [ ] Run dependency CVE checks in CI (`pip-audit`, `npm audit` or equivalent).
+- [x] Run dependency CVE checks in CI (`pip-audit`, `npm audit` or equivalent).
 
 ## 4. SDK Accuracy
 - [ ] Reconcile `sardis` root exports with documented API.

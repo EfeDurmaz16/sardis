@@ -15,6 +15,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | `5 protocols (AP2, TAP, UCP, A2A, x402)` | `README.md:31`, `README.md:261` | file presence + exports | AP2 (`packages/sardis-protocol/src/sardis_protocol/schemas.py:12`), TAP (`packages/sardis-protocol/src/sardis_protocol/tap.py:23`), UCP (`packages/sardis-ucp/src/sardis_ucp/__init__.py:51`), A2A (`packages/sardis-a2a/src/sardis_a2a/__init__.py:1`), x402 (`packages/sardis-protocol/src/sardis_protocol/x402.py:1`) |
 | `Env docs match runtime usage` | `.env.example` | `bash scripts/release/env_doc_check.sh` | `documented all runtime env vars (runtime=74, documented=97)` |
 | `SDK versions are metadata-consistent` | `packages/sardis-sdk-python/pyproject.toml`, `packages/sardis-sdk-js/package.json` | `bash scripts/release/version_consistency_check.sh` | `root=0.3.1`, `python-sdk=0.3.3`, `ts-sdk=0.3.4` all matched constants |
+| `Dependency CVE checks enforced in CI` | `.github/workflows/ci.yml` | `bash scripts/release/dependency_audit.sh` | CI `security` job runs `pip-audit` + `pnpm audit --audit-level high --prod` |
 
 ## Canonical Verification Command
 
