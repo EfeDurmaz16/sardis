@@ -18,11 +18,17 @@ from fastapi import FastAPI
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 
-from sardis_api.routers.ramp import router as ramp_router, get_deps as ramp_get_deps, RampDependencies
+from sardis_api.authz import Principal, require_principal
+from sardis_api.routers.ramp import (
+    router as ramp_router,
+    public_router as ramp_public_router,
+    get_deps as ramp_get_deps,
+    RampDependencies,
+)
 from sardis_api.routers.wallets import router as wallets_router, get_deps as wallets_get_deps, WalletDependencies
 from sardis_api.routers.cards import create_cards_router
 from sardis_cards.offramp import (
-    OfframpQuote, OfframpTransaction, OfframpProvider, OfframpStatus, MockOfframpProvider, OfframpService,
+    OfframpQuote, OfframpTransaction, OfframpProvider, OfframpStatus,
 )
 
 pytestmark = pytest.mark.e2e
@@ -39,6 +45,10 @@ def wallet_mock():
     wallet.limit_per_tx = 500
     wallet.limit_total = 5000
     wallet.is_active = True
+    wallet.is_frozen = False
+    wallet.frozen_by = None
+    wallet.freeze_reason = None
+    wallet.audit_anchor = None
     wallet.get_address.side_effect = lambda c: wallet.addresses.get(c)
     wallet.created_at = MagicMock(isoformat=lambda: "2026-01-01T00:00:00Z")
     wallet.updated_at = MagicMock(isoformat=lambda: "2026-01-01T00:00:00Z")
@@ -65,7 +75,36 @@ def agent_repo():
 
 @pytest.fixture
 def offramp_service():
-    return OfframpService(provider=MockOfframpProvider())
+    quote = OfframpQuote(
+        quote_id="quote_e2e",
+        provider=OfframpProvider.MOCK,
+        input_token="USDC",
+        input_amount_minor=100_000_000,
+        input_chain="base",
+        output_currency="USD",
+        output_amount_cents=99_500_000,
+        exchange_rate=Decimal("1.0"),
+        fee_cents=500_000,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    tx = OfframpTransaction(
+        transaction_id="tx_e2e",
+        quote_id=quote.quote_id,
+        provider=OfframpProvider.MOCK,
+        input_token=quote.input_token,
+        input_amount_minor=quote.input_amount_minor,
+        input_chain=quote.input_chain,
+        output_currency=quote.output_currency,
+        output_amount_cents=quote.output_amount_cents,
+        destination_account="bank_acct_123",
+        status=OfframpStatus.PROCESSING,
+        created_at=datetime.now(timezone.utc),
+    )
+    service = AsyncMock()
+    service.get_quote = AsyncMock(return_value=quote)
+    service.execute = AsyncMock(return_value=tx)
+    service.get_status = AsyncMock(return_value=tx)
+    return service
 
 
 @pytest.fixture
@@ -73,6 +112,7 @@ def chain_executor():
     executor = AsyncMock()
     receipt = MagicMock()
     receipt.tx_hash = "0xe2e_tx_hash"
+    receipt.audit_anchor = None
     executor.dispatch_payment.return_value = receipt
     return executor
 
@@ -117,6 +157,7 @@ def e2e_app(wallet_repo, agent_repo, offramp_service, chain_executor, card_repo,
     )
     app.dependency_overrides[ramp_get_deps] = lambda: ramp_deps
     app.include_router(ramp_router, prefix="/api/v2/ramp")
+    app.include_router(ramp_public_router, prefix="/api/v2/ramp")
 
     # Wire wallets router
     wallet_deps = WalletDependencies(
@@ -136,6 +177,12 @@ def e2e_app(wallet_repo, agent_repo, offramp_service, chain_executor, card_repo,
         wallet_repo=wallet_repo,
     )
     app.include_router(cards_r, prefix="/api/v2/cards")
+    app.dependency_overrides[require_principal] = lambda: Principal(
+        kind="api_key",
+        organization_id="org_demo",
+        scopes=["*"],
+        api_key=None,
+    )
 
     return app
 
