@@ -47,6 +47,7 @@ class TokenResponse(BaseModel):
 class TokenPayload(BaseModel):
     sub: str  # subject (user id)
     role: str
+    org_id: Optional[str] = None
     exp: int  # expiration timestamp
     iat: int  # issued at timestamp
     jti: str  # JWT ID for revocation
@@ -55,6 +56,7 @@ class TokenPayload(BaseModel):
 class UserInfo(BaseModel):
     username: str
     role: str
+    organization_id: Optional[str] = None
 
 
 class BootstrapAPIKeyRequest(BaseModel):
@@ -165,9 +167,13 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    token_org_id = payload.get("org_id") or payload.get("organization_id")
+    organization_id = token_org_id if isinstance(token_org_id, str) and token_org_id.strip() else None
+
     return UserInfo(
         username=payload.get("sub", "unknown"),
         role=payload.get("role", "user"),
+        organization_id=organization_id,
     )
 
 
@@ -249,6 +255,16 @@ async def login(
 
     now = datetime.now(timezone.utc)
     exp = now + timedelta(hours=JWT_EXPIRATION_HOURS)
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    configured_org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "").strip()
+
+    if env in ("prod", "production", "staging") and not configured_org_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="JWT auth requires SARDIS_DEFAULT_ORG_ID in production/staging",
+        )
+
+    org_id = configured_org_id or ("org_demo" if env in ("dev", "test", "local") else "")
 
     payload = {
         "sub": username,
@@ -257,6 +273,8 @@ async def login(
         "iat": int(now.timestamp()),
         "jti": secrets.token_hex(16),
     }
+    if org_id:
+        payload["org_id"] = org_id
 
     token = create_jwt_token(payload)
 
@@ -286,6 +304,8 @@ async def refresh_token(
         "iat": int(now.timestamp()),
         "jti": secrets.token_hex(16),
     }
+    if user.organization_id:
+        payload["org_id"] = user.organization_id
 
     token = create_jwt_token(payload)
 
@@ -302,6 +322,7 @@ async def get_me(user: UserInfo = Depends(require_auth)):
     return {
         "username": user.username,
         "role": user.role,
+        "organization_id": user.organization_id,
     }
 
 
