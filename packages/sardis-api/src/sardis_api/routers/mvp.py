@@ -213,7 +213,9 @@ async def execute_payment(
 ):
     """
     Validate + execute a single-rail Base Sepolia USDC payment.
-    Requires SARDIS_CHAIN_MODE=live and SARDIS_EOA_PRIVATE_KEY configured.
+    Requires SARDIS_CHAIN_MODE=live and a configured signer:
+    - non-custodial MPC: SARDIS_MPC__NAME=turnkey|fireblocks
+    - custodial dev path: SARDIS_MPC__NAME=local + SARDIS_EOA_PRIVATE_KEY
     """
     if deps.settings.chain_mode == "simulated":
         raise HTTPException(

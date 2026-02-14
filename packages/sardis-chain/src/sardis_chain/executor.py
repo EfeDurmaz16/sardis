@@ -1509,16 +1509,25 @@ class ChainExecutor:
         """Initialize MPC signer based on configuration."""
         mpc_config = self._settings.mpc
 
-        # Local EOA signer for MVP (no MPC dependency)
+        # Local EOA signer is opt-in and intended for demo/dev usage only.
         eoa_private_key = os.getenv("SARDIS_EOA_PRIVATE_KEY", "")
         eoa_address = os.getenv("SARDIS_EOA_ADDRESS", "")
-        if mpc_config.name == "local" or eoa_private_key:
+        if mpc_config.name == "local":
             try:
                 self._mpc_signer = LocalAccountSigner(private_key=eoa_private_key, address=eoa_address)
                 logger.info("Initialized local EOA signer for chain execution")
                 return
             except Exception as exc:  # noqa: BLE001
-                logger.error(f"Local signer initialization failed, falling back to simulated: {exc}")
+                raise RuntimeError(
+                    "Local MPC signer requested but initialization failed. "
+                    "Set SARDIS_EOA_PRIVATE_KEY or switch SARDIS_MPC__NAME to turnkey/fireblocks."
+                ) from exc
+        elif eoa_private_key:
+            logger.warning(
+                "SARDIS_EOA_PRIVATE_KEY is set but ignored because SARDIS_MPC__NAME=%s. "
+                "Use SARDIS_MPC__NAME=local to enable custodial local signing.",
+                mpc_config.name,
+            )
 
         if mpc_config.name == "turnkey":
             if self._turnkey_client is not None:

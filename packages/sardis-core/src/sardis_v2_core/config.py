@@ -47,7 +47,7 @@ class TurnkeyConfig(BaseSettings):
 
 class MPCProvider(BaseSettings):
     """MPC provider configuration (Turnkey or Fireblocks)."""
-    name: Literal["turnkey", "fireblocks", "simulated"] = "simulated"
+    name: Literal["turnkey", "fireblocks", "local", "simulated"] = "simulated"
     api_base: str = ""
     credential_id: str = ""  # Organization ID for Turnkey
 
@@ -247,8 +247,26 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
 
         # MPC configuration
         if settings.chain_mode == "live":
-            if not settings.turnkey_configured:
-                errors.append("TURNKEY_*: MPC provider not configured for live mode")
+            mpc_name = settings.mpc.name
+            if mpc_name == "turnkey":
+                if not settings.turnkey_configured:
+                    errors.append("TURNKEY_*: Turnkey MPC provider not configured for live mode")
+            elif mpc_name == "fireblocks":
+                if not os.getenv("FIREBLOCKS_API_KEY"):
+                    errors.append("FIREBLOCKS_API_KEY: Fireblocks MPC provider not configured for live mode")
+            elif mpc_name == "local":
+                errors.append(
+                    "SARDIS_MPC__NAME: local signer is custodial and not allowed for production live execution"
+                )
+            else:
+                errors.append(
+                    "SARDIS_MPC__NAME: simulated signer is not allowed when SARDIS_CHAIN_MODE=live"
+                )
+
+            if os.getenv("SARDIS_EOA_PRIVATE_KEY"):
+                errors.append(
+                    "SARDIS_EOA_PRIVATE_KEY: local signer key is set (custodial path) and should be removed for non-custodial posture"
+                )
 
         # Compliance providers (recommended)
         if not os.getenv("PERSONA_API_KEY"):

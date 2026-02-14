@@ -11,7 +11,7 @@ Hi Lithic team,
 I’m [Your Name], founder at Sardis. We’re building open-core payment infrastructure for AI agents, and we are now in design-partner onboarding with selected teams.
 
 Quick context:
-- We provide policy-controlled agent payments with non-custodial wallet architecture.
+- We provide policy-controlled agent payments with non-custodial wallet posture in live MPC mode.
 - We already run simulated and staging-live payment lanes.
 - We have production hardening in place for auth, rate limiting, idempotency, and auditability.
 - We recently upgraded our cryptographic audit trail verification flow (Merkle-linked receipts + verification endpoint).
@@ -51,7 +51,7 @@ I’m [Your Name], founder at Sardis. We’re an open-core payment infrastructur
 
 What Sardis does:
 - Policy-controlled payments for agents (with approval thresholds and explicit deny paths).
-- Non-custodial wallet execution architecture.
+- Non-custodial wallet execution posture in live MPC mode.
 - End-to-end auditability with cryptographic receipt verification.
 
 Where we need Persona:

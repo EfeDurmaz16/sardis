@@ -343,20 +343,35 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.state.turnkey_client = turnkey_client
 
-    if getattr(settings, "chain_mode", "simulated") == "live" and turnkey_client is None:
-        mpc_name = os.getenv("SARDIS_MPC__NAME", "simulated")
-        if mpc_name == "turnkey":
+    if getattr(settings, "chain_mode", "simulated") == "live":
+        mpc_name = (os.getenv("SARDIS_MPC__NAME", settings.mpc.name) or settings.mpc.name).strip().lower()
+        if mpc_name == "simulated":
+            logger.error(
+                "SARDIS_CHAIN_MODE=live with MPC=simulated is not allowed. "
+                "Use turnkey, fireblocks, or local (dev/sandbox only)."
+            )
+            raise RuntimeError("Simulated signer is not allowed for live chain mode")
+        if mpc_name == "turnkey" and turnkey_client is None:
             logger.error(
                 "SARDIS_CHAIN_MODE=live with MPC=turnkey but Turnkey client is not initialized. "
-                "Set TURNKEY_API_KEY and TURNKEY_ORGANIZATION_ID or switch to simulated mode."
+                "Set TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY, and TURNKEY_ORGANIZATION_ID."
             )
             raise RuntimeError("Turnkey MPC provider required for live chain mode but not configured")
-        elif mpc_name == "fireblocks":
-            if not os.getenv("FIREBLOCKS_API_KEY"):
-                logger.error(
-                    "SARDIS_CHAIN_MODE=live with MPC=fireblocks but FIREBLOCKS_API_KEY is not set."
+        if mpc_name == "fireblocks" and not os.getenv("FIREBLOCKS_API_KEY"):
+            logger.error(
+                "SARDIS_CHAIN_MODE=live with MPC=fireblocks but FIREBLOCKS_API_KEY is not set."
+            )
+            raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
+        if mpc_name == "local":
+            if settings.is_production:
+                raise RuntimeError("Local signer is custodial and not allowed in production live mode")
+            if not os.getenv("SARDIS_EOA_PRIVATE_KEY"):
+                raise RuntimeError(
+                    "SARDIS_MPC__NAME=local requires SARDIS_EOA_PRIVATE_KEY in live mode"
                 )
-                raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
+            logger.warning(
+                "SARDIS_MPC__NAME=local enabled in live mode. This is a custodial signer path for dev/sandbox only."
+            )
 
     # -----------------------------------------------------------------------
     # Core services

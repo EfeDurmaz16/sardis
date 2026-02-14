@@ -26,6 +26,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | `Launch copy uses verified metrics` | `docs/marketing/product-hunt-launch.md`, `docs/marketing/social-launch-kit.md` | manual review against this file | hard metrics (19 packages, 52 tools, 5 chains/protocols) now explicitly tied to `claims-evidence.md` |
 | `Clone-and-run first-run flow is scripted` | `scripts/release/clone_and_run_smoke.sh` | `bash scripts/release/clone_and_run_smoke.sh --no-install` | Runs facade smoke flow + readiness + critical-path checks from a single entry point |
 | `Residual risks are documented` | `docs/audits/final-remediation-report.md` | file review | report includes completed controls, proof commands, and remaining risk items |
+| `Custody posture is explicit and testable` | `README.md`, `docs/design-partner/non-custodial-posture.md` | `bash scripts/release/non_custodial_posture_check.sh` | validates live-mode signer posture and optional non-custodial requirement gate |
 
 ## Canonical Verification Command
 

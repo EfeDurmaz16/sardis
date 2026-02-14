@@ -29,7 +29,7 @@ Submit PRs to these curated awesome-lists to increase visibility in developer co
 ```markdown
 ## Sardis
 
-- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment infrastructure for AI agents. Gives agents non-custodial MPC wallets with natural language spending policies ("Max $100/day, SaaS only"). Prevents financial hallucination via policy firewall. Supports 5 chains, virtual cards, and group governance for multi-agent teams. Python + TypeScript SDKs, MCP server.
+- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment infrastructure for AI agents. Gives agents policy-controlled wallets with natural language spending policies ("Max $100/day, SaaS only"). In live MPC mode (Turnkey/Fireblocks), wallet posture is non-custodial. Prevents financial hallucination via policy firewall. Supports 5 chains, virtual cards, and group governance for multi-agent teams. Python + TypeScript SDKs, MCP server.
 ```
 
 ---
@@ -44,7 +44,7 @@ Submit PRs to these curated awesome-lists to increase visibility in developer co
 ```markdown
 ## Sardis
 
-- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment tool for LangChain agents. Add real financial transactions to your agents with policy enforcement. Natural language spending policies, non-custodial MPC wallets, 5 chains. `pip install sardis`
+- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment tool for LangChain agents. Add real financial transactions to your agents with policy enforcement. Natural language spending policies and live-MPC non-custodial wallet support, 5 chains. `pip install sardis`
 ```
 
 ---
@@ -59,7 +59,7 @@ Submit PRs to these curated awesome-lists to increase visibility in developer co
 ```markdown
 ## Sardis
 
-- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment OS for the Agent Economy. Non-custodial MPC wallets (Turnkey) with natural language spending policies for AI agents. Multi-chain: Base, Polygon, Ethereum, Arbitrum, Optimism. Stablecoins: USDC, USDT, EURC, PYUSD. Open-core with MIT licensed SDKs.
+- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment OS for the Agent Economy. Policy-controlled wallets for AI agents, with non-custodial posture in live MPC mode (Turnkey). Multi-chain: Base, Polygon, Ethereum, Arbitrum, Optimism. Stablecoins: USDC, USDT, EURC, PYUSD. Open-core with MIT licensed SDKs.
 ```
 
 ---

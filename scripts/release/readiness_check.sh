@@ -62,6 +62,11 @@ if ! bash scripts/release/ops_readiness_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating custody posture"
+if ! bash scripts/release/non_custodial_posture_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating demo proof assets"
 if ! bash scripts/release/demo_proof_assets_check.sh; then
   failures=$((failures + 1))

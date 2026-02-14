@@ -13,7 +13,7 @@
 
 1. **"The Payment OS for the Agent Economy"** (primary — matches brand)
 2. **"Stop AI agents from hallucinating your money away"** (provocative, click-driving)
-3. **"Stripe + IAM for AI agents — non-custodial wallets with NL policies"** (technical)
+3. **"Stripe + IAM for AI agents — policy wallets with NL controls"** (technical)
 
 **Recommended:** Option 2 as PH tagline (max 60 chars), Option 1 as subtitle.
 
@@ -25,7 +25,7 @@
 >
 > **The problem:** AI agents can now reason, browse, and code — but money handling has failure modes: retry loops that overspend, decimal normalization mistakes, and merchant/domain mismatches. We call this **financial hallucination**.
 >
-> **What we built:** Sardis gives AI agents non-custodial MPC wallets with natural language spending policies. Instead of writing code for spending rules, you just say: *"Max $100/day, only SaaS vendors, block weekends."*
+> **What we built:** Sardis gives AI agents policy-controlled wallets with natural language spending policies. In live MPC mode (Turnkey/Fireblocks), the wallet posture is non-custodial. Instead of writing code for spending rules, you just say: *"Max $100/day, only SaaS vendors, block weekends."*
 >
 > Every transaction goes through our policy firewall before the MPC signing ceremony begins. If it violates the policy, it's blocked — no money moves.
 >
@@ -33,7 +33,7 @@
 >
 > **What makes us different:**
 > - Natural language policy engine (not just spending caps)
-> - Non-custodial MPC wallets (Turnkey) — we never hold your keys
+> - Non-custodial MPC wallets in live MPC mode (Turnkey)
 > - MCP native — one command to add payments to Claude/Cursor
 > - Group governance — shared budgets across agent teams
 > - 5 chains planned (Base, Polygon, Ethereum, Arbitrum, Optimism)
@@ -48,7 +48,7 @@
 
 ## Feature Highlight Bullets
 
-- Non-custodial MPC wallets (Turnkey) — your keys, always
+- Non-custodial MPC wallets in live MPC mode (Turnkey)
 - Natural language spending policies: "Max $100/day for SaaS only"
 - Financial hallucination firewall — blocks bad transactions before they execute
 - MCP native: `npx @sardis/mcp-server start` — zero-config for Claude/Cursor
@@ -83,7 +83,7 @@
 > Regular wallets have no policy enforcement. An agent with a regular wallet private key could drain the entire balance in one bad decision. Sardis uses MPC wallets where the signing ceremony only proceeds if the transaction passes the policy check. The policy is enforced cryptographically, not just in application code.
 
 ### When asked "What about security?"
-> Non-custodial is our foundation. We never store private keys — Turnkey's MPC infrastructure splits keys across multiple parties. No single entity (not even Sardis) can move funds unilaterally. The policy engine adds another layer — even if an agent is compromised, it can only operate within the spending rules you set.
+> In live MPC mode, non-custodial is our foundation. Turnkey's MPC infrastructure splits keys across multiple parties and Sardis does not directly hold spendable private keys in that mode. No single entity can move funds unilaterally. The policy engine adds another layer — even if an agent is compromised, it can only operate within the spending rules you set.
 
 ### When asked "Is this production-ready? / Can I use real money?"
 > We're currently live on **testnet** (Base Sepolia) — you can try everything with test tokens, no real money involved. Mainnet deployment is coming soon. We're looking for **design partners** right now — teams that want to shape the product alongside us. If you're building AI agents that will need payment capabilities, we'd love to work with you before mainnet goes live. Reach out at sardis.sh.

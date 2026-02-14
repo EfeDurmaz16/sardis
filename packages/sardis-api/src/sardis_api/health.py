@@ -75,6 +75,7 @@ def create_health_router(
                 "mode": settings.chain_mode,
                 "execution_mode": execution_mode,
             },
+            "custody": _resolve_custody_posture(settings),
             "cache": {"status": "unknown", "type": "unknown"},
             "stripe": {"status": "unconfigured"},
             "turnkey": {"status": "unconfigured"},
@@ -396,3 +397,41 @@ def _resolve_health_chain(settings) -> str:
     if getattr(settings, "chain_mode", SIMULATED_MODE) == "live":
         return "base"
     return "base_sepolia"
+
+
+def _resolve_custody_posture(settings) -> dict[str, object]:
+    chain_mode = str(getattr(settings, "chain_mode", SIMULATED_MODE)).strip().lower()
+    configured_mpc = str(os.getenv("SARDIS_MPC__NAME", getattr(settings.mpc, "name", "simulated"))).strip().lower()
+    local_key_configured = bool((os.getenv("SARDIS_EOA_PRIVATE_KEY", "") or "").strip())
+
+    if chain_mode != "live":
+        return {
+            "status": "simulated_or_sandbox",
+            "non_custodial": False,
+            "details": "chain_mode is not live",
+            "configured_mpc": configured_mpc,
+        }
+
+    if configured_mpc in {"turnkey", "fireblocks"}:
+        return {
+            "status": "non_custodial_mpc",
+            "non_custodial": True,
+            "details": f"MPC provider {configured_mpc} configured for live execution",
+            "configured_mpc": configured_mpc,
+        }
+
+    if configured_mpc == "local":
+        return {
+            "status": "custodial_local_signer",
+            "non_custodial": False,
+            "details": "local signer path stores signing key in environment/memory",
+            "configured_mpc": configured_mpc,
+            "local_key_configured": local_key_configured,
+        }
+
+    return {
+        "status": "misconfigured",
+        "non_custodial": False,
+        "details": "live mode requires turnkey, fireblocks, or local signer configuration",
+        "configured_mpc": configured_mpc,
+    }

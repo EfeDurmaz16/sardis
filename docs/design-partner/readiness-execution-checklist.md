@@ -69,6 +69,18 @@ Evidence:
 - `packages/sardis-api/src/sardis_api/routers/ledger.py`
 - `tests/test_ledger_entries_api.py`
 
+## 7) Non-Custodial Posture Guardrails
+- [x] Make signer selection explicit so `SARDIS_EOA_PRIVATE_KEY` does not silently override MPC mode.
+- [x] Block `SARDIS_CHAIN_MODE=live` with `SARDIS_MPC__NAME=simulated`.
+- [x] Add runtime custody posture visibility on `/health`.
+- [x] Publish non-custodial messaging guidance for PH/design-partner communications.
+
+Evidence:
+- `packages/sardis-chain/src/sardis_chain/executor.py`
+- `packages/sardis-api/src/sardis_api/main.py`
+- `packages/sardis-api/src/sardis_api/health.py`
+- `docs/design-partner/non-custodial-posture.md`
+
 ---
 
 ## Exit Criteria for 9+

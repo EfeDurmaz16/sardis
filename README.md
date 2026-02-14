@@ -18,7 +18,7 @@
 
 > **AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.**
 
-Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wallets** with **natural language spending policies**. It's Stripe + IAM + Risk Engine for the Agent Economy.
+Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **policy-controlled wallets** with **natural language spending policies**. In live MPC mode (Turnkey/Fireblocks), wallets are non-custodial.
 
 **The Problem We Solve:** Financial Hallucination — agents accidentally spending $10k instead of $100 due to retry loops, decimal errors, or logic bugs. Sardis prevents this with a real-time policy firewall.
 
@@ -115,6 +115,7 @@ Add to your `claude_desktop_config.json`:
 
 - **Default local mode:** quick-start flows are intended for simulation/sandbox development.
 - **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
+- **Non-custodial posture:** requires `SARDIS_CHAIN_MODE=live` and `SARDIS_MPC__NAME=turnkey` or `fireblocks`. `local` and `simulated` modes are not non-custodial.
 - **Proof commands:** run `bash scripts/release/readiness_check.sh` and `bash scripts/release/critical_path_check.sh` before production rollouts.
 
 ---
@@ -200,7 +201,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 
 | Feature | Description |
 |---------|-------------|
-| **Non-Custodial MPC** | Keys secured via Turnkey threshold signatures |
+| **Non-Custodial MPC** | Available in live mode with Turnkey/Fireblocks |
 | **Natural Language Policies** | "Allow $50/day for SaaS only" |
 | **Financial Firewall** | Block hallucinations before they cost money |
 | **Group Governance** | Shared budgets across multi-agent teams |

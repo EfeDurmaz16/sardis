@@ -22,7 +22,7 @@
 ### Day -1 (Monday)
 > Tomorrow we launch Sardis on @ProductHunt.
 >
-> What it does: Gives AI agents non-custodial MPC wallets with natural language spending policies.
+> What it does: Gives AI agents policy-controlled wallets with natural language spending policies.
 >
 > Instead of code — just say: "Max $100/day, only SaaS, block weekends"
 >
@@ -64,7 +64,7 @@
 ### Tweet 4
 > What's working today (on testnet):
 >
-> - Non-custodial MPC wallets (Turnkey)
+> - Non-custodial MPC wallets in live MPC mode (Turnkey)
 > - Natural language policies (not just spending caps)
 > - 52 MCP tools — zero-config for Claude/Cursor
 > - Group governance — shared budgets across agent teams
@@ -117,13 +117,13 @@ We just launched Sardis on Product Hunt — infrastructure that will let AI agen
 
 **The problem:** Agents hallucinate financial decisions. Retry loops, decimal errors, wrong merchants. We call it "financial hallucination."
 
-**What we built:** Non-custodial MPC wallets with natural language spending policies. Instead of code, you write: "Max $100/day, only SaaS vendors, block weekends." Every transaction is policy-checked before execution.
+**What we built:** Policy-controlled wallets with natural language spending policies. In live MPC mode (Turnkey/Fireblocks), the wallet posture is non-custodial. Instead of code, you write: "Max $100/day, only SaaS vendors, block weekends." Every transaction is policy-checked before execution.
 
 **Where we are:** Live on testnet (Base Sepolia) with full SDK coverage. 19 packages on npm + PyPI, 52 MCP tools. We're looking for **design partners** — teams building AI agents that need payment capabilities.
 
 Key features working today:
 - Natural language policy engine (not just spending caps)
-- Non-custodial MPC wallets (Turnkey)
+- Non-custodial MPC wallets in live MPC mode (Turnkey)
 - MCP native — zero-config for Claude/Cursor
 - Group governance for multi-agent teams
 
@@ -183,7 +183,7 @@ We've been building Sardis — payment infrastructure designed for AI agent tran
 Architecture: Agent -> SDK/MCP -> Policy Engine -> MPC Signing (Turnkey) -> Chain Settlement
 
 What's working today:
-- Non-custodial MPC wallets via Turnkey threshold signatures
+- Non-custodial MPC wallets in live MPC mode via Turnkey threshold signatures
 - Natural language policy parsing -> structured rule enforcement
 - 52 MCP tools (zero-config for Claude/Cursor)
 - Group governance with shared budgets across agent teams
@@ -205,7 +205,7 @@ Docs: sardis.sh/docs
 **Title:** Show HN: Sardis – Payment OS for AI Agents (testnet live, looking for design partners)
 
 **Body:**
-Sardis gives AI agents non-custodial MPC wallets with natural language spending policies.
+Sardis gives AI agents policy-controlled wallets with natural language spending policies.
 
 The problem: "financial hallucination" — agents confidently making wrong financial decisions (retry loops, decimal errors, wrong merchants).
 
@@ -218,7 +218,7 @@ How it works:
 Currently live on testnet (Base Sepolia). We're looking for design partners — teams building AI agents that need payment capabilities.
 
 Technical details:
-- MPC custody via Turnkey (non-custodial, threshold signatures)
+- MPC custody via Turnkey in live mode (non-custodial, threshold signatures)
 - 52 MCP tools (zero-config for Claude/Cursor)
 - Group governance for multi-agent shared budgets
 - 5 protocols (AP2, TAP, UCP, A2A, x402)
@@ -241,7 +241,7 @@ https://github.com/EfeDurmaz16/sardis
 > **[ProductHunt link]**
 >
 > **What's live on testnet:**
-> - Non-custodial MPC wallets with NL spending policies
+> - Policy-controlled wallets with NL spending policies (non-custodial in live MPC mode)
 > - Group governance: shared budgets across multi-agent teams
 > - 52 MCP tools — zero-config for Claude/Cursor
 > - 19 packages on npm + PyPI
@@ -261,7 +261,7 @@ https://github.com/EfeDurmaz16/sardis
 > The core problem we solve: **financial hallucination**. AI agents can make wrong financial decisions — retry loops, decimal errors, unauthorized purchases — if no policy controls are enforced.
 >
 > What we've built (live on testnet):
-> -> Non-custodial MPC wallets (Turnkey) — we never hold private keys
+> -> Non-custodial MPC wallets in live MPC mode (Turnkey)
 > -> Natural language spending policies — "Max $100/day, only SaaS, block weekends"
 > -> MCP native — one command for Claude/Cursor integration
 > -> Group governance — shared budgets across multi-agent teams
