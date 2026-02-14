@@ -244,25 +244,26 @@ function App() {
                 </div>
                 <span className="text-xs font-mono text-muted-foreground">python — pip install sardis</span>
               </div>
-              <div className="p-6 font-mono text-sm leading-loose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] flex">
-                <div className="pr-5 text-right select-none text-[var(--sardis-canvas)]/30 border-r border-[var(--sardis-canvas)]/10 mr-5">
-                  <div>1</div>
-                  <div>2</div>
-                  <div>3</div>
-                  <div>4</div>
-                  <div>5</div>
-                  <div>6</div>
-                  <div>7</div>
-                </div>
-                <div className="flex-1">
-                  <div><span className="text-[#c678dd]">from</span> sardis <span className="text-[#c678dd]">import</span> SardisClient</div>
-                  <div>client = SardisClient()</div>
-                  <div className="mt-2">wallet = client.wallets.create(</div>
-                  <div className="ml-8">policy=<span className="text-[#98c379]">"Max $100/day, only SaaS vendors"</span></div>
-                  <div>)</div>
-                  <div className="mt-2">wallet.pay(<span className="text-[#98c379]">"openai"</span>, <span className="text-[#d19a66]">45.00</span>, purpose=<span className="text-[#98c379]">"API credits"</span>)</div>
-                  <div className="text-emerald-400"># Policy check → MPC signing → settlement. That's it.</div>
-                </div>
+              <div className="p-6 font-mono text-sm bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
+                <table className="border-collapse w-full">
+                  <tbody>
+                    {[
+                      { n: 1, code: <><span className="text-[#c678dd]">from</span> sardis <span className="text-[#c678dd]">import</span> SardisClient</> },
+                      { n: 2, code: <>client = SardisClient()</> },
+                      { n: 3, code: <>&nbsp;</> },
+                      { n: 4, code: <>wallet = client.wallets.create(</> },
+                      { n: 5, code: <>&nbsp;&nbsp;&nbsp;&nbsp;policy=<span className="text-[#98c379]">"Max $100/day, only SaaS vendors"</span></> },
+                      { n: 6, code: <>)</> },
+                      { n: 7, code: <>wallet.pay(<span className="text-[#98c379]">"openai"</span>, <span className="text-[#d19a66]">45.00</span>, purpose=<span className="text-[#98c379]">"API credits"</span>)</> },
+                      { n: 8, code: <span className="text-emerald-400"># Policy check → MPC signing → settlement. That's it.</span> },
+                    ].map((line) => (
+                      <tr key={line.n} className="leading-7">
+                        <td className="w-8 text-right pr-4 select-none text-[var(--sardis-canvas)]/25 align-top">{line.n}</td>
+                        <td className="whitespace-pre">{line.code}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
