@@ -38,6 +38,8 @@ env/
 .env
 .env.local
 .env.production
+.env.sardis
+.env.sardis.*
 
 # Testing
 .pytest_cache/
@@ -50,6 +52,13 @@ reports/
 *.log
 logs/
 turnkey-activity-*.json
+
+# Credentials / key material
+*.pem
+*.key
+*.p12
+*.pfx
+*.seed
 
 # Test Output
 test_output_*.txt

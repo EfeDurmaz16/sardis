@@ -85,7 +85,21 @@ async def require_principal(
         )
 
     if user is not None:
-        org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+        token_org_id = (user.organization_id or "").strip()
+        if token_org_id:
+            org_id = token_org_id
+        elif env in {"dev", "test", "local"}:
+            org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+            _logger.warning(
+                "JWT missing org_id claim; using fallback org_id=%s in %s mode",
+                org_id,
+                env,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="JWT is missing organization scope",
+            )
         scopes = ["*"] if user.role == "admin" else ["read"]
         return Principal(
             kind="jwt",
