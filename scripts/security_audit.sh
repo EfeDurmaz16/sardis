@@ -20,6 +20,7 @@ echo "" >> "$REPORT_FILE"
 
 PASS=0
 FAIL=0
+BLOCKED=0
 
 run_check() {
     local name="$1"
@@ -29,13 +30,23 @@ run_check() {
     echo "" >> "$REPORT_FILE"
     echo "Running: $name..."
 
-    if eval "$cmd" >> "$REPORT_FILE" 2>&1; then
+    local tmp
+    tmp="$(mktemp)"
+    if eval "$cmd" >"$tmp" 2>&1; then
+        cat "$tmp" >> "$REPORT_FILE"
         echo "**Status: PASS**" >> "$REPORT_FILE"
         PASS=$((PASS + 1))
     else
-        echo "**Status: ISSUES FOUND**" >> "$REPORT_FILE"
-        FAIL=$((FAIL + 1))
+        cat "$tmp" >> "$REPORT_FILE"
+        if grep -Eqi "ENOTFOUND|Could not resolve|Temporary failure in name resolution|Failed to establish a new connection|nodename nor servname provided" "$tmp"; then
+            echo "**Status: BLOCKED (Network/DNS unavailable for this check)**" >> "$REPORT_FILE"
+            BLOCKED=$((BLOCKED + 1))
+        else
+            echo "**Status: ISSUES FOUND**" >> "$REPORT_FILE"
+            FAIL=$((FAIL + 1))
+        fi
     fi
+    rm -f "$tmp"
     echo "" >> "$REPORT_FILE"
 }
 
@@ -114,8 +125,9 @@ echo "## Summary" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 echo "- Checks passed: $PASS" >> "$REPORT_FILE"
 echo "- Checks with issues: $FAIL" >> "$REPORT_FILE"
+echo "- Checks blocked (environment): $BLOCKED" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
 echo ""
 echo "Audit complete. Report saved to: $REPORT_FILE"
-echo "Passed: $PASS | Issues: $FAIL"
+echo "Passed: $PASS | Issues: $FAIL | Blocked: $BLOCKED"

@@ -60,7 +60,8 @@ Scope: README, SDK parity, security hardening, package readiness, landing/docs s
 
 ## Phase 6: Remaining High-Priority Tasks (Open)
 
-- [ ] `P6-01` Install and run full CVE tooling (`trufflehog`, `safety`, registry-enabled `pnpm audit`)
+- [ ] `P6-01` Install and run full CVE tooling (`trufflehog`, `safety`, registry-enabled `pnpm audit`)  
+  Blocker: current environment has DNS/network restrictions (`ENOTFOUND` on PyPI/npm audit endpoints)
 - [x] `P6-02` Add CI/runtime guard for Node engine mismatch (Node `22.x` pinned in workflows + root engines)
 - [x] `P6-03` Stabilize `tests/test_e2e_full_flow.py` against current router/dependency behavior
 - [x] `P6-04` Capture evidence links for investor-facing claims (tests/chains/protocols/package counts)
