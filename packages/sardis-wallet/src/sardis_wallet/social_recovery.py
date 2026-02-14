@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -330,8 +331,19 @@ class SocialRecoveryManager:
         """
         # For production, use: from Crypto.Protocol.SecretSharing import Shamir
         # shares = Shamir.split(threshold, num_shares, secret)
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in {"prod", "production"}:
+            raise RuntimeError(
+                "Secure SSS backend is required in production. "
+                "Insecure placeholder share generation is disabled."
+            )
 
         # Simplified placeholder - in production use proper SSS
+        logger.warning(
+            "Using insecure social-recovery placeholder shares in %s environment. "
+            "Do not use this mode for production secrets.",
+            env or "unknown",
+        )
         shares = []
         for i in range(num_shares):
             # Create pseudo-share (NOT SECURE - use proper SSS in production)
@@ -356,6 +368,12 @@ class SocialRecoveryManager:
         """
         # For production, use: from Crypto.Protocol.SecretSharing import Shamir
         # secret = Shamir.combine(shares)
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in {"prod", "production"}:
+            raise RuntimeError(
+                "Secure SSS backend is required in production. "
+                "Insecure placeholder reconstruction is disabled."
+            )
 
         # Simplified placeholder - combine shares (NOT SECURE)
         if len(shares) < threshold:

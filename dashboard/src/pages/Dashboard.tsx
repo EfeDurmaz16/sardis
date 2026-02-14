@@ -97,7 +97,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
   
-  const activeAgents = agents.filter((a: any) => a.is_active).length
+  const activeAgents = agents.filter((agent) => agent.is_active).length
   
   return (
     <div className="space-y-8">

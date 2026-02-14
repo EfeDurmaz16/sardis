@@ -3,6 +3,48 @@ import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, Chev
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '../api/client'
+import type { Agent } from '../types'
+
+type AgentOption = Pick<Agent, 'agent_id' | 'name' | 'wallet_id'>
+
+type CardRecord = {
+  card_id: string
+  provider_card_id?: string
+  status?: string
+  card_number_last4?: string
+  limit_per_tx?: number | string
+  limit_daily?: number | string
+  limit_monthly?: number | string
+  wallet_id?: string
+}
+
+type CardTransaction = {
+  transaction_id: string
+  merchant_name?: string
+  merchant_category?: string
+  status?: string
+  provider_tx_id?: string
+  amount?: number | string
+  currency?: string
+}
+
+type IssueCardInput = {
+  wallet_id: string
+  limit_per_tx: string
+  limit_daily: string
+  limit_monthly: string
+}
+
+type SimulatePurchaseResult = {
+  policy?: {
+    allowed?: boolean
+    reason?: string
+  }
+  provider_tx_id?: string
+  transaction?: {
+    transaction_id?: string
+  }
+}
 
 const SEED_AGENTS = [
   { agent_id: 'agent_shopping_001', name: 'shopping_agent', wallet_id: 'wallet_demo_001' },
@@ -39,31 +81,31 @@ export default function CardsPage() {
     queryFn: agentApi.list,
   })
 
-  const agents = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
+  const agents: AgentOption[] = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>('')
   const [showIssue, setShowIssue] = useState(false)
   const [showPurchase, setShowPurchase] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
-  const selectedAgent = agents.find((a: any) => a.agent_id === selectedAgentId)
+  const selectedAgent = agents.find((agent) => agent.agent_id === selectedAgentId)
   const walletId = selectedAgent?.wallet_id || ''
 
   useEffect(() => {
     if (agents.length > 0 && !selectedAgentId) {
-      const first = agents.find((a: any) => a.wallet_id)
+      const first = agents.find((agent) => agent.wallet_id)
       if (first) setSelectedAgentId(first.agent_id)
     }
   }, [agents, selectedAgentId])
 
-  const { data: apiCards = [], isLoading: cardsLoading, refetch: refetchCards } = useQuery({
+  const { data: apiCards = [], isLoading: cardsLoading, refetch: refetchCards } = useQuery<CardRecord[]>({
     queryKey: ['cards', walletId],
-    queryFn: () => cardsApi.list(walletId),
+    queryFn: async () => (await cardsApi.list(walletId)) as CardRecord[],
     enabled: !!walletId,
   })
 
   // Use seed cards if API returns empty and using seed agents
-  const cards = apiCards.length > 0 ? apiCards : (apiAgents.length === 0 ? SEED_CARDS : [])
+  const cards: CardRecord[] = apiCards.length > 0 ? apiCards : (apiAgents.length === 0 ? SEED_CARDS : [])
 
   const issueMutation = useMutation({
     mutationFn: cardsApi.issue,
@@ -116,7 +158,7 @@ export default function CardsPage() {
             className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
           >
             <option value="">Select an agent...</option>
-            {agents.filter((a: any) => a.wallet_id).map((agent: any) => (
+            {agents.filter((agent) => agent.wallet_id).map((agent) => (
               <option key={agent.agent_id} value={agent.agent_id}>
                 {agent.name} ({agent.agent_id})
               </option>
@@ -155,7 +197,7 @@ export default function CardsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {cards.map((card: any) => (
+          {cards.map((card) => (
             <div key={card.card_id} className="space-y-4">
               <SardisCard
                 card={card}
@@ -221,7 +263,7 @@ function SardisCard({
   isExpanded,
   onToggleExpand,
 }: {
-  card: any
+  card: CardRecord
   agentName?: string
   onFreeze: () => void
   onUnfreeze: () => void
@@ -381,9 +423,9 @@ function SardisCard({
 /* ─── Card Transactions ─── */
 
 function CardTransactions({ cardId }: { cardId: string }) {
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading } = useQuery<CardTransaction[]>({
     queryKey: ['card-transactions', cardId],
-    queryFn: () => cardsApi.listTransactions(cardId),
+    queryFn: async () => (await cardsApi.listTransactions(cardId)) as CardTransaction[],
   })
 
   if (isLoading) {
@@ -397,7 +439,7 @@ function CardTransactions({ cardId }: { cardId: string }) {
   return (
     <div className="space-y-2 pt-2 border-t border-dark-100">
       <p className="text-xs text-gray-500 uppercase tracking-wider">Recent Transactions</p>
-      {transactions.slice(0, 5).map((tx: any) => (
+      {transactions.slice(0, 5).map((tx) => (
         <div key={tx.transaction_id} className="flex items-center justify-between py-2 px-3 bg-dark-300/50 rounded-lg">
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white truncate">{tx.merchant_name || 'Unknown'}</p>
@@ -456,7 +498,7 @@ function IssueCardModal({
 }: {
   walletId: string
   onClose: () => void
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (data: IssueCardInput) => Promise<void>
   isLoading: boolean
 }) {
   const [formData, setFormData] = useState({
@@ -550,7 +592,7 @@ function SimulatePurchaseModal({
     merchant_name: 'Demo Coffee Shop',
     mcc_code: '5812',
   })
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<SimulatePurchaseResult | null>(null)
 
   const simulateMutation = useMutation({
     mutationFn: (data: { amount: string; merchant_name: string; mcc_code: string }) =>

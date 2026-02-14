@@ -20,6 +20,7 @@ Run:
 """
 
 import os
+from decimal import Decimal
 
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
@@ -30,18 +31,18 @@ from sardis import SardisClient
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_demo"))
 
-wallet = sardis.wallets.create(
+agent = sardis.agents.create(
     name="langchain-agent",
-    chain="base",
-    token="USDC",
-    policy="""
-        Max $200 per transaction.
-        Daily limit $1000.
-        Only allow software, cloud, and API categories.
-        Require justification for purchases over $50.
-    """,
+    description="LangChain procurement agent",
+)
+wallet = sardis.wallets.create(
+    agent_id=agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("200.00"),
+    limit_total=Decimal("1000.00"),
 )
 
 
@@ -57,30 +58,31 @@ def sardis_pay(to: str, amount: str, token: str, purpose: str) -> str:
         token: Stablecoin to use - one of USDC, USDT, EURC
         purpose: Reason for the payment
     """
-    result = sardis.payments.send(
-        wallet_id=wallet.id,
-        to=to,
-        amount=amount,
+    result = sardis.wallets.transfer(
+        wallet.wallet_id,
+        destination=to,
+        amount=Decimal(amount),
         token=token,
+        chain="base_sepolia",
+        domain="langchain-agent.local",
         memo=purpose,
     )
     return (
         f"Status: {result.status} | "
         f"Amount: {result.amount} {token} | "
         f"TX: {result.tx_hash} | "
-        f"Policy: {result.policy_result}"
+        f"Chain: {result.chain}"
     )
 
 
 @tool
 def sardis_balance() -> str:
     """Check the current wallet balance and spending limits."""
-    info = sardis.wallets.get_balance(wallet.id)
+    info = sardis.wallets.get_balance(wallet.wallet_id, chain="base_sepolia", token="USDC")
     return (
-        f"Balance: {info['balance']} USDC | "
-        f"Spent: {info['spent_total']} | "
-        f"Limit: {info['limit_total']} | "
-        f"Remaining: {info['remaining']}"
+        f"Wallet: {info.wallet_id} | "
+        f"Chain: {info.chain} | "
+        f"Balance: {info.balance} {info.token}"
     )
 
 

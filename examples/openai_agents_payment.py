@@ -20,6 +20,7 @@ Run:
 
 import json
 import os
+from decimal import Decimal
 
 from openai import OpenAI
 
@@ -27,19 +28,19 @@ from sardis import SardisClient
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_demo"))
 
-# Create a wallet with a natural language spending policy
-wallet = sardis.wallets.create(
+# Create an agent + wallet for this workflow
+agent = sardis.agents.create(
     name="openai-procurement-agent",
-    chain="base",
-    token="USDC",
-    policy="""
-        Max $100 per transaction.
-        Daily limit $500.
-        Only allow SaaS and developer tools.
-        Block gambling and entertainment categories.
-    """,
+    description="OpenAI function-calling procurement agent",
+)
+wallet = sardis.wallets.create(
+    agent_id=agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("100.00"),
+    limit_total=Decimal("500.00"),
 )
 
 # --- OpenAI Tool Definition --------------------------------------------------
@@ -82,18 +83,21 @@ SARDIS_PAY_TOOL = {
 
 def handle_sardis_pay(args: dict) -> str:
     """Execute a Sardis payment and return the result as JSON."""
-    result = sardis.payments.send(
-        wallet_id=wallet.id,
-        to=args["to"],
-        amount=args["amount"],
+    result = sardis.wallets.transfer(
+        wallet.wallet_id,
+        destination=args["to"],
+        amount=Decimal(args["amount"]),
         token=args["token"],
+        chain="base_sepolia",
+        domain="openai.com",
         memo=args["purpose"],
     )
     return json.dumps({
         "status": result.status,
         "tx_hash": result.tx_hash,
         "amount": str(result.amount),
-        "policy_result": result.policy_result,
+        "token": result.token,
+        "chain": result.chain,
     })
 
 

@@ -98,6 +98,7 @@
     "version": "0.2.7",
     "tools": [
       "sardis_get_balance",
+      "sardis_get_wallet",
       "sardis_create_hold",
       "sardis_capture_hold",
       "sardis_void_hold",
@@ -109,6 +110,13 @@
       "sardis_get_agent",
       "sardis_list_agents",
       "sardis_update_agent",
+      "sardis_pay",
+      "sardis_get_transaction",
+      "sardis_list_transactions",
+      "sardis_check_policy",
+      "sardis_validate_limits",
+      "sardis_check_compliance",
+      "sardis_get_policies",
       "sardis_issue_card",
       "sardis_create_card",
       "sardis_get_card",
@@ -147,8 +155,7 @@
       "sardis_list_groups",
       "sardis_add_agent_to_group",
       "sardis_remove_agent_from_group",
-      "sardis_get_group_spending",
-      "sardis_get_wallet"
+      "sardis_get_group_spending"
     ],
     "transport": "stdio",
     "category": "finance",

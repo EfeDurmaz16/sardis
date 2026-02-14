@@ -14,7 +14,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       
@@ -28,10 +27,10 @@ jobs:
           pip install ruff mypy
       
       - name: Run Ruff
-        run: ruff check api sardis packages scripts tests --exit-zero
+        run: ruff check api sardis packages scripts tests
 
       - name: Run Ruff format check
-        run: ruff format --check api sardis packages scripts tests || true
+        run: ruff format --check api sardis packages scripts tests
 
       - name: Run mypy type checking
         run: |
@@ -46,8 +45,7 @@ jobs:
                --ignore-missing-imports \
                --no-strict-optional \
                --warn-unused-ignores \
-               --show-error-codes \
-               || echo "mypy found type issues - please fix"
+               --show-error-codes
 
       - name: Strict lint for protocol packages
         run: |
@@ -95,7 +93,13 @@ jobs:
       
       - name: Enforce coverage threshold
         run: |
-          coverage report --fail-under=40
+          coverage report --fail-under=50
+
+      - name: Run critical-path integration smoke checks
+        env:
+          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
+          SARDIS_ENVIRONMENT: dev
+        run: bash scripts/release/critical_path_check.sh
       
       - name: Upload coverage
         uses: codecov/codecov-action@v5
@@ -148,6 +152,20 @@ jobs:
       - name: Enforce protocol coverage threshold
         run: |
           coverage report --fail-under=60
+
+  test-contracts:
+    name: Test Smart Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run smart contract tests
+        run: FOUNDRY_OFFLINE=true forge test --root contracts
 
   test-typescript-sdk:
     name: Test TypeScript SDK
@@ -309,17 +327,27 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install safety
-        run: pip install safety
-      
-      - name: Check for vulnerabilities
-        run: safety check -r requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install audit tooling
+        run: pip install pip-audit
+
+      - name: Run dependency vulnerability audit
+        run: bash scripts/release/dependency_audit.sh
       
       - name: Check for secrets
         uses: trufflesecurity/trufflehog@main
@@ -328,3 +356,6 @@ jobs:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --only-verified
+
+      - name: Run repo security sanity checks
+        run: bash scripts/release/security_check.sh

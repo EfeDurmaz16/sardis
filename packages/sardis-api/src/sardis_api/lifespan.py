@@ -36,13 +36,13 @@ def get_shutdown_event() -> asyncio.Event:
 class GracefulShutdownState:
     """Track state for graceful shutdown."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_shutting_down = False
         self.active_requests = 0
         self.shutdown_started_at: Optional[float] = None
         self.max_shutdown_wait_seconds = 30
 
-    def start_shutdown(self):
+    def start_shutdown(self) -> None:
         self.is_shutting_down = True
         self.shutdown_started_at = time.time()
         logger.info(
@@ -53,10 +53,10 @@ class GracefulShutdownState:
             },
         )
 
-    def request_started(self):
+    def request_started(self) -> None:
         self.active_requests += 1
 
-    def request_finished(self):
+    def request_finished(self) -> None:
         self.active_requests = max(0, self.active_requests - 1)
 
     async def wait_for_requests(self) -> bool:
@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
             from sardis_v2_core.database import init_database
             await init_database()
             logger.info("Database schema initialized")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
             logger.warning(f"Could not initialize database schema: {e}")
 
     # Setup signal handlers for graceful shutdown
@@ -124,7 +124,7 @@ async def lifespan(app: FastAPI):
     if enable_scheduler:
         try:
             from sardis_v2_core.scheduler import init_scheduler
-        except Exception as e:  # noqa: BLE001
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
             logger.warning("Background scheduler disabled (init failed): %s", e)
         else:
             database_url = os.getenv("DATABASE_URL", "")
@@ -158,19 +158,19 @@ async def lifespan(app: FastAPI):
     if hasattr(app.state, "scheduler"):
         try:
             await app.state.scheduler.shutdown(wait=True)
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error shutting down scheduler: {e}")
 
     if hasattr(app.state, "turnkey_client") and app.state.turnkey_client:
         try:
             await app.state.turnkey_client.close()
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error closing Turnkey client: {e}")
 
     if hasattr(app.state, "cache_service"):
         try:
             await app.state.cache_service.close()
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error closing cache service: {e}")
 
     logger.info("Sardis API shutdown complete")

@@ -1,11 +1,24 @@
 // API Client for Sardis Dashboard
 
 import { getCurrentToken } from '../auth/AuthContext'
+import type { Agent, Merchant, RiskScore, Transaction, Wallet, WebhookSubscription } from '../types'
 
 // API base URL - can be overridden by environment variable
 const API_URL = import.meta.env.VITE_API_URL || ''
 const API_V1_BASE = `${API_URL}/api/v1`
 const API_V2_BASE = `${API_URL}/api/v2`
+
+type JsonObject = Record<string, unknown>
+
+export interface AgentInstructionResponse {
+  response?: string
+  error?: string
+  tool_call?: {
+    name?: string
+    arguments?: Record<string, unknown>
+  }
+  tx_id?: string
+}
 
 
 async function request<T>(
@@ -49,9 +62,9 @@ async function requestV2<T>(endpoint: string, options: RequestInit = {}): Promis
 
 // Agent APIs (V2)
 export const agentApi = {
-  list: () => requestV2<any[]>('/agents'),
+  list: () => requestV2<Agent[]>('/agents'),
 
-  get: (agentId: string) => requestV2<any>(`/agents/${agentId}`),
+  get: (agentId: string) => requestV2<Agent>(`/agents/${agentId}`),
 
   create: (data: {
     name: string
@@ -61,17 +74,17 @@ export const agentApi = {
       total?: string
     }
     create_wallet?: boolean
-  }) => requestV2<any>('/agents', {
+  }) => requestV2<Agent>('/agents', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getWallet: (agentId: string) => requestV2<any>(`/agents/${agentId}/wallet`),
+  getWallet: (agentId: string) => requestV2<Wallet>(`/agents/${agentId}/wallet`),
 
   getTransactions: (agentId: string, limit = 50) =>
-    requestV2<any[]>(`/payments/agent/${agentId}?limit=${limit}`),
+    requestV2<Transaction[]>(`/payments/agent/${agentId}?limit=${limit}`),
 
-  instruct: (agentId: string, instruction: string) => requestV2<any>(`/agents/${agentId}/instruct`, {
+  instruct: (agentId: string, instruction: string) => requestV2<AgentInstructionResponse>(`/agents/${agentId}/instruct`, {
     method: 'POST',
     body: JSON.stringify({ instruction }),
   }),
@@ -80,7 +93,7 @@ export const agentApi = {
 // Payment APIs (V2)
 export const paymentApi = {
   estimate: (amount: string, currency = 'USDC') =>
-    requestV2<any>(`/payments/estimate?amount=${amount}&currency=${currency}`),
+    requestV2<JsonObject>(`/payments/estimate?amount=${amount}&currency=${currency}`),
 
   create: (data: {
     agent_id: string
@@ -89,23 +102,23 @@ export const paymentApi = {
     merchant_id?: string
     recipient_wallet_id?: string
     purpose?: string
-  }) => requestV2<any>('/payments', {
+  }) => requestV2<JsonObject>('/payments', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  getHistory: (limit = 100) => requestV2<any[]>(`/payments?limit=${limit}`),
+  getHistory: (limit = 100) => requestV2<Transaction[]>(`/payments?limit=${limit}`),
 }
 
 // Merchant APIs (V2)
 export const merchantApi = {
-  list: () => requestV2<any[]>('/merchants'),
+  list: () => requestV2<Merchant[]>('/merchants'),
 
   create: (data: {
     name: string
     description?: string
     category: string
-  }) => requestV2<any>('/merchants', {
+  }) => requestV2<Merchant>('/merchants', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -113,12 +126,12 @@ export const merchantApi = {
 
 // Webhook APIs (V2)
 export const webhookApi = {
-  list: () => requestV2<any[]>('/webhooks'),
+  list: () => requestV2<WebhookSubscription[]>('/webhooks'),
 
   create: (data: {
     url: string
     events: string[]
-  }) => requestV2<any>('/webhooks', {
+  }) => requestV2<WebhookSubscription>('/webhooks', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -127,7 +140,7 @@ export const webhookApi = {
     url: string
     events: string[]
     is_active: boolean
-  }>) => requestV2<any>(`/webhooks/${subscriptionId}`, {
+  }>) => requestV2<WebhookSubscription>(`/webhooks/${subscriptionId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -139,10 +152,10 @@ export const webhookApi = {
 
 // Risk APIs (V2)
 export const riskApi = {
-  getScore: (agentId: string) => requestV2<any>(`/risk/agents/${agentId}/score`),
+  getScore: (agentId: string) => requestV2<RiskScore>(`/risk/agents/${agentId}/score`),
 
   authorize: (agentId: string, serviceId: string) =>
-    requestV2<any>(`/risk/agents/${agentId}/authorize`, {
+    requestV2<JsonObject>(`/risk/agents/${agentId}/authorize`, {
       method: 'POST',
       body: JSON.stringify({ service_id: serviceId }),
     }),
@@ -159,8 +172,8 @@ export const ap2Api = {
   // Execute an AP2 payment bundle
   execute: (data: {
     mandate_chain: {
-      intent?: any
-      cart?: any
+      intent?: JsonObject
+      cart?: JsonObject
       payment: {
         mandate_id: string
         issuer: string
@@ -169,7 +182,7 @@ export const ap2Api = {
         amount_minor: number
         token: string
         expires_at: number
-        proof?: any
+        proof?: JsonObject
       }
     }
   }) => requestV2<{
@@ -183,7 +196,7 @@ export const ap2Api = {
   }),
 
   // Verify a mandate without executing
-  verify: (data: { mandate_chain: any }) => requestV2<{
+  verify: (data: { mandate_chain: JsonObject }) => requestV2<{
     valid: boolean
     errors?: string[]
   }>('/mandates/verify', {
@@ -195,7 +208,7 @@ export const ap2Api = {
 // Ledger APIs (V2 only)
 export const ledgerApi = {
   // Get recent transactions
-  recent: (limit = 50) => requestV2<any[]>(`/ledger/recent?limit=${limit}`),
+  recent: (limit = 50) => requestV2<JsonObject[]>(`/ledger/recent?limit=${limit}`),
 }
 
 // Transactions APIs (V2 only - chain operations)
@@ -272,17 +285,17 @@ export const webhooksApiV2 = {
   }),
 
   // List webhooks
-  list: () => requestV2<any[]>('/webhooks'),
+  list: () => requestV2<JsonObject[]>('/webhooks'),
 
   // Get a webhook by ID
-  get: (subscriptionId: string) => requestV2<any>(`/webhooks/${subscriptionId}`),
+  get: (subscriptionId: string) => requestV2<JsonObject>(`/webhooks/${subscriptionId}`),
 
   // Update a webhook
   update: (subscriptionId: string, data: {
     url?: string
     events?: string[]
     is_active?: boolean
-  }) => requestV2<any>(`/webhooks/${subscriptionId}`, {
+  }) => requestV2<JsonObject>(`/webhooks/${subscriptionId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -304,10 +317,10 @@ export const webhooksApiV2 = {
 
   // List deliveries for a webhook
   deliveries: (subscriptionId: string, limit = 50) =>
-    requestV2<any[]>(`/webhooks/${subscriptionId}/deliveries?limit=${limit}`),
+    requestV2<JsonObject[]>(`/webhooks/${subscriptionId}/deliveries?limit=${limit}`),
 
   // Rotate webhook secret
-  rotateSecret: (subscriptionId: string) => requestV2<any>(`/webhooks/${subscriptionId}/rotate-secret`, {
+  rotateSecret: (subscriptionId: string) => requestV2<JsonObject>(`/webhooks/${subscriptionId}/rotate-secret`, {
     method: 'POST',
   }),
 }
@@ -324,7 +337,7 @@ export const holdsApi = {
     expiration_hours?: number
   }) => requestV2<{
     success: boolean
-    hold?: any
+    hold?: JsonObject
     error?: string
   }>('/holds', {
     method: 'POST',
@@ -332,12 +345,12 @@ export const holdsApi = {
   }),
 
   // Get a hold by ID
-  get: (holdId: string) => requestV2<any>(`/holds/${holdId}`),
+  get: (holdId: string) => requestV2<JsonObject>(`/holds/${holdId}`),
 
   // Capture a hold
   capture: (holdId: string, amount?: string, txId?: string) => requestV2<{
     success: boolean
-    hold?: any
+    hold?: JsonObject
     error?: string
   }>(`/holds/${holdId}/capture`, {
     method: 'POST',
@@ -347,7 +360,7 @@ export const holdsApi = {
   // Void a hold
   void: (holdId: string) => requestV2<{
     success: boolean
-    hold?: any
+    hold?: JsonObject
     error?: string
   }>(`/holds/${holdId}/void`, {
     method: 'POST',
@@ -357,11 +370,11 @@ export const holdsApi = {
   listByWallet: (walletId: string, status?: string, limit = 50) => {
     const params = new URLSearchParams({ limit: String(limit) })
     if (status) params.append('status', status)
-    return requestV2<any[]>(`/holds/wallet/${walletId}?${params}`)
+    return requestV2<JsonObject[]>(`/holds/wallet/${walletId}?${params}`)
   },
 
   // List all active holds
-  listActive: (limit = 100) => requestV2<any[]>(`/holds?limit=${limit}`),
+  listActive: (limit = 100) => requestV2<JsonObject[]>(`/holds?limit=${limit}`),
 }
 
 // Invoices APIs (V2 only)
@@ -371,10 +384,10 @@ export const invoicesApi = {
     if (params?.status) searchParams.append('status', params.status)
     if (params?.limit) searchParams.append('limit', String(params.limit))
     if (params?.offset) searchParams.append('offset', String(params.offset))
-    return requestV2<any[]>(`/invoices?${searchParams}`)
+    return requestV2<JsonObject[]>(`/invoices?${searchParams}`)
   },
 
-  get: (invoiceId: string) => requestV2<any>(`/invoices/${invoiceId}`),
+  get: (invoiceId: string) => requestV2<JsonObject>(`/invoices/${invoiceId}`),
 
   create: (data: {
     amount: string
@@ -383,13 +396,13 @@ export const invoicesApi = {
     merchant_name?: string
     payer_agent_id?: string
     reference?: string
-  }) => requestV2<any>('/invoices', {
+  }) => requestV2<JsonObject>('/invoices', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
   updateStatus: (invoiceId: string, status: string) =>
-    requestV2<any>(`/invoices/${invoiceId}?status=${status}`, {
+    requestV2<JsonObject>(`/invoices/${invoiceId}?status=${status}`, {
       method: 'PATCH',
     }),
 }
@@ -410,7 +423,7 @@ export const marketplaceApi = {
     price_amount: string
     price_token?: string
     price_type?: string
-  }) => requestV2<any>('/marketplace/services', {
+  }) => requestV2<JsonObject>('/marketplace/services', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -425,18 +438,18 @@ export const marketplaceApi = {
     if (params?.category) searchParams.append('category', params.category)
     if (params?.provider_id) searchParams.append('provider_id', params.provider_id)
     if (params?.limit) searchParams.append('limit', String(params.limit))
-    return requestV2<any[]>(`/marketplace/services?${searchParams}`)
+    return requestV2<JsonObject[]>(`/marketplace/services?${searchParams}`)
   },
 
   // Get a service
-  getService: (serviceId: string) => requestV2<any>(`/marketplace/services/${serviceId}`),
+  getService: (serviceId: string) => requestV2<JsonObject>(`/marketplace/services/${serviceId}`),
 
   // Search services
   searchServices: (query: string, filters?: {
     category?: string
     min_rating?: string
     max_price?: string
-  }) => requestV2<any[]>('/marketplace/services/search', {
+  }) => requestV2<JsonObject[]>('/marketplace/services/search', {
     method: 'POST',
     body: JSON.stringify({ query, ...filters }),
   }),
@@ -447,7 +460,7 @@ export const marketplaceApi = {
     total_amount: string
     token?: string
     milestones?: Array<{ name: string; description: string; amount: string }>
-  }) => requestV2<any>('/marketplace/offers', {
+  }) => requestV2<JsonObject>('/marketplace/offers', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -462,24 +475,24 @@ export const marketplaceApi = {
     if (params?.role) searchParams.append('role', params.role)
     if (params?.status) searchParams.append('status', params.status)
     if (params?.limit) searchParams.append('limit', String(params.limit))
-    return requestV2<any[]>(`/marketplace/offers?${searchParams}`)
+    return requestV2<JsonObject[]>(`/marketplace/offers?${searchParams}`)
   },
 
   // Get an offer
-  getOffer: (offerId: string) => requestV2<any>(`/marketplace/offers/${offerId}`),
+  getOffer: (offerId: string) => requestV2<JsonObject>(`/marketplace/offers/${offerId}`),
 
   // Accept an offer
-  acceptOffer: (offerId: string) => requestV2<any>(`/marketplace/offers/${offerId}/accept`, {
+  acceptOffer: (offerId: string) => requestV2<JsonObject>(`/marketplace/offers/${offerId}/accept`, {
     method: 'POST',
   }),
 
   // Reject an offer
-  rejectOffer: (offerId: string) => requestV2<any>(`/marketplace/offers/${offerId}/reject`, {
+  rejectOffer: (offerId: string) => requestV2<JsonObject>(`/marketplace/offers/${offerId}/reject`, {
     method: 'POST',
   }),
 
   // Complete an offer
-  completeOffer: (offerId: string) => requestV2<any>(`/marketplace/offers/${offerId}/complete`, {
+  completeOffer: (offerId: string) => requestV2<JsonObject>(`/marketplace/offers/${offerId}/complete`, {
     method: 'POST',
   }),
 
@@ -487,21 +500,21 @@ export const marketplaceApi = {
   createReview: (offerId: string, data: {
     rating: number
     comment?: string
-  }) => requestV2<any>(`/marketplace/offers/${offerId}/review`, {
+  }) => requestV2<JsonObject>(`/marketplace/offers/${offerId}/review`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
   // List reviews for a service
   listReviews: (serviceId: string, limit = 50) =>
-    requestV2<any[]>(`/marketplace/services/${serviceId}/reviews?limit=${limit}`),
+    requestV2<JsonObject[]>(`/marketplace/services/${serviceId}/reviews?limit=${limit}`),
 }
 
 // Cards APIs (V2)
 export const cardsApi = {
-  list: (walletId: string) => requestV2<any[]>(`/cards?wallet_id=${walletId}`),
+  list: (walletId: string) => requestV2<JsonObject[]>(`/cards?wallet_id=${walletId}`),
 
-  get: (cardId: string) => requestV2<any>(`/cards/${cardId}`),
+  get: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}`),
 
   issue: (data: {
     wallet_id: string
@@ -509,7 +522,7 @@ export const cardsApi = {
     limit_per_tx?: string
     limit_daily?: string
     limit_monthly?: string
-  }) => requestV2<any>('/cards', {
+  }) => requestV2<JsonObject>('/cards', {
     method: 'POST',
     body: JSON.stringify({
       card_type: 'multi_use',
@@ -520,9 +533,9 @@ export const cardsApi = {
     }),
   }),
 
-  freeze: (cardId: string) => requestV2<any>(`/cards/${cardId}/freeze`, { method: 'POST' }),
+  freeze: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}/freeze`, { method: 'POST' }),
 
-  unfreeze: (cardId: string) => requestV2<any>(`/cards/${cardId}/unfreeze`, { method: 'POST' }),
+  unfreeze: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}/unfreeze`, { method: 'POST' }),
 
   cancel: (cardId: string) => requestV2<void>(`/cards/${cardId}`, { method: 'DELETE' }),
 
@@ -531,7 +544,7 @@ export const cardsApi = {
     currency?: string
     merchant_name?: string
     mcc_code?: string
-  }) => requestV2<any>(`/cards/${cardId}/simulate-purchase`, {
+  }) => requestV2<JsonObject>(`/cards/${cardId}/simulate-purchase`, {
     method: 'POST',
     body: JSON.stringify({
       currency: 'USD',
@@ -542,7 +555,7 @@ export const cardsApi = {
   }),
 
   listTransactions: (cardId: string, limit = 50) =>
-    requestV2<any[]>(`/cards/${cardId}/transactions?limit=${limit}`),
+    requestV2<JsonObject[]>(`/cards/${cardId}/transactions?limit=${limit}`),
 }
 
 // Demo APIs (V2)
@@ -575,7 +588,7 @@ export const demoApi = {
     limit_total?: string
     wallet_name?: string
   }) =>
-    requestV2<any>('/wallets', {
+    requestV2<JsonObject>('/wallets', {
       method: 'POST',
       body: JSON.stringify({
         mpc_provider: 'turnkey',
@@ -587,12 +600,12 @@ export const demoApi = {
     }),
 
   applyPolicy: (data: { agent_id: string; natural_language: string }) =>
-    requestV2<any>('/policies/apply', {
+    requestV2<JsonObject>('/policies/apply', {
       method: 'POST',
       body: JSON.stringify({ ...data, confirm: true }),
     }),
 
-  getPolicy: (agentId: string) => requestV2<any>(`/policies/${agentId}`),
+  getPolicy: (agentId: string) => requestV2<JsonObject>(`/policies/${agentId}`),
 
   checkPolicy: (data: {
     agent_id: string
@@ -610,7 +623,7 @@ export const demoApi = {
     }),
 
   issueCard: (data: { wallet_id: string; limit_per_tx?: string; limit_daily?: string; limit_monthly?: string }) =>
-    requestV2<any>('/cards', {
+    requestV2<JsonObject>('/cards', {
       method: 'POST',
       body: JSON.stringify({
         limit_per_tx: '100.00',
@@ -621,7 +634,7 @@ export const demoApi = {
     }),
 
   simulatePurchase: (cardId: string, data: { amount: string; currency?: string; merchant_name?: string; mcc_code?: string }) =>
-    requestV2<any>(`/cards/${cardId}/simulate-purchase`, {
+    requestV2<JsonObject>(`/cards/${cardId}/simulate-purchase`, {
       method: 'POST',
       body: JSON.stringify({
         currency: 'USD',
@@ -632,5 +645,5 @@ export const demoApi = {
     }),
 
   listCardTransactions: (cardId: string, limit = 50) =>
-    requestV2<any[]>(`/cards/${cardId}/transactions?limit=${limit}`),
+    requestV2<JsonObject[]>(`/cards/${cardId}/transactions?limit=${limit}`),
 }

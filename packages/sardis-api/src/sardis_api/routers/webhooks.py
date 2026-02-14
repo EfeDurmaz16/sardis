@@ -23,19 +23,19 @@ def _validate_webhook_url(url: str) -> str:
     http://localhost:8080/admin) and exfiltrate data or trigger internal actions
     when webhook events fire.
     """
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid webhook URL",
-        )
+    parsed = urlparse(url)
 
     # Require HTTPS in production
     if parsed.scheme not in ("https", "http"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Webhook URL must use HTTPS (or HTTP for local development)",
+        )
+
+    if not parsed.netloc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook URL",
         )
 
     hostname = parsed.hostname or ""

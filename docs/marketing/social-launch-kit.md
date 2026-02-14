@@ -48,7 +48,7 @@
 > • Decimal errors → 10x overpayment
 > • Wrong merchant → funds sent to scammers
 >
-> These aren't hypothetical. They're happening today.
+> These are common failure modes in autonomous automation systems.
 
 ### Tweet 3
 > The solution: A policy firewall for agent payments.
@@ -63,7 +63,7 @@
 >
 > ✅ Non-custodial MPC wallets (Turnkey)
 > ✅ Natural language policies (not just spending caps)
-> ✅ Virtual cards (Lithic) — pay anywhere Visa is accepted
+> ✅ Virtual cards (Lithic) for card-rail spending
 > ✅ 5 chains: Base, Polygon, ETH, Arbitrum, Optimism
 > ✅ MCP native — 1 command for Claude/Cursor
 
@@ -119,11 +119,11 @@ We just launched Sardis — infrastructure that lets AI agents make real financi
 Key features:
 - Natural language policy engine (not just spending caps)
 - Non-custodial MPC wallets (Turnkey)
-- Virtual cards (Lithic) — agents pay anywhere Visa works
+- Virtual cards (Lithic) for card-rail payments
 - 5 chains, 5 protocols, MCP native
 - Group governance for multi-agent teams
 
-Open-core: SDKs are MIT, 19 packages on npm + PyPI.
+Open-core: SDKs are MIT, 19 packages on npm + PyPI (see docs/audits/claims-evidence.md).
 
 GitHub: github.com/EfeDurmaz16/sardis
 Docs: sardis.sh/docs
@@ -186,7 +186,7 @@ Technical highlights:
 
 Stack: Python 3.12 (FastAPI), TypeScript, Solidity + Foundry, PostgreSQL (Neon).
 
-Open-core: SDKs and MCP server are MIT. 19 packages published.
+Open-core: SDKs and MCP server are MIT. 19 packages published (see docs/audits/claims-evidence.md).
 
 GitHub: github.com/EfeDurmaz16/sardis
 Docs: sardis.sh/docs
@@ -210,7 +210,7 @@ How it works:
 
 Technical details:
 - MPC custody via Turnkey (non-custodial, threshold signatures)
-- Virtual cards via Lithic (pay anywhere Visa is accepted)
+- Virtual cards via Lithic for card-rail payments
 - 5 chains (Base, Polygon, ETH, Arbitrum, Optimism)
 - 5 protocols (AP2, TAP, UCP, A2A, x402)
 - MCP server with 52 tools (zero-config for Claude/Cursor)
@@ -249,17 +249,17 @@ https://github.com/EfeDurmaz16/sardis
 >
 > As AI agents become more autonomous, they need financial infrastructure built for them — not adapted from human payment systems.
 >
-> The core problem we solve: **financial hallucination**. AI agents can confidently make wrong financial decisions — retry loops, decimal errors, unauthorized purchases. These aren't edge cases; they're the default failure mode when agents handle money.
+> The core problem we solve: **financial hallucination**. AI agents can make wrong financial decisions — retry loops, decimal errors, unauthorized purchases — if no policy controls are enforced.
 >
 > What we built:
 > → Non-custodial MPC wallets (Turnkey) — we never hold private keys
 > → Natural language spending policies — "Max $100/day, only SaaS, block weekends"
-> → Virtual cards (Lithic) — agents pay anywhere Visa is accepted
+> → Virtual cards (Lithic) for card-rail payments
 > → 5 blockchain networks, 5 payment protocols
 > → MCP native — one command for Claude/Cursor integration
 > → Group governance — shared budgets across multi-agent teams
 >
-> Open-core: 19 packages on npm and PyPI. MIT licensed SDKs.
+> Open-core: 19 packages on npm and PyPI (verified in docs/audits/claims-evidence.md). MIT licensed SDKs.
 >
 > We'd appreciate your support today: [ProductHunt link]
 >

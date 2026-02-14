@@ -83,7 +83,7 @@ async def run_idempotent(
             )
         except HTTPException:
             raise
-        except Exception:
+        except (json.JSONDecodeError, TypeError, ValueError):
             # If cache value is corrupted, ignore and proceed with lock path.
             pass
 

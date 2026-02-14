@@ -68,7 +68,7 @@
     "prepublishOnly": "npm run build && npm run test"
   },
   "dependencies": {
-    "@sardis/sdk": "workspace:^0.3.4",
+    "@sardis/sdk": "^0.3.4",
     "zod": "^3.22.0"
   },
   "peerDependencies": {

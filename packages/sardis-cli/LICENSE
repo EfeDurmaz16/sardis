@@ -1,25 +1,21 @@
-# Sardis Open Core License
+MIT License
 
-## 1. Open Source Components (MIT License)
+Copyright (c) 2026 Sardis
 
-The following components of Sardis are licensed under the **MIT License**:
-- `packages/sardis-sdk/`
-- `packages/sardis-mcp-server/`
-- `packages/sardis-cli/`
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
----
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-## 2. Proprietary Core Components
-
-The following core infrastructure components remain **Proprietary** and are the exclusive property of Efe Baran Durmaz:
-- `packages/sardis-core/` (Internal Policy Engine logic, Database schemas)
-- `packages/sardis-chain/` (MPC Signing Node management, Key threshold logic)
-- `packages/sardis-compliance/` (Direct integration logic for Persona/Elliptic)
-- `packages/sardis-api/` (Centralized API routing and orchestration)
-
----
-
-## 3. Why Open Core?
-We believe the **Agent Economy** needs an open standard. By open-sourcing our SDKs and MCP connectors, we allow developers to integrate Sardis with any agent framework securely. We protect our core infrastructure to ensure the long-term sustainability and security of the protocol.
-
-© 2026 Efe Baran Durmaz. All rights reserved.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

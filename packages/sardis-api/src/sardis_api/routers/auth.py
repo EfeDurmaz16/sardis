@@ -110,11 +110,7 @@ def verify_jwt_token(token: str) -> Optional[dict]:
             return None
 
         return payload
-    except pyjwt.ExpiredSignatureError:
-        return None
-    except pyjwt.InvalidTokenError:
-        return None
-    except Exception:
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, TypeError, ValueError):
         return None
 
 
@@ -161,7 +157,7 @@ async def get_current_user(
                 )
         except HTTPException:
             raise
-        except Exception:
+        except (AttributeError, RuntimeError, ValueError, TypeError):
             # Fail-closed: if we cannot check revocation, treat token as invalid
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -357,7 +353,7 @@ async def logout(
             )
         try:
             revoked = await cache.revoke_jwt_jti(jti, ttl_seconds=ttl_seconds)
-        except Exception:
+        except (RuntimeError, ConnectionError, TimeoutError, OSError):
             revoked = False
         if not revoked:
             raise HTTPException(

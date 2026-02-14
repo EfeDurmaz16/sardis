@@ -20,9 +20,14 @@ import { SardisClient } from "@sardis/sdk";
 const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY ?? "sim_demo" });
 
 async function main() {
-  // Create a wallet for an agent with spending limits
+  const agent = await sardis.agents.create({
+    name: "vercel-ai-agent",
+    description: "Vercel AI SDK procurement example agent",
+  });
+
+  // Create a wallet for the agent
   const wallet = await sardis.wallets.create({
-    agent_id: "agent_vercel_ai",
+    agent_id: agent.agent_id,
     currency: "USDC",
     limit_per_tx: "100.00",
     limit_total: "500.00",
@@ -59,7 +64,6 @@ async function main() {
             txHash: result.tx_hash,
             amount: result.amount,
             fromAddress: result.from_address,
-            toAddress: result.to_address,
             chain: result.chain,
           };
         },
@@ -73,7 +77,7 @@ async function main() {
             balance: info.balance,
             token: info.token,
             chain: info.chain,
-            address: info.address,
+            walletId: info.wallet_id,
           };
         },
       }),

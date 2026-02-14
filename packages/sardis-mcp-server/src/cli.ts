@@ -13,6 +13,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { runServer } from './index.js';
+import { getValidatedToolCount, toolCategories, validateToolRegistry } from './tools/index.js';
+import { MCP_SERVER_VERSION } from './version.js';
 
 const args = process.argv.slice(2);
 
@@ -32,8 +34,11 @@ interface InitOptions {
 }
 
 function printHelp() {
+  const toolCount = getValidatedToolCount();
+  const categoryCount = Object.keys(toolCategories).length;
+
   console.log(`
-Sardis MCP Server v0.2.7
+Sardis MCP Server v${MCP_SERVER_VERSION}
 The Payment OS for the Agent Economy
 
 USAGE:
@@ -44,8 +49,31 @@ USAGE:
 
 DESCRIPTION:
   Sardis MCP Server enables AI agents to execute secure payments
-  using Model Context Protocol. It exposes 50+ tools across wallet, payments,
-  policy, holds, cards, fiat, approvals, analytics, group governance, and sandbox flows.
+  using Model Context Protocol. It exposes ${toolCount} tools across ${categoryCount} categories:
+
+  Wallet (5):     sardis_get_wallet, sardis_get_balance, sardis_create_wallet,
+                  sardis_update_wallet_policy, sardis_list_wallets
+
+  Payment (3):    sardis_pay, sardis_get_transaction, sardis_list_transactions
+
+  Policy (3):     sardis_check_policy, sardis_validate_limits, sardis_check_compliance
+
+  Hold (6):       sardis_create_hold, sardis_capture_hold, sardis_void_hold,
+                  sardis_get_hold, sardis_list_holds, sardis_extend_hold
+
+  Agent (4):      sardis_create_agent, sardis_get_agent, sardis_list_agents,
+                  sardis_update_agent
+
+  Card (6):       sardis_issue_card, sardis_get_card, sardis_list_cards,
+                  sardis_freeze_card, sardis_unfreeze_card, sardis_cancel_card
+
+  Fiat (4):       sardis_fund_wallet, sardis_withdraw_to_bank,
+                  sardis_get_funding_status, sardis_get_withdrawal_status
+
+  Approval (2):   sardis_request_approval, sardis_get_approval_status
+
+  Analytics (3):  sardis_get_spending_summary, sardis_get_spending_by_vendor,
+                  sardis_get_spending_by_category
 
 CONFIGURATION (Claude Desktop):
   Add to ~/Library/Application Support/Claude/claude_desktop_config.json:
@@ -73,7 +101,7 @@ LEARN MORE:
 }
 
 function printVersion() {
-  console.log('Sardis MCP Server v0.2.7');
+  console.log(`Sardis MCP Server v${MCP_SERVER_VERSION}`);
 }
 
 function readArgValue(argv: string[], name: string): string | undefined {
@@ -125,7 +153,7 @@ async function apiRequestWithKey<T>(
     headers: {
       'X-API-Key': apiKey,
       'Content-Type': 'application/json',
-      'User-Agent': 'sardis-mcp-server/0.2.7',
+      'User-Agent': `sardis-mcp-server/${MCP_SERVER_VERSION}`,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -319,26 +347,37 @@ async function main() {
   }
 
   if (args[0] === 'start' || args.length === 0) {
+    const registryValidation = validateToolRegistry();
+    const toolCount = registryValidation.definitionCount;
+    const categoryCount = Object.keys(toolCategories).length;
     const mode = process.env.SARDIS_MODE || 'simulated';
     const isSandbox = mode === 'simulated';
 
     if (isSandbox) {
       console.error('');
       console.error('╔══════════════════════════════════════════════════════════════╗');
-      console.error('║  Sardis MCP Server v0.2.7 — SANDBOX MODE                   ║');
+      console.error(`║  Sardis MCP Server v${MCP_SERVER_VERSION} — SANDBOX MODE                   ║`);
       console.error('║                                                             ║');
       console.error('║  All transactions are SIMULATED (no real funds move)        ║');
       console.error('║  Policy validation runs REAL logic                          ║');
-      console.error('║  50+ tools available across core categories                 ║');
+      console.error(
+        `║  ${String(toolCount).padEnd(2, ' ')} tools available across ${String(categoryCount).padEnd(2, ' ')} categories                ║`
+      );
       console.error('║                                                             ║');
       console.error('║  Set SARDIS_API_KEY + SARDIS_MODE=live for real txns        ║');
       console.error('║  Try: sardis_sandbox_demo for a guided walkthrough          ║');
       console.error('╚══════════════════════════════════════════════════════════════╝');
       console.error('');
     } else {
-      console.error('Sardis MCP Server v0.2.7 starting...');
+      console.error(`Sardis MCP Server v${MCP_SERVER_VERSION} starting...`);
       console.error('Mode: live');
-      console.error('Tools: 50+ tools across core categories');
+      console.error(`Tools: ${toolCount} tools across ${categoryCount} categories`);
+    }
+
+    if (!registryValidation.isValid) {
+      console.error(
+        `Warning: tool registry mismatch (definitions=${registryValidation.definitionCount}, handlers=${registryValidation.handlerCount})`
+      );
     }
     console.error('Ready. Waiting for MCP client connection...');
     await runServer();

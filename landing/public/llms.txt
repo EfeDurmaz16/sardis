@@ -69,7 +69,7 @@ pip install sardis[ramp]    # + fiat on/off-ramp
 ### TypeScript
 ```bash
 npm install @sardis/sdk          # TypeScript SDK
-npm install @sardis/mcp-server   # MCP server (46 tools)
+npm install @sardis/mcp-server   # MCP server (52 tools)
 npm install @sardis/ai-sdk       # Vercel AI SDK integration
 npm install @sardis/ramp         # Fiat on/off-ramp
 ```
@@ -265,7 +265,7 @@ If you are an AI agent and need to make payments:
 4. You cannot override policies - they are enforced by the system
 5. Failed transactions will return clear error messages with remediation hints
 
-Available MCP tools (46 total):
+Available MCP tools (52 total):
 - `sardis_get_balance` - Check wallet balance
 - `sardis_pay` - Make a payment (subject to policy)
 - `sardis_batch_transfer` - Send multiple payments in one call
@@ -309,7 +309,7 @@ Available MCP tools (46 total):
 
 - **Production-Grade Retry** - Configurable retry with exponential backoff and circuit breakers for all providers
 - **SAR Persistence** - Suspicious Activity Reports persisted to PostgreSQL (FinCEN 5-year retention)
-- **MCP Server v0.2.5** - 46 tools, sandbox demo walkthrough, prompts capability
+- **MCP Server v0.2.5** - 52 tools, sandbox demo walkthrough, prompts capability
 - **Sandbox Demo Tool** - `sardis_sandbox_demo` for guided capability walkthrough
 
 ### Previous (v0.8.0)

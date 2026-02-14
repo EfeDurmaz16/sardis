@@ -58,10 +58,14 @@ export interface WebhookSubscription {
   subscription_id: string
   url: string
   events: string[]
-  secret: string
+  secret?: string
   is_active: boolean
   created_at: string
   last_triggered_at?: string
+  last_delivery_at?: string
+  total_deliveries?: number
+  successful_deliveries?: number
+  failed_deliveries?: number
   failed_attempts: number
 }
 
@@ -97,4 +101,3 @@ export interface ChartDataPoint {
   value: number
   label?: string
 }
-

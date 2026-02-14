@@ -28,48 +28,64 @@ from crewai import Agent, Crew, Task
 from crewai.tools import tool
 
 from sardis import SardisClient
-from sardis import AgentGroup as SardisAgentGroup
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sim_demo"))
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_demo"))
 
 # Create a shared group budget for the finance team
 group = sardis.groups.create(
     name="engineering-procurement",
-    budget_per_tx=Decimal("200.00"),
-    budget_daily=Decimal("1000.00"),
-    policy="""
-        Only allow software tools, API credits, and cloud services.
-        Block retail, entertainment, and gambling categories.
-        Require justification for any purchase over $50.
-    """,
+    budget={
+        "per_transaction": "200.00",
+        "daily": "1000.00",
+        "monthly": "30000.00",
+    },
+    merchant_policy={
+        "blocked_categories": ["gambling", "entertainment"],
+    },
 )
 
-# Create individual wallets under the group
-researcher_wallet = sardis.wallets.create(
+# Create agents + individual wallets and attach them to the group
+researcher_agent = sardis.agents.create(
     name="researcher-agent",
-    chain="base",
-    token="USDC",
-    group_id=group.id,
-    policy="Max $50 per transaction. Read-only market research.",
+    description="Finds tools and estimates costs",
+)
+researcher_wallet = sardis.wallets.create(
+    agent_id=researcher_agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("50.00"),
+    limit_total=Decimal("500.00"),
 )
 
-purchaser_wallet = sardis.wallets.create(
+purchaser_agent = sardis.agents.create(
     name="purchaser-agent",
-    chain="base",
-    token="USDC",
-    group_id=group.id,
-    policy="Max $200 per transaction. Execute approved purchases only.",
+    description="Executes approved purchases",
+)
+purchaser_wallet = sardis.wallets.create(
+    agent_id=purchaser_agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("200.00"),
+    limit_total=Decimal("1000.00"),
 )
 
-auditor_wallet = sardis.wallets.create(
+auditor_agent = sardis.agents.create(
     name="auditor-agent",
-    chain="base",
-    token="USDC",
-    group_id=group.id,
-    policy="Read-only. No spending allowed.",
+    description="Reviews spending and compliance",
 )
+auditor_wallet = sardis.wallets.create(
+    agent_id=auditor_agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("0.00"),
+    limit_total=Decimal("0.00"),
+)
+
+sardis.groups.add_agent(group.group_id, researcher_agent.agent_id)
+sardis.groups.add_agent(group.group_id, purchaser_agent.agent_id)
+sardis.groups.add_agent(group.group_id, auditor_agent.agent_id)
 
 
 # --- CrewAI Tools -----------------------------------------------------------
@@ -84,47 +100,49 @@ def sardis_pay(to: str, amount: str, token: str, purpose: str) -> str:
         token: Stablecoin to use - one of USDC, USDT, EURC
         purpose: Reason for the payment
     """
-    result = sardis.payments.send(
-        wallet_id=purchaser_wallet.id,
-        to=to,
-        amount=amount,
+    result = sardis.wallets.transfer(
+        purchaser_wallet.wallet_id,
+        destination=to,
+        amount=Decimal(amount),
         token=token,
+        chain="base_sepolia",
+        domain="crewai-finance.local",
         memo=purpose,
     )
     return (
         f"Status: {result.status} | "
         f"Amount: {result.amount} {token} | "
         f"TX: {result.tx_hash} | "
-        f"Policy: {result.policy_result} | "
-        f"Group budget remaining: {result.group_remaining}"
+        f"Group: {group.group_id}"
     )
 
 
 @tool("sardis_group_status")
 def sardis_group_status() -> str:
     """Check the group budget status including spending across all agents."""
-    info = sardis.groups.get_status(group.id)
+    info = sardis.groups.get(group.group_id)
+    spend = sardis.groups.get_spending(group.group_id)
+    budget = spend.get("budget", {}) if isinstance(spend, dict) else {}
     return (
-        f"Group: {info['name']}\n"
-        f"Daily budget: ${info['budget_daily']}\n"
-        f"Spent today: ${info['spent_daily']}\n"
-        f"Remaining: ${info['daily_remaining']}\n"
-        f"Active agents: {info['agent_count']}\n"
-        f"Transactions today: {info['tx_count_daily']}"
+        f"Group: {info.name}\n"
+        f"Group ID: {info.group_id}\n"
+        f"Daily budget: ${budget.get('daily', 'n/a')}\n"
+        f"Per-tx budget: ${budget.get('per_transaction', 'n/a')}\n"
+        f"Agents in group: {len(info.agent_ids)}"
     )
 
 
 @tool("sardis_audit_log")
 def sardis_audit_log() -> str:
     """Retrieve recent transaction audit log for the group."""
-    entries = sardis.ledger.list(group_id=group.id, limit=10)
+    entries = sardis.ledger.list_entries(wallet_id=purchaser_wallet.wallet_id, limit=10)
     if not entries:
         return "No transactions yet."
     lines = []
     for entry in entries:
         lines.append(
-            f"  [{entry.timestamp:%H:%M}] {entry.agent_name}: "
-            f"${entry.amount} to {entry.merchant} — {entry.status}"
+            f"  [{entry.created_at:%H:%M}] {entry.tx_id}: "
+            f"{entry.amount} {entry.currency} -> {entry.to_wallet or 'n/a'}"
         )
     return "Recent transactions:\n" + "\n".join(lines)
 
@@ -215,7 +233,7 @@ if __name__ == "__main__":
     print("CrewAI Finance Team + Sardis Group Budgets")
     print("=" * 60)
     print()
-    print(f"Group: {group.name} ({group.id})")
+    print(f"Group: {group.name} ({group.group_id})")
     print(f"Daily budget: $1,000")
     print(f"Agents: researcher, purchaser, auditor")
     print()

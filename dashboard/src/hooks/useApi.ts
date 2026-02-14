@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, paymentApi, merchantApi, webhookApi, healthApi } from '../api/client'
+import type { WebhookSubscription } from '../types'
 
 // Agents
 export function useAgents() {
@@ -100,7 +101,7 @@ export function useUpdateWebhook() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => webhookApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<WebhookSubscription> }) => webhookApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
     },
@@ -148,4 +149,3 @@ export function useHealth() {
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 }
-

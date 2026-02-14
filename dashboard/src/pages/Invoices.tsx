@@ -3,6 +3,7 @@ import { Search, FileText, Plus, CheckCircle, Clock, XCircle, AlertTriangle, Ext
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { invoicesApi } from '../api/client'
+import { getErrorMessage } from '../utils/errors'
 
 type InvoiceData = {
   invoice_id: string
@@ -42,8 +43,8 @@ export default function InvoicesPage() {
       if (statusFilter !== 'all') params.status = statusFilter
       const data = await invoicesApi.list(params)
       setInvoices(data)
-    } catch (e: any) {
-      setError(e.message || 'Failed to load invoices')
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Failed to load invoices'))
     } finally {
       setLoading(false)
     }
@@ -66,8 +67,8 @@ export default function InvoicesPage() {
       setNewDescription('')
       setNewAgentId('')
       fetchInvoices()
-    } catch (e: any) {
-      setError(e.message || 'Failed to create invoice')
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Failed to create invoice'))
     }
   }
 

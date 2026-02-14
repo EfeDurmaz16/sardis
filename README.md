@@ -24,12 +24,13 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wal
 
 ---
 
-## What's New
+## What's New (Snapshot: 2026-02-13)
 
 - **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
-- **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups
-- **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented
+- **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
+- **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented and wired in package exports
 - **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
+- **Security Hardening** — Production fail-closed checks for webhook signatures, CORS, and Redis-backed rate limiting
 - **Framework Examples** — OpenAI, LangChain, Vercel AI SDK, CrewAI integrations
 
 ---
@@ -43,11 +44,25 @@ pip install sardis
 ```
 
 ```python
+from decimal import Decimal
 from sardis import SardisClient
 
 client = SardisClient(api_key="sk_...")
-wallet = client.wallets.create(name="my-agent", chain="base", policy="Max $100/day")
-tx = wallet.pay(to="0x...", amount="25.00", token="USDC")
+agent = client.agents.create(name="my-agent", description="Procurement bot")
+wallet = client.wallets.create(
+    agent_id=agent.agent_id,
+    chain="base_sepolia",
+    currency="USDC",
+    limit_per_tx=Decimal("100.00"),
+)
+tx = client.wallets.transfer(
+    wallet.wallet_id,
+    destination="0x...",
+    amount=Decimal("25.00"),
+    token="USDC",
+    chain="base_sepolia",
+    domain="openai.com",
+)
 ```
 
 ### TypeScript
@@ -60,12 +75,18 @@ npm install @sardis/sdk
 import { SardisClient } from '@sardis/sdk';
 
 const client = new SardisClient({ apiKey: 'sk_...' });
-const wallet = await client.wallets.create({ agent_id: 'agent_123' });
+const agent = await client.agents.create({ name: 'my-agent' });
+const wallet = await client.wallets.create({
+  agent_id: agent.agent_id,
+  currency: 'USDC',
+  limit_per_tx: '100.00',
+});
 const tx = await client.wallets.transfer(wallet.wallet_id, {
   destination: '0x...',
   amount: '25.00',
   token: 'USDC',
   chain: 'base',
+  domain: 'openai.com',
 });
 ```
 
@@ -89,6 +110,12 @@ Add to your `claude_desktop_config.json`:
 ```
 
 **That's it.** Your agent now has a wallet with spending limits.
+
+### Simulation vs Production
+
+- **Default local mode:** quick-start flows are intended for simulation/sandbox development.
+- **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
+- **Proof commands:** run `bash scripts/release/readiness_check.sh` and `bash scripts/release/critical_path_check.sh` before production rollouts.
 
 ---
 
@@ -152,7 +179,20 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **MCP Server** | Zero-config (52 tools) | Yes | No | Demo only |
 | **Group Governance** | Yes | No | No | No |
 
-> **TL;DR:** Competitors build payment rails or identity layers. Sardis builds a **policy intelligence engine** with natural language interfaces — the only platform that prevents financial hallucination before it happens.
+<details>
+<summary>Verifiable In-Repo Evidence</summary>
+
+| Capability | Sardis Approach | Evidence |
+|---------|--------|-------|
+| **Policy-First Payments** | NL + structured spending policy enforcement before execution | `packages/sardis-core/src/sardis_v2_core/spending_policy.py` |
+| **Agent-Native Access** | MCP server + Python/TS SDKs for agent frameworks | `packages/sardis-mcp-server/src/tools/index.ts`, `packages/sardis-sdk-python`, `packages/sardis-sdk-js` |
+| **Execution Rails** | On-chain settlement + fiat rails behind policy checks | `packages/sardis-chain`, `packages/sardis-cards`, `packages/sardis-ramp` |
+| **Governance + Controls** | Group budgets, holds/approvals, replay protection, audit ledger | `packages/sardis-api/src/sardis_api/routers/groups.py`, `packages/sardis-ledger` |
+| **Claim Verification** | Launch-facing counts validated via repeatable scripts | `scripts/release/readiness_check.sh`, `docs/audits/claims-evidence.md` |
+
+</details>
+
+> **Positioning TL;DR:** Sardis is designed as a policy and control plane for AI-agent payments, not only a wallet API or only a payment rail.
 
 ---
 

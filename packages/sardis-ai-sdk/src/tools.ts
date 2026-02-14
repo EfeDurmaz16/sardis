@@ -39,6 +39,11 @@ import {
   BalanceParamsSchema,
 } from './types'
 
+type ErrorPayload = {
+  message?: string
+  detail?: string
+}
+
 /**
  * Internal Sardis API client for tool execution.
  */
@@ -82,12 +87,9 @@ class SardisToolClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => null)
+      const parsedError = error && typeof error === 'object' ? (error as ErrorPayload) : null
       const message =
-        (error &&
-          typeof error === 'object' &&
-          ('message' in error || 'detail' in error) &&
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ((error as any).message || (error as any).detail)) ||
+        (parsedError?.message || parsedError?.detail) ||
         `API error: ${response.status}`
       throw new Error(message)
     }

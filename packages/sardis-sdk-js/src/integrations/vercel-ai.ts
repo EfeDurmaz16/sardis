@@ -72,7 +72,7 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
                 purpose?: string;
                 walletId?: string;
                 token?: 'USDC' | 'USDT' | 'PYUSD' | 'EURC';
-                chain?: string;
+                chain?: SardisToolsOptions['chain'];
                 domain?: string;
             }) => {
                 if (!sardis) {
@@ -106,7 +106,7 @@ export const createSardisTools = (client?: SardisClient, options: SardisToolsOpt
                         destination: vendorAddress,
                         amount: amount.toString(),
                         token: effectiveToken,
-                        chain: effectiveChain as any,
+                        chain: effectiveChain,
                         domain: effectiveDomain,
                         memo: purpose,
                     });
