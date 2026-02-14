@@ -869,7 +869,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 59 tools for payments, wallets, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 52 tools for payments, wallets, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }

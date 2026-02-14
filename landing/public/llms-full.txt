@@ -304,7 +304,7 @@ agent = create_react_agent(
 
 ```bash
 npm install @sardis/sdk          # TypeScript SDK
-npm install @sardis/mcp-server   # MCP server (59 tools)
+npm install @sardis/mcp-server   # MCP server (52 tools)
 npm install @sardis/ai-sdk       # Vercel AI SDK integration
 npm install @sardis/ramp         # Fiat on/off-ramp
 ```
@@ -487,7 +487,7 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-### Full Tool List (59 tools)
+### Full Tool List (52 tools)
 
 | Category | Tools |
 |----------|-------|
@@ -1842,7 +1842,7 @@ function removeToken(address token) external onlySardis;
 ## Status
 
 - **Current Version**: v0.8.5 (Production Retry + Async Wrapping)
-- **MCP Server**: v0.2.7 on npm (1,000+ installs, 59 tools)
+- **MCP Server**: v0.2.7 on npm (1,000+ installs, 52 tools)
 - **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402

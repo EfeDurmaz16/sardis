@@ -8,7 +8,7 @@ export default function DocsMCPServer() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">MCP Server</h1>
         <p className="text-xl text-muted-foreground">
-          59 tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
+          52 tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
         </p>
       </div>
 
