@@ -21,6 +21,15 @@ import { walletManagementToolDefinitions, walletManagementToolHandlers } from '.
 import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
 import { groupToolDefinitions, groupToolHandlers } from './groups.js';
 
+// Handlers below are intentionally blocked for agent-facing use and excluded
+// from the aggregate registry to keep definition/handler parity.
+const { sardis_get_rules: _blockedGetRules, ...policyToolHandlersFiltered } = policyToolHandlers;
+const {
+  sardis_update_wallet_limits: _blockedUpdateWalletLimits,
+  sardis_archive_wallet: _blockedArchiveWallet,
+  ...walletManagementToolHandlersFiltered
+} = walletManagementToolHandlers;
+
 // Re-export types
 export * from './types.js';
 
@@ -55,12 +64,12 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...holdToolHandlers,
   ...agentToolHandlers,
   ...paymentToolHandlers,
-  ...policyToolHandlers,
+  ...policyToolHandlersFiltered,
   ...cardToolHandlers,
   ...fiatToolHandlers,
   ...approvalToolHandlers,
   ...spendingToolHandlers,
-  ...walletManagementToolHandlers,
+  ...walletManagementToolHandlersFiltered,
   ...sandboxToolHandlers,
   ...groupToolHandlers,
 };
