@@ -78,6 +78,9 @@ export default function APIReference() {
         <p className="text-sm text-muted-foreground mt-2">
           Authentication via <code className="text-xs bg-muted px-1 py-0.5">X-API-Key</code> header. Rate limit: 100 req/min.
         </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Browser docs: <a className="underline hover:text-foreground" href="https://api.sardis.sh/api/v2/docs" target="_blank" rel="noopener noreferrer">https://api.sardis.sh/api/v2/docs</a>
+        </p>
       </section>
 
       <section className="not-prose mb-8 flex flex-wrap gap-3">

@@ -251,6 +251,31 @@ def create_health_router(
             },
         )
 
+    @health_router.get("/api")
+    async def api_root():
+        """API namespace discovery endpoint."""
+        return {
+            "service": "Sardis API",
+            "version": API_VERSION,
+            "status": "ok",
+            "latest": "/api/v2",
+            "docs": "/api/v2/docs",
+            "openapi": "/api/v2/openapi.json",
+            "health": "/api/v2/health",
+        }
+
+    @health_router.get("/api/v2")
+    async def api_v2_root():
+        """Versioned API discovery endpoint."""
+        return {
+            "service": "Sardis API",
+            "version": API_VERSION,
+            "status": "ok",
+            "docs": "/api/v2/docs",
+            "openapi": "/api/v2/openapi.json",
+            "health": "/api/v2/health",
+        }
+
     @health_router.get("/api/v2/health")
     async def api_health():
         """Lightweight API v2 health check."""
