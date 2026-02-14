@@ -10,7 +10,7 @@ const releases = [
         type: 'improved',
         items: [
           'SardisClient convenience wrapper added to reduce SDK onboarding friction',
-          'Landing/docs claims synchronized around package count (19), chain count (5), and MCP tool count (46)',
+          'Landing/docs claims synchronized around package count (19), chain count (5), and MCP tool count (52)',
           'README and launch materials updated with validated link/badge checks',
           'Landing production deployment completed and aliased to www.sardis.sh',
         ]

@@ -28,7 +28,7 @@
 > - MCP native — one command to add payments to Claude/Cursor
 > - Group governance — shared budgets across agent teams
 >
-> We're open-core: SDKs and MCP server are MIT licensed, 19 packages live on npm + PyPI, 46 MCP tools.
+> We're open-core: SDKs and MCP server are MIT licensed, 19 packages live on npm + PyPI, 52 MCP tools.
 >
 > Would love your feedback! Ask me anything about agent payments, MPC wallets, or the agent economy.
 
@@ -129,7 +129,7 @@ Verified categories:
 
 **Why launch now:**
 - 19 packages live on npm + PyPI
-- 46 MCP tools working
+- 52 MCP tools working
 - 5 chains, 5 protocols
 - Full SDK coverage (Python + TypeScript)
 - Group governance (differentiator)
