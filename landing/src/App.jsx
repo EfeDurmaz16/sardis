@@ -160,7 +160,7 @@ function App() {
           <div className="hidden md:flex items-center gap-1">
             <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              LIVE ON TESTNET • 3.5K+ INSTALLS
+              LIVE ON TESTNET • 7K+ MONTHLY INSTALLS
             </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
@@ -1056,7 +1056,7 @@ const payment = await ramp.payMerchantFiat({
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { label: "ADOPTION", value: "3,500+", sub: "package installs (npm + PyPI) • 19 packages" },
+              { label: "ADOPTION", value: "7,000+", sub: "monthly installs (npm + PyPI) • 19 packages" },
               { label: "MCP SERVER", value: "52 Tools", sub: "Live on npm • zero-config for Claude & Cursor" },
               { label: "INFRASTRUCTURE", value: "5 Chains • 5 Protocols", sub: "AP2 • TAP • UCP • A2A • x402" }
             ].map((stat, i) => (
