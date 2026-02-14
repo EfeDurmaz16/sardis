@@ -140,7 +140,7 @@ The MCP server works with any LLM (Claude, local models via Cursor, etc.):
 ```
 npx @sardis/mcp-server start
 ```
-52 tools, zero config. Your agent gets a wallet with policy enforcement.
+59 tools, zero config. Your agent gets a wallet with policy enforcement.
 
 Python SDK:
 ```python
@@ -213,7 +213,7 @@ Technical details:
 - Virtual cards via Lithic for card-rail payments
 - 5 chains (Base, Polygon, ETH, Arbitrum, Optimism)
 - 5 protocols (AP2, TAP, UCP, A2A, x402)
-- MCP server with 52 tools (zero-config for Claude/Cursor)
+- MCP server with 59 tools (zero-config for Claude/Cursor)
 - Group governance for multi-agent shared budgets
 
 Open-core: MIT licensed SDKs, 19 packages on npm + PyPI.

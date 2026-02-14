@@ -53,8 +53,8 @@ export default function DocsAuthentication() {
 
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`curl https://sardis.sh/api/v2/wallets \\
-  -H "Authorization: Bearer sk_test_..."`}</pre>
+            <pre className="text-[var(--sardis-canvas)]">{`curl https://api.sardis.sh/api/v2/wallets \\
+  -H "X-API-Key: sk_test_..."`}</pre>
           </div>
         </div>
 

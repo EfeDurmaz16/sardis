@@ -27,7 +27,7 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **non-custodial MPC wal
 ## What's New (Snapshot: 2026-02-13)
 
 - **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
-- **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
+- **59 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
 - **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented and wired in package exports
 - **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
 - **Security Hardening** — Production fail-closed checks for webhook signatures, CORS, and Redis-backed rate limiting
@@ -176,7 +176,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **MPC Wallets** | Yes (Turnkey) | Yes | No (custodial) | Unknown |
 | **Chains** | Base, Poly, ETH, Arb, OP | Polygon, Base | USDC + ACH | Base only |
 | **Virtual Cards** | Yes (Lithic) | No | No | No |
-| **MCP Server** | Zero-config (52 tools) | Yes | No | Demo only |
+| **MCP Server** | Zero-config (59 tools) | Yes | No | Demo only |
 | **Group Governance** | Yes | No | No | No |
 
 <details>
@@ -245,7 +245,7 @@ pip install sardis[cards]   # + virtual cards
 | Package | Description |
 |---------|-------------|
 | [`@sardis/sdk`](https://www.npmjs.com/package/@sardis/sdk) | TypeScript SDK |
-| [`@sardis/mcp-server`](https://www.npmjs.com/package/@sardis/mcp-server) | MCP server (52 tools) |
+| [`@sardis/mcp-server`](https://www.npmjs.com/package/@sardis/mcp-server) | MCP server (59 tools) |
 | [`@sardis/ai-sdk`](https://www.npmjs.com/package/@sardis/ai-sdk) | Vercel AI SDK integration |
 | [`@sardis/ramp`](https://www.npmjs.com/package/@sardis/ramp) | Fiat on/off-ramp |
 
@@ -273,7 +273,7 @@ pip install sardis[cards]   # + virtual cards
 | MPC Wallets (Turnkey) | Live |
 | On-Chain Settlement | Live (5 chains) |
 | KYC/AML Compliance | Integrated (Persona, Elliptic) |
-| MCP Server | v0.2.7 (52 tools) |
+| MCP Server | v0.2.7 (59 tools) |
 | Python SDK (15 packages) | Live on PyPI |
 | TypeScript SDK (4 packages) | Live on npm |
 | Virtual Cards (Lithic) | Sandbox Ready |

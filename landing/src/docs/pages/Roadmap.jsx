@@ -225,7 +225,7 @@ export default function Roadmap() {
       date: 'Feb 2026 (Now)',
       items: [
         { text: 'SardisClient convenience wrapper shipped for simpler SDK onboarding', done: true },
-        { text: 'Landing/docs claims synchronized (52 MCP tools, 5 chains, 19 packages)', done: true },
+        { text: 'Landing/docs claims synchronized (59 MCP tools, 5 chains, 19 packages)', done: true },
         { text: 'README + launch material link/badge validation recorded', done: true },
         { text: 'Python SDK version parity guard enforced in release checks', done: true },
         { text: 'Onramper webhook signatures hardened with timestamp replay-window validation', done: true },

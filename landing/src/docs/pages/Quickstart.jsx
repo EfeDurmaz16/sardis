@@ -148,18 +148,23 @@ DEMO_LIVE_CARD_ID=vc_demo_01`}</pre>
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
             <pre className="text-[var(--sardis-canvas)]">{`from sardis import SardisClient
 
-# Initialize client
 client = SardisClient(api_key="your_api_key")
 
-# Create a payment
-result = await client.payments.create(
-    vendor="OpenAI",
-    amount=20.00,
+wallet = client.wallets.create(
+    name="research-agent",
+    chain="base",
+    token="USDC",
+    policy="Max $100/day, Max $25 per tx"
+)
+
+result = wallet.pay(
+    to="openai.com",
+    amount="20.00",
     purpose="GPT-4 API credits"
 )
 
-print(f"Success: {result.approved}")
-print(f"Card: {result.card_number}")`}</pre>
+print(result.success)
+print(result.tx_id)`}</pre>
           </div>
         </div>
       </section>
@@ -181,18 +186,18 @@ print(f"Card: {result.card_number}")`}</pre>
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
             <pre className="text-[var(--sardis-canvas)]">{`import { SardisClient } from '@sardis/sdk';
 
-// Initialize client
 const client = new SardisClient({ apiKey: 'your_api_key' });
 
-// Create a payment
-const result = await client.payments.create({
-  vendor: 'OpenAI',
-  amount: 20.00,
+const result = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '20.00',
+  token: 'USDC',
+  chain: 'base',
   purpose: 'GPT-4 API credits'
 });
 
-console.log('Success:', result.approved);
-console.log('Card:', result.cardNumber);`}</pre>
+console.log('Payment ID:', result.payment_id);
+console.log('Status:', result.status);`}</pre>
           </div>
         </div>
       </section>
@@ -235,7 +240,7 @@ SARDIS_WALLET_FACTORY=0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7
 SARDIS_ESCROW=0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932
 
 # API Configuration
-SARDIS_API_URL=https://sardis.sh/api/v2
+SARDIS_API_URL=https://api.sardis.sh
 SARDIS_API_KEY=sk_test_...
 
 # Network Configuration

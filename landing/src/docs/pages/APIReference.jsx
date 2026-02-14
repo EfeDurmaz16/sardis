@@ -74,9 +74,9 @@ export default function APIReference() {
           <span className="w-2 h-2 bg-[var(--sardis-orange)] rounded-full"></span>
           <span className="font-bold text-[var(--sardis-orange)]">BASE URL</span>
         </div>
-        <code className="text-sm font-mono text-foreground">https://api.sardis.sh/api/v2</code>
+        <code className="text-sm font-mono text-foreground">https://api.sardis.sh</code>
         <p className="text-sm text-muted-foreground mt-2">
-          Authentication via <code className="text-xs bg-muted px-1 py-0.5">X-API-Key</code> header. Rate limit: 100 req/min.
+          Authentication via <code className="text-xs bg-muted px-1 py-0.5">X-API-Key</code> header. API routes are under <code className="text-xs bg-muted px-1 py-0.5">/api/v2/*</code>. Rate limit: 100 req/min.
         </p>
         <p className="text-sm text-muted-foreground mt-2">
           Browser docs: <a className="underline hover:text-foreground" href="https://api.sardis.sh/api/v2/docs" target="_blank" rel="noopener noreferrer">https://api.sardis.sh/api/v2/docs</a>

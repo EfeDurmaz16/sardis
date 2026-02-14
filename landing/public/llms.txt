@@ -69,7 +69,7 @@ pip install sardis[ramp]    # + fiat on/off-ramp
 ### TypeScript
 ```bash
 npm install @sardis/sdk          # TypeScript SDK
-npm install @sardis/mcp-server   # MCP server (52 tools)
+npm install @sardis/mcp-server   # MCP server (59 tools)
 npm install @sardis/ai-sdk       # Vercel AI SDK integration
 npm install @sardis/ramp         # Fiat on/off-ramp
 ```
@@ -78,49 +78,25 @@ npm install @sardis/ramp         # Fiat on/off-ramp
 
 ### Python SDK
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
-
-wallet = client.wallets.create(
-    name="shopping-agent",
-    chain="base",
-    policy={
-        "max_daily": "100.00",
-        "max_per_tx": "25.00",
-        "allowed_merchants": ["openai.com", "anthropic.com"]
-    }
-)
-
-result = wallet.pay(
-    to="0x...",
-    amount="10.00",
-    token="USDC",
-    memo="API credits"
-)
+client = SardisClient(api_key="sk_...")
+wallet = client.wallets.create(name="shopping-agent", chain="base", policy="Max $100/day")
+result = wallet.pay(to="openai.com", amount="10.00", token="USDC", purpose="API credits")
 ```
 
 ### TypeScript SDK
 ```typescript
-import { Sardis } from '@sardis/sdk';
+import { SardisClient } from '@sardis/sdk';
 
-const client = new Sardis({ apiKey: 'sk_...' });
+const client = new SardisClient({ apiKey: 'sk_...' });
 
-const wallet = await client.wallets.create({
-  name: 'shopping-agent',
-  chain: 'base',
-  policy: {
-    maxDaily: '100.00',
-    maxPerTx: '25.00',
-    allowedMerchants: ['openai.com', 'anthropic.com']
-  }
-});
-
-const result = await wallet.pay({
-  to: '0x...',
+const result = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
   amount: '10.00',
   token: 'USDC',
-  memo: 'API credits'
+  chain: 'base',
+  purpose: 'API credits'
 });
 ```
 
@@ -154,7 +130,7 @@ const result = await wallet.pay({
 
 ## API Endpoints
 
-Base URL: `https://sardis.sh/api/v2`
+Base URL: `https://api.sardis.sh/api/v2`
 
 ### Wallets
 - `POST /wallets` - Create a new wallet
@@ -265,7 +241,7 @@ If you are an AI agent and need to make payments:
 4. You cannot override policies - they are enforced by the system
 5. Failed transactions will return clear error messages with remediation hints
 
-Available MCP tools (52 total):
+Available MCP tools (59 total):
 - `sardis_get_balance` - Check wallet balance
 - `sardis_pay` - Make a payment (subject to policy)
 - `sardis_batch_transfer` - Send multiple payments in one call
@@ -309,7 +285,7 @@ Available MCP tools (52 total):
 
 - **Production-Grade Retry** - Configurable retry with exponential backoff and circuit breakers for all providers
 - **SAR Persistence** - Suspicious Activity Reports persisted to PostgreSQL (FinCEN 5-year retention)
-- **MCP Server v0.2.5** - 52 tools, sandbox demo walkthrough, prompts capability
+- **MCP Server v0.2.7** - 59 tools, sandbox demo walkthrough, prompts capability
 - **Sandbox Demo Tool** - `sardis_sandbox_demo` for guided capability walkthrough
 
 ### Previous (v0.8.0)

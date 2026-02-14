@@ -14,7 +14,7 @@ Submit PRs to these curated awesome-lists to increase visibility in developer co
 ```markdown
 ## Sardis MCP Server
 
-- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment OS for AI agents. Non-custodial MPC wallets with natural language spending policies. 52 tools for wallet management, payments, policy enforcement, virtual cards, and multi-chain settlement. `npx @sardis/mcp-server start`
+- [Sardis](https://github.com/EfeDurmaz16/sardis) - Payment OS for AI agents. Non-custodial MPC wallets with natural language spending policies. 59 tools for wallet management, payments, policy enforcement, virtual cards, and multi-chain settlement. `npx @sardis/mcp-server start`
 ```
 
 ---

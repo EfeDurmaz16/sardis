@@ -25,11 +25,11 @@ export default function DocsSDK() {
 
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`from sardis import SardisClient
+            <pre className="text-[var(--sardis-canvas)]">{`from sardis_sdk import SardisClient
 
 client = SardisClient(
     api_key="your_api_key",
-    base_url="https://sardis.sh/api/v2",  # Optional
+    base_url="https://api.sardis.sh",  # Optional
     timeout=30,  # Optional, seconds
     max_retries=3  # Optional
 )`}</pre>
@@ -39,21 +39,18 @@ client = SardisClient(
         <h3 className="text-lg font-bold font-display mb-3">Payments</h3>
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`# Create a payment
-result = await client.payments.create(
-    vendor="OpenAI",
-    amount=20.00,
-    purpose="API credits",
-    category="SaaS"  # Optional
-)
+            <pre className="text-[var(--sardis-canvas)]">{`# Execute a single mandate
+result = client.payments.execute_mandate({
+    "psp_domain": "api.openai.com",
+    "amount": "20.00",
+    "token": "USDC",
+    "chain": "base",
+    "purpose": "API credits"
+})
 
-# Result object
-result.approved      # bool
-result.card_number   # str (if approved)
-result.card_cvv      # str (if approved)
-result.card_expiry   # str (if approved)
-result.transaction_id  # str
-result.reason        # str (if blocked)`}</pre>
+result.payment_id  # str
+result.status      # "pending" | "processing" | "completed" | "failed"
+result.tx_hash     # str | None`}</pre>
           </div>
         </div>
 
@@ -61,30 +58,34 @@ result.reason        # str (if blocked)`}</pre>
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
             <pre className="text-[var(--sardis-canvas)]">{`# Get wallet balance
-balance = await client.wallets.get_balance(wallet_id="wallet_xxx")
+balance = client.wallets.get_balance(wallet_id="wallet_xxx")
 
 # Create a new wallet
-wallet = await client.wallets.create(
-    name="Agent Wallet",
-    initial_balance=100.00
+wallet = client.wallets.create(
+    agent_id="agent_xxx",
+    currency="USDC",
+    chain="base"
 )
 
 # List all wallets
-wallets = await client.wallets.list()`}</pre>
+wallets = client.wallets.list(agent_id="agent_xxx")`}</pre>
           </div>
         </div>
 
         <h3 className="text-lg font-bold font-display mb-3">Policy</h3>
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`# Check if a payment would be allowed
-check = await client.policy.check(
-    vendor="Amazon",
-    amount=500.00
+            <pre className="text-[var(--sardis-canvas)]">{`from decimal import Decimal
+
+# Check if a payment would be allowed
+check = client.policies.check(
+    agent_id="agent_xxx",
+    amount=Decimal("500.00"),
+    currency="USD",
+    merchant_id="amazon.com"
 )
 
 check.allowed        # bool
-check.risk_score     # float (0-1)
 check.reason         # str (if blocked)`}</pre>
           </div>
         </div>
@@ -102,7 +103,7 @@ check.reason         # str (if blocked)`}</pre>
 
 const client = new SardisClient({
   apiKey: 'your_api_key',
-  baseUrl: 'https://sardis.sh/api/v2', // Optional
+  baseUrl: 'https://api.sardis.sh', // Optional
   timeout: 30000, // Optional, milliseconds
   maxRetries: 3 // Optional
 });`}</pre>
@@ -112,21 +113,19 @@ const client = new SardisClient({
         <h3 className="text-lg font-bold font-display mb-3">Payments</h3>
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`// Create a payment
-const result = await client.payments.create({
-  vendor: 'OpenAI',
-  amount: 20.00,
-  purpose: 'API credits',
-  category: 'SaaS' // Optional
+            <pre className="text-[var(--sardis-canvas)]">{`// Execute a payment mandate
+const result = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '20.00',
+  token: 'USDC',
+  chain: 'base',
+  purpose: 'API credits'
 });
 
 // Result object
-result.approved       // boolean
-result.cardNumber     // string (if approved)
-result.cardCvv        // string (if approved)
-result.cardExpiry     // string (if approved)
-result.transactionId  // string
-result.reason         // string (if blocked)`}</pre>
+result.payment_id    // string
+result.status        // string
+result.tx_hash       // string | undefined`}</pre>
           </div>
         </div>
       </section>
@@ -154,7 +153,7 @@ tools = [SardisTool()]
         <h3 className="text-lg font-bold font-display mb-3">Vercel AI SDK (TypeScript)</h3>
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`import { createSardisTools } from '@sardis/sdk/integrations';
+            <pre className="text-[var(--sardis-canvas)]">{`import { createSardisTools } from '@sardis/ai-sdk';
 import { generateText } from 'ai';
 
 const tools = createSardisTools(sardisClient);
@@ -191,16 +190,16 @@ response = openai.chat.completions.create(
           All SDK methods throw typed exceptions for error handling.
         </p>
         <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
-          <pre className="text-[var(--sardis-canvas)]">{`from sardis.exceptions import (
+          <pre className="text-[var(--sardis-canvas)]">{`from sardis_sdk import (
     PolicyViolationError,
     InsufficientBalanceError,
     AuthenticationError
 )
 
 try:
-    result = await client.payments.create(...)
+    result = client.payments.execute_mandate(...)
 except PolicyViolationError as e:
-    print(f"Blocked: {e.reason}")
+    print(f"Blocked: {e}")
 except InsufficientBalanceError:
     print("Not enough funds")`}</pre>
         </div>

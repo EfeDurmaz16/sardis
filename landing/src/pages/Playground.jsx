@@ -73,54 +73,51 @@ const CODE_EXAMPLES = {
   },
   python: {
     label: 'Python SDK',
-    code: `from sardis import Sardis
+    code: `from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
+wallet = client.wallets.create(name="agent_demo", chain="base", token="USDC")
 
-# Create a payment with policy check
-payment = client.payments.create(
-    agent_id="agent_demo",
-    amount=20.00,
-    currency="USDC",
-    recipient="openai.com",
+result = wallet.pay(
+    to="openai.com",
+    amount="20.00",
     purpose="API credits"
 )
 
-print(f"TX: {payment.tx_hash}")
-# TX: 0x7f4d...3a91`
+print(f"TX: {result.tx_id}")`
   },
   typescript: {
     label: 'TypeScript SDK',
-    code: `import { Sardis } from '@sardis/sdk';
+    code: `import { SardisClient } from '@sardis/sdk';
 
-const sardis = new Sardis({ apiKey: 'sk_...' });
+const client = new SardisClient({ apiKey: 'sk_...' });
 
-// Execute payment with compliance
-const payment = await sardis.payments.create({
-  agentId: 'agent_demo',
-  amount: 20.00,
-  currency: 'USDC',
-  recipient: 'openai.com',
+const payment = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '20.00',
+  token: 'USDC',
+  chain: 'base',
   purpose: 'API credits'
 });
 
-console.log(\`TX: \${payment.txHash}\`);`
+console.log(\`Payment: \${payment.payment_id}\`);`
   },
   curl: {
     label: 'REST API',
-    code: `curl -X POST https://sardis.sh/api/v2/payments \\
-  -H "Authorization: Bearer sk_..." \\
+    code: `curl -X POST https://api.sardis.sh/api/v2/mandates/execute \\
+  -H "X-API-Key: sk_..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "agent_id": "agent_demo",
-    "amount": 2000,
-    "currency": "USDC",
-    "recipient": "openai.com",
-    "purpose": "API credits"
+    "mandate": {
+      "psp_domain": "api.openai.com",
+      "amount": "20.00",
+      "token": "USDC",
+      "chain": "base"
+    }
   }'
 
 # Response:
-# {"tx_hash": "0x7f4d...3a91", "status": "confirmed"}`
+# {"payment_id":"pay_123","status":"processing"}`
   }
 };
 

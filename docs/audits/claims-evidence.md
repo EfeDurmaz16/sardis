@@ -23,7 +23,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | `Monorepo import bootstrap is guarded` | `packages/sardis-api/src/sardis_api/main.py` | `pytest -q tests/test_monorepo_bootstrap_guard.py` | bootstrap now limited to dev-like envs and can be explicitly disabled |
 | `Critical path coverage exists for payment/policy/wallet lifecycle` | `tests/test_protocol_stack_integration.py`, `tests/test_cross_tenant_isolation.py`, `tests/integration/test_full_scenario.py` | `bash scripts/release/critical_path_check.sh` | Targeted smoke suite passes and is wired into CI |
 | `Smart contract tests pass post-remediation` | `contracts/test/*.t.sol` | `FOUNDRY_OFFLINE=true forge test --root contracts` | `91 passed, 0 failed, 0 skipped` |
-| `Launch copy uses verified metrics` | `docs/marketing/product-hunt-launch.md`, `docs/marketing/social-launch-kit.md` | manual review against this file | hard metrics (19 packages, 52 tools, 5 chains/protocols) now explicitly tied to `claims-evidence.md` |
+| `Launch copy uses verified metrics` | `docs/marketing/product-hunt-launch.md`, `docs/marketing/social-launch-kit.md` | manual review against this file | hard metrics (19 packages, 59 tools, 5 chains/protocols) now explicitly tied to `claims-evidence.md` |
 | `Clone-and-run first-run flow is scripted` | `scripts/release/clone_and_run_smoke.sh` | `bash scripts/release/clone_and_run_smoke.sh --no-install` | Runs facade smoke flow + readiness + critical-path checks from a single entry point |
 | `Residual risks are documented` | `docs/audits/final-remediation-report.md` | file review | report includes completed controls, proof commands, and remaining risk items |
 

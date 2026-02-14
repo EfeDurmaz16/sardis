@@ -208,16 +208,16 @@ Individual packages also available: `sardis-sdk`, `sardis-core`, `sardis-chain`,
 ### Initialization
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
 # With API key
-client = Sardis(api_key="sk_live_...")
+client = SardisClient(api_key="sk_live_...")
 
 # With environment variable (SARDIS_API_KEY)
-client = Sardis()
+client = SardisClient()
 
-# Sandbox mode
-client = Sardis(api_key="sk_test_...", sandbox=True)
+# Explicit API host (optional)
+client = SardisClient(api_key="sk_test_...", base_url="https://api.sardis.sh")
 ```
 
 ### Wallet Operations
@@ -230,21 +230,14 @@ wallet = client.wallets.create(
     policy="Max $100/day"
 )
 
-# List wallets
-wallets = client.wallets.list()
-
 # Get wallet by ID
 wallet = client.wallets.get("wallet_123")
 
 # Get balance
-balance = wallet.balance()
-# {"USDC": "150.00", "EURC": "50.00"}
+balance = client.wallets.get_balance("wallet_123")
 
-# Update policy
-wallet.update_policy("Max $200/day, require approval over $100")
-
-# Fund wallet (returns deposit address)
-deposit = wallet.get_deposit_address()
+# List wallets
+wallets = client.wallets.list()
 ```
 
 ### Transaction Operations
@@ -252,45 +245,27 @@ deposit = wallet.get_deposit_address()
 ```python
 # Make payment
 tx = wallet.pay(
-    to="0x...",
+    to="openai.com",
     amount="50.00",
     token="USDC",
-    memo="API credits"
+    purpose="API credits"
 )
-
-# List transactions
-txs = wallet.transactions.list(
-    limit=50,
-    status="confirmed"
-)
-
-# Get transaction
-tx = wallet.transactions.get("tx_123")
-
-# Wait for confirmation
-tx.wait_for_confirmation(timeout=60)
 ```
 
 ### Async Support
 
 ```python
 import asyncio
-from sardis import AsyncSardis
+from sardis_sdk import AsyncSardisClient
 
 async def main():
-    client = AsyncSardis(api_key="sk_...")
-
-    wallet = await client.wallets.create(
-        name="async-wallet",
-        chain="base",
-        policy="Max $100/day"
-    )
-
-    tx = await wallet.pay(
-        to="0x...",
-        amount="25.00",
-        token="USDC"
-    )
+    client = AsyncSardisClient(api_key="sk_...")
+    result = await client.payments.execute_mandate({
+        "psp_domain": "api.openai.com",
+        "amount": "25.00",
+        "token": "USDC",
+        "chain": "base"
+    })
 
 asyncio.run(main())
 ```
@@ -329,7 +304,7 @@ agent = create_react_agent(
 
 ```bash
 npm install @sardis/sdk          # TypeScript SDK
-npm install @sardis/mcp-server   # MCP server (52 tools)
+npm install @sardis/mcp-server   # MCP server (59 tools)
 npm install @sardis/ai-sdk       # Vercel AI SDK integration
 npm install @sardis/ramp         # Fiat on/off-ramp
 ```
@@ -337,9 +312,9 @@ npm install @sardis/ramp         # Fiat on/off-ramp
 ### Initialization
 
 ```typescript
-import { Sardis } from '@sardis/sdk';
+import { SardisClient } from '@sardis/sdk';
 
-const client = new Sardis({
+const client = new SardisClient({
   apiKey: 'sk_live_...',
   // sandbox: true  // for testing
 });
@@ -348,27 +323,12 @@ const client = new Sardis({
 ### Wallet Operations
 
 ```typescript
-// Create wallet
-const wallet = await client.wallets.create({
-  name: 'agent-wallet',
-  chain: 'base',
-  policy: {
-    maxDaily: '100.00',
-    maxPerTx: '25.00',
-    allowedMerchants: ['openai.com']
-  }
-});
-
-// Get balance
-const balance = await wallet.balance();
-// { USDC: '150.00', EURC: '50.00' }
-
-// Make payment
-const tx = await wallet.pay({
-  to: '0x...',
+const tx = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
   amount: '25.00',
   token: 'USDC',
-  memo: 'API credits'
+  chain: 'base',
+  purpose: 'API credits'
 });
 ```
 
@@ -527,7 +487,7 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-### Full Tool List (52 tools)
+### Full Tool List (59 tools)
 
 | Category | Tools |
 |----------|-------|
@@ -550,15 +510,15 @@ Add to `.cursor/mcp.json`:
 ### Base URL
 
 ```
-Production: https://sardis.sh/api/v2
-Sandbox:    https://sardis.sh/api/v2
+Production: https://api.sardis.sh/api/v2
+Sandbox:    https://api.sardis.sh/api/v2
 ```
 
 ### Authentication
 
 ```bash
-curl https://sardis.sh/api/v2/wallets \
-  -H "Authorization: Bearer sk_live_..."
+curl https://api.sardis.sh/api/v2/wallets \
+  -H "X-API-Key: sk_live_..."
 ```
 
 ### Endpoints
@@ -1054,9 +1014,9 @@ Sardis is built for multi-agent deployments where each agent has its own wallet,
 Every agent wallet has an independent `SpendingPolicy` with layered enforcement:
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_live_...")
+client = SardisClient(api_key="sk_live_...")
 
 # Create agents with individual spending policies
 infra_agent = client.create_wallet(
@@ -1807,9 +1767,9 @@ wallet.update_policy(custom_functions=[custom_fn.id])
 ## Quick Reference Card
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
 
 # Create wallet
 wallet = client.wallets.create(name="agent-wallet", chain="base", policy="Max $100/day")
@@ -1882,7 +1842,7 @@ function removeToken(address token) external onlySardis;
 ## Status
 
 - **Current Version**: v0.8.5 (Production Retry + Async Wrapping)
-- **MCP Server**: v0.2.5 on npm (1,000+ installs, 52 tools)
+- **MCP Server**: v0.2.7 on npm (1,000+ installs, 59 tools)
 - **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
