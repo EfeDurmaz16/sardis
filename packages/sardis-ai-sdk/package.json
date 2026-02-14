@@ -1,6 +1,6 @@
 {
   "name": "@sardis/ai-sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Sardis payment tools for Vercel AI SDK - Enable AI agents to make payments with policy guardrails",
   "keywords": [
     "ai",
