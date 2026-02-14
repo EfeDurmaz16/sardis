@@ -2,26 +2,49 @@ name: Health Monitor
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
 
 jobs:
   health-check:
     name: API Health Check
     runs-on: ubuntu-latest
     steps:
-      - name: Check API health endpoint
+      - name: Check API health endpoint and status payload
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.API_BASE_URL }}/api/v2/health" || echo "000")
-          echo "Health check status: $STATUS"
+          set -euo pipefail
+          TMP="$(mktemp)"
+          STATUS=$(curl -s -o "$TMP" -w "%{http_code}" "${{ secrets.API_BASE_URL }}/api/v2/health" || echo "000")
+          echo "HTTP status: $STATUS"
           if [ "$STATUS" != "200" ]; then
-            echo "::error::API health check failed with status $STATUS"
+            echo "::error::API health check failed with status=$STATUS"
+            echo "Body:"
+            cat "$TMP"
+            exit 1
+          fi
+
+          HEALTH_STATUS=$(python3 - "$TMP" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(str(payload.get("status", "")).lower())
+PY
+)
+          echo "Health payload status: $HEALTH_STATUS"
+          if [ "$HEALTH_STATUS" != "ok" ] && [ "$HEALTH_STATUS" != "healthy" ] && [ "$HEALTH_STATUS" != "partial" ]; then
+            echo "::error::API health payload status unacceptable: $HEALTH_STATUS"
+            cat "$TMP"
             exit 1
           fi
 
       - name: Check API response time
         run: |
+          set -euo pipefail
           TIME=$(curl -s -o /dev/null -w "%{time_total}" "${{ secrets.API_BASE_URL }}/api/v2/health" || echo "0")
           echo "Response time: ${TIME}s"
-          THRESHOLD="5.0"
+          THRESHOLD="2.0"
           if [ "$(echo "$TIME > $THRESHOLD" | bc -l)" = "1" ]; then
             echo "::warning::API response time ${TIME}s exceeds threshold ${THRESHOLD}s"
           fi
@@ -32,5 +55,5 @@ jobs:
           if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
             curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
               -H "Content-Type: application/json" \
-              -d '{"text":"Sardis API health check FAILED. Check GitHub Actions for details."}'
+              -d '{"text":"Sardis API health check FAILED. Check GitHub Actions run details for endpoint status and payload."}'
           fi

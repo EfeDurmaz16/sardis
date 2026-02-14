@@ -28,6 +28,32 @@ jobs:
         with:
           ref: ${{ inputs.version || 'main' }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies for release gates
+        run: |
+          pip install -e packages/sardis-core
+          pip install -e packages/sardis-protocol
+          pip install -e packages/sardis-wallet
+          pip install -e packages/sardis-chain
+          pip install -e packages/sardis-ledger
+          pip install -e packages/sardis-compliance
+          pip install -e packages/sardis-cards
+          pip install -e packages/sardis-ramp
+          pip install -e packages/sardis-api
+          pip install pytest pytest-asyncio httpx
+
+      - name: Release gate - webhook conformance
+        env:
+          SARDIS_SECRET_KEY: test-secret-key-for-deploy-gate-32chars
+          SARDIS_ENVIRONMENT: dev
+          SARDIS_TEST_API_KEY: sk_test_demo123
+        run: |
+          bash scripts/release/webhook_conformance_check.sh
+
       - name: Verify CI passed
         run: |
           echo "Deployment must only proceed after CI checks pass"

@@ -47,8 +47,23 @@ if ! bash scripts/release/migration_alignment_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating webhook conformance checks"
+if ! bash scripts/release/webhook_conformance_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating deployment config consistency"
 if ! bash scripts/release/deployment_config_check.sh; then
+  failures=$((failures + 1))
+fi
+
+echo "[readiness] validating ops readiness artifacts"
+if ! bash scripts/release/ops_readiness_check.sh; then
+  failures=$((failures + 1))
+fi
+
+echo "[readiness] validating demo proof assets"
+if ! bash scripts/release/demo_proof_assets_check.sh; then
   failures=$((failures + 1))
 fi
 

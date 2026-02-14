@@ -33,6 +33,8 @@ require_match 'VITE_API_URL: https://api.sardis.sh' .github/workflows/deploy.yml
 require_match 'deploy-api-staging:' .github/workflows/deploy.yml "deploy workflow missing API staging job"
 require_match 'deploy-api-production:' .github/workflows/deploy.yml "deploy workflow missing API production job"
 require_match 'alembic upgrade head' .github/workflows/deploy.yml "API deploy must run alembic migrations"
+require_match 'Release gate - webhook conformance' .github/workflows/deploy.yml "deploy workflow must include webhook conformance release gate"
+require_match 'webhook_conformance_check.sh' .github/workflows/deploy.yml "deploy workflow must run webhook conformance script"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[deploy] completed with $failures failure(s)"
