@@ -1,0 +1,56 @@
+{
+  "last_reviewed": "2026-02-14",
+  "gates": [
+    {
+      "id": "eng-authz-routes",
+      "title": "API v2 routes enforce principal authentication/authorization",
+      "status": "pass",
+      "required_for": ["engineering", "launch"],
+      "evidence": "packages/sardis-api/src/sardis_api/main.py + router-level Depends(require_principal)"
+    },
+    {
+      "id": "eng-webhook-replay",
+      "title": "Webhook endpoints enforce signature verification and replay-window controls",
+      "status": "pass",
+      "required_for": ["engineering", "launch"],
+      "evidence": "packages/sardis-api/src/sardis_api/routers/compliance.py + packages/sardis-api/src/sardis_api/routers/ramp.py + packages/sardis-api/src/sardis_api/webhook_replay.py"
+    },
+    {
+      "id": "eng-rate-limit",
+      "title": "Per-org rate limiting enabled with Redis/in-memory fallback behavior documented",
+      "status": "pass",
+      "required_for": ["engineering", "launch"],
+      "evidence": "packages/sardis-api/src/sardis_api/middleware/rate_limit.py"
+    },
+    {
+      "id": "eng-release-gates",
+      "title": "Release-readiness checks pass in non-strict mode",
+      "status": "pass",
+      "required_for": ["engineering", "launch"],
+      "evidence": "scripts/check_release_readiness.sh run on 2026-02-14"
+    },
+    {
+      "id": "eng-claims-parity",
+      "title": "Public claims are machine-checkable (tools/packages/tests)",
+      "status": "pass",
+      "required_for": ["engineering", "launch"],
+      "evidence": "scripts/audit/claims_check.py"
+    },
+    {
+      "id": "launch-incident-runbook",
+      "title": "Incident and rollback runbooks available for demo and staging",
+      "status": "pass",
+      "required_for": ["launch"],
+      "evidence": "scripts/check_demo_deploy_readiness.sh + deploy scripts",
+      "notes": "Keep rollback owners on-call for launch week."
+    },
+    {
+      "id": "launch-design-partner-signoff",
+      "title": "Design partner sign-off recorded for launch scope",
+      "status": "waived",
+      "required_for": ["launch"],
+      "evidence": "Pending final partner confirmations",
+      "notes": "Temporary waiver accepted for pre-launch staging; must be PASS before GA."
+    }
+  ]
+}

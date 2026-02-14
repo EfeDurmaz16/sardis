@@ -98,8 +98,10 @@ demo-video/
 pitch-deck/
 
 # Internal docs (keep locally, not in repo)
-/docs/
+/docs/*
 !/docs/README.md
+!/docs/design-partner/
+!/docs/design-partner/staging-hardening-checklist.json
 /demos/sardis-demo-video/
 
 # Root-level internal files
