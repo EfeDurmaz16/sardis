@@ -20,16 +20,12 @@ import { SardisClient } from "@sardis/sdk";
 const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY ?? "sim_demo" });
 
 async function main() {
-  // Create a wallet with a natural language spending policy
+  // Create a wallet for an agent with spending limits
   const wallet = await sardis.wallets.create({
-    name: "vercel-ai-agent",
-    chain: "base",
-    token: "USDC",
-    policy: `
-      Max $100 per transaction.
-      Daily limit $500.
-      Only allow SaaS, developer tools, and API services.
-    `,
+    agent_id: "agent_vercel_ai",
+    currency: "USDC",
+    limit_per_tx: "100.00",
+    limit_total: "500.00",
   });
 
   const { text, toolResults } = await generateText({
@@ -50,18 +46,21 @@ async function main() {
           purpose: z.string().describe("Reason for the payment"),
         }),
         execute: async ({ to, amount, token, purpose }) => {
-          const result = await sardis.payments.send({
-            walletId: wallet.id,
-            to,
+          const result = await sardis.wallets.transfer(wallet.wallet_id, {
+            destination: to,
             amount,
             token,
+            chain: "base",
+            domain: to,
             memo: purpose,
           });
           return {
             status: result.status,
-            txHash: result.txHash,
+            txHash: result.tx_hash,
             amount: result.amount,
-            policyResult: result.policyResult,
+            fromAddress: result.from_address,
+            toAddress: result.to_address,
+            chain: result.chain,
           };
         },
       }),
@@ -69,12 +68,12 @@ async function main() {
         description: "Check the wallet balance and remaining limits",
         parameters: z.object({}),
         execute: async () => {
-          const info = await sardis.wallets.get(wallet.id);
+          const info = await sardis.wallets.getBalance(wallet.wallet_id, "base", "USDC");
           return {
             balance: info.balance,
-            spentToday: info.spentDaily,
-            dailyLimit: info.dailyLimit,
-            remaining: info.dailyRemaining,
+            token: info.token,
+            chain: info.chain,
+            address: info.address,
           };
         },
       }),
