@@ -13,6 +13,7 @@ from sardis_v2_core.mandates import MandateChain
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import run_idempotent
 
@@ -43,6 +44,7 @@ class Dependencies:
     kyc_service: Optional["KYCService"] = None
     sanctions_service: Optional["SanctionsService"] = None
     approval_service: Optional["ApprovalService"] = None
+    settings: Optional[object] = None
 
 
 def get_deps() -> Dependencies:
@@ -178,6 +180,15 @@ async def execute_ap2_payment(
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
         if not principal.is_admin and agent.owner_id != principal.organization_id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="access_denied")
+
+        pilot_policy = get_pilot_execution_policy(deps.settings)
+        enforce_staging_live_guard(
+            policy=pilot_policy,
+            principal=principal,
+            merchant_domain=getattr(payment, "merchant_domain", None),
+            amount=None,
+            operation="ap2.payments.execute",
+        )
 
         # Resolve wallet for the agent (needed for signing in live mode) + freeze gate
         wallet = await deps.wallet_repo.get_by_agent(payment.subject)

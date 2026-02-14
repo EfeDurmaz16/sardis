@@ -439,6 +439,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         agent_repo=agent_repo,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
+        settings=settings,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -530,6 +531,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
+        settings=settings,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 

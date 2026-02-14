@@ -14,6 +14,7 @@ from sardis_api.authz import Principal, require_principal
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_ledger.records import LedgerStore
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -117,12 +118,14 @@ class WalletDependencies:
         chain_executor: ChainExecutor | None = None,
         wallet_manager: any | None = None,
         ledger: LedgerStore | None = None,
+        settings: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
         self.chain_executor = chain_executor
         self.wallet_manager = wallet_manager
         self.ledger = ledger
+        self.settings = settings
 
 
 def get_deps() -> WalletDependencies:
@@ -460,6 +463,15 @@ async def transfer_crypto(
 
         if not wallet.is_active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
+
+        pilot_policy = get_pilot_execution_policy(deps.settings)
+        enforce_staging_live_guard(
+            policy=pilot_policy,
+            principal=principal,
+            merchant_domain=transfer_request.domain,
+            amount=transfer_request.amount,
+            operation="wallets.transfer",
+        )
 
         freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
         if not freeze_ok:
