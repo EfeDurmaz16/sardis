@@ -9,6 +9,7 @@ Tests the complete lifecycle:
 import hashlib
 import hmac as hmac_mod
 import json
+import time
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -53,6 +54,16 @@ def wallet_repo(wallet_mock):
 
 
 @pytest.fixture
+def agent_repo():
+    repo = AsyncMock()
+    agent = MagicMock()
+    agent.agent_id = "agent_e2e"
+    agent.owner_id = "org_demo"
+    repo.get.return_value = agent
+    return repo
+
+
+@pytest.fixture
 def offramp_service():
     return OfframpService(provider=MockOfframpProvider())
 
@@ -93,12 +104,13 @@ def card_provider():
 
 
 @pytest.fixture
-def e2e_app(wallet_repo, offramp_service, chain_executor, card_repo, card_provider):
+def e2e_app(wallet_repo, agent_repo, offramp_service, chain_executor, card_repo, card_provider):
     app = FastAPI()
 
     # Wire ramp router
     ramp_deps = RampDependencies(
         wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
         offramp_service=offramp_service,
         onramper_api_key="e2e_key",
         onramper_webhook_secret="e2e_secret",
@@ -107,7 +119,11 @@ def e2e_app(wallet_repo, offramp_service, chain_executor, card_repo, card_provid
     app.include_router(ramp_router, prefix="/api/v2/ramp")
 
     # Wire wallets router
-    wallet_deps = WalletDependencies(wallet_repo=wallet_repo, chain_executor=chain_executor)
+    wallet_deps = WalletDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        chain_executor=chain_executor,
+    )
     app.dependency_overrides[wallets_get_deps] = lambda: wallet_deps
     app.include_router(wallets_router, prefix="/api/v2/wallets")
 
@@ -148,11 +164,16 @@ class TestFundWalletViaOnramper:
                 "tx_hash": "0xonramp_tx",
             },
         }).encode()
+        ts = str(int(time.time()))
         sig = hmac_mod.new(b"e2e_secret", payload, hashlib.sha256).hexdigest()
         resp = client.post(
             "/api/v2/ramp/onramp/webhook",
             content=payload,
-            headers={"content-type": "application/json", "x-onramper-signature": sig},
+            headers={
+                "content-type": "application/json",
+                "x-onramper-signature": sig,
+                "x-onramper-timestamp": ts,
+            },
         )
         assert resp.status_code == 200
 

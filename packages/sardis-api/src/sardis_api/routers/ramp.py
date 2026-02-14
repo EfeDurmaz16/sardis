@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
@@ -18,6 +19,7 @@ from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
+ONRAMPER_WEBHOOK_TOLERANCE_SECONDS = 300
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 public_router = APIRouter()
@@ -105,6 +107,61 @@ class RampDependencies:
 
 def get_deps() -> RampDependencies:
     raise NotImplementedError("Dependency override required")
+
+
+def _verify_onramper_signature(
+    *,
+    body: bytes,
+    signature_header: str,
+    timestamp_header: str,
+    secret: str,
+) -> bool:
+    """Verify Onramper webhook signature with replay protection.
+
+    Supports two formats:
+    1) Stripe-style: ``t=<ts>,v1=<hex>`` with signed payload ``ts.body``
+    2) Legacy: raw hex HMAC over body, with timestamp provided in a separate header
+    """
+    if not signature_header:
+        return False
+
+    now = int(time.time())
+    signature_header = signature_header.strip()
+
+    # Format 1: t=<timestamp>,v1=<signature>
+    if "t=" in signature_header and "v1=" in signature_header:
+        parts: dict[str, str] = {}
+        for part in signature_header.split(","):
+            key, _, value = part.partition("=")
+            parts[key.strip()] = value.strip()
+
+        ts_raw = parts.get("t", "")
+        sig = parts.get("v1", "")
+        if not ts_raw or not sig:
+            return False
+        try:
+            ts = int(ts_raw)
+        except ValueError:
+            return False
+        if abs(now - ts) > ONRAMPER_WEBHOOK_TOLERANCE_SECONDS:
+            return False
+
+        signed_payload = f"{ts}.".encode() + body
+        expected = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, expected)
+
+    # Format 2: legacy raw body HMAC + required timestamp header
+    if not timestamp_header:
+        return False
+    try:
+        ts = int(timestamp_header)
+    except ValueError:
+        return False
+    if abs(now - ts) > ONRAMPER_WEBHOOK_TOLERANCE_SECONDS:
+        return False
+
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature_header, expected)
 
 
 # ---- Onramp Endpoints ----
@@ -199,10 +256,16 @@ async def onramp_webhook(
             detail="Onramper webhook verification not configured",
         )
     signature = request.headers.get("x-onramper-signature", "")
-    expected = hmac.new(
-        deps.onramper_webhook_secret.encode(), body, hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(signature, expected):
+    timestamp_header = (
+        request.headers.get("x-onramper-timestamp")
+        or request.headers.get("onramper-signature-timestamp", "")
+    )
+    if not _verify_onramper_signature(
+        body=body,
+        signature_header=signature,
+        timestamp_header=timestamp_header,
+        secret=deps.onramper_webhook_secret,
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature")
 
     import json

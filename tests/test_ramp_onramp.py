@@ -2,6 +2,7 @@
 import hashlib
 import hmac as hmac_mod
 import json
+import time
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -102,6 +103,7 @@ class TestOnrampWebhook:
                 "tx_hash": "0xabc",
             },
         }).encode()
+        ts = str(int(time.time()))
         sig = hmac_mod.new(b"test_webhook_secret", payload, hashlib.sha256).hexdigest()
         resp = client.post(
             "/api/v2/ramp/onramp/webhook",
@@ -109,6 +111,7 @@ class TestOnrampWebhook:
             headers={
                 "content-type": "application/json",
                 "x-onramper-signature": sig,
+                "x-onramper-timestamp": ts,
             },
         )
         assert resp.status_code == 200
@@ -123,6 +126,22 @@ class TestOnrampWebhook:
             headers={
                 "content-type": "application/json",
                 "x-onramper-signature": "bad_sig",
+            },
+        )
+        assert resp.status_code == 401
+
+    def test_stale_timestamp_rejected(self, app_with_ramp):
+        client = TestClient(app_with_ramp)
+        payload = json.dumps({"type": "transaction.completed"}).encode()
+        stale_ts = str(int(time.time()) - 3600)
+        sig = hmac_mod.new(b"test_webhook_secret", payload, hashlib.sha256).hexdigest()
+        resp = client.post(
+            "/api/v2/ramp/onramp/webhook",
+            content=payload,
+            headers={
+                "content-type": "application/json",
+                "x-onramper-signature": sig,
+                "x-onramper-timestamp": stale_ts,
             },
         )
         assert resp.status_code == 401

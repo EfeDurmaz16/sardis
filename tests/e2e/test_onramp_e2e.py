@@ -320,6 +320,7 @@ class TestOnrampWebhook:
             import hashlib
             import hmac
             import json
+            import time
 
             # Simulate Onramper webhook payload
             payload = {
@@ -340,8 +341,10 @@ class TestOnrampWebhook:
             headers = {"Content-Type": "application/json"}
 
             if webhook_secret:
+                timestamp = str(int(time.time()))
                 signature = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
                 headers["x-onramper-signature"] = signature
+                headers["x-onramper-timestamp"] = timestamp
 
             response = await httpx.AsyncClient().post(
                 f"{api_url}/api/v2/ramp/onramp/webhook",
