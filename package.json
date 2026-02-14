@@ -2,6 +2,10 @@
   "name": "sardis-monorepo",
   "version": "0.2.0",
   "private": true,
+  "engines": {
+    "node": "22.x",
+    "pnpm": ">=10"
+  },
   "packageManager": "pnpm@10.18.1",
   "scripts": {
     "bootstrap": "pnpm install --no-frozen-lockfile",

@@ -61,13 +61,12 @@ Scope: README, SDK parity, security hardening, package readiness, landing/docs s
 ## Phase 6: Remaining High-Priority Tasks (Open)
 
 - [ ] `P6-01` Install and run full CVE tooling (`trufflehog`, `safety`, registry-enabled `pnpm audit`)
-- [ ] `P6-02` Add CI/runtime guard for Node engine mismatch (local warns on Node `20`, target `22.x`)
+- [x] `P6-02` Add CI/runtime guard for Node engine mismatch (Node `22.x` pinned in workflows + root engines)
 - [ ] `P6-03` Stabilize `tests/test_e2e_full_flow.py` against current router/dependency behavior
 - [ ] `P6-04` Capture evidence links for investor-facing claims (tests/chains/protocols/package counts)
 
 ## Suggested Commit Order for Open Tasks
 
 1. `chore(security): enable full cve and secret scanning gates`
-2. `ci(node): enforce node 22.x across local and ci`
-3. `test(e2e): align full-flow fixtures with current auth and router wiring`
-4. `docs(evidence): add investor-proof appendix for public claims`
+2. `test(e2e): align full-flow fixtures with current auth and router wiring`
+3. `docs(evidence): add investor-proof appendix for public claims`
