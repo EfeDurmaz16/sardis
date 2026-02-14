@@ -288,11 +288,19 @@ def run_demo(args: argparse.Namespace) -> DemoRun:
             headers=jwt_headers,
             ok_statuses=(201,),
         )
+        denied_policy = denied.get("policy") if isinstance(denied, dict) else None
+        denied_tx = denied.get("transaction") if isinstance(denied, dict) else None
         run.add_step(
             name="simulate_denied_purchase",
             status="ok",
             started=started,
-            details={"policy": denied.get("policy"), "transaction": denied.get("transaction")},
+            details={
+                "policy_outcome": (denied_policy or {}).get("outcome"),
+                "policy_reason": (denied_policy or {}).get("reason") or (denied_policy or {}).get("reason_code"),
+                "tx_status": (denied_tx or {}).get("status"),
+                "decline_reason": (denied_tx or {}).get("decline_reason"),
+                "raw": denied,
+            },
         )
 
         # Optional unfreeze to demonstrate operator control
@@ -324,11 +332,19 @@ def run_demo(args: argparse.Namespace) -> DemoRun:
             headers=jwt_headers,
             ok_statuses=(201,),
         )
+        allowed_policy = allowed.get("policy") if isinstance(allowed, dict) else None
+        allowed_tx = allowed.get("transaction") if isinstance(allowed, dict) else None
         run.add_step(
             name="simulate_allowed_purchase",
             status="ok",
             started=started,
-            details={"policy": allowed.get("policy"), "transaction": allowed.get("transaction")},
+            details={
+                "policy_outcome": (allowed_policy or {}).get("outcome"),
+                "policy_reason": (allowed_policy or {}).get("reason") or (allowed_policy or {}).get("reason_code"),
+                "tx_status": (allowed_tx or {}).get("status"),
+                "decline_reason": (allowed_tx or {}).get("decline_reason"),
+                "raw": allowed,
+            },
         )
 
         # 11) Agent-initiated wallet transfer (real path / fallback)
@@ -369,6 +385,49 @@ def run_demo(args: argparse.Namespace) -> DemoRun:
             started=started,
             details=transfer_details,
         )
+
+        # 11.5) Verify ledger proof for transfer (if ledger_tx_id is available)
+        started = time.time()
+        _print_header("11.5) Verify ledger entry cryptographic proof")
+        if transfer_status == "ok" and isinstance(transfer_details, dict):
+            ledger_tx_id = transfer_details.get("ledger_tx_id")
+            if ledger_tx_id:
+                verify = _request(
+                    client,
+                    "GET",
+                    f"/api/v2/ledger/entries/{ledger_tx_id}/verify",
+                    headers=key_headers,
+                    ok_statuses=(200,),
+                )
+                verify_status = "ok" if verify.get("valid") is True else "failed"
+                run.add_step(
+                    name="verify_ledger_entry",
+                    status=verify_status,
+                    started=started,
+                    details={
+                        "ledger_tx_id": ledger_tx_id,
+                        "valid": verify.get("valid"),
+                        "checks": verify.get("checks"),
+                        "merkle_root": verify.get("merkle_root"),
+                        "current_root": verify.get("current_root"),
+                    },
+                )
+                if verify_status != "ok":
+                    raise RuntimeError(f"Ledger entry verification failed: {verify}")
+            else:
+                run.add_step(
+                    name="verify_ledger_entry",
+                    status="skipped",
+                    started=started,
+                    details={"reason": "missing_ledger_tx_id"},
+                )
+        else:
+            run.add_step(
+                name="verify_ledger_entry",
+                status="skipped",
+                started=started,
+                details={"reason": "transfer_not_executed"},
+            )
 
         # 12) Card cancellation decision
         started = time.time()

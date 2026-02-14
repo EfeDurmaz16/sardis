@@ -22,33 +22,40 @@ Evidence:
 - `api-proxy/vercel.json`
 
 ## 3) Webhook Production Controls (Replay / Idempotency / Rotation)
-- [ ] Run and document webhook conformance tests for all providers in production-like env.
-- [ ] Publish secret rotation operational playbook and rollback path.
-- [ ] Add release-gate check in deployment pipeline for webhook signature + replay tests.
+- [x] Run and document webhook conformance tests for all providers in production-like env.
+- [x] Publish secret rotation operational playbook and rollback path.
+- [x] Add release-gate check in deployment pipeline for webhook signature + replay tests.
 
 Evidence (existing test surface):
 - `tests/test_webhooks.py`
 - `tests/test_checkout_webhook_security.py`
 - `packages/sardis-api/tests/test_middleware_security.py`
 - `tests/test_audit_f12_replay_cache.py`
+- `scripts/release/webhook_conformance_check.sh`
+- `docs/design-partner/webhook-conformance-runbook.md`
+- `.github/workflows/deploy.yml`
 
 ## 4) Investor Demo Proof Flows (Allow + Deny)
-- [ ] Add a deterministic “allow” flow script with expected outputs.
-- [ ] Add a deterministic “deny” flow script (policy/compliance rejection) with expected reason codes.
-- [ ] Capture and store artifacts (request IDs, receipts, ledger entries) for replayable demos.
+- [x] Add a deterministic “allow” flow script with expected outputs.
+- [x] Add a deterministic “deny” flow script (policy/compliance rejection) with expected reason codes.
+- [x] Capture and store artifacts (request IDs, receipts, ledger entries) for replayable demos.
 
 Candidate scripts:
 - `scripts/investor_demo_flow.py`
 - `scripts/yc_wow_demo.py`
+- `scripts/release/demo_proof_check.sh`
+- `docs/design-partner/demo-proof-flow-runbook.md`
 
 ## 5) Ops Readiness (Alerts / SLO / Rollback)
-- [ ] Define SLOs for API health, latency, and payment execution success.
-- [ ] Set alert policies (health status degradation, error-rate spikes, webhook failures).
-- [ ] Write rollback runbook with exact commands and validation checks.
+- [x] Define SLOs for API health, latency, and payment execution success.
+- [x] Set alert policies (health status degradation, error-rate spikes, webhook failures).
+- [x] Write rollback runbook with exact commands and validation checks.
 
 Related artifacts:
 - `scripts/health_monitor.sh`
 - `.github/workflows/monitoring.yml`
+- `docs/design-partner/ops-slo-alerts-rollback-runbook.md`
+- `scripts/release/ops_readiness_check.sh`
 
 ## 6) Cryptographic Audit Trail (Merkle Verification)
 - [x] Add receipt lookup by tx hash.
