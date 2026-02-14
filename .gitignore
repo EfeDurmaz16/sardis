@@ -158,3 +158,9 @@ deploy/env/.env.generated.secrets
 deploy/env/.env*.local
 .vercel
 .env*.local
+
+# Local audit/session artifacts
+2026-02-10-this-session-is-being-continued-from-a-previous-co.txt
+landing/public/og-image.html
+security-audit-report/
+video/out/
