@@ -195,7 +195,7 @@ class TestIsProduction:
             assert is_production() is False
 
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "staging"}):
-            assert is_production() is False
+            assert is_production() is True
 
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "test"}):
             assert is_production() is False

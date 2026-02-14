@@ -32,6 +32,7 @@ os.environ["SARDIS_ENVIRONMENT"] = "dev"  # Use 'dev' as test environment
 os.environ["DATABASE_URL"] = "memory://"
 os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_32chars"  # Min 32 chars required
+os.environ["SARDIS_TEST_API_KEY"] = "sk_test_demo123"
 
 from sardis_api.main import create_app
 
