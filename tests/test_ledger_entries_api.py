@@ -48,6 +48,7 @@ def app_with_ledger() -> FastAPI:
         audit_anchor="merkle::abc123",
     )
     ledger.append(mandate, receipt)
+    ledger.create_receipt(mandate, receipt)
 
     app = FastAPI()
     app.dependency_overrides[get_deps] = lambda: LedgerDependencies(ledger=ledger)
@@ -80,4 +81,10 @@ def test_get_entry_and_verify(app_with_ledger: FastAPI) -> None:
     payload = verify.json()
     assert payload["valid"] is True
     assert payload["anchor"] == "merkle::abc123"
-
+    assert payload["receipt_id"].startswith("rct_")
+    assert payload["merkle_root"]
+    assert payload["current_root"]
+    assert payload["is_current_root"] is True
+    assert payload["checks"]["proof_present"] is True
+    assert payload["checks"]["leaf_matches_payload"] is True
+    assert payload["checks"]["root_matches_chain_step"] is True

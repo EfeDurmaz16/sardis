@@ -573,15 +573,52 @@ class LedgerStore:
             }
         return self._receipt_mem.get(receipt_id)
 
+    def get_receipt_by_tx_hash(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+        """Get the most recent receipt for a given chain transaction hash (sync)."""
+        if self._use_postgres:
+            raise RuntimeError("PostgreSQL mode requires get_receipt_by_tx_hash_async()")
+
+        if self._sqlite_conn:
+            row = self._sqlite_conn.execute(
+                """
+                SELECT receipt_id, mandate_id, tx_hash, chain, audit_anchor, merkle_root, proof_json, created_at
+                FROM receipts
+                WHERE tx_hash = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (tx_hash,),
+            ).fetchone()
+            if not row:
+                return None
+            proof = json.loads(row[6])
+            return {
+                "receipt_id": row[0],
+                "mandate_id": row[1],
+                "tx_hash": row[2],
+                "chain": row[3],
+                "audit_anchor": row[4],
+                "merkle_root": row[5],
+                "merkle_proof": proof,
+                "timestamp": row[7],
+            }
+
+        candidates = [r for r in self._receipt_mem.values() if r.get("tx_hash") == tx_hash]
+        if not candidates:
+            return None
+        candidates.sort(key=lambda r: str(r.get("timestamp", "")), reverse=True)
+        return candidates[0]
+
     async def create_receipt_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Dict[str, Any]:
         """Create receipt with Merkle proof (async, PostgreSQL supported)."""
         if not self._use_postgres:
             return self.create_receipt(payment_mandate, chain_receipt)
 
         if chain_receipt.timestamp:
-            timestamp = chain_receipt.timestamp.isoformat()
+            timestamp_dt = chain_receipt.timestamp
         else:
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp_dt = datetime.now(timezone.utc)
+        timestamp = timestamp_dt.isoformat()
 
         payload = "|".join([
             payment_mandate.mandate_id,
@@ -621,11 +658,12 @@ class LedgerStore:
                     INSERT INTO receipts (
                         tx_id, receipt_id, mandate_id, tx_hash, chain, audit_anchor,
                         merkle_root, leaf_hash, proof_json, status, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     ON CONFLICT (tx_id) DO UPDATE SET
                         merkle_root = EXCLUDED.merkle_root,
                         leaf_hash = EXCLUDED.leaf_hash,
-                        proof_json = EXCLUDED.proof_json
+                        proof_json = EXCLUDED.proof_json,
+                        created_at = EXCLUDED.created_at
                     """,
                     chain_receipt.tx_hash,
                     receipt_id,
@@ -637,6 +675,7 @@ class LedgerStore:
                     leaf_hash,
                     json.dumps(proof),
                     "confirmed",
+                    timestamp_dt,
                 )
                 await conn.execute(
                     """
@@ -677,6 +716,121 @@ class LedgerStore:
             "merkle_root": row["merkle_root"],
             "merkle_proof": proof,
             "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+        }
+
+    async def get_receipt_by_tx_hash_async(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+        """Get the most recent receipt for a given chain transaction hash (async)."""
+        if not self._use_postgres:
+            return self.get_receipt_by_tx_hash(tx_hash)
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT receipt_id, mandate_id, tx_hash, chain, audit_anchor,
+                       merkle_root, proof_json, created_at
+                FROM receipts
+                WHERE tx_hash = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                tx_hash,
+            )
+        if not row:
+            return None
+
+        proof = row["proof_json"] if isinstance(row["proof_json"], dict) else json.loads(row["proof_json"] or "{}")
+        created_at = row["created_at"]
+        return {
+            "receipt_id": row["receipt_id"],
+            "mandate_id": row["mandate_id"],
+            "tx_hash": row["tx_hash"],
+            "chain": row["chain"],
+            "audit_anchor": row["audit_anchor"],
+            "merkle_root": row["merkle_root"],
+            "merkle_proof": proof,
+            "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+        }
+
+    def get_current_merkle_root(self) -> str:
+        """Get current accumulator Merkle root (sync)."""
+        if self._use_postgres:
+            raise RuntimeError("PostgreSQL mode requires get_current_merkle_root_async()")
+        if self._sqlite_conn:
+            return self._get_last_root_sqlite()
+        return str(getattr(self, "_last_root_mem", "0" * 64))
+
+    async def get_current_merkle_root_async(self) -> str:
+        """Get current accumulator Merkle root (async)."""
+        if not self._use_postgres:
+            return self.get_current_merkle_root()
+
+        pool = await self._get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT value FROM ledger_meta WHERE key = 'merkle_root'"
+            )
+        return str(row["value"]) if row and row["value"] else ("0" * 64)
+
+    @staticmethod
+    def _compute_leaf_hash(
+        mandate_id: str,
+        tx_hash: str,
+        timestamp: str,
+        audit_anchor: str,
+    ) -> str:
+        payload = "|".join([mandate_id, tx_hash, timestamp, audit_anchor])
+        return hashlib.sha256(payload.encode()).hexdigest()
+
+    @staticmethod
+    def _compute_root(previous_root: str, leaf_hash: str) -> str:
+        return hashlib.sha256(f"{previous_root}{leaf_hash}".encode()).hexdigest()
+
+    def verify_receipt_integrity(
+        self,
+        receipt: Dict[str, Any],
+        *,
+        current_root: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Verify a receipt's Merkle leaf/root derivation.
+
+        Returns a structured report with per-check booleans.
+        """
+        proof = receipt.get("merkle_proof")
+        leaf_from_proof = proof.get("leaf") if isinstance(proof, dict) else None
+        previous_root = proof.get("previous_root") if isinstance(proof, dict) else None
+        stored_root = str(receipt.get("merkle_root", ""))
+        timestamp = str(receipt.get("timestamp", ""))
+        mandate_id = str(receipt.get("mandate_id", ""))
+        tx_hash = str(receipt.get("tx_hash", ""))
+        audit_anchor = str(receipt.get("audit_anchor", "") or "")
+
+        recomputed_leaf = ""
+        recomputed_root = ""
+        if mandate_id and tx_hash and timestamp:
+            recomputed_leaf = self._compute_leaf_hash(mandate_id, tx_hash, timestamp, audit_anchor)
+        if previous_root and leaf_from_proof:
+            recomputed_root = self._compute_root(str(previous_root), str(leaf_from_proof))
+
+        checks = {
+            "proof_present": isinstance(proof, dict),
+            "leaf_matches_payload": bool(leaf_from_proof) and bool(recomputed_leaf) and str(leaf_from_proof) == recomputed_leaf,
+            "root_matches_chain_step": bool(recomputed_root) and stored_root == recomputed_root,
+            "anchor_present": bool(audit_anchor),
+        }
+
+        is_current_root = None
+        if current_root is not None:
+            is_current_root = stored_root == str(current_root)
+
+        return {
+            "valid": all(checks.values()),
+            "checks": checks,
+            "recomputed_leaf": recomputed_leaf,
+            "recomputed_root": recomputed_root,
+            "stored_merkle_root": stored_root,
+            "is_current_root": is_current_root,
         }
 
     async def queue_for_reconciliation_async(

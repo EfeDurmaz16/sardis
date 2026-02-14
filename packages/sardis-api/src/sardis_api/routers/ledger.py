@@ -94,7 +94,10 @@ async def verify_entry(
     """
     Verify a ledger entry's audit anchor.
 
-    Current behavior: returns valid=true if the entry exists and has an audit_anchor.
+    Verifies the cryptographic receipt chain step for the entry:
+    - Fetches receipt by chain_tx_hash
+    - Recomputes leaf hash from receipt payload
+    - Recomputes Merkle root from previous_root + leaf
     """
     if hasattr(deps.ledger, "get_entry_record_async"):
         entry = await deps.ledger.get_entry_record_async(tx_id)
@@ -106,8 +109,39 @@ async def verify_entry(
 
     anchor = entry.get("audit_anchor")
     if not anchor:
-        return {"valid": False, "reason": "missing_audit_anchor"}
-    return {"valid": True, "anchor": anchor}
+        return {"valid": False, "reason": "missing_audit_anchor", "anchor": None}
+
+    tx_hash = entry.get("chain_tx_hash")
+    if not tx_hash:
+        return {"valid": False, "reason": "missing_chain_tx_hash", "anchor": anchor}
+
+    if hasattr(deps.ledger, "get_receipt_by_tx_hash_async"):
+        receipt = await deps.ledger.get_receipt_by_tx_hash_async(tx_hash)
+    else:
+        receipt = deps.ledger.get_receipt_by_tx_hash(tx_hash)
+
+    if not receipt:
+        return {"valid": False, "reason": "receipt_not_found", "anchor": anchor}
+
+    if hasattr(deps.ledger, "get_current_merkle_root_async"):
+        current_root = await deps.ledger.get_current_merkle_root_async()
+    else:
+        current_root = deps.ledger.get_current_merkle_root()
+
+    verification = deps.ledger.verify_receipt_integrity(receipt, current_root=current_root)
+    return {
+        # Backward-compatible fields:
+        "valid": verification["valid"],
+        "anchor": anchor,
+        # Extended verification details:
+        "tx_id": tx_id,
+        "tx_hash": tx_hash,
+        "receipt_id": receipt.get("receipt_id"),
+        "merkle_root": receipt.get("merkle_root"),
+        "current_root": current_root,
+        "is_current_root": verification.get("is_current_root"),
+        "checks": verification.get("checks", {}),
+    }
 
 
 @router.get("/recent", response_model=List[TransactionResponse])
