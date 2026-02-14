@@ -160,7 +160,7 @@ function App() {
           <div className="hidden md:flex items-center gap-1">
             <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              LIVE ON TESTNET • 7K+ MONTHLY INSTALLS
+              DEVELOPER PREVIEW • LOOKING FOR DESIGN PARTNERS
             </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
@@ -175,7 +175,7 @@ function App() {
               className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-medium rounded-none"
               onClick={() => setIsWaitlistOpen(true)}
             >
-              Get Started
+              Become a Design Partner
             </Button>
           </div>
         </div>
@@ -192,7 +192,7 @@ function App() {
           >
             <motion.div variants={fadeInUp} className="flex justify-center mb-8">
               <Badge variant="outline" className="px-4 py-1.5 rounded-none text-sm font-mono font-medium border-border bg-transparent">
-                Building the $30 Trillion Machine Customer Economy
+                Developer Preview — Now Accepting Design Partners
               </Badge>
             </motion.div>
 
@@ -212,7 +212,7 @@ function App() {
                   className="h-14 px-8 text-lg rounded-none bg-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)]/90 text-white font-medium"
                   onClick={() => setIsWaitlistOpen(true)}
                 >
-                  Get Started
+                  Become a Design Partner
                   <span className="ml-2">→</span>
                 </Button>
                 <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-none border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)]" asChild>
@@ -959,7 +959,7 @@ const payment = await ramp.payMerchantFiat({
               <Badge variant="outline" className="mb-4 text-yellow-600 dark:text-yellow-400 border-yellow-600/30 dark:border-yellow-400/30 rounded-none font-mono">EARLY ACCESS</Badge>
               <h3 className="text-2xl font-bold font-display mb-2">Install the SDKs</h3>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Our packages are live on npm and PyPI. The hosted API is launching soon — join the waitlist for early access and an API key.
+                Our packages are live on npm and PyPI. Currently on testnet (Base Sepolia) — become a design partner for early mainnet access and an API key.
               </p>
             </div>
 
@@ -1034,7 +1034,7 @@ const payment = await ramp.payMerchantFiat({
             <div>
               <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Traction & Trust</h2>
               <p className="text-lg text-muted-foreground max-w-xl">
-                We are building the financial rails for the next generation of commerce.
+                Live on testnet. SDKs published. Looking for design partners to shape mainnet together.
               </p>
             </div>
 
@@ -1056,9 +1056,9 @@ const payment = await ramp.payMerchantFiat({
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
+              { label: "MARKET", value: "$30T by 2030", sub: <span>Machine Customer Economy — <a href="https://www.forbes.com/sites/torconstantino/2025/02/18/machine-customers-ai-buyers-to-control-30-trillion-in-purchases-by-2030/" target="_blank" rel="noreferrer" className="underline hover:text-[var(--sardis-orange)]">Gartner via Forbes</a></span> },
               { label: "ADOPTION", value: "7,000+", sub: "monthly installs (npm + PyPI) • 19 packages" },
-              { label: "MCP SERVER", value: "52 Tools", sub: "Live on npm • zero-config for Claude & Cursor" },
-              { label: "INFRASTRUCTURE", value: "5 Chains • 5 Protocols", sub: "AP2 • TAP • UCP • A2A • x402" }
+              { label: "STATUS", value: "Testnet Live", sub: "Base Sepolia • mainnet deployment coming soon" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-xs font-bold tracking-widest text-[var(--sardis-orange)] mb-2 font-mono">{stat.label}</div>
@@ -1116,9 +1116,9 @@ const payment = await ramp.payMerchantFiat({
       {/* CTA Section */}
       <section className="py-24 text-center border-t border-border">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Start Building with Sardis</h2>
+          <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Become a Design Partner</h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Give your agents financial autonomy today. Get hands-on support and full access to the production-ready platform.
+            We're looking for teams building AI agents that need payment capabilities. Get early access, hands-on support, and shape the product with us.
           </p>
           <WaitlistForm />
         </div>

@@ -109,6 +109,7 @@ pitch-deck/
 # Internal docs (keep locally, not in repo)
 /docs/*
 !/docs/README.md
+!/docs/marketing/
 !/docs/design-partner/
 !/docs/design-partner/staging-hardening-checklist.json
 /demos/sardis-demo-video/
