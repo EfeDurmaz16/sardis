@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.8.7: Launch Hardening, Webhook Replay Protection, Docs Sync',
+    excerpt: 'v0.8.7 closes final pre-launch gaps: timestamped Onramper webhook signature validation, SDK runtime version parity with published metadata, and doc/claim synchronization across README and landing.',
+    date: '2026-02-14',
+    readTime: '4 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-8-7-launch-hardening',
+  },
+  {
     title: 'Sardis v0.8.4: Packages Live on npm & PyPI + Security Audit',
     excerpt: 'All 19 Sardis packages are now publicly available on npm and PyPI. This release also includes a comprehensive 54-fix security audit covering auth, crypto, input validation, JWT, and more. The hosted API is in private beta with staging/testnet access.',
     date: '2026-02-08',

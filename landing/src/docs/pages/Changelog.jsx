@@ -2,9 +2,36 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.8.7',
+    date: '2026-02-14',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'security',
+        items: [
+          'Onramper webhook verification now enforces timestamp validation with a 5-minute replay window',
+          'Webhook signature verification accepts canonical signed payloads and legacy signatures with required timestamp headers',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'TypeScript and Python SDK runtime version constants aligned with published package metadata',
+          'Onramp webhook test suites updated to include timestamped signature headers',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Launch documentation and release materials synchronized for MCP tool count, package counts, and quickstart parity',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.6',
     date: '2026-02-13',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'improved',

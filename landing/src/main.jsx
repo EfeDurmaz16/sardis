@@ -57,6 +57,7 @@ import SardisV081ProtocolConformance from './docs/pages/blog/SardisV081ProtocolC
 import SardisV082ReleaseReadiness from './docs/pages/blog/SardisV082ReleaseReadiness.jsx'
 import SardisV083DemoOpsCloudDeploy from './docs/pages/blog/SardisV083DemoOpsCloudDeploy.jsx'
 import SardisV084PackagesLive from './docs/pages/blog/SardisV084PackagesLive.jsx'
+import SardisV087LaunchHardening from './docs/pages/blog/SardisV087LaunchHardening.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
@@ -116,6 +117,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/sardis-v0-8-2-release-readiness" element={<SardisV082ReleaseReadiness />} />
           <Route path="blog/sardis-v0-8-3-demo-ops-cloud-deploy" element={<SardisV083DemoOpsCloudDeploy />} />
           <Route path="blog/sardis-v0-8-4-packages-live" element={<SardisV084PackagesLive />} />
+          <Route path="blog/sardis-v0-8-7-launch-hardening" element={<SardisV087LaunchHardening />} />
           <Route path="changelog" element={<DocsChangelog />} />
           <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}

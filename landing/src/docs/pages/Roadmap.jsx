@@ -219,8 +219,8 @@ export default function Roadmap() {
       ],
     },
     {
-      version: 'v0.8.6',
-      title: 'Launch Readiness & Documentation Sync',
+      version: 'v0.8.7',
+      title: 'Launch Readiness & Security Finalization',
       status: 'current',
       date: 'Feb 2026 (Now)',
       items: [
@@ -228,6 +228,7 @@ export default function Roadmap() {
         { text: 'Landing/docs claims synchronized (52 MCP tools, 5 chains, 19 packages)', done: true },
         { text: 'README + launch material link/badge validation recorded', done: true },
         { text: 'Python SDK version parity guard enforced in release checks', done: true },
+        { text: 'Onramper webhook signatures hardened with timestamp replay-window validation', done: true },
         { text: 'Release-readiness script hardened for missing optional checklist files', done: true },
         { text: 'Awesome-list submission target activity verification pass', done: false },
       ],
