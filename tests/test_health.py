@@ -28,6 +28,30 @@ async def test_health_endpoint(test_client):
     assert data["status"] in ("healthy", "degraded", "partial")
     assert "components" in data
     assert "database" in data["components"]
+    assert "execution_mode" in data
+    assert data["execution_mode"] in ("simulated", "staging_live", "production_live")
+    assert "critical_failures" in data
+    assert "non_critical_failures" in data
+    assert isinstance(data["critical_failures"], list)
+    assert isinstance(data["non_critical_failures"], list)
+    assert data["components"]["chain_executor"]["execution_mode"] == data["execution_mode"]
+
+
+@pytest.mark.anyio
+async def test_health_failure_entries_are_structured(test_client):
+    """Health failures should include machine-readable component and reason code."""
+    response = await test_client.get("/health")
+    assert response.status_code in (200, 503)
+
+    data = response.json()
+    failures = data.get("critical_failures", []) + data.get("non_critical_failures", [])
+    for failure in failures:
+        assert "component" in failure
+        assert "reason_code" in failure
+        assert "detail" in failure
+
+    assert "rpc" in data["components"]
+    assert "contracts" in data["components"]
 
 
 @pytest.mark.anyio
