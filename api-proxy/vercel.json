@@ -6,6 +6,6 @@
     { "source": "/api/v2/", "destination": "/api/v2/docs", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "https://sardis-api-staging-ogq6bgc5rq-ue.a.run.app/$1" }
+    { "source": "/(.*)", "destination": "https://api.sardis.sh/$1" }
   ]
 }

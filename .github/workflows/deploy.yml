@@ -296,7 +296,7 @@ jobs:
     if: inputs.environment == 'production'
     environment:
       name: production
-      url: https://dashboard.sardis.sh
+      url: https://app.sardis.sh
     steps:
       - uses: actions/checkout@v6
         with:
