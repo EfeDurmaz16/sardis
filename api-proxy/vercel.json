@@ -1,10 +1,4 @@
 {
-  "redirects": [
-    { "source": "/api", "destination": "/api/v2/docs", "permanent": false },
-    { "source": "/api/", "destination": "/api/v2/docs", "permanent": false },
-    { "source": "/api/v2", "destination": "/api/v2/docs", "permanent": false },
-    { "source": "/api/v2/", "destination": "/api/v2/docs", "permanent": false }
-  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "https://sardis-api-staging-482463483786.us-east1.run.app/$1" }
   ]
