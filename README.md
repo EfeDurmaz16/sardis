@@ -60,8 +60,13 @@ npm install @sardis/sdk
 import { SardisClient } from '@sardis/sdk';
 
 const client = new SardisClient({ apiKey: 'sk_...' });
-const wallet = await client.wallets.create({ name: 'my-agent', chain: 'base' });
-const tx = await wallet.pay({ to: '0x...', amount: '25.00', token: 'USDC' });
+const wallet = await client.wallets.create({ agent_id: 'agent_123' });
+const tx = await client.wallets.transfer(wallet.wallet_id, {
+  destination: '0x...',
+  amount: '25.00',
+  token: 'USDC',
+  chain: 'base',
+});
 ```
 
 ### MCP (Claude Desktop / Cursor)
