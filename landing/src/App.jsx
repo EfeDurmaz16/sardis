@@ -227,6 +227,48 @@ function App() {
       {/* Separator */}
       <div className="h-px bg-border w-full" />
 
+      {/* API-First Code Snippet */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-8">
+              <p className="text-sm font-mono text-[var(--sardis-orange)] tracking-widest font-bold mb-2">5 LINES OF CODE</p>
+              <h3 className="text-2xl font-bold font-display">Give your agent a wallet. Set the rules. Done.</h3>
+            </div>
+            <div className="border border-border bg-card overflow-hidden">
+              <div className="bg-muted px-4 py-3 border-b border-border flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 bg-destructive" />
+                  <div className="w-3 h-3 bg-yellow-500" />
+                  <div className="w-3 h-3 bg-emerald-500" />
+                </div>
+                <span className="text-xs font-mono text-muted-foreground">python — pip install sardis</span>
+              </div>
+              <div className="p-6 font-mono text-sm leading-loose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] flex">
+                <div className="pr-5 text-right select-none text-[var(--sardis-canvas)]/30 border-r border-[var(--sardis-canvas)]/10 mr-5">
+                  <div>1</div>
+                  <div>2</div>
+                  <div>3</div>
+                  <div>4</div>
+                  <div>5</div>
+                  <div>6</div>
+                  <div>7</div>
+                </div>
+                <div className="flex-1">
+                  <div><span className="text-[#c678dd]">from</span> sardis <span className="text-[#c678dd]">import</span> SardisClient</div>
+                  <div>client = SardisClient()</div>
+                  <div className="mt-2">wallet = client.wallets.create(</div>
+                  <div className="ml-8">policy=<span className="text-[#98c379]">"Max $100/day, only SaaS vendors"</span></div>
+                  <div>)</div>
+                  <div className="mt-2">wallet.pay(<span className="text-[#98c379]">"openai"</span>, <span className="text-[#d19a66]">45.00</span>, purpose=<span className="text-[#98c379]">"API credits"</span>)</div>
+                  <div className="text-emerald-400"># Policy check → MPC signing → settlement. That's it.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Problem Section: The Read-Only Trap */}
       <section className="py-24 relative">
         <div className="container mx-auto px-6">
@@ -348,6 +390,11 @@ function App() {
                 icon: icons.autoRenew,
                 title: "Goal Drift Detection",
                 description: "Sardis detects when agent spending deviates from stated intent. Catch financial hallucinations before they land."
+              },
+              {
+                icon: icons.handshake,
+                title: "Multi-Agent Groups",
+                description: "Shared budgets across agent teams. Each agent gets individual limits, the group enforces the total. No agent overspends the team."
               }
             ].map((feature, i) => (
               <motion.div
