@@ -210,4 +210,25 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
 
   // SECURITY: mutation tools remain intentionally unavailable to agents.
   // Use admin API/dashboard for policy, limits, and archival operations.
+  sardis_update_wallet_limits: async (): Promise<ToolResult> => ({
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        error: 'security: sardis_update_wallet_limits is blocked for agent callers',
+        reason_code: 'SARDIS.MCP.SECURITY.BLOCKED_OPERATION',
+      }),
+    }],
+    isError: true,
+  }),
+
+  sardis_archive_wallet: async (): Promise<ToolResult> => ({
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        error: 'security: sardis_archive_wallet is blocked for agent callers',
+        reason_code: 'SARDIS.MCP.SECURITY.BLOCKED_OPERATION',
+      }),
+    }],
+    isError: true,
+  }),
 };

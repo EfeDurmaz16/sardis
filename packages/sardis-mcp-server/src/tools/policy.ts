@@ -514,5 +514,16 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  // SECURITY: sardis_get_rules remains intentionally unavailable to agents.
+  // SECURITY: compatibility alias kept as blocked handler so callers get
+  // deterministic deny responses instead of missing-tool runtime errors.
+  sardis_get_rules: async (): Promise<ToolResult> => ({
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        error: 'security: sardis_get_rules is blocked for agent callers',
+        reason_code: 'SARDIS.MCP.SECURITY.BLOCKED_OPERATION',
+      }),
+    }],
+    isError: true,
+  }),
 };
