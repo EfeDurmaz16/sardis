@@ -1,0 +1,9 @@
+{
+  "network": "base_sepolia",
+  "entrypoint_v07": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+  "sardis_smart_account_factory": "",
+  "sardis_verifying_paymaster": "",
+  "deployed_at": "",
+  "deployed_by": "",
+  "notes": "Run forge script script/DeployERC4337BaseSepolia.s.sol:DeployERC4337BaseSepolia --rpc-url base_sepolia --broadcast --verify and fill addresses."
+}
