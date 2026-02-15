@@ -29,11 +29,15 @@ const faqs = [
     questions: [
       {
         q: 'What are Fiat Rails?',
-        a: 'Fiat Rails (v0.6) allow agents to fund wallets from bank accounts (on-ramp) and withdraw back to bank accounts (off-ramp). We use a dual-track provider strategy: Onramper for quick go-live (30+ payment providers, widget integration) and Bridge for enterprise (built-in KYC, lower fees at scale).'
+        a: 'Fiat Rails allow agents to fund wallets from bank accounts and card rails, then withdraw back to bank accounts when needed. Sardis enforces policy, while regulated partners handle fiat settlement. Onramper is used for fast on-ramp coverage and Bridge lane is used for quote-driven off-ramp and payout flows.'
       },
       {
         q: 'How does Unified Balance work?',
-        a: 'Sardis treats USDC and USD as equivalent at 1:1 parity—like Coinbase Exchange. When you deposit either crypto (USDC) or fiat (USD), both appear as a single unified balance. Your agent can then spend from this balance via crypto payments OR virtual card payments, with automatic conversion happening seamlessly. For example: deposit $500 USDC, spend $100 via virtual card (auto-converts USDC→USD), remaining balance: $400.'
+        a: 'Unified balance means one policy-controlled spend budget across rails. Funds can start as USD or USDC, and Sardis routes execution to card, bank payout, or on-chain payment. FX and rail fees are quote-based and provider-dependent, not assumed as free 1:1 conversion on every transaction.'
+      },
+      {
+        q: 'Do card payments always require on-ramp + off-ramp conversion?',
+        a: 'No. You can run a fiat-first treasury model where cards spend from prefunded USD, then convert only when you need crypto payouts. If you start from USDC, you can also use just-in-time off-ramp per spend, but many teams use threshold-based batching to reduce conversion cost.'
       },
       {
         q: 'What is the difference between Onramper and Bridge?',
@@ -142,7 +146,7 @@ const faqs = [
       },
       {
         q: 'How does unified balance work across rails?',
-        a: 'Sardis treats all funding sources as a single unified balance. Whether you deposit via bank transfer or stablecoins, your agent sees one balance and can spend via any rail — virtual card, bank transfer, or stablecoin. Conversion happens automatically at 1:1 parity for USD-backed stablecoins.'
+        a: 'All rails map to one policy budget and ledger context. The system can execute via card, fiat payout, or stablecoin depending on policy and route selection. Conversion is explicit and quote-driven when crossing rails, and teams can choose batched funding instead of per-transaction conversion to control cost.'
       },
     ]
   },

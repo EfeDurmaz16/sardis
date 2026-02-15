@@ -42,9 +42,9 @@ export default function FiatRails() {
       {/* Content */}
       <div className="prose prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
-          Most businesses run on dollars, not tokens. Today we're announcing Fiat Rails — a
-          complete bank-to-wallet solution that lets agents fund from bank accounts and pay
-          anywhere, with full policy enforcement. Stablecoins remain available as an optional settlement rail.
+          Most businesses run on dollars, not tokens. Fiat Rails is the Sardis design-partner
+          lane for bank funding, card spend, and payout orchestration with policy enforcement.
+          Stablecoins remain available as an optional settlement rail.
         </p>
 
         <h2>The Bridge Problem</h2>
@@ -58,15 +58,14 @@ export default function FiatRails() {
           <li>Fund the agent wallet</li>
         </ul>
         <p>
-          This friction blocks mainstream adoption. Enterprise finance teams don't want to
-          manage crypto operations — they want to fund agents from their existing banking
-          infrastructure.
+          This friction blocks mainstream adoption. Enterprise finance teams do not want to
+          manage crypto operations. They want to fund agents from existing banking workflows.
         </p>
 
-        <h2>Introducing Fiat Rails</h2>
+        <h2>Fiat Rails in the current release</h2>
         <p>
-          Fiat Rails is our answer. A complete integration with <strong>Bridge</strong> (Stripe's
-          crypto-fiat infrastructure) that enables:
+          Fiat Rails uses provider integrations for settlement while Sardis enforces policy,
+          idempotency, and auditability:
         </p>
 
         <div className="not-prose my-8">
@@ -77,7 +76,7 @@ export default function FiatRails() {
               </div>
               <h3 className="text-lg font-bold font-display mb-2">Bank → Wallet</h3>
               <p className="text-sm text-muted-foreground">
-                Fund agent wallets via ACH, wire, or card. Automatic conversion to USDC.
+                Fund agent workflows via ACH, wire, or card with quote-driven conversion when needed.
               </p>
             </div>
             <div className="p-6 border border-border bg-card">
@@ -86,7 +85,7 @@ export default function FiatRails() {
               </div>
               <h3 className="text-lg font-bold font-display mb-2">Unified Balance</h3>
               <p className="text-sm text-muted-foreground">
-                One USDC balance powers crypto payments, virtual cards, and bank payouts.
+                One policy budget can power crypto payments, virtual cards, and bank payouts.
               </p>
             </div>
             <div className="p-6 border border-border bg-card">
@@ -95,7 +94,7 @@ export default function FiatRails() {
               </div>
               <h3 className="text-lg font-bold font-display mb-2">Wallet → Bank</h3>
               <p className="text-sm text-muted-foreground">
-                Withdraw to USD with automatic policy checks and compliance verification.
+                Withdraw to USD with policy checks and compliance workflows.
               </p>
             </div>
           </div>
@@ -155,10 +154,9 @@ export default function FiatRails() {
           </div>
         </div>
 
-        <h2>Why Unified Balance Matters</h2>
+        <h2>Avoiding unnecessary conversion cost</h2>
         <p>
-          We made a deliberate architectural choice: <strong>fiat flows into the wallet, not
-          directly to cards</strong>. This enables:
+          We use three operating modes to avoid forced double conversion:
         </p>
 
         <div className="not-prose my-6">
@@ -166,30 +164,27 @@ export default function FiatRails() {
             <div className="flex items-start gap-3 p-4 border border-border bg-card">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold font-display">Policy Enforcement on All Spend</div>
+                <div className="font-bold font-display">Mode A: Fiat-first card treasury</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Every transaction — card, crypto, or bank payout — passes through the same
-                  policy engine. "Max $1,000/day across all channels" works uniformly.
+                  Keep a USD treasury for cards and only convert when crypto payout is requested.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-4 border border-border bg-card">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold font-display">Audit Trail Consistency</div>
+                <div className="font-bold font-display">Mode B: Stablecoin-first JIT</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  One ledger tracks all fund movements. Compliance teams see a complete
-                  picture, not fragmented views per rail.
+                  Convert USDC to USD per spend when card usage is infrequent or highly variable.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-4 border border-border bg-card">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold font-display">Flexible Reallocation</div>
+                <div className="font-bold font-display">Mode C: Hybrid threshold refill</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Funds deposited via bank can be spent on crypto payments or vice versa.
-                  Agents don't need separate balances for different rails.
+                  Maintain a USD buffer and top up in batches from stablecoins based on thresholds.
                 </p>
               </div>
             </div>
@@ -203,7 +198,7 @@ export default function FiatRails() {
 
         <h3>Funding a Wallet</h3>
         <pre className="not-prose bg-[var(--sardis-ink)] p-4 overflow-x-auto">
-          <code>{`import { SardisFiatRamp } from '@sardis/fiat-ramp'
+          <code>{`import { SardisFiatRamp } from '@sardis/ramp'
 
 const ramp = new SardisFiatRamp({
   sardisKey: process.env.SARDIS_API_KEY,
@@ -283,52 +278,48 @@ const payment = await ramp.payMerchantFiat({
 // payment.paymentId, payment.fee available`}</code>
         </pre>
 
-        <h2>Pricing</h2>
+        <h2>Pricing model</h2>
         <p>
-          Transparent, competitive rates based on volume:
+          Final pricing is provider and volume dependent. Sardis should show quotes before execution
+          and apply platform spread only when policy allows it:
         </p>
 
         <div className="not-prose overflow-x-auto mb-6">
           <table className="w-full text-sm border border-border">
             <thead className="bg-muted/50">
               <tr>
-                <th className="text-left p-3 border-b border-border font-mono">Rail</th>
-                <th className="text-left p-3 border-b border-border font-mono">Fee</th>
-                <th className="text-left p-3 border-b border-border font-mono">Speed</th>
+                <th className="text-left p-3 border-b border-border font-mono">Route</th>
+                <th className="text-left p-3 border-b border-border font-mono">Cost Pattern</th>
+                <th className="text-left p-3 border-b border-border font-mono">Best Use</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="p-3 border-b border-border">ACH Deposit</td>
-                <td className="p-3 border-b border-border text-emerald-400">0.5%</td>
-                <td className="p-3 border-b border-border text-muted-foreground">1-3 business days</td>
+                <td className="p-3 border-b border-border">Fiat-first card treasury</td>
+                <td className="p-3 border-b border-border text-emerald-400">Single rail cost, no per-swipe off-ramp</td>
+                <td className="p-3 border-b border-border text-muted-foreground">High recurring card spend</td>
               </tr>
               <tr>
-                <td className="p-3 border-b border-border">Wire Deposit</td>
-                <td className="p-3 border-b border-border text-emerald-400">0.25%</td>
-                <td className="p-3 border-b border-border text-muted-foreground">Same day</td>
+                <td className="p-3 border-b border-border">Stablecoin-first JIT card funding</td>
+                <td className="p-3 border-b border-border text-yellow-400">Conversion on each refill event</td>
+                <td className="p-3 border-b border-border text-muted-foreground">Crypto-native inflow</td>
               </tr>
               <tr>
-                <td className="p-3 border-b border-border">Card Deposit</td>
-                <td className="p-3 border-b border-border text-yellow-400">2.9% + $0.30</td>
-                <td className="p-3 border-b border-border text-muted-foreground">Instant</td>
+                <td className="p-3 border-b border-border">Hybrid threshold refill</td>
+                <td className="p-3 border-b border-border text-emerald-400">Batched conversion, lower blended fee</td>
+                <td className="p-3 border-b border-border text-muted-foreground">Most design partners</td>
               </tr>
               <tr>
-                <td className="p-3 border-b border-border">ACH Withdrawal</td>
-                <td className="p-3 border-b border-border text-emerald-400">$0.50 flat</td>
-                <td className="p-3 border-b border-border text-muted-foreground">1-3 business days</td>
-              </tr>
-              <tr>
-                <td className="p-3 border-b border-border">Wire Withdrawal</td>
-                <td className="p-3 border-b border-border text-yellow-400">$25 flat</td>
-                <td className="p-3 border-b border-border text-muted-foreground">Same day</td>
+                <td className="p-3 border-b border-border">Direct stablecoin merchant pay</td>
+                <td className="p-3 border-b border-border text-emerald-400">No fiat conversion</td>
+                <td className="p-3 border-b border-border text-muted-foreground">Crypto-accepting merchants</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <p>
-          Volume discounts available for enterprise customers processing over $100K monthly.
+          Production contracts should expose provider pass-through fee + Sardis platform fee as separate line items.
         </p>
 
         <h2>Compliance Built In</h2>
@@ -349,8 +340,8 @@ const payment = await ramp.payMerchantFiat({
 
         <h2>What's Next</h2>
         <p>
-          Fiat Rails is available today in sandbox. Production access is rolling out to
-          design partners this quarter. On the roadmap:
+          Fiat Rails is available in sandbox and design-partner lanes. Production scale-up
+          depends on partner onboarding milestones. On the roadmap:
         </p>
         <ul>
           <li><strong>International wires</strong> — SWIFT and SEPA support</li>
@@ -365,8 +356,8 @@ const payment = await ramp.payMerchantFiat({
         </p>
 
         <pre className="not-prose bg-[var(--sardis-ink)] p-4 overflow-x-auto">
-          <code>{`# TypeScript
-npm install @sardis/fiat-ramp
+	          <code>{`# TypeScript
+npm install @sardis/ramp
 
 # Python
 pip install sardis-ramp`}</code>
@@ -379,8 +370,8 @@ pip install sardis-ramp`}</code>
         <hr />
 
         <p className="text-muted-foreground italic">
-          Fiat Rails is powered by Bridge, Stripe's crypto-fiat infrastructure. Sardis handles
-          wallet management, policy enforcement, and compliance — Bridge handles the actual
+          Fiat rails use regulated partner infrastructure. Sardis handles wallet management,
+          policy enforcement, and compliance controls. Partners handle the actual
           fiat movement.
         </p>
       </div>
