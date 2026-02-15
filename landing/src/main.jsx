@@ -64,6 +64,7 @@ import SardisV087LaunchHardening from './docs/pages/blog/SardisV087LaunchHardeni
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
+import Dashboard from './pages/Dashboard.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -73,6 +74,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />} />
         <Route path="/playground" element={<Playground />} />
         <Route path="/demo" element={<Demo />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />
