@@ -7,7 +7,7 @@ set -euo pipefail
 #   PROJECT_ID
 #
 # Optional env (defaults shown):
-#   REGION=europe-west1
+#   REGION=us-east1
 #   SERVICE_NAME=sardis-api-staging
 #   AR_REPO=sardis-images
 #   IMAGE_NAME=sardis-api
@@ -25,7 +25,7 @@ set -euo pipefail
 #   PROJECT_ID=my-gcp-project bash ./scripts/deploy_gcp_cloudrun_staging.sh
 
 PROJECT_ID="${PROJECT_ID:-}"
-REGION="${REGION:-europe-west1}"
+REGION="${REGION:-us-east1}"
 SERVICE_NAME="${SERVICE_NAME:-sardis-api-staging}"
 AR_REPO="${AR_REPO:-sardis-images}"
 IMAGE_NAME="${IMAGE_NAME:-sardis-api}"
