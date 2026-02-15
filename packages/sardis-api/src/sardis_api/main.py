@@ -99,6 +99,7 @@ from .routers import compliance as compliance_router
 from .routers import admin as admin_router
 from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
+from .routers import treasury as treasury_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
 from .routers import groups as groups_router
@@ -136,6 +137,8 @@ from .lifespan import lifespan, shutdown_state, get_shutdown_event
 from .openapi_schema import custom_openapi
 from .health import create_health_router
 from .card_adapter import CardProviderCompatAdapter
+from .repositories.treasury_repository import TreasuryRepository
+from .providers.lithic_treasury import LithicTreasuryClient
 
 # Configure structured logging
 setup_logging(
@@ -592,6 +595,30 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
     if hasattr(ramp_router, "public_router"):
         app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
+
+    # Treasury routes (Lithic financial accounts + ACH payments)
+    treasury_repo = TreasuryRepository(dsn=database_url if use_postgres else None)
+    lithic_treasury_client = None
+    if os.getenv("LITHIC_API_KEY"):
+        try:
+            lithic_treasury_client = LithicTreasuryClient(
+                api_key=os.getenv("LITHIC_API_KEY", ""),
+                environment="production" if settings.is_production else "sandbox",
+                webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET"),
+            )
+            logger.info("Treasury initialized with Lithic client")
+        except Exception as exc:
+            logger.warning("Failed to initialize Lithic treasury client: %s", exc)
+    else:
+        logger.warning("Treasury enabled without Lithic API key; endpoints will return 503 for provider actions")
+
+    app.state.treasury_repo = treasury_repo
+    app.state.lithic_treasury_client = lithic_treasury_client
+    app.dependency_overrides[treasury_router.get_deps] = lambda: treasury_router.TreasuryDependencies(
+        treasury_repo=treasury_repo,
+        lithic_client=lithic_treasury_client,
+    )
+    app.include_router(treasury_router.router, prefix="/api/v2/treasury", tags=["treasury"])
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
