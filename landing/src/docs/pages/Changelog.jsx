@@ -3,9 +3,26 @@ import { cn } from '@/lib/utils';
 const releases = [
   {
     version: '0.8.7',
-    date: '2026-02-14',
+    date: '2026-02-15',
     tag: 'latest',
     changes: [
+      {
+        type: 'added',
+        items: [
+          'ERC-4337 gasless smart wallet architecture design (paymaster + bundler + Pimlico)',
+          'PostgreSQL persistence for card services: conversions, wallet mappings, offramp transactions',
+          'PostgreSQL persistence for ledger engine with NUMERIC(38,18) full-precision entries',
+          'Alembic migration 015: 5 new tables (card_conversions, card_wallet_mappings, offramp_transactions, processed_webhook_events, ledger_entries_v2)',
+          'Time-based spending policies documentation page with timezone handling and DST support',
+          'Merchant category codes (MCC) documentation page with 18 categories and allowlist/blocklist modes',
+          'Combined limit strategy documentation with per-merchant overrides and recommended profiles',
+          'Landing page: gasless smart wallets section with 4-step flow and competitive positioning',
+          'Stablecoin-only token allowlist design (on-chain EVM enforcement)',
+          'Recurring payments engine: subscription registry, pre-billing processor, owner notifications',
+          'Subscription-aware ASA handler: known recurring charges auto-approve via merchant+amount matching',
+          'Alembic migration 016: subscriptions, billing_events, subscription_notifications tables',
+        ]
+      },
       {
         type: 'security',
         items: [
@@ -14,16 +31,10 @@ const releases = [
         ]
       },
       {
-        type: 'fixed',
-        items: [
-          'TypeScript and Python SDK runtime version constants aligned with published package metadata',
-          'Onramp webhook test suites updated to include timestamped signature headers',
-        ]
-      },
-      {
         type: 'improved',
         items: [
           'Launch documentation and release materials synchronized for MCP tool count, package counts, and quickstart parity',
+          'llms.txt expanded with time-based policies, MCC codes, combined limits, and smart wallet sections',
         ]
       },
     ]

@@ -4,10 +4,10 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
-    title: 'Sardis v0.8.7: Launch Hardening, Webhook Replay Protection, Docs Sync',
-    excerpt: 'v0.8.7 closes final pre-launch gaps: timestamped Onramper webhook signature validation, SDK runtime version parity with published metadata, and doc/claim synchronization across README and landing.',
-    date: '2026-02-14',
-    readTime: '4 min read',
+    title: 'Sardis v0.8.7: Smart Wallets, DB Persistence & Launch Hardening',
+    excerpt: 'v0.8.7 introduces ERC-4337 gasless smart wallet architecture, migrates card and ledger services to PostgreSQL, adds comprehensive spending policy docs, and hardens webhook security for production.',
+    date: '2026-02-15',
+    readTime: '6 min read',
     category: 'Release',
     featured: true,
     slug: 'sardis-v0-8-7-launch-hardening',

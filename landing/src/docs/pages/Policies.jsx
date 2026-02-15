@@ -120,13 +120,148 @@ async with SardisClient(api_key="sk_...") as client:
         </div>
       </section>
 
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Multi-Level Limit Strategy
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Sardis supports per-transaction, daily, weekly, and monthly limits. Use multiple levels together
+          for defense-in-depth.
+        </p>
+        <div className="not-prose overflow-x-auto mb-4">
+          <table className="w-full text-sm border border-border">
+            <thead>
+              <tr className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a]">
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Limit Type</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Use Case</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Example</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono">max_per_transaction</td>
+                <td className="p-3">Cap single purchases</td>
+                <td className="p-3">$50 - prevents large accidental charges</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono">max_daily</td>
+                <td className="p-3">Daily budget envelope</td>
+                <td className="p-3">$500 - limits total daily exposure</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono">max_weekly</td>
+                <td className="p-3">Weekly spending cap</td>
+                <td className="p-3">$2,000 - smooths burst spending</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono">max_monthly</td>
+                <td className="p-3">Monthly budget enforcement</td>
+                <td className="p-3">$5,000 - hard monthly ceiling</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Per-Merchant Overrides
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Override global limits for specific merchants using <code>merchant_rules</code>:
+        </p>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`policy = await client.policies.create(
+    wallet_id="wallet_abc",
+    rules={
+        # Global defaults
+        "max_per_transaction": 50_000_000,   # $50/tx globally
+        "max_daily": 1000_000_000,           # $1,000/day total
+
+        # Per-merchant overrides
+        "merchant_rules": [
+            {
+                "merchant": "openai",
+                "max_per_transaction": 200_000_000,  # $200/tx for OpenAI
+                "daily_limit": 500_000_000,          # $500/day for OpenAI
+            },
+            {
+                "merchant": "anthropic",
+                "max_per_transaction": 200_000_000,  # $200/tx for Anthropic
+            },
+            {
+                "merchant": "aws",
+                "max_per_transaction": 500_000_000,  # $500/tx for AWS
+                "daily_limit": 1000_000_000,         # $1,000/day for AWS
+            },
+        ],
+    },
+)`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Recommended Combinations
+        </h2>
+        <div className="not-prose overflow-x-auto mb-4">
+          <table className="w-full text-sm border border-border">
+            <thead>
+              <tr className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a]">
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Profile</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Per-Tx</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Daily</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Weekly</th>
+                <th className="text-left p-3 border-b border-border font-mono text-[var(--sardis-orange)]">Monthly</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono text-green-400">Conservative</td>
+                <td className="p-3">$25</td>
+                <td className="p-3">$100</td>
+                <td className="p-3">$500</td>
+                <td className="p-3">$1,000</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono text-yellow-400">Standard</td>
+                <td className="p-3">$100</td>
+                <td className="p-3">$500</td>
+                <td className="p-3">$2,000</td>
+                <td className="p-3">$5,000</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 font-mono text-[var(--sardis-orange)]">Enterprise</td>
+                <td className="p-3">$500</td>
+                <td className="p-3">$5,000</td>
+                <td className="p-3">$20,000</td>
+                <td className="p-3">$50,000</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="not-prose p-4 border border-yellow-500/30 bg-yellow-500/5">
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-yellow-500">Edge Case:</strong> If <code>max_per_transaction</code> exceeds <code>max_daily</code>,
+            the daily limit acts as the effective cap. For example, a $200/tx policy with $100/day means the agent
+            can never actually spend $200 in a single transaction because the daily limit would be exceeded.
+            Sardis validates this and warns during policy creation.
+          </p>
+        </div>
+      </section>
+
       <section className="not-prose p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">
         <h3 className="font-bold font-display mb-2 text-[var(--sardis-orange)]">Best Practices</h3>
         <ul className="space-y-1 text-muted-foreground text-sm">
-          <li>1. Start restrictive - Begin with low limits</li>
-          <li>2. Use allowlists - Prefer allowlists over blocklists</li>
-          <li>3. Monitor violations - Review blocked transactions</li>
-          <li>4. Separate policies - Different wallets for different risk profiles</li>
+          <li>1. Start restrictive - Begin with low limits and increase as trust builds</li>
+          <li>2. Use allowlists - Prefer allowlists over blocklists for vendors and categories</li>
+          <li>3. Layer limits - Combine per-tx, daily, and monthly limits for defense-in-depth</li>
+          <li>4. Monitor violations - Review blocked transactions to tune your policies</li>
+          <li>5. Separate policies - Use different wallets for different risk profiles</li>
+          <li>6. Override for trusted merchants - Set higher per-tx limits for known vendors like OpenAI</li>
+          <li>7. Add time restrictions - Pair amount limits with <a href="/docs/time-based-policies" className="text-[var(--sardis-orange)] underline">time-based policies</a> for maximum safety</li>
         </ul>
       </section>
     </article>

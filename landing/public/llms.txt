@@ -258,6 +258,17 @@ Available MCP tools (52 total):
 - `sardis_create_invoice` - Create a merchant invoice
 - `sardis_mcc_lookup` - Look up merchant category codes
 
+### Gasless Smart Wallets (ERC-4337)
+- v2 smart accounts implementing ERC-4337 account abstraction
+- Agents never need to hold ETH for gas — Sardis paymaster sponsors gas fees
+- Pay only in stablecoins (USDC, USDT, EURC), gas is abstracted away
+- Built on OpenZeppelin v5.5 account abstraction utilities
+- Supported on all target L2s: Base, Polygon, Arbitrum, Optimism, Ethereum
+- Backward compatible: v1 MPC wallets continue working, new wallets can opt into v2
+- Create smart wallet: `client.wallets.create(account_type="erc4337", ...)`
+- UserOperations signed via Turnkey MPC, submitted to bundler (Pimlico)
+- EntryPoint v0.7 compatible on all chains
+
 ### Stablecoin-Only Token Allowlist (On-Chain)
 - Smart contract enforces a token allowlist at the EVM level
 - Only Sardis-approved stablecoins (USDC, USDT, EURC) can be transferred out
@@ -265,9 +276,173 @@ Available MCP tools (52 total):
 - On-chain guarantee, not just API-level filtering
 - Toggle-able by Sardis for emergency recovery scenarios
 
+## Time-Based Spending Policies
+
+Time-based policies restrict when an AI agent can spend money. Combined with amount limits and merchant restrictions, they ensure transactions only occur during supervised periods.
+
+### Configuration
+```python
+# Business hours only (9 AM - 5 PM EST, weekdays)
+policy = await client.policies.create(
+    wallet_id="wallet_abc",
+    rules={
+        "time_policy": {
+            "timezone": "America/New_York",          # IANA timezone (DST auto-handled)
+            "allowed_hours": {"start": 9, "end": 17},
+            "allowed_days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    },
+)
+```
+
+### Timezone Handling
+- All times stored/evaluated in UTC internally
+- Use IANA timezone names (e.g., `America/New_York`, `Europe/London`, `Asia/Tokyo`) for automatic DST handling
+- Fixed UTC offsets (`UTC-5`, `UTC+9`) also supported but don't adjust for DST
+- If `start > end` in hours (e.g., `{start: 22, end: 6}`), treated as overnight window spanning midnight
+
+### Examples
+| Natural Language | Parsed Policy |
+|-----------------|---------------|
+| "Only during business hours EST" | `{timezone: "America/New_York", hours: {start:9, end:17}, days: ["mon"-"fri"]}` |
+| "Block weekends" | `{blocked_days: ["sat", "sun"]}` |
+| "6 AM to 10 PM UTC" | `{timezone: "UTC", hours: {start:6, end:22}}` |
+| "$50 limit after hours, $200 during work" | `{schedules: [{hours:9-17, max_per_tx:200}, {hours:17-9, max_per_tx:50}]}` |
+
+### Multiple Schedules
+```python
+# Different limits for different time windows
+"time_policy": {
+    "timezone": "America/New_York",
+    "schedules": [
+        {"days": ["mon","tue","wed","thu"], "hours": {"start": 9, "end": 17}},
+        {"days": ["fri"], "hours": {"start": 9, "end": 20}},  # Extended Friday
+    ],
+}
+```
+
+## Merchant Category Codes (MCC)
+
+MCC codes are four-digit numbers assigned by card networks to classify merchants. Sardis uses MCCs to enforce category-based spending policies.
+
+### Category Reference
+| Category | MCC Codes | Default |
+|----------|-----------|---------|
+| `saas` | 5734, 5817 | Allowed |
+| `cloud_infrastructure` | 7372 | Allowed |
+| `developer_tools` | 5734, 7372 | Allowed |
+| `ai_services` | 7372, 5818 | Allowed |
+| `advertising` | 7311 | Allowed |
+| `telecommunications` | 4812, 4814 | Allowed |
+| `gambling` | 7800, 7801, 7802, 7995 | **Blocked** |
+| `adult_content` | 5967 | **Blocked** |
+| `cash_advance` | 6010, 6011 | **Blocked** |
+| `quasi_cash` | 6051, 6540 | **Blocked** |
+| `securities` | 6211 | **Blocked** |
+| `wire_transfer` | 4829 | **Blocked** |
+
+### Allowlist vs Blocklist
+```python
+# Allowlist mode (recommended) - only specified categories permitted
+"allowed_categories": ["saas", "cloud_infrastructure", "ai_services"]
+
+# Blocklist mode - all categories except blocked ones
+"blocked_categories": ["gambling", "adult_content", "securities"]
+```
+
+When both are set, `allowed_categories` takes precedence (allowed wins over blocked).
+
+### MCC Lookup
+```python
+result = await client.mcc_lookup(code="5734")
+# -> {"code": "5734", "category": "saas", "description": "Computer Software Stores"}
+```
+
+## Combined Limit Strategy
+
+Use multiple limit levels together for defense-in-depth:
+
+### Recommended Profiles
+| Profile | Per-Tx | Daily | Weekly | Monthly |
+|---------|--------|-------|--------|---------|
+| Conservative | $25 | $100 | $500 | $1,000 |
+| Standard | $100 | $500 | $2,000 | $5,000 |
+| Enterprise | $500 | $5,000 | $20,000 | $50,000 |
+
+### Per-Merchant Overrides
+```python
+# Global $50/tx, but $200/tx for OpenAI, $1000/day total
+policy = await client.policies.create(
+    wallet_id="wallet_abc",
+    rules={
+        "max_per_transaction": 50_000_000,
+        "max_daily": 1000_000_000,
+        "merchant_rules": [
+            {"merchant": "openai", "max_per_transaction": 200_000_000, "daily_limit": 500_000_000},
+            {"merchant": "aws", "max_per_transaction": 500_000_000},
+        ],
+    },
+)
+```
+
+**Edge case**: If `max_per_transaction` > `max_daily`, the daily limit is the effective cap. Sardis warns during policy creation.
+
+## Recurring Payments (Subscriptions)
+
+Sardis supports recurring payment management for AI agents — monthly subscriptions, annual renewals, and scheduled billing.
+
+### Architecture: Shared Card + Subscription-Aware ASA
+
+Instead of one card per subscription, Sardis uses a shared card model:
+- One virtual card handles multiple subscriptions
+- The ASA (Authorization Stream Access) handler matches incoming charges to known subscriptions
+- Known subscription charges auto-approve; unknown charges go through normal policy checks
+
+### Subscription Lifecycle
+
+1. **Create** — Register subscription: merchant, amount, billing cycle, card
+2. **Pre-Billing Check** (T-48h cron) — Verify balance, policy, trigger auto-fund or approval
+3. **ASA Match** — When Lithic sends the charge, match to subscription and auto-approve
+4. **Settle** — Record charge, advance next billing date, notify owner
+5. **Notify** — Owner gets webhook/email at each stage
+
+### Configuration
+
+```python
+subscription = await client.subscriptions.create(
+    wallet_id="wallet_abc",
+    merchant="openai.com",
+    amount=20.00,               # Expected monthly charge
+    billing_cycle="monthly",
+    billing_day=15,             # Day of month
+    auto_approve=True,          # Auto-approve if within threshold
+    auto_approve_threshold=100, # $100 max for auto-approve
+    amount_tolerance=5.00,      # Match charges within $5 of expected
+    notify_owner=True,          # Send notifications
+)
+```
+
+### Owner Notifications
+
+Notifications sent at each billing stage:
+- `upcoming_billing` — 48h before charge
+- `auto_funded` — USDC→USD conversion triggered
+- `approval_required` — Above threshold, needs human approval
+- `charge_completed` — Subscription payment settled
+- `charge_failed` — Payment failed (insufficient balance, policy block)
+- `insufficient_balance` — Wallet needs funding
+- `subscription_paused` — Auto-paused after 3 consecutive failures
+
+### Failure Handling
+
+- Subscriptions auto-pause after 3 consecutive failures (configurable `max_failures`)
+- Status transitions: `active` → `past_due` after max failures
+- Owner notified at each failure with remediation hints
+- Can be resumed via `client.subscriptions.resume(sub_id)`
+
 ## Status
 
-- **Current Version**: v0.8.4 (Lithic Sandbox + Stablecoin Enforcement)
+- **Current Version**: v0.8.7 (Smart Wallets + DB Persistence + Recurring Payments + Launch Hardening)
 - **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols**: AP2, UCP, A2A, TAP, x402 all implemented
@@ -304,4 +479,4 @@ Available MCP tools (52 total):
 ---
 
 *Last updated: February 2026*
-*Version: 2.3*
+*Version: 2.4*

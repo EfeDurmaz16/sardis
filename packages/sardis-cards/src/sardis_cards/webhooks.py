@@ -263,6 +263,7 @@ class ASAHandler:
         card_lookup: Optional[Callable[[str], Optional[Any]]] = None,
         policy_check: Optional[Callable[[str, Decimal, str, str], tuple[bool, str]]] = None,
         redis_client: Optional[Any] = None,
+        subscription_matcher: Optional[Callable[[str, str, int], Any]] = None,
     ):
         """
         Args:
@@ -270,11 +271,13 @@ class ASAHandler:
             card_lookup: Async callable(card_token) -> Card or None
             policy_check: Async callable(wallet_id, amount, merchant_mcc, merchant_name) -> (allowed, reason)
             redis_client: Optional Redis client for persistent idempotency
+            subscription_matcher: Async callable(card_id, merchant_descriptor, amount_cents) -> Subscription or None
         """
         self._handler = webhook_handler
         self._card_lookup = card_lookup
         self._policy_check = policy_check
         self._redis = redis_client
+        self._subscription_matcher = subscription_matcher
         self._processed: set[str] = set()
 
         # Blocked MCC codes (high-risk categories)
@@ -377,7 +380,32 @@ class ASAHandler:
                 token=asa_req.token,
             )
 
-        # 5. Look up card and check spending limits
+        # 5. Subscription matching — known recurring charges auto-approve
+        if self._subscription_matcher:
+            try:
+                matched_sub = await self._subscription_matcher(
+                    asa_req.card_token,
+                    asa_req.merchant_descriptor,
+                    asa_req.amount_cents,
+                )
+                if matched_sub:
+                    await self._mark_processed(asa_req.token)
+                    logger.info(
+                        f"ASA: Approved subscription charge "
+                        f"sub={getattr(matched_sub, 'id', '?')} "
+                        f"merchant={asa_req.merchant_descriptor} "
+                        f"amount=${asa_req.amount_cents / 100:.2f}"
+                    )
+                    return ASAResponse(
+                        decision=ASADecision.APPROVE,
+                        reason="subscription_matched",
+                        token=asa_req.token,
+                    )
+            except Exception as e:
+                logger.error(f"ASA: Subscription match failed: {e}")
+                # Continue to normal flow on error
+
+        # 6. Look up card and check spending limits
         if self._card_lookup:
             try:
                 card = await self._card_lookup(asa_req.card_token)
@@ -407,7 +435,7 @@ class ASAHandler:
                 # Fail-open for card lookup errors to avoid blocking all transactions
                 # The card-level limits at Lithic will still apply
 
-        # 6. Check spending policy (if configured)
+        # 7. Check spending policy (if configured)
         if self._policy_check:
             try:
                 allowed, policy_reason = await self._policy_check(
@@ -434,7 +462,7 @@ class ASAHandler:
                     token=asa_req.token,
                 )
 
-        # 7. Approved
+        # 8. Approved
         await self._mark_processed(asa_req.token)
         logger.info(f"ASA: Approved token={asa_req.token} amount=${asa_req.amount}")
         return ASAResponse(

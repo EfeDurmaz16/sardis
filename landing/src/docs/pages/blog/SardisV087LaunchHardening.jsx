@@ -24,12 +24,12 @@ export default function SardisV087LaunchHardening() {
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">
-          Sardis v0.8.7: Launch Hardening, Webhook Replay Protection, Docs Sync
+          Sardis v0.8.7: Smart Wallets, DB Persistence & Launch Hardening
         </h1>
         <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
           <span className="flex items-center gap-1">
             <Calendar className="w-4 h-4" />
-            February 14, 2026
+            February 15, 2026
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-4 h-4" />4 min read
@@ -38,10 +38,55 @@ export default function SardisV087LaunchHardening() {
       </header>
 
       <p className="text-lg text-muted-foreground leading-relaxed">
-        v0.8.7 focuses on one goal: reduce launch risk. This release adds stronger webhook replay
-        defenses, aligns SDK runtime versions with published package metadata, and closes documentation
-        drift across README, landing docs, and launch materials.
+        v0.8.7 is our biggest pre-launch release. It introduces ERC-4337 gasless smart wallet architecture,
+        migrates card and ledger services to PostgreSQL persistence, adds comprehensive spending policy
+        documentation, and hardens webhook security for production.
       </p>
+
+      <h2>Gasless Smart Wallets (ERC-4337)</h2>
+
+      <p>
+        The headline feature: agents can now transact without holding ETH. We designed an ERC-4337 account
+        abstraction architecture where Sardis sponsors gas fees via a paymaster contract. Agents only deal
+        in stablecoins (USDC, USDT, EURC).
+      </p>
+
+      <ul>
+        <li>Smart accounts implementing <code>IAccount</code> with Turnkey MPC signing</li>
+        <li>Paymaster integration (Pimlico) sponsors gas — agents pay $0.00 in gas</li>
+        <li>Bundler submits UserOperations to ERC-4337 EntryPoint v0.7</li>
+        <li>Supported on all 5 L2s: Base, Polygon, Arbitrum, Optimism, Ethereum</li>
+        <li>Backward compatible — v1 MPC wallets continue working unchanged</li>
+        <li>Stablecoin-only token allowlist: on-chain smart contract prevents non-stablecoin transfers</li>
+      </ul>
+
+      <h2>PostgreSQL Persistence for Cards & Ledger</h2>
+
+      <p>
+        We migrated all remaining in-memory stores to PostgreSQL. Card services (conversions, wallet
+        mappings, offramp transactions) and the ledger engine now persist to Neon serverless PostgreSQL
+        with full ACID guarantees.
+      </p>
+
+      <ul>
+        <li><code>PostgresUnifiedBalanceService</code> — replaces in-memory USD balance tracking</li>
+        <li><code>PostgresAutoConversionService</code> — replaces in-memory USDC↔USD conversion records</li>
+        <li><code>PostgresOfframpService</code> — replaces in-memory offramp transaction tracking</li>
+        <li><code>PostgresLedgerEngine</code> — full-precision NUMERIC(38,18) entries with advisory locks</li>
+        <li>Alembic migration 015: 5 new tables with proper indexes</li>
+      </ul>
+
+      <h2>Context7 Documentation Improvements</h2>
+
+      <p>
+        Three new documentation areas to improve AI agent discoverability:
+      </p>
+
+      <ul>
+        <li><strong>Time-Based Policies</strong> — timezone handling, DST, overnight windows, multiple schedules</li>
+        <li><strong>Merchant Categories (MCC)</strong> — 18 categories, allowlist vs blocklist modes, auto-detection</li>
+        <li><strong>Combined Limit Strategy</strong> — per-merchant overrides, Conservative/Standard/Enterprise profiles</li>
+      </ul>
 
       <h2>Security: Timestamped Webhook Verification</h2>
 

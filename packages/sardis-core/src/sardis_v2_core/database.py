@@ -661,4 +661,140 @@ CREATE TABLE IF NOT EXISTS marketplace_reviews (
 
 CREATE INDEX IF NOT EXISTS idx_marketplace_reviews_service ON marketplace_reviews(service_id);
 CREATE INDEX IF NOT EXISTS idx_marketplace_reviews_offer ON marketplace_reviews(offer_id);
+
+-- Card Conversions (auto USDC<->USD conversion records)
+CREATE TABLE IF NOT EXISTS card_conversions (
+    id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    amount_cents BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'completed',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_conversions_wallet ON card_conversions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_card_conversions_status ON card_conversions(status);
+
+-- Card-to-Wallet Mappings (for auto-conversion routing)
+CREATE TABLE IF NOT EXISTS card_wallet_mappings (
+    card_id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_card_wallet_mappings_wallet ON card_wallet_mappings(wallet_id);
+
+-- Offramp Transactions (USDC -> USD off-ramp records)
+CREATE TABLE IF NOT EXISTS offramp_transactions (
+    id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    amount_cents BIGINT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    status TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_tx_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_offramp_tx_wallet ON offramp_transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_offramp_tx_status ON offramp_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_offramp_tx_created ON offramp_transactions(created_at DESC);
+
+-- Processed Webhook Events (deduplication)
+CREATE TABLE IF NOT EXISTS processed_webhook_events (
+    event_id TEXT PRIMARY KEY,
+    processed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ledger Entries v2 (full-precision append-only ledger for LedgerEngine)
+CREATE TABLE IF NOT EXISTS ledger_entries_v2 (
+    entry_id TEXT PRIMARY KEY,
+    tx_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    entry_type TEXT NOT NULL,
+    amount NUMERIC(38,18) NOT NULL,
+    fee NUMERIC(38,18) DEFAULT 0,
+    running_balance NUMERIC(38,18) DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'USDC',
+    chain TEXT,
+    chain_tx_hash TEXT,
+    block_number BIGINT,
+    audit_anchor TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    confirmed_at TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}',
+    version INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_v2_account ON ledger_entries_v2(account_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_v2_tx ON ledger_entries_v2(tx_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_v2_created ON ledger_entries_v2(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_v2_status ON ledger_entries_v2(status);
+
+-- Subscriptions (recurring payment registry)
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL DEFAULT '',
+    merchant TEXT NOT NULL,
+    merchant_mcc TEXT,
+    amount_cents BIGINT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+    billing_day INTEGER NOT NULL DEFAULT 1,
+    next_billing TIMESTAMPTZ NOT NULL,
+    card_id TEXT,
+    auto_approve BOOLEAN NOT NULL DEFAULT true,
+    auto_approve_threshold_cents BIGINT NOT NULL DEFAULT 10000,
+    amount_tolerance_cents INTEGER NOT NULL DEFAULT 500,
+    notify_owner BOOLEAN NOT NULL DEFAULT true,
+    notification_channel TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    last_charged_at TIMESTAMPTZ,
+    failure_count INTEGER NOT NULL DEFAULT 0,
+    max_failures INTEGER NOT NULL DEFAULT 3,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_wallet ON subscriptions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_next_billing ON subscriptions(next_billing);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_merchant ON subscriptions(merchant);
+
+-- Billing Events (per-cycle execution records)
+CREATE TABLE IF NOT EXISTS billing_events (
+    id TEXT PRIMARY KEY,
+    subscription_id TEXT NOT NULL,
+    wallet_id TEXT NOT NULL,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    amount_cents BIGINT NOT NULL,
+    fund_tx_id TEXT,
+    approval_id TEXT,
+    charge_tx_id TEXT,
+    error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_billing_events_subscription ON billing_events(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_billing_events_status ON billing_events(status);
+CREATE INDEX IF NOT EXISTS idx_billing_events_created ON billing_events(created_at DESC);
+
+-- Subscription Notifications (owner notification queue)
+CREATE TABLE IF NOT EXISTS subscription_notifications (
+    id TEXT PRIMARY KEY,
+    subscription_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    notification_type TEXT NOT NULL,
+    channel TEXT,
+    payload JSONB DEFAULT '{}',
+    sent BOOLEAN NOT NULL DEFAULT false,
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_notif_pending ON subscription_notifications(sent, created_at);
+CREATE INDEX IF NOT EXISTS idx_sub_notif_subscription ON subscription_notifications(subscription_id);
 """

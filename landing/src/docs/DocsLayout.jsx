@@ -31,6 +31,8 @@ const navigation = [
       { name: 'Payments', href: '/docs/payments' },
       { name: 'Holds', href: '/docs/holds' },
       { name: 'Policies', href: '/docs/policies' },
+      { name: 'Time-Based Policies', href: '/docs/time-based-policies' },
+      { name: 'Merchant Categories', href: '/docs/merchant-categories' },
     ],
   },
   {
@@ -46,6 +48,7 @@ const navigation = [
     title: 'Resources',
     items: [
       { name: 'Architecture', href: '/docs/architecture' },
+      { name: 'Blockchain Infrastructure', href: '/docs/blockchain-infrastructure' },
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
       { name: 'Deployment', href: '/docs/deployment' },

@@ -84,6 +84,27 @@ const faqs = [
     ]
   },
   {
+    category: 'Smart Wallets',
+    questions: [
+      {
+        q: 'What are gasless smart wallets?',
+        a: 'Gasless smart wallets use ERC-4337 account abstraction so your agents never need to hold ETH for gas fees. Sardis sponsors gas via a paymaster contract — agents only transact in stablecoins (USDC, USDT, EURC). The wallet is a smart contract account signed via Turnkey MPC, with UserOperations submitted through a bundler (Pimlico).'
+      },
+      {
+        q: 'Do I need to migrate from v1 MPC wallets?',
+        a: 'No. Existing v1 MPC wallets continue working unchanged. New wallets can opt into v2 smart accounts by passing account_type="erc4337" during creation. Both v1 and v2 wallets are governed by the same Policy Engine and support the same tokens and chains.'
+      },
+      {
+        q: 'What is the stablecoin-only token allowlist?',
+        a: 'It\'s an on-chain smart contract enforcement that only allows Sardis-approved stablecoins (USDC, USDT, EURC) to be transferred out of an agent wallet. Even if someone sends NFTs, meme coins, or arbitrary tokens to the wallet, the agent cannot send them out. This is enforced at the EVM level, not just API-level filtering.'
+      },
+      {
+        q: 'Which chains support gasless smart wallets?',
+        a: 'Gasless smart wallets are supported on all target L2s: Base, Polygon, Arbitrum, Optimism, and Ethereum mainnet. All chains support ERC-4337 EntryPoint v0.7 and compatible paymasters.'
+      },
+    ]
+  },
+  {
     category: 'Security',
     questions: [
       {

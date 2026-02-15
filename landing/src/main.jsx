@@ -20,6 +20,8 @@ import DocsWallets from './docs/pages/Wallets.jsx'
 import DocsPayments from './docs/pages/Payments.jsx'
 import DocsHolds from './docs/pages/Holds.jsx'
 import DocsPolicies from './docs/pages/Policies.jsx'
+import DocsTimeBasedPolicies from './docs/pages/TimeBasedPolicies.jsx'
+import DocsMerchantCategories from './docs/pages/MerchantCategories.jsx'
 // SDKs & Tools
 import DocsSDKPython from './docs/pages/SDKPython.jsx'
 import DocsSDKTypeScript from './docs/pages/SDKTypeScript.jsx'
@@ -27,6 +29,7 @@ import DocsMCPServer from './docs/pages/MCPServer.jsx'
 import DocsSDK from './docs/pages/SDK.jsx'
 import APIReference from './docs/pages/APIReference.jsx'
 // Resources
+import DocsBlockchainInfrastructure from './docs/pages/BlockchainInfrastructure.jsx'
 import DocsArchitecture from './docs/pages/Architecture.jsx'
 import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
 import DocsSecurity from './docs/pages/Security.jsx'
@@ -87,6 +90,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="payments" element={<DocsPayments />} />
           <Route path="holds" element={<DocsHolds />} />
           <Route path="policies" element={<DocsPolicies />} />
+          <Route path="time-based-policies" element={<DocsTimeBasedPolicies />} />
+          <Route path="merchant-categories" element={<DocsMerchantCategories />} />
           {/* SDKs & Tools */}
           <Route path="sdk-python" element={<DocsSDKPython />} />
           <Route path="sdk-typescript" element={<DocsSDKTypeScript />} />
@@ -94,6 +99,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="sdk" element={<DocsSDK />} />
           <Route path="api-reference" element={<APIReference />} />
           {/* Resources */}
+          <Route path="blockchain-infrastructure" element={<DocsBlockchainInfrastructure />} />
           <Route path="architecture" element={<DocsArchitecture />} />
           <Route path="whitepaper" element={<DocsWhitepaper />} />
           <Route path="security" element={<DocsSecurity />} />

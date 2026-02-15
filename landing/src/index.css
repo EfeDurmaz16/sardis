@@ -1,92 +1,135 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* === FONT TEST START — revert by removing this block and restoring vars below === */
+/* === Geist Font Family (Vercel) === */
+/* REVERT: restore Google Fonts import + Cabinet Grotesk + Satoshi @font-face blocks */
+
 @font-face {
-  font-family: "Cabinet Grotesk";
-  src: url("/fonts/CabinetGrotesk-Extrabold.woff2") format("woff2"),
-       url("/fonts/CabinetGrotesk-Extrabold.woff") format("woff");
-  font-weight: 800;
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
-  font-family: "Satoshi";
-  src: url("/fonts/Satoshi-Medium.woff2") format("woff2"),
-       url("/fonts/Satoshi-Medium.woff") format("woff");
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Medium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
-/* === FONT TEST END === */
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Pixel";
+  src: url("/fonts/geist/GeistPixel-Square.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
+  --font-size: 17px;
 
-  /* Lydian Protocol Color Palette */
-  --sardis-canvas: #f2f0e9; /* Warm cream background */
-  --sardis-ink: #0f0e0c; /* Dark anthracite text/bg */
-  --sardis-orange: #ff4f00; /* Safety orange accent */
-  --sardis-gray: #d4d4d4; /* Grid lines */
-  --sardis-ghost: #fafafa; /* Dark mode text */
-  --sardis-border: #0f0e0c; /* 1px borders */
+  /* Color Palette — Ivory Mist + Ocean Breeze + Golden Nectar + Sunset Ember */
+  /* ORIGINAL: --sardis-canvas: #f2f0e9; --sardis-ink: #0f0e0c; --sardis-orange: #ff4f00; */
+  --sardis-canvas: #fff8f0;
+  --sardis-ink: #1a1614;
+  --sardis-orange: #ff4f00;
+  --sardis-teal: #9DD9D2;
+  --sardis-teal-strong: #3BA99E;
+  --sardis-rose: #f4d0df;
+  --sardis-rose-strong: #c4708a;
+  --sardis-gray: #e0ddd8;
+  --sardis-ghost: #fff8f0;
+  --sardis-border: #1a1614;
 
-  /* Fonts — ORIGINAL VALUES (for revert):
-     --font-display: "Geist Mono", "JetBrains Mono", monospace;
-     --font-body: "Inter", "SF Pro", system-ui, sans-serif;
-     --font-mono: "Geist Mono", "Fira Code", monospace;
-  */
-  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
-  --font-body: "Satoshi", "Inter", system-ui, sans-serif;
+  /* Geist Font Stack */
+  --font-display: "Geist Mono", "Fira Code", monospace;
+  --font-body: "Geist Sans", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Fira Code", monospace;
+  --font-pixel: "Geist Pixel", monospace;
 
-  /* Light mode defaults */
-  --background: #f2f0e9;
-  --foreground: #0f0e0c;
-  --card: #f2f0e9;
-  --card-foreground: #0f0e0c;
-  --popover: #f2f0e9;
-  --popover-foreground: #0f0e0c;
+  /* Light mode */
+  --background: #fff8f0;
+  --foreground: #1a1614;
+  --card: #fff8f0;
+  --card-foreground: #1a1614;
+  --popover: #fff8f0;
+  --popover-foreground: #1a1614;
   --primary: #ff4f00;
-  --primary-foreground: #fafafa;
-  --secondary: #d4d4d4;
-  --secondary-foreground: #0f0e0c;
-  --muted: #d4d4d4;
-  --muted-foreground: #6b6b6b;
+  --primary-foreground: #fff8f0;
+  --secondary: #9DD9D2;
+  --secondary-foreground: #1a1614;
+  --muted: #f0ece6;
+  --muted-foreground: #78716c;
   --accent: #ff4f00;
-  --accent-foreground: #f2f0e9;
+  --accent-foreground: #fff8f0;
   --destructive: #dc2626;
-  --destructive-foreground: #fafafa;
-  --border: #0f0e0c;
-  --input: #0f0e0c;
+  --destructive-foreground: #fff8f0;
+  --border: #d6d3cd;
+  --input: #d6d3cd;
   --ring: #ff4f00;
   --radius: 0px;
 }
 
 .dark {
-  --background: #0f0e0c;
-  --foreground: #f2f0e9;
-  --card: #0f0e0c;
-  --card-foreground: #f2f0e9;
-  --popover: #0f0e0c;
-  --popover-foreground: #f2f0e9;
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+  --card: #0c0a09;
+  --card-foreground: #fafaf9;
+  --popover: #0c0a09;
+  --popover-foreground: #fafaf9;
   --primary: #ff4f00;
-  --primary-foreground: #0f0e0c;
-  --secondary: #1f1e1c;
-  --secondary-foreground: #f2f0e9;
-  --muted: #2f2e2c;
-  --muted-foreground: #a3a3a3;
+  --primary-foreground: #0c0a09;
+  --secondary: #1c1917;
+  --secondary-foreground: #fafaf9;
+  --muted: #1c1917;
+  --muted-foreground: #a8a29e;
   --accent: #ff4f00;
-  --accent-foreground: #0f0e0c;
+  --accent-foreground: #0c0a09;
   --destructive: #ef4444;
-  --destructive-foreground: #f2f0e9;
-  --border: #f2f0e9;
-  --input: #2f2e2c;
+  --destructive-foreground: #fafaf9;
+  --border: #292524;
+  --input: #292524;
   --ring: #ff4f00;
 }
 
@@ -115,10 +158,8 @@
   --radius-lg: 0px;
   --radius-xl: 0px;
 
-  /* ORIGINAL: --font-display: "Geist Mono", "JetBrains Mono", monospace; */
-  /* ORIGINAL: --font-sans: "Inter", system-ui, sans-serif; */
-  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
-  --font-sans: "Satoshi", "Inter", system-ui, sans-serif;
+  --font-display: "Geist Mono", "Fira Code", monospace;
+  --font-sans: "Geist Sans", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Fira Code", monospace;
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -141,8 +182,10 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
     font-family: var(--font-body);
+    font-weight: 400;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -154,10 +197,18 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
+    letter-spacing: -0.04em;
   }
 }
 
-/* Protocol Card - Flat design with 1px borders */
+/* Geist Pixel utility — display font for labels and decorative text */
+.font-pixel {
+  font-family: "Geist Pixel", monospace;
+  letter-spacing: 0.08em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Protocol Card */
 .protocol-card {
   background: var(--background);
   border: 1px solid var(--border);
@@ -176,21 +227,22 @@
 /* Text gradient with orange */
 @utility text-gradient {
   @apply bg-clip-text text-transparent;
-  background-image: linear-gradient(135deg, #ff4f00, #ff7a3d);
+  background-image: linear-gradient(135deg, #ff4f00, #ff8533);
 }
 
 /* Terminal-style elements */
 .terminal-block {
   font-family: var(--font-mono);
-  background: var(--sardis-ink);
-  color: var(--sardis-canvas);
+  font-size: 13px;
+  background: #0c0a09;
+  color: #fafaf9;
   border: 1px solid var(--border);
   padding: 1rem;
 }
 
 .dark .terminal-block {
-  background: #1f1e1c;
-  color: var(--sardis-canvas);
+  background: #1c1917;
+  color: #fafaf9;
   border: 1px solid var(--border);
 }
 
@@ -218,10 +270,23 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Focus visible for accessibility */
+/* Focus visible */
 *:focus-visible {
   outline: 2px solid var(--sardis-orange);
   outline-offset: 2px;
+}
+
+/* Grain texture overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
 }
 
 /* Reduced motion support */
