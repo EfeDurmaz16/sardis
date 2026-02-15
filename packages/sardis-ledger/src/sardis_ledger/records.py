@@ -70,6 +70,8 @@ class ChainReceipt:
     gas_price: Optional[Decimal] = None
     timestamp: Optional[datetime] = None
     confirmed: bool = True
+    execution_path: str = "legacy_tx"
+    user_op_hash: Optional[str] = None
 
     def __post_init__(self):
         if self.gas_price is not None:
@@ -86,6 +88,8 @@ class ChainReceipt:
             "gas_price": str(self.gas_price) if self.gas_price else None,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "confirmed": self.confirmed,
+            "execution_path": self.execution_path,
+            "user_op_hash": self.user_op_hash,
         }
 
 

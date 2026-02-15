@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from .wallets import Wallet
 from .tokens import TokenType
@@ -38,15 +38,30 @@ class WalletRepository:
         agent_id: str,
         wallet_id: str | None = None,
         mpc_provider: str = "turnkey",
+        account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1",
         currency: str = "USDC",
         limit_per_tx: Decimal = Decimal("100.00"),
         limit_total: Decimal = Decimal("1000.00"),
         addresses: Optional[dict[str, str]] = None,
+        smart_account_address: Optional[str] = None,
+        entrypoint_address: Optional[str] = None,
+        paymaster_enabled: bool = False,
+        bundler_profile: Optional[str] = None,
     ) -> Wallet:
         """Create a new non-custodial wallet."""
-        wallet = Wallet.new(agent_id, mpc_provider=mpc_provider, currency=currency, wallet_id=wallet_id)
+        wallet = Wallet.new(
+            agent_id,
+            mpc_provider=mpc_provider,
+            account_type=account_type,
+            currency=currency,
+            wallet_id=wallet_id,
+        )
         wallet.limit_per_tx = limit_per_tx
         wallet.limit_total = limit_total
+        wallet.smart_account_address = smart_account_address
+        wallet.entrypoint_address = entrypoint_address
+        wallet.paymaster_enabled = paymaster_enabled
+        wallet.bundler_profile = bundler_profile
         if addresses:
             wallet.addresses.update(addresses)
         self._wallets[wallet.wallet_id] = wallet
@@ -82,6 +97,11 @@ class WalletRepository:
         limit_total: Optional[Decimal] = None,
         is_active: Optional[bool] = None,
         addresses: Optional[dict[str, str]] = None,
+        account_type: Optional[Literal["mpc_v1", "erc4337_v2"]] = None,
+        smart_account_address: Optional[str] = None,
+        entrypoint_address: Optional[str] = None,
+        paymaster_enabled: Optional[bool] = None,
+        bundler_profile: Optional[str] = None,
     ) -> Optional[Wallet]:
         """Update wallet (non-custodial - no balance updates)."""
         wallet = self._wallets.get(wallet_id)
@@ -95,6 +115,16 @@ class WalletRepository:
             wallet.is_active = is_active
         if addresses is not None:
             wallet.addresses.update(addresses)
+        if account_type is not None:
+            wallet.account_type = account_type
+        if smart_account_address is not None:
+            wallet.smart_account_address = smart_account_address
+        if entrypoint_address is not None:
+            wallet.entrypoint_address = entrypoint_address
+        if paymaster_enabled is not None:
+            wallet.paymaster_enabled = paymaster_enabled
+        if bundler_profile is not None:
+            wallet.bundler_profile = bundler_profile
         wallet.updated_at = datetime.now(timezone.utc)
         return wallet
     

@@ -46,6 +46,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         self,
         agent_id: str,
         mpc_provider: str = "turnkey",
+        account_type: str = "mpc_v1",
         currency: str = "USDC",
         chain: Optional[str] = None,
         limit_per_tx: Optional[Decimal] = None,
@@ -71,6 +72,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         payload: Dict[str, Any] = {
             "agent_id": agent_id,
             "mpc_provider": mpc_provider,
+            "account_type": account_type,
             "currency": currency,
         }
 
@@ -249,6 +251,25 @@ class AsyncWalletsResource(AsyncBaseResource):
         data = await self._post(f"wallets/{wallet_id}/transfer", payload, timeout=timeout)
         return WalletTransferResponse.model_validate(data)
 
+    async def upgrade_smart_account(
+        self,
+        wallet_id: str,
+        *,
+        smart_account_address: str,
+        entrypoint_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+        paymaster_enabled: bool = True,
+        bundler_profile: str = "pimlico",
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Wallet:
+        payload = {
+            "smart_account_address": smart_account_address,
+            "entrypoint_address": entrypoint_address,
+            "paymaster_enabled": paymaster_enabled,
+            "bundler_profile": bundler_profile,
+        }
+        data = await self._post(f"wallets/{wallet_id}/upgrade-smart-account", payload, timeout=timeout)
+        return Wallet.model_validate(data)
+
 
 class WalletsResource(SyncBaseResource):
     """Sync resource for managing wallets.
@@ -280,6 +301,7 @@ class WalletsResource(SyncBaseResource):
         self,
         agent_id: str,
         mpc_provider: str = "turnkey",
+        account_type: str = "mpc_v1",
         currency: str = "USDC",
         chain: Optional[str] = None,
         limit_per_tx: Optional[Decimal] = None,
@@ -305,6 +327,7 @@ class WalletsResource(SyncBaseResource):
         payload: Dict[str, Any] = {
             "agent_id": agent_id,
             "mpc_provider": mpc_provider,
+            "account_type": account_type,
             "currency": currency,
         }
 
@@ -482,6 +505,25 @@ class WalletsResource(SyncBaseResource):
             payload["memo"] = memo
         data = self._post(f"wallets/{wallet_id}/transfer", payload, timeout=timeout)
         return WalletTransferResponse.model_validate(data)
+
+    def upgrade_smart_account(
+        self,
+        wallet_id: str,
+        *,
+        smart_account_address: str,
+        entrypoint_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+        paymaster_enabled: bool = True,
+        bundler_profile: str = "pimlico",
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Wallet:
+        payload = {
+            "smart_account_address": smart_account_address,
+            "entrypoint_address": entrypoint_address,
+            "paymaster_enabled": paymaster_enabled,
+            "bundler_profile": bundler_profile,
+        }
+        data = self._post(f"wallets/{wallet_id}/upgrade-smart-account", payload, timeout=timeout)
+        return Wallet.model_validate(data)
 
 
 __all__ = [

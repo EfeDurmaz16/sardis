@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
@@ -23,6 +23,7 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 class CreateWalletRequest(BaseModel):
     agent_id: str
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
     currency: str = "USDC"
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
@@ -43,6 +44,16 @@ class SetLimitsRequest(BaseModel):
 class SetAddressRequest(BaseModel):
     chain: str
     address: str
+
+
+class UpgradeSmartAccountRequest(BaseModel):
+    smart_account_address: str = Field(description="Deployed ERC-4337 smart account address (0x...)")
+    entrypoint_address: Optional[str] = Field(
+        default="0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+        description="EntryPoint v0.7 address",
+    )
+    paymaster_enabled: bool = True
+    bundler_profile: str = "pimlico"
 
 
 class FreezeWalletRequest(BaseModel):
@@ -71,16 +82,23 @@ class TransferResponse(BaseModel):
     chain: str
     ledger_tx_id: Optional[str] = None
     audit_anchor: Optional[str] = None
+    execution_path: Literal["legacy_tx", "erc4337_userop"] = "legacy_tx"
+    user_op_hash: Optional[str] = None
 
 
 class WalletResponse(BaseModel):
     wallet_id: str
     agent_id: str
     mpc_provider: str
+    account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
     addresses: dict[str, str]  # chain -> address mapping
     currency: str
     limit_per_tx: str
     limit_total: str
+    smart_account_address: Optional[str] = None
+    entrypoint_address: Optional[str] = None
+    paymaster_enabled: bool = False
+    bundler_profile: Optional[str] = None
     is_active: bool
     created_at: str
     updated_at: str
@@ -91,10 +109,15 @@ class WalletResponse(BaseModel):
             wallet_id=wallet.wallet_id,
             agent_id=wallet.agent_id,
             mpc_provider=wallet.mpc_provider,
+            account_type=wallet.account_type,
             addresses=wallet.addresses,
             currency=wallet.currency,
             limit_per_tx=str(wallet.limit_per_tx),
             limit_total=str(wallet.limit_total),
+            smart_account_address=wallet.smart_account_address,
+            entrypoint_address=wallet.entrypoint_address,
+            paymaster_enabled=wallet.paymaster_enabled,
+            bundler_profile=wallet.bundler_profile,
             is_active=wallet.is_active,
             created_at=wallet.created_at.isoformat(),
             updated_at=wallet.updated_at.isoformat(),
@@ -226,10 +249,13 @@ async def create_wallet(
         agent_id=request.agent_id,
         wallet_id=wallet_id_override,
         mpc_provider=request.mpc_provider,
+        account_type=request.account_type,
         currency=request.currency,
         limit_per_tx=request.limit_per_tx,
         limit_total=request.limit_total,
         addresses=addresses,
+        paymaster_enabled=request.account_type == "erc4337_v2",
+        bundler_profile="pimlico" if request.account_type == "erc4337_v2" else None,
     )
     return WalletResponse.from_wallet(wallet)
 
@@ -445,6 +471,28 @@ async def get_wallet_by_agent(
     return WalletResponse.from_wallet(wallet)
 
 
+@router.post("/{wallet_id}/upgrade-smart-account", response_model=WalletResponse)
+async def upgrade_smart_account(
+    wallet_id: str,
+    request: UpgradeSmartAccountRequest,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Upgrade wallet metadata to ERC-4337 v2 smart-account mode."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+    wallet = await deps.wallet_repo.update(
+        wallet_id,
+        account_type="erc4337_v2",
+        smart_account_address=request.smart_account_address,
+        entrypoint_address=request.entrypoint_address,
+        paymaster_enabled=request.paymaster_enabled,
+        bundler_profile=request.bundler_profile,
+    )
+    if not wallet:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+    return WalletResponse.from_wallet(wallet)
+
+
 @router.post("/{wallet_id}/transfer", response_model=TransferResponse)
 async def transfer_crypto(
     wallet_id: str,
@@ -527,6 +575,8 @@ async def transfer_crypto(
                 f"{wallet_id}:{transfer_request.destination}:{amount_minor}:{transfer_request.domain}:{transfer_request.memo or ''}".encode()
             ).hexdigest(),
             wallet_id=wallet_id,
+            account_type=wallet.account_type,
+            smart_account_address=wallet.smart_account_address,
             merchant_domain=transfer_request.domain,
         )
 
@@ -571,6 +621,8 @@ async def transfer_crypto(
             chain=transfer_request.chain,
             ledger_tx_id=ledger_tx_id,
             audit_anchor=getattr(receipt, "audit_anchor", None),
+            execution_path=getattr(receipt, "execution_path", "legacy_tx"),
+            user_op_hash=getattr(receipt, "user_op_hash", None),
         )
 
     return await run_idempotent(

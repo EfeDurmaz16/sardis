@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 
 from .wallets import Wallet
 
@@ -49,10 +49,15 @@ class PostgresWalletRepository:
             wallet_id=str(row["external_id"]),
             agent_id=agent_external_id,
             mpc_provider=str(row.get("mpc_provider") or "turnkey"),
+            account_type=str(row.get("account_type") or "mpc_v1"),
             addresses=addresses,
             currency=str(row.get("currency") or "USDC"),
             limit_per_tx=Decimal(str(row.get("limit_per_tx") or "100.00")),
             limit_total=Decimal(str(row.get("limit_total") or "1000.00")),
+            smart_account_address=row.get("smart_account_address"),
+            entrypoint_address=row.get("entrypoint_address"),
+            paymaster_enabled=bool(row.get("paymaster_enabled", False)),
+            bundler_profile=row.get("bundler_profile"),
             is_active=bool(row.get("is_active", True)),
             is_frozen=bool(row.get("is_frozen", False)),
             frozen_at=row.get("frozen_at"),
@@ -67,10 +72,15 @@ class PostgresWalletRepository:
         agent_id: str,
         wallet_id: str | None = None,
         mpc_provider: str = "turnkey",
+        account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1",
         currency: str = "USDC",
         limit_per_tx: Decimal = Decimal("100.00"),
         limit_total: Decimal = Decimal("1000.00"),
         addresses: Optional[dict[str, str]] = None,
+        smart_account_address: Optional[str] = None,
+        entrypoint_address: Optional[str] = None,
+        paymaster_enabled: bool = False,
+        bundler_profile: Optional[str] = None,
     ) -> Wallet:
         pool = await self._get_pool()
         wallet_id = wallet_id or f"wallet_{__import__('uuid').uuid4().hex[:16]}"
@@ -92,15 +102,17 @@ class PostgresWalletRepository:
                     INSERT INTO wallets (
                         external_id, agent_id, chain_address, chain,
                         mpc_provider, currency, limit_per_tx, limit_total,
-                        addresses, is_active
+                        addresses, is_active, account_type, smart_account_address,
+                        entrypoint_address, paymaster_enabled, bundler_profile
                     )
                     VALUES (
                         $1, $2::uuid, $3, $4,
                         $5, $6, $7, $8,
-                        $9::jsonb, TRUE
+                        $9::jsonb, TRUE, $10, $11, $12, $13, $14
                     )
                     RETURNING external_id, chain_address, chain, mpc_provider, currency,
-                              limit_per_tx, limit_total, addresses,
+                              limit_per_tx, limit_total, addresses, account_type,
+                              smart_account_address, entrypoint_address, paymaster_enabled, bundler_profile,
                               is_active, is_frozen, frozen_at, frozen_by, freeze_reason,
                               created_at, updated_at
                     """,
@@ -113,6 +125,11 @@ class PostgresWalletRepository:
                     str(limit_per_tx),
                     str(limit_total),
                     _json.dumps(addresses),
+                    account_type,
+                    smart_account_address,
+                    entrypoint_address,
+                    paymaster_enabled,
+                    bundler_profile,
                 )
                 return self._wallet_from_row(dict(row), agent_id)
 
@@ -122,7 +139,8 @@ class PostgresWalletRepository:
             row = await conn.fetchrow(
                 """
                 SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
-                       w.limit_per_tx, w.limit_total, w.addresses,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
                        w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
                        w.created_at, w.updated_at,
                        a.external_id AS agent_external_id
@@ -142,7 +160,8 @@ class PostgresWalletRepository:
             row = await conn.fetchrow(
                 """
                 SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
-                       w.limit_per_tx, w.limit_total, w.addresses,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
                        w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
                        w.created_at, w.updated_at
                 FROM wallets w
@@ -180,7 +199,8 @@ class PostgresWalletRepository:
             rows = await conn.fetch(
                 f"""
                 SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
-                       w.limit_per_tx, w.limit_total, w.addresses,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
                        w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
                        w.created_at, w.updated_at,
                        a.external_id AS agent_external_id
@@ -203,6 +223,11 @@ class PostgresWalletRepository:
         limit_total: Optional[Decimal] = None,
         is_active: Optional[bool] = None,
         addresses: Optional[dict[str, str]] = None,
+        account_type: Optional[Literal["mpc_v1", "erc4337_v2"]] = None,
+        smart_account_address: Optional[str] = None,
+        entrypoint_address: Optional[str] = None,
+        paymaster_enabled: Optional[bool] = None,
+        bundler_profile: Optional[str] = None,
     ) -> Optional[Wallet]:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -226,6 +251,11 @@ class PostgresWalletRepository:
                     limit_total = COALESCE($3, limit_total),
                     is_active = COALESCE($4, is_active),
                     addresses = $5::jsonb,
+                    account_type = COALESCE($6, account_type),
+                    smart_account_address = COALESCE($7, smart_account_address),
+                    entrypoint_address = COALESCE($8, entrypoint_address),
+                    paymaster_enabled = COALESCE($9, paymaster_enabled),
+                    bundler_profile = COALESCE($10, bundler_profile),
                     updated_at = NOW()
                 WHERE external_id = $1
                 """,
@@ -234,6 +264,11 @@ class PostgresWalletRepository:
                 str(limit_total) if limit_total is not None else None,
                 is_active,
                 _json.dumps(merged),
+                account_type,
+                smart_account_address,
+                entrypoint_address,
+                paymaster_enabled,
+                bundler_profile,
             )
             return await self.get(wallet_id)
 
@@ -296,7 +331,8 @@ class PostgresWalletRepository:
             rows = await conn.fetch(
                 """
                 SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
-                       w.limit_per_tx, w.limit_total, w.addresses,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
                        w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
                        w.created_at, w.updated_at,
                        a.external_id AS agent_external_id

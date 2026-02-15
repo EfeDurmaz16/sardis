@@ -149,4 +149,22 @@ export class WalletsResource extends BaseResource {
       options
     );
   }
+
+  async upgradeSmartAccount(
+    walletId: string,
+    input: {
+      smart_account_address: string;
+      entrypoint_address?: string;
+      paymaster_enabled?: boolean;
+      bundler_profile?: string;
+    },
+    options?: RequestOptions
+  ): Promise<Wallet> {
+    const wallet = await this._post<Wallet>(
+      `/api/v2/wallets/${walletId}/upgrade-smart-account`,
+      input,
+      options
+    );
+    return this._normalize(wallet);
+  }
 }

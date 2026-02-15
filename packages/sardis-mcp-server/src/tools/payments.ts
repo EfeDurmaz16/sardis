@@ -19,6 +19,8 @@ interface PaymentResult {
   chain: string;
   ledger_tx_id?: string;
   audit_anchor?: string;
+  execution_path?: 'legacy_tx' | 'erc4337_userop';
+  user_op_hash?: string;
 }
 
 interface LedgerEntry {
@@ -127,6 +129,8 @@ export async function executePayment(
     chain: string;
     ledger_tx_id?: string;
     audit_anchor?: string | null;
+    execution_path?: 'legacy_tx' | 'erc4337_userop';
+    user_op_hash?: string | null;
   }>('POST', `/api/v2/wallets/${config.walletId}/transfer`, {
     destination: vendorAddress,
     amount,
@@ -144,6 +148,8 @@ export async function executePayment(
     chain: transfer.chain,
     ledger_tx_id: transfer.ledger_tx_id,
     audit_anchor: transfer.audit_anchor ?? undefined,
+    execution_path: transfer.execution_path,
+    user_op_hash: transfer.user_op_hash ?? undefined,
   };
 }
 

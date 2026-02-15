@@ -35,7 +35,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
@@ -67,11 +67,16 @@ class Wallet(BaseModel):
     wallet_id: str
     agent_id: str
     mpc_provider: str = Field(default="turnkey")  # "turnkey" | "fireblocks" | "local"
+    account_type: Literal["mpc_v1", "erc4337_v2"] = Field(default="mpc_v1")
     addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping
     currency: str = Field(default="USDC")  # Default currency for display
     token_limits: dict[str, TokenLimit] = Field(default_factory=dict)  # Token-specific limits
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
+    smart_account_address: Optional[str] = None
+    entrypoint_address: Optional[str] = None
+    paymaster_enabled: bool = False
+    bundler_profile: Optional[str] = None
     virtual_card: Optional[VirtualCard] = None
     is_active: bool = True
 
@@ -95,6 +100,7 @@ class Wallet(BaseModel):
         agent_id: str,
         *,
         mpc_provider: str = "turnkey",
+        account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1",
         currency: str = "USDC",
         wallet_id: str | None = None,
     ) -> "Wallet":
@@ -104,6 +110,7 @@ class Wallet(BaseModel):
             wallet_id=wallet_id or f"wallet_{uuid4().hex[:16]}",
             agent_id=agent_id,
             mpc_provider=mpc_provider,
+            account_type=account_type,
             currency=currency,
         )
 

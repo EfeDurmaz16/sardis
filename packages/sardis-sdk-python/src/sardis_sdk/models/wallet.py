@@ -32,11 +32,16 @@ class Wallet(SardisModel):
     wallet_id: str
     agent_id: str
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    account_type: str = "mpc_v1"  # "mpc_v1" | "erc4337_v2"
     addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping
     currency: str = "USDC"  # Default currency for display
     token_limits: dict[str, TokenLimit] = Field(default_factory=dict)  # Token-specific limits
     limit_per_tx: Decimal = Decimal("100")
     limit_total: Decimal = Decimal("1000")
+    smart_account_address: str | None = None
+    entrypoint_address: str | None = None
+    paymaster_enabled: bool = False
+    bundler_profile: str | None = None
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
@@ -72,12 +77,15 @@ class WalletTransferResponse(SardisModel):
     token: str
     chain: str
     audit_anchor: str | None = None
+    execution_path: str = "legacy_tx"
+    user_op_hash: str | None = None
 
 
 class CreateWalletRequest(SardisModel):
     """Request to create a non-custodial wallet."""
     agent_id: str
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    account_type: str = "mpc_v1"  # "mpc_v1" | "erc4337_v2"
     currency: str = "USDC"
     limit_per_tx: Optional[Decimal] = None
     limit_total: Optional[Decimal] = None

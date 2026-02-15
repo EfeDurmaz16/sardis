@@ -116,6 +116,13 @@ class SardisSettings(BaseSettings):
     
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
+    # ERC-4337 gasless execution (v2 smart wallets)
+    erc4337_enabled: bool = False
+    erc4337_chain_allowlist: str = "base_sepolia"
+    pimlico_api_key: str = ""
+    pimlico_bundler_url: str = ""
+    pimlico_paymaster_url: str = ""
+    erc4337_entrypoint_v07_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
 
     @property
     def is_production(self) -> bool:
@@ -129,6 +136,11 @@ class SardisSettings(BaseSettings):
             and self.turnkey.api_public_key
             and self.turnkey.api_private_key
         )
+
+    @property
+    def erc4337_chain_allowlist_set(self) -> set[str]:
+        values = [v.strip() for v in self.erc4337_chain_allowlist.split(",")]
+        return {v for v in values if v}
 
     class Config:
         env_prefix = "SARDIS_"

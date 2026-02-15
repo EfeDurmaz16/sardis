@@ -64,6 +64,9 @@ class PaymentMandate(MandateBase):
     # Execution-only hint (not part of AP2 signature payload).
     # When present, chain executors should use this to select the signing wallet.
     wallet_id: str | None = None
+    # Wallet execution path selector.
+    account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
+    smart_account_address: str | None = None
     # Merchant domain binding (distinct from identity `domain`).
     # In AP2, this should match the CartMandate.merchant_domain.
     merchant_domain: str | None = None

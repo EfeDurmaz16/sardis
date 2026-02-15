@@ -54,6 +54,8 @@ export interface PaymentResult {
   chain: string;
   ledger_tx_id?: string;
   audit_anchor?: string;
+  execution_path?: 'legacy_tx' | 'erc4337_userop';
+  user_op_hash?: string;
 }
 
 // Policy types

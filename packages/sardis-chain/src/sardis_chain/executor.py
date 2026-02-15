@@ -74,6 +74,10 @@ from .logging_utils import (
     OperationType,
     setup_logging,
 )
+from .erc4337.bundler_client import BundlerClient, BundlerConfig
+from .erc4337.paymaster_client import PaymasterClient, PaymasterConfig
+from .erc4337.user_operation import UserOperation, zero_hex
+from .erc4337.entrypoint import get_entrypoint_v07
 
 logger = logging.getLogger(__name__)
 
@@ -1451,6 +1455,9 @@ class ChainExecutor:
         self._settings = settings
         self._simulated = settings.chain_mode == "simulated"
         self._turnkey_client = turnkey_client
+        self._erc4337_enabled = bool(settings.erc4337_enabled)
+        self._erc4337_chain_allowlist = settings.erc4337_chain_allowlist_set
+        self._erc4337_entrypoint = settings.erc4337_entrypoint_v07_address or get_entrypoint_v07("base_sepolia")
 
         # Production-grade RPC clients with failover
         self._rpc_clients: Dict[str, ProductionRPCClient] = {}
@@ -1476,6 +1483,11 @@ class ChainExecutor:
 
         # Confirmation trackers per chain
         self._confirmation_trackers: Dict[str, ConfirmationTracker] = {}
+        self._bundler: Optional[BundlerClient] = None
+        self._paymaster: Optional[PaymasterClient] = None
+
+        if self._erc4337_enabled:
+            self._init_erc4337_clients()
 
         # Initialize MPC signer based on settings
         if not self._simulated:
@@ -1484,6 +1496,21 @@ class ChainExecutor:
         logger.info(
             f"ChainExecutor initialized (simulated={self._simulated}) with production enhancements"
         )
+
+    def _init_erc4337_clients(self) -> None:
+        bundler_url = self._settings.pimlico_bundler_url
+        paymaster_url = self._settings.pimlico_paymaster_url
+        api_key = self._settings.pimlico_api_key
+
+        if not bundler_url and api_key:
+            bundler_url = f"https://api.pimlico.io/v2/base-sepolia/rpc?apikey={api_key}"
+        if not paymaster_url and api_key:
+            paymaster_url = f"https://api.pimlico.io/v2/base-sepolia/rpc?apikey={api_key}"
+
+        if bundler_url:
+            self._bundler = BundlerClient(BundlerConfig(url=bundler_url))
+        if paymaster_url:
+            self._paymaster = PaymasterClient(PaymasterConfig(url=paymaster_url))
 
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""
@@ -1746,17 +1773,24 @@ class ChainExecutor:
         """
         chain = mandate.chain or "base_sepolia"
         audit_anchor = f"merkle::{mandate.audit_hash}"
+        account_type = getattr(mandate, "account_type", "mpc_v1")
 
         if self._simulated:
             # Simulated mode - return mock receipt
             tx_hash = f"0x{secrets.token_hex(32)}"
+            user_op_hash = f"0x{secrets.token_hex(32)}" if account_type == "erc4337_v2" else None
             logger.info(f"[SIMULATED] Payment {mandate.mandate_id} -> {tx_hash}")
             return ChainReceipt(
                 tx_hash=tx_hash,
                 chain=chain,
                 block_number=0,
                 audit_anchor=audit_anchor,
+                execution_path="erc4337_userop" if account_type == "erc4337_v2" else "legacy_tx",
+                user_op_hash=user_op_hash,
             )
+
+        if account_type == "erc4337_v2":
+            return await self._execute_erc4337_payment(mandate, chain, audit_anchor)
 
         # Live mode - execute real transaction with gas protection
         return await self._execute_live_payment_with_gas_protection(mandate, chain, audit_anchor)
@@ -1851,6 +1885,121 @@ class ChainExecutor:
             )
 
         logger.info(f"Sanctions check PASSED for address {address} (risk: {result.risk_level})")
+
+    def _require_erc4337_ready(self, chain: str) -> None:
+        if not self._erc4337_enabled:
+            raise RuntimeError(
+                "ERC-4337 execution requested but disabled. "
+                "Set SARDIS_ERC4337_ENABLED=true for erc4337_v2 wallets."
+            )
+        if chain not in self._erc4337_chain_allowlist:
+            raise RuntimeError(
+                f"ERC-4337 chain not allowed: {chain}. "
+                f"Allowed: {sorted(self._erc4337_chain_allowlist)}"
+            )
+        if self._bundler is None:
+            raise RuntimeError(
+                "ERC-4337 bundler is not configured. "
+                "Set SARDIS_PIMLICO_BUNDLER_URL or SARDIS_PIMLICO_API_KEY."
+            )
+        if self._paymaster is None:
+            raise RuntimeError(
+                "ERC-4337 paymaster is not configured. "
+                "Set SARDIS_PIMLICO_PAYMASTER_URL or SARDIS_PIMLICO_API_KEY."
+            )
+
+    async def _sign_user_operation_hash(self, user_op_hash: str) -> str:
+        if isinstance(self._mpc_signer, LocalAccountSigner):
+            from eth_account.messages import encode_defunct
+
+            signed = self._mpc_signer._account.sign_message(encode_defunct(hexstr=user_op_hash))  # type: ignore[attr-defined]
+            return signed.signature.hex()
+        raise RuntimeError(
+            "ERC-4337 signing is currently supported with SARDIS_MPC__NAME=local. "
+            "Turnkey/Fireblocks UserOperation signing endpoint wiring is pending."
+        )
+
+    async def _execute_erc4337_payment(
+        self,
+        mandate: PaymentMandate,
+        chain: str,
+        audit_anchor: str,
+    ) -> ChainReceipt:
+        self._require_erc4337_ready(chain)
+        if not self._mpc_signer:
+            raise RuntimeError("No signer configured for ERC-4337 flow.")
+
+        wallet_id = getattr(mandate, "wallet_id", None)
+        smart_account = getattr(mandate, "smart_account_address", None)
+        if not wallet_id:
+            raise RuntimeError("PaymentMandate.wallet_id is required for ERC-4337 execution.")
+        if not smart_account:
+            raise RuntimeError("PaymentMandate.smart_account_address is required for erc4337_v2 execution.")
+
+        token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
+        token_address = token_addresses.get(mandate.token, "")
+        if not token_address:
+            raise ValueError(f"Token {mandate.token} not supported on {chain}")
+
+        amount_minor = int(mandate.amount_minor)
+        transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
+        entrypoint = self._erc4337_entrypoint or get_entrypoint_v07(chain)
+
+        user_op = UserOperation(
+            sender=smart_account,
+            nonce=await self._bundler.get_user_operation_nonce(smart_account, entrypoint),
+            init_code=zero_hex(),
+            call_data=UserOperation.encode_execute(token_address, 0, transfer_data),
+            call_gas_limit=200000,
+            verification_gas_limit=250000,
+            pre_verification_gas=60000,
+            max_fee_per_gas=0,
+            max_priority_fee_per_gas=0,
+            paymaster_and_data=zero_hex(),
+            signature=zero_hex(),
+        )
+
+        try:
+            gas = await self._bundler.estimate_user_operation_gas(user_op, entrypoint)
+            user_op.call_gas_limit = int(gas.get("callGasLimit", user_op.call_gas_limit), 16)
+            user_op.verification_gas_limit = int(
+                gas.get("verificationGasLimit", user_op.verification_gas_limit), 16
+            )
+            user_op.pre_verification_gas = int(
+                gas.get("preVerificationGas", user_op.pre_verification_gas), 16
+            )
+        except Exception:
+            logger.warning("Failed to estimate ERC-4337 gas, using defaults")
+
+        user_op.max_fee_per_gas = 2_000_000_000
+        user_op.max_priority_fee_per_gas = 1_000_000_000
+
+        sponsored = await self._paymaster.sponsor_user_operation(
+            user_op=user_op,
+            entrypoint=entrypoint,
+            chain=chain,
+        )
+        user_op.paymaster_and_data = sponsored.paymaster_and_data
+
+        user_op_hash = await self._bundler.get_user_operation_hash(user_op, entrypoint)
+        user_op.signature = await self._sign_user_operation_hash(user_op_hash)
+
+        submitted_hash = await self._bundler.send_user_operation(user_op, entrypoint)
+        receipt = await self._bundler.wait_for_receipt(submitted_hash, timeout_seconds=180)
+        tx_hash = receipt.get("receipt", {}).get("transactionHash") or receipt.get("transactionHash")
+        block_hex = receipt.get("receipt", {}).get("blockNumber") or receipt.get("blockNumber") or "0x0"
+
+        if not tx_hash:
+            raise RuntimeError("Bundler did not return a transaction hash for UserOperation.")
+
+        return ChainReceipt(
+            tx_hash=tx_hash,
+            chain=chain,
+            block_number=int(block_hex, 16) if isinstance(block_hex, str) else int(block_hex or 0),
+            audit_anchor=audit_anchor,
+            execution_path="erc4337_userop",
+            user_op_hash=submitted_hash,
+        )
 
     async def _execute_live_payment(
         self,

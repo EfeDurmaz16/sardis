@@ -271,6 +271,8 @@ export interface Wallet {
   agent_id: string;
   /** MPC provider used for key management */
   mpc_provider: MPCProvider;
+  /** Wallet execution path version */
+  account_type: 'mpc_v1' | 'erc4337_v2';
   /** Mapping of chain names to wallet addresses */
   addresses: Record<string, string>;
   /** Default currency for display purposes */
@@ -281,6 +283,14 @@ export interface Wallet {
   limit_per_tx: string;
   /** Total spending limit (in default currency) */
   limit_total: string;
+  /** ERC-4337 smart account address (if account_type is erc4337_v2) */
+  smart_account_address?: string | null;
+  /** ERC-4337 EntryPoint address (if account_type is erc4337_v2) */
+  entrypoint_address?: string | null;
+  /** Whether paymaster sponsorship is enabled */
+  paymaster_enabled?: boolean;
+  /** Bundler/paymaster profile identifier */
+  bundler_profile?: string | null;
   /** Whether the wallet is active and can sign transactions */
   is_active: boolean;
   /** ISO 8601 timestamp of creation */
@@ -315,6 +325,8 @@ export interface CreateWalletInput {
   agent_id: string;
   /** MPC provider to use (defaults to 'turnkey') */
   mpc_provider?: MPCProvider;
+  /** Wallet type (default: mpc_v1) */
+  account_type?: 'mpc_v1' | 'erc4337_v2';
   /** Default currency (defaults to 'USDC') */
   currency?: Token;
   /** Per-transaction spending limit */
@@ -357,6 +369,8 @@ export interface WalletTransferResponse {
   token: Token;
   chain: Chain;
   audit_anchor?: string | null;
+  execution_path?: 'legacy_tx' | 'erc4337_userop';
+  user_op_hash?: string | null;
 }
 
 // ==================== Payment Types ====================

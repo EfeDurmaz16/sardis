@@ -76,6 +76,16 @@ from .logging_utils import (
     ChainLogger,
     log_operation,
 )
+from .erc4337 import (
+    ENTRYPOINT_V07_BY_CHAIN,
+    get_entrypoint_v07,
+    UserOperation,
+    BundlerClient,
+    BundlerConfig,
+    PaymasterClient,
+    PaymasterConfig,
+    SponsoredUserOperation,
+)
 
 __version__ = "0.3.2"
 
@@ -138,4 +148,13 @@ __all__ = [
     "get_chain_logger",
     "ChainLogger",
     "log_operation",
+    # ERC-4337
+    "ENTRYPOINT_V07_BY_CHAIN",
+    "get_entrypoint_v07",
+    "UserOperation",
+    "BundlerClient",
+    "BundlerConfig",
+    "PaymasterClient",
+    "PaymasterConfig",
+    "SponsoredUserOperation",
 ]

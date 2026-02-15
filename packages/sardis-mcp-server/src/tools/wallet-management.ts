@@ -11,7 +11,11 @@ import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
 
 // Schemas
 const CreateWalletSchema = z.object({
-  name: z.string().describe('Wallet name'),
+  name: z.string().optional().describe('Optional wallet name label'),
+  agent_id: z.string().optional().describe('Agent ID that will own the wallet'),
+  mpc_provider: z.enum(['turnkey', 'fireblocks', 'local']).optional(),
+  account_type: z.enum(['mpc_v1', 'erc4337_v2']).optional(),
+  currency: z.enum(['USDC', 'USDT', 'PYUSD', 'EURC']).optional(),
   chain: z.enum(['base', 'polygon', 'ethereum', 'arbitrum', 'optimism']).optional().describe('Blockchain network'),
   policy: z.object({
     max_per_tx: z.string().optional().describe('Maximum amount per transaction'),
@@ -34,6 +38,11 @@ interface Wallet {
   name: string;
   address: string;
   chain: string;
+  account_type?: 'mpc_v1' | 'erc4337_v2';
+  smart_account_address?: string;
+  entrypoint_address?: string;
+  paymaster_enabled?: boolean;
+  bundler_profile?: string;
   is_active: boolean;
   balance?: string;
   policy: {
@@ -54,11 +63,27 @@ interface Wallet {
 export const walletManagementToolDefinitions: ToolDefinition[] = [
   {
     name: 'sardis_create_wallet',
-    description: 'Create a new MPC wallet for an agent with optional spending policy.',
+    description: 'Create a new wallet for an agent. Supports mpc_v1 and erc4337_v2 account types.',
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'Wallet name' },
+        name: { type: 'string', description: 'Optional wallet label' },
+        agent_id: { type: 'string', description: 'Agent ID that will own this wallet' },
+        mpc_provider: {
+          type: 'string',
+          enum: ['turnkey', 'fireblocks', 'local'],
+          description: 'MPC provider (default: turnkey)',
+        },
+        account_type: {
+          type: 'string',
+          enum: ['mpc_v1', 'erc4337_v2'],
+          description: 'Wallet execution type (default: mpc_v1)',
+        },
+        currency: {
+          type: 'string',
+          enum: ['USDC', 'USDT', 'PYUSD', 'EURC'],
+          description: 'Display currency (default: USDC)',
+        },
         chain: {
           type: 'string',
           enum: ['base', 'polygon', 'ethereum', 'arbitrum', 'optimism'],
@@ -83,7 +108,7 @@ export const walletManagementToolDefinitions: ToolDefinition[] = [
           },
         },
       },
-      required: ['name'],
+      required: [],
     },
   },
   {
@@ -124,9 +149,10 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
           text: JSON.stringify({
             wallet_id: walletId,
             id: walletId,
-            name: parsed.data.name,
+            name: parsed.data.name || 'Sardis Wallet',
             address,
             chain: parsed.data.chain || 'base',
+            account_type: parsed.data.account_type || 'mpc_v1',
             status: 'active',
             is_active: true,
             balance: '0.00',
@@ -139,7 +165,13 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     }
 
     try {
-      const result = await apiRequest<Wallet>('POST', '/api/v2/wallets', parsed.data);
+      const payload = {
+        agent_id: parsed.data.agent_id || getConfig().agentId || 'agent_default',
+        mpc_provider: parsed.data.mpc_provider || 'turnkey',
+        account_type: parsed.data.account_type || 'mpc_v1',
+        currency: parsed.data.currency || 'USDC',
+      };
+      const result = await apiRequest<Wallet>('POST', '/api/v2/wallets', payload);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
