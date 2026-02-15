@@ -67,8 +67,12 @@ DESCRIPTION:
   Card (6):       sardis_issue_card, sardis_get_card, sardis_list_cards,
                   sardis_freeze_card, sardis_unfreeze_card, sardis_cancel_card
 
-  Fiat (4):       sardis_fund_wallet, sardis_withdraw_to_bank,
+  Fiat/Treasury (11):
+                  sardis_sync_treasury_account_holder, sardis_list_financial_accounts
+                  sardis_link_external_bank_account, sardis_verify_micro_deposits
+                  sardis_fund_wallet, sardis_withdraw_to_bank, sardis_withdraw
                   sardis_get_funding_status, sardis_get_withdrawal_status
+                  sardis_get_treasury_balances, sardis_list_funding_transactions
 
   Approval (2):   sardis_request_approval, sardis_get_approval_status
 

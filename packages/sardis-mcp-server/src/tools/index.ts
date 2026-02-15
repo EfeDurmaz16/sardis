@@ -132,11 +132,16 @@ export const toolCategories = {
     'sardis_cancel_card',
   ],
   fiat: [
+    'sardis_sync_treasury_account_holder',
+    'sardis_list_financial_accounts',
+    'sardis_link_external_bank_account',
+    'sardis_verify_micro_deposits',
     'sardis_fund_wallet',
     'sardis_withdraw_to_bank',
     'sardis_withdraw',
     'sardis_get_funding_status',
     'sardis_get_withdrawal_status',
+    'sardis_get_treasury_balances',
     'sardis_list_funding_transactions',
   ],
   approval: [
