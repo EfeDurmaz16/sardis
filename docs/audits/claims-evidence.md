@@ -8,7 +8,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 
 | Claim | Public Source | Evidence Command | Result |
 | --- | --- | --- | --- |
-| `57 MCP tools` | `README.md:15`, `landing/src/App.jsx:985` | `bash scripts/release/readiness_check.sh` | `MCP registry parity: 57 definitions = 57 handlers` |
+| `57 MCP tools` | `README.md:15` | `bash scripts/release/readiness_check.sh` | `MCP registry parity: 57 definitions = 57 handlers` |
 | `150+ tests` | `README.md:279` | `pytest --collect-only -q` | `collected 853 items` (`791 selected`) |
 | `19 packages on npm + PyPI` | `docs/marketing/product-hunt-launch.md:31`, `landing/src/App.jsx:1059` | `bash scripts/release/readiness_check.sh` | `package count: 19 (python=15, js=4)` |
 | `5 chains` | `README.md:259`, `docs/marketing/product-hunt-launch.md:27` | `bash scripts/release/readiness_check.sh` | `mainnet chain count: 5` |
