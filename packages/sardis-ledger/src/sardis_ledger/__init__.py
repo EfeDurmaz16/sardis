@@ -78,6 +78,8 @@ from .engine import (
     LedgerEngine,
 )
 
+from .db_engine import PostgresLedgerEngine
+
 from .reconciliation import (
     # Types
     DiscrepancyType,
@@ -185,6 +187,8 @@ __all__ = [
     "LockManager",
     # Engine
     "LedgerEngine",
+    # DB Engine
+    "PostgresLedgerEngine",
     # Reconciliation types
     "DiscrepancyType",
     "ResolutionStrategy",

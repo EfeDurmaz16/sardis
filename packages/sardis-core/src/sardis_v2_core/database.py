@@ -802,4 +802,62 @@ CREATE TABLE IF NOT EXISTS subscription_notifications (
 
 CREATE INDEX IF NOT EXISTS idx_sub_notif_pending ON subscription_notifications(sent, created_at);
 CREATE INDEX IF NOT EXISTS idx_sub_notif_subscription ON subscription_notifications(subscription_id);
+
+-- Balance Snapshots (point-in-time balance for efficient historical queries)
+CREATE TABLE IF NOT EXISTS balance_snapshots (
+    snapshot_id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USDC',
+    balance NUMERIC(38,18) NOT NULL DEFAULT 0,
+    last_entry_id TEXT,
+    last_entry_created_at TIMESTAMPTZ,
+    entry_count INTEGER NOT NULL DEFAULT 0,
+    snapshot_at TIMESTAMPTZ DEFAULT NOW(),
+    merkle_root TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_balance_snapshots_account ON balance_snapshots(account_id, currency);
+CREATE INDEX IF NOT EXISTS idx_balance_snapshots_time ON balance_snapshots(snapshot_at DESC);
+
+-- Ledger Batches (atomic batch transaction records)
+CREATE TABLE IF NOT EXISTS ledger_batches (
+    batch_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'pending',
+    error_message TEXT,
+    is_rolled_back BOOLEAN NOT NULL DEFAULT FALSE,
+    rollback_reason TEXT,
+    rollback_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_batches_status ON ledger_batches(status);
+
+-- Ledger Batch Entries (join table linking batches to entries)
+CREATE TABLE IF NOT EXISTS ledger_batch_entries (
+    batch_id TEXT NOT NULL REFERENCES ledger_batches(batch_id),
+    entry_id TEXT NOT NULL,
+    entry_index INTEGER NOT NULL,
+    PRIMARY KEY (batch_id, entry_id)
+);
+
+-- Ledger Audit Log (hash-chained tamper-evident audit trail)
+CREATE TABLE IF NOT EXISTS ledger_audit_log (
+    audit_id TEXT PRIMARY KEY,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    actor_id TEXT,
+    actor_type TEXT,
+    old_value JSONB,
+    new_value JSONB,
+    request_id TEXT,
+    previous_hash TEXT,
+    entry_hash TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_audit_entity ON ledger_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_audit_created ON ledger_audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_audit_actor ON ledger_audit_log(actor_id);
 """

@@ -1,9 +1,12 @@
 """PostgreSQL-backed ledger engine.
 
 Replaces the in-memory dicts in ``LedgerEngine`` with queries against
-the existing ``ledger_entries`` and ``audit_log`` DB tables.
+``ledger_entries_v2``, ``balance_snapshots``, ``ledger_batches``,
+and ``ledger_audit_log`` tables.
 
 Uses PostgreSQL advisory locks instead of ``threading.RLock``.
+
+Pattern follows ``policy_store_postgres.py`` and ``db_balance.py``.
 """
 from __future__ import annotations
 
@@ -375,26 +378,41 @@ class PostgresLedgerEngine:
         entity_type: Optional[str] = None,
         entity_id: Optional[str] = None,
         action: Optional[AuditAction] = None,
+        actor_id: Optional[str] = None,
+        from_time: Optional[datetime] = None,
+        to_time: Optional[datetime] = None,
         limit: int = 100,
     ) -> List[AuditLog]:
         """Get audit logs from DB."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
-            query = "SELECT * FROM audit_log WHERE 1=1"
+            query = "SELECT * FROM ledger_audit_log WHERE 1=1"
             params: list = []
             idx = 1
 
             if entity_type:
-                query += f" AND resource_type = ${idx}"
+                query += f" AND entity_type = ${idx}"
                 params.append(entity_type)
                 idx += 1
             if entity_id:
-                query += f" AND resource_id = ${idx}"
+                query += f" AND entity_id = ${idx}"
                 params.append(entity_id)
                 idx += 1
             if action:
                 query += f" AND action = ${idx}"
                 params.append(action.value)
+                idx += 1
+            if actor_id:
+                query += f" AND actor_id = ${idx}"
+                params.append(actor_id)
+                idx += 1
+            if from_time:
+                query += f" AND created_at >= ${idx}"
+                params.append(from_time)
+                idx += 1
+            if to_time:
+                query += f" AND created_at <= ${idx}"
+                params.append(to_time)
                 idx += 1
 
             query += f" ORDER BY created_at DESC LIMIT ${idx}"
@@ -403,16 +421,288 @@ class PostgresLedgerEngine:
             rows = await conn.fetch(query, *params)
             return [
                 AuditLog(
-                    audit_id=str(r["id"]),
+                    audit_id=r["audit_id"],
                     action=AuditAction(r["action"]),
-                    entity_type=r["resource_type"],
-                    entity_id=r["resource_id"],
+                    entity_type=r["entity_type"],
+                    entity_id=r["entity_id"],
                     actor_id=r["actor_id"],
-                    actor_type=r["actor_type"],
+                    actor_type=r.get("actor_type"),
+                    old_value=json.loads(r["old_value"]) if r["old_value"] else None,
+                    new_value=json.loads(r["new_value"]) if r["new_value"] else None,
+                    request_id=r.get("request_id"),
+                    previous_hash=r["previous_hash"],
+                    entry_hash=r["entry_hash"],
                     created_at=r["created_at"],
                 )
                 for r in rows
             ]
+
+    # ------------------------------------------------------------------
+    # Batch operations
+    # ------------------------------------------------------------------
+
+    async def create_batch(
+        self,
+        entries: Sequence[Dict[str, Any]],
+        actor_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> BatchTransaction:
+        """Create and process a batch of entries atomically."""
+        batch_id = f"batch_{uuid.uuid4().hex[:16]}"
+        now = datetime.now(timezone.utc)
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # Acquire advisory locks on all accounts in sorted order
+                accounts = sorted({spec["account_id"] for spec in entries})
+                for acct in accounts:
+                    key = _advisory_lock_key(acct)
+                    await conn.execute("SELECT pg_advisory_xact_lock($1)", key)
+
+                await conn.execute(
+                    "INSERT INTO ledger_batches (batch_id, status, created_at) VALUES ($1, $2, $3)",
+                    batch_id,
+                    LedgerEntryStatus.PENDING.value,
+                    now,
+                )
+
+                created: List[LedgerEntry] = []
+                for i, spec in enumerate(entries):
+                    entry_type = spec.get("entry_type")
+                    if isinstance(entry_type, str):
+                        entry_type = LedgerEntryType(entry_type)
+
+                    entry = await self.create_entry(
+                        account_id=spec["account_id"],
+                        amount=to_ledger_decimal(spec["amount"]),
+                        entry_type=entry_type,
+                        currency=spec.get("currency", "USDC"),
+                        tx_id=spec.get("tx_id"),
+                        chain=spec.get("chain"),
+                        chain_tx_hash=spec.get("chain_tx_hash"),
+                        block_number=spec.get("block_number"),
+                        audit_anchor=spec.get("audit_anchor"),
+                        fee=to_ledger_decimal(spec.get("fee", 0)),
+                        metadata=spec.get("metadata"),
+                        actor_id=actor_id,
+                        request_id=request_id,
+                    )
+                    created.append(entry)
+
+                    await conn.execute(
+                        "INSERT INTO ledger_batch_entries (batch_id, entry_id, entry_index) VALUES ($1, $2, $3)",
+                        batch_id,
+                        entry.entry_id,
+                        i,
+                    )
+
+                completed_at = datetime.now(timezone.utc)
+                await conn.execute(
+                    "UPDATE ledger_batches SET status = $1, completed_at = $2 WHERE batch_id = $3",
+                    LedgerEntryStatus.CONFIRMED.value,
+                    completed_at,
+                    batch_id,
+                )
+
+                if self.enable_audit:
+                    await self._add_audit_log(
+                        conn,
+                        action=AuditAction.CREATE,
+                        entity_type="batch",
+                        entity_id=batch_id,
+                        actor_id=actor_id,
+                    )
+
+        batch = BatchTransaction(
+            batch_id=batch_id,
+            entries=created,
+            status=LedgerEntryStatus.CONFIRMED,
+            created_at=now,
+            completed_at=completed_at,
+        )
+        logger.info("Batch completed (DB): %s, entries=%d", batch_id, len(created))
+        return batch
+
+    async def rollback_batch(
+        self,
+        batch_id: str,
+        reason: str,
+        actor_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> BatchTransaction:
+        """Rollback an entire batch."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM ledger_batches WHERE batch_id = $1", batch_id
+            )
+            if not row:
+                raise LedgerError(f"Batch not found: {batch_id}", code="BATCH_NOT_FOUND")
+            if row["is_rolled_back"]:
+                raise LedgerError(f"Batch already rolled back: {batch_id}", code="ALREADY_ROLLED_BACK")
+
+            entry_rows = await conn.fetch(
+                """
+                SELECT e.* FROM ledger_entries_v2 e
+                JOIN ledger_batch_entries be ON e.entry_id = be.entry_id
+                WHERE be.batch_id = $1
+                ORDER BY be.entry_index DESC
+                """,
+                batch_id,
+            )
+            entries = [self._row_to_entry(r) for r in entry_rows]
+
+            for entry in entries:
+                if entry.status != LedgerEntryStatus.REVERSED:
+                    await self.rollback_entry(
+                        entry.entry_id,
+                        f"Batch rollback: {reason}",
+                        actor_id,
+                        request_id,
+                    )
+
+            now = datetime.now(timezone.utc)
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE ledger_batches
+                    SET is_rolled_back = TRUE, rollback_reason = $1, rollback_at = $2
+                    WHERE batch_id = $3
+                    """,
+                    reason,
+                    now,
+                    batch_id,
+                )
+                if self.enable_audit:
+                    await self._add_audit_log(
+                        conn,
+                        action=AuditAction.ROLLBACK,
+                        entity_type="batch",
+                        entity_id=batch_id,
+                        actor_id=actor_id,
+                    )
+
+        batch = BatchTransaction(
+            batch_id=batch_id,
+            entries=entries,
+            status=LedgerEntryStatus(row["status"]),
+            created_at=row["created_at"],
+            completed_at=row["completed_at"],
+            is_rolled_back=True,
+            rollback_reason=reason,
+            rollback_at=now,
+        )
+        logger.info("Rolled back batch (DB): %s, entries=%d", batch_id, len(entries))
+        return batch
+
+    async def get_batch(self, batch_id: str) -> Optional[BatchTransaction]:
+        """Get a batch by ID."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM ledger_batches WHERE batch_id = $1", batch_id
+            )
+            if not row:
+                return None
+            entry_rows = await conn.fetch(
+                """
+                SELECT e.* FROM ledger_entries_v2 e
+                JOIN ledger_batch_entries be ON e.entry_id = be.entry_id
+                WHERE be.batch_id = $1
+                ORDER BY be.entry_index ASC
+                """,
+                batch_id,
+            )
+            return BatchTransaction(
+                batch_id=batch_id,
+                entries=[self._row_to_entry(r) for r in entry_rows],
+                status=LedgerEntryStatus(row["status"]),
+                created_at=row["created_at"],
+                completed_at=row["completed_at"],
+                is_rolled_back=row["is_rolled_back"],
+                rollback_reason=row["rollback_reason"],
+                rollback_at=row["rollback_at"],
+            )
+
+    # ------------------------------------------------------------------
+    # Snapshots
+    # ------------------------------------------------------------------
+
+    async def get_snapshots(
+        self,
+        account_id: str,
+        currency: str = "USDC",
+        from_time: Optional[datetime] = None,
+        to_time: Optional[datetime] = None,
+    ) -> List[BalanceSnapshot]:
+        """Get balance snapshots for an account."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            query = "SELECT * FROM balance_snapshots WHERE account_id = $1 AND currency = $2"
+            params: list = [account_id, currency]
+            idx = 3
+            if from_time:
+                query += f" AND snapshot_at >= ${idx}"
+                params.append(from_time)
+                idx += 1
+            if to_time:
+                query += f" AND snapshot_at <= ${idx}"
+                params.append(to_time)
+                idx += 1
+            query += " ORDER BY snapshot_at ASC"
+            rows = await conn.fetch(query, *params)
+            return [
+                BalanceSnapshot(
+                    snapshot_id=r["snapshot_id"],
+                    account_id=r["account_id"],
+                    currency=r["currency"],
+                    balance=to_ledger_decimal(r["balance"]),
+                    last_entry_id=r["last_entry_id"] or "",
+                    last_entry_created_at=r["last_entry_created_at"],
+                    entry_count=r["entry_count"],
+                    snapshot_at=r["snapshot_at"],
+                    merkle_root=r.get("merkle_root"),
+                )
+                for r in rows
+            ]
+
+    # ------------------------------------------------------------------
+    # Audit chain verification
+    # ------------------------------------------------------------------
+
+    async def verify_audit_chain(self) -> Tuple[bool, Optional[str]]:
+        """Verify integrity of audit log hash chain."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM ledger_audit_log ORDER BY created_at ASC"
+            )
+            if not rows:
+                return True, None
+
+            for i, row in enumerate(rows):
+                expected_prev = rows[i - 1]["entry_hash"] if i > 0 else None
+                if row["previous_hash"] != expected_prev:
+                    return False, f"Hash chain broken at audit log {row['audit_id']}"
+
+                data = json.dumps(
+                    {
+                        "audit_id": row["audit_id"],
+                        "action": row["action"],
+                        "entity_type": row["entity_type"],
+                        "entity_id": row["entity_id"],
+                        "actor_id": row["actor_id"],
+                        "created_at": row["created_at"].isoformat(),
+                        "previous_hash": row["previous_hash"] or "",
+                    },
+                    sort_keys=True,
+                )
+                computed = hashlib.sha256(data.encode()).hexdigest()
+                if row["entry_hash"] != computed:
+                    return False, f"Hash mismatch at audit log {row['audit_id']}"
+
+            return True, None
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -426,17 +716,44 @@ class PostgresLedgerEngine:
         entity_id: str,
         actor_id: Optional[str] = None,
     ) -> None:
-        """Insert audit log entry."""
+        """Insert hash-chained audit log entry into ledger_audit_log."""
+        audit_id = f"aud_{uuid.uuid4().hex[:16]}"
+        now = datetime.now(timezone.utc)
+
+        # Get previous hash for chain
+        prev = await conn.fetchval(
+            "SELECT entry_hash FROM ledger_audit_log ORDER BY created_at DESC LIMIT 1"
+        )
+
+        data = json.dumps(
+            {
+                "audit_id": audit_id,
+                "action": action.value,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "actor_id": actor_id,
+                "created_at": now.isoformat(),
+                "previous_hash": prev or "",
+            },
+            sort_keys=True,
+        )
+        entry_hash = hashlib.sha256(data.encode()).hexdigest()
+
         await conn.execute(
             """
-            INSERT INTO audit_log (actor_type, actor_id, action, resource_type, resource_id)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO ledger_audit_log
+                (audit_id, action, entity_type, entity_id, actor_id,
+                 previous_hash, entry_hash, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
-            "system",
-            actor_id or "system",
+            audit_id,
             action.value,
             entity_type,
             entity_id,
+            actor_id or "system",
+            prev,
+            entry_hash,
+            now,
         )
 
     def _row_to_entry(self, row) -> LedgerEntry:
