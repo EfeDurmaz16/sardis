@@ -1114,6 +1114,117 @@ export interface SimulateCardPurchaseResponse {
   card: Card;
 }
 
+// ==================== Treasury Types ====================
+
+export type TreasuryVerificationMethod = 'MICRO_DEPOSIT' | 'PRENOTE' | 'EXTERNALLY_VERIFIED';
+export type TreasuryOwnerType = 'INDIVIDUAL' | 'BUSINESS';
+export type TreasuryAccountType = 'CHECKING' | 'SAVINGS';
+export type TreasuryAchMethod = 'ACH_NEXT_DAY' | 'ACH_SAME_DAY';
+export type TreasurySecCode = 'CCD' | 'PPD' | 'WEB';
+
+export interface FinancialAccount {
+  organization_id: string;
+  financial_account_token: string;
+  account_token?: string | null;
+  account_role: string;
+  currency: string;
+  status: string;
+  is_program_level: boolean;
+  nickname?: string | null;
+  [key: string]: unknown;
+}
+
+export interface TreasuryAddress {
+  address1: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string;
+  address2?: string;
+}
+
+export interface CreateExternalBankAccountInput {
+  financial_account_token: string;
+  verification_method?: TreasuryVerificationMethod;
+  owner_type?: TreasuryOwnerType;
+  owner: string;
+  account_type?: TreasuryAccountType;
+  routing_number: string;
+  account_number: string;
+  name?: string;
+  currency?: string;
+  country?: string;
+  account_token?: string;
+  company_id?: string;
+  user_defined_id?: string;
+  address?: TreasuryAddress;
+  dob?: string;
+  doing_business_as?: string;
+}
+
+export interface ExternalBankAccount {
+  organization_id: string;
+  external_bank_account_token: string;
+  financial_account_token?: string | null;
+  owner_type: string;
+  owner: string;
+  account_type: string;
+  verification_method: string;
+  verification_state: string;
+  state: string;
+  currency: string;
+  country: string;
+  name?: string | null;
+  routing_number?: string | null;
+  last_four?: string | null;
+  user_defined_id?: string | null;
+  company_id?: string | null;
+  is_paused?: boolean;
+  pause_reason?: string | null;
+  last_return_reason_code?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VerifyMicroDepositsInput {
+  micro_deposits: [string, string];
+}
+
+export interface TreasuryPaymentInput {
+  financial_account_token: string;
+  external_bank_account_token: string;
+  amount_minor: number;
+  method?: TreasuryAchMethod;
+  sec_code?: TreasurySecCode;
+  memo?: string;
+  idempotency_key?: string;
+  user_defined_id?: string;
+}
+
+export interface TreasuryPaymentResponse {
+  payment_token: string;
+  status: string;
+  result: string;
+  direction: string;
+  method: string;
+  currency: string;
+  pending_amount: number;
+  settled_amount: number;
+  financial_account_token: string;
+  external_bank_account_token: string;
+  user_defined_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface TreasuryBalance {
+  organization_id: string;
+  financial_account_token: string;
+  currency: string;
+  available_amount_minor: number;
+  pending_amount_minor: number;
+  total_amount_minor: number;
+  as_of_event_token?: string | null;
+}
+
 /**
  * Input for updating an agent.
  */

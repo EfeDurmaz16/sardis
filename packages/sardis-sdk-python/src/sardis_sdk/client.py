@@ -82,6 +82,7 @@ if TYPE_CHECKING:
     from .resources.payments import AsyncPaymentsResource, PaymentsResource
     from .resources.policies import AsyncPoliciesResource, PoliciesResource
     from .resources.transactions import AsyncTransactionsResource, TransactionsResource
+    from .resources.treasury import AsyncTreasuryResource, TreasuryResource
     from .resources.wallets import AsyncWalletsResource, WalletsResource
     from .resources.webhooks import AsyncWebhooksResource, WebhooksResource
 
@@ -586,6 +587,7 @@ class AsyncSardisClient(BaseClient):
         self._transactions: Optional["AsyncTransactionsResource"] = None
         self._ledger: Optional["AsyncLedgerResource"] = None
         self._groups: Optional["AsyncGroupsResource"] = None
+        self._treasury: Optional["AsyncTreasuryResource"] = None
 
     @property
     def groups(self) -> "AsyncGroupsResource":
@@ -674,6 +676,14 @@ class AsyncSardisClient(BaseClient):
             from .resources.ledger import AsyncLedgerResource
             self._ledger = AsyncLedgerResource(self)
         return self._ledger
+
+    @property
+    def treasury(self) -> "AsyncTreasuryResource":
+        """Access the treasury resource."""
+        if self._treasury is None:
+            from .resources.treasury import AsyncTreasuryResource
+            self._treasury = AsyncTreasuryResource(self)
+        return self._treasury
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
@@ -976,6 +986,7 @@ class SardisClient(BaseClient):
         self._transactions: Optional["TransactionsResource"] = None
         self._ledger: Optional["LedgerResource"] = None
         self._groups: Optional["GroupsResource"] = None
+        self._treasury: Optional["TreasuryResource"] = None
 
     @property
     def groups(self) -> "GroupsResource":
@@ -1064,6 +1075,14 @@ class SardisClient(BaseClient):
             from .resources.ledger import LedgerResource
             self._ledger = LedgerResource(self)
         return self._ledger
+
+    @property
+    def treasury(self) -> "TreasuryResource":
+        """Access the treasury resource."""
+        if self._treasury is None:
+            from .resources.treasury import TreasuryResource
+            self._treasury = TreasuryResource(self)
+        return self._treasury
 
     def _get_client(self) -> httpx.Client:
         """Get or create the HTTP client with connection pooling."""

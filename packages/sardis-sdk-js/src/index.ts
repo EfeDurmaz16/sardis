@@ -142,6 +142,23 @@ export type {
   CardTransaction,
 } from './types.js';
 
+// Types - Treasury
+export type {
+  TreasuryVerificationMethod,
+  TreasuryOwnerType,
+  TreasuryAccountType,
+  TreasuryAchMethod,
+  TreasurySecCode,
+  FinancialAccount,
+  TreasuryAddress,
+  CreateExternalBankAccountInput,
+  ExternalBankAccount,
+  VerifyMicroDepositsInput,
+  TreasuryPaymentInput,
+  TreasuryPaymentResponse,
+  TreasuryBalance,
+} from './types.js';
+
 // Types - Payments
 export type {
   Payment,

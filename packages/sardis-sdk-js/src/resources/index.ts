@@ -15,3 +15,4 @@ export { AgentsResource } from './agents.js';
 export { GroupsResource } from './groups.js';
 export { UCPResource } from './ucp.js';
 export { A2AResource } from './a2a.js';
+export { TreasuryResource } from './treasury.js';

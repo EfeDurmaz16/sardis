@@ -144,6 +144,17 @@ from .models.card import (
     CardTransaction,
     SimulateCardPurchaseResponse,
 )
+from .models.treasury import (
+    FinancialAccount,
+    SyncAccountHolderRequest,
+    TreasuryAddress,
+    CreateExternalBankAccountRequest,
+    VerifyMicroDepositsRequest,
+    ExternalBankAccount,
+    TreasuryPaymentRequest,
+    TreasuryPaymentResponse,
+    TreasuryBalance,
+)
 from .models.webhook import (
     CreateWebhookRequest,
     UpdateWebhookRequest,
@@ -269,6 +280,16 @@ __all__ = [
     "Card",
     "CardTransaction",
     "SimulateCardPurchaseResponse",
+    # Treasury models
+    "FinancialAccount",
+    "SyncAccountHolderRequest",
+    "TreasuryAddress",
+    "CreateExternalBankAccountRequest",
+    "VerifyMicroDepositsRequest",
+    "ExternalBankAccount",
+    "TreasuryPaymentRequest",
+    "TreasuryPaymentResponse",
+    "TreasuryBalance",
     # Payment models
     "Payment",
     "PaymentStatus",

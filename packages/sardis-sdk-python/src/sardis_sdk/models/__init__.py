@@ -23,6 +23,17 @@ from .policy import (
 )
 from .card import Card, CardTransaction, SimulateCardPurchaseResponse
 from .group import AgentGroup as AgentGroupModel, CreateGroupRequest, UpdateGroupRequest, GroupCreate, GroupUpdate, GroupBudget, GroupMerchantPolicy
+from .treasury import (
+    FinancialAccount,
+    SyncAccountHolderRequest,
+    TreasuryAddress,
+    CreateExternalBankAccountRequest as CreateExternalBankAccountModel,
+    VerifyMicroDepositsRequest as VerifyMicroDepositsModel,
+    ExternalBankAccount,
+    TreasuryPaymentRequest as TreasuryPaymentModel,
+    TreasuryPaymentResponse,
+    TreasuryBalance,
+)
 from .errors import (
     SardisError, APIError, ValidationError, InsufficientBalanceError, 
     AuthenticationError, RateLimitError
@@ -79,6 +90,15 @@ __all__ = [
     "GroupUpdate",
     "GroupBudget",
     "GroupMerchantPolicy",
+    "FinancialAccount",
+    "SyncAccountHolderRequest",
+    "TreasuryAddress",
+    "CreateExternalBankAccountModel",
+    "VerifyMicroDepositsModel",
+    "ExternalBankAccount",
+    "TreasuryPaymentModel",
+    "TreasuryPaymentResponse",
+    "TreasuryBalance",
     "SardisError",
     "APIError",
     "ValidationError",

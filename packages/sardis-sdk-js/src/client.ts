@@ -36,6 +36,7 @@ import { PoliciesResource } from './resources/policies.js';
 import { GroupsResource } from './resources/groups.js';
 import { UCPResource } from './resources/ucp.js';
 import { A2AResource } from './resources/a2a.js';
+import { TreasuryResource } from './resources/treasury.js';
 import type {
   SardisClientOptions,
   RequestOptions,
@@ -245,6 +246,12 @@ export class SardisClient {
   public readonly a2a: A2AResource;
 
   /**
+   * Treasury operations - financial accounts, ACH funding, and balances.
+   * @see {@link TreasuryResource}
+   */
+  public readonly treasury: TreasuryResource;
+
+  /**
    * Creates a new SardisClient instance.
    *
    * @param options - Client configuration options
@@ -307,6 +314,7 @@ export class SardisClient {
     this.agents = new AgentsResource(this);
     this.ucp = new UCPResource(this);
     this.a2a = new A2AResource(this);
+    this.treasury = new TreasuryResource(this);
   }
 
   /**
