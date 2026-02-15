@@ -17,6 +17,7 @@ from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
+from sardis_api.canonical_state_machine import normalize_lithic_card_event
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ def create_cards_router(
     policy_store=None,
     treasury_repo=None,
     agent_repo: AgentRepository | None = None,
+    canonical_repo=None,
 ) -> APIRouter:
     """Create a cards router with injected dependencies."""
     r = APIRouter()
@@ -140,6 +142,23 @@ def create_cards_router(
         if not principal.is_admin and agent.owner_id != principal.organization_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return wallet
+
+    async def _resolve_org_for_card(card: dict[str, Any] | None) -> str:
+        if not card:
+            return os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+        wallet_id = str(card.get("wallet_id") or "")
+        if not wallet_id or not wallet_repo or not agent_repo:
+            return os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+        try:
+            wallet = await wallet_repo.get(wallet_id)
+            if not wallet:
+                return os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+            agent = await agent_repo.get(wallet.agent_id)
+            if agent and getattr(agent, "owner_id", None):
+                return str(agent.owner_id)
+        except Exception:
+            logger.exception("Failed to resolve org for card=%s", card.get("card_id") if card else None)
+        return os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
 
     def _parse_timestamp(value: Any) -> datetime | None:
         """
@@ -710,6 +729,24 @@ def create_cards_router(
                         status=status_value,
                         settled_at=settled_at,
                     )
+                    if canonical_repo is not None:
+                        org_id = await _resolve_org_for_card(card)
+                        tx_ref = str(
+                            txn.get("token")
+                            or txn.get("provider_tx_id")
+                            or txn.get("transaction_id")
+                            or f"{internal_card_id}:{event_id}"
+                        )
+                        normalized = normalize_lithic_card_event(
+                            organization_id=org_id,
+                            payload=payload,
+                            event_type=event_type,
+                            transaction_reference=tx_ref,
+                        )
+                        await canonical_repo.ingest_event(
+                            normalized,
+                            drift_tolerance_minor=int(os.getenv("SARDIS_CANONICAL_DRIFT_TOLERANCE_MINOR", "1000")),
+                        )
 
             logger.info("Processed webhook event_type=%s", event_type)
             return {"status": "received"}

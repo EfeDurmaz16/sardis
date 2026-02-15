@@ -8,6 +8,7 @@ import signal
 import sys
 import time
 import uuid
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -245,6 +246,76 @@ async def lifespan(app: FastAPI):
                     background_jobs_total.labels(job_name="treasury_retry_returns", status="error").inc()
                     logger.exception("Treasury retry job failed: %s", e)
 
+            async def _canonical_reconciliation_guard_job() -> None:
+                from .routers.metrics import background_jobs_total
+
+                canonical_repo = getattr(app.state, "canonical_ledger_repo", None)
+                if canonical_repo is None:
+                    return
+                try:
+                    stale_processing_minutes = int(os.getenv("SARDIS_CANONICAL_STALE_PROCESSING_MINUTES", "30"))
+                    org_ids: set[str] = set()
+                    treasury_repo = getattr(app.state, "treasury_repo", None)
+                    if treasury_repo is not None:
+                        org_ids.update(await treasury_repo.list_organization_ids())
+                    if not org_ids:
+                        default_org = os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+                        org_ids.add(default_org)
+
+                    stale_reviews = 0
+                    for org_id in sorted(org_ids):
+                        journeys = await canonical_repo.list_journeys(org_id, limit=1000)
+                        for journey in journeys:
+                            state_value = str(journey.get("canonical_state", "")).lower()
+                            if state_value == "settled":
+                                expected = int(journey.get("expected_amount_minor", 0) or 0)
+                                settled = int(journey.get("settled_amount_minor", 0) or 0)
+                                tolerance = int(os.getenv("SARDIS_CANONICAL_DRIFT_TOLERANCE_MINOR", "1000"))
+                                if expected > 0 and abs(expected - settled) > tolerance:
+                                    await canonical_repo.enqueue_manual_review(
+                                        organization_id=org_id,
+                                        journey_id=str(journey.get("journey_id")),
+                                        reason_code="drift_mismatch",
+                                        priority="high",
+                                        payload={
+                                            "expected_amount_minor": expected,
+                                            "settled_amount_minor": settled,
+                                            "delta_minor": abs(expected - settled),
+                                            "source": "canonical_guard_job",
+                                        },
+                                    )
+                            elif state_value in {"processing", "authorized", "created"}:
+                                last_event_at = journey.get("last_event_at")
+                                if isinstance(last_event_at, datetime):
+                                    age_minutes = (datetime.now(timezone.utc) - last_event_at).total_seconds() / 60.0
+                                elif isinstance(last_event_at, str):
+                                    try:
+                                        parsed = datetime.fromisoformat(last_event_at.replace("Z", "+00:00"))
+                                        age_minutes = (datetime.now(timezone.utc) - parsed).total_seconds() / 60.0
+                                    except Exception:
+                                        age_minutes = 0.0
+                                else:
+                                    age_minutes = 0.0
+                                if age_minutes >= stale_processing_minutes:
+                                    created = await canonical_repo.enqueue_manual_review(
+                                        organization_id=org_id,
+                                        journey_id=str(journey.get("journey_id")),
+                                        reason_code="stale_processing",
+                                        priority="medium",
+                                        payload={
+                                            "state": state_value,
+                                            "age_minutes": int(age_minutes),
+                                            "source": "canonical_guard_job",
+                                        },
+                                    )
+                                    if created:
+                                        stale_reviews += 1
+                    status_value = "warning" if stale_reviews > 0 else "success"
+                    background_jobs_total.labels(job_name="canonical_reconciliation_guard", status=status_value).inc()
+                except Exception as e:
+                    background_jobs_total.labels(job_name="canonical_reconciliation_guard", status="error").inc()
+                    logger.exception("Canonical reconciliation guard job failed: %s", e)
+
             scheduler.add_interval_job(
                 _treasury_reconciliation_job,
                 job_id="treasury_reconciliation",
@@ -253,6 +324,11 @@ async def lifespan(app: FastAPI):
             scheduler.add_interval_job(
                 _treasury_retry_returns_job,
                 job_id="treasury_retry_returns",
+                seconds=600,
+            )
+            scheduler.add_interval_job(
+                _canonical_reconciliation_guard_job,
+                job_id="canonical_reconciliation_guard",
                 seconds=600,
             )
             await scheduler.start()

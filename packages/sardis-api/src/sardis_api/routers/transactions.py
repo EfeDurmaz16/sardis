@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from sardis_chain.executor import ChainExecutor, TransactionStatus, CHAIN_CONFIGS, STABLECOIN_ADDRESSES
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
+from sardis_api.canonical_state_machine import normalize_stablecoin_event
 
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["transactions"])
@@ -101,8 +102,9 @@ class BatchTransferResponse(BaseModel):
 
 class TransactionDependencies:
     """Dependencies for transaction routes."""
-    def __init__(self, chain_executor: ChainExecutor):
+    def __init__(self, chain_executor: ChainExecutor, canonical_repo=None):
         self.chain_executor = chain_executor
+        self.canonical_repo = canonical_repo
 
 
 def get_deps() -> TransactionDependencies:
@@ -202,6 +204,7 @@ async def get_transaction_status(
     tx_hash: str,
     chain: str = "base_sepolia",
     deps: TransactionDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get the status of a transaction."""
     if chain not in CHAIN_CONFIGS:
@@ -212,15 +215,44 @@ async def get_transaction_status(
     
     try:
         tx_status = await deps.chain_executor.get_transaction_status(tx_hash, chain)
-        
+        status_value = tx_status.value
+
         # Build explorer URL
         explorer = CHAIN_CONFIGS[chain]["explorer"]
         explorer_url = f"{explorer}/tx/{tx_hash}"
-        
+
+        if deps.canonical_repo is not None:
+            normalized_status = str(status_value).strip().lower()
+            canonical_state = "processing"
+            canonical_event_type = "stablecoin.tx.pending"
+            if normalized_status in {"confirmed", "success", "succeeded"}:
+                canonical_state = "settled"
+                canonical_event_type = "stablecoin.tx.confirmed"
+            elif normalized_status in {"failed", "reverted", "dropped"}:
+                canonical_state = "failed"
+                canonical_event_type = "stablecoin.tx.failed"
+            event = normalize_stablecoin_event(
+                organization_id=principal.organization_id,
+                rail="stablecoin_tx",
+                reference=tx_hash,
+                provider_event_id=f"{tx_hash}:{normalized_status}",
+                provider_event_type=f"ONCHAIN_TX_STATUS_{normalized_status.upper()}",
+                canonical_event_type=canonical_event_type,
+                canonical_state=canonical_state,
+                amount_minor=None,
+                currency="USDC",
+                metadata={"chain": chain, "status": normalized_status},
+                raw_payload={"tx_hash": tx_hash, "chain": chain, "status": normalized_status},
+            )
+            await deps.canonical_repo.ingest_event(
+                event,
+                drift_tolerance_minor=0,
+            )
+
         return TransactionStatusResponse(
             tx_hash=tx_hash,
             chain=chain,
-            status=tx_status.value,
+            status=status_value,
             explorer_url=explorer_url,
         )
     except Exception as e:

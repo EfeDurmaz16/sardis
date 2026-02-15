@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
+from sardis_api.canonical_state_machine import normalize_lithic_ach_event
 from sardis_api.providers.lithic_treasury import (
     CreateExternalBankAccountRequest,
     CreatePaymentRequest,
@@ -32,6 +33,7 @@ class TreasuryDependencies:
     treasury_repo: Any
     lithic_client: Optional[LithicTreasuryClient]
     lithic_webhook_secret: str = ""
+    canonical_repo: Any | None = None
 
 
 def get_deps() -> TreasuryDependencies:
@@ -310,6 +312,36 @@ async def _create_ach_payment(
             payment.token,
             payment.events,
         )
+        if deps.canonical_repo is not None:
+            for e in payment.events:
+                evt = normalize_lithic_ach_event(
+                    organization_id=principal.organization_id,
+                    payload={
+                        "token": e.get("token"),
+                        "event_token": e.get("token"),
+                        "event_type": e.get("type"),
+                        "amount": e.get("amount"),
+                        "result": e.get("result"),
+                        "detailed_results": e.get("detailed_results"),
+                        "return_reason_code": e.get("return_reason_code"),
+                        "data": {
+                            "token": payment.token,
+                            "payment_token": payment.token,
+                            "currency": payment.currency,
+                            "direction": payment.direction,
+                            "status": payment.status,
+                            "result": payment.result,
+                            "amount": e.get("amount"),
+                            "method_attributes": payment.method_attributes or {},
+                        },
+                    },
+                    event_type=str(e.get("type", "")),
+                    payment_token=payment.token,
+                )
+                await deps.canonical_repo.ingest_event(
+                    evt,
+                    drift_tolerance_minor=int(os.getenv("SARDIS_CANONICAL_DRIFT_TOLERANCE_MINOR", "1000")),
+                )
         await deps.treasury_repo.add_balance_snapshot(
             principal.organization_id,
             payment.financial_account_token,
@@ -492,6 +524,17 @@ async def receive_lithic_payments_webhook(
             ),
         }
         await deps.treasury_repo.append_ach_events(org_id, payment_token, [event_record])
+        if deps.canonical_repo is not None:
+            normalized = normalize_lithic_ach_event(
+                organization_id=org_id,
+                payload=payload,
+                event_type=event_type,
+                payment_token=payment_token,
+            )
+            await deps.canonical_repo.ingest_event(
+                normalized,
+                drift_tolerance_minor=int(os.getenv("SARDIS_CANONICAL_DRIFT_TOLERANCE_MINOR", "1000")),
+            )
 
         mapped_status = _map_event_type_to_status(event_type)
         if mapped_status:
@@ -514,6 +557,12 @@ async def receive_lithic_payments_webhook(
             )
         elif return_code in {"R01", "R09"}:
             await deps.treasury_repo.increment_retry_count(org_id, payment_token)
+            if deps.canonical_repo is not None:
+                await deps.canonical_repo.bump_retry_count(
+                    organization_id=org_id,
+                    rail="fiat_ach",
+                    external_reference=payment_token,
+                )
 
         await deps.treasury_repo.record_treasury_webhook_event(
             provider="lithic",

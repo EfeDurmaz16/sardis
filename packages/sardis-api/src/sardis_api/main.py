@@ -100,6 +100,7 @@ from .routers import admin as admin_router
 from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
 from .routers import treasury as treasury_router
+from .routers import treasury_ops as treasury_ops_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
 from .routers import groups as groups_router
@@ -137,6 +138,7 @@ from .lifespan import lifespan, shutdown_state, get_shutdown_event
 from .openapi_schema import custom_openapi
 from .health import create_health_router
 from .card_adapter import CardProviderCompatAdapter
+from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .providers.lithic_treasury import LithicTreasuryClient
 
@@ -531,6 +533,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.dependency_overrides[transactions_router.get_deps] = lambda: transactions_router.TransactionDependencies(  # type: ignore[arg-type]
         chain_executor=chain_exec,
+        canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
     )
     app.include_router(transactions_router.router, prefix="/api/v2/transactions")
 
@@ -550,6 +553,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
         settings=settings,
+        canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
@@ -598,6 +602,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Treasury routes (Lithic financial accounts + ACH payments)
     treasury_repo = TreasuryRepository(dsn=database_url if use_postgres else None)
+    canonical_ledger_repo = CanonicalLedgerRepository(dsn=database_url if use_postgres else None)
     lithic_treasury_client = None
     if os.getenv("LITHIC_API_KEY"):
         try:
@@ -613,15 +618,21 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         logger.warning("Treasury enabled without Lithic API key; endpoints will return 503 for provider actions")
 
     app.state.treasury_repo = treasury_repo
+    app.state.canonical_ledger_repo = canonical_ledger_repo
     app.state.lithic_treasury_client = lithic_treasury_client
     app.dependency_overrides[treasury_router.get_deps] = lambda: treasury_router.TreasuryDependencies(
         treasury_repo=treasury_repo,
         lithic_client=lithic_treasury_client,
         lithic_webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET", ""),
+        canonical_repo=canonical_ledger_repo,
     )
     app.include_router(treasury_router.router, prefix="/api/v2/treasury", tags=["treasury"])
     if hasattr(treasury_router, "public_router"):
         app.include_router(treasury_router.public_router, prefix="/api/v2/webhooks/lithic", tags=["treasury-webhooks"])
+    app.dependency_overrides[treasury_ops_router.get_deps] = lambda: treasury_ops_router.TreasuryOpsDependencies(
+        canonical_repo=canonical_ledger_repo,
+    )
+    app.include_router(treasury_ops_router.router, prefix="/api/v2/treasury/ops", tags=["treasury-ops"])
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
@@ -655,6 +666,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             policy_store=policy_store,
             treasury_repo=treasury_repo,
             agent_repo=agent_repo,
+            canonical_repo=canonical_ledger_repo,
         )
         app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:

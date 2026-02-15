@@ -15,6 +15,7 @@ from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_ledger.records import LedgerStore
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_api.canonical_state_machine import normalize_stablecoin_event
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -142,12 +143,14 @@ class WalletDependencies:
         wallet_manager: any | None = None,
         ledger: LedgerStore | None = None,
         settings: any | None = None,
+        canonical_repo: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
         self.chain_executor = chain_executor
         self.wallet_manager = wallet_manager
         self.ledger = ledger
+        self.canonical_repo = canonical_repo
         self.settings = settings
 
 
@@ -611,8 +614,68 @@ async def transfer_crypto(
             except Exception:
                 pass
 
+        execution_path = getattr(receipt, "execution_path", "legacy_tx")
+        user_op_hash = getattr(receipt, "user_op_hash", None)
+        tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
+        if deps.canonical_repo is not None:
+            if execution_path == "erc4337_userop":
+                reference = str(user_op_hash or tx_hash)
+                provider_event_id = f"{reference}:submitted"
+                canonical_event = normalize_stablecoin_event(
+                    organization_id=principal.organization_id,
+                    rail="stablecoin_userop",
+                    reference=reference,
+                    provider_event_id=provider_event_id,
+                    provider_event_type="USER_OPERATION_SUBMITTED",
+                    canonical_event_type="stablecoin.userop.submitted",
+                    canonical_state="processing",
+                    amount_minor=int(amount_minor),
+                    currency=transfer_request.token.upper(),
+                    metadata={
+                        "wallet_id": wallet_id,
+                        "chain": transfer_request.chain,
+                        "destination": transfer_request.destination,
+                        "execution_path": execution_path,
+                        "tx_hash": tx_hash,
+                        "user_op_hash": user_op_hash,
+                    },
+                    raw_payload={
+                        "tx_hash": tx_hash,
+                        "user_op_hash": user_op_hash,
+                        "execution_path": execution_path,
+                    },
+                )
+            else:
+                reference = str(tx_hash)
+                provider_event_id = f"{reference}:submitted"
+                canonical_event = normalize_stablecoin_event(
+                    organization_id=principal.organization_id,
+                    rail="stablecoin_tx",
+                    reference=reference,
+                    provider_event_id=provider_event_id,
+                    provider_event_type="ONCHAIN_TX_SUBMITTED",
+                    canonical_event_type="stablecoin.tx.submitted",
+                    canonical_state="processing",
+                    amount_minor=int(amount_minor),
+                    currency=transfer_request.token.upper(),
+                    metadata={
+                        "wallet_id": wallet_id,
+                        "chain": transfer_request.chain,
+                        "destination": transfer_request.destination,
+                        "execution_path": execution_path,
+                    },
+                    raw_payload={
+                        "tx_hash": tx_hash,
+                        "execution_path": execution_path,
+                    },
+                )
+            await deps.canonical_repo.ingest_event(
+                canonical_event,
+                drift_tolerance_minor=int(os.getenv("SARDIS_CANONICAL_DRIFT_TOLERANCE_MINOR", "1000")),
+            )
+
         return 200, TransferResponse(
-            tx_hash=receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt),
+            tx_hash=tx_hash,
             status="submitted",
             from_address=source_address,
             to_address=transfer_request.destination,
@@ -621,8 +684,8 @@ async def transfer_crypto(
             chain=transfer_request.chain,
             ledger_tx_id=ledger_tx_id,
             audit_anchor=getattr(receipt, "audit_anchor", None),
-            execution_path=getattr(receipt, "execution_path", "legacy_tx"),
-            user_op_hash=getattr(receipt, "user_op_hash", None),
+            execution_path=execution_path,
+            user_op_hash=user_op_hash,
         )
 
     return await run_idempotent(
