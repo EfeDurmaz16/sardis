@@ -6,12 +6,17 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional, Literal, Any
 import uuid
+import hashlib
+import hmac
+import json
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.webhook_replay import run_with_replay_protection
 from sardis_api.providers.lithic_treasury import (
     CreateExternalBankAccountRequest,
     CreatePaymentRequest,
@@ -19,12 +24,14 @@ from sardis_api.providers.lithic_treasury import (
 )
 
 router = APIRouter(tags=["treasury"])
+public_router = APIRouter(tags=["treasury"])
 
 
 @dataclass
 class TreasuryDependencies:
     treasury_repo: Any
     lithic_client: Optional[LithicTreasuryClient]
+    lithic_webhook_secret: str = ""
 
 
 def get_deps() -> TreasuryDependencies:
@@ -131,6 +138,22 @@ def _to_payment_response(row: dict[str, Any]) -> TreasuryPaymentResponse:
         external_bank_account_token=str(row.get("external_bank_account_token", "")),
         user_defined_id=row.get("user_defined_id"),
     )
+
+
+def _map_event_type_to_status(event_type: str) -> Optional[str]:
+    normalized = (event_type or "").strip().upper()
+    mapping = {
+        "ACH_ORIGINATION_INITIATED": "PENDING",
+        "ACH_ORIGINATION_REVIEWED": "REVIEWED",
+        "ACH_ORIGINATION_PROCESSED": "PROCESSED",
+        "ACH_ORIGINATION_SETTLED": "SETTLED",
+        "ACH_ORIGINATION_RELEASED": "RELEASED",
+        "ACH_RETURN_INITIATED": "RETURN_INITIATED",
+        "ACH_RETURN_PROCESSED": "RETURNED",
+        "ACH_RECEIPT_PROCESSED": "PROCESSED",
+        "ACH_RECEIPT_SETTLED": "SETTLED",
+    }
+    return mapping.get(normalized)
 
 
 @router.post("/account-holders/sync", response_model=list[FinancialAccountResponse])
@@ -369,3 +392,126 @@ async def get_treasury_balances(
         for a in accounts
     ]
 
+
+@public_router.post("/payments", status_code=status.HTTP_200_OK)
+async def receive_lithic_payments_webhook(
+    request: Request,
+    deps: TreasuryDependencies = Depends(get_deps),
+):
+    body = await request.body()
+    env = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
+    secret = deps.lithic_webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET", "")
+
+    if not secret and env in {"prod", "production"}:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="LITHIC_WEBHOOK_SECRET is required in production",
+        )
+    if secret:
+        signature = request.headers.get("x-lithic-hmac", "")
+        if not signature:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_webhook_signature")
+        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_webhook_signature")
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_json")
+
+    event_id = (
+        payload.get("token")
+        or payload.get("event_token")
+        or payload.get("id")
+        or hashlib.sha256(body).hexdigest()
+    )
+
+    async def _process() -> dict[str, str]:
+        event_type = str(payload.get("event_type") or payload.get("type") or "").upper()
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+        payment_token = str(
+            payload.get("payment_token")
+            or data.get("token")
+            or data.get("payment_token")
+            or ""
+        )
+        if not payment_token:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="payment_token_required")
+
+        org_id = str(
+            payload.get("organization_id")
+            or data.get("organization_id")
+            or payload.get("org_id")
+            or os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
+        )
+        if not org_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="organization_id_required")
+
+        payment_row = await deps.treasury_repo.get_ach_payment(org_id, payment_token)
+        if payment_row is None and deps.lithic_client is not None:
+            provider_payment = await deps.lithic_client.get_payment(payment_token)
+            payment_row = await deps.treasury_repo.upsert_ach_payment(org_id, provider_payment.raw or {})
+            await deps.treasury_repo.append_ach_events(org_id, payment_token, provider_payment.events)
+        if payment_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="payment_not_found")
+
+        event_token = payload.get("event_token") or payload.get("token")
+        event_record = {
+            "token": event_token,
+            "type": event_type,
+            "amount": payload.get("amount") or data.get("amount") or 0,
+            "result": payload.get("result") or data.get("result"),
+            "detailed_results": payload.get("detailed_results") or data.get("detailed_results") or [],
+            "return_reason_code": (
+                payload.get("return_reason_code")
+                or data.get("return_reason_code")
+                or (data.get("method_attributes", {}) or {}).get("return_reason_code")
+            ),
+        }
+        await deps.treasury_repo.append_ach_events(org_id, payment_token, [event_record])
+
+        mapped_status = _map_event_type_to_status(event_type)
+        if mapped_status:
+            await deps.treasury_repo.update_ach_payment_status(
+                org_id,
+                payment_token,
+                mapped_status,
+                result=event_record.get("result"),
+                return_reason_code=event_record.get("return_reason_code"),
+            )
+
+        return_code = str(event_record.get("return_reason_code") or "")
+        external_bank_account_token = str(payment_row.get("external_bank_account_token", ""))
+        if return_code in {"R02", "R03", "R29"} and external_bank_account_token:
+            await deps.treasury_repo.pause_external_bank_account(
+                org_id,
+                external_bank_account_token,
+                reason=f"ACH return code {return_code}",
+                return_code=return_code,
+            )
+        elif return_code in {"R01", "R09"}:
+            await deps.treasury_repo.increment_retry_count(org_id, payment_token)
+
+        await deps.treasury_repo.record_treasury_webhook_event(
+            provider="lithic",
+            event_id=str(event_id),
+            body=body,
+            status_value="processed",
+            metadata={
+                "organization_id": org_id,
+                "payment_token": payment_token,
+                "event_type": event_type,
+            },
+        )
+        return {"status": "received"}
+
+    return await run_with_replay_protection(
+        request=request,
+        provider="lithic_payments",
+        event_id=str(event_id),
+        body=body,
+        ttl_seconds=7 * 24 * 60 * 60,
+        response_on_duplicate={"status": "received"},
+        fn=_process,
+    )

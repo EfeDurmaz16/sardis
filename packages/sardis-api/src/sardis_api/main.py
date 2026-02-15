@@ -617,8 +617,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.dependency_overrides[treasury_router.get_deps] = lambda: treasury_router.TreasuryDependencies(
         treasury_repo=treasury_repo,
         lithic_client=lithic_treasury_client,
+        lithic_webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET", ""),
     )
     app.include_router(treasury_router.router, prefix="/api/v2/treasury", tags=["treasury"])
+    if hasattr(treasury_router, "public_router"):
+        app.include_router(treasury_router.public_router, prefix="/api/v2/webhooks/lithic", tags=["treasury-webhooks"])
 
     # Virtual Card routes (gated behind feature flag)
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):

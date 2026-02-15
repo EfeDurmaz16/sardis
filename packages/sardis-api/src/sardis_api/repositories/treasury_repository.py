@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 import os
 import uuid
+import hashlib
 
 
 class TreasuryRepository:
@@ -18,6 +19,7 @@ class TreasuryRepository:
         self._payment_events: list[dict[str, Any]] = []
         self._balance_snapshots: list[dict[str, Any]] = []
         self._reservations: dict[str, dict[str, Any]] = {}
+        self._webhook_events: dict[tuple[str, str], dict[str, Any]] = {}
 
     def _use_postgres(self) -> bool:
         if self._pool is not None:
@@ -399,6 +401,73 @@ class TreasuryRepository:
             )
             return dict(row) if row else None
 
+    async def update_ach_payment_status(
+        self,
+        organization_id: str,
+        payment_token: str,
+        status_value: str,
+        *,
+        result: Optional[str] = None,
+        return_reason_code: Optional[str] = None,
+        provider_reference: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        if not self._use_postgres():
+            row = self._payments.get((organization_id, payment_token))
+            if row is None:
+                return None
+            row["status"] = status_value
+            if result is not None:
+                row["result"] = result
+            if return_reason_code is not None:
+                row["last_return_reason_code"] = return_reason_code
+            if provider_reference is not None:
+                row["provider_reference"] = provider_reference
+            row["updated_at"] = datetime.now(timezone.utc)
+            return row
+        pool = await self._get_pool()
+        if pool is None:
+            return None
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE ach_payments
+                SET status = $3,
+                    result = COALESCE($4, result),
+                    last_return_reason_code = COALESCE($5, last_return_reason_code),
+                    provider_reference = COALESCE($6, provider_reference),
+                    updated_at = NOW()
+                WHERE organization_id = $1 AND payment_token = $2
+                RETURNING *
+                """,
+                organization_id,
+                payment_token,
+                status_value,
+                result,
+                return_reason_code,
+                provider_reference,
+            )
+            return dict(row) if row else None
+
+    async def increment_retry_count(self, organization_id: str, payment_token: str) -> None:
+        if not self._use_postgres():
+            row = self._payments.get((organization_id, payment_token))
+            if row:
+                row["retry_count"] = int(row.get("retry_count", 0) or 0) + 1
+            return
+        pool = await self._get_pool()
+        if pool is None:
+            return
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE ach_payments
+                SET retry_count = retry_count + 1, updated_at = NOW()
+                WHERE organization_id = $1 AND payment_token = $2
+                """,
+                organization_id,
+                payment_token,
+            )
+
     async def append_ach_events(self, organization_id: str, payment_token: str, events: list[dict[str, Any]]) -> None:
         if not events:
             return
@@ -621,3 +690,85 @@ class TreasuryRepository:
                 return_code,
             )
 
+    async def list_payments_for_reconciliation(
+        self,
+        organization_id: str,
+        *,
+        status_filter: Optional[list[str]] = None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        if not self._use_postgres():
+            rows = [row for (org, _), row in self._payments.items() if org == organization_id]
+            if status_filter:
+                allowed = {s.upper() for s in status_filter}
+                rows = [r for r in rows if str(r.get("status", "")).upper() in allowed]
+            return rows[:limit]
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        async with pool.acquire() as conn:
+            if status_filter:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM ach_payments
+                    WHERE organization_id = $1 AND status = ANY($2::text[])
+                    ORDER BY updated_at DESC
+                    LIMIT $3
+                    """,
+                    organization_id,
+                    status_filter,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM ach_payments
+                    WHERE organization_id = $1
+                    ORDER BY updated_at DESC
+                    LIMIT $2
+                    """,
+                    organization_id,
+                    limit,
+                )
+            return [dict(r) for r in rows]
+
+    async def record_treasury_webhook_event(
+        self,
+        *,
+        provider: str,
+        event_id: str,
+        body: bytes,
+        status_value: str = "processed",
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> None:
+        body_hash = hashlib.sha256(body).hexdigest() if body else ""
+        if not self._use_postgres():
+            self._webhook_events[(provider, event_id)] = {
+                "provider": provider,
+                "event_id": event_id,
+                "body_hash": body_hash,
+                "status": status_value,
+                "metadata": metadata or {},
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            return
+        pool = await self._get_pool()
+        if pool is None:
+            return
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO treasury_webhook_events (provider, event_id, body_hash, status, metadata, processed_at)
+                VALUES ($1, $2, $3, $4, $5::jsonb, NOW())
+                ON CONFLICT (provider, event_id) DO UPDATE SET
+                    body_hash = EXCLUDED.body_hash,
+                    status = EXCLUDED.status,
+                    metadata = EXCLUDED.metadata,
+                    processed_at = NOW()
+                """,
+                provider,
+                event_id,
+                body_hash,
+                status_value,
+                metadata or {},
+            )
