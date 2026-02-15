@@ -117,10 +117,10 @@ export default function FiatRails() {
             <ArrowRight className="w-6 h-6 text-[var(--sardis-orange)]" />
             <div className="text-center">
               <div className="w-16 h-16 border border-border flex items-center justify-center mx-auto mb-2 bg-muted">
-                <span className="text-xs font-bold">BRIDGE</span>
+                <span className="text-xs font-bold">TREASURY</span>
               </div>
-              <div className="font-bold">Bridge</div>
-              <div className="text-xs text-muted-foreground">USD → USDC</div>
+              <div className="font-bold">Lithic FA</div>
+              <div className="text-xs text-muted-foreground">USD account</div>
             </div>
             <ArrowRight className="w-6 h-6 text-[var(--sardis-orange)]" />
             <div className="text-center">
@@ -198,58 +198,38 @@ export default function FiatRails() {
 
         <h3>Funding a Wallet</h3>
         <pre className="not-prose bg-[var(--sardis-ink)] p-4 overflow-x-auto">
-          <code>{`import { SardisFiatRamp } from '@sardis/ramp'
+          <code>{`from sardis_sdk import AsyncSardisClient
+from sardis_sdk.models.treasury import TreasuryPaymentRequest
 
-const ramp = new SardisFiatRamp({
-  sardisKey: process.env.SARDIS_API_KEY,
-  bridgeKey: process.env.BRIDGE_API_KEY,
-  environment: 'production'
-})
+async with AsyncSardisClient(api_key="sk_live_...") as client:
+    payment = await client.treasury.fund(
+        TreasuryPaymentRequest(
+            financial_account_token="fa_issuing_123",
+            external_bank_account_token="eba_123",
+            amount_minor=500000,  # $5,000.00
+            method="ACH_NEXT_DAY",
+            sec_code="CCD",
+            memo="Treasury top-up",
+        )
+    )
 
-// Fund wallet from bank
-const funding = await ramp.fundWallet({
-  walletId: 'wallet_abc123',
-  amountUsd: 5000,
-  method: 'bank'  // 'bank' | 'card' | 'crypto'
-})
-
-// Returns ACH instructions for bank transfer
-console.log(funding.achInstructions)
-// {
-//   accountNumber: '9876543210',
-//   routingNumber: '021000021',
-//   bankName: 'Bridge Financial',
-//   reference: 'SARDIS-abc123'
-// }`}</code>
+    print(payment.payment_token, payment.status)`}</code>
         </pre>
 
         <h3>Withdrawing to Bank</h3>
         <pre className="not-prose bg-[var(--sardis-ink)] p-4 overflow-x-auto">
-          <code>{`// Withdraw requires policy approval
-const withdrawal = await ramp.withdrawToBank({
-  walletId: 'wallet_abc123',
-  amountUsd: 2500,
-  bankAccount: {
-    accountHolderName: 'Acme Corp',
-    accountNumber: '1234567890',
-    routingNumber: '021000021',
-    accountType: 'checking'
-  }
-})
+          <code>{`withdrawal = await client.treasury.withdraw(
+    TreasuryPaymentRequest(
+        financial_account_token="fa_issuing_123",
+        external_bank_account_token="eba_123",
+        amount_minor=250000,  # $2,500.00
+        method="ACH_NEXT_DAY",
+        sec_code="CCD",
+        memo="Vendor payout",
+    )
+)
 
-// Policy engine checks:
-// - Daily/weekly/monthly withdrawal limits
-// - Destination whitelist (if configured)
-// - Compliance flags
-
-console.log(withdrawal)
-// {
-//   txHash: '0x...',
-//   payoutId: 'payout_xyz',
-//   estimatedArrival: Date,
-//   fee: 12.50,
-//   status: 'pending'
-// }`}</code>
+print(withdrawal.payment_token, withdrawal.status)`}</code>
         </pre>
 
         <h3>Paying Merchants Directly</h3>
@@ -324,12 +304,12 @@ const payment = await ramp.payMerchantFiat({
 
         <h2>Compliance Built In</h2>
         <p>
-          All fiat operations integrate with our existing compliance stack:
+          All fiat operations integrate with our existing controls:
         </p>
         <ul>
-          <li><strong>Persona</strong> for KYC verification</li>
-          <li><strong>Elliptic</strong> for sanctions screening</li>
-          <li><strong>Policy Engine</strong> for custom rules</li>
+          <li><strong>Policy engine</strong> for limits and merchant/category controls</li>
+          <li><strong>Webhook replay protection</strong> for provider event ingestion</li>
+          <li><strong>Return-code controls</strong> (R01/R09 retry, R02/R03/R29 auto-pause)</li>
           <li><strong>Append-only Ledger</strong> for audit trails</li>
         </ul>
 
@@ -357,10 +337,10 @@ const payment = await ramp.payMerchantFiat({
 
         <pre className="not-prose bg-[var(--sardis-ink)] p-4 overflow-x-auto">
 	          <code>{`# TypeScript
-npm install @sardis/ramp
+npm install @sardis/sdk
 
 # Python
-pip install sardis-ramp`}</code>
+pip install sardis-sdk`}</code>
         </pre>
 
         <p>

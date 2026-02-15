@@ -23,7 +23,7 @@ export default function MCP36Tools() {
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-5 leading-tight">
-          MCP Server: 46 Tools for AI Payments
+          MCP Server: 50+ Tools for AI Payments
         </h1>
         <div className="flex items-center gap-5 text-sm text-muted-foreground font-mono">
           <span className="flex items-center gap-1.5">
@@ -40,7 +40,7 @@ export default function MCP36Tools() {
       {/* Content */}
       <div className="prose prose-invert max-w-none prose-p:leading-7 prose-li:leading-7">
         <p className="lead text-xl text-muted-foreground leading-8">
-          Our MCP server has grown from 4 tools to 46. From fiat on-ramps to virtual cards,
+          Our MCP server has grown from 4 tools to 50+. From treasury ACH rails to virtual cards,
           learn how to give Claude or Cursor complete payment capabilities without writing any code.
         </p>
 
@@ -50,8 +50,8 @@ export default function MCP36Tools() {
           get balance, make payment, list transactions, and request approval.
         </p>
         <p>
-          Today, we're shipping 46 tools that cover the entire payment lifecycle—including
-          the new Fiat Rails (v0.6) for bank on-ramp/off-ramp and Virtual Cards via Lithic.
+          Today, we're shipping 50+ tools that cover the full payment lifecycle—including
+          the USD-first treasury lane (v0.8.9) for ACH fund/withdraw and virtual cards via Lithic.
           Your AI agent can now manage wallets, fund from banks, issue virtual cards, and
           pay anywhere Visa is accepted.
         </p>
@@ -75,7 +75,7 @@ export default function MCP36Tools() {
           </pre>
         </div>
 
-        <p>Restart your app, and you now have 46 payment tools available.</p>
+        <p>Restart your app, and you now have 50+ payment tools available.</p>
 
         <h2>Tool Categories</h2>
 
@@ -103,8 +103,8 @@ export default function MCP36Tools() {
           </table>
         </div>
 
-        <h3>Fiat Rails (8 tools) <span className="text-emerald-500 text-sm">NEW in v0.6</span></h3>
-        <p>Fund wallets from banks and withdraw to fiat:</p>
+        <h3>Treasury Rails (11 tools) <span className="text-emerald-500 text-sm">UPDATED in v0.8.9</span></h3>
+        <p>Fund and withdraw via ACH with financial account and bank-link lifecycle support:</p>
 
         <div className="not-prose overflow-x-auto mb-6">
           <table className="w-full text-sm border border-border">
@@ -115,14 +115,15 @@ export default function MCP36Tools() {
               </tr>
             </thead>
             <tbody>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_fund_wallet</td><td className="p-3 border-b border-border">Fund wallet from bank (on-ramp)</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_withdraw_to_bank</td><td className="p-3 border-b border-border">Withdraw to bank (off-ramp)</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_fiat_quote</td><td className="p-3 border-b border-border">Get funding quote with fees</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_funding_status</td><td className="p-3 border-b border-border">Check funding status</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_link_bank_account</td><td className="p-3 border-b border-border">Link bank account</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_bank_accounts</td><td className="p-3 border-b border-border">List linked banks</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_kyc_status</td><td className="p-3 border-b border-border">Check KYC status</td></tr>
-              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_initiate_kyc</td><td className="p-3 border-b border-border">Start KYC verification</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_sync_treasury_account_holder</td><td className="p-3 border-b border-border">Sync financial accounts from provider</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_financial_accounts</td><td className="p-3 border-b border-border">List ISSUING/OPERATING treasury accounts</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_link_external_bank_account</td><td className="p-3 border-b border-border">Link external bank account</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_verify_micro_deposits</td><td className="p-3 border-b border-border">Verify ownership via micro-deposits</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_fund_wallet</td><td className="p-3 border-b border-border">Create ACH collection (fund treasury)</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_withdraw_to_bank</td><td className="p-3 border-b border-border">Create ACH payment (withdraw)</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_funding_status</td><td className="p-3 border-b border-border">Get payment status by token</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_withdrawal_status</td><td className="p-3 border-b border-border">Get withdrawal status by token</td></tr>
+              <tr><td className="p-3 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_treasury_balances</td><td className="p-3 border-b border-border">Get latest treasury balance snapshots</td></tr>
             </tbody>
           </table>
         </div>
@@ -179,15 +180,15 @@ export default function MCP36Tools() {
 
         <div className="not-prose bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] p-4 font-mono text-sm mb-6 border border-border overflow-x-auto">
           <pre className="text-[var(--sardis-canvas)]">
-{`1. sardis_list_bank_accounts → Find linked bank
-2. sardis_fund_wallet → Fund $100 from Chase ****1234
+{`1. sardis_list_financial_accounts → Find ISSUING/OPERATING account
+2. sardis_fund_wallet → Fund $100 from linked external bank account
 3. sardis_get_funding_status → Wait for funding to complete
-4. sardis_get_balance → Verify unified balance
+4. sardis_get_treasury_balances → Verify treasury snapshot
 5. sardis_create_card → Issue virtual card (limit: $50)
 6. Returns: Card number, expiry, CVV for use at openai.com
 
 The agent handles the entire flow, including:
-- Checking KYC status for off-ramp eligibility
+- Replay-safe payment status tracking
 - Policy validation at each step
 - Waiting for funding confirmation
 - Card issuance with merchant lock`}

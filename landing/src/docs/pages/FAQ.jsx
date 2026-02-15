@@ -71,11 +71,11 @@ const faqs = [
     questions: [
       {
         q: 'How do I integrate Sardis with Claude?',
-        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 52 tools including payment, wallet, fiat, checkout, and agent discovery tools.'
+        a: 'Use our MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 50+ tools including payment, wallet, treasury ACH, checkout, and agent discovery tools.'
       },
       {
         q: 'Which AI frameworks does Sardis support?',
-        a: 'Sardis supports: Claude MCP (52 tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
+        a: 'Sardis supports: Claude MCP (50+ tools), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, and LlamaIndex. Our Python and TypeScript SDKs work with any framework.'
       },
       {
         q: 'Can I use Sardis without any code?',
@@ -83,7 +83,7 @@ const faqs = [
       },
       {
         q: 'How do I add fiat rails to my agent?',
-        a: 'Install the sardis-ramp SDK (pip install sardis-ramp or npm install @sardis/ramp), configure your Onramper or Bridge API key, and use the FiatRamp class. For MCP users, 8 new fiat tools are available: sardis_fund_wallet, sardis_withdraw_to_bank, sardis_link_bank_account, and more.'
+        a: 'Use the treasury endpoints under /api/v2/treasury or SDK treasury resources. In MCP, use tools like sardis_list_financial_accounts, sardis_link_external_bank_account, sardis_verify_micro_deposits, sardis_fund_wallet, and sardis_withdraw_to_bank. Launch defaults to USD-first ACH/card treasury, with stablecoin routing optional behind policy and feature flags.'
       },
     ]
   },
@@ -125,7 +125,7 @@ const faqs = [
       },
       {
         q: 'How is fiat security handled?',
-        a: 'Fiat operations go through licensed providers (Onramper, Bridge) with built-in compliance. KYC verification is required for off-ramp. Bank account linking uses secure tokenization. All fiat transactions are subject to the same Policy Engine rules as crypto transactions.'
+        a: 'Fiat operations are partner-mediated and policy-gated. Launch uses USD-first treasury accounts for ACH/card settlement, with replay-protected webhooks, idempotent payment creation, and return-code controls (R01/R09 retry, R02/R03/R29 auto-pause). All fiat transactions flow through the same policy and audit trail controls as stablecoin transactions.'
       },
     ]
   },

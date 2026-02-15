@@ -18,10 +18,7 @@ export default function DocsSDKTypeScript() {
         </h2>
         <div className="not-prose">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm">
-            <div className="text-muted-foreground"># Core SDK</div>
             <div className="text-[var(--sardis-orange)]">$ npm install @sardis/sdk</div>
-            <div className="text-muted-foreground mt-3"># Optional fiat rails helper package</div>
-            <div className="text-[var(--sardis-orange)]">$ npm install @sardis/ramp</div>
           </div>
         </div>
       </section>
@@ -103,8 +100,28 @@ console.log(balance.balance, transfer.tx_hash);`}</pre>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.webhooks</td><td className="px-4 py-2 border-b border-border text-muted-foreground">listEventTypes, create, list, get, getById, update, delete, test, listDeliveries, rotateSecret</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.ucp</td><td className="px-4 py-2 border-b border-border text-muted-foreground">createCheckout, getCheckout, updateCheckout, completeCheckout, cancelCheckout, getOrder, listOrders</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.a2a</td><td className="px-4 py-2 border-b border-border text-muted-foreground">discoverAgent, getAgentCard, listAgents, sendPaymentRequest, verifyCredential, sendMessage, listMessages, registerAgent</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.treasury</td><td className="px-4 py-2 border-b border-border text-muted-foreground">syncAccountHolders, listFinancialAccounts, createExternalBankAccount, verifyMicroDeposits, fund, withdraw, getPayment, getBalances</td></tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Treasury Example (ACH)
+        </h2>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`const payment = await client.treasury.fund({
+  financial_account_token: 'fa_123',
+  external_bank_account_token: 'eba_123',
+  amount_minor: 5000, // $50.00
+  method: 'ACH_NEXT_DAY',
+  sec_code: 'CCD',
+});
+
+console.log(payment.payment_token, payment.status);`}</pre>
+          </div>
         </div>
       </section>
 

@@ -4,8 +4,8 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
-    title: 'Sardis v0.8.8: ERC-4337 Base Preview + Truth Alignment',
-    excerpt: 'v0.8.8 ships ERC-4337 smart-account contracts and fail-closed UserOperation routing for the Base Sepolia design-partner lane, adds wallet account_type parity across API/SDK/MCP, and updates docs to distinguish stablecoin non-custodial posture from fiat partner rails.',
+    title: 'Sardis v0.8.9: Fiat-First Treasury + ACH Lifecycle',
+    excerpt: 'v0.8.9 ships the USD-first treasury lane: Lithic financial accounts, ACH fund/withdraw endpoints, replay-protected webhooks, reconciliation jobs, and full SDK/MCP parity. Stablecoin conversion remains optional and quote-driven.',
     date: '2026-02-15',
     readTime: '6 min read',
     category: 'Release',
@@ -94,8 +94,8 @@ const posts = [
     slug: 'understanding-ap2',
   },
   {
-    title: 'MCP Server: 46 Tools for AI Payments',
-    excerpt: 'Our MCP server expanded from 4 tools to full-stack payment operations. From checkout sessions to agent discovery, learn how to add comprehensive payment capabilities to Claude Desktop and Cursor without writing code.',
+    title: 'MCP Server: 50+ Tools for AI Payments',
+    excerpt: 'Our MCP server expanded from 4 tools to 50+ operations. From treasury ACH flows and virtual cards to checkout sessions and agent discovery, you can add broad payment capabilities to Claude Desktop and Cursor without writing code.',
     date: '2026-01-18',
     readTime: '5 min read',
     category: 'Tutorial',

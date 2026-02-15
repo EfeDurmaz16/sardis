@@ -2,9 +2,40 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.8.8',
+    version: '0.8.9',
     date: '2026-02-15',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Fiat-first treasury API surface: account sync, financial account listing, external bank linking, micro-deposit verification, ACH fund/withdraw, payment status, balances',
+          'Treasury data model + migration 018: financial accounts, external bank accounts, ACH payments/events, balance snapshots, reservations, webhook event store',
+          'Lithic treasury adapter for financial accounts, ACH payments, and sandbox simulation helpers',
+          'Python SDK and TypeScript SDK treasury resources with typed request/response models',
+          'MCP treasury tool expansion for USD-first ACH operational flows',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Cards funding route now defaults to fiat_first with stablecoin fallback behind explicit configuration',
+          'Landing/docs updated with USD-first launch posture and real /api/v2/treasury endpoint references',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Replay-protected Lithic payment webhook ingestion with mandatory signature verification in production',
+          'ACH return-code controls: R02/R03/R29 auto-pause, R01/R09 retry orchestration, plus org velocity and daily cap enforcement',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.8.8',
+    date: '2026-02-15',
+    tag: '',
     changes: [
       {
         type: 'added',
@@ -81,7 +112,7 @@ const releases = [
         type: 'improved',
         items: [
           'SardisClient convenience wrapper added to reduce SDK onboarding friction',
-          'Landing/docs claims synchronized around package count (19), chain count (5), and MCP tool count (52)',
+          'Landing/docs claims synchronized around package count (19), chain count (5), and validated MCP tool registry',
           'README and launch materials updated with validated link/badge checks',
           'Landing production deployment completed and aliased to www.sardis.sh',
         ]
@@ -376,7 +407,7 @@ const releases = [
         items: [
           'Fiat Rails - Bank on-ramp and off-ramp support via Bridge and Onramper',
           'Virtual Cards - Lithic integration for instant card issuance',
-          'Unified Balance - USDC/USD treated as 1:1 equivalent',
+          'Unified Balance introduced (later updated to quote-based cross-rail conversion, no fixed 1:1 assumption)',
           'KYC/AML Integration - Persona verification and Elliptic sanctions screening',
           'sardis-ramp-js package for JavaScript/TypeScript fiat operations',
           'sardis-cards package for virtual card management',

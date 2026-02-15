@@ -8,7 +8,7 @@ export default function DocsOverview() {
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
             DOCUMENTATION
           </span>
-          <span>Updated Jan 25, 2026</span>
+          <span>Updated Feb 15, 2026</span>
           <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
             95% COMPLETE
           </span>
@@ -54,7 +54,7 @@ export default function DocsOverview() {
             { title: 'Multi-Rail Settlement', desc: 'Bank transfer, virtual card, or stablecoins' },
             { title: 'Bank-First Funding', desc: 'Fund from bank accounts, withdraw to USD' },
             { title: 'Compliance Lanes', desc: 'Provider-integrated KYC/AML onboarding paths for regulated rails' },
-            { title: 'Zero Integration Setup', desc: 'MCP server with 52 tools' },
+            { title: 'Zero Integration Setup', desc: 'MCP server with 50+ tools' },
           ].map((feature) => (
             <div key={feature.title} className="p-4 border border-border hover:border-[var(--sardis-orange)] transition-colors">
               <h3 className="font-bold font-display mb-1">{feature.title}</h3>

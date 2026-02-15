@@ -105,8 +105,32 @@ async with AsyncSardisClient(api_key="sk_...") as client:
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.webhooks</td><td className="px-4 py-2 border-b border-border text-muted-foreground">list_event_types, create, list, get, update, delete, test, list_deliveries, rotate_secret</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.marketplace</td><td className="px-4 py-2 border-b border-border text-muted-foreground">list_categories, create_service, list_services, get_service, search_services, create_offer, list_offers, accept_offer, reject_offer, complete_offer, create_review</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.ledger</td><td className="px-4 py-2 border-b border-border text-muted-foreground">list_entries, get_entry, verify_entry</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">client.treasury</td><td className="px-4 py-2 border-b border-border text-muted-foreground">sync_account_holders, list_financial_accounts, create_external_bank_account, verify_micro_deposits, fund, withdraw, get_payment, get_balances</td></tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> Treasury Example (ACH)
+        </h2>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`from sardis_sdk.models.treasury import TreasuryPaymentRequest
+
+payment = await client.treasury.fund(
+    TreasuryPaymentRequest(
+        financial_account_token="fa_123",
+        external_bank_account_token="eba_123",
+        amount_minor=5000,  # $50.00
+        method="ACH_NEXT_DAY",
+        sec_code="CCD",
+    )
+)
+
+print(payment.payment_token, payment.status)`}</pre>
+          </div>
         </div>
       </section>
 

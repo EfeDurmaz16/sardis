@@ -29,6 +29,7 @@ const TermsOfService = () => {
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-3 space-y-2">
             <li>Policy-controlled wallets (MPC and smart-account modes)</li>
+            <li>USD-first treasury operations (financial accounts, ACH funding, ACH withdrawals)</li>
             <li>Stablecoin payment execution on supported blockchains</li>
             <li>Spending policy management and enforcement</li>
             <li>KYC/AML compliance tools</li>
@@ -121,6 +122,10 @@ const TermsOfService = () => {
           <p className="text-muted-foreground leading-relaxed mt-3">
             Blockchain transaction fees (gas fees) are separate from Sardis fees. Depending on wallet type and
             route, gas may be paid directly by your wallet or sponsored by a configured paymaster.
+          </p>
+          <p className="text-muted-foreground leading-relaxed mt-3">
+            Fiat rail operations may include partner pass-through costs such as ACH origination, returns, and card settlement fees.
+            These costs are provider-defined and may vary by route and volume tier.
           </p>
         </section>
 

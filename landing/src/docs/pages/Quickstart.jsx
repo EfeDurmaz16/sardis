@@ -25,6 +25,33 @@ export default function DocsQuickstart() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
+          <span className="text-[var(--sardis-orange)]">#</span> USD-First Treasury Flow (Design Partner Lane)
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Launch default is fiat-first treasury. Card spend is backed by prefunded USD accounts.
+          Stablecoin conversion is optional and quote-based.
+        </p>
+        <div className="not-prose">
+          <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-4 font-mono text-sm overflow-x-auto">
+            <pre className="text-[var(--sardis-canvas)]">{`# 1) Sync financial accounts
+POST /api/v2/treasury/account-holders/sync
+
+# 2) Link bank account (MICRO_DEPOSIT flow)
+POST /api/v2/treasury/external-bank-accounts
+POST /api/v2/treasury/external-bank-accounts/{token}/verify-micro-deposits
+
+# 3) Fund treasury (ACH collection)
+POST /api/v2/treasury/fund
+
+# 4) Observe payment + balances
+GET /api/v2/treasury/payments/{payment_token}
+GET /api/v2/treasury/balances`}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Zero Integration (MCP)
         </h2>
         <p className="text-muted-foreground mb-4">

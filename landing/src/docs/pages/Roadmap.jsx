@@ -103,7 +103,7 @@ export default function Roadmap() {
         { text: 'Fiat on-ramp via Onramper', done: true },
         { text: 'Fiat off-ramp via Bridge (sandbox/design-partner lane)', done: true },
         { text: 'Virtual card issuance (Lithic sandbox lane)', done: true },
-        { text: 'Unified USDC/USD balance (1:1)', done: true },
+        { text: 'Unified balance policy model with quote-based conversion (no fixed 1:1 claim)', done: true },
         { text: 'KYC integration (Persona production onboarding)', done: false },
         { text: 'AML screening (Elliptic production onboarding)', done: false },
       ],
@@ -221,8 +221,8 @@ export default function Roadmap() {
     {
       version: 'v0.8.7',
       title: 'Smart Wallets, DB Persistence & Launch Hardening',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'ERC-4337 smart account contracts + factory + verifying paymaster (Base-first)', done: true },
         { text: 'Fail-closed UserOperation runtime path with Pimlico bundler/paymaster config gates', done: true },
@@ -235,6 +235,21 @@ export default function Roadmap() {
         { text: 'Onramper webhook signatures hardened with timestamp replay-window validation', done: true },
         { text: 'Landing page: gasless smart wallets section, updated competitive positioning', done: true },
         { text: 'Awesome-list submission target activity verification pass', done: false },
+      ],
+    },
+    {
+      version: 'v0.8.9',
+      title: 'Fiat-First Treasury Execution',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'Treasury API endpoints added: sync accounts, link bank, verify micro-deposits, fund, withdraw, balances', done: true },
+        { text: 'USD-first card funding route with stablecoin fallback feature flag', done: true },
+        { text: 'Lithic ACH webhook ingestion + replay protection + return code handling state machine', done: true },
+        { text: 'Treasury reconciliation + retry orchestration jobs with limits and velocity caps', done: true },
+        { text: 'Python SDK and TypeScript SDK treasury resources shipped', done: true },
+        { text: 'MCP treasury tools aligned to /api/v2/treasury endpoints', done: true },
+        { text: 'Design partner ACH support playbook and runbook coverage', done: true },
       ],
     },
     {
@@ -282,7 +297,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 10, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 11, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

@@ -465,19 +465,19 @@ function App() {
                 <span className="text-xs text-muted-foreground font-mono">Fund</span>
               </div>
 
-              {/* Bridge */}
+              {/* Treasury */}
               <div className="flex flex-col items-center gap-2">
                 <div className="w-16 h-16 border border-border flex items-center justify-center bg-muted">
                   <IsometricIcon src={icons.autoRenew} className="w-10 h-10" isDark={isDark} />
                 </div>
-                <span className="text-sm font-mono font-bold">Bridge</span>
-                <span className="text-xs text-muted-foreground">Fiat ↔ Digital</span>
+                <span className="text-sm font-mono font-bold">Treasury</span>
+                <span className="text-xs text-muted-foreground">USD first</span>
               </div>
 
               {/* Arrow */}
               <div className="flex flex-col items-center gap-1">
                 <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
-                <span className="text-xs text-muted-foreground font-mono">Convert</span>
+                <span className="text-xs text-muted-foreground font-mono">Route</span>
               </div>
 
               {/* Sardis Wallet */}
@@ -592,37 +592,32 @@ function App() {
               <div className="w-3 h-3 bg-destructive" />
               <div className="w-3 h-3 bg-yellow-500" />
               <div className="w-3 h-3 bg-emerald-500" />
-              <span className="ml-4 text-sm font-mono text-muted-foreground">fiat-ramp.ts</span>
+              <span className="ml-4 text-sm font-mono text-muted-foreground">treasury.ts</span>
             </div>
             <div className="p-6 font-mono text-sm leading-relaxed bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
-              <pre className="whitespace-pre">{`import { SardisFiatRamp } from '@sardis/ramp'
+              <pre className="whitespace-pre">{`import { SardisClient } from '@sardis/sdk'
 
-const ramp = new SardisFiatRamp({
-  sardisKey: 'sk_...',
-  bridgeKey: 'bridge_...'
+const client = new SardisClient({ apiKey: 'sk_...' })
+
+// ACH collection (fund treasury)
+const funded = await client.treasury.fund({
+  financial_account_token: 'fa_issuing_123',
+  external_bank_account_token: 'eba_123',
+  amount_minor: 100000, // $1,000.00
+  method: 'ACH_NEXT_DAY',
+  sec_code: 'CCD',
 })
 
-// Fund wallet from bank
-const funding = await ramp.fundWallet({
-  walletId: 'wallet_123',
-  amountUsd: 1000,
-  method: 'bank'  // or 'card', 'transfer'
-})
-console.log(funding.achInstructions) // Bank transfer details
-
-// Withdraw to bank (policy-checked)
-const withdrawal = await ramp.withdrawToBank({
-  walletId: 'wallet_123',
-  amountUsd: 500,
-  bankAccount: { accountNumber: '...', routingNumber: '...' }
+// ACH payment (withdraw)
+const withdrawal = await client.treasury.withdraw({
+  financial_account_token: 'fa_issuing_123',
+  external_bank_account_token: 'eba_123',
+  amount_minor: 50000, // $500.00
+  method: 'ACH_NEXT_DAY',
+  sec_code: 'CCD',
 })
 
-// Pay merchant directly in USD
-const payment = await ramp.payMerchantFiat({
-  walletId: 'wallet_123',
-  amountUsd: 99.99,
-  merchant: { name: 'ACME Corp', bankAccount: {...} }
-})`}</pre>
+const balances = await client.treasury.getBalances()`}</pre>
             </div>
           </motion.div>
         </div>
@@ -659,7 +654,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.terminal,
                 title: "Zero-Config MCP",
-                description: "One command to add 52 payment tools to Claude or Cursor. No setup required.",
+                description: "One command to add 50+ payment and treasury tools to Claude or Cursor. No setup required.",
                 unique: false
               },
               {
@@ -987,7 +982,7 @@ const payment = await ramp.payMerchantFiat({
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 52 tools for payments, wallets, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 50+ tools for payments, wallets, treasury ACH, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }

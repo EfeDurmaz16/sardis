@@ -8,7 +8,7 @@ export default function DocsMCPServer() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">MCP Server</h1>
         <p className="text-xl text-muted-foreground">
-          52 tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
+          50+ tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export default function DocsMCPServer() {
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_create_wallet</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Create new MPC wallet with optional policy</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_wallet</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get wallet details by ID</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_wallets</td><td className="px-4 py-2 border-b border-border text-muted-foreground">List all wallets for current user</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_balance</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get wallet balance (unified USDC + USD)</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_balance</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get wallet balance for the selected rail/token context</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_address</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get deposit address for specific chain</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_update_policy</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Update wallet spending policy</td></tr>
               <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_check_policy</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Validate transaction against policy</td></tr>
@@ -112,20 +112,21 @@ export default function DocsMCPServer() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
-          <span className="text-[var(--sardis-orange)]">#</span> Fiat Rails Tools (8)
-          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
+          <span className="text-[var(--sardis-orange)]">#</span> Treasury Tools (11)
+          <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">USD-FIRST</span>
         </h2>
         <div className="not-prose">
           <table className="w-full border border-border text-sm">
             <tbody>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_fund_wallet</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Fund wallet from bank account (on-ramp)</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_withdraw_to_bank</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Withdraw to bank account (off-ramp)</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_fiat_quote</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get on/off-ramp quote with fees</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_funding_status</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Check funding operation status</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_link_bank_account</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Link bank account via Plaid</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_bank_accounts</td><td className="px-4 py-2 border-b border-border text-muted-foreground">List linked bank accounts</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_kyc_status</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Check KYC verification status</td></tr>
-              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_initiate_kyc</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Start KYC verification flow</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_sync_treasury_account_holder</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Sync provider financial accounts</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_list_financial_accounts</td><td className="px-4 py-2 border-b border-border text-muted-foreground">List ISSUING/OPERATING accounts</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_link_external_bank_account</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Create external bank account record</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_verify_micro_deposits</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Verify micro-deposit amounts</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_fund_wallet</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Create ACH collection payment</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_withdraw_to_bank</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Create ACH withdrawal payment</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_funding_status</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get payment status by token</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_withdrawal_status</td><td className="px-4 py-2 border-b border-border text-muted-foreground">Get withdrawal status by token</td></tr>
+              <tr><td className="px-4 py-2 border-b border-border font-mono text-[var(--sardis-orange)]">sardis_get_treasury_balances</td><td className="px-4 py-2 border-b border-border text-muted-foreground">List treasury balance snapshots</td></tr>
             </tbody>
           </table>
         </div>
@@ -212,11 +213,11 @@ export default function DocsMCPServer() {
               <pre className="text-[var(--sardis-canvas)]">{`User: Fund my wallet with $500 from my bank account
 
 Claude: I'll fund your wallet with $500. Let me check your linked
-bank accounts first.
+financial accounts first.
 
-[Uses sardis_list_bank_accounts]
+[Uses sardis_list_financial_accounts]
 
-You have Chase ****1234 linked. Proceeding with funding...
+I found your ISSUING account and linked external bank account. Proceeding with funding...
 
 [Uses sardis_fund_wallet]
 
@@ -247,7 +248,7 @@ Virtual card created:
 - Merchant lock: github.com
 
 You can use these details at github.com/billing. The card will
-auto-convert USDC from your wallet at 1:1 when you pay.`}</pre>
+debit your USD treasury balance by default. Stablecoin conversion is optional and quote-based.`}</pre>
             </div>
           </div>
         </div>

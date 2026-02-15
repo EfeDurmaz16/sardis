@@ -13,6 +13,7 @@ const TAG_DESCRIPTIONS = {
   checkout: 'Agentic checkout flow',
   agents: 'AI agent identity and configuration',
   ledger: 'Append-only transaction ledger',
+  treasury: 'Fiat-first treasury accounts and ACH lifecycle',
   webhooks: 'Webhook subscription management',
   marketplace: 'A2A service discovery',
   ap2: 'Agent Payment Protocol v2',
@@ -91,6 +92,20 @@ export default function APIReference() {
         >
           OpenAPI Spec (JSON)
         </a>
+      </section>
+
+      <section className="not-prose mb-8 p-4 border border-border bg-muted/20">
+        <h2 className="text-lg font-bold font-display mb-3">Treasury ACH Endpoints (USD-first)</h2>
+        <ul className="space-y-2 text-sm text-muted-foreground font-mono">
+          <li>POST /api/v2/treasury/account-holders/sync</li>
+          <li>GET /api/v2/treasury/financial-accounts</li>
+          <li>POST /api/v2/treasury/external-bank-accounts</li>
+          <li>POST /api/v2/treasury/external-bank-accounts/{'{token}'}/verify-micro-deposits</li>
+          <li>POST /api/v2/treasury/fund</li>
+          <li>POST /api/v2/treasury/withdraw</li>
+          <li>GET /api/v2/treasury/payments/{'{payment_token}'}</li>
+          <li>GET /api/v2/treasury/balances</li>
+        </ul>
       </section>
 
       {loading ? (
