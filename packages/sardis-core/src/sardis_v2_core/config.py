@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import json
 from pathlib import Path
 from typing import List, Literal, Optional
 
@@ -80,7 +81,20 @@ class SardisSettings(BaseSettings):
         """Return allowed origins as a list."""
         if not self.allowed_origins:
             return ["http://localhost:3005", "http://localhost:5173"]
-        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+        raw = self.allowed_origins.strip()
+
+        # Allow JSON array strings in env files:
+        # SARDIS_ALLOWED_ORIGINS=["https://www.sardis.sh","https://app.sardis.sh"]
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [str(origin).strip() for origin in parsed if str(origin).strip()]
+            except json.JSONDecodeError:
+                # Fall through to CSV parsing for malformed values.
+                pass
+
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
     
     # Security
     secret_key: str = ""

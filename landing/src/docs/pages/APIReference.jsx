@@ -26,13 +26,39 @@ const TAG_DESCRIPTIONS = {
 
 export default function APIReference() {
   const [spec, setSpec] = useState(null);
+  const [specUrl, setSpecUrl] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/openapi.json')
-      .then(r => r.json())
-      .then(data => { setSpec(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    let cancelled = false;
+    const sources = [
+      'https://api.sardis.sh/api/v2/openapi.json',
+      '/openapi.json',
+    ];
+
+    const loadSpec = async () => {
+      for (const url of sources) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const data = await response.json();
+          if (!cancelled) {
+            setSpec(data);
+            setSpecUrl(url);
+            setLoading(false);
+          }
+          return;
+        } catch {
+          // try next source
+        }
+      }
+      if (!cancelled) setLoading(false);
+    };
+
+    void loadSpec();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const endpointsByTag = {};
@@ -86,8 +112,9 @@ export default function APIReference() {
 
       <section className="not-prose mb-8 flex flex-wrap gap-3">
         <a
-          href="/openapi.json"
+          href={specUrl || 'https://api.sardis.sh/api/v2/openapi.json'}
           target="_blank"
+          rel="noopener noreferrer"
           className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] transition-colors text-sm font-mono"
         >
           OpenAPI Spec (JSON)

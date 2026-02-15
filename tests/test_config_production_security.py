@@ -49,3 +49,10 @@ def test_production_accepts_explicit_https_origins(monkeypatch) -> None:
     settings = _base_settings("https://app.sardis.sh,https://dashboard.sardis.sh")
     errors = validate_production_config(settings)
     assert not any("SARDIS_ALLOWED_ORIGINS" in e for e in errors)
+
+
+def test_production_accepts_json_array_origins(monkeypatch) -> None:
+    _set_required_env(monkeypatch)
+    settings = _base_settings('["https://app.sardis.sh","https://www.sardis.sh"]')
+    errors = validate_production_config(settings)
+    assert not any("SARDIS_ALLOWED_ORIGINS" in e for e in errors)

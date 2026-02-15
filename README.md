@@ -12,7 +12,7 @@
 [![PyPI](https://img.shields.io/pypi/v/sardis)](https://pypi.org/project/sardis/)
 [![PyPI Downloads](https://img.shields.io/pypi/dw/sardis)](https://pypi.org/project/sardis/)
 [![Chains: 5](https://img.shields.io/badge/Chains-5-brightgreen)](https://sardis.sh/docs)
-[![Tools: 52](https://img.shields.io/badge/MCP%20Tools-52-blue)](https://sardis.sh/docs)
+[![Tools: 57](https://img.shields.io/badge/MCP%20Tools-57-blue)](https://sardis.sh/docs)
 [![Discord](https://img.shields.io/badge/Discord-sardishq-5865F2?logo=discord&logoColor=white)](https://discord.gg/XMA9JwDJ)
 [![Context7](https://img.shields.io/badge/Docs-Context7-5A67D8)](https://context7.com/efedurmaz16/sardis)
 
@@ -27,7 +27,7 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **policy-controlled wal
 ## What's New (Snapshot: 2026-02-15)
 
 - **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
-- **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
+- **57 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
 - **ERC-4337 Base Preview** — `account_type=erc4337_v2` + fail-closed UserOperation runtime path (feature-flagged, Base Sepolia lane)
 - **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented and wired in package exports
 - **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
@@ -183,7 +183,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **MPC Wallets** | Yes (Turnkey) | Yes | No (custodial) | Unknown |
 | **Chains** | Base, Poly, ETH, Arb, OP | Polygon, Base | USDC + ACH | Base only |
 | **Virtual Cards** | Yes (Lithic) | No | No | No |
-| **MCP Server** | Zero-config (52 tools) | Yes | No | Demo only |
+| **MCP Server** | Zero-config (57 tools) | Yes | No | Demo only |
 | **Group Governance** | Yes | No | No | No |
 
 <details>
@@ -252,7 +252,7 @@ pip install sardis[cards]   # + virtual cards
 | Package | Description |
 |---------|-------------|
 | [`@sardis/sdk`](https://www.npmjs.com/package/@sardis/sdk) | TypeScript SDK |
-| [`@sardis/mcp-server`](https://www.npmjs.com/package/@sardis/mcp-server) | MCP server (52 tools) |
+| [`@sardis/mcp-server`](https://www.npmjs.com/package/@sardis/mcp-server) | MCP server (57 tools) |
 | [`@sardis/ai-sdk`](https://www.npmjs.com/package/@sardis/ai-sdk) | Vercel AI SDK integration |
 | [`@sardis/ramp`](https://www.npmjs.com/package/@sardis/ramp) | Fiat on/off-ramp |
 
@@ -280,7 +280,7 @@ pip install sardis[cards]   # + virtual cards
 | MPC Wallets (Turnkey) | Live |
 | On-Chain Settlement | Live (5 chains) |
 | KYC/AML Compliance | Staged integration lanes (Persona/Elliptic onboarding in progress) |
-| MCP Server | v0.2.7 (52 tools) |
+| MCP Server | v0.2.7 (57 tools) |
 | Python SDK (15 packages) | Live on PyPI |
 | TypeScript SDK (4 packages) | Live on npm |
 | Virtual Cards (Lithic) | Sandbox Ready |
