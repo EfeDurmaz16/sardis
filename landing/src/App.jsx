@@ -194,50 +194,20 @@ function App() {
             initial="initial"
             animate="animate"
             variants={staggerContainer}
-            className="grid md:grid-cols-[1fr_auto] gap-16 items-center"
+            className="max-w-3xl mx-auto text-center"
           >
-            {/* Left: Text content */}
-            <div>
-              <motion.div variants={fadeInUp} className="mb-5">
-                <Badge variant="outline" className="border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)] rounded-none font-mono text-xs tracking-widest">
-                  DEVELOPER PREVIEW
-                </Badge>
-              </motion.div>
-
               <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight mb-6">
                 The Payment OS for the{" "}
                 <span className="text-[var(--sardis-orange)]">Agent Economy</span>
               </motion.h1>
 
-              <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed">
+              <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
                 Give your agents programmable wallets with natural language spending limits. Prevent financial hallucinations before they happen.
               </motion.p>
 
-              <motion.div variants={fadeInUp}>
+              <motion.div variants={fadeInUp} className="max-w-2xl mx-auto">
                 <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
               </motion.div>
-            </div>
-
-            {/* Right: Metrics stack */}
-            <motion.div
-              variants={fadeInUp}
-              className="hidden md:flex flex-col gap-4 w-64"
-            >
-              {[
-                { label: "PACKAGES", value: "19", sub: "npm + PyPI" },
-                { label: "MCP TOOLS", value: "50+", sub: "payment, treasury, cards" },
-                { label: "PROTOCOLS", value: "4", sub: "AP2, UCP, A2A, TAP" },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="p-5 border border-border hover:border-[var(--sardis-orange)] transition-colors group"
-                >
-                  <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground mb-1 font-mono">{stat.label}</div>
-                  <div className="text-2xl font-bold text-foreground font-display group-hover:text-[var(--sardis-orange)] transition-colors">{stat.value}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{stat.sub}</div>
-                </div>
-              ))}
-            </motion.div>
           </motion.div>
         </div>
       </section>
