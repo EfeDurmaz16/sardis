@@ -135,6 +135,18 @@ export default function APIReference() {
         </ul>
       </section>
 
+      <section className="not-prose mb-8 p-4 border border-border bg-muted/20">
+        <h2 className="text-lg font-bold font-display mb-3">Treasury Operator Reconciliation</h2>
+        <ul className="space-y-2 text-sm text-muted-foreground font-mono">
+          <li>GET /api/v2/treasury/ops/journeys</li>
+          <li>GET /api/v2/treasury/ops/drift</li>
+          <li>GET /api/v2/treasury/ops/returns</li>
+          <li>GET /api/v2/treasury/ops/manual-reviews</li>
+          <li>POST /api/v2/treasury/ops/manual-reviews/{'{review_id}'}/resolve</li>
+          <li>GET /api/v2/treasury/ops/audit-evidence/export</li>
+        </ul>
+      </section>
+
       {loading ? (
         <div className="not-prose text-muted-foreground">Loading API specification...</div>
       ) : !spec ? (

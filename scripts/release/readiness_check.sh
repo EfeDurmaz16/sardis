@@ -62,6 +62,16 @@ if ! bash scripts/release/ops_readiness_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating mainnet proof and incident drill artifacts"
+if ! bash scripts/release/mainnet_ops_drill_check.sh; then
+  failures=$((failures + 1))
+fi
+
+echo "[readiness] validating reconciliation chaos/load readiness"
+if ! bash scripts/release/reconciliation_chaos_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating custody posture"
 if ! bash scripts/release/non_custodial_posture_check.sh; then
   failures=$((failures + 1))

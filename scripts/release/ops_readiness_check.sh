@@ -27,6 +27,9 @@ require_match() {
 }
 
 require_file "docs/design-partner/ops-slo-alerts-rollback-runbook.md"
+require_file "docs/design-partner/mainnet-proof-and-rollback-runbook.md"
+require_file "docs/design-partner/incident-response-247-drill.md"
+require_file "docs/design-partner/reconciliation-load-chaos-slos.md"
 require_file "scripts/health_monitor.sh"
 require_file ".github/workflows/monitoring.yml"
 
@@ -38,6 +41,9 @@ require_match 'SLO' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops 
 require_match 'Rollback' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must define rollback procedures"
 require_match 'Cloud Run' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include API rollback"
 require_match 'Vercel' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include frontend rollback"
+require_match 'Mainnet' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet proof runbook must be explicit"
+require_match 'SEV-1' docs/design-partner/incident-response-247-drill.md "incident drill doc must define severity tiers"
+require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "reconciliation chaos doc must define SLOs"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[ops-readiness] completed with $failures failure(s)"

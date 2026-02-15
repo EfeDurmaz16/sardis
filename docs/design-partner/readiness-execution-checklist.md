@@ -91,6 +91,27 @@ Evidence:
 - `docs/design-partner/ach-return-support-playbook.md`
 - `docs/design-partner/treasury-audit-trail-examples.md`
 
+## 9) Mainnet Proof + Rollback Drill
+- [x] Publish mainnet proof runbook with allow/deny evidence requirements.
+- [x] Add rollback drill steps with API validation checkpoints.
+- [x] Add release-gate check script for proof/rollback artifacts.
+
+Evidence:
+- `docs/design-partner/mainnet-proof-and-rollback-runbook.md`
+- `scripts/release/mainnet_ops_drill_check.sh`
+
+## 10) 24/7 Incident Drill + Reconciliation Chaos/SLO
+- [x] Publish 24/7 incident drill playbook with severity and response targets.
+- [x] Define reconciliation SLOs for duplicate suppression and out-of-order handling.
+- [x] Add load/chaos regression test for canonical reconciliation engine.
+- [x] Add release-gate check script for reconciliation chaos coverage.
+
+Evidence:
+- `docs/design-partner/incident-response-247-drill.md`
+- `docs/design-partner/reconciliation-load-chaos-slos.md`
+- `tests/test_reconciliation_engine_load.py`
+- `scripts/release/reconciliation_chaos_check.sh`
+
 ---
 
 ## Exit Criteria for 9+

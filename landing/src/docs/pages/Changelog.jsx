@@ -2,9 +2,40 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.8.9',
+    version: '0.8.10',
     date: '2026-02-15',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Canonical cross-rail ledger state machine: fiat ACH + fiat card + stablecoin tx/userop normalized into a single journey model',
+          'Migration 019: canonical_ledger_journeys, canonical_ledger_events, reconciliation_breaks, manual_review_queue',
+          'Operator reconciliation APIs: journeys, drift, return-code views, manual-review resolve, audit evidence export',
+          'Dashboard reconciliation view with drift/returns/manual-review operations and JSON evidence export',
+          'Reconciliation load/chaos tests and release checks for canonical state handling',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Out-of-order and duplicate event handling now preserves terminal states with exactly-once provider event dedupe',
+          'Scheduler guard adds stale-processing review automation for unresolved payment journeys',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Replay-protected webhook ingestion now feeds canonical reconciliation audit records across rails',
+          'High-risk ACH return code R29 now auto-queues critical manual review in operator workflow',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.8.9',
+    date: '2026-02-15',
+    tag: '',
     changes: [
       {
         type: 'added',
