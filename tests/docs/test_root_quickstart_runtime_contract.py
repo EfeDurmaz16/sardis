@@ -91,3 +91,11 @@ def test_root_client_legacy_wallet_create_still_works() -> None:
     assert wallet.name == "legacy-agent-wallet"
     assert wallet.chain == "base"
     assert wallet.token == "USDC"
+
+
+def test_root_client_demo_and_test_keys_stay_in_simulation_mode() -> None:
+    demo_client = SardisClient(api_key="sk_demo")
+    test_client = SardisClient(api_key="sk_test_local")
+
+    assert demo_client.is_simulation is True
+    assert test_client.is_simulation is True
