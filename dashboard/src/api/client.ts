@@ -558,6 +558,52 @@ export const cardsApi = {
     requestV2<JsonObject[]>(`/cards/${cardId}/transactions?limit=${limit}`),
 }
 
+// Treasury Ops APIs (V2 only - operator controls)
+export const treasuryOpsApi = {
+  listJourneys: (params?: {
+    rail?: string
+    canonical_state?: string
+    break_status?: string
+    limit?: number
+  }) => {
+    const search = new URLSearchParams()
+    if (params?.rail) search.append('rail', params.rail)
+    if (params?.canonical_state) search.append('canonical_state', params.canonical_state)
+    if (params?.break_status) search.append('break_status', params.break_status)
+    if (params?.limit) search.append('limit', String(params.limit))
+    return requestV2<{ items: JsonObject[]; count: number }>(`/treasury/ops/journeys?${search}`)
+  },
+
+  listDrift: (status_value = 'open', limit = 100) =>
+    requestV2<{ items: JsonObject[]; count: number }>(
+      `/treasury/ops/drift?status_value=${encodeURIComponent(status_value)}&limit=${limit}`
+    ),
+
+  listReturns: (codes = 'R01,R09,R29', limit = 200) =>
+    requestV2<{ items: JsonObject[]; count: number; codes: string[] }>(
+      `/treasury/ops/returns?codes=${encodeURIComponent(codes)}&limit=${limit}`
+    ),
+
+  listManualReviews: (status_value = 'queued', limit = 100) =>
+    requestV2<{ items: JsonObject[]; count: number }>(
+      `/treasury/ops/manual-reviews?status_value=${encodeURIComponent(status_value)}&limit=${limit}`
+    ),
+
+  resolveManualReview: (reviewId: string, data: { status: 'in_review' | 'resolved' | 'dismissed'; notes?: string }) =>
+    requestV2<JsonObject>(`/treasury/ops/manual-reviews/${reviewId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  exportAuditEvidence: (journeyId?: string, limit = 500) => {
+    const search = new URLSearchParams()
+    search.append('format', 'json')
+    search.append('limit', String(limit))
+    if (journeyId) search.append('journey_id', journeyId)
+    return requestV2<JsonObject>(`/treasury/ops/audit-evidence/export?${search}`)
+  },
+}
+
 // Demo APIs (V2)
 export const demoApi = {
   bootstrapApiKey: (data: {

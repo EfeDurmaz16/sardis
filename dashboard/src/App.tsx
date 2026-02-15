@@ -6,6 +6,7 @@ import AgentsPage from './pages/Agents'
 import LoginPage from './pages/Login'
 import DemoPage from './pages/Demo'
 import CardsPage from './pages/Cards'
+import ReconciliationPage from './pages/Reconciliation'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -30,6 +31,7 @@ function AppRoutes() {
                 <Route path="/demo" element={<DemoPage />} />
                 <Route path="/agents" element={<AgentsPage />} />
                 <Route path="/cards" element={<CardsPage />} />
+                <Route path="/reconciliation" element={<ReconciliationPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

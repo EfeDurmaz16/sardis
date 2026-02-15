@@ -7,7 +7,8 @@ import {
   Wallet,
   CreditCard,
   Sparkles,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },
+  { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
 ]
 
 export default function Layout({ children }: LayoutProps) {
