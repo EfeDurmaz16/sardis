@@ -6,7 +6,7 @@ import hmac
 import logging
 import os
 from decimal import Decimal
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 import uuid
 from datetime import datetime, timezone
 
@@ -31,13 +31,16 @@ class IssueCardRequest(BaseModel):
     limit_daily: Decimal = Field(default=Decimal("2000.00"))
     limit_monthly: Decimal = Field(default=Decimal("10000.00"))
     locked_merchant_id: Optional[str] = None
-    funding_source: str = Field(default="stablecoin")
+    funding_source: str = Field(default="fiat")
 
 
 class FundCardRequest(BaseModel):
     """Request to fund a card."""
     amount: Decimal = Field(gt=0)
-    source: str = Field(default="stablecoin")
+    source: Optional[Literal["fiat", "stablecoin"]] = Field(
+        default=None,
+        description="If omitted, uses SARDIS_TREASURY_DEFAULT_ROUTE",
+    )
 
 
 class UpdateLimitsRequest(BaseModel):
@@ -87,6 +90,7 @@ def create_cards_router(
     chain_executor=None,
     wallet_repo=None,
     policy_store=None,
+    treasury_repo=None,
     agent_repo: AgentRepository | None = None,
 ) -> APIRouter:
     """Create a cards router with injected dependencies."""
@@ -211,6 +215,17 @@ def create_cards_router(
             return env not in ("prod", "production")
         return explicit.strip().lower() in ("1", "true", "yes")
 
+    def _treasury_default_route() -> str:
+        configured = (os.getenv("SARDIS_TREASURY_DEFAULT_ROUTE", "fiat_first") or "fiat_first").strip().lower()
+        if configured not in {"fiat_first", "stablecoin_first"}:
+            configured = "fiat_first"
+        return configured
+
+    def _resolve_card_funding_source(requested_source: Optional[str]) -> Literal["fiat", "stablecoin"]:
+        if requested_source in {"fiat", "stablecoin"}:
+            return requested_source
+        return "stablecoin" if _treasury_default_route() == "stablecoin_first" else "fiat"
+
     @r.post("", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
     async def issue_card(payload: IssueCardRequest, http_request: Request, principal: Principal = Depends(require_principal)):
         await _require_wallet_access(payload.wallet_id, principal)
@@ -293,30 +308,55 @@ def create_cards_router(
         if wallet_id:
             await _require_wallet_access(str(wallet_id), principal)
 
-        idem_key = get_idempotency_key(http_request) or f"{card_id}:{payload.source}:{payload.amount}"
+        funding_source = _resolve_card_funding_source(payload.source)
+        idem_key = get_idempotency_key(http_request) or f"{card_id}:{funding_source}:{payload.amount}"
 
         async def _fund() -> tuple[int, object]:
+            reservation_id = f"tr_{uuid.uuid4().hex[:24]}"
+            amount_minor = int((payload.amount * Decimal("100")).to_integral_value())
+
+            async def _reservation(status_value: str, reason: str | None = None, reference_id: str | None = None):
+                if not treasury_repo:
+                    return
+                await treasury_repo.create_reservation(
+                    reservation_id=reservation_id,
+                    organization_id=principal.organization_id,
+                    wallet_id=str(wallet_id) if wallet_id else None,
+                    card_id=card_id,
+                    currency="USD",
+                    amount_minor=amount_minor,
+                    status=status_value,
+                    reason=reason,
+                    reference_id=reference_id,
+                    metadata={"funding_source": funding_source},
+                )
+
+            await _reservation("held", reason="card_funding")
+
             # Stablecoin-backed card funding path (USDC -> USD -> Lithic)
-            if offramp_service and chain_executor and wallet_repo and payload.source == "stablecoin":
+            if funding_source == "stablecoin" and offramp_service and chain_executor and wallet_repo:
                 if not wallet_id:
+                    await _reservation("released", reason="card_not_linked")
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Card not linked to wallet")
 
                 wallet = await wallet_repo.get(str(wallet_id))
                 if not wallet:
+                    await _reservation("released", reason="linked_wallet_not_found")
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
 
                 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
-                amount_minor = to_raw_token_amount(TokenType.USDC, payload.amount)
+                stablecoin_amount_minor = to_raw_token_amount(TokenType.USDC, payload.amount)
 
                 try:
                     quote = await offramp_service.get_quote(
                         input_token="USDC",
-                        input_amount_minor=amount_minor,
+                        input_amount_minor=stablecoin_amount_minor,
                         input_chain="base",
                         output_currency="USD",
                     )
                 except Exception as e:
                     logger.error("Offramp quote failed: %s", e)
+                    await _reservation("released", reason="offramp_quote_failed")
                     raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to get offramp quote")
 
                 source_address = wallet.get_address("base") or ""
@@ -325,11 +365,19 @@ def create_cards_router(
                         source_address = addr
                         break
                 if not source_address:
+                    await _reservation("released", reason="wallet_address_missing")
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet has no on-chain address")
 
-                import os
-                funding_account = os.getenv("LITHIC_FUNDING_ACCOUNT_ID", "")
+                funding_account = ""
+                if treasury_repo is not None:
+                    funding_account = await treasury_repo.get_funding_account_for_org(
+                        principal.organization_id,
+                        preferred_role="ISSUING",
+                    ) or ""
                 if not funding_account:
+                    funding_account = os.getenv("LITHIC_FUNDING_ACCOUNT_ID", "")
+                if not funding_account:
+                    await _reservation("released", reason="treasury_funding_account_not_mapped")
                     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="lithic_funding_account_not_configured")
 
                 try:
@@ -341,6 +389,7 @@ def create_cards_router(
                     )
                 except Exception as e:
                     logger.error("Offramp execute failed: %s", e)
+                    await _reservation("released", reason="offramp_execute_failed")
                     raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to execute offramp")
 
                 try:
@@ -350,17 +399,39 @@ def create_cards_router(
 
                 current = card.get("funded_amount", 0) or 0
                 row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
+                await _reservation("consumed", reference_id=str(tx.transaction_id))
                 return 200, {
                     **(row or {}),
                     "offramp_tx_id": tx.transaction_id,
                     "offramp_status": tx.status.value,
+                    "funding_source": "stablecoin",
                 }
 
-            # Fallback: provider-based funding (e.g., sandbox-only)
+            if funding_source == "stablecoin":
+                await _reservation("released", reason="stablecoin_path_not_configured")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="stablecoin_funding_not_configured",
+                )
+
+            # Fiat-first path: card is funded from issuer-side USD treasury.
+            if treasury_repo is not None:
+                mapped_funding_account = await treasury_repo.get_funding_account_for_org(
+                    principal.organization_id,
+                    preferred_role="ISSUING",
+                )
+                if not mapped_funding_account:
+                    await _reservation("released", reason="fiat_treasury_not_mapped")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="fiat_treasury_account_not_mapped",
+                    )
+
             await card_provider.fund_card(card_id=card_id, amount=float(payload.amount))
             current = card.get("funded_amount", 0) or 0
             row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
-            return 200, row
+            await _reservation("consumed", reference_id=card_id)
+            return 200, {**(row or {}), "funding_source": "fiat"}
 
         return await run_idempotent(
             request=http_request,

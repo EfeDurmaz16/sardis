@@ -650,6 +650,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             chain_executor=chain_exec,
             wallet_repo=wallet_repo,
             policy_store=policy_store,
+            treasury_repo=treasury_repo,
             agent_repo=agent_repo,
         )
         app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
