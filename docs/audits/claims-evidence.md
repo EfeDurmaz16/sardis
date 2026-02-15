@@ -9,7 +9,7 @@ This document ties launch-facing claims to reproducible checks in-repo.
 | Claim | Public Source | Evidence Command | Result |
 | --- | --- | --- | --- |
 | `57 MCP tools` | `README.md:15` | `bash scripts/release/readiness_check.sh` | `MCP registry parity: 57 definitions = 57 handlers` |
-| `150+ tests` | `README.md:279` | `pytest --collect-only -q` | `collected 853 items` (`791 selected`) |
+| `150+ tests` | `README.md:279` | `pytest --collect-only -q` | `collected 854 items` (`792 selected`) |
 | `19 packages on npm + PyPI` | `docs/marketing/product-hunt-launch.md:31`, `landing/src/App.jsx:1059` | `bash scripts/release/readiness_check.sh` | `package count: 19 (python=15, js=4)` |
 | `5 chains` | `README.md:259`, `docs/marketing/product-hunt-launch.md:27` | `bash scripts/release/readiness_check.sh` | `mainnet chain count: 5` |
 | `5 protocols (AP2, TAP, UCP, A2A, x402)` | `README.md:266` | file presence + exports | AP2 (`packages/sardis-protocol/src/sardis_protocol/schemas.py:12`), TAP (`packages/sardis-protocol/src/sardis_protocol/tap.py:23`), UCP (`packages/sardis-ucp/src/sardis_ucp/__init__.py:51`), A2A (`packages/sardis-a2a/src/sardis_a2a/__init__.py:1`), x402 (`packages/sardis-protocol/src/sardis_protocol/x402.py:1`) |
@@ -52,7 +52,7 @@ Current expected output:
 [readiness] validating deployment config consistency
 [deploy] deployment configuration checks passed
 [readiness][pass] MCP registry parity: 57 definitions = 57 handlers
-[readiness][pass] pytest collected items: 853 (selected: 791)
+[readiness][pass] pytest collected items: 854 (selected: 792)
 [readiness][pass] package count: 19 (python=15, js=4)
 [readiness][pass] mainnet chain count: 5
 [readiness] all checks passed
