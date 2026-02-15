@@ -29,7 +29,7 @@
 >
 > Every transaction goes through our policy firewall before the MPC signing ceremony begins. If it violates the policy, it's blocked — no money moves.
 >
-> **Where we are:** We're live on **testnet** (Base Sepolia) with full SDK coverage across Python and TypeScript. 19 packages published on npm + PyPI, 52 MCP tools working. We're looking for **design partners** — teams building AI agents that need payment capabilities. If that's you, let's build together.
+> **Where we are:** We're live on **testnet** (Base Sepolia) with full SDK coverage across Python and TypeScript. 19 packages published on npm + PyPI, 50+ MCP tools working. We're looking for **design partners** — teams building AI agents that need payment capabilities. If that's you, let's build together.
 >
 > **What makes us different:**
 > - Natural language policy engine (not just spending caps)
@@ -146,7 +146,7 @@ Verified categories:
 
 **Why launch now:**
 - 19 packages live on npm + PyPI
-- 52 MCP tools working
+- 50+ MCP tools working
 - Full SDK coverage (Python + TypeScript)
 - Policy engine + group governance working on testnet
 - Landing page + docs complete

@@ -81,6 +81,16 @@ Evidence:
 - `packages/sardis-api/src/sardis_api/health.py`
 - `docs/design-partner/non-custodial-posture.md`
 
+## 8) Fiat-First Treasury Operations
+- [x] Publish design-partner runbook for USD-first ACH/card flow.
+- [x] Publish ACH return support playbook with return-code decision matrix.
+- [x] Publish treasury audit trail examples for partner evidence reviews.
+
+Evidence:
+- `docs/design-partner/fiat-treasury-design-partner-runbook.md`
+- `docs/design-partner/ach-return-support-playbook.md`
+- `docs/design-partner/treasury-audit-trail-examples.md`
+
 ---
 
 ## Exit Criteria for 9+

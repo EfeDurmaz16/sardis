@@ -66,7 +66,7 @@
 >
 > - Non-custodial MPC wallets in live MPC mode (Turnkey)
 > - Natural language policies (not just spending caps)
-> - 52 MCP tools — zero-config for Claude/Cursor
+> - 50+ MCP tools — zero-config for Claude/Cursor
 > - Group governance — shared budgets across agent teams
 > - 19 packages on npm + PyPI (MIT licensed)
 >
@@ -87,7 +87,7 @@
 >
 > - Live on testnet (Base Sepolia)
 > - 19 packages published (npm + PyPI)
-> - 52 MCP tools working
+> - 50+ MCP tools working
 > - 7K+ monthly installs
 >
 > What's next: Mainnet, virtual cards (Lithic), KYC/AML (Persona + Elliptic)
@@ -119,7 +119,7 @@ We just launched Sardis on Product Hunt — infrastructure that will let AI agen
 
 **What we built:** Policy-controlled wallets with natural language spending policies. In live MPC mode (Turnkey/Fireblocks), the wallet posture is non-custodial. Instead of code, you write: "Max $100/day, only SaaS vendors, block weekends." Every transaction is policy-checked before execution.
 
-**Where we are:** Live on testnet (Base Sepolia) with full SDK coverage. 19 packages on npm + PyPI, 52 MCP tools. We're looking for **design partners** — teams building AI agents that need payment capabilities.
+**Where we are:** Live on testnet (Base Sepolia) with full SDK coverage. 19 packages on npm + PyPI, 50+ MCP tools. We're looking for **design partners** — teams building AI agents that need payment capabilities.
 
 Key features working today:
 - Natural language policy engine (not just spending caps)
@@ -144,7 +144,7 @@ The MCP server works with any LLM (Claude, local models via Cursor, etc.):
 ```
 npx @sardis/mcp-server start
 ```
-52 tools, zero config. Your agent gets a wallet with policy enforcement on testnet.
+50+ tools, zero config. Your agent gets a wallet with policy enforcement on testnet.
 
 Python SDK:
 ```python
@@ -185,7 +185,7 @@ Architecture: Agent -> SDK/MCP -> Policy Engine -> MPC Signing (Turnkey) -> Chai
 What's working today:
 - Non-custodial MPC wallets in live MPC mode via Turnkey threshold signatures
 - Natural language policy parsing -> structured rule enforcement
-- 52 MCP tools (zero-config for Claude/Cursor)
+- 50+ MCP tools (zero-config for Claude/Cursor)
 - Group governance with shared budgets across agent teams
 - Append-only audit ledger
 
@@ -219,7 +219,7 @@ Currently live on testnet (Base Sepolia). We're looking for design partners — 
 
 Technical details:
 - MPC custody via Turnkey in live mode (non-custodial, threshold signatures)
-- 52 MCP tools (zero-config for Claude/Cursor)
+- 50+ MCP tools (zero-config for Claude/Cursor)
 - Group governance for multi-agent shared budgets
 - 5 protocols (AP2, TAP, UCP, A2A, x402)
 
@@ -243,7 +243,7 @@ https://github.com/EfeDurmaz16/sardis
 > **What's live on testnet:**
 > - Policy-controlled wallets with NL spending policies (non-custodial in live MPC mode)
 > - Group governance: shared budgets across multi-agent teams
-> - 52 MCP tools — zero-config for Claude/Cursor
+> - 50+ MCP tools — zero-config for Claude/Cursor
 > - 19 packages on npm + PyPI
 >
 > We're looking for **design partners** — teams building AI agents that need payment capabilities. If that sounds like you, let's talk.
