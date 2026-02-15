@@ -15,7 +15,7 @@ export default function DocsOverview() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Sardis Payment OS Documentation</h1>
         <p className="text-xl text-muted-foreground">
-          Sardis is a Payment OS for the Agent Economy, providing AI agents with non-custodial MPC wallets
+          Sardis is a Payment OS for the Agent Economy, providing AI agents with policy-controlled wallets
           and natural language spending policies to prevent financial hallucination errors.
         </p>
       </div>
@@ -31,12 +31,13 @@ export default function DocsOverview() {
         </p>
         <p className="text-muted-foreground leading-relaxed mb-4">
           Sardis supports multiple payment rails — bank transfers (ACH/wire), virtual cards (Lithic), and stablecoins (USDC, USDT)
-          as an optional settlement alternative — with full compliance (Persona KYC, Elliptic AML). No crypto knowledge required;
+          as an optional settlement alternative. Compliance integrations run in staged lanes (for example Persona and Elliptic onboarding paths).
+          No crypto knowledge required;
           agents can fund entirely from bank accounts. It integrates with popular agent frameworks using SDKs in Python and TypeScript.
         </p>
         <p className="text-muted-foreground leading-relaxed">
-          The project is production-ready and follows an <strong className="text-foreground">Open Core licensing model</strong>,
-          with open SDKs and proprietary core infrastructure components.
+          The project follows an <strong className="text-foreground">Open Core licensing model</strong>,
+          with open SDKs and proprietary infrastructure components.
         </p>
       </section>
 
@@ -46,14 +47,14 @@ export default function DocsOverview() {
         </h2>
         <div className="grid md:grid-cols-2 gap-4 not-prose">
           {[
-            { title: 'Non-Custodial MPC Wallets', desc: 'Agents control their own keys via Turnkey MPC' },
+            { title: 'Live-MPC Non-Custodial Posture', desc: 'Applies on stablecoin rails when running in live MPC mode' },
             { title: 'Natural Language Policies', desc: 'Define spending rules in plain English' },
             { title: 'Financial Firewall', desc: 'Prevent hallucination errors in real-time' },
             { title: 'Instant Virtual Cards', desc: 'Issue cards on-demand via Lithic' },
             { title: 'Multi-Rail Settlement', desc: 'Bank transfer, virtual card, or stablecoins' },
             { title: 'Bank-First Funding', desc: 'Fund from bank accounts, withdraw to USD' },
-            { title: 'Built-in Compliance', desc: 'Persona KYC + Elliptic AML' },
-            { title: 'Zero Integration Setup', desc: 'MCP server with 36 tools' },
+            { title: 'Compliance Lanes', desc: 'Provider-integrated KYC/AML onboarding paths for regulated rails' },
+            { title: 'Zero Integration Setup', desc: 'MCP server with 52 tools' },
           ].map((feature) => (
             <div key={feature.title} className="p-4 border border-border hover:border-[var(--sardis-orange)] transition-colors">
               <h3 className="font-bold font-display mb-1">{feature.title}</h3>

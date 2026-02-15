@@ -381,7 +381,7 @@ function App() {
               {
                 icon: icons.trendingUp,
                 title: "Instant Settlement",
-                description: "Real-time settlement via bank transfer or virtual card. No waiting days for your agents."
+                description: "Policy-routed settlement across stablecoin, card, and fiat rails with provider-dependent settlement times."
               },
               {
                 icon: icons.creditCardGear,
@@ -396,7 +396,7 @@ function App() {
               {
                 icon: icons.trendingUp,
                 title: "Smart Wallets",
-                description: "Zero-config smart wallets with built-in spending controls. No setup, no infrastructure — just create and go. You pay in dollars."
+                description: "ERC-4337 smart wallet preview lane on Base Sepolia with fail-closed routing and policy controls."
               },
               {
                 icon: icons.autoRenew,
@@ -534,8 +534,8 @@ function App() {
               {
                 icon: icons.trendingUp,
                 title: "Bank Funding",
-                description: "Fund agent wallets via ACH, wire transfer, or card. Funds are available instantly for agent use.",
-                details: ["ACH: 0.5% fee", "Wire: 0.25% fee", "Card: 2.9% + $0.30"]
+                description: "Fund agent wallets via provider-integrated ACH, wire, or card on-ramps.",
+                details: ["Provider-specific pricing", "Design-partner sandbox lanes", "Policy checks before spend"]
               },
               {
                 icon: icons.wallet,
@@ -547,7 +547,7 @@ function App() {
                 icon: icons.creditCardGear,
                 title: "USD Payouts",
                 description: "Withdraw to any US bank account. Automatic compliance checks on every withdrawal.",
-                details: ["Same-day ACH", "2-day wire transfers", "Merchant settlements"]
+                details: ["Provider-dependent settlement timing", "Compliance gating", "Off-ramp status tracking"]
               }
             ].map((feature, i) => (
               <motion.div
@@ -595,7 +595,7 @@ function App() {
               <span className="ml-4 text-sm font-mono text-muted-foreground">fiat-ramp.ts</span>
             </div>
             <div className="p-6 font-mono text-sm leading-relaxed bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
-              <pre className="whitespace-pre">{`import { SardisFiatRamp } from '@sardis/fiat-ramp'
+              <pre className="whitespace-pre">{`import { SardisFiatRamp } from '@sardis/ramp'
 
 const ramp = new SardisFiatRamp({
   sardisKey: 'sk_...',

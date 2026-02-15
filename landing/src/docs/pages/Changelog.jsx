@@ -2,9 +2,42 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.8.7',
+    version: '0.8.8',
     date: '2026-02-15',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'ERC-4337 contracts: SardisSmartAccount, SardisSmartAccountFactory, SardisVerifyingPaymaster',
+          'Base-first deploy script: DeployERC4337BaseSepolia.s.sol plus deployment artifact template',
+          'Wallet model/API/SDK/MCP parity for account_type=mpc_v1|erc4337_v2',
+          'Wallet transfer response metadata: execution_path and user_op_hash',
+          'Fail-closed ERC-4337 runtime path with Pimlico bundler/paymaster configuration gates',
+          'Wallet upgrade endpoint: POST /api/v2/wallets/{id}/upgrade-smart-account',
+          'DB migration 017 for ERC-4337 wallet metadata fields',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Docs truth alignment for non-custodial language: stablecoin live-MPC posture vs fiat partner rails',
+          'Roadmap and FAQ updated to reflect Base Sepolia preview lane for gasless wallets',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'ERC-4337 wallets now fail closed when bundler/paymaster config is missing',
+          'Chain allowlist gate for ERC-4337 execution to prevent accidental unsupported-chain routing',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.8.7',
+    date: '2026-02-15',
+    tag: '',
     changes: [
       {
         type: 'added',

@@ -24,10 +24,11 @@ Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **policy-controlled wal
 
 ---
 
-## What's New (Snapshot: 2026-02-13)
+## What's New (Snapshot: 2026-02-15)
 
 - **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
 - **52 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
+- **ERC-4337 Base Preview** — `account_type=erc4337_v2` + fail-closed UserOperation runtime path (feature-flagged, Base Sepolia lane)
 - **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented and wired in package exports
 - **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
 - **Security Hardening** — Production fail-closed checks for webhook signatures, CORS, and Redis-backed rate limiting
@@ -51,7 +52,6 @@ client = SardisClient(api_key="sk_...")
 agent = client.agents.create(name="my-agent", description="Procurement bot")
 wallet = client.wallets.create(
     agent_id=agent.agent_id,
-    chain="base_sepolia",
     currency="USDC",
     limit_per_tx=Decimal("100.00"),
 )
@@ -85,7 +85,7 @@ const tx = await client.wallets.transfer(wallet.wallet_id, {
   destination: '0x...',
   amount: '25.00',
   token: 'USDC',
-  chain: 'base',
+  chain: 'base_sepolia',
   domain: 'openai.com',
 });
 ```
@@ -117,6 +117,12 @@ Add to your `claude_desktop_config.json`:
 - **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
 - **Non-custodial posture:** requires `SARDIS_CHAIN_MODE=live` and `SARDIS_MPC__NAME=turnkey` or `fireblocks`. `local` and `simulated` modes are not non-custodial.
 - **Proof commands:** run `bash scripts/release/readiness_check.sh` and `bash scripts/release/critical_path_check.sh` before production rollouts.
+
+### Stablecoin vs Fiat Rails
+
+- **Stablecoin rail:** wallet signing and on-chain settlement path. In live MPC mode, this is where Sardis can be operated with a non-custodial posture.
+- **Fiat/card rails:** settlement is executed by regulated partners/issuers (for example Bridge and Lithic). These flows are policy-governed by Sardis, but custody/settlement is partner-mediated.
+- **Design-partner note:** ERC-4337 gas sponsorship is currently a Base Sepolia feature-flagged lane until full chain-by-chain proof artifacts are published.
 
 ---
 
@@ -209,7 +215,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **Multi-Chain** | Base, Polygon, Ethereum, Arbitrum, Optimism |
 | **5 Protocols** | AP2, TAP, UCP, A2A, x402 |
 | **MCP Native** | Zero-integration setup for Claude/Cursor |
-| **Compliance** | KYC (Persona), AML (Elliptic), SAR reporting |
+| **Compliance** | KYC/AML/SAR framework with provider integrations and staged onboarding lanes |
 
 ---
 
@@ -273,7 +279,7 @@ pip install sardis[cards]   # + virtual cards
 | Core Policy Engine | Live (150+ tests) |
 | MPC Wallets (Turnkey) | Live |
 | On-Chain Settlement | Live (5 chains) |
-| KYC/AML Compliance | Integrated (Persona, Elliptic) |
+| KYC/AML Compliance | Staged integration lanes (Persona/Elliptic onboarding in progress) |
 | MCP Server | v0.2.7 (52 tools) |
 | Python SDK (15 packages) | Live on PyPI |
 | TypeScript SDK (4 packages) | Live on npm |

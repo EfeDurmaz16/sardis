@@ -16,7 +16,7 @@ const faqs = [
       },
       {
         q: 'Is Sardis custodial or non-custodial?',
-        a: 'Sardis is fully non-custodial. Your funds are secured by MPC (Multi-Party Computation) wallets via Turnkey. Key shares are distributed - Sardis never has custody of your funds. Transactions only execute when policy conditions are met and proper cryptographic authorization is provided.'
+        a: 'For stablecoin wallets in live MPC mode (Turnkey/Fireblocks), Sardis operates in a non-custodial posture. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (for example Bridge and card issuers), so custody and settlement are partner-mediated for that portion of the flow.'
       },
       {
         q: 'What is the Unified Wallet Architecture?',
@@ -88,11 +88,11 @@ const faqs = [
     questions: [
       {
         q: 'What are gasless smart wallets?',
-        a: 'Gasless smart wallets use ERC-4337 account abstraction so your agents never need to hold ETH for gas fees. Sardis sponsors gas via a paymaster contract — agents only transact in stablecoins (USDC, USDT, EURC). The wallet is a smart contract account signed via Turnkey MPC, with UserOperations submitted through a bundler (Pimlico).'
+        a: 'Gasless smart wallets use ERC-4337 account abstraction so agents can transact without holding native gas tokens in their own wallet. Sardis uses a paymaster + bundler lane for sponsored UserOperations. Current release is a design-partner preview on Base Sepolia behind feature flags.'
       },
       {
         q: 'Do I need to migrate from v1 MPC wallets?',
-        a: 'No. Existing v1 MPC wallets continue working unchanged. New wallets can opt into v2 smart accounts by passing account_type="erc4337" during creation. Both v1 and v2 wallets are governed by the same Policy Engine and support the same tokens and chains.'
+        a: 'No. Existing v1 MPC wallets continue working unchanged. New wallets can opt into v2 metadata by passing account_type=\"erc4337_v2\" during creation, then setting a deployed smart_account_address via the upgrade endpoint. Both paths use the same policy engine.'
       },
       {
         q: 'What is the stablecoin-only token allowlist?',
@@ -100,7 +100,7 @@ const faqs = [
       },
       {
         q: 'Which chains support gasless smart wallets?',
-        a: 'Gasless smart wallets are supported on all target L2s: Base, Polygon, Arbitrum, Optimism, and Ethereum mainnet. All chains support ERC-4337 EntryPoint v0.7 and compatible paymasters.'
+        a: 'Current preview lane is Base Sepolia. Multi-chain ERC-4337 expansion (Base mainnet, Polygon, Arbitrum, Optimism, Ethereum) is on the roadmap and remains feature-flagged until conformance proofs are published per chain.'
       },
     ]
   },
@@ -109,7 +109,7 @@ const faqs = [
     questions: [
       {
         q: 'How does MPC wallet security work?',
-        a: 'MPC distributes private key shares across parties. In Sardis, key shares are held by you and Turnkey\'s infrastructure. Transactions require threshold signatures - no single party (including Sardis) can move funds. This provides non-custodial security with enterprise-grade signing infrastructure.'
+        a: 'MPC distributes private key shares across parties. In Sardis live MPC mode, transactions require threshold signatures so no single party can move funds unilaterally. This is the basis for the non-custodial posture on stablecoin rails.'
       },
       {
         q: 'How do spending policies work?',

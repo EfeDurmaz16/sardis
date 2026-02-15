@@ -24,7 +24,7 @@ export default function SardisV087LaunchHardening() {
           </span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">
-          Sardis v0.8.7: Smart Wallets, DB Persistence & Launch Hardening
+          Sardis v0.8.8: ERC-4337 Base Preview + Truth Alignment
         </h1>
         <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
           <span className="flex items-center gap-1">
@@ -38,26 +38,25 @@ export default function SardisV087LaunchHardening() {
       </header>
 
       <p className="text-lg text-muted-foreground leading-relaxed">
-        v0.8.7 is our biggest pre-launch release. It introduces ERC-4337 gasless smart wallet architecture,
-        migrates card and ledger services to PostgreSQL persistence, adds comprehensive spending policy
-        documentation, and hardens webhook security for production.
+        v0.8.8 adds a real ERC-4337 implementation lane for design partners on Base Sepolia, introduces
+        account_type parity across API and SDKs, and tightens public language around non-custodial posture
+        and fiat partner rails.
       </p>
 
       <h2>Gasless Smart Wallets (ERC-4337)</h2>
 
       <p>
-        The headline feature: agents can now transact without holding ETH. We designed an ERC-4337 account
-        abstraction architecture where Sardis sponsors gas fees via a paymaster contract. Agents only deal
-        in stablecoins (USDC, USDT, EURC).
+        The headline feature is a Base Sepolia preview lane for sponsored UserOperations. This lane is
+        feature-flagged and fail-closed until bundler/paymaster and signer configuration are present.
       </p>
 
       <ul>
-        <li>Smart accounts implementing <code>IAccount</code> with Turnkey MPC signing</li>
-        <li>Paymaster integration (Pimlico) sponsors gas — agents pay $0.00 in gas</li>
-        <li>Bundler submits UserOperations to ERC-4337 EntryPoint v0.7</li>
-        <li>Supported on all 5 L2s: Base, Polygon, Arbitrum, Optimism, Ethereum</li>
-        <li>Backward compatible — v1 MPC wallets continue working unchanged</li>
-        <li>Stablecoin-only token allowlist: on-chain smart contract prevents non-stablecoin transfers</li>
+        <li>New contracts: <code>SardisSmartAccount</code>, <code>SardisSmartAccountFactory</code>, <code>SardisVerifyingPaymaster</code></li>
+        <li>Pimlico bundler/paymaster clients wired into execution runtime with explicit config gates</li>
+        <li>Wallet API and SDKs now support <code>account_type=&quot;erc4337_v2&quot;</code></li>
+        <li>Transfer responses now expose <code>execution_path</code> and <code>user_op_hash</code></li>
+        <li>v1 wallets remain unchanged and fully supported</li>
+        <li>Current preview scope: Base Sepolia only</li>
       </ul>
 
       <h2>PostgreSQL Persistence for Cards & Ledger</h2>
@@ -101,30 +100,28 @@ export default function SardisV087LaunchHardening() {
         <li>Rejects missing, invalid, and stale timestamps with explicit 401 responses</li>
       </ul>
 
-      <h2>SDK and Package Metadata Parity</h2>
+      <h2>SDK and API Parity</h2>
 
       <p>
-        We fixed runtime version constants so SDK clients report the same versions that are published in
-        npm and PyPI metadata. This prevents confusion during support and release validation.
+        Wallet and transfer surfaces now expose the same fields across API, Python SDK, TypeScript SDK, and MCP.
       </p>
 
       <ul>
-        <li><code>@sardis/sdk</code> runtime version aligned to <code>0.3.4</code></li>
-        <li><code>sardis-sdk</code> runtime version aligned to <code>0.3.3</code></li>
-        <li><code>@sardis/ai-sdk</code> workspace dependency aligned to current SDK range</li>
+        <li>Create wallet now supports <code>account_type</code> (<code>mpc_v1</code> or <code>erc4337_v2</code>)</li>
+        <li>Upgrade endpoint added: <code>POST /api/v2/wallets/{'{id}'}/upgrade-smart-account</code></li>
+        <li>Transfer response includes <code>execution_path</code> and <code>user_op_hash</code> when applicable</li>
       </ul>
 
-      <h2>Launch Docs Cleanup</h2>
+      <h2>Truth Alignment</h2>
 
       <p>
-        We normalized public claims and quickstarts so they map cleanly to code:
+        We normalized docs and landing claims to match what is actually running:
       </p>
 
       <ul>
-        <li>MCP tools: <strong>52</strong></li>
-        <li>Total packages: <strong>19</strong> (npm + PyPI)</li>
-        <li>Supported chains: <strong>5</strong></li>
-        <li>README TypeScript quickstart now uses current SDK methods</li>
+        <li>Non-custodial wording now explicitly scoped to stablecoin live-MPC mode</li>
+        <li>Fiat rails wording now reflects regulated partner settlement/custody boundaries</li>
+        <li>Gasless wording now explicitly states Base Sepolia preview scope</li>
       </ul>
 
       <div className="not-prose mt-8 p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">

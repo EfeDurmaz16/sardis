@@ -6,7 +6,7 @@ const TermsOfService = () => {
       <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Geist, system-ui, sans-serif' }}>
         Terms of Service
       </h1>
-      <p className="text-muted-foreground mb-8">Last updated: January 25, 2026</p>
+      <p className="text-muted-foreground mb-8">Last updated: February 15, 2026</p>
 
       <div className="prose prose-slate dark:prose-invert max-w-none space-y-8">
         <section>
@@ -28,7 +28,7 @@ const TermsOfService = () => {
             Sardis provides payment infrastructure for AI agents, including:
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-3 space-y-2">
-            <li>Non-custodial MPC (Multi-Party Computation) wallets</li>
+            <li>Policy-controlled wallets (MPC and smart-account modes)</li>
             <li>Stablecoin payment execution on supported blockchains</li>
             <li>Spending policy management and enforcement</li>
             <li>KYC/AML compliance tools</li>
@@ -64,14 +64,19 @@ const TermsOfService = () => {
         <section>
           <h2 className="text-xl font-semibold mb-4">5. Non-Custodial Services</h2>
           <p className="text-muted-foreground leading-relaxed">
-            Sardis provides <strong>non-custodial</strong> wallet services. This means:
+            Sardis can provide a <strong>non-custodial posture</strong> for stablecoin wallets in live MPC mode.
+            This means:
           </p>
           <ul className="list-disc list-inside text-muted-foreground mt-3 space-y-2">
-            <li>We do not hold, control, or have access to your private keys</li>
-            <li>You maintain full control and ownership of your digital assets</li>
+            <li>Sardis does not directly hold spendable private keys in that mode</li>
+            <li>You retain control of wallet authorization boundaries through provider and policy configuration</li>
             <li>You are solely responsible for securing your wallet credentials</li>
             <li>Lost keys cannot be recovered by Sardis</li>
           </ul>
+          <p className="text-muted-foreground leading-relaxed mt-3">
+            Fiat transfers and card settlement are executed by regulated third-party providers and issuers.
+            Those rails may involve partner custody and settlement controls outside Sardis-managed key material.
+          </p>
           <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 mt-4">
             <p className="text-yellow-600 dark:text-yellow-400 font-medium">
               Warning: Cryptocurrency transactions are irreversible. Once a transaction is confirmed on the
@@ -114,8 +119,8 @@ const TermsOfService = () => {
             We reserve the right to change our fees with 30 days notice.
           </p>
           <p className="text-muted-foreground leading-relaxed mt-3">
-            Blockchain transaction fees (gas fees) are separate from Sardis fees and are paid directly
-            to network validators.
+            Blockchain transaction fees (gas fees) are separate from Sardis fees. Depending on wallet type and
+            route, gas may be paid directly by your wallet or sponsored by a configured paymaster.
           </p>
         </section>
 

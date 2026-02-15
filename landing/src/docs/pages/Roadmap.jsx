@@ -101,11 +101,11 @@ export default function Roadmap() {
       date: 'Jan 2026',
       items: [
         { text: 'Fiat on-ramp via Onramper', done: true },
-        { text: 'Fiat off-ramp via Bridge', done: true },
-        { text: 'Virtual card issuance (Lithic)', done: true },
+        { text: 'Fiat off-ramp via Bridge (sandbox/design-partner lane)', done: true },
+        { text: 'Virtual card issuance (Lithic sandbox lane)', done: true },
         { text: 'Unified USDC/USD balance (1:1)', done: true },
-        { text: 'KYC integration (Persona)', done: true },
-        { text: 'AML screening (Elliptic)', done: true },
+        { text: 'KYC integration (Persona production onboarding)', done: false },
+        { text: 'AML screening (Elliptic production onboarding)', done: false },
       ],
     },
     {
@@ -224,7 +224,9 @@ export default function Roadmap() {
       status: 'current',
       date: 'Feb 2026 (Now)',
       items: [
-        { text: 'ERC-4337 gasless smart wallets design (paymaster + bundler architecture)', done: true },
+        { text: 'ERC-4337 smart account contracts + factory + verifying paymaster (Base-first)', done: true },
+        { text: 'Fail-closed UserOperation runtime path with Pimlico bundler/paymaster config gates', done: true },
+        { text: 'Wallet API/SDK/MCP parity for account_type=erc4337_v2 and execution_path metadata', done: true },
         { text: 'PostgreSQL persistence for card services (conversions, mappings, offramp)', done: true },
         { text: 'PostgreSQL persistence for ledger engine (NUMERIC(38,18) precision)', done: true },
         { text: 'Alembic migration 015: card_conversions, card_wallet_mappings, offramp_transactions, ledger_entries_v2', done: true },
@@ -241,8 +243,9 @@ export default function Roadmap() {
       status: 'upcoming',
       date: 'Q1-Q2 2026',
       items: [
-        { text: 'ERC-4337 smart account contracts (SardisSmartAccount v2)', done: false },
-        { text: 'Pimlico bundler + paymaster integration', done: false },
+        { text: 'Turnkey/Fireblocks UserOperation signing path (production signer support)', done: false },
+        { text: 'Base Sepolia full E2E proof artifact with userOp hash and on-chain receipt', done: false },
+        { text: 'Base mainnet ERC-4337 rollout with staged sponsor caps', done: false },
         { text: 'Stablecoin-only token allowlist smart contract', done: false },
         { text: 'Recurring payments engine (subscription registry + scheduled billing + auto-fund)', done: false },
         { text: 'Multi-tenant organization support', done: false },

@@ -4,8 +4,8 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
-    title: 'Sardis v0.8.7: Smart Wallets, DB Persistence & Launch Hardening',
-    excerpt: 'v0.8.7 introduces ERC-4337 gasless smart wallet architecture, migrates card and ledger services to PostgreSQL, adds comprehensive spending policy docs, and hardens webhook security for production.',
+    title: 'Sardis v0.8.8: ERC-4337 Base Preview + Truth Alignment',
+    excerpt: 'v0.8.8 ships ERC-4337 smart-account contracts and fail-closed UserOperation routing for the Base Sepolia design-partner lane, adds wallet account_type parity across API/SDK/MCP, and updates docs to distinguish stablecoin non-custodial posture from fiat partner rails.',
     date: '2026-02-15',
     readTime: '6 min read',
     category: 'Release',
