@@ -185,7 +185,13 @@
     @apply bg-background text-foreground;
     font-family: var(--font-body);
     font-weight: 400;
+    line-height: 1.45;
     letter-spacing: -0.01em;
+    font-kerning: normal;
+    font-feature-settings: "kern", "liga", "calt";
+    text-rendering: optimizeLegibility;
+    text-wrap: pretty;
+    hanging-punctuation: first allow-end last;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -197,7 +203,24 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.04em;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    hyphens: none;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  h1 { margin-top: 0; }
+
+  blockquote {
+    font-size: 0.95em;
+    padding-left: 1.5rem;
+    border-left: 3px solid var(--sardis-orange);
+  }
+
+  p + p {
+    margin-top: 0.75em;
   }
 }
 

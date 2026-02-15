@@ -182,7 +182,7 @@ function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
+      <section className="relative pt-28 pb-20 md:pt-40 md:pb-32 overflow-hidden">
         {/* Atmospheric background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/4 -right-32 w-96 h-96 bg-[var(--sardis-orange)]/5 rounded-full blur-3xl" />
@@ -194,27 +194,49 @@ function App() {
             initial="initial"
             animate="animate"
             variants={staggerContainer}
-            className="max-w-4xl mx-auto text-center"
+            className="grid md:grid-cols-[1fr_auto] gap-16 items-center"
           >
-            <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight mb-6">
-              The Payment OS for the{" "}
-              <span className="text-[var(--sardis-orange)]">Agent Economy</span>
-            </motion.h1>
+            {/* Left: Text content */}
+            <div>
+              <motion.div variants={fadeInUp} className="mb-5">
+                <Badge variant="outline" className="border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)] rounded-none font-mono text-xs tracking-widest">
+                  DEVELOPER PREVIEW
+                </Badge>
+              </motion.div>
 
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Prevent Financial Hallucinations. Give your agents programmable wallets with natural language spending limits.
-            </motion.p>
+              <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight mb-6">
+                The Payment OS for the{" "}
+                <span className="text-[var(--sardis-orange)]">Agent Economy</span>
+              </motion.h1>
 
-            <motion.div variants={fadeInUp} className="flex flex-col items-center gap-8">
-              <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
-              <Button
-                size="lg"
-                className="h-14 px-12 text-lg rounded-none bg-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)]/90 text-white font-semibold shadow-xl shadow-[var(--sardis-orange)]/25 hover:shadow-[var(--sardis-orange)]/40 hover:scale-[1.02] transition-all duration-200"
-                onClick={() => setIsWaitlistOpen(true)}
-              >
-                Become a Design Partner
-                <span className="ml-2 text-xl">→</span>
-              </Button>
+              <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed">
+                Give your agents programmable wallets with natural language spending limits. Prevent financial hallucinations before they happen.
+              </motion.p>
+
+              <motion.div variants={fadeInUp}>
+                <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
+              </motion.div>
+            </div>
+
+            {/* Right: Metrics stack */}
+            <motion.div
+              variants={fadeInUp}
+              className="hidden md:flex flex-col gap-4 w-64"
+            >
+              {[
+                { label: "PACKAGES", value: "19", sub: "npm + PyPI" },
+                { label: "MCP TOOLS", value: "50+", sub: "payment, treasury, cards" },
+                { label: "PROTOCOLS", value: "4", sub: "AP2, UCP, A2A, TAP" },
+              ].map((stat, i) => (
+                <div
+                  key={i}
+                  className="p-5 border border-border hover:border-[var(--sardis-orange)] transition-colors group"
+                >
+                  <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground mb-1 font-mono">{stat.label}</div>
+                  <div className="text-2xl font-bold text-foreground font-display group-hover:text-[var(--sardis-orange)] transition-colors">{stat.value}</div>
+                  <div className="text-xs text-muted-foreground font-mono">{stat.sub}</div>
+                </div>
+              ))}
             </motion.div>
           </motion.div>
         </div>
@@ -233,7 +255,7 @@ function App() {
         <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-10">
-              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.3em] font-bold mb-4 uppercase">5 Lines of Code</p>
+              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">5 Lines of Code</p>
               <h3 className="text-3xl md:text-4xl font-semibold font-display">Give your agent a wallet. Set the rules. Done.</h3>
             </div>
             <div className="border border-border bg-card overflow-hidden">
@@ -281,7 +303,7 @@ function App() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <p className="text-lg font-mono text-destructive tracking-[0.3em] font-bold mb-4 uppercase">The Problem</p>
+              <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">The Problem</p>
               <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6 leading-tight">The "Read-Only" Trap</h2>
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
                 AI agents can reason, plan, and execute complex workflows — but they <strong className="text-foreground font-medium">fail at checkout</strong>.
@@ -349,7 +371,7 @@ function App() {
             className="mt-32 md:mt-40 max-w-5xl mx-auto"
           >
             <div className="text-center mb-10">
-              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.3em] font-bold mb-4 uppercase">Interactive Demo</p>
+              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Interactive Demo</p>
               <h3 className="text-3xl md:text-4xl font-bold font-display">Experience the Spending Firewall</h3>
             </div>
             <SardisPlayground />
@@ -364,62 +386,66 @@ function App() {
         </div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
-            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.3em] font-bold mb-4 uppercase">What You Get</p>
+            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">What You Get</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Banking for Bots</h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Programmable wallets, virtual cards, and spending controls purpose-built for AI agents.
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6">
+          {/* Bento grid — hero card spans 2 cols */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
                 icon: icons.autoRenew,
                 title: "Autonomous Execution",
-                description: "Bypass human-centric 2FA barriers with secure autonomous signing. Agents can finally pay."
+                description: "Bypass human-centric 2FA barriers with secure autonomous signing. Agents can finally pay.",
+                span: false,
               },
               {
                 icon: icons.trendingUp,
                 title: "Instant Settlement",
-                description: "Policy-routed settlement across stablecoin, card, and fiat rails with provider-dependent settlement times."
+                description: "Policy-routed settlement across stablecoin, card, and fiat rails with provider-dependent settlement times.",
+                span: false,
               },
               {
                 icon: icons.creditCardGear,
                 title: "Virtual Cards",
-                description: "Instant Visa cards via Lithic. Your agent can pay anywhere cards are accepted — online and physical POS."
+                description: "Instant Visa cards via Lithic. Your agent can pay anywhere cards are accepted — online and physical POS.",
+                span: false,
               },
               {
                 icon: icons.handshake,
                 title: "Multi-Agent Groups",
-                description: "Shared budgets across agent teams. Each agent gets individual limits, the group enforces the total. No agent overspends the team."
-              },
-              {
-                icon: icons.trendingUp,
-                title: "Smart Wallets",
-                description: "ERC-4337 smart wallet preview lane on Base Sepolia with fail-closed routing and policy controls."
+                description: "Shared budgets across agent teams. Each agent gets individual limits, the group enforces the total. No agent overspends the team.",
+                span: true,
               },
               {
                 icon: icons.autoRenew,
                 title: "Recurring Payments",
-                description: "Subscription-aware billing engine. Register merchant + amount + cycle — Sardis auto-funds, auto-approves, and notifies the owner at every stage."
-              }
+                description: "Subscription-aware billing engine. Register merchant + amount + cycle — Sardis auto-funds, auto-approves, and notifies the owner at every stage.",
+                span: false,
+              },
             ].map((feature, i) => (
               <motion.div
                 key={i}
-                className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                className={feature.span ? "md:col-span-2 lg:col-span-2" : ""}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
               >
-                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
-                  <CardHeader>
-                    <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
-                      <IsometricIcon src={feature.icon} className="w-10 h-10" isDark={isDark} />
+                <Card className={cn(
+                  "h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group",
+                  feature.span && "flex flex-col md:flex-row md:items-center"
+                )}>
+                  <CardHeader className={feature.span ? "md:w-1/2" : ""}>
+                    <div className="w-14 h-14 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
+                      <IsometricIcon src={feature.icon} className="w-9 h-9" isDark={isDark} />
                     </div>
                     <CardTitle className="text-lg font-semibold font-display">{feature.title}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className={feature.span ? "md:w-1/2" : ""}>
                     <p className="text-muted-foreground leading-relaxed">
                       {feature.description}
                     </p>
@@ -630,9 +656,9 @@ const balances = await client.treasury.getBalances()`}</pre>
         </div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
-            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.3em] font-bold mb-4 uppercase">Why Sardis</p>
+            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Why Sardis</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">The Policy Firewall</h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Others build payment rails. We build the intelligence layer that prevents financial hallucinations.
             </p>
           </div>
@@ -821,56 +847,63 @@ const balances = await client.treasury.getBalances()`}</pre>
       <section className="py-28 md:py-36 border-t border-border">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <p className="text-lg font-mono text-[var(--sardis-teal-strong)] dark:text-[#9DD9D2] tracking-[0.3em] font-bold mb-4 uppercase">How It Works</p>
+            <p className="text-lg font-mono text-[var(--sardis-teal-strong)] dark:text-[#9DD9D2] tracking-[0.08em] font-bold mb-4 uppercase">How It Works</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Four Steps. Zero Complexity.</h2>
             <p className="text-base text-muted-foreground max-w-lg mx-auto">
               Your agent says "pay." Sardis handles everything between intent and settlement.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {[
-              {
-                step: "01",
-                title: "Agent Creates Intent",
-                desc: "Your agent says 'Pay OpenAI $45 for API credits.' Sardis takes it from there."
-              },
-              {
-                step: "02",
-                title: "Policy Validation",
-                desc: "Spending limits, merchant rules, time windows — all checked before any money moves."
-              },
-              {
-                step: "03",
-                title: "Secure Signing",
-                desc: "Secure custody ensures no single entity can move funds. The agent never touches private keys."
-              },
-              {
-                step: "04",
-                title: "Settlement",
-                desc: "Payment executes via the optimal rail — virtual card, bank transfer, or direct settlement."
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors group"
-              >
-                <div className="text-2xl font-mono font-bold text-[var(--sardis-orange)]/30 group-hover:text-[var(--sardis-orange)] transition-colors mb-4">
-                  {item.step}
-                </div>
-                <h4 className="font-semibold font-display mb-2">{item.title}</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
+          {/* Timeline-style steps with connecting line */}
+          <div className="relative">
+            {/* Connecting line (desktop) */}
+            <div className="hidden lg:block absolute top-10 left-[calc(12.5%+1rem)] right-[calc(12.5%+1rem)] h-px bg-border z-0" />
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+              {[
+                {
+                  step: "01",
+                  title: "Agent Creates Intent",
+                  desc: "Your agent says 'Pay OpenAI $45 for API credits.' Sardis takes it from there."
+                },
+                {
+                  step: "02",
+                  title: "Policy Validation",
+                  desc: "Spending limits, merchant rules, time windows — all checked before any money moves."
+                },
+                {
+                  step: "03",
+                  title: "Secure Signing",
+                  desc: "Secure custody ensures no single entity can move funds. The agent never touches private keys."
+                },
+                {
+                  step: "04",
+                  title: "Settlement",
+                  desc: "Payment executes via the optimal rail — virtual card, bank transfer, or direct settlement."
+                }
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.12 }}
+                  className="relative"
+                >
+                  {/* Step number circle */}
+                  <div className="w-10 h-10 border-2 border-[var(--sardis-orange)] bg-background flex items-center justify-center mb-5 font-mono font-bold text-sm text-[var(--sardis-orange)]">
+                    {item.step}
+                  </div>
+                  <h4 className="font-semibold font-display mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
 
-          <div className="max-w-2xl mx-auto">
+          <div className="mt-12 max-w-2xl mx-auto">
             <div className="border border-[var(--sardis-orange)]/20 bg-[var(--sardis-orange)]/5 p-6 text-center">
-              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.3em] font-bold uppercase mb-2">End to End</p>
+              <p className="text-sm font-mono text-[var(--sardis-orange)] tracking-[0.12em] font-bold uppercase mb-2">End to End</p>
               <p className="text-lg text-muted-foreground">
                 Intent → Policy Check → Secure Signing → Settlement
               </p>
