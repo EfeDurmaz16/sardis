@@ -222,15 +222,15 @@ export default function DocsSecurity() {
           <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
         </h2>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          The unified USDC/USD balance model (1:1 parity) introduces specific security considerations:
+          The unified USDC/USD balance model introduces specific security considerations:
         </p>
 
         <div className="not-prose grid md:grid-cols-2 gap-4">
           <div className="p-4 border border-border">
-            <h4 className="font-bold font-display mb-2">1:1 Parity Guarantee</h4>
+            <h4 className="font-bold font-display mb-2">Quote Integrity</h4>
             <p className="text-sm text-muted-foreground">
-              USDC↔USD conversions are executed at exactly 1:1 via Bridge, a regulated provider.
-              No slippage, no spread—like Coinbase Exchange treats USDC=USD.
+              USDC to USD conversions use provider quotes with explicit fee and output amount.
+              Sardis records quote IDs and references to keep settlement transparent.
             </p>
           </div>
           <div className="p-4 border border-border">
@@ -250,8 +250,8 @@ export default function DocsSecurity() {
           <div className="p-4 border border-border">
             <h4 className="font-bold font-display mb-2">Instant Settlement</h4>
             <p className="text-sm text-muted-foreground">
-              Conversions happen instantly at card authorization time. No delayed settlement
-              risk—the USD is available before the card transaction settles.
+              Conversion timing depends on route and provider behavior. Sardis tracks state
+              transitions so policy decisions are auditable even when settlement is asynchronous.
             </p>
           </div>
         </div>

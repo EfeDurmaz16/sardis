@@ -196,9 +196,9 @@ The agent handles the entire flow, including:
 
         <h2>Unified Balance</h2>
         <p>
-          The new unified balance treats USDC and USD as equivalent at 1:1 parity.
-          When you fund with fiat or deposit USDC, both appear as a single balance.
-          Card payments automatically convert USDC to USD at the point of purchase.
+          Unified balance means one policy budget across USD and stablecoin rails.
+          You can fund with fiat or USDC, and Sardis chooses the configured route.
+          Cross-rail conversion is quote-driven and can be batched to reduce cost.
         </p>
 
         <div className="not-prose p-4 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 mb-6">
