@@ -729,8 +729,120 @@ class TreasuryRepository:
                     """,
                     organization_id,
                     limit,
-                )
+            )
             return [dict(r) for r in rows]
+
+    async def list_retryable_payments(
+        self,
+        organization_id: str,
+        *,
+        max_retry_count: int = 2,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        retry_codes = {"R01", "R09"}
+        if not self._use_postgres():
+            rows = []
+            for (org, _), row in self._payments.items():
+                if org != organization_id:
+                    continue
+                if str(row.get("last_return_reason_code", "")) not in retry_codes:
+                    continue
+                if int(row.get("retry_count", 0) or 0) >= max_retry_count:
+                    continue
+                if str(row.get("status", "")).upper() not in {"RETURNED", "RETURN_INITIATED"}:
+                    continue
+                rows.append(row)
+            return rows[:limit]
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT * FROM ach_payments
+                WHERE organization_id = $1
+                  AND status = ANY($2::text[])
+                  AND last_return_reason_code = ANY($3::text[])
+                  AND retry_count < $4
+                ORDER BY updated_at DESC
+                LIMIT $5
+                """,
+                organization_id,
+                ["RETURNED", "RETURN_INITIATED"],
+                ["R01", "R09"],
+                max_retry_count,
+                limit,
+            )
+            return [dict(r) for r in rows]
+
+    async def get_org_payment_stats(self, organization_id: str, *, hours: int = 24) -> dict[str, int]:
+        if not self._use_postgres():
+            now = datetime.now(timezone.utc)
+            total_minor = 0
+            count = 0
+            for (org, _), row in self._payments.items():
+                if org != organization_id:
+                    continue
+                created_at = row.get("created_at")
+                if isinstance(created_at, str):
+                    try:
+                        created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    except Exception:
+                        created_dt = now
+                elif isinstance(created_at, datetime):
+                    created_dt = created_at
+                else:
+                    created_dt = now
+                if (now - created_dt).total_seconds() <= hours * 3600:
+                    count += 1
+                    total_minor += int(row.get("amount_minor", 0) or 0)
+            return {"count": count, "total_minor": total_minor}
+        pool = await self._get_pool()
+        if pool is None:
+            return {"count": 0, "total_minor": 0}
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*)::int AS count,
+                    COALESCE(SUM(amount_minor), 0)::bigint AS total_minor
+                FROM ach_payments
+                WHERE organization_id = $1
+                  AND created_at >= NOW() - ($2 || ' hours')::interval
+                """,
+                organization_id,
+                hours,
+            )
+            return {"count": int(row["count"]), "total_minor": int(row["total_minor"])}
+
+    async def list_organization_ids(self) -> list[str]:
+        if not self._use_postgres():
+            orgs = set()
+            for org, _ in self._payments.keys():
+                orgs.add(org)
+            for org, _ in self._financial_accounts.keys():
+                orgs.add(org)
+            for org, _ in self._external_bank_accounts.keys():
+                orgs.add(org)
+            return sorted(orgs)
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT organization_id
+                FROM (
+                    SELECT organization_id FROM ach_payments
+                    UNION
+                    SELECT organization_id FROM lithic_financial_accounts
+                    UNION
+                    SELECT organization_id FROM external_bank_accounts
+                ) t
+                WHERE organization_id IS NOT NULL
+                """
+            )
+            return [str(r["organization_id"]) for r in rows]
 
     async def record_treasury_webhook_event(
         self,

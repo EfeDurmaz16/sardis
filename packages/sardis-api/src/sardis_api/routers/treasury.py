@@ -156,6 +156,27 @@ def _map_event_type_to_status(event_type: str) -> Optional[str]:
     return mapping.get(normalized)
 
 
+async def _enforce_treasury_limits(
+    deps: TreasuryDependencies,
+    principal: Principal,
+    amount_minor: int,
+) -> None:
+    max_per_payment = int(os.getenv("SARDIS_TREASURY_MAX_PER_PAYMENT_MINOR", "250000000"))  # $2.5m
+    max_daily_org = int(os.getenv("SARDIS_TREASURY_MAX_DAILY_ORG_MINOR", "1000000000"))      # $10m/day
+    max_payments_per_hour = int(os.getenv("SARDIS_TREASURY_MAX_PAYMENTS_PER_HOUR", "300"))
+
+    if amount_minor > max_per_payment:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="treasury_per_payment_limit_exceeded")
+
+    day_stats = await deps.treasury_repo.get_org_payment_stats(principal.organization_id, hours=24)
+    if int(day_stats.get("total_minor", 0)) + int(amount_minor) > max_daily_org:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="treasury_daily_org_limit_exceeded")
+
+    hour_stats = await deps.treasury_repo.get_org_payment_stats(principal.organization_id, hours=1)
+    if int(hour_stats.get("count", 0)) >= max_payments_per_hour:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="treasury_velocity_limit_exceeded")
+
+
 @router.post("/account-holders/sync", response_model=list[FinancialAccountResponse])
 async def sync_account_holder_financial_accounts(
     payload: SyncAccountHolderRequest,
@@ -261,6 +282,7 @@ async def _create_ach_payment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="external_bank_account_not_found")
     if bool(eba.get("is_paused", False)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="external_bank_account_paused")
+    await _enforce_treasury_limits(deps, principal, payload.amount_minor)
 
     idem = payload.idempotency_key or get_idempotency_key(request) or str(uuid.uuid4())
 
