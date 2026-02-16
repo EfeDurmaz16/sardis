@@ -336,8 +336,12 @@ class SpendingPolicy:
 
         if resolved_category:
             for rule in self.merchant_rules:
-                if (rule.is_active() and rule.category and rule.max_per_tx
-                        and self._categories_match(rule.category, resolved_category)):
+                if not rule.is_active() or not rule.max_per_tx:
+                    continue
+                # Check both category and merchant_id fields — LLM parser
+                # may store category names in either field
+                match_field = rule.category or rule.merchant_id
+                if match_field and self._categories_match(match_field, resolved_category):
                     return rule.max_per_tx
 
         return self.limit_per_tx
