@@ -113,10 +113,18 @@ def create_cards_router(
         policy = await policy_store.fetch_policy(wallet.agent_id)
         if not policy:
             return True, "OK"
+        # Resolve MCC code to category for category-specific rule matching
+        merchant_category = None
+        if mcc_code:
+            from sardis_v2_core.mcc_service import get_mcc_info
+            mcc_info = get_mcc_info(mcc_code)
+            if mcc_info:
+                merchant_category = mcc_info.category
         ok, reason = policy.validate_payment(
             amount=amount,
             fee=Decimal("0"),
             mcc_code=mcc_code,
+            merchant_category=merchant_category,
         )
         return ok, reason
 

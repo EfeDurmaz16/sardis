@@ -430,6 +430,17 @@ async def apply_policy_from_nl(
                 if c and c not in policy.blocked_merchant_categories:
                     policy.blocked_merchant_categories.append(c)
 
+            # Category-specific per-tx overrides (e.g. "if grocery, max $200/tx")
+            for cl in parsed.get("category_limits", []):
+                policy.merchant_rules.append(
+                    MerchantRule(
+                        rule_type="override",
+                        category=cl["category"],
+                        max_per_tx=Decimal(str(cl["max_per_tx"])),
+                        reason=f"Category override: {cl['category']} max ${cl['max_per_tx']}/tx",
+                    )
+                )
+
         # In production, this would save to database
         await deps.policy_store.set_policy(request.agent_id, policy)
 

@@ -669,8 +669,17 @@ class RegexPolicyParser:
     AMOUNT_PATTERN = re.compile(r'\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)')
     PERIOD_PATTERN = re.compile(r'\b(per\s+)?(transaction|daily|weekly|monthly|day|week|month)\b', re.I)
     VENDOR_PATTERN = re.compile(r'\b(?:on|for|at)\s+([A-Za-z0-9_\-\.]+)', re.I)
-    BLOCK_PATTERN = re.compile(r'\bblock(?:ed|ing)?\s+([A-Za-z0-9_\-\s,&]+)', re.I)
+    BLOCK_PATTERN = re.compile(
+        r'\bblock(?:ed|ing)?\s+([A-Za-z0-9_\-\s,&]+?)'
+        r'(?=\s*[.,;]?\s*(?:if|for|when|set|make|require|limit)\b|\s*$)',
+        re.I,
+    )
     APPROVAL_PATTERN = re.compile(r'\b(?:require|need)s?\s+approval\s+(?:above|over|for)\s+\$?([\d,]+)', re.I)
+    # Category-specific limit: "if it is grocery, make max $200 per transaction"
+    CATEGORY_LIMIT_PATTERN = re.compile(
+        r'(?:if\s+(?:it\s+is|(?:the\s+)?category\s+(?:is|=))\s+|for\s+)(\w+)\s*[,:]?\s*(?:make\s+|set\s+)?(?:the\s+)?max(?:imum)?\s+\$?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per\s+transaction|per[_\s]tx)',
+        re.I,
+    )
 
     def parse(self, natural_language_policy: str) -> dict:
         """
@@ -750,6 +759,17 @@ class RegexPolicyParser:
             raw = block_match.group(1)
             categories = re.split(r'\s*,\s+and\s+|\s*,\s*|\s+and\s+|\s*&\s*', raw)
             result["blocked_categories"] = [c.strip().lower() for c in categories if c.strip()]
+
+        # Extract category-specific limits: "if it is grocery, max $200 per transaction"
+        category_limits = []
+        for m in self.CATEGORY_LIMIT_PATTERN.finditer(sanitized):
+            cat = m.group(1).strip().lower()
+            amt = float(m.group(2).replace(",", ""))
+            _max = float(NLPolicyParser.MAX_PER_TX)
+            if amt > _max:
+                amt = _max
+            category_limits.append({"category": cat, "max_per_tx": amt})
+        result["category_limits"] = category_limits
 
         # Extract approval threshold
         approval_match = self.APPROVAL_PATTERN.search(sanitized)

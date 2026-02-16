@@ -177,7 +177,9 @@ class SpendingPolicy:
                 return False, mcc_reason
 
         # Check per-transaction limit (includes fee — audit-F08)
-        if total_cost > self.limit_per_tx:
+        # Category-specific overrides take precedence over global limit
+        effective_per_tx = self._get_effective_per_tx_limit(mcc_code, merchant_category)
+        if total_cost > effective_per_tx:
             return False, "per_transaction_limit"
 
         # --- Spending limit checks (all use total_cost = amount + fee) ---
@@ -271,7 +273,9 @@ class SpendingPolicy:
                 return False, mcc_reason
 
         # Per-tx limit includes fee (audit-F08)
-        if total_cost > self.limit_per_tx:
+        # Category-specific overrides take precedence over global limit
+        effective_per_tx = self._get_effective_per_tx_limit(mcc_code, merchant_category)
+        if total_cost > effective_per_tx:
             return False, "per_transaction_limit"
         if self.spent_total + total_cost > self.limit_total:
             return False, "total_limit_exceeded"
@@ -294,6 +298,49 @@ class SpendingPolicy:
             return True, "requires_approval"
 
         return True, "OK"
+
+    @staticmethod
+    def _categories_match(rule_cat: str, resolved_cat: str) -> bool:
+        """Compare categories with singular/plural normalization."""
+        a = rule_cat.lower().strip()
+        b = resolved_cat.lower().strip()
+        if a == b:
+            return True
+        # Build plural/singular variants of `a` and check if `b` matches any
+        variants = {a}
+        if a.endswith("ies"):
+            variants.add(a[:-3] + "y")       # groceries -> grocery
+        elif a.endswith("s"):
+            variants.add(a[:-1])              # alcohols -> alcohol
+        else:
+            variants.add(a + "s")             # alcohol -> alcohols
+            if a.endswith("y"):
+                variants.add(a[:-1] + "ies")  # grocery -> groceries
+        return b in variants
+
+    def _get_effective_per_tx_limit(
+        self,
+        mcc_code: Optional[str] = None,
+        merchant_category: Optional[str] = None,
+    ) -> Decimal:
+        """Return effective per-tx limit, considering category-specific overrides."""
+        if not self.merchant_rules:
+            return self.limit_per_tx
+
+        # Resolve MCC to category if not already provided
+        resolved_category = merchant_category
+        if not resolved_category and mcc_code:
+            info = get_mcc_info(mcc_code)
+            if info:
+                resolved_category = info.category
+
+        if resolved_category:
+            for rule in self.merchant_rules:
+                if (rule.is_active() and rule.category and rule.max_per_tx
+                        and self._categories_match(rule.category, resolved_category)):
+                    return rule.max_per_tx
+
+        return self.limit_per_tx
 
     def _check_merchant_rules(
         self,
