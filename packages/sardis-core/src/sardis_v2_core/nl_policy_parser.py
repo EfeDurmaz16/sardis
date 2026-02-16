@@ -669,7 +669,7 @@ class RegexPolicyParser:
     AMOUNT_PATTERN = re.compile(r'\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)')
     PERIOD_PATTERN = re.compile(r'\b(per\s+)?(transaction|daily|weekly|monthly|day|week|month)\b', re.I)
     VENDOR_PATTERN = re.compile(r'\b(?:on|for|at)\s+([A-Za-z0-9_\-\.]+)', re.I)
-    BLOCK_PATTERN = re.compile(r'\bblock(?:ed|ing)?\s+([A-Za-z0-9_\-\s,]+)', re.I)
+    BLOCK_PATTERN = re.compile(r'\bblock(?:ed|ing)?\s+([A-Za-z0-9_\-\s,&]+)', re.I)
     APPROVAL_PATTERN = re.compile(r'\b(?:require|need)s?\s+approval\s+(?:above|over|for)\s+\$?([\d,]+)', re.I)
 
     def parse(self, natural_language_policy: str) -> dict:
@@ -746,8 +746,10 @@ class RegexPolicyParser:
         # Extract blocked categories
         block_match = self.BLOCK_PATTERN.search(sanitized)
         if block_match:
-            categories = [c.strip().lower() for c in block_match.group(1).split(",")]
-            result["blocked_categories"] = [c for c in categories if c]
+            # Split on comma, "and", "&" to handle "block gambling and alcohol"
+            raw = block_match.group(1)
+            categories = re.split(r'\s*,\s+and\s+|\s*,\s*|\s+and\s+|\s*&\s*', raw)
+            result["blocked_categories"] = [c.strip().lower() for c in categories if c.strip()]
 
         # Extract approval threshold
         approval_match = self.APPROVAL_PATTERN.search(sanitized)
