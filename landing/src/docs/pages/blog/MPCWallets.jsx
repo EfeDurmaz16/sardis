@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import SEO, { createArticleSchema, createBreadcrumbSchema } from '@/components/SEO';
 
 export default function MPCWallets() {
   return (
+    <>
+      <SEO
+        title="Understanding MPC Wallets for Agent Security"
+        description="Multi-Party Computation wallets distribute key shares so no single entity can move funds. Learn how Sardis uses threshold ECDSA to provide non-custodial, policy-enforced wallets for AI agents."
+        path="/docs/blog/mpc-wallets"
+        type="article"
+        article={{ publishedDate: '2025-01-05' }}
+        schemas={[
+          createArticleSchema({
+            title: 'Understanding MPC Wallets for Agent Security',
+            description: 'Multi-Party Computation wallets distribute key shares so no single entity can move funds. Learn how Sardis uses threshold ECDSA to provide non-custodial, policy-enforced wallets for AI agents.',
+            path: '/docs/blog/mpc-wallets',
+            publishedDate: '2025-01-05',
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog', href: '/docs/blog' },
+            { name: 'MPC Wallets' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
@@ -292,5 +315,6 @@ export default function MPCWallets() {
         </div>
       </footer>
     </article>
+    </>
   );
 }

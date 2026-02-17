@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsPolicies() {
   return (
+    <>
+      <SEO
+        title="Natural Language Spending Policies"
+        description="Define AI agent spending rules in plain English with Sardis. Set per-transaction and daily limits, vendor allowlists, category restrictions, and time-based rules — enforced cryptographically."
+        path="/docs/policies"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Spending Policies' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -265,5 +280,6 @@ async with SardisClient(api_key="sk_...") as client:
         </ul>
       </section>
     </article>
+    </>
   );
 }

@@ -1,5 +1,31 @@
+import SEO, { createBreadcrumbSchema, createHowToSchema } from '@/components/SEO';
+
 export default function DocsQuickstart() {
   return (
+    <>
+      <SEO
+        title="Quick Start Guide"
+        description="Get Sardis running in under 5 minutes. Install the SDK, create an MPC wallet, set a spending policy, and execute your first AI agent payment on Base Sepolia testnet."
+        path="/docs/quickstart"
+        schemas={[
+          createHowToSchema({
+            name: 'Get Started with Sardis in 5 Minutes',
+            description: 'Set up Sardis payment infrastructure for AI agents using MCP or SDK.',
+            steps: [
+              { name: 'Install MCP Server', text: 'Run npx @sardis/mcp-server init --mode simulated to scaffold local config.' },
+              { name: 'Configure Claude Desktop', text: 'Add the Sardis MCP server entry to your claude_desktop_config.json file.' },
+              { name: 'Install Python SDK', text: 'Run pip install sardis to install the Python client.' },
+              { name: 'Create a wallet', text: 'Call client.wallets.create() with an agent_id, chain, and spending policy.' },
+              { name: 'Execute a payment', text: 'Call wallet.pay() with a destination, amount, and purpose to transact.' },
+            ],
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Quick Start' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -299,5 +325,6 @@ SARDIS_RPC_URL=https://sepolia.base.org`}</pre>
         </ul>
       </section>
     </article>
+    </>
   );
 }

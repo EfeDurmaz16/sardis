@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsSDKTypeScript() {
   return (
+    <>
+      <SEO
+        title="TypeScript SDK Reference"
+        description="Official TypeScript SDK for Sardis — typed resources and Zod-validated models for wallets, payments, cards, policies, treasury, UCP checkout, and A2A agent communication. Install with npm install @sardis/sdk."
+        path="/docs/sdk-typescript"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'TypeScript SDK' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -140,5 +155,6 @@ const client = new SardisClient({
         </div>
       </section>
     </article>
+    </>
   );
 }

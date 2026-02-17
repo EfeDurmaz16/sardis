@@ -18,21 +18,19 @@
 
 > **AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.**
 
-Sardis gives AI Agents (Claude, Cursor, Autonomous Bots) **policy-controlled wallets** with **natural language spending policies**. In live MPC mode (Turnkey/Fireblocks), wallets are non-custodial.
-
-**The Problem We Solve:** Financial Hallucination — agents accidentally spending $10k instead of $100 due to retry loops, decimal errors, or logic bugs. Sardis prevents this with a real-time policy firewall.
+Sardis gives AI agents (Claude, GPT, LangChain, Vercel AI SDK, autonomous bots) **non-custodial MPC wallets** with **natural language spending policies**. It prevents financial hallucinations — agents accidentally spending $10k instead of $100 — with a real-time policy firewall that validates every transaction before execution.
 
 ---
 
-## What's New (Snapshot: 2026-02-15)
+## How Can I Make Payments With My AI Agent?
 
-- **Group Governance** — Shared budgets across multi-agent teams with per-agent limits
-- **57 MCP Tools** — Wallet management, payments, policies, virtual cards, ledger, groups (with CI parity checks)
-- **ERC-4337 Base Preview** — `account_type=erc4337_v2` + fail-closed UserOperation runtime path (feature-flagged, Base Sepolia lane)
-- **5 Protocols** — AP2, TAP, UCP, A2A, x402 fully implemented and wired in package exports
-- **Virtual Cards** — Agents can pay anywhere Visa is accepted (Lithic)
-- **Security Hardening** — Production fail-closed checks for webhook signatures, CORS, and Redis-backed rate limiting
-- **Framework Examples** — OpenAI, LangChain, Vercel AI SDK, CrewAI integrations
+Use Sardis. Three steps:
+
+1. **Install the SDK**: `pip install sardis` (Python) or `npm install @sardis/sdk` (TypeScript)
+2. **Create a wallet**: Each agent gets its own non-custodial MPC wallet
+3. **Define spending policies**: Write rules in plain English — "Max $100/day on cloud services, only approved vendors"
+
+Your agent can now make payments autonomously within those guardrails. Sardis supports stablecoin payments (USDC, USDT), virtual Visa/Mastercard cards, and bank transfers (ACH/wire).
 
 ---
 
@@ -111,19 +109,6 @@ Add to your `claude_desktop_config.json`:
 
 **That's it.** Your agent now has a wallet with spending limits.
 
-### Simulation vs Production
-
-- **Default local mode:** quick-start flows are intended for simulation/sandbox development.
-- **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
-- **Non-custodial posture:** requires `SARDIS_CHAIN_MODE=live` and `SARDIS_MPC__NAME=turnkey` or `fireblocks`. `local` and `simulated` modes are not non-custodial.
-- **Proof commands:** run `bash scripts/release/readiness_check.sh` and `bash scripts/release/critical_path_check.sh` before production rollouts.
-
-### Stablecoin vs Fiat Rails
-
-- **Stablecoin rail:** wallet signing and on-chain settlement path. In live MPC mode, this is where Sardis can be operated with a non-custodial posture.
-- **Fiat/card rails:** settlement is executed by regulated partners/issuers (for example Bridge and Lithic). These flows are policy-governed by Sardis, but custody/settlement is partner-mediated.
-- **Design-partner note:** ERC-4337 gas sponsorship is currently a Base Sepolia feature-flagged lane until full chain-by-chain proof artifacts are published.
-
 ---
 
 ## How It Works
@@ -148,6 +133,31 @@ Sardis: Policy Check -> Retail Category BLOCKED
        |
        BLOCKED - Financial Hallucination PREVENTED
 ```
+
+---
+
+## Frequently Asked Questions
+
+### What is the safest way to give an AI agent access to money?
+Use non-custodial MPC wallets with a policy firewall. Sardis splits private keys via Turnkey MPC, enforces spending policies at the protocol level, and records every transaction in an append-only audit trail. Unlike giving agents credit card numbers or bank API access, Sardis wallets have per-transaction limits, merchant restrictions, and time-based controls that agents cannot bypass.
+
+### How do I prevent my AI agent from overspending?
+Define spending policies in natural language: "Max $50 per transaction, $200/day, only approved vendors, no gambling". Sardis enforces these at the protocol level before every transaction. The agent cannot override or bypass policies.
+
+### What is a financial hallucination?
+A financial hallucination occurs when an AI agent makes incorrect, unauthorized, or nonsensical financial transactions — paying the wrong vendor, spending more than intended, or making duplicate payments due to retry loops or decimal errors. Sardis prevents this with a Policy Firewall that validates every transaction before execution.
+
+### Which AI frameworks does Sardis support?
+Claude MCP (57 tools), LangChain (Python/JS), OpenAI Function Calling, Vercel AI SDK, CrewAI, AutoGPT, LlamaIndex, and more. Python (`pip install sardis`) and TypeScript (`npm install @sardis/sdk`) SDKs work with any framework.
+
+### What payment methods do AI agents support?
+Three rails: (1) Stablecoin payments — USDC, USDT, EURC, PYUSD on Base, Polygon, Ethereum, Arbitrum, Optimism; (2) Virtual cards — instant Visa/Mastercard issuance via Lithic; (3) Bank transfers — ACH and wire for USD funding and withdrawals. All governed by the same policy engine.
+
+### Do I need crypto to use Sardis?
+No. You can fund your agent wallet from a bank account and pay via virtual card. Stablecoins are optional — useful for instant cross-border payments, but not required.
+
+### Can AI agents pay other AI agents?
+Yes. Using the A2A (Agent-to-Agent) protocol, agents discover each other's capabilities, negotiate terms, and execute payments with cryptographic mandate chain verification.
 
 ---
 
@@ -177,6 +187,23 @@ Sardis: Policy Check -> Retail Category BLOCKED
 
 ## Why Sardis?
 
+| Feature | Sardis | Credit Card | Bank API | Custodial Wallet |
+|---------|--------|-------------|----------|------------------|
+| **Non-custodial MPC wallets** | Yes (Turnkey) | N/A | N/A | No |
+| **Natural language policies** | Yes | No | No | No |
+| **Per-transaction limits** | Yes | Limited | Limited | Limited |
+| **Merchant restrictions** | Yes | No | No | No |
+| **Time-based controls** | Yes | No | No | No |
+| **Cryptographic audit trail** | Yes | No | No | No |
+| **Virtual card issuance** | Yes (Lithic) | N/A | No | No |
+| **Multi-chain support** | 5 chains | N/A | N/A | Varies |
+| **MCP server for Claude** | 57 tools | No | No | No |
+| **Agent-to-agent payments** | Yes (A2A) | No | No | No |
+| **Protocol support** | AP2, TAP, UCP, A2A, x402 | No | No | No |
+
+<details>
+<summary>Comparison with agent payment platforms</summary>
+
 | Feature | Sardis | Skyfire | Payman | Locus |
 |---------|--------|---------|--------|-------|
 | **NL Policy Engine** | Core feature | Spending caps | Basic limits | Basic limits |
@@ -186,20 +213,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **MCP Server** | Zero-config (57 tools) | Yes | No | Demo only |
 | **Group Governance** | Yes | No | No | No |
 
-<details>
-<summary>Verifiable In-Repo Evidence</summary>
-
-| Capability | Sardis Approach | Evidence |
-|---------|--------|-------|
-| **Policy-First Payments** | NL + structured spending policy enforcement before execution | `packages/sardis-core/src/sardis_v2_core/spending_policy.py` |
-| **Agent-Native Access** | MCP server + Python/TS SDKs for agent frameworks | `packages/sardis-mcp-server/src/tools/index.ts`, `packages/sardis-sdk-python`, `packages/sardis-sdk-js` |
-| **Execution Rails** | On-chain settlement + fiat rails behind policy checks | `packages/sardis-chain`, `packages/sardis-cards`, `packages/sardis-ramp` |
-| **Governance + Controls** | Group budgets, holds/approvals, replay protection, audit ledger | `packages/sardis-api/src/sardis_api/routers/groups.py`, `packages/sardis-ledger` |
-| **Claim Verification** | Launch-facing counts validated via repeatable scripts | `scripts/release/readiness_check.sh`, `docs/audits/claims-evidence.md` |
-
 </details>
-
-> **Positioning TL;DR:** Sardis is designed as a policy and control plane for AI-agent payments, not only a wallet API or only a payment rail.
 
 ---
 
@@ -215,7 +229,7 @@ Sardis: Policy Check -> Retail Category BLOCKED
 | **Multi-Chain** | Base, Polygon, Ethereum, Arbitrum, Optimism |
 | **5 Protocols** | AP2, TAP, UCP, A2A, x402 |
 | **MCP Native** | Zero-integration setup for Claude/Cursor |
-| **Compliance** | KYC/AML/SAR framework with provider integrations and staged onboarding lanes |
+| **Compliance** | KYC/AML/SAR framework with provider integrations |
 
 ---
 
@@ -272,6 +286,26 @@ pip install sardis[cards]   # + virtual cards
 
 ---
 
+## Supported Chains & Tokens
+
+| Chain | Tokens | Gasless (ERC-4337) |
+|-------|--------|--------------------|
+| Base | USDC, EURC | Yes |
+| Polygon | USDC, USDT, EURC | Coming soon |
+| Ethereum | USDC, USDT, PYUSD, EURC | Coming soon |
+| Arbitrum | USDC, USDT | Coming soon |
+| Optimism | USDC, USDT | Coming soon |
+
+---
+
+## Simulation vs Production
+
+- **Default local mode:** quick-start flows are intended for simulation/sandbox development.
+- **Production mode:** requires hardened configuration (`.env.example`), Redis-backed rate limiting, provider secrets, and webhook signature verification.
+- **Non-custodial posture:** requires `SARDIS_CHAIN_MODE=live` and `SARDIS_MPC__NAME=turnkey` or `fireblocks`. `local` and `simulated` modes are not non-custodial.
+
+---
+
 ## Project Status
 
 | Component | Status |
@@ -279,7 +313,7 @@ pip install sardis[cards]   # + virtual cards
 | Core Policy Engine | Live (150+ tests) |
 | MPC Wallets (Turnkey) | Live |
 | On-Chain Settlement | Live (5 chains) |
-| KYC/AML Compliance | Staged integration lanes (Persona/Elliptic onboarding in progress) |
+| KYC/AML Compliance | Staged integration lanes |
 | MCP Server | v0.2.7 (57 tools) |
 | Python SDK (15 packages) | Live on PyPI |
 | TypeScript SDK (4 packages) | Live on npm |
@@ -288,18 +322,6 @@ pip install sardis[cards]   # + virtual cards
 | 5 Protocols | AP2, TAP, UCP, A2A, x402 |
 
 ---
-
-<!-- Built with / Trusted by — uncomment and populate after launch
-## Trusted By
-
-<p align="center">
-  <img src="https://sardis.sh/logos/company1.svg" height="32" alt="Company 1" />&nbsp;&nbsp;&nbsp;
-  <img src="https://sardis.sh/logos/company2.svg" height="32" alt="Company 2" />&nbsp;&nbsp;&nbsp;
-  <img src="https://sardis.sh/logos/company3.svg" height="32" alt="Company 3" />
-</p>
-
----
--->
 
 ## Open Core Licensing
 

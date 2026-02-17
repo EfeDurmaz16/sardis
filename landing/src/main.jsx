@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import { Analytics } from '@vercel/analytics/react'
 import App from './App.jsx'
@@ -35,6 +36,7 @@ import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
 import DocsSecurity from './docs/pages/Security.jsx'
 import DocsDeployment from './docs/pages/Deployment.jsx'
 import DocsFAQ from './docs/pages/FAQ.jsx'
+import DocsComparison from './docs/pages/Comparison.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
 import DocsChangelog from './docs/pages/Changelog.jsx'
 import DocsRoadmap from './docs/pages/Roadmap.jsx'
@@ -68,6 +70,7 @@ import Dashboard from './pages/Dashboard.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <HelmetProvider>
     <BrowserRouter>
       <Analytics />
       <Routes>
@@ -107,6 +110,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="security" element={<DocsSecurity />} />
           <Route path="deployment" element={<DocsDeployment />} />
           <Route path="faq" element={<DocsFAQ />} />
+          <Route path="comparison" element={<DocsComparison />} />
           <Route path="blog" element={<DocsBlog />} />
           <Route path="blog/introducing-sardis" element={<IntroducingSardis />} />
           <Route path="blog/financial-hallucination-prevention" element={<FinancialHallucination />} />
@@ -136,5 +140,6 @@ createRoot(document.getElementById('root')).render(
         </Route>
       </Routes>
     </BrowserRouter>
+    </HelmetProvider>
   </StrictMode>,
 )

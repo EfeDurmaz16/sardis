@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import SEO, { createArticleSchema, createBreadcrumbSchema } from '@/components/SEO';
 
 export default function IntroducingSardis() {
   return (
+    <>
+      <SEO
+        title="Introducing Sardis: Secure Payments for AI Agents"
+        description="Sardis provides MPC wallets and natural language policy enforcement so AI agents can transact autonomously while preventing financial hallucination errors."
+        path="/docs/blog/introducing-sardis"
+        type="article"
+        article={{ publishedDate: '2025-01-15' }}
+        schemas={[
+          createArticleSchema({
+            title: 'Introducing Sardis: Secure Payments for AI Agents',
+            description: 'Sardis provides MPC wallets and natural language policy enforcement so AI agents can transact autonomously while preventing financial hallucination errors.',
+            path: '/docs/blog/introducing-sardis',
+            publishedDate: '2025-01-15',
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog', href: '/docs/blog' },
+            { name: 'Introducing Sardis' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
@@ -163,5 +186,6 @@ await wallet.pay({
         </div>
       </footer>
     </article>
+    </>
   );
 }

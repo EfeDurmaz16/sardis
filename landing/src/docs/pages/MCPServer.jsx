@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsMCPServer() {
   return (
+    <>
+      <SEO
+        title="MCP Server for Claude & Cursor"
+        description="Add 50+ payment tools to Claude Desktop and Cursor with the Sardis MCP Server. Zero-code integration for wallet management, payments, treasury operations, and virtual cards."
+        path="/docs/mcp-server"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'MCP Server' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -275,5 +290,6 @@ debit your USD treasury balance by default. Stablecoin conversion is optional an
         </div>
       </section>
     </article>
+    </>
   );
 }

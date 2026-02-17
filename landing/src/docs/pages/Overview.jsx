@@ -1,7 +1,21 @@
 import { Link } from 'react-router-dom';
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
 
 export default function DocsOverview() {
   return (
+    <>
+      <SEO
+        title="Documentation Overview"
+        description="Sardis Payment OS documentation — MPC wallets, natural language spending policies, and payment infrastructure for AI agents. Supports Python, TypeScript, and MCP integrations."
+        path="/docs/overview"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Overview' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -141,5 +155,6 @@ export default function DocsOverview() {
         </div>
       </section>
     </article>
+    </>
   );
 }

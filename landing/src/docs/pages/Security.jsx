@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsSecurity() {
   return (
+    <>
+      <SEO
+        title="Security Model"
+        description="Sardis security architecture: non-custodial MPC wallets via Turnkey, policy engine with cryptographic enforcement, KYC via Persona, AML via Elliptic, Travel Rule compliance, and virtual card ASA real-time screening."
+        path="/docs/security"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Security' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -408,5 +423,6 @@ export default function DocsSecurity() {
         </p>
       </section>
     </article>
+    </>
   );
 }

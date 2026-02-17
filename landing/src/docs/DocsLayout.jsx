@@ -52,6 +52,7 @@ const navigation = [
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
       { name: 'Deployment', href: '/docs/deployment' },
+      { name: 'Why Sardis', href: '/docs/comparison' },
       { name: 'FAQ', href: '/docs/faq' },
       { name: 'Blog', href: '/docs/blog' },
       { name: 'Changelog', href: '/docs/changelog' },

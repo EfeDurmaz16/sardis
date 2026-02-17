@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsWallets() {
   return (
+    <>
+      <SEO
+        title="AI Agent Wallets - MPC Wallet Guide"
+        description="Create non-custodial MPC wallets for AI agents using Sardis. Private keys are never stored — signing happens across distributed nodes via Turnkey. Supports Base, Polygon, Ethereum, Arbitrum, and Optimism."
+        path="/docs/wallets"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Wallets' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -104,5 +119,6 @@ const wallets = await client.wallets.list({ agentId: 'my-agent' });`}</pre>
         </div>
       </section>
     </article>
+    </>
   );
 }

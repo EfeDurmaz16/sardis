@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsAP2() {
   return (
+    <>
+      <SEO
+        title="Agent Payment Protocol (AP2)"
+        description="AP2 is the Google, PayPal, Mastercard, and Visa consortium standard for secure agent payments. Sardis verifies the full Intent → Cart → Payment mandate chain with signature validation and replay protection."
+        path="/docs/ap2"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'AP2 Protocol' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -97,5 +112,6 @@ console.log('Transaction:', result.txHash);`}</pre>
         </div>
       </section>
     </article>
+    </>
   );
 }

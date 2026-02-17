@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import SEO, { createArticleSchema, createBreadcrumbSchema } from '@/components/SEO';
 
 export default function FinancialHallucination() {
   return (
+    <>
+      <SEO
+        title="Financial Hallucination Prevention: Why AI Needs Guardrails"
+        description="AI agents can hallucinate financial transactions just like they hallucinate facts. Learn how Sardis's cryptographic policy enforcement prevents unauthorized spending before funds move."
+        path="/docs/blog/financial-hallucination-prevention"
+        type="article"
+        article={{ publishedDate: '2025-01-10' }}
+        schemas={[
+          createArticleSchema({
+            title: 'Financial Hallucination Prevention: Why AI Needs Guardrails',
+            description: 'AI agents can hallucinate financial transactions just like they hallucinate facts. Learn how Sardis\'s cryptographic policy enforcement prevents unauthorized spending before funds move.',
+            path: '/docs/blog/financial-hallucination-prevention',
+            publishedDate: '2025-01-10',
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog', href: '/docs/blog' },
+            { name: 'Financial Hallucination Prevention' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
@@ -218,5 +241,6 @@ wallet.pay({
         </div>
       </footer>
     </article>
+    </>
   );
 }

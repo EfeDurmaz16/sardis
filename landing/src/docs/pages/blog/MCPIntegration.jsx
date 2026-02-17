@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import SEO, { createArticleSchema, createBreadcrumbSchema } from '@/components/SEO';
 
 export default function MCPIntegration() {
   return (
+    <>
+      <SEO
+        title="MCP Integration: Zero-Code AI Payments in Claude"
+        description="Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required — configure wallets, execute payments, and manage spending policies through natural conversation."
+        path="/docs/blog/mcp-integration"
+        type="article"
+        article={{ publishedDate: '2025-01-08' }}
+        schemas={[
+          createArticleSchema({
+            title: 'MCP Integration: Zero-Code AI Payments in Claude',
+            description: 'Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required — configure wallets, execute payments, and manage spending policies through natural conversation.',
+            path: '/docs/blog/mcp-integration',
+            publishedDate: '2025-01-08',
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog', href: '/docs/blog' },
+            { name: 'MCP Integration' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
@@ -221,5 +244,6 @@ export default function MCPIntegration() {
         </div>
       </footer>
     </article>
+    </>
   );
 }

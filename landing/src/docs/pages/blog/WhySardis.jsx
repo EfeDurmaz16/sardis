@@ -1,8 +1,31 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
+import SEO, { createArticleSchema, createBreadcrumbSchema } from '@/components/SEO';
 
 export default function WhySardis() {
   return (
+    <>
+      <SEO
+        title="Why Sardis: The Policy Firewall for Agent Payments"
+        description="Sardis fills a critical gap in the agent payment landscape: natural language policy enforcement with non-custodial MPC security, virtual cards, and zero-config MCP server integration."
+        path="/docs/blog/why-sardis"
+        type="article"
+        article={{ publishedDate: '2026-01-24' }}
+        schemas={[
+          createArticleSchema({
+            title: 'Why Sardis: The Policy Firewall for Agent Payments',
+            description: 'Sardis fills a critical gap in the agent payment landscape: natural language policy enforcement with non-custodial MPC security, virtual cards, and zero-config MCP server integration.',
+            path: '/docs/blog/why-sardis',
+            publishedDate: '2026-01-24',
+          }),
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog', href: '/docs/blog' },
+            { name: 'Why Sardis' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
@@ -313,5 +336,6 @@ export default function WhySardis() {
         </div>
       </footer>
     </article>
+    </>
   );
 }

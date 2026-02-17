@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsPayments() {
   return (
+    <>
+      <SEO
+        title="AI Agent Payments Guide"
+        description="Execute AI agent payments via bank transfer, virtual card, or stablecoins with Sardis. Every payment passes policy checks and compliance screening before chain execution."
+        path="/docs/payments"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Payments' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -135,5 +150,6 @@ const txs = await client.transactions.list({
         </div>
       </section>
     </article>
+    </>
   );
 }

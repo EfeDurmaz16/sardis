@@ -196,7 +196,7 @@ export default function DemoPage() {
             <div>
               <h1 className="text-3xl font-bold text-white font-display">Demo Wizard</h1>
               <p className="text-gray-400 mt-1">
-                Investor-grade end-to-end: Turnkey wallet → policy → card → simulated purchase → enforcement.
+                End-to-end walkthrough: Turnkey wallet → policy → card → simulated purchase → enforcement.
               </p>
             </div>
           </div>

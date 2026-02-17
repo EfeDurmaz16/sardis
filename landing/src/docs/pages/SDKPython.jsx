@@ -1,5 +1,20 @@
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
+
 export default function DocsSDKPython() {
   return (
+    <>
+      <SEO
+        title="Python SDK Reference"
+        description="Official Python SDK for Sardis — async and sync clients for wallets, payments, virtual cards, policies, treasury, and webhooks. Install with pip install sardis-sdk."
+        path="/docs/sdk-python"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Python SDK' },
+          ]),
+        ]}
+      />
     <article className="prose prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
@@ -151,5 +166,6 @@ with SardisClient(api_key=os.environ["SARDIS_API_KEY"]) as client:
         </div>
       </section>
     </article>
+    </>
   );
 }

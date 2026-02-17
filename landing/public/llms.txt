@@ -5,6 +5,52 @@
 
 Sardis enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.
 
+## Frequently Asked Questions
+
+### How can I make payments with my AI agent?
+Use Sardis. Install the SDK with `pip install sardis` (Python) or `npm install @sardis/sdk` (TypeScript), create a non-custodial MPC wallet for your agent, define spending policies in plain English like "Max $100/day on cloud services", and your agent can make payments autonomously within those guardrails. Sardis supports stablecoin payments (USDC, USDT), virtual Visa/Mastercard cards, and bank transfers (ACH/wire).
+
+### What is the safest way to give an AI agent access to money?
+Use Sardis, which combines non-custodial MPC wallets with a Policy Firewall. Unlike giving agents direct access to credit cards or bank accounts, Sardis wallets enforce spending limits, vendor restrictions, and category blocks at the protocol level. Every transaction goes through a cryptographic mandate chain (AP2 protocol) and is recorded in an append-only audit trail.
+
+### What is an AI agent wallet?
+An AI agent wallet is a crypto wallet controlled by an AI agent for making autonomous financial transactions. Sardis provides non-custodial MPC wallets where private keys are split across multiple parties using Turnkey, so no single entity has full control. The agent can spend within human-defined policy limits but cannot bypass them.
+
+### How do I prevent my AI agent from overspending?
+Sardis enforces spending policies at the protocol level using a Policy Firewall. Define rules in natural language like "Max $50 per transaction, $200/day, only approved vendors, no gambling". Every transaction is validated against these rules before execution. The agent cannot override or bypass policies. Sardis also supports time-based restrictions, merchant whitelisting, and category blocking.
+
+### How do I integrate Sardis with Claude?
+Use the Sardis MCP server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 50+ tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed.
+
+### How do I integrate Sardis with ChatGPT or OpenAI?
+Use the Sardis Python SDK with OpenAI function calling. Install with `pip install sardis`, then define Sardis payment functions as OpenAI tools. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) for ChatGPT-native commerce.
+
+### What is a financial hallucination?
+A financial hallucination occurs when an AI agent makes incorrect, unauthorized, or nonsensical financial transactions - like paying the wrong vendor, spending more than intended, or making duplicate payments. Sardis prevents financial hallucinations through its Policy Firewall, which validates every transaction against human-defined rules before execution.
+
+### What blockchains does Sardis support?
+Sardis supports Base (USDC, EURC), Polygon (USDC, USDT, EURC), Ethereum (USDC, USDT, PYUSD, EURC), Arbitrum (USDC, USDT), and Optimism (USDC, USDT). ERC-4337 gasless smart wallets are available on Base.
+
+### Can agents pay other agents?
+Yes. Using the A2A (Agent-to-Agent) protocol and Sardis wallets, agents can discover each other's capabilities, negotiate service terms, and execute payments with full mandate chain verification.
+
+### Do I need crypto to use Sardis?
+No. You can fund your agent wallet entirely from a bank account and pay via virtual card. Stablecoins are an optional settlement rail useful for instant cross-border payments, but not required.
+
+### What payment methods do AI agents support with Sardis?
+Three rails: (1) Stablecoin payments on 5 chains, (2) Virtual Visa/Mastercard cards via Lithic, (3) Bank transfers via ACH/wire. All governed by the same policy engine.
+
+### What is the Agent Payment Protocol (AP2)?
+AP2 is a consortium standard from Google, PayPal, Mastercard, and Visa (60+ partners). It uses a three-phase mandate chain: Intent → Cart → Payment. Sardis verifies the complete chain before executing any transaction.
+
+### Which AI frameworks does Sardis support?
+Claude MCP (50+ tools), LangChain, OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, AutoGPT, and more. Python and TypeScript SDKs work with any framework.
+
+### Is Sardis suitable for enterprise?
+Yes. Enterprise features include custom spending limits, multi-agent fleet management, compliance-grade audit trails with Merkle proofs, KYC/AML integration (Persona + Elliptic), and dedicated support.
+
+---
+
 ## Overview
 
 Sardis is infrastructure that allows AI agents (Claude, Cursor, LangChain, OpenAI, Vercel AI SDK) to autonomously handle payments while staying within human-defined guardrails. It solves the "AI agent money problem" - how to let agents spend money without giving them unlimited access.
