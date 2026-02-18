@@ -601,13 +601,17 @@ async def transfer_crypto(
 
         # Compliance (KYC/AML) enforcement
         # TODO: Migrate to PaymentOrchestrator gateway
-        if deps.compliance:
-            compliance_result = await deps.compliance.preflight(mandate)
-            if not compliance_result.allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=compliance_result.reason or "compliance_check_failed",
-                )
+        if not deps.compliance:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="compliance_engine_not_configured",
+            )
+        compliance_result = await deps.compliance.preflight(mandate)
+        if not compliance_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=compliance_result.reason or "compliance_check_failed",
+            )
 
         try:
             receipt = await deps.chain_executor.dispatch_payment(mandate)

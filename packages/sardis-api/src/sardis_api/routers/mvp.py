@@ -258,23 +258,31 @@ async def execute_payment(
 
     # SpendingPolicy enforcement
     # TODO: Migrate to PaymentOrchestrator gateway
-    if deps.wallet_manager:
-        policy_result = await deps.wallet_manager.async_validate_policies(mandate)
-        if not getattr(policy_result, "allowed", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
-            )
+    if not deps.wallet_manager:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="wallet_manager_not_configured",
+        )
+    policy_result = await deps.wallet_manager.async_validate_policies(mandate)
+    if not getattr(policy_result, "allowed", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
+        )
 
     # Compliance (KYC/AML) enforcement
     # TODO: Migrate to PaymentOrchestrator gateway
-    if deps.compliance:
-        compliance_result = await deps.compliance.preflight(mandate)
-        if not compliance_result.allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=compliance_result.reason or "compliance_check_failed",
-            )
+    if not deps.compliance:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="compliance_engine_not_configured",
+        )
+    compliance_result = await deps.compliance.preflight(mandate)
+    if not compliance_result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=compliance_result.reason or "compliance_check_failed",
+        )
 
     try:
         chain_receipt = await deps.chain_executor.dispatch_payment(mandate)

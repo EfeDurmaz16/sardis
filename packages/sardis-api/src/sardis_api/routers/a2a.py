@@ -446,38 +446,47 @@ async def _handle_payment_request(
 
     # Policy + Compliance checks for message-based payments (CRITICAL - was previously unprotected)
     # TODO: Migrate to PaymentOrchestrator gateway
-    if deps.wallet_manager:
-        policy = await deps.wallet_manager.async_validate_policies(mandate)
-        if not getattr(policy, "allowed", False):
-            return A2AMessageResponse(
-                message_id=str(uuid.uuid4()),
-                message_type="payment_response",
-                sender_id=msg.recipient_id,
-                recipient_id=msg.sender_id,
-                status="failed",
-                in_reply_to=msg.message_id,
-                correlation_id=msg.correlation_id,
-                error=getattr(policy, "reason", None) or "Policy denied payment",
-                error_code="policy_denied",
-            )
+    if not deps.wallet_manager:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="wallet_manager_not_configured",
+            error_code="configuration_error",
+        )
+    policy = await deps.wallet_manager.async_validate_policies(mandate)
+    if not getattr(policy, "allowed", False):
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=getattr(policy, "reason", None) or "Policy denied payment",
+            error_code="policy_denied",
+        )
 
-    if deps.compliance:
-        try:
-            compliance_result = await deps.compliance.preflight(mandate)
-            if not compliance_result.allowed:
-                return A2AMessageResponse(
-                    message_id=str(uuid.uuid4()),
-                    message_type="payment_response",
-                    sender_id=msg.recipient_id,
-                    recipient_id=msg.sender_id,
-                    status="failed",
-                    in_reply_to=msg.message_id,
-                    correlation_id=msg.correlation_id,
-                    error=compliance_result.reason or "compliance_check_failed",
-                    error_code="compliance_failed",
-                )
-        except Exception as e:
-            logger.error(f"Compliance check failed for A2A message payment: {e}")
+    if not deps.compliance:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="compliance_engine_not_configured",
+            error_code="configuration_error",
+        )
+    try:
+        compliance_result = await deps.compliance.preflight(mandate)
+        if not compliance_result.allowed:
             return A2AMessageResponse(
                 message_id=str(uuid.uuid4()),
                 message_type="payment_response",
@@ -486,9 +495,22 @@ async def _handle_payment_request(
                 status="failed",
                 in_reply_to=msg.message_id,
                 correlation_id=msg.correlation_id,
-                error="compliance_service_error",
-                error_code="compliance_error",
+                error=compliance_result.reason or "compliance_check_failed",
+                error_code="compliance_failed",
             )
+    except Exception as e:
+        logger.error(f"Compliance check failed for A2A message payment: {e}")
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="compliance_service_error",
+            error_code="compliance_error",
+        )
 
     try:
         receipt = await deps.chain_executor.dispatch_payment(mandate)

@@ -207,13 +207,17 @@ async def execute_ap2_payment(
 
         # SpendingPolicy enforcement
         # TODO: Migrate to PaymentOrchestrator gateway
-        if deps.wallet_manager:
-            policy_result = await deps.wallet_manager.async_validate_policies(payment)
-            if not getattr(policy_result, "allowed", False):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
-                )
+        if not deps.wallet_manager:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="wallet_manager_not_configured",
+            )
+        policy_result = await deps.wallet_manager.async_validate_policies(payment)
+        if not getattr(policy_result, "allowed", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
+            )
 
         # Step 2: Perform compliance checks
         compliance = await perform_compliance_checks(
