@@ -434,6 +434,7 @@ class OfframpService:
     ):
         self._provider = provider or MockOfframpProvider()
         self._transactions: Dict[str, OfframpTransaction] = {}
+        self._quote_cache: Dict[str, OfframpQuote] = {}
 
         # Velocity limits configuration
         self._daily_limit_cents = daily_limit_cents or self.DEFAULT_DAILY_LIMIT_CENTS
@@ -450,14 +451,26 @@ class OfframpService:
         input_chain: str = "base",
         output_currency: str = "USD",
     ) -> OfframpQuote:
-        """Get a quote for off-ramp."""
-        return await self._provider.get_quote(
+        """Get a quote for off-ramp. Caches quote by ID for later validation."""
+        quote = await self._provider.get_quote(
             input_token=input_token,
             input_amount_minor=input_amount_minor,
             input_chain=input_chain,
             output_currency=output_currency,
         )
-    
+        self._quote_cache[quote.quote_id] = quote
+        return quote
+
+    def get_cached_quote(self, quote_id: str) -> Optional[OfframpQuote]:
+        """Look up a cached quote by ID. Returns None if not found or expired."""
+        quote = self._quote_cache.get(quote_id)
+        if quote is None:
+            return None
+        if quote.is_expired:
+            del self._quote_cache[quote_id]
+            return None
+        return quote
+
     def _check_velocity_limits(
         self,
         wallet_id: str,
@@ -552,6 +565,10 @@ class OfframpService:
         Raises:
             VelocityLimitExceeded: If velocity limits would be exceeded
         """
+        # Validate quote is not expired
+        if quote.is_expired:
+            raise ValueError(f"Quote {quote.quote_id} has expired")
+
         # Check velocity limits if wallet_id provided
         if wallet_id:
             self._check_velocity_limits(wallet_id, quote.output_amount_cents)

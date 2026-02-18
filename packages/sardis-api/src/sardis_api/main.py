@@ -598,12 +598,30 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Ramp routes (fiat on-ramp / off-ramp)
     onramper_api_key = os.getenv("ONRAMPER_API_KEY", "")
     onramper_webhook_secret = os.getenv("ONRAMPER_WEBHOOK_SECRET", "")
+    bridge_webhook_secret = os.getenv("BRIDGE_WEBHOOK_SECRET", "")
+
+    # SardisFiatRamp for bank withdrawal and merchant payment
+    fiat_ramp = None
+    if bridge_api_key:
+        try:
+            from sardis_ramp.ramp import SardisFiatRamp
+            fiat_ramp = SardisFiatRamp(
+                sardis_api_key=os.getenv("SARDIS_API_KEY", ""),
+                bridge_api_key=bridge_api_key,
+                environment="sandbox" if not settings.is_production else "production",
+            )
+            logger.info("SardisFiatRamp initialized for bank withdrawal/merchant payment")
+        except Exception as e:
+            logger.warning("Failed to initialize SardisFiatRamp: %s", e)
+
     app.dependency_overrides[ramp_router.get_deps] = lambda: ramp_router.RampDependencies(
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         offramp_service=offramp_service,
         onramper_api_key=onramper_api_key,
         onramper_webhook_secret=onramper_webhook_secret,
+        bridge_webhook_secret=bridge_webhook_secret,
+        fiat_ramp=fiat_ramp,
     )
     app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
     if hasattr(ramp_router, "public_router"):
