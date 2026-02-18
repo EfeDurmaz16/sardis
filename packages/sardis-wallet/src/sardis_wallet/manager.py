@@ -222,6 +222,10 @@ class EnhancedWalletManager:
             scope=SpendingScope.ALL,
         )
 
+        # If approval is required, block the transaction (fail-closed)
+        # The caller should return HTTP 403 with "approval_required" detail
+        if ok and reason == "requires_approval":
+            return PolicyEvaluation(allowed=False, reason="requires_approval")
         return PolicyEvaluation(allowed=ok, reason=None if ok else reason)
 
     async def async_record_spend(self, mandate: PaymentMandate) -> None:

@@ -395,6 +395,12 @@ async def execute_stored_mandate(
     
     # Execute
     tx = await deps.chain_executor.dispatch_payment(stored.mandate)
+    # Record spend state for policy enforcement
+    # TODO: Migrate to PaymentOrchestrator gateway
+    try:
+        await deps.wallet_manager.async_record_spend(stored.mandate)
+    except Exception as e:
+        logger.warning(f"Failed to record spend for mandate {stored.mandate.mandate_id}: {e}")
     deps.ledger.append(payment_mandate=stored.mandate, chain_receipt=tx)
     
     stored.status = "executed"
@@ -477,6 +483,12 @@ async def execute_payment_mandate(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
 
         tx = await deps.chain_executor.dispatch_payment(mandate)
+        # Record spend state for policy enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        try:
+            await deps.wallet_manager.async_record_spend(mandate)
+        except Exception as e:
+            logger.warning(f"Failed to record spend for mandate {mandate.mandate_id}: {e}")
         deps.ledger.append(payment_mandate=mandate, chain_receipt=tx)
 
         return 200, MandateExecutionResponse(

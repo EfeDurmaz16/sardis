@@ -106,6 +106,12 @@ def create_cards_router(
         mcc_code: str | None,
     ) -> tuple[bool, str]:
         if not policy_store or not wallet_repo:
+            # In production, policy enforcement is mandatory
+            # TODO: Migrate to PaymentOrchestrator gateway
+            if environment and environment.lower() in ("production", "prod"):
+                logger.error("CRITICAL: policy_store or wallet_repo not configured in production")
+                return False, "policy_enforcement_unavailable_in_production"
+            logger.warning("Policy store or wallet repo not configured - skipping policy check (non-production)")
             return True, "OK"
         wallet = await wallet_repo.get(wallet_id)
         if not wallet:

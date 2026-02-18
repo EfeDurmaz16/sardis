@@ -395,9 +395,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)
-    compliance = ComplianceEngine(settings=settings, audit_store=audit_store)
-    identity_registry = IdentityRegistry()
-
     from sardis_compliance import create_kyc_service, create_sanctions_service
     kyc_service = create_kyc_service(
         api_key=os.getenv("PERSONA_API_KEY"),
@@ -409,6 +406,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         api_key=os.getenv("ELLIPTIC_API_KEY"),
         api_secret=os.getenv("ELLIPTIC_API_SECRET"),
     )
+    compliance = ComplianceEngine(
+        settings=settings,
+        audit_store=audit_store,
+        kyc_service=kyc_service,
+        sanctions_service=sanctions_service,
+    )
+    identity_registry = IdentityRegistry()
 
     if use_postgres:
         archive = MandateArchive(database_url)
@@ -460,6 +464,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
         settings=settings,
+        wallet_manager=wallet_mgr,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -471,6 +476,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         settings=settings,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
+        wallet_manager=wallet_mgr,
+        compliance=compliance,
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
@@ -554,6 +561,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger=ledger_store,
         settings=settings,
         canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
+        compliance=compliance,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
@@ -563,6 +571,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
+        compliance=compliance,
     )
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])

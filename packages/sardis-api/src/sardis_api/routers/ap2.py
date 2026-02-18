@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 
@@ -45,6 +45,7 @@ class Dependencies:
     sanctions_service: Optional["SanctionsService"] = None
     approval_service: Optional["ApprovalService"] = None
     settings: Optional[object] = None
+    wallet_manager: Optional[Any] = None
 
 
 def get_deps() -> Dependencies:
@@ -203,6 +204,16 @@ async def execute_ap2_payment(
             payment=replace(payment, wallet_id=wallet.wallet_id),
         )
         payment = chain.payment
+
+        # SpendingPolicy enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.wallet_manager:
+            policy_result = await deps.wallet_manager.async_validate_policies(payment)
+            if not getattr(policy_result, "allowed", False):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
+                )
 
         # Step 2: Perform compliance checks
         compliance = await perform_compliance_checks(

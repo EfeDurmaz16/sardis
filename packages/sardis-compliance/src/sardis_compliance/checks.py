@@ -531,6 +531,7 @@ class NLPolicyProvider:
             )
 
 
+# TODO: Migrate to PaymentOrchestrator gateway
 class ComplianceEngine:
     """
     Compliance engine with audit trail support.
@@ -544,9 +545,13 @@ class ComplianceEngine:
         settings: SardisSettings,
         provider: ComplianceProvider | None = None,
         audit_store: ComplianceAuditStore | None = None,
+        kyc_service: Any | None = None,
+        sanctions_service: Any | None = None,
     ):
         self._provider = provider or SimpleRuleProvider(settings)
         self._audit_store = audit_store or get_audit_store()
+        self._kyc_service = kyc_service
+        self._sanctions_service = sanctions_service
 
     async def preflight(self, mandate: PaymentMandate) -> ComplianceResult:
         """
@@ -562,6 +567,65 @@ class ComplianceEngine:
         """
         # Evaluate mandate
         result = self._provider.evaluate(mandate)
+
+        # If base rules already blocked, skip further checks
+        if not result.allowed:
+            # Still record audit below
+            pass
+        else:
+            # Sanctions screening (if service available)
+            if self._sanctions_service:
+                try:
+                    screening = await self._sanctions_service.screen_address(
+                        mandate.destination, chain=mandate.chain
+                    )
+                    if screening.should_block:
+                        result = ComplianceResult(
+                            allowed=False,
+                            reason=f"sanctions_hit: {screening.reason or 'blocked_address'}",
+                            rule_id="sanctions_screening",
+                            provider=screening.provider or "elliptic",
+                        )
+                except Exception as e:
+                    logger.warning(f"Sanctions screening error for {mandate.destination}: {e}")
+                    # Fail closed - block on sanctions service errors
+                    result = ComplianceResult(
+                        allowed=False,
+                        reason=f"sanctions_service_error: {str(e)}",
+                        rule_id="sanctions_screening",
+                        provider="elliptic",
+                    )
+
+            # KYC verification (if service available and not already blocked)
+            if result.allowed and self._kyc_service:
+                try:
+                    kyc = await self._kyc_service.check_verification(mandate.subject)
+                    if not kyc.is_verified:
+                        kyc_status = getattr(getattr(kyc, "status", None), "value", getattr(kyc, "status", None))
+                        if kyc_status == "declined":
+                            result = ComplianceResult(
+                                allowed=False,
+                                reason="kyc_denied",
+                                rule_id="kyc_verification",
+                                provider="persona",
+                            )
+                        else:
+                            # Not verified yet - fail closed
+                            result = ComplianceResult(
+                                allowed=False,
+                                reason=f"kyc_not_verified: status={kyc_status}",
+                                rule_id="kyc_verification",
+                                provider="persona",
+                            )
+                except Exception as e:
+                    logger.warning(f"KYC check error for {mandate.subject}: {e}")
+                    # Fail closed
+                    result = ComplianceResult(
+                        allowed=False,
+                        reason=f"kyc_service_error: {str(e)}",
+                        rule_id="kyc_verification",
+                        provider="persona",
+                    )
 
         # Record to audit trail (ALWAYS, regardless of outcome)
         audit_entry = ComplianceAuditEntry(

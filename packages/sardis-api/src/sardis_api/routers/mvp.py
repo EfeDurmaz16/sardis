@@ -82,6 +82,8 @@ class Dependencies:
     settings: SardisSettings
     wallet_repo: WalletRepository
     agent_repo: AgentRepository
+    wallet_manager: Any | None = None
+    compliance: Any | None = None
 
 
 def get_deps() -> Dependencies:
@@ -254,12 +256,40 @@ async def execute_payment(
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
     mandate = replace(mandate, wallet_id=wallet.wallet_id)
 
+    # SpendingPolicy enforcement
+    # TODO: Migrate to PaymentOrchestrator gateway
+    if deps.wallet_manager:
+        policy_result = await deps.wallet_manager.async_validate_policies(mandate)
+        if not getattr(policy_result, "allowed", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
+            )
+
+    # Compliance (KYC/AML) enforcement
+    # TODO: Migrate to PaymentOrchestrator gateway
+    if deps.compliance:
+        compliance_result = await deps.compliance.preflight(mandate)
+        if not compliance_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=compliance_result.reason or "compliance_check_failed",
+            )
+
     try:
         chain_receipt = await deps.chain_executor.dispatch_payment(mandate)
     except Exception as exc:  # noqa: BLE001
         logger.exception("execution_failed")
         METRICS["execution_failures"] += 1
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    # Record spend state for policy enforcement
+    # TODO: Migrate to PaymentOrchestrator gateway
+    if deps.wallet_manager:
+        try:
+            await deps.wallet_manager.async_record_spend(mandate)
+        except Exception as e:
+            logger.warning(f"Failed to record spend for mandate {mandate.mandate_id}: {e}")
 
     # Ledger + deterministic receipt
     deps.ledger.append(payment_mandate=mandate, chain_receipt=chain_receipt)

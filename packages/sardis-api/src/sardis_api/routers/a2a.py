@@ -45,12 +45,14 @@ class A2ADependencies:
         chain_executor: ChainExecutor | None = None,
         wallet_manager: Any | None = None,
         ledger: LedgerStore | None = None,
+        compliance: Any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
         self.chain_executor = chain_executor
         self.wallet_manager = wallet_manager
         self.ledger = ledger
+        self.compliance = compliance
 
 
 def get_deps() -> A2ADependencies:
@@ -227,13 +229,28 @@ async def a2a_pay(
             merchant_domain="sardis.sh",
         )
 
-        # Policy check on sender wallet
-        if deps.wallet_manager:
-            policy = await deps.wallet_manager.async_validate_policies(mandate)
-            if not getattr(policy, "allowed", False):
+        # Policy check on sender wallet (MANDATORY - no silent bypass)
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if not deps.wallet_manager:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="wallet_manager_not_configured",
+            )
+        policy = await deps.wallet_manager.async_validate_policies(mandate)
+        if not getattr(policy, "allowed", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=getattr(policy, "reason", None) or "Policy denied A2A transfer",
+            )
+
+        # Compliance (KYC/AML) enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.compliance:
+            compliance_result = await deps.compliance.preflight(mandate)
+            if not compliance_result.allowed:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=getattr(policy, "reason", None) or "Policy denied A2A transfer",
+                    detail=compliance_result.reason or "compliance_check_failed",
                 )
 
         # Execute transfer
@@ -244,6 +261,14 @@ async def a2a_pay(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"A2A transfer failed: {e}",
             ) from e
+
+        # Record spend state for policy enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.wallet_manager:
+            try:
+                await deps.wallet_manager.async_record_spend(mandate)
+            except Exception as e:
+                logger.warning(f"Failed to record spend for A2A pay mandate {mandate.mandate_id}: {e}")
 
         # Record in ledger
         ledger_tx_id: str | None = None
@@ -419,8 +444,61 @@ async def _handle_payment_request(
         merchant_domain="sardis.sh",
     )
 
+    # Policy + Compliance checks for message-based payments (CRITICAL - was previously unprotected)
+    # TODO: Migrate to PaymentOrchestrator gateway
+    if deps.wallet_manager:
+        policy = await deps.wallet_manager.async_validate_policies(mandate)
+        if not getattr(policy, "allowed", False):
+            return A2AMessageResponse(
+                message_id=str(uuid.uuid4()),
+                message_type="payment_response",
+                sender_id=msg.recipient_id,
+                recipient_id=msg.sender_id,
+                status="failed",
+                in_reply_to=msg.message_id,
+                correlation_id=msg.correlation_id,
+                error=getattr(policy, "reason", None) or "Policy denied payment",
+                error_code="policy_denied",
+            )
+
+    if deps.compliance:
+        try:
+            compliance_result = await deps.compliance.preflight(mandate)
+            if not compliance_result.allowed:
+                return A2AMessageResponse(
+                    message_id=str(uuid.uuid4()),
+                    message_type="payment_response",
+                    sender_id=msg.recipient_id,
+                    recipient_id=msg.sender_id,
+                    status="failed",
+                    in_reply_to=msg.message_id,
+                    correlation_id=msg.correlation_id,
+                    error=compliance_result.reason or "compliance_check_failed",
+                    error_code="compliance_failed",
+                )
+        except Exception as e:
+            logger.error(f"Compliance check failed for A2A message payment: {e}")
+            return A2AMessageResponse(
+                message_id=str(uuid.uuid4()),
+                message_type="payment_response",
+                sender_id=msg.recipient_id,
+                recipient_id=msg.sender_id,
+                status="failed",
+                in_reply_to=msg.message_id,
+                correlation_id=msg.correlation_id,
+                error="compliance_service_error",
+                error_code="compliance_error",
+            )
+
     try:
         receipt = await deps.chain_executor.dispatch_payment(mandate)
+        # Record spend state for policy enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.wallet_manager:
+            try:
+                await deps.wallet_manager.async_record_spend(mandate)
+            except Exception:
+                logger.warning(f"Failed to record spend for A2A message mandate {mandate.mandate_id}")
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",

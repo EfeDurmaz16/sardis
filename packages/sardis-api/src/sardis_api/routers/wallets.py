@@ -144,6 +144,7 @@ class WalletDependencies:
         ledger: LedgerStore | None = None,
         settings: any | None = None,
         canonical_repo: any | None = None,
+        compliance: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -152,6 +153,7 @@ class WalletDependencies:
         self.ledger = ledger
         self.canonical_repo = canonical_repo
         self.settings = settings
+        self.compliance = compliance
 
 
 def get_deps() -> WalletDependencies:
@@ -583,12 +585,28 @@ async def transfer_crypto(
             merchant_domain=transfer_request.domain,
         )
 
-        if deps.wallet_manager:
-            policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
-            if not getattr(policy, "allowed", False):
+        # Policy check (MANDATORY - no silent bypass)
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if not deps.wallet_manager:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="wallet_manager_not_configured",
+            )
+        policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
+        if not getattr(policy, "allowed", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=getattr(policy, "reason", None) or "policy_denied",
+            )
+
+        # Compliance (KYC/AML) enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.compliance:
+            compliance_result = await deps.compliance.preflight(mandate)
+            if not compliance_result.allowed:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=getattr(policy, "reason", None) or "policy_denied",
+                    detail=compliance_result.reason or "compliance_check_failed",
                 )
 
         try:
@@ -598,6 +616,14 @@ async def transfer_crypto(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Transfer failed: {str(e)}",
             )
+
+        # Record spend state for policy enforcement
+        # TODO: Migrate to PaymentOrchestrator gateway
+        if deps.wallet_manager:
+            try:
+                await deps.wallet_manager.async_record_spend(mandate)
+            except Exception as e:
+                logger.warning(f"Failed to record spend for transfer mandate {mandate.mandate_id}: {e}")
 
         ledger_tx_id: str | None = None
         if deps.ledger:
