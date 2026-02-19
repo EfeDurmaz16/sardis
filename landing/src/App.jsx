@@ -1100,7 +1100,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 <div className="pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {["sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
+                    {["sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
                       <a key={pkg} href={`https://pypi.org/project/${pkg}/`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
                         {pkg}
                       </a>

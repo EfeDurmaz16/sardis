@@ -1,0 +1,229 @@
+name: Release Python Integration Packages
+
+on:
+  push:
+    tags:
+      - "py-langchain-v*"
+      - "py-crewai-v*"
+      - "py-adk-v*"
+      - "py-agent-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - sardis-langchain
+          - sardis-crewai
+          - sardis-adk
+          - sardis-agent-sdk
+      version:
+        description: "Version to publish (e.g. 0.1.0 or 0.1.0rc1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish to TestPyPI instead of PyPI"
+        required: true
+        type: boolean
+        default: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Resolve release metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_PACKAGE: ${{ inputs.package }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            TAG="$REF_NAME"
+
+            case "$TAG" in
+              py-langchain-v*)
+                PACKAGE="sardis-langchain"
+                PACKAGE_DIR="packages/sardis-langchain"
+                IMPORT_NAME="sardis_langchain"
+                VERSION="${TAG#py-langchain-v}"
+                ;;
+              py-crewai-v*)
+                PACKAGE="sardis-crewai"
+                PACKAGE_DIR="packages/sardis-crewai"
+                IMPORT_NAME="sardis_crewai"
+                VERSION="${TAG#py-crewai-v}"
+                ;;
+              py-adk-v*)
+                PACKAGE="sardis-adk"
+                PACKAGE_DIR="packages/sardis-adk"
+                IMPORT_NAME="sardis_adk"
+                VERSION="${TAG#py-adk-v}"
+                ;;
+              py-agent-sdk-v*)
+                PACKAGE="sardis-agent-sdk"
+                PACKAGE_DIR="packages/sardis-agent-sdk"
+                IMPORT_NAME="sardis_agent_sdk"
+                VERSION="${TAG#py-agent-sdk-v}"
+                ;;
+              *)
+                echo "Unsupported tag format: $TAG"
+                exit 1
+                ;;
+            esac
+
+            if [[ "$VERSION" =~ (a|b|rc) ]]; then
+              PRERELEASE="true"
+            else
+              PRERELEASE="false"
+            fi
+          else
+            PACKAGE="$INPUT_PACKAGE"
+            VERSION="$INPUT_VERSION"
+            PRERELEASE="$INPUT_PRERELEASE"
+
+            case "$PACKAGE" in
+              sardis-langchain) PACKAGE_DIR="packages/sardis-langchain"; IMPORT_NAME="sardis_langchain" ;;
+              sardis-crewai)    PACKAGE_DIR="packages/sardis-crewai";    IMPORT_NAME="sardis_crewai" ;;
+              sardis-adk)       PACKAGE_DIR="packages/sardis-adk";       IMPORT_NAME="sardis_adk" ;;
+              sardis-agent-sdk) PACKAGE_DIR="packages/sardis-agent-sdk"; IMPORT_NAME="sardis_agent_sdk" ;;
+              *) echo "Unknown package: $PACKAGE"; exit 1 ;;
+            esac
+          fi
+
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
+          echo "import_name=$IMPORT_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            echo "repository_url=https://test.pypi.org/legacy/" >> "$GITHUB_OUTPUT"
+          else
+            echo "repository_url=https://upload.pypi.org/legacy/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify package version consistency
+        env:
+          EXPECTED: ${{ steps.meta.outputs.version }}
+          PKG_DIR: ${{ steps.meta.outputs.package_dir }}
+          IMPORT: ${{ steps.meta.outputs.import_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PYPROJECT_VERSION="$(python3 -c "
+          import tomllib
+          with open('${PKG_DIR}/pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+          print(data['project']['version'])
+          ")"
+
+          INIT_VERSION="$(python3 -c "
+          import re
+          from pathlib import Path
+          content = Path('${PKG_DIR}/src/${IMPORT}/__init__.py').read_text()
+          m = re.search(r'__version__\s*=\"([^\"]+)\"', content)
+          print(m.group(1) if m else '')
+          ")"
+
+          if [[ "$PYPROJECT_VERSION" != "$EXPECTED" ]]; then
+            echo "pyproject version ($PYPROJECT_VERSION) does not match release version ($EXPECTED)"
+            exit 1
+          fi
+          if [[ "$INIT_VERSION" != "$EXPECTED" ]]; then
+            echo "__init__ version ($INIT_VERSION) does not match release version ($EXPECTED)"
+            exit 1
+          fi
+
+      - name: Install build dependencies
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install build twine
+
+      - name: Build artifacts
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: python3 -m build
+
+      - name: Check artifacts
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: python3 -m twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: steps.meta.outputs.prerelease == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          REPO_URL: ${{ steps.meta.outputs.repository_url }}
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: python3 -m twine upload --repository-url "$REPO_URL" dist/*
+
+      - name: Publish to PyPI
+        if: steps.meta.outputs.prerelease != 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          REPO_URL: ${{ steps.meta.outputs.repository_url }}
+        working-directory: ${{ steps.meta.outputs.package_dir }}
+        run: python3 -m twine upload --repository-url "$REPO_URL" dist/*
+
+      - name: Smoke install from registry
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          PACKAGE: ${{ steps.meta.outputs.package }}
+          IMPORT: ${{ steps.meta.outputs.import_name }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 -m venv /tmp/sardis-integration-smoke
+          source /tmp/sardis-integration-smoke/bin/activate
+          python -m pip install --upgrade pip
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            for i in {1..6}; do
+              if python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "${PACKAGE}==${VERSION}"; then
+                break
+              fi
+              if [[ "$i" -eq 6 ]]; then
+                echo "Failed to install ${PACKAGE}==${VERSION} from TestPyPI after retries"
+                exit 1
+              fi
+              sleep 20
+            done
+          else
+            for i in {1..6}; do
+              if python -m pip install "${PACKAGE}==${VERSION}"; then
+                break
+              fi
+              if [[ "$i" -eq 6 ]]; then
+                echo "Failed to install ${PACKAGE}==${VERSION} from PyPI after retries"
+                exit 1
+              fi
+              sleep 20
+            done
+          fi
+
+          python -c "import ${IMPORT}; print('installed-version', ${IMPORT}.__version__); assert ${IMPORT}.__version__"
