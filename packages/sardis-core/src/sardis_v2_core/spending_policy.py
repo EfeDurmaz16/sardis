@@ -1,4 +1,65 @@
-"""Advanced spending policy logic migrated from V1."""
+"""
+Spending Policy Engine — the core of Sardis policy enforcement.
+
+Every payment an AI agent makes must pass through a SpendingPolicy before
+execution.  This module defines the rules, limits, and checks that determine
+whether a transaction is allowed, denied, or requires human approval.
+
+How policy enforcement works (high-level):
+─────────────────────────────────────────
+1. A policy is attached to each agent (via the policy store or created with
+   defaults based on trust level).
+2. When a payment request arrives, the orchestrator calls
+   ``policy.evaluate(...)`` (async, production) or ``policy.validate_payment(...)``
+   (sync, dev/test).
+3. The policy runs checks **in order** — the first failure short-circuits
+   with a denial reason:
+
+   ┌─────────────────────────────────────────────────────┐
+   │  evaluate() check pipeline (in order)               │
+   ├─────────────────────────────────────────────────────┤
+   │  1. Amount validation   — amount > 0, fee >= 0      │
+   │  2. Scope check         — is the spending category   │
+   │                           (retail, compute, etc.)    │
+   │                           allowed?                   │
+   │  3. MCC check           — is the merchant category   │
+   │                           code blocked?              │
+   │  4. Per-tx limit        — does amount + fee exceed   │
+   │                           the single-transaction cap?│
+   │  5. Total limit         — does cumulative spending   │
+   │                           exceed the lifetime cap?   │
+   │  6. Time-window limits  — daily / weekly / monthly   │
+   │                           caps                       │
+   │  7. On-chain balance    — does the wallet have       │
+   │                           enough funds?              │
+   │  8. Merchant rules      — allowlist / blocklist /    │
+   │                           per-merchant caps          │
+   │  9. Goal drift          — has the agent drifted too  │
+   │                           far from its stated goal?  │
+   │ 10. Approval threshold  — amount OK but needs human  │
+   │                           sign-off?                  │
+   └─────────────────────────────────────────────────────┘
+
+4. If all checks pass → (True, "OK").
+   If any check fails  → (False, "<reason_code>") — e.g. "per_transaction_limit".
+   If approval needed  → (True, "requires_approval").
+
+5. After a successful on-chain payment, ``record_spend()`` updates the
+   cumulative totals so future checks reflect the new spending state.
+
+Key concepts:
+  - **TrustLevel**: LOW / MEDIUM / HIGH / UNLIMITED — preset limit tiers.
+  - **TimeWindowLimit**: Rolling daily/weekly/monthly spend caps.
+  - **MerchantRule**: Per-merchant or per-category allow/deny with optional caps.
+  - **SpendingScope**: Restricts spending to certain categories (compute, retail, etc.).
+  - **Fail-closed**: Any error during evaluation defaults to denial.
+
+See also:
+  - ``orchestrator.py`` — calls evaluate() as Phase 1 of payment execution.
+  - ``policy_store.py`` — persists policies per agent (in-memory or Postgres).
+  - ``spending_policy_store.py`` — atomic DB-backed spend tracking.
+  - ``nl_policy_parser.py`` — converts natural language → SpendingPolicy.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -34,6 +95,14 @@ class SpendingScope(str, Enum):
 
 @dataclass(slots=True)
 class TimeWindowLimit:
+    """
+    A rolling time-based spending cap (daily, weekly, or monthly).
+
+    Tracks how much has been spent in the current window and automatically
+    resets when the window expires.  Used by SpendingPolicy to enforce
+    "max $500/day" or "max $10,000/month" style rules.
+    """
+
     window_type: str
     limit_amount: Decimal
     currency: str = "USDC"
@@ -73,6 +142,17 @@ class TimeWindowLimit:
 
 @dataclass(slots=True)
 class MerchantRule:
+    """
+    A single merchant-level allow or deny rule.
+
+    Merchant rules let you control exactly who the agent can pay:
+      - **allow**: Only permit payments to specific merchants or categories.
+      - **deny**: Block specific merchants or categories (checked first — deny wins).
+
+    Rules can optionally include per-merchant caps (``max_per_tx``, ``daily_limit``)
+    and expiration dates for temporary access.
+    """
+
     rule_id: str = field(default_factory=lambda: f"rule_{uuid.uuid4().hex[:12]}")
     rule_type: str = "allow"
     merchant_id: Optional[str] = None
@@ -101,6 +181,39 @@ class MerchantRule:
 
 @dataclass(slots=True)
 class SpendingPolicy:
+    """
+    Defines and enforces spending rules for a single AI agent.
+
+    A SpendingPolicy is the central object that answers the question:
+    "Is this agent allowed to make this payment?"
+
+    It combines multiple layers of control:
+      - **Amount limits**: per-transaction cap, lifetime total, daily/weekly/monthly windows
+      - **Merchant controls**: allowlist, blocklist, per-merchant caps, MCC category blocking
+      - **Scope restrictions**: limit spending to certain categories (e.g. only "compute")
+      - **Goal drift detection**: block payments if the agent is off-task
+      - **Approval routing**: auto-approve small payments, require human sign-off for large ones
+
+    Usage:
+        # Create a policy with default LOW trust limits ($50/tx, $100/day)
+        policy = create_default_policy("agent_123", TrustLevel.LOW)
+
+        # Or build a custom policy
+        policy = SpendingPolicy(
+            agent_id="agent_123",
+            limit_per_tx=Decimal("200"),
+            limit_total=Decimal("5000"),
+            blocked_merchant_categories=["gambling", "adult"],
+            approval_threshold=Decimal("500"),  # human approval above $500
+        )
+
+        # Enforce it (async, production — reads spend state from DB)
+        approved, reason = await policy.evaluate(wallet, amount, fee, chain=..., token=...)
+
+        # Enforce it (sync, dev/test — in-memory state only)
+        approved, reason = policy.validate_payment(amount, fee)
+    """
+
     policy_id: str = field(default_factory=lambda: f"policy_{uuid.uuid4().hex[:16]}")
     agent_id: str = ""
     trust_level: TrustLevel = TrustLevel.LOW
@@ -137,54 +250,84 @@ class SpendingPolicy:
         policy_store: Optional[Any] = None,  # SpendingPolicyStore for DB-backed enforcement
     ) -> tuple[bool, str]:
         """
-        Evaluate payment request against policy (async, with on-chain balance check).
+        Evaluate a payment request against this policy.
+
+        This is the **primary enforcement method** — called by the orchestrator
+        before every payment.  It runs 10 checks in sequence; the first failure
+        short-circuits with a denial reason code.
+
+        Check order:
+            1. Amount validation (positive amount, non-negative fee)
+            2. Scope check (is the spending category allowed?)
+            3. MCC check (is the merchant category code blocked?)
+            4. Per-transaction limit (amount + fee vs. cap)
+            5. Total lifetime limit (cumulative spend)
+            6. Time-window limits (daily / weekly / monthly)
+            7. On-chain balance (wallet has enough funds?)
+            8. Merchant rules (allowlist / blocklist / per-merchant caps)
+            9. Goal drift (agent staying on task?)
+           10. Approval threshold (OK but needs human sign-off)
 
         Args:
-            wallet: Wallet instance (non-custodial)
-            amount: Payment amount
-            fee: Transaction fee
-            chain: Chain identifier
-            token: Token type
-            merchant_id: Merchant identifier (optional)
-            merchant_category: Merchant category (optional)
-            mcc_code: Merchant Category Code (4-digit code, optional)
-            scope: Spending scope
-            rpc_client: RPC client for balance queries (optional)
-            drift_score: Goal drift score (optional)
-            policy_store: SpendingPolicyStore for DB-backed atomic enforcement (optional).
-                When provided, spent_total and window limits are read from the database
-                instead of in-memory state, preventing bypass on process restart.
+            wallet: The agent's non-custodial wallet.
+            amount: Payment amount in token units.
+            fee: Estimated gas/transaction fee (included in limit checks).
+            chain: Target blockchain (e.g. "base", "polygon").
+            token: Token type (e.g. USDC, USDT).
+            merchant_id: Who the agent is paying (optional).
+            merchant_category: Category name like "cloud" or "gambling" (optional).
+            mcc_code: 4-digit Merchant Category Code (optional).
+            scope: Spending scope (retail, compute, agent_to_agent, etc.).
+            rpc_client: RPC client for on-chain balance lookup (optional).
+            drift_score: How far the agent has drifted from its goal (0.0–1.0, optional).
+            policy_store: DB-backed spend tracker for production use (optional).
+                When provided, cumulative totals come from the database (race-safe).
+                When omitted, uses in-memory state (suitable for dev/test only).
 
         Returns:
-            Tuple of (approved: bool, reason: str)
+            ``(True, "OK")`` — approved, execute the payment.
+            ``(True, "requires_approval")`` — approved, but needs human sign-off.
+            ``(False, "<reason_code>")`` — denied.  Common reason codes:
+                - ``"per_transaction_limit"`` — single payment too large
+                - ``"total_limit_exceeded"`` — lifetime cap reached
+                - ``"daily_limit_exceeded"`` — daily window exhausted
+                - ``"merchant_denied"`` — merchant on blocklist
+                - ``"scope_not_allowed"`` — wrong spending category
+                - ``"insufficient_balance"`` — wallet can't cover it
+                - ``"goal_drift_exceeded"`` — agent off-task
         """
-        # Validate amount
+        # ── Check 1: Amount validation ──────────────────────────────────
         if amount <= 0:
             return False, "amount_must_be_positive"
         if fee < 0:
             return False, "fee_must_be_non_negative"
 
-        total_cost = amount + fee
+        total_cost = amount + fee  # All limit checks use amount + fee
 
-        # Check scope
+        # ── Check 2: Scope ──────────────────────────────────────────────
+        # Verify the spending category (retail, compute, etc.) is allowed.
+        # SpendingScope.ALL acts as a wildcard — permits any category.
         if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
             return False, "scope_not_allowed"
 
-        # Check MCC code policy (merchant category blocking)
+        # ── Check 3: Merchant Category Code (MCC) ──────────────────────
+        # Block entire merchant categories (e.g. gambling, adult content).
         if mcc_code:
             mcc_ok, mcc_reason = self._check_mcc_policy(mcc_code)
             if not mcc_ok:
                 return False, mcc_reason
 
-        # Check per-transaction limit (includes fee — audit-F08)
-        # Category-specific overrides take precedence over global limit
+        # ── Check 4: Per-transaction limit ──────────────────────────────
+        # Cap on a single payment.  Category-specific overrides (e.g.
+        # "groceries max $200/tx") take precedence over the global limit.
         effective_per_tx = self._get_effective_per_tx_limit(mcc_code, merchant_category)
         if total_cost > effective_per_tx:
             return False, "per_transaction_limit"
 
-        # --- Spending limit checks (all use total_cost = amount + fee) ---
-        # When a policy_store is provided, use DB state (race-safe).
-        # Otherwise fall back to in-memory state (dev/test only).
+        # ── Checks 5–6: Cumulative & time-window limits ────────────────
+        # In production, spend totals come from the database (via
+        # policy_store) to prevent race conditions between concurrent
+        # transactions.  In dev/test, in-memory state is used instead.
         if policy_store is not None:
             # Velocity check (rapid-fire prevention)
             vel_ok, vel_reason = await policy_store.check_velocity(self.agent_id)
@@ -218,24 +361,33 @@ class SpendingPolicy:
                 if not ok:
                     return ok, reason
 
-        # Check on-chain balance (non-custodial)
+        # ── Check 7: On-chain balance ──────────────────────────────────
+        # Query the actual wallet balance on-chain.  Sardis is non-custodial,
+        # so the wallet's blockchain balance is the source of truth.
         if rpc_client:
             balance = await wallet.get_balance(chain, token, rpc_client)
             if balance < total_cost:
                 return False, "insufficient_balance"
 
-        # Check merchant rules
+        # ── Check 8: Merchant rules (allowlist / blocklist) ────────────
+        # Per-merchant controls: deny specific merchants, restrict to an
+        # allowlist, or cap spending at individual merchants.
         if merchant_id:
             merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)
             if not merchant_ok:
                 return False, merchant_reason
 
-        # Check drift score
+        # ── Check 9: Goal drift ────────────────────────────────────────
+        # If the agent has drifted too far from its stated goal (measured
+        # by an external scoring system), block the payment.
         if drift_score is not None and self.max_drift_score is not None:
             if drift_score > self.max_drift_score:
                 return False, "goal_drift_exceeded"
 
-        # Check approval threshold — policy allows but needs human sign-off
+        # ── Check 10: Approval threshold ───────────────────────────────
+        # All checks passed, but the amount exceeds the auto-approval cap.
+        # Return approved=True with "requires_approval" so the caller can
+        # route this to a human for sign-off before executing on-chain.
         if self.approval_threshold is not None and amount > self.approval_threshold:
             return True, "requires_approval"
 
@@ -253,9 +405,19 @@ class SpendingPolicy:
         drift_score: Optional[Decimal] = None,
     ) -> tuple[bool, str]:
         """
-        Synchronous validation (for backwards compatibility).
+        Synchronous policy check — runs the same checks as evaluate() but
+        without on-chain balance lookup or DB-backed spend tracking.
 
-        Note: Does not check on-chain balance. Use evaluate() for full validation.
+        Use this for:
+          - Quick local validation in tests or dev mode
+          - Pre-flight checks before calling the full async pipeline
+          - The ``/policies/check`` API endpoint (hypothetical "what-if" queries)
+
+        For production payment execution, use ``evaluate()`` instead — it reads
+        cumulative spend from the database and checks on-chain balance.
+
+        Returns:
+            ``(True, "OK")`` | ``(True, "requires_approval")`` | ``(False, "<reason>")``
         """
         if amount <= 0:
             return False, "amount_must_be_positive"
@@ -445,6 +607,19 @@ class SpendingPolicy:
             self.updated_at = datetime.now(timezone.utc)
 
 
+# Preset spending limits per trust level.
+#
+# When no custom policy is attached to an agent, Sardis creates a default
+# policy using these limits.  New agents start at LOW — you can upgrade to
+# MEDIUM/HIGH as the agent proves trustworthy.
+#
+#   Trust Level  │ Per-Tx   │ Daily    │ Weekly    │ Monthly    │ Total
+#   ─────────────┼──────────┼──────────┼───────────┼────────────┼──────────
+#   LOW          │ $50      │ $100     │ $500      │ $1,000     │ $5,000
+#   MEDIUM       │ $500     │ $1,000   │ $5,000    │ $10,000    │ $50,000
+#   HIGH         │ $5,000   │ $10,000  │ $50,000   │ $100,000   │ $500,000
+#   UNLIMITED    │ no cap   │ no cap   │ no cap    │ no cap     │ no cap
+#
 DEFAULT_LIMITS = {
     TrustLevel.LOW: {"per_tx": Decimal("50.00"), "daily": Decimal("100.00"), "weekly": Decimal("500.00"), "monthly": Decimal("1000.00"), "total": Decimal("5000.00")},
     TrustLevel.MEDIUM: {"per_tx": Decimal("500.00"), "daily": Decimal("1000.00"), "weekly": Decimal("5000.00"), "monthly": Decimal("10000.00"), "total": Decimal("50000.00")},
@@ -454,6 +629,13 @@ DEFAULT_LIMITS = {
 
 
 def create_default_policy(agent_id: str, trust_level: TrustLevel = TrustLevel.LOW) -> SpendingPolicy:
+    """
+    Create a SpendingPolicy with preset limits for the given trust level.
+
+    This is the fallback when no custom policy is stored for an agent.
+    The orchestrator and wallet manager call this automatically — you
+    don't need to call it yourself unless you're building a custom flow.
+    """
     tier = DEFAULT_LIMITS[trust_level]
     policy = SpendingPolicy(agent_id=agent_id, trust_level=trust_level, limit_per_tx=tier["per_tx"], limit_total=tier["total"])
     if tier["daily"]:

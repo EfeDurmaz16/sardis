@@ -1,12 +1,67 @@
-"""Payment orchestration tying mandates, policies, compliance, and execution.
+"""
+Payment Orchestrator — the single entry point for all payment execution.
 
-This module provides the ONLY entry point for payment execution. All payments
-MUST flow through PaymentOrchestrator.execute_chain() to ensure:
+Every payment in Sardis flows through this orchestrator.  It enforces a
+strict multi-phase pipeline where **policy checks are the first gate**.
+If the policy says no, nothing else runs — no compliance check, no
+blockchain transaction, no money moves.
 
-1. Policy validation (fail-fast)
-2. Compliance check (fail-fast)
-3. Chain execution (with rollback tracking)
-4. Ledger append (with reconciliation queue on failure)
+Payment execution pipeline:
+───────────────────────────
+
+    Agent calls wallet.pay(to="openai.com", amount=25)
+        │
+        ▼
+    ┌─────────────────────────────────────────────────────┐
+    │  Phase 1: POLICY VALIDATION (fail-fast)             │
+    │                                                     │
+    │  → Fetch the agent's SpendingPolicy                 │
+    │  → Run policy.evaluate() or validate_payment()      │
+    │  → Check: amount limits, merchant rules, scopes,    │
+    │    time windows, MCC codes, drift score             │
+    │  → If DENIED → raise PolicyViolationError, STOP     │
+    │  → If "requires_approval" → block (fail-closed)     │
+    ├─────────────────────────────────────────────────────┤
+    │  Phase 1.5: GROUP POLICY (optional, fail-fast)      │
+    │                                                     │
+    │  → If agent belongs to a group, check group-level   │
+    │    budget and merchant restrictions                  │
+    │  → DENY wins (most restrictive policy applies)      │
+    ├─────────────────────────────────────────────────────┤
+    │  Phase 2: COMPLIANCE CHECK (fail-fast)              │
+    │                                                     │
+    │  → KYC (Persona), sanctions (Elliptic), AML         │
+    │  → If DENIED → raise ComplianceViolationError, STOP │
+    ├─────────────────────────────────────────────────────┤
+    │  Phase 3: CHAIN EXECUTION                           │
+    │                                                     │
+    │  → Submit the transaction on-chain (Base, Polygon,  │
+    │    Ethereum, etc.)                                  │
+    │  → If FAILED → raise ChainExecutionError, STOP      │
+    ├─────────────────────────────────────────────────────┤
+    │  Phase 3.5: POLICY STATE UPDATE (atomic)            │
+    │                                                     │
+    │  → Record the spend in the database so future       │
+    │    policy checks reflect the new cumulative total   │
+    │  → Uses SELECT FOR UPDATE to prevent race conditions│
+    ├─────────────────────────────────────────────────────┤
+    │  Phase 4: LEDGER APPEND                             │
+    │                                                     │
+    │  → Write to the append-only audit ledger            │
+    │  → If FAILED → queue for reconciliation (payment    │
+    │    already succeeded on-chain)                      │
+    └─────────────────────────────────────────────────────┘
+        │
+        ▼
+    PaymentResult(tx_hash, ledger_tx_id, chain, status)
+
+Key design decisions:
+  - **Policy is Phase 1**: Cheapest check runs first; avoids wasting gas on
+    transactions that would be denied.
+  - **Fail-closed**: Any error in policy/compliance evaluation = denial.
+    We never accidentally approve a payment.
+  - **Spend recording is mandatory**: If the DB update fails after a successful
+    on-chain payment, it's queued for reconciliation so limits stay accurate.
 
 IMPORTANT: Never bypass this orchestrator to execute payments directly.
 """
@@ -275,17 +330,24 @@ class InMemoryReconciliationQueue:
 
 class PaymentOrchestrator:
     """
-    Executes verified mandate chains against policies, compliance, and chain executors.
+    The ONLY authorized entry point for payment execution.
 
-    This is the ONLY authorized entry point for payment execution.
+    Call ``execute_chain(mandate_chain)`` to run a payment.  The orchestrator
+    ensures that **every payment passes through policy checks first**, then
+    compliance, then chain execution, then ledger recording.
 
-    Execution flow:
-    1. Policy validation (fail-fast on violation)
-    2. Compliance check (fail-fast on violation)
-    3. Chain execution (track for rollback if subsequent steps fail)
-    4. Ledger append (queue for reconciliation on failure)
+    How policies are enforced here:
+      1. The orchestrator calls ``wallet_manager.async_validate_policies(mandate)``
+         which fetches the agent's SpendingPolicy and runs all checks.
+      2. If the policy returns ``allowed=False``, a ``PolicyViolationError`` is
+         raised and the payment is rejected immediately — nothing else runs.
+      3. If the policy returns ``requires_approval``, the orchestrator treats
+         it as a denial (fail-closed) and the caller should route to human review.
+      4. After a successful on-chain payment, ``async_record_spend()`` updates
+         the agent's cumulative totals so future policy checks are accurate.
 
-    All execution phases are audited for debugging and regulatory compliance.
+    All phases are audited — you can call ``get_audit_log(mandate_id)`` to see
+    exactly which checks passed/failed and why.
     """
 
     def __init__(
@@ -360,7 +422,11 @@ class PaymentOrchestrator:
 
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
 
-        # Phase 1: Policy Validation (fail-fast)
+        # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
+        # This is where spending policies are enforced.  The wallet manager
+        # fetches the agent's SpendingPolicy and runs all checks (amount
+        # limits, merchant rules, time windows, etc.).  If denied, we raise
+        # immediately — no compliance check, no chain execution, no money moves.
         try:
             if hasattr(self._wallet_manager, "async_validate_policies"):
                 policy = await getattr(self._wallet_manager, "async_validate_policies")(payment)
@@ -383,7 +449,10 @@ class PaymentOrchestrator:
             self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False, error=str(e))
             raise PolicyViolationError(f"Policy validation error: {e}", mandate_id=mandate_id)
 
-        # Phase 1.5: Group Policy Check (optional, fail-fast)
+        # ── Phase 1.5: Group Policy Check (optional, fail-fast) ────────
+        # If the agent belongs to a group, the group's budget and merchant
+        # restrictions are checked on top of the individual policy.
+        # DENY wins — the most restrictive rule across individual + group applies.
         if self._group_policy is not None:
             try:
                 agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
@@ -457,7 +526,12 @@ class PaymentOrchestrator:
                 chain=payment.chain,
             )
 
-        # Phase 3.5: Persist spending state (mandatory — queue for reconciliation on failure)
+        # ── Phase 3.5: Update Policy Spend State (mandatory) ────────────
+        # After a successful on-chain payment, we MUST record the spend so
+        # the agent's cumulative totals are accurate for future policy checks.
+        # Uses SELECT FOR UPDATE in the DB to prevent race conditions.
+        # If this fails, the spend is queued for reconciliation — otherwise
+        # the agent could exceed its limits by making rapid payments.
         try:
             if hasattr(self._wallet_manager, "async_record_spend"):
                 await getattr(self._wallet_manager, "async_record_spend")(payment)

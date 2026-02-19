@@ -174,6 +174,19 @@ class EnhancedWalletManager:
 
     # =========================================================================
     # Policy Validation
+    #
+    # These methods are called by the PaymentOrchestrator to enforce spending
+    # policies before every payment.  There are three levels:
+    #
+    #   validate_policies()        — Sync, basic.  For backwards compat / tests.
+    #   async_validate_policies()  — Async, production.  Used by API routes.
+    #   evaluate_policies()        — Async, comprehensive.  Adds session checks,
+    #                                spending limits, activity monitoring, and
+    #                                multi-sig requirements on top of the policy.
+    #
+    # All three fetch the agent's SpendingPolicy from the policy store (or
+    # create a default LOW-trust policy if none exists), then run the check
+    # pipeline defined in spending_policy.py.
     # =========================================================================
 
     @staticmethod
@@ -187,7 +200,15 @@ class EnhancedWalletManager:
         return merchant_domain or mandate.domain
 
     def validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
-        """Synchronous validation (for backwards compatibility)."""
+        """
+        Synchronous policy check (basic, for tests and backwards compat).
+
+        Fetches the agent's SpendingPolicy → runs validate_payment() →
+        returns PolicyEvaluation(allowed=True/False, reason=...).
+
+        Does NOT check on-chain balance or DB-backed spend state.
+        For production use, prefer ``async_validate_policies()``.
+        """
         policy = self._policy_store.fetch_policy(mandate.subject) if self._policy_store else None
         if not policy:
             policy = create_default_policy(mandate.subject)
@@ -204,7 +225,17 @@ class EnhancedWalletManager:
         return PolicyEvaluation(allowed=ok, reason=None if ok else reason)
 
     async def async_validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation:
-        """Async policy validation (preferred in API services)."""
+        """
+        Async policy check — the standard method used by API routes.
+
+        Called by the orchestrator as Phase 1 of payment execution:
+          1. Fetch the agent's SpendingPolicy from the async policy store
+          2. Run policy.validate_payment() against the mandate
+          3. If "requires_approval" → convert to denial (fail-closed)
+          4. Return PolicyEvaluation with allowed/denied + reason
+
+        This is the method you'll see in most payment execution paths.
+        """
         policy: SpendingPolicy | None = None
         if self._async_policy_store:
             policy = await self._async_policy_store.fetch_policy(mandate.subject)
@@ -230,9 +261,14 @@ class EnhancedWalletManager:
 
     async def async_record_spend(self, mandate: PaymentMandate) -> None:
         """
-        Persist spend state for enforcement across transactions.
+        Record a completed payment against the agent's spending totals.
 
-        This should run only after a payment is executed successfully.
+        Called by the orchestrator AFTER a successful on-chain payment
+        (Phase 3.5).  This updates the cumulative spend so that future
+        policy checks reflect the new totals.
+
+        CRITICAL: If this fails, the orchestrator queues it for reconciliation.
+        Without accurate spend tracking, the agent could exceed its limits.
         """
         if not self._async_policy_store:
             return
@@ -257,18 +293,22 @@ class EnhancedWalletManager:
         session_id: Optional[str] = None,
     ) -> PolicyEvaluation:
         """
-        Comprehensive async policy evaluation with all security checks.
+        Comprehensive policy evaluation — the most thorough check available.
 
-        Args:
-            wallet: Wallet instance
-            mandate: Payment mandate
-            chain: Chain identifier
-            token: Token type
-            rpc_client: RPC client for balance queries
-            session_id: Session ID for validation
+        This goes beyond ``async_validate_policies()`` by also checking:
+          - Wallet freeze status (blocks all transactions)
+          - Session validity (is the caller's session still active?)
+          - Full async policy.evaluate() (with on-chain balance check)
+          - Wallet-level spending limits (independent of agent policy)
+          - Activity monitoring (risk scoring based on utilization)
+          - Multi-sig requirements (does this need multiple approvals?)
 
-        Returns:
-            PolicyEvaluation result with full analysis
+        Returns a PolicyEvaluation with:
+          - ``allowed``: whether to proceed
+          - ``reason``: denial reason (if denied)
+          - ``warnings``: utilization warnings (e.g. "daily limit at 85%")
+          - ``risk_score``: numeric risk assessment
+          - ``required_approvals``: multi-sig threshold (0 = no multi-sig)
         """
         warnings = []
         risk_score = 0.0

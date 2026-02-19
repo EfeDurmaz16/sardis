@@ -1,4 +1,27 @@
-"""Policy API endpoints with Natural Language parsing support."""
+"""
+Policy API — create, preview, apply, and test spending policies.
+
+This router lets users manage the spending policies that control what their
+AI agents can and cannot do with money.  Policies can be created from
+natural language (e.g. "Allow max $500/day on AWS, block gambling") and are
+automatically enforced on every payment.
+
+Endpoints:
+    POST /policies/parse     — Parse natural language → structured policy
+    POST /policies/preview   — Preview before applying (human-in-the-loop)
+    POST /policies/apply     — Apply a policy to an agent (requires confirm=true)
+    GET  /policies/{agent_id} — Get the active policy for an agent
+    POST /policies/check     — Test a hypothetical payment against a policy
+    GET  /policies/examples  — Example natural language policies
+
+How these endpoints relate to enforcement:
+    1. Use /parse or /preview to convert natural language to a structured policy
+    2. Use /apply to attach the policy to an agent
+    3. From that point on, every payment the agent makes is automatically checked
+       against this policy by the orchestrator (see orchestrator.py Phase 1)
+    4. Use /check to test "what would happen if my agent tried to pay X?"
+       without actually executing a payment
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -359,15 +382,26 @@ async def apply_policy_from_nl(
     principal: Principal = Depends(require_principal),
 ):
     """
-    Parse natural language and apply policy to an agent.
+    Parse natural language and apply a spending policy to an agent.
 
-    **IMPORTANT:** Set `confirm: true` to actually apply the policy.
-    Otherwise, use `/preview` first to see what will be applied.
+    Once applied, this policy is automatically enforced on every payment
+    the agent makes.  The orchestrator fetches the policy from the store
+    and runs the check pipeline before any money moves.
+
+    **Workflow:**
+    1. Call ``POST /policies/preview`` first to see what will be applied
+    2. Review the parsed rules and warnings
+    3. Call this endpoint with ``confirm: true`` to apply
+
+    **IMPORTANT:** ``confirm: true`` is required — this prevents accidental
+    policy changes.  The policy is stored in the database and takes effect
+    immediately for all future payments by this agent.
 
     **Safety features:**
-    - Requires explicit confirmation
-    - Returns the applied policy for verification
-    - Logs all policy changes for audit
+    - Requires explicit confirmation (``confirm: true``)
+    - Idempotent — safe to retry with the same request
+    - Returns the applied policy details for verification
+    - All policy changes are logged for audit
     """
     if not request.confirm:
         raise HTTPException(
@@ -536,6 +570,13 @@ async def get_active_policy(
     deps: PolicyDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
+    """
+    Get the currently active spending policy for an agent.
+
+    Returns the policy that is being enforced on every payment this agent
+    makes, including trust level, per-transaction limit, total limit,
+    blocked categories, and merchant rule count.
+    """
     agent = await deps.agent_repo.get(agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -563,9 +604,38 @@ async def check_policy(
     principal: Principal = Depends(require_principal),
 ):
     """
-    Evaluate a hypothetical purchase against the agent's active policy.
+    Test a hypothetical payment against the agent's active policy.
 
-    For demo purposes, currency is treated as 1:1 with the policy's default currency.
+    Use this to answer "would my agent be allowed to pay $X to merchant Y?"
+    without actually executing a payment.  This runs the same policy checks
+    that the orchestrator runs during real payment execution.
+
+    **Example request:**
+    ```json
+    {
+        "agent_id": "agent_abc123",
+        "amount": 250,
+        "merchant_id": "openai.com",
+        "mcc_code": "7372"
+    }
+    ```
+
+    **Example response (allowed):**
+    ```json
+    {"allowed": true, "reason": "OK", "policy_id": "policy_abc123"}
+    ```
+
+    **Example response (denied):**
+    ```json
+    {"allowed": false, "reason": "per_transaction_limit", "policy_id": "policy_abc123"}
+    ```
+
+    Common denial reasons:
+      - ``per_transaction_limit`` — amount exceeds single-payment cap
+      - ``total_limit_exceeded`` — lifetime spending cap reached
+      - ``merchant_denied`` — merchant is on the blocklist
+      - ``merchant_category_blocked:gambling`` — MCC category blocked
+      - ``scope_not_allowed`` — wrong spending category
     """
     agent = await deps.agent_repo.get(request.agent_id)
     if not agent:

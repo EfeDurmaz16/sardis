@@ -1,7 +1,46 @@
 """
 Policy enforcement for agent payments.
 
-Policies define rules for what transactions are allowed.
+This module provides the user-facing Policy class that answers the core
+question: **"Is my agent allowed to make this payment?"**
+
+How policy enforcement works:
+────────────────────────────
+When an agent calls ``wallet.pay()``, Sardis runs the payment through a
+policy check *before* any money moves.  The check pipeline looks like this:
+
+    wallet.pay(to="openai.com", amount=25)
+        │
+        ▼
+    Policy.check(amount=25, destination="openai.com", token="USDC")
+        │
+        ├── 1. Amount limit      → Is $25 under the per-tx cap?
+        ├── 2. Token check       → Is USDC an allowed token?
+        ├── 3. Destination block  → Is openai.com on the blocklist?
+        ├── 4. Destination allow  → Is openai.com on the allowlist (if set)?
+        ├── 5. Purpose check     → Is a purpose required and provided?
+        ├── 6. Wallet limit      → Has the wallet's total spend cap been reached?
+        └── 7. Approval routing  → Amount OK but needs human sign-off?
+                │
+                ▼
+        PolicyResult(approved=True/False, reason="...", checks_passed=[...])
+
+If ANY check fails, the payment is **rejected** and no funds move.
+If all checks pass but the amount exceeds the approval threshold, the
+payment is flagged as ``requires_approval`` for human sign-off.
+
+Quick start:
+    >>> from sardis import Policy
+    >>> policy = Policy(max_per_tx=50, allowed_destinations={"openai:*", "anthropic:*"})
+    >>> result = policy.check(amount=25, destination="openai:api")
+    >>> result.approved  # True — under $50 and openai is allowed
+
+    >>> result = policy.check(amount=75, destination="openai:api")
+    >>> result.approved  # False — exceeds $50 per-tx limit
+    >>> result.reason    # "Amount 75 exceeds limit 50"
+
+For production (API-backed) enforcement, see ``sardis_v2_core.spending_policy``
+which adds DB-backed spend tracking, time-window limits, MCC codes, and more.
 """
 from __future__ import annotations
 
@@ -34,17 +73,53 @@ class PolicyResult:
 class Policy:
     """
     Spending policy for AI agents.
-    
-    Policies enforce limits on transactions:
-    - Maximum per transaction
-    - Allowed destinations (merchants/categories)
-    - Token restrictions
-    - Time-based limits
-    
-    Example:
-        >>> policy = Policy(max_per_tx=50, allowed_destinations={"openai:*", "anthropic:*"})
-        >>> result = policy.check(amount=25, destination="openai:api")
-        >>> print(result.approved)  # True
+
+    A Policy defines the guardrails an agent must operate within.  Every call
+    to ``wallet.pay()`` checks the policy first — if the policy says no,
+    the payment never executes.
+
+    **What you can control:**
+
+    +-----------------------+-----------------------------------------------+
+    | Rule                  | What it does                                  |
+    +=======================+===============================================+
+    | ``max_per_tx``        | Cap on a single payment (e.g. $100)           |
+    +-----------------------+-----------------------------------------------+
+    | ``max_total``         | Lifetime spending cap (e.g. $1000)            |
+    +-----------------------+-----------------------------------------------+
+    | ``allowed_destinations``| Allowlist of merchants (supports wildcards)  |
+    +-----------------------+-----------------------------------------------+
+    | ``blocked_destinations``| Blocklist of merchants (checked first)       |
+    +-----------------------+-----------------------------------------------+
+    | ``allowed_tokens``    | Which tokens the agent can spend (USDC, etc.) |
+    +-----------------------+-----------------------------------------------+
+    | ``require_purpose``   | Force the agent to state why it's paying      |
+    +-----------------------+-----------------------------------------------+
+    | ``approval_threshold``| Auto-approve below this; human approval above |
+    +-----------------------+-----------------------------------------------+
+
+    **Examples:**
+
+    Basic limit::
+
+        policy = Policy(max_per_tx=50)
+        # Agent can spend up to $50 per transaction
+
+    Restrict to specific vendors::
+
+        policy = Policy(
+            max_per_tx=200,
+            allowed_destinations={"openai:*", "anthropic:*", "aws:*"},
+        )
+        # Agent can only pay OpenAI, Anthropic, and AWS
+
+    Block categories + require approval for large amounts::
+
+        policy = Policy(
+            max_per_tx=500,
+            blocked_destinations={"gambling:*", "adult:*"},
+            approval_threshold=100,  # human approval needed above $100
+        )
     """
     
     max_per_tx: Decimal = field(default_factory=lambda: Decimal("100.00"))
@@ -94,23 +169,43 @@ class Policy:
         purpose: Optional[str] = None,
     ) -> PolicyResult:
         """
-        Check if a transaction is allowed by this policy.
-        
+        Run this payment through the policy check pipeline.
+
+        This is the method that enforces the policy.  It runs checks in order
+        and **short-circuits on the first failure** — no money moves if any
+        check fails.
+
+        Check order:
+            1. Amount limit → ``amount <= max_per_tx``?
+            2. Token check → is the token in ``allowed_tokens``?
+            3. Blocklist → is the destination in ``blocked_destinations``?
+            4. Allowlist → is the destination in ``allowed_destinations`` (if set)?
+            5. Purpose → is a purpose provided (if ``require_purpose=True``)?
+            6. Wallet limit → has the wallet's lifetime cap been reached?
+            7. Approval threshold → all OK, but needs human sign-off?
+
         Args:
-            amount: Transaction amount
-            wallet: Source wallet (optional)
-            destination: Destination identifier
-            token: Token type
-            purpose: Transaction purpose
-            
+            amount: How much the agent wants to pay.
+            wallet: Source wallet — if provided, checks lifetime spend cap.
+            destination: Who the agent is paying (e.g. "openai:api").
+                Supports wildcard matching against allowlist/blocklist patterns.
+            token: Token type (default: USDC).
+            purpose: Why the agent is making this payment (required if
+                ``require_purpose=True``).
+
         Returns:
-            PolicyResult with approval status and details
+            PolicyResult with:
+              - ``approved``: True if the payment should proceed.
+              - ``reason``: Human-readable explanation.
+              - ``checks_passed`` / ``checks_failed``: Which specific checks
+                passed or failed (useful for debugging).
+              - ``requires_approval``: True if a human needs to approve.
         """
         amount = Decimal(str(amount))
         checks_passed = []
         checks_failed = []
-        
-        # Check amount limit
+
+        # ── Check 1: Per-transaction amount limit ──────────────────────
         if amount <= self.max_per_tx:
             checks_passed.append("amount_limit")
         else:
@@ -122,7 +217,7 @@ class Policy:
                 checks_failed=checks_failed,
             )
         
-        # Check token
+        # ── Check 2: Token type ────────────────────────────────────────
         if token in self.allowed_tokens:
             checks_passed.append("token_allowed")
         else:
@@ -134,7 +229,7 @@ class Policy:
                 checks_failed=checks_failed,
             )
         
-        # Check destination blocklist
+        # ── Check 3: Destination blocklist (deny wins) ─────────────────
         if destination and destination in self.blocked_destinations:
             checks_failed.append("destination_blocked")
             return PolicyResult(
@@ -145,7 +240,7 @@ class Policy:
             )
         checks_passed.append("destination_not_blocked")
         
-        # Check destination allowlist
+        # ── Check 4: Destination allowlist (if configured) ──────────────
         if self.allowed_destinations is not None and destination:
             allowed = self._check_destination_pattern(destination, self.allowed_destinations)
             if allowed:
@@ -159,7 +254,7 @@ class Policy:
                     checks_failed=checks_failed,
                 )
         
-        # Check purpose requirement
+        # ── Check 5: Purpose requirement ───────────────────────────────
         if self.require_purpose and not purpose:
             checks_failed.append("purpose_required")
             return PolicyResult(
@@ -171,7 +266,7 @@ class Policy:
         if self.require_purpose:
             checks_passed.append("purpose_provided")
         
-        # Check wallet limits if provided
+        # ── Check 6: Wallet lifetime spending limit ─────────────────────
         if wallet:
             if wallet.can_spend(amount):
                 checks_passed.append("wallet_limit")
@@ -184,7 +279,9 @@ class Policy:
                     checks_failed=checks_failed,
                 )
 
-        # Check approval threshold — all checks passed but human sign-off needed
+        # ── Check 7: Approval threshold ────────────────────────────────
+        # All checks passed, but if the amount exceeds the approval
+        # threshold, flag it for human sign-off before executing.
         if self.approval_threshold is not None and amount > self.approval_threshold:
             checks_passed.append("approval_threshold_triggered")
             return PolicyResult(
