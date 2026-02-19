@@ -10,6 +10,7 @@
  * - Policy: sardis_check_policy, sardis_validate_limits, sardis_check_compliance
  * - Holds: sardis_create_hold, sardis_capture_hold, sardis_void_hold, sardis_get_hold, sardis_list_holds, sardis_extend_hold
  * - Agents: sardis_create_agent, sardis_get_agent, sardis_list_agents, sardis_update_agent
+ * - Events: sardis_subscribe_events, sardis_list_event_types, sardis_get_event_history, sardis_configure_webhook
  *
  * Environment Variables:
  * - SARDIS_API_KEY: API key for Sardis API (required)

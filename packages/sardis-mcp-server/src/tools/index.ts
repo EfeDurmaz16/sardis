@@ -20,6 +20,7 @@ import { spendingToolDefinitions, spendingToolHandlers } from './spending.js';
 import { walletManagementToolDefinitions, walletManagementToolHandlers } from './wallet-management.js';
 import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
 import { groupToolDefinitions, groupToolHandlers } from './groups.js';
+import { eventToolDefinitions, eventToolHandlers } from './events.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -54,6 +55,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...walletManagementToolDefinitions,
   ...sandboxToolDefinitions,
   ...groupToolDefinitions,
+  ...eventToolDefinitions,
 ];
 
 /**
@@ -72,6 +74,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...walletManagementToolHandlersFiltered,
   ...sandboxToolHandlers,
   ...groupToolHandlers,
+  ...eventToolHandlers,
 };
 
 /**
@@ -166,6 +169,12 @@ export const toolCategories = {
     'sardis_get_spending_by_vendor',
     'sardis_get_spending_by_category',
     'sardis_get_spending_trends',
+  ],
+  event: [
+    'sardis_subscribe_events',
+    'sardis_list_event_types',
+    'sardis_get_event_history',
+    'sardis_configure_webhook',
   ],
 } as const;
 

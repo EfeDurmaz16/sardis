@@ -175,3 +175,27 @@ export const UpdateAgentSchema = z.object({
   name: z.string().optional().describe('New name'),
   is_active: z.boolean().optional().describe('Active status'),
 });
+
+// Event schemas
+export const SubscribeEventsSchema = z.object({
+  event_pattern: z.string().describe('Event pattern to subscribe to (e.g., "policy.*", "spend.*", "*")'),
+  webhook_url: z.string().url().optional().describe('Optional webhook URL to forward events to'),
+});
+
+export const ListEventTypesSchema = z.object({
+  category: z.string().optional().describe('Optional category filter: policy, spend, approval, card, compliance, group, payment, hold, wallet, agent, mandate, risk'),
+});
+
+export const GetEventHistorySchema = z.object({
+  agent_id: z.string().optional().describe('Agent ID to filter events by'),
+  wallet_id: z.string().optional().describe('Wallet ID to filter events by'),
+  event_type: z.string().optional().describe('Event type filter (e.g., "policy.violated")'),
+  limit: z.number().optional().default(50).describe('Maximum number of events to return'),
+  offset: z.number().optional().default(0).describe('Pagination offset'),
+});
+
+export const ConfigureWebhookSchema = z.object({
+  url: z.string().url().describe('Webhook URL to POST events to'),
+  events: z.array(z.string()).optional().describe('List of event types to subscribe to. Empty = all events'),
+  is_active: z.boolean().optional().default(true).describe('Enable or disable the webhook'),
+});
