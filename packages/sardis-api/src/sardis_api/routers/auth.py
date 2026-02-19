@@ -4,7 +4,10 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import re
 import secrets
+import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -432,4 +435,127 @@ async def bootstrap_api_key(
         scopes=api_key.scopes,
         rate_limit=api_key.rate_limit,
         expires_at=api_key.expires_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public signup — test API key self-service
+# ---------------------------------------------------------------------------
+
+class SignupRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class SignupResponse(BaseModel):
+    key: str
+    key_id: str
+    key_prefix: str
+    organization_id: str
+    scopes: list[str]
+    rate_limit: int
+    mode: str = "test"
+
+
+# IP-based rate limiter: tracks (ip -> list of timestamps)
+_signup_ip_timestamps: dict[str, list[float]] = defaultdict(list)
+_SIGNUP_RATE_LIMIT = 5  # max signups per IP per hour
+_SIGNUP_RATE_WINDOW = 3600  # 1 hour in seconds
+
+
+def _check_signup_rate_limit(ip: str) -> None:
+    """Raise 429 if this IP has exceeded the signup rate limit."""
+    now = time.monotonic()
+    timestamps = _signup_ip_timestamps[ip]
+    # Prune expired entries
+    _signup_ip_timestamps[ip] = [t for t in timestamps if now - t < _SIGNUP_RATE_WINDOW]
+    if len(_signup_ip_timestamps[ip]) >= _SIGNUP_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many signup requests. Try again later.",
+        )
+
+
+@router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+async def signup(request: Request, body: SignupRequest):
+    """
+    Public signup endpoint — returns a test-mode API key (sk_test_ prefix).
+
+    Gated behind SARDIS_ALLOW_PUBLIC_SIGNUP=1 environment variable.
+    Test keys work only in simulated mode; no real money moves.
+    """
+    # Feature gate
+    if os.getenv("SARDIS_ALLOW_PUBLIC_SIGNUP", "").lower() not in ("1", "true", "yes"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Public signup is not enabled",
+        )
+
+    # Normalize email
+    email = body.email.strip().lower()
+
+    # Basic email format validation
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid email address",
+        )
+
+    # IP rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    _check_signup_rate_limit(client_ip)
+
+    from sardis_api.middleware.auth import get_api_key_manager
+
+    manager = get_api_key_manager()
+
+    # Duplicate check
+    existing_org = await manager.find_org_by_email(email)
+    if existing_org:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists",
+        )
+
+    # Derive org external_id from email
+    sanitized = re.sub(r"[^a-z0-9]", "_", email)
+    org_id = f"org_{sanitized}"
+
+    # Create org with email in settings (if postgres)
+    if manager._use_postgres:
+        import json
+
+        pool = await manager._get_pool()
+        async with pool.acquire() as conn:
+            settings = json.dumps({"email": email, "signup_source": "public_api"})
+            await conn.execute(
+                """
+                INSERT INTO organizations (external_id, name, settings)
+                VALUES ($1, $2, $3::jsonb)
+                ON CONFLICT (external_id) DO NOTHING
+                """,
+                org_id,
+                email,
+                settings,
+            )
+
+    # Create test API key
+    full_key, api_key = await manager.create_key(
+        organization_id=org_id,
+        name=f"Test key for {email}",
+        scopes=["read", "write"],
+        rate_limit=30,
+        test=True,
+    )
+
+    # Record the signup for rate limiting
+    _signup_ip_timestamps[client_ip].append(time.monotonic())
+
+    return SignupResponse(
+        key=full_key,
+        key_id=api_key.key_id,
+        key_prefix=api_key.key_prefix,
+        organization_id=api_key.organization_id,
+        scopes=api_key.scopes,
+        rate_limit=api_key.rate_limit,
+        mode="test",
     )

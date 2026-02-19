@@ -85,7 +85,7 @@ class APIKeyManager:
         return str(created["id"])
 
     @staticmethod
-    def generate_api_key() -> tuple[str, str, str]:
+    def generate_api_key(*, test: bool = False) -> tuple[str, str, str]:
         """
         Generate a new API key.
 
@@ -97,7 +97,8 @@ class APIKeyManager:
         used plain SHA-256 while validate_key used HMAC-SHA256, so newly created
         keys could never be validated — a critical inconsistency.
         """
-        full_key = f"sk_live_{secrets.token_urlsafe(32)}"
+        key_prefix = "sk_test_" if test else "sk_live_"
+        full_key = f"{key_prefix}{secrets.token_urlsafe(32)}"
         prefix = full_key[:12]  # First 12 chars for lookup
         key_hash = APIKeyManager.hash_key(full_key)
 
@@ -127,16 +128,18 @@ class APIKeyManager:
         scopes: List[str] = None,
         rate_limit: int = 100,
         expires_at: Optional[datetime] = None,
+        *,
+        test: bool = False,
     ) -> tuple[str, APIKey]:
         """
         Create a new API key.
-        
+
         Returns:
             (full_key, api_key_record)
-            
+
         Note: The full key is only returned once and should be shown to the user.
         """
-        full_key, prefix, key_hash = self.generate_api_key()
+        full_key, prefix, key_hash = self.generate_api_key(test=test)
         scopes = scopes or ["read", "write"]
         
         key_id = f"key_{secrets.token_hex(8)}"
@@ -274,6 +277,27 @@ class APIKeyManager:
                 self._keys[key_id].is_active = False
                 return True
             return False
+
+    async def find_org_by_email(self, email: str) -> Optional[str]:
+        """Find an organization by email stored in settings JSONB.
+
+        Returns the organization external_id if found, None otherwise.
+        """
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT external_id FROM organizations WHERE settings->>'email' = $1",
+                    email,
+                )
+                if row:
+                    return str(row["external_id"])
+                return None
+        else:
+            # In-memory fallback: scan keys for matching org settings
+            # Organizations aren't stored in-memory directly, so we can't check.
+            # Return None (no duplicate detected) for in-memory mode.
+            return None
 
     async def list_keys(self, organization_id: str) -> List[APIKey]:
         """List all API keys for an organization."""
