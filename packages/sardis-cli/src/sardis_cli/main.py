@@ -9,7 +9,7 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
-from .commands import agents, auth, chains, holds, payments, wallets
+from .commands import agents, auth, chains, holds, init, payments, policies, wallets
 from .config import load_config
 
 console = Console()
@@ -111,6 +111,8 @@ cli.add_command(payments.payments)
 cli.add_command(holds.holds)
 cli.add_command(chains.chains)
 cli.add_command(auth.auth)
+cli.add_command(policies.policies)
+cli.add_command(init.init_cmd)
 
 
 def main():
