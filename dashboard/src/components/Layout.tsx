@@ -9,7 +9,9 @@ import {
   Sparkles,
   LogOut,
   ShieldCheck,
-  FlaskConical
+  FlaskConical,
+  Activity,
+  CheckSquare
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -26,6 +28,8 @@ const navigation = [
   { name: 'Cards', href: '/cards', icon: CreditCard },
   { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
+  { name: 'Approvals', href: '/approvals', icon: CheckSquare },
+  { name: 'Live Events', href: '/events', icon: Activity },
 ]
 
 export default function Layout({ children }: LayoutProps) {
