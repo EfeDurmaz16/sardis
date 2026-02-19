@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-wallet"
-version = "0.2.2"
+version = "0.2.3"
 description = "Wallet orchestration and spending policy engine for Sardis"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
