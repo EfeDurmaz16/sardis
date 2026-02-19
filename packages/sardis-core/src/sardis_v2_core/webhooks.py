@@ -18,36 +18,69 @@ logger = logging.getLogger(__name__)
 
 class EventType(str, Enum):
     """Types of webhook events."""
-    
+
     # Payment events
     PAYMENT_INITIATED = "payment.initiated"
     PAYMENT_COMPLETED = "payment.completed"
     PAYMENT_FAILED = "payment.failed"
     PAYMENT_REFUNDED = "payment.refunded"
-    
+
     # Hold events
     HOLD_CREATED = "hold.created"
     HOLD_CAPTURED = "hold.captured"
     HOLD_VOIDED = "hold.voided"
     HOLD_EXPIRED = "hold.expired"
-    
+
     # Wallet events
     WALLET_CREATED = "wallet.created"
     WALLET_FUNDED = "wallet.funded"
     WALLET_UPDATED = "wallet.updated"
-    
+
     # Agent events
     AGENT_CREATED = "agent.created"
     AGENT_UPDATED = "agent.updated"
-    
+
     # Mandate events (AP2)
     MANDATE_VERIFIED = "mandate.verified"
     MANDATE_EXECUTED = "mandate.executed"
     MANDATE_REJECTED = "mandate.rejected"
-    
+
     # Risk events
     RISK_ALERT = "risk.alert"
     LIMIT_EXCEEDED = "limit.exceeded"
+
+    # Policy events
+    POLICY_CREATED = "policy.created"
+    POLICY_UPDATED = "policy.updated"
+    POLICY_VIOLATED = "policy.violated"
+    POLICY_CHECK_PASSED = "policy.check.passed"
+
+    # Spending threshold events
+    SPEND_THRESHOLD_WARNING = "spend.threshold.warning"  # 80% of limit
+    SPEND_THRESHOLD_REACHED = "spend.threshold.reached"  # 100% of limit
+    SPEND_DAILY_SUMMARY = "spend.daily.summary"
+
+    # Approval events
+    APPROVAL_REQUESTED = "approval.requested"
+    APPROVAL_GRANTED = "approval.granted"
+    APPROVAL_DENIED = "approval.denied"
+    APPROVAL_EXPIRED = "approval.expired"
+
+    # Card events
+    CARD_CREATED = "card.created"
+    CARD_ACTIVATED = "card.activated"
+    CARD_TRANSACTION = "card.transaction"
+    CARD_DECLINED = "card.declined"
+    CARD_FROZEN = "card.frozen"
+
+    # Compliance events
+    COMPLIANCE_CHECK_PASSED = "compliance.check.passed"
+    COMPLIANCE_CHECK_FAILED = "compliance.check.failed"
+    COMPLIANCE_ALERT = "compliance.alert"
+
+    # Group events
+    GROUP_BUDGET_WARNING = "group.budget.warning"
+    GROUP_BUDGET_EXCEEDED = "group.budget.exceeded"
 
 
 @dataclass

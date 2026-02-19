@@ -101,6 +101,16 @@ from .webhooks import (
     create_payment_event,
     create_hold_event,
 )
+from .event_bus import (
+    EventBus,
+    get_default_bus,
+    emit_policy_event,
+    emit_spend_event,
+    emit_approval_event,
+    emit_card_event,
+    emit_compliance_event,
+    emit_group_event,
+)
 from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
 from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
 from .agent_groups import AgentGroup, AgentGroupRepository, GroupSpendingLimits, GroupMerchantPolicy
@@ -289,6 +299,15 @@ __all__ = [
     "WebhookService",
     "create_payment_event",
     "create_hold_event",
+    # Event Bus
+    "EventBus",
+    "get_default_bus",
+    "emit_policy_event",
+    "emit_spend_event",
+    "emit_approval_event",
+    "emit_card_event",
+    "emit_compliance_event",
+    "emit_group_event",
     "CacheService",
     "CacheBackend",
     "InMemoryCache",
