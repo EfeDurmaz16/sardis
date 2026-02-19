@@ -132,20 +132,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          PYPROJECT_VERSION="$(python3 -c "
-          import tomllib
-          with open('${PKG_DIR}/pyproject.toml', 'rb') as f:
+          PYPROJECT_VERSION="$(python3 << 'PYEOF'
+          import tomllib, os
+          pkg_dir = os.environ["PKG_DIR"]
+          with open(f"{pkg_dir}/pyproject.toml", "rb") as f:
               data = tomllib.load(f)
-          print(data['project']['version'])
-          ")"
+          print(data["project"]["version"])
+          PYEOF
+          )"
 
-          INIT_VERSION="$(python3 -c "
+          INIT_VERSION="$(python3 << 'PYEOF'
           import re
+          import os
           from pathlib import Path
-          content = Path('${PKG_DIR}/src/${IMPORT}/__init__.py').read_text()
-          m = re.search(r'__version__\s*=\"([^\"]+)\"', content)
-          print(m.group(1) if m else '')
-          ")"
+          pkg_dir = os.environ["PKG_DIR"]
+          imp = os.environ["IMPORT"]
+          content = Path(f"{pkg_dir}/src/{imp}/__init__.py").read_text()
+          m = re.search(r'__version__\s*=\s*["\x27]([^"\x27]+)["\x27]', content)
+          print(m.group(1) if m else "")
+          PYEOF
+          )"
 
           if [[ "$PYPROJECT_VERSION" != "$EXPECTED" ]]; then
             echo "pyproject version ($PYPROJECT_VERSION) does not match release version ($EXPECTED)"
