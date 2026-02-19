@@ -63,7 +63,7 @@ const faqs = [
     questions: [
       {
         q: 'How do I integrate Sardis with Claude?',
-        a: 'Use the Sardis MCP (Model Context Protocol) server. Run npx @sardis/mcp-server start and add it to your claude_desktop_config.json. Claude gets 50+ tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed - Claude can immediately execute payments and manage wallets through natural language.'
+        a: 'Use the Sardis MCP (Model Context Protocol) server. Run npx @sardis/mcp-server start and add it to your claude_desktop_config.json. Claude gets 60+ tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed - Claude can immediately execute payments and manage wallets through natural language.'
       },
       {
         q: 'How do I integrate Sardis with ChatGPT or OpenAI?',
@@ -71,7 +71,7 @@ const faqs = [
       },
       {
         q: 'Which AI frameworks does Sardis support?',
-        a: 'Sardis supports all major AI agent frameworks: Claude MCP (50+ tools, zero-code), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, and AutoGPT. The Python SDK (pip install sardis) and TypeScript SDK (npm install @sardis/sdk) work with any framework.'
+        a: 'Sardis supports all major AI agent frameworks: Claude MCP (60+ tools, zero-code), LangChain (Python and JavaScript), OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, and AutoGPT. The Python SDK (pip install sardis) and TypeScript SDK (npm install @sardis/sdk) work with any framework.'
       },
       {
         q: 'Can I use Sardis without writing code?',

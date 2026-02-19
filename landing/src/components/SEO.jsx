@@ -118,7 +118,7 @@ export function createSoftwareAppSchema() {
       'Virtual Visa/Mastercard card issuance',
       'Fiat on/off-ramp (ACH, wire, card)',
       'AP2, TAP, UCP, A2A, x402 protocol support',
-      'MCP server with 50+ tools for Claude',
+      'MCP server with 60+ tools for Claude',
       'Python and TypeScript SDKs',
       'Append-only audit trail with Merkle tree anchoring',
       'ERC-4337 gasless smart wallets',

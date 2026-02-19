@@ -94,8 +94,8 @@ const posts = [
     slug: 'understanding-ap2',
   },
   {
-    title: 'MCP Server: 50+ Tools for AI Payments',
-    excerpt: 'Our MCP server expanded from 4 tools to 50+ operations. From treasury ACH flows and virtual cards to checkout sessions and agent discovery, you can add broad payment capabilities to Claude Desktop and Cursor without writing code.',
+    title: 'MCP Server: 60+ Tools for AI Payments',
+    excerpt: 'Our MCP server expanded from 4 tools to 60+ operations. From treasury ACH flows and virtual cards to checkout sessions and agent discovery, you can add broad payment capabilities to Claude Desktop and Cursor without writing code.',
     date: '2026-01-18',
     readTime: '5 min read',
     category: 'Tutorial',

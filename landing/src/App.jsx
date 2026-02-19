@@ -650,7 +650,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               {
                 icon: icons.terminal,
                 title: "Zero-Config MCP",
-                description: "One command to add 50+ payment and treasury tools to Claude or Cursor. No setup required.",
+                description: "One command to add 60+ payment and treasury tools to Claude or Cursor. No setup required.",
                 unique: false
               },
               {
@@ -985,7 +985,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 50+ tools for payments, wallets, treasury ACH, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 60+ tools for payments, wallets, treasury ACH, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }

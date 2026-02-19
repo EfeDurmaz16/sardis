@@ -45,6 +45,15 @@ const navigation = [
     ],
   },
   {
+    title: 'Framework Integrations',
+    items: [
+      { name: 'LangChain', href: '/docs/integration-langchain' },
+      { name: 'CrewAI', href: '/docs/integration-crewai' },
+      { name: 'Google ADK', href: '/docs/integration-adk' },
+      { name: 'Anthropic Agent SDK', href: '/docs/integration-agent-sdk' },
+    ],
+  },
+  {
     title: 'Resources',
     items: [
       { name: 'Architecture', href: '/docs/architecture' },

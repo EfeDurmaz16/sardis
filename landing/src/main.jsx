@@ -29,6 +29,11 @@ import DocsSDKTypeScript from './docs/pages/SDKTypeScript.jsx'
 import DocsMCPServer from './docs/pages/MCPServer.jsx'
 import DocsSDK from './docs/pages/SDK.jsx'
 import APIReference from './docs/pages/APIReference.jsx'
+// Framework Integrations
+import DocsIntegrationLangChain from './docs/pages/IntegrationLangChain.jsx'
+import DocsIntegrationCrewAI from './docs/pages/IntegrationCrewAI.jsx'
+import DocsIntegrationADK from './docs/pages/IntegrationADK.jsx'
+import DocsIntegrationAgentSDK from './docs/pages/IntegrationAgentSDK.jsx'
 // Resources
 import DocsBlockchainInfrastructure from './docs/pages/BlockchainInfrastructure.jsx'
 import DocsArchitecture from './docs/pages/Architecture.jsx'
@@ -103,6 +108,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="mcp-server" element={<DocsMCPServer />} />
           <Route path="sdk" element={<DocsSDK />} />
           <Route path="api-reference" element={<APIReference />} />
+          {/* Framework Integrations */}
+          <Route path="integration-langchain" element={<DocsIntegrationLangChain />} />
+          <Route path="integration-crewai" element={<DocsIntegrationCrewAI />} />
+          <Route path="integration-adk" element={<DocsIntegrationADK />} />
+          <Route path="integration-agent-sdk" element={<DocsIntegrationAgentSDK />} />
           {/* Resources */}
           <Route path="blockchain-infrastructure" element={<DocsBlockchainInfrastructure />} />
           <Route path="architecture" element={<DocsArchitecture />} />

@@ -68,7 +68,7 @@ export default function DocsOverview() {
             { title: 'Multi-Rail Settlement', desc: 'Bank transfer, virtual card, or stablecoins' },
             { title: 'Bank-First Funding', desc: 'Fund from bank accounts, withdraw to USD' },
             { title: 'Compliance Lanes', desc: 'Provider-integrated KYC/AML onboarding paths for regulated rails' },
-            { title: 'Zero Integration Setup', desc: 'MCP server with 50+ tools' },
+            { title: 'Zero Integration Setup', desc: 'MCP server with 60+ tools' },
           ].map((feature) => (
             <div key={feature.title} className="p-4 border border-border hover:border-[var(--sardis-orange)] transition-colors">
               <h3 className="font-bold font-display mb-1">{feature.title}</h3>
