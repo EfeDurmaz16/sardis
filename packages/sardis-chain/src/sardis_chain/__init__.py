@@ -86,6 +86,12 @@ from .erc4337 import (
     PaymasterConfig,
     SponsoredUserOperation,
 )
+from .gas_optimizer import (
+    GasOptimizer,
+    GasEstimate as GasOptimizerEstimate,
+    ChainRoute,
+    get_gas_optimizer,
+)
 
 __version__ = "0.3.2"
 
@@ -157,4 +163,9 @@ __all__ = [
     "PaymasterClient",
     "PaymasterConfig",
     "SponsoredUserOperation",
+    # Gas Optimizer
+    "GasOptimizer",
+    "GasOptimizerEstimate",
+    "ChainRoute",
+    "get_gas_optimizer",
 ]
