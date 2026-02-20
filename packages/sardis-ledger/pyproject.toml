@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ledger"
-version = "0.4.2"
+version = "0.5.0"
 description = "Production-grade append-only ledger with row-level locking, batch processing, and blockchain reconciliation"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-agent-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Anthropic Claude Agent SDK integration for Sardis payments"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

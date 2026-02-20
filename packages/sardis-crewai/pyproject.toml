@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-crewai"
-version = "0.1.0"
+version = "0.2.0"
 description = "CrewAI integration for Sardis - agent payment tools, pre-built agents, and task templates"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
