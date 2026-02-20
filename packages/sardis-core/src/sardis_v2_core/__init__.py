@@ -80,7 +80,7 @@ from .identity import AgentIdentity
 from .mandates import IntentMandate, CartMandate, PaymentMandate, MandateChain
 from .tokens import TokenType, TokenMetadata
 from .wallets import Wallet, TokenLimit, TokenBalance  # TokenBalance is alias for TokenLimit
-from .spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel, SpendingScope, create_default_policy
+from .spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel, SpendingScope, create_default_policy, trust_level_for_kya, kya_level_for_trust, KYA_TO_TRUST, TRUST_TO_KYA
 from .spending_policy_store import SpendingPolicyStore
 from .policy_store import AsyncPolicyStore
 from .policy_store_memory import InMemoryPolicyStore
@@ -275,6 +275,10 @@ __all__ = [
     "TrustLevel",
     "SpendingScope",
     "create_default_policy",
+    "trust_level_for_kya",
+    "kya_level_for_trust",
+    "KYA_TO_TRUST",
+    "TRUST_TO_KYA",
     "Transaction",
     "TransactionStatus",
     "OnChainRecord",
@@ -430,4 +434,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"

@@ -143,6 +143,22 @@ from .batch import (
     ComplianceBatchScreener,
     create_batch_screener,
 )
+from .kya import (
+    KYALevel,
+    KYAStatus,
+    KYAResult,
+    KYACheckRequest,
+    AgentManifest,
+    AgentTrustScore,
+    CodeAttestation,
+    AgentLivenessTracker,
+    KYAProvider,
+    KYAService,
+    InMemoryKYAStore,
+    create_kya_service,
+    required_kya_level,
+    kya_level_sufficient,
+)
 from .retry import (
     CircuitState,
     RetryStrategy,
@@ -301,8 +317,23 @@ __all__ = [
     "RetryableClient",
     "retry",
     "create_retryable_client",
+    # KYA (Know Your Agent)
+    "KYALevel",
+    "KYAStatus",
+    "KYAResult",
+    "KYACheckRequest",
+    "AgentManifest",
+    "AgentTrustScore",
+    "CodeAttestation",
+    "AgentLivenessTracker",
+    "KYAProvider",
+    "KYAService",
+    "InMemoryKYAStore",
+    "create_kya_service",
+    "required_kya_level",
+    "kya_level_sufficient",
     # Version
     "__version__",
 ]
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
