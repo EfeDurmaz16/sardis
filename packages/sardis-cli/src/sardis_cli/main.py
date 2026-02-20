@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 
 from .commands import agents, auth, chains, holds, init, payments, policies, wallets
+from .commands import fiat, cards, spending, demo
 from .config import load_config
 
 console = Console()
@@ -113,6 +114,10 @@ cli.add_command(chains.chains)
 cli.add_command(auth.auth)
 cli.add_command(policies.policies)
 cli.add_command(init.init_cmd)
+cli.add_command(fiat.fiat)
+cli.add_command(cards.cards)
+cli.add_command(spending.spending)
+cli.add_command(demo.demo)
 
 
 def main():
