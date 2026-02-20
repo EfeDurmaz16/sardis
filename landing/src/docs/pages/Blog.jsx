@@ -4,6 +4,15 @@ import WaitlistForm from '../../components/WaitlistForm';
 
 const posts = [
   {
+    title: 'Sardis v0.9.0: Multi-Provider Fiat Rails + AI Framework Integrations',
+    excerpt: 'v0.9.0 ships Stripe Treasury + Issuing for fiat operations, Coinbase Onramp for zero-fee USDC, a per-agent sub-ledger system, and integrations across OpenAI, Gemini, Claude MCP, ChatGPT Actions, and OpenClaw.',
+    date: '2026-02-20',
+    readTime: '7 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-9-0-multi-provider-fiat',
+  },
+  {
     title: 'Sardis v0.8.9: Fiat-First Treasury + ACH Lifecycle',
     excerpt: 'v0.8.9 ships the USD-first treasury lane: Lithic financial accounts, ACH fund/withdraw endpoints, replay-protected webhooks, reconciliation jobs, and full SDK/MCP parity. Stablecoin conversion remains optional and quote-driven.',
     date: '2026-02-15',

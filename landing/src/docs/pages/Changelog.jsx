@@ -2,9 +2,48 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.9.0',
+    date: '2026-02-20',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Stripe Treasury provider: financial accounts, balances, outbound payments, Treasury-to-Issuing fund transfers, and webhook handling',
+          'Stripe Issuing provider: virtual card lifecycle (create/update/freeze/terminate), spending limits, real-time authorization webhooks, and CardProvider ABC implementation',
+          'Coinbase Onramp provider: 0% fee USDC on-ramp with session-based checkout flow and smart RampRouter with automatic provider selection',
+          'Sub-ledger fiat account manager: per-agent fiat balance tracking, deposits, withdrawals, card funding/settlement, and Treasury reconciliation',
+          'End-to-end FiatPaymentOrchestrator: card payments, fiat deposits, withdrawals, and crypto-to-card flows with automatic rollback on failure',
+          'Stripe webhook router: unified ingestion endpoint for Treasury and Issuing events with signature verification and event-type routing',
+          'Ledger batch and audit migration (021): ledger_batches, ledger_batch_entries, and ledger_audit_snapshots tables with 7 indexes',
+          'OpenClaw skill package (sardis-openclaw): SKILL.md manifest for agent framework integration with payment, policy, and card tools',
+          'sardis-openai package: OpenAI function-calling tools with strict JSON schema mode for payment, balance, and policy operations',
+          'Gemini function declarations (sardis-adk): Google ADK adapter with FunctionDeclaration format for all Sardis payment tools',
+          'MCP fiat tools: 5 new tools (fiat_deposit, fiat_withdraw, fiat_card_payment, fiat_balance, fiat_crypto_to_card) added to sardis-mcp-server',
+          'ChatGPT Actions OpenAPI spec: /openapi-actions.yaml with 8 endpoints for GPT plugin and Actions integration',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'RampRouter now supports multi-provider fallback chains with smart routing (USDC → Coinbase, others → Bridge)',
+          'sardis-core __init__.py exports updated with all new fiat module types (StripeTreasuryProvider, SubLedgerManager, FiatPaymentOrchestrator, etc.)',
+          'SubLedgerTxType enum extended with CARD_SETTLEMENT for distinct card settlement tracking',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Stripe webhook signature verification (HMAC-SHA256) enforced on all Treasury and Issuing event ingestion',
+          'FiatPaymentOrchestrator implements automatic rollback: failed card funding reverses sub-ledger withdrawal, failed off-ramp refunds sub-ledger debit',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.8.10',
     date: '2026-02-15',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

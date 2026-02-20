@@ -240,8 +240,8 @@ export default function Roadmap() {
     {
       version: 'v0.8.9',
       title: 'Fiat-First Treasury Execution',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'Treasury API endpoints added: sync accounts, link bank, verify micro-deposits, fund, withdraw, balances', done: true },
         { text: 'USD-first card funding route with stablecoin fallback feature flag', done: true },
@@ -254,6 +254,26 @@ export default function Roadmap() {
     },
     {
       version: 'v0.9.0',
+      title: 'Multi-Provider Fiat + AI Framework Integrations',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'Stripe Treasury provider (financial accounts, outbound payments, fund transfers)', done: true },
+        { text: 'Stripe Issuing provider (virtual cards, spending limits, real-time auth webhooks)', done: true },
+        { text: 'Coinbase Onramp (0% USDC fee, session-based checkout, smart RampRouter)', done: true },
+        { text: 'Sub-ledger fiat manager (per-agent balances, deposits, withdrawals, card funding)', done: true },
+        { text: 'E2E FiatPaymentOrchestrator with automatic rollback on failure', done: true },
+        { text: 'Stripe webhook router with signature verification', done: true },
+        { text: 'OpenClaw skill package for agent framework integration', done: true },
+        { text: 'sardis-openai tools with strict JSON schema mode', done: true },
+        { text: 'Gemini function declarations via sardis-adk adapter', done: true },
+        { text: 'MCP fiat tools (5 new tools for deposit, withdraw, card payment, balance)', done: true },
+        { text: 'ChatGPT Actions OpenAPI spec (8 endpoints)', done: true },
+        { text: 'Ledger batch and audit migration (021)', done: true },
+      ],
+    },
+    {
+      version: 'v0.10.0',
       title: 'ERC-4337 Implementation & Enterprise Features',
       status: 'upcoming',
       date: 'Q1-Q2 2026',
@@ -297,7 +317,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 11, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 12, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },
