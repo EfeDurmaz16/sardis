@@ -46,6 +46,7 @@ class SubLedgerTxType(str, Enum):
     CARD_REFUND = "card_refund"         # Card refund back to available
     TRANSFER_IN = "transfer_in"         # Inter-agent transfer in
     TRANSFER_OUT = "transfer_out"       # Inter-agent transfer out
+    CARD_SETTLEMENT = "card_settlement"  # Settled card transaction
     FEE = "fee"                         # Platform fee deduction
     ADJUSTMENT = "adjustment"           # Manual adjustment
 
@@ -464,7 +465,7 @@ class SubLedgerManager:
             tx = SubLedgerTransaction(
                 tx_id=f"tx_{len(self._transactions) + 1:08d}",
                 account_id=account_id,
-                tx_type=SubLedgerTxType.CARD_FUND,
+                tx_type=SubLedgerTxType.CARD_SETTLEMENT,
                 amount=amount,
                 balance_after=account.held_balance,
                 reference_id=tx_id,
