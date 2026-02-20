@@ -39,6 +39,9 @@ class Agent(BaseModel):
     policy: AgentPolicy = Field(default_factory=AgentPolicy)
     api_key_hash: Optional[str] = None  # For agent-specific API keys
     is_active: bool = True
+    # KYA (Know Your Agent) fields
+    kya_level: str = "none"      # none | basic | verified | attested
+    kya_status: str = "pending"  # pending | in_progress | active | suspended | revoked | expired
     metadata: dict = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -74,6 +77,8 @@ class AgentRepository:
         spending_limits: Optional[SpendingLimits] = None,
         policy: Optional[AgentPolicy] = None,
         metadata: Optional[dict] = None,
+        kya_level: str = "none",
+        kya_status: str = "pending",
     ) -> Agent:
         agent = Agent.new(
             name=name,
@@ -82,6 +87,8 @@ class AgentRepository:
             spending_limits=spending_limits or SpendingLimits(),
             policy=policy or AgentPolicy(),
             metadata=metadata or {},
+            kya_level=kya_level,
+            kya_status=kya_status,
         )
         self._agents[agent.agent_id] = agent
         return agent
@@ -112,6 +119,8 @@ class AgentRepository:
         policy: Optional[AgentPolicy] = None,
         is_active: Optional[bool] = None,
         metadata: Optional[dict] = None,
+        kya_level: Optional[str] = None,
+        kya_status: Optional[str] = None,
     ) -> Optional[Agent]:
         agent = self._agents.get(agent_id)
         if not agent:
@@ -128,6 +137,10 @@ class AgentRepository:
             agent.is_active = is_active
         if metadata is not None:
             agent.metadata = metadata
+        if kya_level is not None:
+            agent.kya_level = kya_level
+        if kya_status is not None:
+            agent.kya_status = kya_status
         agent.updated_at = datetime.now(timezone.utc)
         return agent
 
