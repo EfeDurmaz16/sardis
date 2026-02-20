@@ -638,3 +638,168 @@ async def get_agent_limits(
             "mpc_provider": wallet.mpc_provider if wallet else None,
         } if wallet else None,
     }
+
+
+# ============ KYA (Know Your Agent) Endpoints ============
+
+
+class KYAStatusResponse(BaseModel):
+    agent_id: str
+    kya_level: str
+    kya_status: str
+    manifest: Optional[dict] = None
+    trust_score: Optional[float] = None
+
+
+class KYAUpgradeRequest(BaseModel):
+    target_level: str = Field(description="Target KYA level: basic, verified, or attested")
+    anchor_verification_id: Optional[str] = Field(default=None, description="Owner KYC verification ID (required for verified)")
+    code_hash: Optional[str] = Field(default=None, description="SHA-256 hash of agent code (required for attested)")
+    framework: Optional[str] = Field(default=None, description="Agent framework name")
+
+
+class KYAUpgradeResponse(BaseModel):
+    agent_id: str
+    previous_level: str
+    new_level: str
+    status: str
+    reason: Optional[str] = None
+
+
+@router.get("/{agent_id}/kya", response_model=KYAStatusResponse)
+async def get_agent_kya(
+    agent_id: str,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get KYA (Know Your Agent) status for an agent."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    return KYAStatusResponse(
+        agent_id=agent.agent_id,
+        kya_level=agent.kya_level,
+        kya_status=agent.kya_status,
+        manifest=agent.metadata.get("manifest"),
+        trust_score=agent.metadata.get("trust_score"),
+    )
+
+
+@router.post("/{agent_id}/kya/upgrade", response_model=KYAUpgradeResponse)
+async def upgrade_agent_kya(
+    agent_id: str,
+    request: KYAUpgradeRequest,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Request a KYA level upgrade for an agent."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    target = request.target_level.lower()
+    valid_levels = {"basic", "verified", "attested"}
+    if target not in valid_levels:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid target level. Must be one of: {', '.join(valid_levels)}",
+        )
+
+    previous_level = agent.kya_level
+
+    # Validate upgrade requirements
+    if target == "verified" and not request.anchor_verification_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="anchor_verification_id is required for VERIFIED level (owner KYC)",
+        )
+
+    if target == "attested" and not request.code_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="code_hash is required for ATTESTED level",
+        )
+
+    # Store attestation data in metadata
+    meta = agent.metadata or {}
+    if request.anchor_verification_id:
+        meta["anchor_verification_id"] = request.anchor_verification_id
+    if request.code_hash:
+        meta["code_attestation"] = {
+            "code_hash": request.code_hash,
+            "framework": request.framework,
+        }
+
+    # Perform upgrade
+    await deps.agent_repo.update(
+        agent_id,
+        kya_level=target,
+        kya_status="active",
+        metadata=meta,
+    )
+
+    return KYAUpgradeResponse(
+        agent_id=agent_id,
+        previous_level=previous_level,
+        new_level=target,
+        status="active",
+        reason=f"upgraded_to_{target}",
+    )
+
+
+@router.post("/{agent_id}/kya/suspend", response_model=KYAStatusResponse)
+async def suspend_agent_kya(
+    agent_id: str,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Suspend an agent's KYA status (admin only)."""
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    await deps.agent_repo.update(agent_id, kya_status="suspended")
+
+    return KYAStatusResponse(
+        agent_id=agent.agent_id,
+        kya_level=agent.kya_level,
+        kya_status="suspended",
+        manifest=agent.metadata.get("manifest"),
+    )
+
+
+@router.post("/{agent_id}/kya/reactivate", response_model=KYAStatusResponse)
+async def reactivate_agent_kya(
+    agent_id: str,
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Reactivate a suspended agent's KYA status (admin only)."""
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if agent.kya_status != "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agent is not suspended (current status: {agent.kya_status})",
+        )
+
+    await deps.agent_repo.update(agent_id, kya_status="active")
+
+    return KYAStatusResponse(
+        agent_id=agent.agent_id,
+        kya_level=agent.kya_level,
+        kya_status="active",
+        manifest=agent.metadata.get("manifest"),
+    )
