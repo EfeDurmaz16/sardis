@@ -843,7 +843,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-14 h-14 border-2 border-[var(--sardis-orange)] flex items-center justify-center bg-[var(--sardis-orange)]/10">
-                    <span className="text-2xl">🐾</span>
+                    <img src="/icons/openclaw.svg" alt="OpenClaw" className="w-8 h-8" />
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold font-display">OpenClaw Skill</h3>
@@ -890,42 +890,42 @@ const balances = await client.treasury.getBalances()`}</pre>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
-                icon: icons.terminal,
+                logo: "/icons/mcp.svg",
                 name: "Claude / MCP",
                 description: "65+ MCP tools. One command to add payments to Claude Desktop, Cursor, or any MCP client.",
                 code: "npx @sardis/mcp-server start",
                 badge: "65+ tools"
               },
               {
-                icon: icons.rocketLaunch,
+                logo: "/icons/openai-2.svg",
                 name: "OpenAI / GPT",
                 description: "Strict-mode function calling tools. Drop-in for GPT-4, GPT-4o, and Assistants API.",
                 code: "pip install sardis-openai",
                 badge: "Strict JSON"
               },
               {
-                icon: icons.autoRenew,
+                logo: "/icons/gemini.svg",
                 name: "Google Gemini / ADK",
                 description: "Native FunctionDeclaration adapters for Gemini Pro, Ultra, and Agent Development Kit.",
                 code: "pip install sardis-adk",
                 badge: "ADK native"
               },
               {
-                icon: icons.handshake,
+                logo: "/icons/openai-2.svg",
                 name: "ChatGPT Actions",
                 description: "OpenAPI 3.0 spec with 8 endpoints. Any custom GPT can query balances, send payments, and manage cards.",
                 code: "/openapi-actions.yaml",
                 badge: "No code"
               },
               {
-                icon: icons.wallet,
+                logo: "/icons/langchain.svg",
                 name: "LangChain / CrewAI",
                 description: "Native tool integrations for LangChain agents, CrewAI crews, and LlamaIndex workflows.",
                 code: "pip install sardis-langchain",
                 badge: "Python + JS"
               },
               {
-                icon: icons.verifiedUser,
+                logo: "/icons/vercel.svg",
                 name: "Vercel AI SDK",
                 description: "TypeScript-first integration with proper mandate signing for Next.js and Edge deployments.",
                 code: "npm install @sardis/ai-sdk",
@@ -943,7 +943,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="w-10 h-10 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors">
-                        <IsometricIcon src={framework.icon} className="w-6 h-6" isDark={isDark} />
+                        <img src={framework.logo} alt={framework.name} className="w-6 h-6" style={{ filter: isDark ? 'invert(1)' : 'none' }} />
                       </div>
                       <Badge variant="outline" className="text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none text-xs font-mono">
                         {framework.badge}
