@@ -628,14 +628,24 @@ DEFAULT_LIMITS = {
 }
 
 
-def create_default_policy(agent_id: str, trust_level: TrustLevel = TrustLevel.LOW) -> SpendingPolicy:
+def create_default_policy(
+    agent_id: str,
+    trust_level: TrustLevel = TrustLevel.LOW,
+    *,
+    kya_level: str | None = None,
+) -> SpendingPolicy:
     """
     Create a SpendingPolicy with preset limits for the given trust level.
 
     This is the fallback when no custom policy is stored for an agent.
     The orchestrator and wallet manager call this automatically — you
     don't need to call it yourself unless you're building a custom flow.
+
+    If ``kya_level`` is provided, the trust level is derived from the
+    KYA level instead (see ``trust_level_for_kya``).
     """
+    if kya_level is not None:
+        trust_level = trust_level_for_kya(kya_level)
     tier = DEFAULT_LIMITS[trust_level]
     policy = SpendingPolicy(agent_id=agent_id, trust_level=trust_level, limit_per_tx=tier["per_tx"], limit_total=tier["total"])
     if tier["daily"]:
@@ -645,3 +655,41 @@ def create_default_policy(agent_id: str, trust_level: TrustLevel = TrustLevel.LO
     if tier["monthly"]:
         policy.monthly_limit = TimeWindowLimit(window_type="monthly", limit_amount=tier["monthly"])
     return policy
+
+
+# ============ KYA ↔ TrustLevel Mapping ============
+#
+# KYA levels map to spending policy trust levels so that agent verification
+# automatically determines spending capabilities.
+#
+#   KYA Level   │ Trust Level │ Per-Tx  │ Daily
+#   ────────────┼─────────────┼─────────┼────────
+#   none        │ LOW         │ $50     │ $100
+#   basic       │ LOW         │ $50     │ $100
+#   verified    │ MEDIUM      │ $500    │ $1,000
+#   attested    │ HIGH        │ $5,000  │ $10,000
+#
+
+KYA_TO_TRUST: dict[str, TrustLevel] = {
+    "none": TrustLevel.LOW,
+    "basic": TrustLevel.LOW,
+    "verified": TrustLevel.MEDIUM,
+    "attested": TrustLevel.HIGH,
+}
+
+TRUST_TO_KYA: dict[TrustLevel, str] = {
+    TrustLevel.LOW: "basic",
+    TrustLevel.MEDIUM: "verified",
+    TrustLevel.HIGH: "attested",
+    TrustLevel.UNLIMITED: "attested",
+}
+
+
+def trust_level_for_kya(kya_level: str) -> TrustLevel:
+    """Map a KYA level string to the corresponding TrustLevel."""
+    return KYA_TO_TRUST.get(kya_level.lower(), TrustLevel.LOW)
+
+
+def kya_level_for_trust(trust_level: TrustLevel) -> str:
+    """Map a TrustLevel to the corresponding KYA level string."""
+    return TRUST_TO_KYA.get(trust_level, "basic")
