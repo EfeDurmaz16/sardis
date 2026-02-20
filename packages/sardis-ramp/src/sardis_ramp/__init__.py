@@ -1,5 +1,6 @@
-"""Sardis Fiat Ramp - Bridge crypto wallets to traditional banking."""
+"""Sardis Fiat Ramp - Multi-provider fiat on/off-ramp infrastructure."""
 
+# Legacy Bridge-only implementation (preserved for backward compatibility)
 from .ramp import SardisFiatRamp
 from .ramp_types import (
     FundingResult,
@@ -10,8 +11,14 @@ from .ramp_types import (
     FundingMethod,
 )
 
-__version__ = "0.1.2"
+# New multi-provider architecture
+from .base import RampProvider, RampQuote, RampSession, RampStatus
+from .providers import BridgeProvider, CoinbaseOnrampProvider
+from .router import RampRouter
+
+__version__ = "0.2.0"
 __all__ = [
+    # Legacy exports
     "SardisFiatRamp",
     "FundingResult",
     "WithdrawalResult",
@@ -19,4 +26,12 @@ __all__ = [
     "BankAccount",
     "MerchantAccount",
     "FundingMethod",
+    # New multi-provider exports
+    "RampProvider",
+    "RampQuote",
+    "RampSession",
+    "RampStatus",
+    "BridgeProvider",
+    "CoinbaseOnrampProvider",
+    "RampRouter",
 ]
