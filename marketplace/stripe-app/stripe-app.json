@@ -1,0 +1,56 @@
+{
+  "id": "com.sardis.agent-payments",
+  "version": "0.1.0",
+  "name": "Sardis - AI Agent Payments",
+  "icon": "./icon.png",
+  "permissions": [
+    {
+      "permission": "issuing_card_read",
+      "purpose": "View virtual cards issued to AI agents"
+    },
+    {
+      "permission": "issuing_card_write",
+      "purpose": "Create and manage virtual cards for AI agents"
+    },
+    {
+      "permission": "issuing_transaction_read",
+      "purpose": "View agent card transactions and spending"
+    },
+    {
+      "permission": "treasury_financial_account_read",
+      "purpose": "View Treasury account balances"
+    },
+    {
+      "permission": "treasury_transaction_read",
+      "purpose": "View Treasury transactions"
+    }
+  ],
+  "app_backend": {
+    "url": "https://sardis.sh/api/stripe-app"
+  },
+  "ui_extension": {
+    "views": [
+      {
+        "viewport": "stripe.dashboard.payment.detail",
+        "component": "PaymentDetailView"
+      },
+      {
+        "viewport": "stripe.dashboard.home.overview",
+        "component": "AgentOverviewView"
+      }
+    ],
+    "content_security_policy": {
+      "connect-src": ["https://sardis.sh", "https://api.sardis.sh"],
+      "image-src": ["https://sardis.sh"]
+    }
+  },
+  "post_install_action": {
+    "type": "external",
+    "url": "https://sardis.sh/integrations/stripe-app/setup"
+  },
+  "distribution_type": "public",
+  "stripe_api_access_type": "oauth",
+  "allowed_redirect_uris": [
+    "https://sardis.sh/api/stripe-app/callback"
+  ]
+}
