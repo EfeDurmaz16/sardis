@@ -14,3 +14,10 @@ try:
     __all__.append("LithicProvider")
 except ImportError:
     pass
+
+# Stripe Issuing provider is optional
+try:
+    from .stripe_issuing import StripeIssuingProvider
+    __all__.append("StripeIssuingProvider")
+except ImportError:
+    pass
