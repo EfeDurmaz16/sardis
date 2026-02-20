@@ -813,6 +813,174 @@ const balances = await client.treasury.getBalances()`}</pre>
         </div>
       </section>
 
+      {/* AI Framework Integrations Section */}
+      <section className="py-28 md:py-36 border-t border-border relative">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/3 -left-48 w-[500px] h-[500px] bg-[var(--sardis-orange)]/3 rounded-full blur-[120px]" />
+        </div>
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">WORKS EVERYWHERE</Badge>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">One Payment Layer. Every AI Platform.</h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Add financial capabilities to any AI agent — regardless of framework or model. Sardis speaks every protocol.
+            </p>
+          </div>
+
+          {/* OpenClaw Hero Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-8 p-8 border-2 border-[var(--sardis-orange)] bg-[var(--sardis-orange)]/5 relative overflow-hidden"
+          >
+            <div className="absolute top-3 right-3">
+              <Badge className="bg-[var(--sardis-orange)] text-white rounded-none text-xs font-mono animate-pulse">
+                TRENDING
+              </Badge>
+            </div>
+            <div className="flex flex-col md:flex-row items-start gap-8">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-14 h-14 border-2 border-[var(--sardis-orange)] flex items-center justify-center bg-[var(--sardis-orange)]/10">
+                    <span className="text-2xl">🐾</span>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold font-display">OpenClaw Skill</h3>
+                    <p className="text-sm text-muted-foreground font-mono">sardis-openclaw</p>
+                  </div>
+                </div>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-4">
+                  Sardis is available as an <strong className="text-foreground">OpenClaw skill</strong> — the fastest way to give any agent financial powers.
+                  Install once, and every OpenClaw-compatible agent instantly gets access to payments, virtual cards, balance checks, and policy management.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {["send_payment", "check_balance", "create_card", "set_policy", "get_transactions", "fund_wallet"].map((tool) => (
+                    <span key={tool} className="px-2 py-1 text-xs font-mono border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/10 text-[var(--sardis-orange)]">
+                      {tool}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="w-full md:w-auto md:min-w-[320px]">
+                <div className="border border-border bg-card overflow-hidden">
+                  <div className="bg-muted px-4 py-2.5 border-b border-border flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 bg-destructive" />
+                    <div className="w-2.5 h-2.5 bg-yellow-500" />
+                    <div className="w-2.5 h-2.5 bg-emerald-500" />
+                    <span className="ml-3 text-xs font-mono text-muted-foreground">SKILL.md</span>
+                  </div>
+                  <div className="p-4 font-mono text-xs leading-relaxed bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)]">
+                    <div><span className="text-[#c678dd]">name:</span> sardis-pay</div>
+                    <div><span className="text-[#c678dd]">version:</span> 0.9.0</div>
+                    <div><span className="text-[#c678dd]">description:</span> <span className="text-[#98c379]">Payment OS for agents</span></div>
+                    <div className="mt-2"><span className="text-[#c678dd]">tools:</span></div>
+                    <div>&nbsp;&nbsp;- <span className="text-[#98c379]">send_payment</span></div>
+                    <div>&nbsp;&nbsp;- <span className="text-[#98c379]">check_balance</span></div>
+                    <div>&nbsp;&nbsp;- <span className="text-[#98c379]">create_virtual_card</span></div>
+                    <div>&nbsp;&nbsp;- <span className="text-[#98c379]">set_spending_policy</span></div>
+                    <div className="mt-2 text-emerald-400"># Works with any OpenClaw agent</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Other Frameworks Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                icon: icons.terminal,
+                name: "Claude / MCP",
+                description: "65+ MCP tools. One command to add payments to Claude Desktop, Cursor, or any MCP client.",
+                code: "npx @sardis/mcp-server start",
+                badge: "65+ tools"
+              },
+              {
+                icon: icons.rocketLaunch,
+                name: "OpenAI / GPT",
+                description: "Strict-mode function calling tools. Drop-in for GPT-4, GPT-4o, and Assistants API.",
+                code: "pip install sardis-openai",
+                badge: "Strict JSON"
+              },
+              {
+                icon: icons.autoRenew,
+                name: "Google Gemini / ADK",
+                description: "Native FunctionDeclaration adapters for Gemini Pro, Ultra, and Agent Development Kit.",
+                code: "pip install sardis-adk",
+                badge: "ADK native"
+              },
+              {
+                icon: icons.handshake,
+                name: "ChatGPT Actions",
+                description: "OpenAPI 3.0 spec with 8 endpoints. Any custom GPT can query balances, send payments, and manage cards.",
+                code: "/openapi-actions.yaml",
+                badge: "No code"
+              },
+              {
+                icon: icons.wallet,
+                name: "LangChain / CrewAI",
+                description: "Native tool integrations for LangChain agents, CrewAI crews, and LlamaIndex workflows.",
+                code: "pip install sardis-langchain",
+                badge: "Python + JS"
+              },
+              {
+                icon: icons.verifiedUser,
+                name: "Vercel AI SDK",
+                description: "TypeScript-first integration with proper mandate signing for Next.js and Edge deployments.",
+                code: "npm install @sardis/ai-sdk",
+                badge: "TypeScript"
+              },
+            ].map((framework, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
+              >
+                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 border border-border flex items-center justify-center group-hover:border-[var(--sardis-orange)] transition-colors">
+                        <IsometricIcon src={framework.icon} className="w-6 h-6" isDark={isDark} />
+                      </div>
+                      <Badge variant="outline" className="text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none text-xs font-mono">
+                        {framework.badge}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base font-bold font-display">{framework.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {framework.description}
+                    </p>
+                    <code className="block text-xs font-mono px-3 py-2 bg-muted border border-border text-[var(--sardis-orange)] truncate">
+                      {framework.code}
+                    </code>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bottom CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-8 p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 text-center"
+          >
+            <p className="text-lg font-medium mb-2">
+              Your framework not listed? Sardis has a REST API — if it speaks HTTP, it works.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              <Link to="/docs/api-reference" className="text-[var(--sardis-orange)] hover:underline">View API Reference →</Link>
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* How It Works Section */}
       <section className="py-28 md:py-36 border-t border-border">
         <div className="container mx-auto px-6">
