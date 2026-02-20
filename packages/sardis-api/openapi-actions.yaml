@@ -1,0 +1,441 @@
+openapi: "3.0.3"
+info:
+  title: "Sardis - AI Agent Payments"
+  description: |
+    Payment infrastructure for AI agents. Create wallets, execute payments,
+    manage spending policies, and issue virtual cards.
+
+    Sardis is the Payment OS for the Agent Economy - enabling AI agents to
+    make real financial transactions safely through non-custodial MPC wallets
+    with natural language spending policies.
+  version: "2.0.0"
+  contact:
+    name: "Sardis Support"
+    url: "https://sardis.sh"
+    email: "support@sardis.sh"
+
+servers:
+  - url: "https://api.sardis.sh/v2"
+    description: "Production API"
+  - url: "https://sandbox.api.sardis.sh/v2"
+    description: "Sandbox API"
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /wallets/{wallet_id}/balance:
+    get:
+      operationId: getWalletBalance
+      summary: "Get wallet balance and spending limits"
+      description: "Returns current balance, daily/monthly spend, and remaining limits for an agent wallet."
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Agent wallet ID"
+      responses:
+        "200":
+          description: "Wallet balance"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet_id:
+                    type: string
+                  available:
+                    type: string
+                    description: "Available balance"
+                  token:
+                    type: string
+                  daily_spent:
+                    type: string
+                  daily_remaining:
+                    type: string
+                  monthly_spent:
+                    type: string
+                  monthly_remaining:
+                    type: string
+
+  /wallets:
+    get:
+      operationId: listWallets
+      summary: "List all agent wallets"
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: "List of wallets"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Wallet"
+                  total:
+                    type: integer
+
+  /payments:
+    post:
+      operationId: executePayment
+      summary: "Execute a payment with policy enforcement"
+      description: "Sends a payment from an agent wallet. Spending policies are automatically enforced."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wallet_id, to, amount, token, purpose]
+              properties:
+                wallet_id:
+                  type: string
+                  description: "Source wallet ID"
+                to:
+                  type: string
+                  description: "Recipient address or merchant"
+                amount:
+                  type: string
+                  description: "Amount to pay"
+                token:
+                  type: string
+                  enum: [USDC, USDT, EURC, PYUSD]
+                purpose:
+                  type: string
+                  description: "Payment purpose for audit trail"
+      responses:
+        "200":
+          description: "Payment result"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+
+  /policies/check:
+    post:
+      operationId: checkPolicy
+      summary: "Dry-run policy validation"
+      description: "Check if a payment would be allowed without actually executing it."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wallet_id, amount]
+              properties:
+                wallet_id:
+                  type: string
+                amount:
+                  type: string
+                vendor:
+                  type: string
+      responses:
+        "200":
+          description: "Policy check result"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+                  reason:
+                    type: string
+                  rules_applied:
+                    type: array
+                    items:
+                      type: string
+
+  /cards:
+    post:
+      operationId: issueCard
+      summary: "Issue virtual card for agent"
+      description: "Create a virtual card with spending controls for real-world purchases."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, spending_limit]
+              properties:
+                agent_id:
+                  type: string
+                spending_limit:
+                  type: string
+                merchant_categories:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: "Created card"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VirtualCard"
+    get:
+      operationId: listCards
+      summary: "List virtual cards"
+      parameters:
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "List of cards"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cards:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VirtualCard"
+
+  /agents/{agent_id}:
+    get:
+      operationId: getAgent
+      summary: "Get agent details"
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Agent details"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents:
+    get:
+      operationId: listAgents
+      summary: "List all agents"
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: "List of agents"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Agent"
+
+  /spending/summary:
+    get:
+      operationId: getSpendingSummary
+      summary: "Get spending analytics"
+      parameters:
+        - name: agent_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [day, week, month]
+      responses:
+        "200":
+          description: "Spending summary"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingSummary"
+
+  /holds:
+    post:
+      operationId: createHold
+      summary: "Create pre-authorization hold"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wallet_id, amount, token]
+              properties:
+                wallet_id:
+                  type: string
+                amount:
+                  type: string
+                token:
+                  type: string
+                  enum: [USDC, USDT, EURC]
+                purpose:
+                  type: string
+                expires_in_seconds:
+                  type: integer
+                  default: 3600
+      responses:
+        "200":
+          description: "Created hold"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hold"
+
+  /holds/{hold_id}/capture:
+    post:
+      operationId: captureHold
+      summary: "Capture a pre-authorization hold"
+      parameters:
+        - name: hold_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: "Capture amount (defaults to hold amount)"
+      responses:
+        "200":
+          description: "Captured hold"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hold"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "Sardis API key (sk_live_... or sk_test_...)"
+
+  schemas:
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        chain:
+          type: string
+        token:
+          type: string
+        address:
+          type: string
+        balance:
+          type: string
+        status:
+          type: string
+          enum: [active, frozen, closed]
+
+    PaymentResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [completed, pending, failed]
+        tx_hash:
+          type: string
+        amount:
+          type: string
+        token:
+          type: string
+        to:
+          type: string
+        fee:
+          type: string
+
+    VirtualCard:
+      type: object
+      properties:
+        card_id:
+          type: string
+        last_four:
+          type: string
+        status:
+          type: string
+          enum: [active, frozen, canceled]
+        spending_limit:
+          type: string
+        balance:
+          type: string
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kya_level:
+          type: string
+          enum: [unverified, basic, standard, enhanced]
+        wallets:
+          type: array
+          items:
+            type: string
+
+    SpendingSummary:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        period:
+          type: string
+        total_spent:
+          type: string
+        by_category:
+          type: object
+        by_vendor:
+          type: object
+
+    Hold:
+      type: object
+      properties:
+        hold_id:
+          type: string
+        wallet_id:
+          type: string
+        amount:
+          type: string
+        status:
+          type: string
+          enum: [active, captured, voided, expired]
+        expires_at:
+          type: string
+          format: date-time
