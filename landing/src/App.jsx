@@ -381,7 +381,7 @@ function App() {
               {
                 icon: icons.creditCardGear,
                 title: "Virtual Cards",
-                description: "Instant Visa cards via Lithic. Your agent can pay anywhere cards are accepted — online and physical POS.",
+                description: "Instant Visa cards via Stripe Issuing or Lithic. Your agent can pay anywhere cards are accepted — online and physical POS.",
                 span: false,
               },
               {
@@ -985,7 +985,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 60+ tools for payments, wallets, treasury ACH, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 65+ tools for payments, wallets, treasury, fiat operations, holds, invoices, and commerce.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }
@@ -1100,7 +1100,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 <div className="pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {["sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
+                    {["sardis-openclaw", "sardis-openai", "sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
                       <a key={pkg} href={`https://pypi.org/project/${pkg}/`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
                         {pkg}
                       </a>
