@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sardis-openclaw"
+version = "0.1.0"
+description = "OpenClaw skill for Sardis - Payment OS for AI Agents"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Sardis", email = "hello@sardis.sh" },
+]
+keywords = ["sardis", "openclaw", "ai-agents", "payments", "fintech"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "sardis>=0.3.0",
+]
+
+[project.urls]
+Homepage = "https://sardis.sh"
+Repository = "https://github.com/sardis-labs/sardis"
+Documentation = "https://sardis.sh/docs"
