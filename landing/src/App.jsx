@@ -843,7 +843,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-14 h-14 border-2 border-[var(--sardis-orange)] flex items-center justify-center bg-[var(--sardis-orange)]/10">
-                    <img src="/icons/openclaw.svg" alt="OpenClaw" className="w-8 h-8" />
+                    <img src="/icons/openclaw.svg" alt="OpenClaw" className="w-8 h-8" style={{ filter: isDark ? 'invert(1)' : 'none' }} />
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold font-display">OpenClaw Skill</h3>
