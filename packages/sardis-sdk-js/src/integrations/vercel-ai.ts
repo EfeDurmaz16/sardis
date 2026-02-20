@@ -1,3 +1,11 @@
+/**
+ * @deprecated Use @sardis/ai-sdk package directly:
+ *   npm install @sardis/ai-sdk
+ *   import { createSardisTools } from '@sardis/ai-sdk'
+ *
+ * This module is a compatibility shim that will be removed in v1.0.
+ */
+
 import { z } from 'zod';
 import { SardisClient } from '../client.js';
 
