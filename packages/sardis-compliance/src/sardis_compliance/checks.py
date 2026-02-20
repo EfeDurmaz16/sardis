@@ -547,11 +547,13 @@ class ComplianceEngine:
         audit_store: ComplianceAuditStore | None = None,
         kyc_service: Any | None = None,
         sanctions_service: Any | None = None,
+        kya_service: Any | None = None,
     ):
         self._provider = provider or SimpleRuleProvider(settings)
         self._audit_store = audit_store or get_audit_store()
         self._kyc_service = kyc_service
         self._sanctions_service = sanctions_service
+        self._kya_service = kya_service
 
     async def preflight(self, mandate: PaymentMandate) -> ComplianceResult:
         """
@@ -573,8 +575,37 @@ class ComplianceEngine:
             # Still record audit below
             pass
         else:
-            # Sanctions screening (if service available)
-            if self._sanctions_service:
+            # KYA verification (if service available)
+            if self._kya_service:
+                try:
+                    from .kya import KYACheckRequest
+                    kya_check = KYACheckRequest(
+                        agent_id=mandate.subject,
+                        amount=normalize_token_amount(
+                            TokenType(mandate.token), mandate.amount_minor
+                        ),
+                        merchant_id=mandate.destination,
+                    )
+                    kya_result = await self._kya_service.check_agent(kya_check)
+                    if not kya_result.allowed:
+                        result = ComplianceResult(
+                            allowed=False,
+                            reason=f"kya_denied: {kya_result.reason}",
+                            rule_id="kya_verification",
+                            provider="sardis_kya",
+                        )
+                except Exception as e:
+                    logger.warning(f"KYA check error for {mandate.subject}: {e}")
+                    # Fail closed — block on KYA service errors
+                    result = ComplianceResult(
+                        allowed=False,
+                        reason=f"kya_service_error: {str(e)}",
+                        rule_id="kya_verification",
+                        provider="sardis_kya",
+                    )
+
+            # Sanctions screening (if service available and not already blocked)
+            if result.allowed and self._sanctions_service:
                 try:
                     screening = await self._sanctions_service.screen_address(
                         mandate.destination, chain=mandate.chain
