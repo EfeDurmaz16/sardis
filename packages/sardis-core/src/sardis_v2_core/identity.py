@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Literal, Optional, Tuple
+from typing import Any, Dict, Literal, Optional, Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -27,6 +27,25 @@ class AgentIdentity:
     algorithm: AllowedKeys = "ed25519"
     domain: str = "sardis.sh"
     created_at: int = int(time.time())
+
+    @property
+    def did(self) -> str:
+        """W3C Decentralized Identifier for this agent (did:sardis:<agent_id>)."""
+        return f"did:sardis:{self.agent_id}"
+
+    @property
+    def did_document_fragment(self) -> Dict:
+        """Minimal DID Document fragment for verification."""
+        return {
+            "id": self.did,
+            "verificationMethod": [{
+                "id": f"{self.did}#key-1",
+                "type": "Ed25519VerificationKey2020" if self.algorithm == "ed25519" else "EcdsaSecp256r1VerificationKey2019",
+                "controller": self.did,
+                "publicKeyHex": self.public_key.hex(),
+            }],
+            "authentication": [f"{self.did}#key-1"],
+        }
 
     def verify(self, message: bytes, signature: bytes, domain: str, nonce: str, purpose: str) -> bool:
         """Verify TAP request binding with nonce + purpose scoping."""
@@ -78,6 +97,7 @@ class IdentityRecord:
     version: int = 1
     revoked_at: Optional[int] = None
     reason: Optional[str] = None
+    framework_attestation: Optional[str] = None  # e.g. "langchain:0.3.1"
 
     @property
     def fingerprint(self) -> str:
@@ -87,6 +107,11 @@ class IdentityRecord:
     def verification_method(self) -> str:
         """AP2/TAP-friendly verification method fragment."""
         return f"{self.algorithm}:{self.public_key.hex()}"
+
+    @property
+    def did(self) -> str:
+        """W3C Decentralized Identifier for this agent."""
+        return f"did:sardis:{self.agent_id}"
 
     def is_active(self, domain: str) -> bool:
         return self.revoked_at is None and self.domain == domain
@@ -241,6 +266,17 @@ class IdentityRegistry:
         except Exception as e:
             _logger.warning(f"Failed to load identity from DB: {e}")
         return None
+
+    def resolve_did(self, did: str) -> Optional[IdentityRecord]:
+        """
+        Resolve a did:sardis:<agent_id> to its active IdentityRecord.
+
+        Returns None if the DID is invalid or no active record exists.
+        """
+        if not did.startswith("did:sardis:"):
+            return None
+        agent_id = did[len("did:sardis:"):]
+        return self._records.get(agent_id)
 
     def verify_binding(self, agent_id: str, domain: str, public_key: bytes, algorithm: AllowedKeys) -> bool:
         """Check that the presented key matches the active registry entry."""
