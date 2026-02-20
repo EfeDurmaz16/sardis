@@ -146,6 +146,10 @@ export const toolCategories = {
     'sardis_get_withdrawal_status',
     'sardis_get_treasury_balances',
     'sardis_list_funding_transactions',
+    'sardis_get_multi_balance',
+    'sardis_offramp_usdc_to_fiat',
+    'sardis_onramp_fiat_to_usdc',
+    'sardis_get_ramp_quote',
   ],
   approval: [
     'sardis_request_approval',

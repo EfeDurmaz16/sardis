@@ -296,6 +296,66 @@ export const fiatToolDefinitions: ToolDefinition[] = [
       required: [],
     },
   },
+  {
+    name: 'sardis_get_multi_balance',
+    description: 'Get all balances (crypto + fiat + card) for an agent in one unified call.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: { type: 'string', description: 'Wallet ID to get balances for' },
+        agent_id: { type: 'string', description: 'Agent ID to get balances for' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'sardis_offramp_usdc_to_fiat',
+    description: 'Convert USDC to fiat via best available ramp provider.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        amount: { type: 'number', description: 'Amount in major units (USD)' },
+        amount_minor: { type: 'number', description: 'Amount in minor units (e.g. cents)' },
+        source_chain: { type: 'string', description: 'Source blockchain (e.g. base, polygon, ethereum)' },
+        destination_currency: { type: 'string', description: 'Target fiat currency (e.g. USD, EUR)' },
+        external_bank_account_token: { type: 'string', description: 'Destination bank account token' },
+        wallet_id: { type: 'string', description: 'Source wallet ID' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'sardis_onramp_fiat_to_usdc',
+    description: 'Convert fiat to USDC via best available ramp provider.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        amount: { type: 'number', description: 'Amount in major units (USD)' },
+        amount_minor: { type: 'number', description: 'Amount in minor units (e.g. cents)' },
+        source_currency: { type: 'string', description: 'Source fiat currency (e.g. USD, EUR)' },
+        destination_chain: { type: 'string', description: 'Target blockchain (e.g. base, polygon, ethereum)' },
+        external_bank_account_token: { type: 'string', description: 'Source bank account token' },
+        wallet_id: { type: 'string', description: 'Destination wallet ID' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'sardis_get_ramp_quote',
+    description: 'Get price quotes from available ramp providers for fiat<>crypto conversion.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        direction: { type: 'string', enum: ['onramp', 'offramp'], description: 'Conversion direction' },
+        amount: { type: 'number', description: 'Amount in major units' },
+        amount_minor: { type: 'number', description: 'Amount in minor units' },
+        source_currency: { type: 'string', description: 'Source currency (USD, EUR, USDC)' },
+        destination_currency: { type: 'string', description: 'Destination currency (USD, EUR, USDC)' },
+        chain: { type: 'string', description: 'Blockchain for crypto side (e.g. base, polygon)' },
+      },
+      required: [],
+    },
+  },
 ];
 
 export const fiatToolHandlers: Record<string, ToolHandler> = {
@@ -577,5 +637,194 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
         ),
       }],
     };
+  },
+
+  sardis_get_multi_balance: async (args: unknown): Promise<ToolResult> => {
+    const parsed = z.object({
+      wallet_id: z.string().optional(),
+      agent_id: z.string().optional(),
+    }).safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return serialize({
+        wallet_id: parsed.data.wallet_id || config.walletId || 'wallet_default',
+        agent_id: parsed.data.agent_id || 'agent_default',
+        crypto: {
+          base: { USDC: { available_minor: 500000, pending_minor: 0, total_minor: 500000 } },
+          polygon: { USDC: { available_minor: 250000, pending_minor: 0, total_minor: 250000 } },
+        },
+        fiat: {
+          USD: { available_minor: 250000, pending_minor: 10000, total_minor: 260000 },
+        },
+        cards: {
+          total_limit_minor: 1000000,
+          total_spent_minor: 125000,
+          available_minor: 875000,
+        },
+        total_value_usd_minor: 1135000,
+      });
+    }
+
+    try {
+      const search = new URLSearchParams();
+      if (parsed.data.wallet_id) search.set('wallet_id', parsed.data.wallet_id);
+      if (parsed.data.agent_id) search.set('agent_id', parsed.data.agent_id);
+      return serialize(await apiRequest('GET', `/api/v2/treasury/multi-balance?${search.toString()}`));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to fetch multi-balance: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
+  },
+
+  sardis_offramp_usdc_to_fiat: async (args: unknown): Promise<ToolResult> => {
+    const parsed = z.object({
+      amount: z.union([z.string(), z.number()]).optional(),
+      amount_minor: z.number().int().positive().optional(),
+      source_chain: z.string().optional(),
+      destination_currency: z.string().optional(),
+      external_bank_account_token: z.string().optional(),
+      wallet_id: z.string().optional(),
+    }).safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const amountMinor = parsed.data.amount_minor ?? toMinorUnits(parsed.data.amount);
+    if (amountMinor <= 0) {
+      return { content: [{ type: 'text', text: 'Invalid request: amount or amount_minor is required' }], isError: true };
+    }
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return serialize({
+        offramp_id: `offramp_${Date.now().toString(36)}`,
+        status: 'PENDING',
+        source_chain: parsed.data.source_chain || 'base',
+        source_token: 'USDC',
+        source_amount_minor: amountMinor,
+        destination_currency: parsed.data.destination_currency || 'USD',
+        destination_amount_minor: Math.round(amountMinor * 0.998),
+        fee_minor: Math.round(amountMinor * 0.002),
+        exchange_rate: 1.0,
+        estimated_settlement: '1-2 business days',
+        provider: 'bridge-xyz',
+      });
+    }
+
+    try {
+      return serialize(await apiRequest('POST', '/api/v2/treasury/offramp', {
+        amount_minor: amountMinor,
+        source_chain: parsed.data.source_chain || 'base',
+        destination_currency: parsed.data.destination_currency || 'USD',
+        external_bank_account_token: parsed.data.external_bank_account_token,
+        wallet_id: parsed.data.wallet_id,
+      }));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to execute offramp: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
+  },
+
+  sardis_onramp_fiat_to_usdc: async (args: unknown): Promise<ToolResult> => {
+    const parsed = z.object({
+      amount: z.union([z.string(), z.number()]).optional(),
+      amount_minor: z.number().int().positive().optional(),
+      source_currency: z.string().optional(),
+      destination_chain: z.string().optional(),
+      external_bank_account_token: z.string().optional(),
+      wallet_id: z.string().optional(),
+    }).safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const amountMinor = parsed.data.amount_minor ?? toMinorUnits(parsed.data.amount);
+    if (amountMinor <= 0) {
+      return { content: [{ type: 'text', text: 'Invalid request: amount or amount_minor is required' }], isError: true };
+    }
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      return serialize({
+        onramp_id: `onramp_${Date.now().toString(36)}`,
+        status: 'PENDING',
+        source_currency: parsed.data.source_currency || 'USD',
+        source_amount_minor: amountMinor,
+        destination_chain: parsed.data.destination_chain || 'base',
+        destination_token: 'USDC',
+        destination_amount_minor: Math.round(amountMinor * 0.997),
+        fee_minor: Math.round(amountMinor * 0.003),
+        exchange_rate: 1.0,
+        estimated_settlement: '10-30 minutes',
+        provider: 'bridge-xyz',
+      });
+    }
+
+    try {
+      return serialize(await apiRequest('POST', '/api/v2/treasury/onramp', {
+        amount_minor: amountMinor,
+        source_currency: parsed.data.source_currency || 'USD',
+        destination_chain: parsed.data.destination_chain || 'base',
+        external_bank_account_token: parsed.data.external_bank_account_token,
+        wallet_id: parsed.data.wallet_id,
+      }));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to execute onramp: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
+  },
+
+  sardis_get_ramp_quote: async (args: unknown): Promise<ToolResult> => {
+    const parsed = z.object({
+      direction: z.enum(['onramp', 'offramp']).optional(),
+      amount: z.union([z.string(), z.number()]).optional(),
+      amount_minor: z.number().int().positive().optional(),
+      source_currency: z.string().optional(),
+      destination_currency: z.string().optional(),
+      chain: z.string().optional(),
+    }).safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const amountMinor = parsed.data.amount_minor ?? toMinorUnits(parsed.data.amount);
+    if (amountMinor <= 0) {
+      return { content: [{ type: 'text', text: 'Invalid request: amount or amount_minor is required' }], isError: true };
+    }
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      const direction = parsed.data.direction || 'offramp';
+      const fee = direction === 'offramp' ? 0.002 : 0.003;
+      return serialize({
+        quotes: [
+          {
+            provider: 'bridge-xyz',
+            direction,
+            source_currency: parsed.data.source_currency || (direction === 'onramp' ? 'USD' : 'USDC'),
+            destination_currency: parsed.data.destination_currency || (direction === 'onramp' ? 'USDC' : 'USD'),
+            source_amount_minor: amountMinor,
+            destination_amount_minor: Math.round(amountMinor * (1 - fee)),
+            fee_minor: Math.round(amountMinor * fee),
+            exchange_rate: 1.0,
+            estimated_time: direction === 'onramp' ? '10-30 minutes' : '1-2 business days',
+          },
+          {
+            provider: 'circle',
+            direction,
+            source_currency: parsed.data.source_currency || (direction === 'onramp' ? 'USD' : 'USDC'),
+            destination_currency: parsed.data.destination_currency || (direction === 'onramp' ? 'USDC' : 'USD'),
+            source_amount_minor: amountMinor,
+            destination_amount_minor: Math.round(amountMinor * (1 - fee - 0.001)),
+            fee_minor: Math.round(amountMinor * (fee + 0.001)),
+            exchange_rate: 1.0,
+            estimated_time: direction === 'onramp' ? '5-15 minutes' : '1-3 business days',
+          },
+        ],
+        best_quote: 'bridge-xyz',
+      });
+    }
+
+    try {
+      const search = new URLSearchParams();
+      if (parsed.data.direction) search.set('direction', parsed.data.direction);
+      search.set('amount_minor', String(amountMinor));
+      if (parsed.data.source_currency) search.set('source_currency', parsed.data.source_currency);
+      if (parsed.data.destination_currency) search.set('destination_currency', parsed.data.destination_currency);
+      if (parsed.data.chain) search.set('chain', parsed.data.chain);
+      return serialize(await apiRequest('GET', `/api/v2/treasury/ramp-quote?${search.toString()}`));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to get ramp quote: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
   },
 };
