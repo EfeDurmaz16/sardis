@@ -105,6 +105,26 @@ class ExecutionPhase(str, Enum):
 # ============ Result Types ============
 
 
+# ============ Fastpath Constants ============
+
+# Minimum trust score to qualify for fastpath
+FASTPATH_MIN_TRUST_SCORE = 0.9
+# Maximum amount (in minor units, e.g. cents) for fastpath eligibility
+FASTPATH_MAX_AMOUNT_MINOR = 50_000_00  # $50,000
+# Required KYA level for fastpath
+FASTPATH_REQUIRED_KYA_LEVEL = "attested"
+
+
+@dataclass(slots=True)
+class FastPathResult:
+    """Result of fastpath eligibility check for high-trust agents."""
+    eligible: bool
+    reason: str | None = None
+    trust_score: float | None = None
+    kya_level: str | None = None
+    skipped_checks: list[str] = field(default_factory=list)
+
+
 @dataclass(slots=True)
 class PaymentResult:
     """Result of a successful payment execution."""
@@ -117,6 +137,7 @@ class PaymentResult:
     compliance_provider: str | None = None
     compliance_rule: str | None = None
     execution_time_ms: float = 0.0
+    fastpath: FastPathResult | None = None
 
 
 @dataclass
@@ -291,6 +312,14 @@ class KYAVerificationPort(Protocol):
         ...
 
 
+class SanctionsScreeningPort(Protocol):
+    """Interface for sanctions-only screening (used in fastpath)."""
+
+    async def screen_address(self, address: str, chain: str | None = None) -> Any:
+        """Screen an address against sanctions lists. Returns object with .should_block and .reason."""
+        ...
+
+
 class ReconciliationQueuePort(Protocol):
     """Interface for reconciliation queue storage."""
 
@@ -397,6 +426,7 @@ class PaymentOrchestrator:
         reconciliation_queue: ReconciliationQueuePort | None = None,
         group_policy: GroupPolicyPort | None = None,
         kya_service: KYAVerificationPort | None = None,
+        sanctions_service: SanctionsScreeningPort | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -405,6 +435,7 @@ class PaymentOrchestrator:
         self._reconciliation_queue = reconciliation_queue or InMemoryReconciliationQueue()
         self._group_policy = group_policy
         self._kya_service = kya_service
+        self._sanctions_service = sanctions_service
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
         self._executed_mandates: dict[str, PaymentResult] = {}
 
@@ -466,6 +497,7 @@ class PaymentOrchestrator:
         # KYA checks: agent is active, not suspended/revoked, meets minimum
         # KYA level, liveness heartbeat is fresh, code hash matches attestation.
         # Fail-closed: any error in KYA verification = denial.
+        kya_result = None  # Set by Phase 0, used by fastpath determination
         if self._kya_service is not None:
             try:
                 agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
@@ -501,6 +533,49 @@ class PaymentOrchestrator:
                 # Fail-closed: KYA errors = deny
                 self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, False, error=f"kya_error: {e}")
                 raise KYAViolationError(f"KYA verification error: {e}", mandate_id=mandate_id)
+
+        # ── Fastpath Determination ───────────────────────────────────────
+        # High-trust agents (ATTESTED + trust_score >= 0.9) on small amounts
+        # can skip KYC and basic rule checks.  Sanctions screening is NEVER
+        # skipped — it runs regardless of trust level.
+        fastpath = FastPathResult(eligible=False, reason="kya_service_not_configured")
+        if self._kya_service is not None and kya_result is not None:
+            agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
+            kya_level = getattr(kya_result, 'level', None)
+            trust_score = getattr(kya_result, 'trust_score', None)
+            amount_minor = getattr(payment, 'amount_minor', 0)
+
+            if (
+                kya_level == FASTPATH_REQUIRED_KYA_LEVEL
+                and trust_score is not None
+                and trust_score >= FASTPATH_MIN_TRUST_SCORE
+                and amount_minor <= FASTPATH_MAX_AMOUNT_MINOR
+            ):
+                fastpath = FastPathResult(
+                    eligible=True,
+                    reason="high_trust_agent",
+                    trust_score=trust_score,
+                    kya_level=kya_level,
+                    skipped_checks=["kyc_verification", "basic_rules"],
+                )
+                logger.info(
+                    f"Fastpath ELIGIBLE: mandate={mandate_id}, agent={agent_id}, "
+                    f"trust={trust_score:.2f}, kya={kya_level}, amount={amount_minor}"
+                )
+            else:
+                reasons = []
+                if kya_level != FASTPATH_REQUIRED_KYA_LEVEL:
+                    reasons.append(f"kya_level={kya_level} (need {FASTPATH_REQUIRED_KYA_LEVEL})")
+                if trust_score is None or trust_score < FASTPATH_MIN_TRUST_SCORE:
+                    reasons.append(f"trust_score={trust_score} (need >={FASTPATH_MIN_TRUST_SCORE})")
+                if amount_minor > FASTPATH_MAX_AMOUNT_MINOR:
+                    reasons.append(f"amount={amount_minor} (max {FASTPATH_MAX_AMOUNT_MINOR})")
+                fastpath = FastPathResult(
+                    eligible=False,
+                    reason="; ".join(reasons),
+                    trust_score=trust_score,
+                    kya_level=kya_level,
+                )
 
         # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
         # This is where spending policies are enforced.  The wallet manager
@@ -570,26 +645,71 @@ class PaymentOrchestrator:
                 raise PolicyViolationError(f"Group policy error: {e}", mandate_id=mandate_id)
 
         # Phase 2: Compliance Check (fail-fast)
-        try:
-            compliance = await self._compliance.preflight(payment)
-            if not compliance.allowed:
-                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
-                           {"provider": compliance.provider, "rule_id": compliance.rule_id},
-                           compliance.reason)
-                raise ComplianceViolationError(
-                    compliance.reason or "compliance_denied",
-                    mandate_id=mandate_id,
-                    provider=compliance.provider,
-                    rule_id=compliance.rule_id,
+        # If fastpath eligible, skip full compliance and run sanctions only.
+        # Sanctions screening is NEVER skipped regardless of trust level.
+        compliance = None
+        if fastpath.eligible and self._sanctions_service is not None:
+            # ── Fastpath: sanctions-only screening ──────────────────────
+            logger.info(f"Fastpath active for mandate={mandate_id}, running sanctions-only")
+            try:
+                screening = await self._sanctions_service.screen_address(
+                    payment.destination, chain=payment.chain,
                 )
-            self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, True,
-                       {"provider": compliance.provider, "rule_id": compliance.rule_id,
-                        "audit_id": getattr(compliance, 'audit_id', None)})
-        except ComplianceViolationError:
-            raise
-        except Exception as e:
-            self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False, error=str(e))
-            raise ComplianceViolationError(f"Compliance check error: {e}", mandate_id=mandate_id)
+                if screening.should_block:
+                    self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
+                               {"provider": "sanctions", "fastpath": True,
+                                "reason": screening.reason},
+                               f"sanctions_hit: {screening.reason or 'blocked_address'}")
+                    raise ComplianceViolationError(
+                        f"sanctions_hit: {screening.reason or 'blocked_address'}",
+                        mandate_id=mandate_id,
+                        provider=getattr(screening, 'provider', 'sanctions'),
+                        rule_id="sanctions_screening",
+                    )
+                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, True,
+                           {"provider": "sanctions", "fastpath": True,
+                            "skipped": fastpath.skipped_checks})
+            except ComplianceViolationError:
+                raise
+            except Exception as e:
+                # Fail-closed: sanctions errors = deny even on fastpath
+                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
+                           error=f"sanctions_fastpath_error: {e}")
+                raise ComplianceViolationError(
+                    f"Sanctions screening error: {e}", mandate_id=mandate_id)
+        else:
+            # ── Standard: full compliance check ─────────────────────────
+            if fastpath.eligible and self._sanctions_service is None:
+                logger.warning(
+                    f"Fastpath eligible but no sanctions_service configured for "
+                    f"mandate={mandate_id}; falling back to full compliance"
+                )
+                fastpath = FastPathResult(
+                    eligible=False,
+                    reason="no_sanctions_service_for_fastpath",
+                    trust_score=fastpath.trust_score,
+                    kya_level=fastpath.kya_level,
+                )
+            try:
+                compliance = await self._compliance.preflight(payment)
+                if not compliance.allowed:
+                    self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
+                               {"provider": compliance.provider, "rule_id": compliance.rule_id},
+                               compliance.reason)
+                    raise ComplianceViolationError(
+                        compliance.reason or "compliance_denied",
+                        mandate_id=mandate_id,
+                        provider=compliance.provider,
+                        rule_id=compliance.rule_id,
+                    )
+                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, True,
+                           {"provider": compliance.provider, "rule_id": compliance.rule_id,
+                            "audit_id": getattr(compliance, 'audit_id', None)})
+            except ComplianceViolationError:
+                raise
+            except Exception as e:
+                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False, error=str(e))
+                raise ComplianceViolationError(f"Compliance check error: {e}", mandate_id=mandate_id)
 
         # Phase 3: Chain Execution
         receipt = None
@@ -679,9 +799,10 @@ class PaymentOrchestrator:
                 chain=receipt.chain,
                 audit_anchor=receipt.audit_anchor,
                 status="reconciliation_pending",
-                compliance_provider=compliance.provider,
-                compliance_rule=compliance.rule_id,
+                compliance_provider=compliance.provider if compliance else ("sanctions_fastpath" if fastpath.eligible else None),
+                compliance_rule=compliance.rule_id if compliance else ("fastpath_sanctions_only" if fastpath.eligible else None),
                 execution_time_ms=execution_time,
+                fastpath=fastpath if fastpath.eligible else None,
             )
             self._executed_mandates[mandate_id] = result
             return result
@@ -696,9 +817,10 @@ class PaymentOrchestrator:
             chain_tx_hash=receipt.tx_hash,
             chain=receipt.chain,
             audit_anchor=receipt.audit_anchor,
-            compliance_provider=compliance.provider,
-            compliance_rule=compliance.rule_id,
+            compliance_provider=compliance.provider if compliance else ("sanctions_fastpath" if fastpath.eligible else None),
+            compliance_rule=compliance.rule_id if compliance else ("fastpath_sanctions_only" if fastpath.eligible else None),
             execution_time_ms=execution_time,
+            fastpath=fastpath if fastpath.eligible else None,
         )
         self._executed_mandates[mandate_id] = result
         return result
