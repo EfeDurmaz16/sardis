@@ -36,11 +36,23 @@ class AgentPolicyRequest(BaseModel):
     auto_approve_below: Decimal = Field(default=Decimal("50.00"))
 
 
+class AgentManifestRequest(BaseModel):
+    """KYA Agent Manifest — declares what this agent is authorized to do."""
+    capabilities: List[str] = Field(default_factory=list, description="e.g. ['saas_subscription', 'api_credits']")
+    max_budget_per_tx: Decimal = Field(default=Decimal("50.00"), description="Max budget per single transaction")
+    daily_budget: Decimal = Field(default=Decimal("500.00"), description="Max daily spending budget")
+    allowed_domains: List[str] = Field(default_factory=list, description="Merchant domain allowlist")
+    blocked_domains: List[str] = Field(default_factory=list, description="Merchant domain blocklist")
+    framework: Optional[str] = Field(default=None, description="Agent framework (langchain, crewai, etc.)")
+    framework_version: Optional[str] = None
+
+
 class CreateAgentRequest(BaseModel):
     name: str
     description: Optional[str] = None
     spending_limits: Optional[SpendingLimitsRequest] = None
     policy: Optional[AgentPolicyRequest] = None
+    manifest: Optional[AgentManifestRequest] = Field(default=None, description="KYA agent manifest")
     metadata: Optional[dict] = None
     create_wallet: bool = Field(default=True, description="Automatically create a wallet for this agent")
     initial_balance: Decimal = Field(default=Decimal("0.00"))
@@ -64,6 +76,8 @@ class AgentResponse(BaseModel):
     spending_limits: dict
     policy: dict
     is_active: bool
+    kya_level: str
+    kya_status: str
     metadata: dict
     created_at: str
     updated_at: str
@@ -79,6 +93,8 @@ class AgentResponse(BaseModel):
             spending_limits=agent.spending_limits.model_dump(),
             policy=agent.policy.model_dump(),
             is_active=agent.is_active,
+            kya_level=agent.kya_level,
+            kya_status=agent.kya_status,
             metadata=agent.metadata,
             created_at=agent.created_at.isoformat(),
             updated_at=agent.updated_at.isoformat(),
@@ -256,13 +272,33 @@ async def create_agent(
             auto_approve_below=request.policy.auto_approve_below,
         )
 
+    # Merge manifest into metadata if provided
+    agent_metadata = request.metadata or {}
+    kya_level = "none"
+    kya_status = "pending"
+    if request.manifest:
+        agent_metadata["manifest"] = {
+            "capabilities": request.manifest.capabilities,
+            "max_budget_per_tx": str(request.manifest.max_budget_per_tx),
+            "daily_budget": str(request.manifest.daily_budget),
+            "allowed_domains": request.manifest.allowed_domains,
+            "blocked_domains": request.manifest.blocked_domains,
+            "framework": request.manifest.framework,
+            "framework_version": request.manifest.framework_version,
+        }
+        # Agents registered with a manifest start at BASIC level
+        kya_level = "basic"
+        kya_status = "active"
+
     agent = await deps.agent_repo.create(
         name=request.name,
         owner_id=owner_id,
         description=request.description,
         spending_limits=spending_limits,
         policy=policy,
-        metadata=request.metadata,
+        metadata=agent_metadata,
+        kya_level=kya_level,
+        kya_status=kya_status,
     )
 
     # Optionally create a wallet for the agent
