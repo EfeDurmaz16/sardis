@@ -13,6 +13,14 @@ Payment execution pipeline:
         │
         ▼
     ┌─────────────────────────────────────────────────────┐
+    │  Phase 0: KYA VERIFICATION (fail-fast)              │
+    │                                                     │
+    │  → Check agent's KYA level (NONE/BASIC/VERIFIED/    │
+    │    ATTESTED) meets minimum requirements             │
+    │  → Verify agent liveness (heartbeat not stale)      │
+    │  → Optionally verify code hash attestation          │
+    │  → If DENIED → raise KYAViolationError, STOP        │
+    ├─────────────────────────────────────────────────────┤
     │  Phase 1: POLICY VALIDATION (fail-fast)             │
     │                                                     │
     │  → Fetch the agent's SpendingPolicy                 │
@@ -84,11 +92,12 @@ logger = logging.getLogger(__name__)
 
 class ExecutionPhase(str, Enum):
     """Phases of payment execution for audit/debugging."""
-    POLICY_VALIDATION = "policy_validation"
-    COMPLIANCE_CHECK = "compliance_check"
-    CHAIN_EXECUTION = "chain_execution"
-    POLICY_STATE_UPDATE = "policy_state_update"
-    LEDGER_APPEND = "ledger_append"
+    KYA_VERIFICATION = "kya_verification"      # Phase 0: Know Your Agent
+    POLICY_VALIDATION = "policy_validation"     # Phase 1
+    COMPLIANCE_CHECK = "compliance_check"       # Phase 2
+    CHAIN_EXECUTION = "chain_execution"         # Phase 3
+    POLICY_STATE_UPDATE = "policy_state_update" # Phase 3.5
+    LEDGER_APPEND = "ledger_append"             # Phase 4
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -189,6 +198,26 @@ class ComplianceViolationError(PaymentExecutionError):
         self.rule_id = rule_id
 
 
+class KYAViolationError(PaymentExecutionError):
+    """Raised when agent fails KYA (Know Your Agent) verification."""
+
+    def __init__(
+        self,
+        message: str,
+        mandate_id: str | None = None,
+        kya_level: str | None = None,
+        reason: str | None = None,
+    ):
+        super().__init__(
+            message,
+            phase=ExecutionPhase.KYA_VERIFICATION,
+            mandate_id=mandate_id,
+            details={"kya_level": kya_level, "reason": reason},
+        )
+        self.kya_level = kya_level
+        self.reason = reason
+
+
 class ChainExecutionError(PaymentExecutionError):
     """Raised when chain execution fails."""
 
@@ -252,6 +281,14 @@ class GroupPolicyPort(Protocol):
     ) -> Any: ...
 
     async def record_spend(self, agent_id: str, amount: Any) -> None: ...
+
+
+class KYAVerificationPort(Protocol):
+    """Interface for KYA (Know Your Agent) verification."""
+
+    async def check_agent(self, agent_id: str, amount: Any = None, merchant_id: str | None = None) -> Any:
+        """Check agent KYA status. Returns a KYAResult-like object with .allowed and .reason."""
+        ...
 
 
 class ReconciliationQueuePort(Protocol):
@@ -359,6 +396,7 @@ class PaymentOrchestrator:
         ledger: LedgerPort,
         reconciliation_queue: ReconciliationQueuePort | None = None,
         group_policy: GroupPolicyPort | None = None,
+        kya_service: KYAVerificationPort | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -366,6 +404,7 @@ class PaymentOrchestrator:
         self._ledger = ledger
         self._reconciliation_queue = reconciliation_queue or InMemoryReconciliationQueue()
         self._group_policy = group_policy
+        self._kya_service = kya_service
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
         self._executed_mandates: dict[str, PaymentResult] = {}
 
@@ -421,6 +460,47 @@ class PaymentOrchestrator:
             return self._executed_mandates[mandate_id]
 
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
+
+        # ── Phase 0: KYA Verification (fail-fast) ───────────────────────
+        # Before anything else, verify the agent's identity and trust level.
+        # KYA checks: agent is active, not suspended/revoked, meets minimum
+        # KYA level, liveness heartbeat is fresh, code hash matches attestation.
+        # Fail-closed: any error in KYA verification = denial.
+        if self._kya_service is not None:
+            try:
+                agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
+                if agent_id:
+                    from decimal import Decimal as _Dec
+                    pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
+                    merchant_id = getattr(payment, 'merchant_id', None)
+
+                    kya_result = await self._kya_service.check_agent(
+                        agent_id=agent_id,
+                        amount=_Dec(str(pay_amount)),
+                        merchant_id=merchant_id,
+                    )
+                    if not kya_result.allowed:
+                        self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, False,
+                                   {"agent_id": agent_id,
+                                    "kya_level": getattr(kya_result, 'level', None),
+                                    "kya_status": getattr(kya_result, 'status', None)},
+                                   kya_result.reason)
+                        raise KYAViolationError(
+                            kya_result.reason or "kya_denied",
+                            mandate_id=mandate_id,
+                            kya_level=getattr(kya_result, 'level', None),
+                            reason=kya_result.reason,
+                        )
+                    self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, True,
+                               {"agent_id": agent_id,
+                                "kya_level": getattr(kya_result, 'level', None),
+                                "trust_score": getattr(kya_result, 'trust_score', None)})
+            except KYAViolationError:
+                raise
+            except Exception as e:
+                # Fail-closed: KYA errors = deny
+                self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, False, error=f"kya_error: {e}")
+                raise KYAViolationError(f"KYA verification error: {e}", mandate_id=mandate_id)
 
         # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
         # This is where spending policies are enforced.  The wallet manager

@@ -88,7 +88,7 @@ from .policy_store_postgres import PostgresPolicyStore
 from .spending_policy_json import spending_policy_to_json, spending_policy_from_json
 from .transactions import Transaction, TransactionStatus, OnChainRecord
 from .virtual_card import VirtualCard, CardStatus, CardType, FundingSource
-from .orchestrator import PaymentOrchestrator, PaymentResult, PaymentExecutionError
+from .orchestrator import PaymentOrchestrator, PaymentResult, PaymentExecutionError, KYAViolationError, KYAVerificationPort
 from .database import Database, init_database, SCHEMA_SQL
 from .holds import Hold, HoldResult, HoldsRepository
 from .webhooks import (
@@ -289,6 +289,8 @@ __all__ = [
     "PaymentOrchestrator",
     "PaymentResult",
     "PaymentExecutionError",
+    "KYAViolationError",
+    "KYAVerificationPort",
     "Database",
     "init_database",
     "SCHEMA_SQL",
