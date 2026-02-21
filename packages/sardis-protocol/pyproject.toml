@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "sardis-core",
     "pydantic>=2.6",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]

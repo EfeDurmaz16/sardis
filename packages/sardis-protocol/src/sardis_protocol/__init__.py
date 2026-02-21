@@ -49,6 +49,16 @@ from .tap_keys import (
     select_jwk_by_kid,
     verify_signature_with_jwk,
 )
+from .mandate_cache import (
+    MandateCacheConfig,
+    MandateCache,
+    InMemoryMandateCache,
+)
+from .nonce_registry import (
+    NonceConfig,
+    NonceRegistry,
+    RedisNonceRegistry,
+)
 
 # x402 protocol
 try:
@@ -156,6 +166,14 @@ __all__ = [
     "validate_tap_version",
     "select_jwk_by_kid",
     "verify_signature_with_jwk",
+    # Mandate Cache (AP2 replay protection)
+    "MandateCacheConfig",
+    "MandateCache",
+    "InMemoryMandateCache",
+    # Nonce Registry (time-bound nonces)
+    "NonceConfig",
+    "NonceRegistry",
+    "RedisNonceRegistry",
     # x402 protocol
     "X402Challenge",
     "X402ChallengeResponse",
