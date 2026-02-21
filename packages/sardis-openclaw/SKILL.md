@@ -1,200 +1,183 @@
 ---
-name: sardis-payments
+name: sardis-payment
+description: Enable AI agents to make secure, policy-controlled payments through Sardis Payment OS
 version: 1.0.0
-description: "Payment OS for AI Agents - Send payments, manage wallets, enforce spending policies with natural language"
-author: Sardis
-homepage: https://sardis.sh
-repository: https://github.com/sardis-labs/sardis
-license: MIT
-tags:
-  - payments
-  - fintech
-  - wallet
-  - crypto
-  - USDC
-  - stablecoin
-  - spending-policy
-  - agent-payments
-  - virtual-cards
-  - compliance
-  - KYA
-requires:
-  env:
-    - SARDIS_API_KEY
-  packages:
-    - sardis
-capabilities:
-  - wallet_management
-  - payment_execution
-  - policy_enforcement
-  - balance_checking
-  - card_management
-  - spending_analytics
+metadata:
+  openclaw:
+    requires:
+      env:
+        - SARDIS_API_KEY
+        - SARDIS_WALLET_ID
+      bins:
+        - curl
+      config:
+        - ~/.sardis/config.json
+    primaryEnv: SARDIS_API_KEY
+    emoji: "💳"
+    homepage: https://sardis.sh
+    install:
+      npm:
+        - "@sardis/sdk"
+    user-invocable: true
+    disable-model-invocation: false
 ---
 
-# Sardis - Payment OS for AI Agents
+# Sardis Payment - Core Payment Execution Skill
 
 > AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.
 
 Sardis provides complete payment infrastructure for AI agents with non-custodial MPC wallets, natural language spending policies, and compliance-first design.
 
+## Capabilities
+
+- **Payment Execution**: Send USDC/USDT/EURC across 5+ chains (Base, Polygon, Ethereum, Arbitrum, Optimism)
+- **Balance Checking**: Real-time wallet balance and spending analytics
+- **Policy Enforcement**: Natural language spending rules automatically enforced
+- **Card Management**: Issue and manage virtual cards for real-world purchases
+- **Audit Trail**: Complete transaction history with compliance logging
+
+## Security Requirements
+
+**CRITICAL - ALWAYS ENFORCE:**
+- ALWAYS check spending policy before payment execution
+- NEVER bypass approval flows for transactions
+- NEVER hardcode wallet addresses or private keys
+- ALWAYS log transaction attempts for audit trail
+- ALWAYS verify recipient address format
+- FAIL CLOSED on policy violations (deny by default)
+
 ## Quick Setup
 
 ```bash
-pip install sardis
 export SARDIS_API_KEY=sk_your_key_here
+export SARDIS_WALLET_ID=wallet_abc123
 ```
 
-## Available Commands
+## API Endpoint Patterns
 
-### Wallet Management
-
-```bash
-# Create a new agent wallet with natural language policy
-sardis wallets create --name "procurement-agent" --chain base --token USDC \
-  --policy "Max $500/day, only Amazon and OpenAI, no weekends"
-
-# Check wallet balance
-sardis wallets balance --wallet wallet_abc123
-
-# List all wallets
-sardis wallets list
-```
+All API calls use the base URL: `https://api.sardis.sh/v2`
 
 ### Payment Execution
 
 ```bash
 # Execute a payment (policy automatically enforced)
-sardis payments execute \
-  --wallet wallet_abc123 \
-  --to 0xRecipientAddress \
-  --amount 25.00 \
-  --token USDC \
-  --purpose "OpenAI API credits"
-
-# Check transaction status
-sardis payments list --wallet wallet_abc123
+curl -X POST https://api.sardis.sh/v2/payments \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_id": "'$SARDIS_WALLET_ID'",
+    "to": "0xRecipientAddress",
+    "amount": "25.00",
+    "token": "USDC",
+    "chain": "base",
+    "purpose": "OpenAI API credits"
+  }'
 ```
 
-### Policy Management
+### Check Balance
 
 ```bash
-# Check if a payment would be allowed (dry-run)
-sardis policies check --wallet wallet_abc123 --amount 50.00 --vendor "openai.com"
-
-# List active policies
-sardis policies list --wallet wallet_abc123
+# Get wallet balance
+curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/balance \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
 ```
 
-### Virtual Cards
+### Policy Check (Dry Run)
 
 ```bash
-# Issue a virtual card for real-world purchases
-sardis cards create --agent agent_abc123 --limit 500 --merchant-category "software"
-
-# List cards
-sardis cards list --agent agent_abc123
-
-# Freeze a card
-sardis cards freeze --card card_abc123
+# Check if payment would be allowed WITHOUT executing
+curl -X POST https://api.sardis.sh/v2/policies/check \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_id": "'$SARDIS_WALLET_ID'",
+    "amount": "50.00",
+    "vendor": "openai.com",
+    "token": "USDC"
+  }'
 ```
 
-### Spending Analytics
+### Transaction History
 
 ```bash
-# Get spending summary
-sardis spending summary --agent agent_abc123 --period month
-
-# Spending by vendor
-sardis spending by-vendor --agent agent_abc123 --period week
+# List recent transactions
+curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/transactions?limit=10 \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
 ```
 
-## Python SDK Usage
+## Example Commands
 
-```python
-from sardis import SardisClient
+### Safe Payment Flow
 
-# Initialize client
-client = SardisClient(api_key="sk_...")
+```bash
+# Step 1: Check policy FIRST
+POLICY_CHECK=$(curl -s -X POST https://api.sardis.sh/v2/policies/check \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"wallet_id": "'$SARDIS_WALLET_ID'", "amount": "25.00", "vendor": "openai.com"}')
 
-# Create agent wallet with natural language policy
-wallet = client.wallets.create(
-    name="my-shopping-agent",
-    chain="base",
-    token="USDC",
-    policy="Max $100 per transaction, $500/day, only verified merchants"
-)
-
-# Execute payment
-tx = wallet.pay(
-    to="0xMerchantAddress",
-    amount="25.00",
-    purpose="Monthly SaaS subscription"
-)
-print(f"Payment {tx.status}: {tx.tx_hash}")
-
-# Check remaining budget
-balance = wallet.balance
-print(f"Available: {balance.available} USDC")
-print(f"Daily remaining: {balance.daily_remaining} USDC")
+# Step 2: Only proceed if allowed
+if echo $POLICY_CHECK | grep -q '"allowed":true'; then
+  curl -X POST https://api.sardis.sh/v2/payments \
+    -H "Authorization: Bearer $SARDIS_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"wallet_id": "'$SARDIS_WALLET_ID'", "to": "0x...", "amount": "25.00", "token": "USDC", "chain": "base"}'
+else
+  echo "Payment blocked by policy: $POLICY_CHECK"
+fi
 ```
 
-## Framework Integrations
+### Check Spending Summary
 
-Sardis works with all major AI agent frameworks:
-
-| Framework | Package | Install |
-|-----------|---------|---------|
-| LangChain | `sardis-langchain` | `pip install sardis-langchain` |
-| CrewAI | `sardis-crewai` | `pip install sardis-crewai` |
-| OpenAI | `sardis-openai` | `pip install sardis-openai` |
-| Google ADK | `sardis-adk` | `pip install sardis-adk` |
-| Claude | `sardis-agent-sdk` | `pip install sardis-agent-sdk` |
-| Vercel AI | `@sardis/ai-sdk` | `npm install @sardis/ai-sdk` |
-| MCP | `@sardis/mcp-server` | `npx @sardis/mcp-server start` |
-
-### LangChain Example
-
-```python
-from sardis_langchain import SardisToolkit
-
-toolkit = SardisToolkit(api_key="sk_...")
-tools = toolkit.get_tools()
-
-# Use with any LangChain agent
-agent = create_react_agent(llm, tools)
+```bash
+# Get daily spending summary
+curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/spending/summary?period=day \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
 ```
 
-### CrewAI Example
+## Error Handling
 
-```python
-from sardis_crewai import SardisPayTool, SardisCheckBalanceTool
+Always check response status codes:
 
-procurement_agent = Agent(
-    role="Procurement Specialist",
-    tools=[SardisPayTool(), SardisCheckBalanceTool()],
-)
+- `200 OK` - Request successful
+- `400 Bad Request` - Invalid parameters (check amount, address format, token)
+- `401 Unauthorized` - Invalid or missing API key
+- `403 Forbidden` - Policy violation (payment blocked by spending rules)
+- `404 Not Found` - Wallet or transaction not found
+- `429 Too Many Requests` - Rate limit exceeded
+- `500 Internal Server Error` - Contact support@sardis.sh
+
+### Example Error Response
+
+```json
+{
+  "error": {
+    "code": "POLICY_VIOLATION",
+    "message": "Daily spending limit of $500 exceeded. Current: $475, Requested: $50",
+    "details": {
+      "limit": "500.00",
+      "current": "475.00",
+      "requested": "50.00"
+    }
+  }
+}
 ```
 
 ## Supported Chains & Tokens
 
-| Chain | Tokens |
-|-------|--------|
-| Base | USDC, EURC |
-| Polygon | USDC, USDT, EURC |
-| Ethereum | USDC, USDT, PYUSD, EURC |
-| Arbitrum | USDC, USDT |
-| Optimism | USDC, USDT |
+| Chain | Network | Tokens |
+|-------|---------|--------|
+| Base | Mainnet | USDC, EURC |
+| Polygon | Mainnet | USDC, USDT, EURC |
+| Ethereum | Mainnet | USDC, USDT, PYUSD, EURC |
+| Arbitrum | One | USDC, USDT |
+| Optimism | Mainnet | USDC, USDT |
 
-## Key Features
+## Related Skills
 
-- **Non-Custodial**: MPC wallets via Turnkey - agents control their own keys
-- **Natural Language Policies**: "Max $100/day, only Amazon" - parsed automatically
-- **KYA (Know Your Agent)**: Compliance-first agent identity verification
-- **Multi-Chain**: Base, Polygon, Ethereum, Arbitrum, Optimism
-- **Virtual Cards**: Stripe Issuing integration for real-world purchases
-- **Audit Trail**: Append-only ledger with hash-chain integrity
-- **AP2 Protocol**: Google/PayPal/Mastercard Agent Payment Protocol support
+- `sardis-balance` - Read-only balance checking and analytics
+- `sardis-policy` - Natural language spending policy management
+- `sardis-cards` - Virtual card issuance and management
 
 ## Links
 
@@ -202,3 +185,4 @@ procurement_agent = Agent(
 - Documentation: https://sardis.sh/docs
 - GitHub: https://github.com/sardis-labs/sardis
 - API Reference: https://api.sardis.sh/v2/docs
+- Support: support@sardis.sh
