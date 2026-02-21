@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sardis Playground - Try Without Signup</title>
+    <meta name="description" content="Test Sardis payment infrastructure for AI agents. No signup required.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sardis: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                            950: '#2e1065',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px);
+        }
+        .tab-active {
+            background: rgba(139, 92, 246, 0.3);
+            border-bottom: 2px solid #8b5cf6;
+        }
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+        .tutorial-overlay {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8); }
+        }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="fixed inset-0 tutorial-overlay z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-card max-w-2xl w-full p-8 rounded-2xl">
+            <h2 class="text-3xl font-bold mb-4" id="tutorial-title">Welcome to Sardis Playground!</h2>
+            <p class="text-gray-300 mb-6 text-lg" id="tutorial-text">
+                This is an interactive sandbox where you can test Sardis payment infrastructure without signing up.
+                No API keys required, all data is simulated.
+            </p>
+            <div class="flex gap-4">
+                <button onclick="nextTutorialStep()" class="flex-1 bg-sardis-600 hover:bg-sardis-700 px-6 py-3 rounded-lg font-semibold transition">
+                    Next
+                </button>
+                <button onclick="closeTutorial()" class="px-6 py-3 text-gray-400 hover:text-white transition">
+                    Skip Tutorial
+                </button>
+            </div>
+            <div class="mt-4 flex gap-2 justify-center">
+                <div class="w-2 h-2 rounded-full bg-sardis-500" id="dot-0"></div>
+                <div class="w-2 h-2 rounded-full bg-gray-600" id="dot-1"></div>
+                <div class="w-2 h-2 rounded-full bg-gray-600" id="dot-2"></div>
+                <div class="w-2 h-2 rounded-full bg-gray-600" id="dot-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
+                Sardis Playground
+            </h1>
+            <p class="text-xl text-gray-300 mb-6">
+                Payment OS for AI Agents - Try it now, no signup required
+            </p>
+            <button onclick="startTutorial()" class="bg-sardis-600 hover:bg-sardis-700 px-6 py-3 rounded-lg font-semibold transition inline-flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Start Interactive Tutorial
+            </button>
+        </header>
+
+        <!-- Tabs -->
+        <div class="glass mb-6 rounded-xl p-2 flex flex-wrap gap-2">
+            <button onclick="switchTab('payment')" id="tab-payment" class="tab-active flex-1 min-w-[120px] px-4 py-3 rounded-lg font-semibold transition">
+                Execute Payment
+            </button>
+            <button onclick="switchTab('policy')" id="tab-policy" class="flex-1 min-w-[120px] px-4 py-3 rounded-lg font-semibold transition hover:bg-white/10">
+                Policy Builder
+            </button>
+            <button onclick="switchTab('card')" id="tab-card" class="flex-1 min-w-[120px] px-4 py-3 rounded-lg font-semibold transition hover:bg-white/10">
+                Issue Card
+            </button>
+            <button onclick="switchTab('ledger')" id="tab-ledger" class="flex-1 min-w-[120px] px-4 py-3 rounded-lg font-semibold transition hover:bg-white/10">
+                Ledger
+            </button>
+            <button onclick="switchTab('code')" id="tab-code" class="flex-1 min-w-[120px] px-4 py-3 rounded-lg font-semibold transition hover:bg-white/10">
+                Code Examples
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="content-payment" class="tab-content">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Payment Form -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Simulate a Payment</h2>
+                    <form id="payment-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Agent ID</label>
+                            <select id="payment-agent" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500">
+                                <option value="agent_demo_001">Marketing AI Agent (Low Trust)</option>
+                                <option value="agent_demo_002">Data Analytics Agent (Medium Trust)</option>
+                                <option value="agent_demo_003">Cloud Ops Agent (High Trust)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Amount (USD)</label>
+                            <input type="number" id="payment-amount" step="0.01" value="25.00" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Merchant</label>
+                            <input type="text" id="payment-merchant" value="OpenAI API" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Chain</label>
+                            <select id="payment-chain" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500">
+                                <option value="base_sepolia">Base Sepolia</option>
+                                <option value="polygon_amoy">Polygon Amoy</option>
+                                <option value="ethereum_sepolia">Ethereum Sepolia</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-sardis-600 hover:bg-sardis-700 px-6 py-3 rounded-lg font-semibold transition pulse-glow">
+                            Execute Payment
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Payment Result -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Result</h2>
+                    <div id="payment-result" class="text-gray-400">
+                        Submit a payment to see results here...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-policy" class="tab-content hidden">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Policy Check Form -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Test Spending Policy</h2>
+                    <form id="policy-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Agent ID</label>
+                            <select id="policy-agent" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500">
+                                <option value="agent_demo_001">Marketing AI Agent (Low Trust)</option>
+                                <option value="agent_demo_002">Data Analytics Agent (Medium Trust)</option>
+                                <option value="agent_demo_003">Cloud Ops Agent (High Trust)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Test Amount (USD)</label>
+                            <input type="number" id="policy-amount" step="0.01" value="150.00" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Merchant</label>
+                            <input type="text" id="policy-merchant" value="AWS Compute" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500" required>
+                        </div>
+                        <button type="submit" class="w-full bg-sardis-600 hover:bg-sardis-700 px-6 py-3 rounded-lg font-semibold transition">
+                            Check Policy
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Policy Result -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Policy Evaluation</h2>
+                    <div id="policy-result" class="text-gray-400">
+                        Test a policy to see evaluation results...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-card" class="tab-content hidden">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Card Issuance Form -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Issue Virtual Card</h2>
+                    <form id="card-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Agent ID</label>
+                            <select id="card-agent" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500">
+                                <option value="agent_demo_001">Marketing AI Agent</option>
+                                <option value="agent_demo_002">Data Analytics Agent</option>
+                                <option value="agent_demo_003">Cloud Ops Agent</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">Spending Limit (USD)</label>
+                            <input type="number" id="card-limit" step="0.01" value="500.00" class="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-2 focus:outline-none focus:border-sardis-500" required>
+                        </div>
+                        <button type="submit" class="w-full bg-sardis-600 hover:bg-sardis-700 px-6 py-3 rounded-lg font-semibold transition">
+                            Issue Card
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Card Result -->
+                <div class="glass-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Card Details</h2>
+                    <div id="card-result" class="text-gray-400">
+                        Issue a card to see details here...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-ledger" class="tab-content hidden">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">Audit Ledger</h2>
+                <div class="mb-4">
+                    <button onclick="loadLedger()" class="bg-sardis-600 hover:bg-sardis-700 px-4 py-2 rounded-lg font-semibold transition">
+                        Refresh Ledger
+                    </button>
+                </div>
+                <div id="ledger-content" class="space-y-2 max-h-[600px] overflow-y-auto">
+                    <p class="text-gray-400">Click "Refresh Ledger" to load entries...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-code" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Python Example -->
+                <div class="glass-card p-6 rounded-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">Python SDK</h2>
+                        <button onclick="copyCode('python-code')" class="bg-sardis-600 hover:bg-sardis-700 px-4 py-2 rounded-lg text-sm font-semibold transition">
+                            Copy Code
+                        </button>
+                    </div>
+                    <pre class="code-block" id="python-code">import requests
+
+# No API key required for sandbox!
+API_BASE = "http://localhost:8000/api/v2/sandbox"
+
+# Execute a payment
+response = requests.post(f"{API_BASE}/payment", json={
+    "agent_id": "agent_demo_001",
+    "amount": 25.00,
+    "merchant": "OpenAI API",
+    "chain": "base_sepolia",
+    "token": "USDC"
+})
+
+result = response.json()
+print(f"Payment Status: {result['policy_result']}")
+print(f"Transaction ID: {result['tx_id']}")
+
+# Check policy before payment
+policy_check = requests.post(f"{API_BASE}/policy-check", json={
+    "agent_id": "agent_demo_002",
+    "amount": 150.00,
+    "merchant": "AWS Compute"
+})
+
+policy = policy_check.json()
+print(f"Would allow: {policy['would_allow']}")
+print(f"Reason: {policy['reason']}")</pre>
+                </div>
+
+                <!-- TypeScript Example -->
+                <div class="glass-card p-6 rounded-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">TypeScript SDK</h2>
+                        <button onclick="copyCode('ts-code')" class="bg-sardis-600 hover:bg-sardis-700 px-4 py-2 rounded-lg text-sm font-semibold transition">
+                            Copy Code
+                        </button>
+                    </div>
+                    <pre class="code-block" id="ts-code">// No API key required for sandbox!
+const API_BASE = "http://localhost:8000/api/v2/sandbox";
+
+// Execute a payment
+const paymentResponse = await fetch(`${API_BASE}/payment`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    agent_id: "agent_demo_001",
+    amount: 25.00,
+    merchant: "OpenAI API",
+    chain: "base_sepolia",
+    token: "USDC"
+  })
+});
+
+const result = await paymentResponse.json();
+console.log(`Payment Status: ${result.policy_result}`);
+console.log(`Transaction ID: ${result.tx_id}`);
+
+// Create a wallet
+const walletResponse = await fetch(`${API_BASE}/create-wallet`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    agent_name: "My AI Agent",
+    initial_balance: 100.00,
+    trust_level: "medium"
+  })
+});
+
+const wallet = await walletResponse.json();
+console.log(`Wallet Address: ${wallet.address}`);</pre>
+                </div>
+
+                <!-- cURL Example -->
+                <div class="glass-card p-6 rounded-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">cURL</h2>
+                        <button onclick="copyCode('curl-code')" class="bg-sardis-600 hover:bg-sardis-700 px-4 py-2 rounded-lg text-sm font-semibold transition">
+                            Copy Code
+                        </button>
+                    </div>
+                    <pre class="code-block" id="curl-code"># Execute a payment
+curl -X POST http://localhost:8000/api/v2/sandbox/payment \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "agent_demo_001",
+    "amount": 25.00,
+    "merchant": "OpenAI API",
+    "chain": "base_sepolia",
+    "token": "USDC"
+  }'
+
+# Get demo data
+curl http://localhost:8000/api/v2/sandbox/demo-data
+
+# View ledger
+curl http://localhost:8000/api/v2/sandbox/ledger</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-400">
+            <p class="mb-2">Ready to go live?</p>
+            <a href="https://sardis.sh" class="text-sardis-400 hover:text-sardis-300 font-semibold">Get API Keys at sardis.sh →</a>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' ?
+            'http://localhost:8000/api/v2/sandbox' :
+            'https://api.sardis.sh/api/v2/sandbox';
+
+        let tutorialStep = 0;
+        const tutorialSteps = [
+            {
+                title: "Welcome to Sardis Playground!",
+                text: "This is an interactive sandbox where you can test Sardis payment infrastructure without signing up. No API keys required, all data is simulated."
+            },
+            {
+                title: "Execute Your First Payment",
+                text: "Try the 'Execute Payment' tab to simulate an AI agent making a payment. Watch how spending policies automatically enforce limits and rules."
+            },
+            {
+                title: "Test Spending Policies",
+                text: "Use the 'Policy Builder' tab to test hypothetical payments against different trust levels. See what would happen before executing."
+            },
+            {
+                title: "Explore the Code",
+                text: "Check out the 'Code Examples' tab for ready-to-use Python, TypeScript, and cURL snippets. Copy and run them in your terminal!"
+            }
+        ];
+
+        function createElement(tag, className, textContent) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (textContent) el.textContent = textContent;
+            return el;
+        }
+
+        function startTutorial() {
+            tutorialStep = 0;
+            document.getElementById('tutorial-overlay').classList.remove('hidden');
+            updateTutorial();
+        }
+
+        function nextTutorialStep() {
+            tutorialStep++;
+            if (tutorialStep >= tutorialSteps.length) {
+                closeTutorial();
+            } else {
+                updateTutorial();
+            }
+        }
+
+        function updateTutorial() {
+            const step = tutorialSteps[tutorialStep];
+            document.getElementById('tutorial-title').textContent = step.title;
+            document.getElementById('tutorial-text').textContent = step.text;
+
+            for (let i = 0; i < tutorialSteps.length; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if (i === tutorialStep) {
+                    dot.classList.remove('bg-gray-600');
+                    dot.classList.add('bg-sardis-500');
+                } else {
+                    dot.classList.remove('bg-sardis-500');
+                    dot.classList.add('bg-gray-600');
+                }
+            }
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorial-overlay').classList.add('hidden');
+        }
+
+        function switchTab(tab) {
+            const tabs = ['payment', 'policy', 'card', 'ledger', 'code'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const content = document.getElementById(`content-${t}`);
+                if (t === tab) {
+                    btn.classList.add('tab-active');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('tab-active');
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Code copied to clipboard!');
+            });
+        }
+
+        function renderPaymentResult(container, data) {
+            container.textContent = '';
+            const wrapper = createElement('div', 'space-y-3');
+
+            const statusColor = data.success ? 'text-green-400' : 'text-red-400';
+            const statusIcon = data.success ? '✓' : '✗';
+            const statusDiv = createElement('div', `${statusColor} text-2xl font-bold`, `${statusIcon} ${data.policy_result.toUpperCase()}`);
+            wrapper.appendChild(statusDiv);
+
+            const grid = createElement('div', 'grid grid-cols-2 gap-2 text-sm');
+            const fields = [
+                ['Transaction ID:', data.tx_id, 'font-mono text-xs'],
+                ['Amount:', `$${data.amount}`, ''],
+                ['Merchant:', data.merchant, ''],
+                ['Status:', data.policy_result, statusColor]
+            ];
+
+            if (data.policy_reason) {
+                fields.push(['Reason:', data.policy_reason, 'text-yellow-400']);
+            }
+
+            fields.forEach(([label, value, valueClass]) => {
+                const labelDiv = createElement('div', 'text-gray-400', label);
+                const valueDiv = createElement('div', valueClass, value);
+                grid.appendChild(labelDiv);
+                grid.appendChild(valueDiv);
+            });
+
+            wrapper.appendChild(grid);
+            container.appendChild(wrapper);
+        }
+
+        function renderPolicyResult(container, data) {
+            container.textContent = '';
+            const wrapper = createElement('div', 'space-y-3');
+
+            const statusColor = data.would_allow ? 'text-green-400' : 'text-red-400';
+            const statusIcon = data.would_allow ? '✓' : '✗';
+            const statusText = data.would_allow ? 'ALLOWED' : 'DENIED';
+            const statusDiv = createElement('div', `${statusColor} text-2xl font-bold`, `${statusIcon} ${statusText}`);
+            wrapper.appendChild(statusDiv);
+
+            const detailsDiv = createElement('div', 'text-sm space-y-2');
+
+            const reasonDiv = createElement('div');
+            const reasonLabel = createElement('span', 'text-gray-400', 'Reason: ');
+            reasonDiv.appendChild(reasonLabel);
+            reasonDiv.appendChild(document.createTextNode(data.reason));
+            detailsDiv.appendChild(reasonDiv);
+
+            const policyDiv = createElement('div');
+            const policyLabel = createElement('span', 'text-gray-400', 'Policy: ');
+            policyDiv.appendChild(policyLabel);
+            policyDiv.appendChild(document.createTextNode(data.policy_summary));
+            detailsDiv.appendChild(policyDiv);
+
+            const limitsContainer = createElement('div', 'mt-4 pt-4 border-t border-white/10');
+            const limitsTitle = createElement('div', 'font-semibold mb-2', 'Limits:');
+            limitsContainer.appendChild(limitsTitle);
+
+            Object.entries(data.limits_summary).forEach(([key, value]) => {
+                const limitRow = createElement('div', 'flex justify-between text-sm');
+                const keySpan = createElement('span', 'text-gray-400', `${key.replace(/_/g, ' ')}:`);
+                const valueSpan = createElement('span', '', value);
+                limitRow.appendChild(keySpan);
+                limitRow.appendChild(valueSpan);
+                limitsContainer.appendChild(limitRow);
+            });
+
+            detailsDiv.appendChild(limitsContainer);
+            wrapper.appendChild(detailsDiv);
+            container.appendChild(wrapper);
+        }
+
+        function renderCardResult(container, data) {
+            container.textContent = '';
+            const wrapper = createElement('div', 'space-y-4');
+
+            const cardDiv = createElement('div', 'bg-gradient-to-br from-sardis-600 to-sardis-800 p-6 rounded-xl');
+            const cardLabel = createElement('div', 'text-sm text-gray-300 mb-2', 'VIRTUAL CARD');
+            const cardNumber = createElement('div', 'font-mono text-2xl mb-4', `•••• •••• •••• ${data.last_four}`);
+
+            const cardFooter = createElement('div', 'flex justify-between text-sm');
+            const limitBlock = createElement('div');
+            limitBlock.appendChild(createElement('div', 'text-gray-300', 'Limit'));
+            limitBlock.appendChild(createElement('div', 'font-semibold', `$${data.spending_limit}`));
+
+            const statusBlock = createElement('div');
+            statusBlock.appendChild(createElement('div', 'text-gray-300', 'Status'));
+            statusBlock.appendChild(createElement('div', 'font-semibold text-green-400', data.status.toUpperCase()));
+
+            cardFooter.appendChild(limitBlock);
+            cardFooter.appendChild(statusBlock);
+
+            cardDiv.appendChild(cardLabel);
+            cardDiv.appendChild(cardNumber);
+            cardDiv.appendChild(cardFooter);
+
+            wrapper.appendChild(cardDiv);
+
+            const cardId = createElement('div', 'text-sm text-gray-400');
+            cardId.appendChild(document.createTextNode('Card ID: '));
+            const cardIdMono = createElement('span', 'font-mono', data.card_id);
+            cardId.appendChild(cardIdMono);
+            wrapper.appendChild(cardId);
+
+            container.appendChild(wrapper);
+        }
+
+        document.getElementById('payment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('payment-result');
+            result.textContent = 'Processing...';
+            result.className = 'text-gray-400';
+
+            try {
+                const response = await fetch(`${API_BASE}/payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: document.getElementById('payment-agent').value,
+                        amount: parseFloat(document.getElementById('payment-amount').value),
+                        merchant: document.getElementById('payment-merchant').value,
+                        chain: document.getElementById('payment-chain').value,
+                        token: 'USDC'
+                    })
+                });
+
+                const data = await response.json();
+                renderPaymentResult(result, data);
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.className = 'text-red-400';
+            }
+        });
+
+        document.getElementById('policy-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('policy-result');
+            result.textContent = 'Checking...';
+            result.className = 'text-gray-400';
+
+            try {
+                const response = await fetch(`${API_BASE}/policy-check`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: document.getElementById('policy-agent').value,
+                        amount: parseFloat(document.getElementById('policy-amount').value),
+                        merchant: document.getElementById('policy-merchant').value
+                    })
+                });
+
+                const data = await response.json();
+                renderPolicyResult(result, data);
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.className = 'text-red-400';
+            }
+        });
+
+        document.getElementById('card-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('card-result');
+            result.textContent = 'Issuing card...';
+            result.className = 'text-gray-400';
+
+            try {
+                const response = await fetch(`${API_BASE}/issue-card`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent_id: document.getElementById('card-agent').value,
+                        spending_limit: parseFloat(document.getElementById('card-limit').value)
+                    })
+                });
+
+                const data = await response.json();
+                renderCardResult(result, data);
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.className = 'text-red-400';
+            }
+        });
+
+        async function loadLedger() {
+            const content = document.getElementById('ledger-content');
+            content.textContent = 'Loading...';
+            content.className = 'text-gray-400';
+
+            try {
+                const response = await fetch(`${API_BASE}/ledger?limit=20`);
+                const entries = await response.json();
+
+                content.textContent = '';
+                content.className = 'space-y-2 max-h-[600px] overflow-y-auto';
+
+                if (entries.length === 0) {
+                    content.textContent = 'No entries yet. Try executing a payment first!';
+                    content.className = 'text-gray-400';
+                    return;
+                }
+
+                entries.forEach(entry => {
+                    const entryDiv = createElement('div', 'glass-card p-4 rounded-lg');
+
+                    const header = createElement('div', 'flex justify-between items-start mb-2');
+                    header.appendChild(createElement('div', 'font-semibold', entry.event_type));
+                    header.appendChild(createElement('div', 'text-sm text-gray-400', new Date(entry.timestamp).toLocaleString()));
+                    entryDiv.appendChild(header);
+
+                    const grid = createElement('div', 'grid grid-cols-2 gap-2 text-sm');
+                    const fields = [
+                        ['Amount:', `$${entry.amount}`],
+                        ['Merchant:', entry.merchant],
+                        ['Agent:', entry.agent_id],
+                        ['TX ID:', entry.tx_id]
+                    ];
+
+                    fields.forEach(([label, value], idx) => {
+                        grid.appendChild(createElement('div', 'text-gray-400', label));
+                        const valueClass = idx >= 2 ? 'font-mono text-xs' : '';
+                        grid.appendChild(createElement('div', valueClass, value));
+                    });
+
+                    entryDiv.appendChild(grid);
+                    content.appendChild(entryDiv);
+                });
+            } catch (error) {
+                content.textContent = `Error loading ledger: ${error.message}`;
+                content.className = 'text-red-400';
+            }
+        }
+
+        if (!localStorage.getItem('sardis-tutorial-seen')) {
+            setTimeout(startTutorial, 1000);
+            localStorage.setItem('sardis-tutorial-seen', 'true');
+        }
+    </script>
+</body>
+</html>
