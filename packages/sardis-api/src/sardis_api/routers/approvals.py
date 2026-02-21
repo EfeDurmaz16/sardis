@@ -2,11 +2,13 @@
 
 This module provides REST endpoints for creating, managing, and reviewing
 approval requests when agent actions exceed policy limits.
+
+Extended with confidence-based routing for tiered approvals.
 """
 from __future__ import annotations
 
 import logging
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from decimal import Decimal
 
@@ -15,6 +17,12 @@ from pydantic import BaseModel, Field
 
 from sardis_v2_core.approval_service import ApprovalService, ApprovalStatus, ApprovalUrgency
 from sardis_v2_core.approval_repository import ApprovalRepository, Approval
+from sardis_v2_core.confidence_router import (
+    ConfidenceRouter,
+    ApprovalWorkflow,
+    ConfidenceLevel,
+    TransactionConfidence,
+)
 
 from sardis_api.authz import require_principal
 
@@ -167,6 +175,15 @@ class ApprovalsDependencies:
     """Dependencies for approval endpoints."""
     approval_service: ApprovalService
     approval_repo: ApprovalRepository
+    confidence_router: ConfidenceRouter = None
+    approval_workflow: ApprovalWorkflow = None
+
+    def __post_init__(self):
+        """Initialize confidence router and workflow if not provided."""
+        if self.confidence_router is None:
+            self.confidence_router = ConfidenceRouter()
+        if self.approval_workflow is None:
+            self.approval_workflow = ApprovalWorkflow()
 
 
 _deps: ApprovalsDependencies | None = None
@@ -436,3 +453,264 @@ async def expire_pending_approvals(
         "expired_count": count,
         "message": f"Expired {count} approval request(s)",
     }
+
+
+# ============================================================================
+# Confidence-Based Routing Endpoints
+# ============================================================================
+
+class TransactionConfidenceRequest(BaseModel):
+    """Request to calculate transaction confidence."""
+
+    agent_id: str = Field(..., description="Agent making the transaction")
+    transaction: dict[str, Any] = Field(..., description="Transaction details (amount, merchant, etc.)")
+    kya_level: Optional[str] = Field(default=None, description="Agent KYA level (none/basic/verified/attested)")
+    violation_count: int = Field(default=0, description="Number of recent policy violations")
+    history: Optional[List[dict]] = Field(default=None, description="Recent transaction history")
+
+
+class TransactionConfidenceResponse(BaseModel):
+    """Response with transaction confidence assessment."""
+
+    transaction_id: str
+    score: float
+    level: str
+    factors: dict[str, float]
+    recommendation: str
+    routing: dict[str, Any]
+    calculated_at: str
+
+
+class TransactionApprovalRequest(BaseModel):
+    """Request to approve/reject a transaction."""
+
+    approver_id: str = Field(..., description="ID of the approver")
+    reason: Optional[str] = Field(default=None, description="Reason for rejection (required if rejecting)")
+
+
+@router.post("/transactions/{transaction_id}/confidence", response_model=TransactionConfidenceResponse)
+async def calculate_transaction_confidence(
+    transaction_id: str,
+    request: TransactionConfidenceRequest,
+    deps: ApprovalsDependencies = Depends(get_deps),
+):
+    """
+    Calculate confidence score for a transaction.
+
+    Analyzes transaction patterns, agent behavior, and policy compliance
+    to determine confidence level and routing decision.
+
+    **Confidence Levels:**
+    - 0.95+: AUTO_APPROVE - Execute immediately
+    - 0.85-0.94: MANAGER_APPROVAL - Single approver required
+    - 0.70-0.84: MULTI_SIG - Multiple approvers required
+    - <0.70: HUMAN_REWRITE - Transaction should be redesigned
+
+    **Returns:** Confidence score, level, and routing decision
+    """
+    try:
+        # Import policy store to get agent's policy
+        from sardis_v2_core.spending_policy import SpendingPolicy, create_default_policy, TrustLevel
+
+        # For now, create a default policy - in production, fetch from policy store
+        policy = create_default_policy(request.agent_id, TrustLevel.MEDIUM)
+
+        # Calculate confidence
+        confidence = deps.confidence_router.calculate_confidence(
+            agent_id=request.agent_id,
+            transaction=request.transaction,
+            policy=policy,
+            history=request.history,
+            kya_level=request.kya_level,
+            violation_count=request.violation_count,
+        )
+
+        # Get routing decision
+        routing = deps.confidence_router.route_transaction(confidence)
+
+        return TransactionConfidenceResponse(
+            transaction_id=confidence.transaction_id,
+            score=confidence.score,
+            level=confidence.level.value,
+            factors=confidence.factors,
+            recommendation=confidence.recommendation,
+            routing=routing,
+            calculated_at=confidence.calculated_at.isoformat(),
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to calculate transaction confidence: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to calculate confidence: {str(e)}",
+        )
+
+
+@router.post("/transactions/{transaction_id}/approve", response_model=dict)
+async def approve_transaction(
+    transaction_id: str,
+    request: TransactionApprovalRequest,
+    deps: ApprovalsDependencies = Depends(get_deps),
+):
+    """
+    Approve a transaction requiring human review.
+
+    Records approval vote and checks if quorum has been reached
+    for multi-signature approvals.
+
+    **Returns:** Approval status and quorum information
+    """
+    try:
+        quorum_reached = await deps.approval_workflow.approve(
+            transaction_id=transaction_id,
+            approver_id=request.approver_id,
+        )
+
+        status_info = await deps.approval_workflow.get_approval_status(transaction_id)
+
+        return {
+            "success": True,
+            "transaction_id": transaction_id,
+            "approver_id": request.approver_id,
+            "quorum_reached": quorum_reached,
+            "status": status_info,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Failed to approve transaction: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to approve transaction: {str(e)}",
+        )
+
+
+@router.post("/transactions/{transaction_id}/reject", response_model=dict)
+async def reject_transaction(
+    transaction_id: str,
+    request: TransactionApprovalRequest,
+    deps: ApprovalsDependencies = Depends(get_deps),
+):
+    """
+    Reject a transaction requiring human review.
+
+    Records rejection vote. Any rejection immediately blocks the transaction.
+
+    **Returns:** Rejection confirmation
+    """
+    try:
+        if not request.reason:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Rejection reason is required",
+            )
+
+        await deps.approval_workflow.reject(
+            transaction_id=transaction_id,
+            approver_id=request.approver_id,
+            reason=request.reason,
+        )
+
+        status_info = await deps.approval_workflow.get_approval_status(transaction_id)
+
+        return {
+            "success": True,
+            "transaction_id": transaction_id,
+            "approver_id": request.approver_id,
+            "reason": request.reason,
+            "status": status_info,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"Failed to reject transaction: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reject transaction: {str(e)}",
+        )
+
+
+@router.get("/transactions/pending-approvals", response_model=dict)
+async def get_pending_transaction_approvals(
+    deps: ApprovalsDependencies = Depends(get_deps),
+):
+    """
+    Get all pending transaction approvals.
+
+    Returns list of transactions awaiting approval with their
+    confidence scores and current approval status.
+
+    **Returns:** List of pending approvals
+    """
+    try:
+        # Get all pending approvals from workflow
+        pending = []
+        for tx_id, request in deps.approval_workflow._pending_approvals.items():
+            if not request.is_expired() and not request.is_approved() and not request.is_rejected():
+                pending.append({
+                    "transaction_id": tx_id,
+                    "agent_id": request.agent_id,
+                    "amount": str(request.amount),
+                    "merchant_id": request.merchant_id,
+                    "confidence_score": request.confidence.score,
+                    "confidence_level": request.confidence.level.value,
+                    "required_approvers": request.required_approvers,
+                    "approvals": list(request.approvals.keys()),
+                    "quorum": request.quorum,
+                    "created_at": request.created_at.isoformat(),
+                    "expires_at": request.expires_at.isoformat(),
+                })
+
+        return {
+            "pending_approvals": pending,
+            "total": len(pending),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get pending approvals: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get pending approvals: {str(e)}",
+        )
+
+
+@router.get("/transactions/{transaction_id}/confidence", response_model=dict)
+async def get_transaction_confidence(
+    transaction_id: str,
+    deps: ApprovalsDependencies = Depends(get_deps),
+):
+    """
+    Get confidence score and approval status for a transaction.
+
+    Returns the current approval status including votes received,
+    quorum status, and expiration information.
+
+    **Returns:** Transaction confidence and approval status
+    """
+    try:
+        status_info = await deps.approval_workflow.get_approval_status(transaction_id)
+
+        if status_info.get("status") == "not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transaction {transaction_id} not found",
+            )
+
+        return status_info
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get transaction confidence: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get transaction confidence: {str(e)}",
+        )
