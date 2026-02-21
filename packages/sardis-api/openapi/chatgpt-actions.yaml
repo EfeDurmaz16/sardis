@@ -1,0 +1,884 @@
+openapi: 3.1.0
+info:
+  title: Sardis Payment OS
+  version: 2.0.0
+  description: |
+    Payment infrastructure for AI agents. Sardis enables autonomous agents to make real
+    financial transactions through non-custodial MPC wallets with natural language spending policies.
+
+    Key capabilities:
+    - Execute payments with policy enforcement
+    - Issue and manage virtual cards
+    - Create payment holds (pre-authorizations)
+    - Query balances and transaction history
+    - Define spending policies in natural language
+
+    Get started at https://sardis.sh
+  contact:
+    name: Sardis Support
+    url: https://sardis.sh/support
+    email: support@sardis.sh
+
+servers:
+  - url: https://api.sardis.sh
+    description: Production API
+
+security:
+  - sardis_api_key: []
+
+components:
+  securitySchemes:
+    sardis_api_key:
+      type: http
+      scheme: bearer
+      bearerFormat: sk_...
+      description: |
+        Sardis API key. Get one at https://sardis.sh
+
+        Include in Authorization header as: Bearer sk_xxxxx
+
+  schemas:
+    Balance:
+      type: object
+      required:
+        - wallet_id
+        - chain
+        - token
+        - amount
+        - decimals
+      properties:
+        wallet_id:
+          type: string
+          description: Wallet identifier
+        chain:
+          type: string
+          description: Blockchain network (base, polygon, ethereum, arbitrum, optimism)
+        token:
+          type: string
+          description: Token symbol (USDC, USDT, EURC, PYUSD)
+        amount:
+          type: string
+          description: Token amount as decimal string (e.g., "100.50")
+        decimals:
+          type: integer
+          description: Token decimal places (typically 6 for stablecoins)
+        usd_value:
+          type: string
+          description: USD equivalent value
+
+    Payment:
+      type: object
+      required:
+        - wallet_id
+        - recipient
+        - amount
+        - token
+        - chain
+      properties:
+        wallet_id:
+          type: string
+          description: Source wallet ID
+        recipient:
+          type: string
+          description: Recipient address (0x... format)
+        amount:
+          type: string
+          description: Amount to send (e.g., "50.00")
+        token:
+          type: string
+          description: Token symbol (USDC, USDT, EURC, PYUSD)
+        chain:
+          type: string
+          description: Blockchain network
+        memo:
+          type: string
+          description: Optional payment description
+        idempotency_key:
+          type: string
+          description: Optional idempotency key for duplicate prevention
+
+    PaymentResponse:
+      type: object
+      required:
+        - transaction_id
+        - status
+        - tx_hash
+      properties:
+        transaction_id:
+          type: string
+          description: Sardis transaction ID
+        status:
+          type: string
+          enum: [pending, confirmed, failed]
+        tx_hash:
+          type: string
+          description: Blockchain transaction hash
+        timestamp:
+          type: string
+          format: date-time
+
+    PolicyCheck:
+      type: object
+      required:
+        - wallet_id
+        - amount
+        - recipient
+      properties:
+        wallet_id:
+          type: string
+        amount:
+          type: string
+          description: Amount to check (e.g., "100.00")
+        recipient:
+          type: string
+          description: Recipient address
+        token:
+          type: string
+          description: Token symbol
+        category:
+          type: string
+          description: Spending category (e.g., "marketing", "payroll")
+
+    PolicyCheckResponse:
+      type: object
+      required:
+        - allowed
+      properties:
+        allowed:
+          type: boolean
+          description: Whether the transaction is allowed
+        reason:
+          type: string
+          description: Explanation of the decision
+        matching_policies:
+          type: array
+          items:
+            type: string
+          description: IDs of policies that matched
+
+    SpendingSummary:
+      type: object
+      required:
+        - wallet_id
+        - period
+        - total_spent
+      properties:
+        wallet_id:
+          type: string
+        period:
+          type: string
+          enum: [day, week, month, year]
+        total_spent:
+          type: string
+          description: Total amount spent in USD
+        transaction_count:
+          type: integer
+        by_category:
+          type: object
+          additionalProperties:
+            type: string
+          description: Spending breakdown by category
+        by_recipient:
+          type: object
+          additionalProperties:
+            type: string
+          description: Spending breakdown by recipient
+
+    Transaction:
+      type: object
+      required:
+        - transaction_id
+        - wallet_id
+        - type
+        - amount
+        - status
+        - timestamp
+      properties:
+        transaction_id:
+          type: string
+        wallet_id:
+          type: string
+        type:
+          type: string
+          enum: [payment, card_transaction, hold, deposit, withdrawal]
+        amount:
+          type: string
+        token:
+          type: string
+        chain:
+          type: string
+        recipient:
+          type: string
+        memo:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, failed, cancelled]
+        tx_hash:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    Card:
+      type: object
+      required:
+        - card_id
+        - wallet_id
+        - status
+        - spending_limit
+      properties:
+        card_id:
+          type: string
+        wallet_id:
+          type: string
+        status:
+          type: string
+          enum: [active, frozen, closed]
+        spending_limit:
+          type: string
+          description: Card spending limit
+        spending_limit_duration:
+          type: string
+          enum: [transaction, daily, monthly, lifetime]
+        last_four:
+          type: string
+          description: Last 4 digits of card number
+        created_at:
+          type: string
+          format: date-time
+
+    CreateCard:
+      type: object
+      required:
+        - wallet_id
+        - spending_limit
+      properties:
+        wallet_id:
+          type: string
+        spending_limit:
+          type: string
+          description: Card spending limit (e.g., "500.00")
+        spending_limit_duration:
+          type: string
+          enum: [transaction, daily, monthly, lifetime]
+          default: monthly
+        memo:
+          type: string
+          description: Card description/purpose
+
+    Hold:
+      type: object
+      required:
+        - hold_id
+        - wallet_id
+        - amount
+        - status
+      properties:
+        hold_id:
+          type: string
+        wallet_id:
+          type: string
+        amount:
+          type: string
+        token:
+          type: string
+        recipient:
+          type: string
+        status:
+          type: string
+          enum: [active, captured, released, expired]
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CreateHold:
+      type: object
+      required:
+        - wallet_id
+        - amount
+        - recipient
+      properties:
+        wallet_id:
+          type: string
+        amount:
+          type: string
+          description: Amount to hold (e.g., "100.00")
+        recipient:
+          type: string
+          description: Recipient address for eventual capture
+        token:
+          type: string
+          default: USDC
+        chain:
+          type: string
+          default: base
+        expires_in_seconds:
+          type: integer
+          description: Hold expiration time (default 86400 = 24 hours)
+          default: 86400
+
+    Policy:
+      type: object
+      required:
+        - policy_id
+        - wallet_id
+        - description
+        - enabled
+      properties:
+        policy_id:
+          type: string
+        wallet_id:
+          type: string
+        description:
+          type: string
+          description: Natural language policy description
+        rules:
+          type: object
+          description: Parsed policy rules
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CreatePolicy:
+      type: object
+      required:
+        - wallet_id
+        - description
+      properties:
+        wallet_id:
+          type: string
+        description:
+          type: string
+          description: |
+            Natural language spending policy (e.g., "Allow up to $500/day for marketing expenses")
+        enabled:
+          type: boolean
+          default: true
+
+    Agent:
+      type: object
+      required:
+        - agent_id
+        - name
+        - wallet_id
+      properties:
+        agent_id:
+          type: string
+        name:
+          type: string
+        wallet_id:
+          type: string
+        public_key:
+          type: string
+          description: Agent's TAP public key
+        created_at:
+          type: string
+          format: date-time
+
+    ApprovalRequest:
+      type: object
+      required:
+        - wallet_id
+        - transaction_type
+        - amount
+      properties:
+        wallet_id:
+          type: string
+        transaction_type:
+          type: string
+          enum: [payment, card_creation, hold]
+        amount:
+          type: string
+        recipient:
+          type: string
+        reason:
+          type: string
+          description: Why approval is needed
+
+    ApprovalResponse:
+      type: object
+      required:
+        - approval_id
+        - status
+      properties:
+        approval_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        approval_url:
+          type: string
+          description: URL for human to approve/reject
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error context
+
+paths:
+  /v2/wallets/{wallet_id}/balance:
+    get:
+      operationId: getBalance
+      summary: Get wallet balance
+      description: Retrieve the current balance for a specific wallet across all supported tokens and chains
+      x-openai-isConsequential: false
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Wallet identifier
+      responses:
+        '200':
+          description: Balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Balance'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/payments/submit:
+    post:
+      operationId: makePayment
+      summary: Execute a payment
+      description: |
+        Submit a blockchain payment from an agent wallet. This operation requires user confirmation
+        in ChatGPT as it moves real funds.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+      responses:
+        '200':
+          description: Payment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid payment request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Payment blocked by spending policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/policies/check:
+    post:
+      operationId: checkPolicy
+      summary: Check spending policy
+      description: Verify if a proposed transaction would be allowed by the wallet's spending policies
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCheck'
+      responses:
+        '200':
+          description: Policy check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyCheckResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/spending/summary:
+    get:
+      operationId: getSpendingSummary
+      summary: Get spending summary
+      description: Retrieve aggregated spending statistics for a wallet over a specified time period
+      x-openai-isConsequential: false
+      parameters:
+        - name: wallet_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: month
+      responses:
+        '200':
+          description: Summary retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendingSummary'
+
+  /v2/transactions:
+    get:
+      operationId: listTransactions
+      summary: List transactions
+      description: Retrieve recent transaction history for a wallet with optional filtering
+      x-openai-isConsequential: false
+      parameters:
+        - name: wallet_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, failed, cancelled]
+      responses:
+        '200':
+          description: Transactions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  total:
+                    type: integer
+                  has_more:
+                    type: boolean
+
+  /v2/cards/create:
+    post:
+      operationId: createCard
+      summary: Issue a virtual card
+      description: |
+        Create a new virtual payment card linked to a wallet. Requires user confirmation
+        as it creates a new payment instrument.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCard'
+      responses:
+        '201':
+          description: Card created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/cards/{card_id}/freeze:
+    post:
+      operationId: freezeCard
+      summary: Freeze a card
+      description: |
+        Temporarily freeze a virtual card to prevent new transactions. Requires confirmation
+        as it affects payment capabilities.
+      x-openai-isConsequential: true
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Card frozen successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/cards/{card_id}/unfreeze:
+    post:
+      operationId: unfreezeCard
+      summary: Unfreeze a card
+      description: |
+        Reactivate a frozen virtual card. Requires confirmation as it restores
+        payment capabilities.
+      x-openai-isConsequential: true
+      parameters:
+        - name: card_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Card unfrozen successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/holds/create:
+    post:
+      operationId: createHold
+      summary: Create payment hold
+      description: |
+        Create a payment hold (pre-authorization) that reserves funds without transferring them.
+        Requires user confirmation as it locks funds.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHold'
+      responses:
+        '201':
+          description: Hold created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/holds/{hold_id}/capture:
+    post:
+      operationId: captureHold
+      summary: Capture a hold
+      description: |
+        Capture (complete) a payment hold, transferring the reserved funds to the recipient.
+        Requires user confirmation as it executes a payment.
+      x-openai-isConsequential: true
+      parameters:
+        - name: hold_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Optional amount to capture (defaults to full hold amount)
+      responses:
+        '200':
+          description: Hold captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '404':
+          description: Hold not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/holds/{hold_id}/release:
+    post:
+      operationId: releaseHold
+      summary: Release a hold
+      description: |
+        Release (cancel) a payment hold, returning the reserved funds to available balance.
+        Requires user confirmation as it modifies fund allocation.
+      x-openai-isConsequential: true
+      parameters:
+        - name: hold_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Hold released successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '404':
+          description: Hold not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/policies:
+    get:
+      operationId: listPolicies
+      summary: List spending policies
+      description: Retrieve all spending policies for a wallet
+      x-openai-isConsequential: false
+      parameters:
+        - name: wallet_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policies retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Policy'
+    post:
+      operationId: createPolicy
+      summary: Create spending policy
+      description: |
+        Create a new spending policy using natural language. Requires user confirmation
+        as it affects transaction approval logic.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicy'
+      responses:
+        '201':
+          description: Policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          description: Invalid policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/agents/{agent_id}:
+    get:
+      operationId: getAgent
+      summary: Get agent details
+      description: Retrieve information about a specific agent including wallet and identity details
+      x-openai-isConsequential: false
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/approvals/request:
+    post:
+      operationId: requestApproval
+      summary: Request approval for payment
+      description: |
+        Request human approval for a transaction that exceeds policy limits or requires
+        explicit authorization. Requires user confirmation.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '201':
+          description: Approval request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

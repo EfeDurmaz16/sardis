@@ -73,6 +73,7 @@ import SardisV09MultiProviderFiat from './docs/pages/blog/SardisV09MultiProvider
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import Enterprise from './pages/Enterprise.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -84,6 +85,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/playground" element={<Playground />} />
         <Route path="/demo" element={<Demo />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/enterprise" element={<Enterprise />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />
