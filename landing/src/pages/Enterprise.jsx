@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sun, Moon, Check, Shield, Lock, TrendingUp, Activity, FileText, Clock, Users } from "lucide-react";
+import { Sun, Moon, Shield, Lock, Activity, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -163,8 +163,9 @@ function Enterprise() {
             className="max-w-4xl mx-auto text-center"
           >
             <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight mb-6">
-              Give Your AI Agents a Corporate Wallet — With{" "}
-              <span className="text-[var(--sardis-orange)]">CFO-Grade Controls</span>
+              Give Your AI Agents a Corporate Wallet
+              <br />
+              <span className="text-[var(--sardis-orange)]">With CFO-Grade Controls</span>
             </motion.h1>
 
             <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
@@ -294,9 +295,9 @@ function Enterprise() {
               {
                 step: "04",
                 icon: icons.shieldLock,
-                title: "Compliance Reports",
-                description: "SOC2-ready audit trails, one click away. Every transaction logged on an append-only ledger with full provenance.",
-                example: "Export: Q1 2026 Agent Spending Report (CSV, JSON, PDF)"
+                title: "Guardrails & Kill Switches",
+                description: "Circuit breakers, rate limiters, and behavioral anomaly detection. Halt any agent instantly if spending goes off-script.",
+                example: "Kill switch activated: Agent-Outreach-05 halted after 3x velocity spike"
               }
             ].map((step, i) => (
               <motion.div
@@ -352,14 +353,14 @@ function Enterprise() {
             className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 mb-12"
           >
             {[
-              { name: "LangChain", logo: "/icons/langchain.svg" },
-              { name: "CrewAI", logo: "/icons/openai-2.svg" },
               { name: "OpenAI", logo: "/icons/openai-2.svg" },
-              { name: "Gemini", logo: "/icons/gemini.svg" },
               { name: "Claude", logo: "/icons/mcp.svg" },
+              { name: "Gemini", logo: "/icons/gemini.svg" },
+              { name: "LangChain", logo: "/icons/langchain.svg" },
               { name: "Vercel AI", logo: "/icons/vercel.svg" },
-              { name: "Salesforce", logo: "/icons/handshake-3.png" },
-              { name: "ServiceNow", logo: "/icons/terminal-1.png" },
+              { name: "OpenClaw", logo: "/icons/openclaw.svg" },
+              { name: "Python", logo: "/icons/python.svg" },
+              { name: "TypeScript", logo: "/icons/typescript.svg" },
             ].map((integration, i) => (
               <motion.div
                 key={i}
@@ -448,129 +449,6 @@ function Enterprise() {
                     <p className="text-muted-foreground text-sm leading-relaxed">
                       {feature.description}
                     </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="py-28 md:py-36 border-t border-border">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Pricing</p>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Built for Teams of All Sizes</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Start free in sandbox mode. Scale to production when you are ready.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {[
-              {
-                name: "Starter",
-                price: "$0",
-                period: "/month",
-                description: "Perfect for testing and development",
-                features: [
-                  "Sandbox environment",
-                  "100 transactions/month",
-                  "2 agents",
-                  "Basic policies",
-                  "Email support",
-                  "Community access"
-                ],
-                cta: "Start Free",
-                highlight: false
-              },
-              {
-                name: "Growth",
-                price: "$99",
-                period: "/month",
-                description: "For teams deploying production agents",
-                features: [
-                  "10,000 transactions/month",
-                  "10 agents",
-                  "Virtual cards (Stripe/Lithic)",
-                  "Spending analytics + anomaly detection",
-                  "Natural language policies",
-                  "Guardrails & circuit breakers",
-                  "Priority support",
-                  "SLA: 99.5%"
-                ],
-                cta: "Book a Demo",
-                highlight: true
-              },
-              {
-                name: "Enterprise",
-                price: "Custom",
-                period: "",
-                description: "For mission-critical deployments",
-                features: [
-                  "Unlimited transactions",
-                  "Unlimited agents",
-                  "Multi-tenant orgs + RBAC",
-                  "A2A escrow & settlement",
-                  "Merkle audit anchoring",
-                  "Goal drift detection",
-                  "Plugin system",
-                  "Dedicated support",
-                  "SLA: 99.9%",
-                  "Private deployment"
-                ],
-                cta: "Contact Sales",
-                highlight: false
-              }
-            ].map((tier, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
-                <Card className={cn(
-                  "h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none relative",
-                  tier.highlight && "border-[var(--sardis-orange)] border-2"
-                )}>
-                  {tier.highlight && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-[var(--sardis-orange)] text-white rounded-none font-mono">
-                        MOST POPULAR
-                      </Badge>
-                    </div>
-                  )}
-                  <CardHeader className="text-center pb-6">
-                    <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider mb-2">{tier.name}</p>
-                    <div className="mb-2">
-                      <span className="text-4xl font-bold font-display">{tier.price}</span>
-                      <span className="text-muted-foreground">{tier.period}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <ul className="space-y-3">
-                      {tier.features.map((feature, j) => (
-                        <li key={j} className="flex items-start gap-3 text-sm">
-                          <Check className="w-5 h-5 text-[var(--sardis-orange)] shrink-0 mt-0.5" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className={cn(
-                        "w-full rounded-none font-semibold",
-                        tier.highlight
-                          ? "bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90"
-                          : "border-border hover:border-[var(--sardis-orange)]"
-                      )}
-                      variant={tier.highlight ? "default" : "outline"}
-                      onClick={() => setIsWaitlistOpen(true)}
-                    >
-                      {tier.cta}
-                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
