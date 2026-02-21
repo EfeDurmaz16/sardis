@@ -166,6 +166,9 @@ function App() {
               <Link to="/docs">Docs</Link>
             </Button>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
+              <Link to="/enterprise">Enterprise</Link>
+            </Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noopener noreferrer">
                 GitHub
               </a>
@@ -385,15 +388,21 @@ function App() {
                 span: false,
               },
               {
+                icon: icons.shieldLock,
+                title: "Guardrails & Circuit Breakers",
+                description: "Kill switches, rate limiters, and behavioral monitoring. Detect anomalous spending patterns and halt agents before damage is done.",
+                span: false,
+              },
+              {
                 icon: icons.handshake,
-                title: "Multi-Agent Groups",
-                description: "Shared budgets across agent teams. Each agent gets individual limits, the group enforces the total. No agent overspends the team.",
+                title: "Agent-to-Agent Escrow",
+                description: "Trustless multi-agent payments with escrow state machines. CREATED → FUNDED → DELIVERED → RELEASED — no agent overspends the team.",
                 span: true,
               },
               {
-                icon: icons.autoRenew,
-                title: "Recurring Payments",
-                description: "Subscription-aware billing engine. Register merchant + amount + cycle — Sardis auto-funds, auto-approves, and notifies the owner at every stage.",
+                icon: icons.verifiedUser,
+                title: "ERC-8004 Agent Identity",
+                description: "On-chain identity registry with reputation scoring and agent cards. Verifiable agent credentials anchored to Base blockchain.",
                 span: false,
               },
             ].map((feature, i) => (
@@ -638,31 +647,37 @@ const balances = await client.treasury.getBalances()`}</pre>
               {
                 icon: icons.policy,
                 title: "Natural Language Policies",
-                description: "Define complex spending rules in plain English. Not just limits—context-aware governance.",
+                description: "Define complex spending rules in plain English. 7 built-in templates, preview before deploy, context-aware governance.",
                 unique: true
               },
               {
                 icon: icons.shieldLock,
                 title: "Non-Custodial Security",
-                description: "Your keys, your funds. No single entity — not even Sardis — can move money without your approval.",
+                description: "Your keys, your funds. Turnkey MPC wallets — no single entity can move money without your approval.",
                 unique: false
               },
               {
                 icon: icons.terminal,
                 title: "Zero-Config MCP",
-                description: "One command to add 60+ payment and treasury tools to Claude or Cursor. No setup required.",
+                description: "One command to add 65+ payment and treasury tools to Claude or Cursor. No setup required.",
                 unique: false
               },
               {
-                icon: icons.shieldLock,
-                title: "Approval Queue",
-                description: "Human-in-the-loop. Agents propose, humans approve. Built into the payment flow, not bolted on.",
+                icon: icons.searchInsights,
+                title: "Confidence Routing",
+                description: "Tiered approval workflows based on transaction confidence scores. Auto-approve, manager review, multi-sig, or human escalation.",
                 unique: true
               },
               {
                 icon: icons.autoRenew,
                 title: "Goal Drift Guard",
-                description: "AI intent vs. actual payment comparison. Catches when agents go off-script financially.",
+                description: "Chi-squared behavioral analysis detects when agents deviate from expected spending patterns. Automatic velocity governors.",
+                unique: true
+              },
+              {
+                icon: icons.wallet,
+                title: "Merkle Audit Trail",
+                description: "Tamper-proof audit logs anchored to Base blockchain via Merkle trees. Cryptographic proof of every transaction.",
                 unique: true
               }
             ].map((item, i) => (
@@ -707,7 +722,7 @@ const balances = await client.treasury.getBalances()`}</pre>
           >
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-center md:text-left">
-                <h3 className="text-base font-semibold font-display mb-2">No competitor offers NL policies + approval queues + goal drift detection</h3>
+                <h3 className="text-base font-semibold font-display mb-2">No competitor offers NL policies + confidence routing + goal drift detection + Merkle audit</h3>
                 <p className="text-muted-foreground">We analyzed Locus, Payman, and Skyfire. They build rails — we build the intelligence layer. Read why.</p>
               </div>
               <Button variant="outline" className="rounded-none border-[var(--sardis-orange)] text-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)] hover:text-white shrink-0" asChild>
@@ -1153,7 +1168,7 @@ const balances = await client.treasury.getBalances()`}</pre>
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 65+ tools for payments, wallets, treasury, fiat operations, holds, invoices, and commerce.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 65+ tools for payments, wallets, treasury, fiat operations, holds, invoices, commerce, and guardrails.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }
@@ -1268,7 +1283,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 <div className="pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {["sardis-openclaw", "sardis-openai", "sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
+                    {["sardis-openclaw", "sardis-openai", "sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-guardrails", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
                       <a key={pkg} href={`https://pypi.org/project/${pkg}/`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
                         {pkg}
                       </a>
@@ -1347,7 +1362,7 @@ const balances = await client.treasury.getBalances()`}</pre>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { label: "MARKET", value: "$30T by 2030", sub: <span>Machine Customer Economy — <a href="https://www.forbes.com/sites/torconstantino/2025/02/18/machine-customers-ai-buyers-to-control-30-trillion-in-purchases-by-2030/" target="_blank" rel="noreferrer" className="underline hover:text-[var(--sardis-orange)]">Gartner via Forbes</a></span> },
-              { label: "ADOPTION", value: "6,800+", sub: <span>monthly installs — <span className="text-foreground">2,190 npm</span> + <span className="text-foreground">4,600 PyPI</span> • 19 packages</span> },
+              { label: "ADOPTION", value: "6,800+", sub: <span>monthly installs — <span className="text-foreground">2,190 npm</span> + <span className="text-foreground">4,600 PyPI</span> • 25 packages</span> },
               { label: "STATUS", value: "Developer Preview", sub: "Private beta • accepting design partners" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
