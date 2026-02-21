@@ -12,7 +12,12 @@ import {
   FlaskConical,
   Activity,
   CheckSquare,
-  BarChart3
+  BarChart3,
+  Shield,
+  Target,
+  Anchor,
+  Award,
+  AlertTriangle
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -32,6 +37,11 @@ const navigation = [
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
   { name: 'Live Events', href: '/events', icon: Activity },
+  { name: 'Guardrails', href: '/guardrails', icon: Shield },
+  { name: 'Confidence Router', href: '/confidence-router', icon: Target },
+  { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
+  { name: 'Agent Identity', href: '/agent-identity', icon: Award },
+  { name: 'Goal Drift', href: '/goal-drift', icon: AlertTriangle },
 ]
 
 export default function Layout({ children }: LayoutProps) {

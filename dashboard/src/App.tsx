@@ -11,6 +11,11 @@ import PolicyPlaygroundPage from './pages/PolicyPlayground'
 import LiveEventsPage from './pages/LiveEvents'
 import ApprovalsPage from './pages/Approvals'
 import AnalyticsPage from './pages/Analytics'
+import GuardrailsPage from './pages/Guardrails'
+import ConfidenceRouterPage from './pages/ConfidenceRouter'
+import AuditAnchorsPage from './pages/AuditAnchors'
+import AgentIdentityPage from './pages/AgentIdentity'
+import GoalDriftPage from './pages/GoalDrift'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -40,6 +45,11 @@ function AppRoutes() {
                 <Route path="/policies" element={<PolicyPlaygroundPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/events" element={<LiveEventsPage />} />
+                <Route path="/guardrails" element={<GuardrailsPage />} />
+                <Route path="/confidence-router" element={<ConfidenceRouterPage />} />
+                <Route path="/audit-anchors" element={<AuditAnchorsPage />} />
+                <Route path="/agent-identity" element={<AgentIdentityPage />} />
+                <Route path="/goal-drift" element={<GoalDriftPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
