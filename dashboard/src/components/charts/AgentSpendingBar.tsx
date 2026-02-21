@@ -1,8 +1,8 @@
 /**
- * AgentSpendingBar - Stacked bar chart for per-agent spending
+ * AgentSpendingBar - Bar chart for per-agent spending
  *
  * Shows spending breakdown by agent with color-coded bars.
- * Supports click-to-filter interaction.
+ * Dark theme matching Sardis dashboard design system.
  */
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -20,20 +20,19 @@ interface AgentSpendingBarProps {
   onAgentClick?: (agentId: string) => void;
 }
 
-// Color palette for agents (deep purple theme with amber accents)
+// Sardis orange + warm accent palette for dark theme
 const COLORS = [
-  '#7c3aed', // Purple-600
+  '#ff4f00', // Sardis-500
   '#f59e0b', // Amber-500
-  '#8b5cf6', // Purple-500
+  '#ff7a3d', // Sardis-400
   '#fbbf24', // Amber-400
-  '#a78bfa', // Purple-400
+  '#fdba74', // Sardis-300
   '#fb923c', // Orange-400
-  '#c4b5fd', // Purple-300
+  '#fed7aa', // Sardis-200
   '#fdba74', // Orange-300
 ];
 
 export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) {
-  // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -43,22 +42,21 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
     }).format(value);
   };
 
-  // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white border border-purple-200 rounded-lg shadow-lg p-3">
-          <p className="text-sm font-semibold text-gray-900 mb-1">
+        <div className="bg-dark-200 border border-dark-100 p-3" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          <p className="text-sm font-semibold text-white mb-1">
             {data.agent_name || data.agent_id}
           </p>
-          <p className="text-lg font-bold text-purple-600">
+          <p className="text-lg font-bold text-sardis-400">
             {formatCurrency(data.total)}
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             {data.transaction_count} transactions
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             Avg: {formatCurrency(data.average)}
           </p>
         </div>
@@ -67,7 +65,6 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
     return null;
   };
 
-  // Handle bar click
   const handleClick = (data: any) => {
     if (onAgentClick) {
       onAgentClick(data.agent_id);
@@ -82,7 +79,6 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
     );
   }
 
-  // Prepare data with display names
   const chartData = data.map(item => ({
     ...item,
     name: item.agent_name || `Agent ${item.agent_id.slice(0, 8)}...`,
@@ -91,11 +87,12 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#2f2e2c" />
         <XAxis
           dataKey="name"
           stroke="#6b7280"
           style={{ fontSize: '12px' }}
+          tick={{ fill: '#9ca3af' }}
           angle={-45}
           textAnchor="end"
           height={80}
@@ -104,6 +101,7 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
           tickFormatter={(value) => `$${value.toLocaleString()}`}
           stroke="#6b7280"
           style={{ fontSize: '12px' }}
+          tick={{ fill: '#9ca3af' }}
         />
         <Tooltip content={<CustomTooltip />} />
         <Bar
@@ -111,7 +109,7 @@ export function AgentSpendingBar({ data, onAgentClick }: AgentSpendingBarProps) 
           onClick={handleClick}
           style={{ cursor: onAgentClick ? 'pointer' : 'default' }}
         >
-          {chartData.map((entry, index) => (
+          {chartData.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Bar>

@@ -2,10 +2,10 @@
  * SpendingChart - Line chart component for spending over time
  *
  * Displays spending trends with gradient fill and interactive tooltips.
- * Designed for use in the Analytics dashboard.
+ * Dark theme matching Sardis dashboard design system.
  */
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
 interface DataPoint {
@@ -21,11 +21,9 @@ interface SpendingChartProps {
 }
 
 export function SpendingChart({ data, period, currency = 'USD' }: SpendingChartProps) {
-  // Format date based on period
   const formatDate = (dateString: string) => {
     try {
       const date = parseISO(dateString);
-
       if (period === '7d' || period?.includes('day')) {
         return format(date, 'MMM d');
       } else if (period?.includes('week')) {
@@ -33,14 +31,12 @@ export function SpendingChart({ data, period, currency = 'USD' }: SpendingChartP
       } else if (period?.includes('month')) {
         return format(date, 'MMM yyyy');
       }
-
       return format(date, 'MMM d');
     } catch {
       return dateString;
     }
   };
 
-  // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,19 +46,18 @@ export function SpendingChart({ data, period, currency = 'USD' }: SpendingChartP
     }).format(value);
   };
 
-  // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white border border-purple-200 rounded-lg shadow-lg p-3">
-          <p className="text-sm font-semibold text-gray-900 mb-1">
+        <div className="bg-dark-200 border border-dark-100 p-3" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          <p className="text-sm font-semibold text-white mb-1">
             {formatDate(data.date)}
           </p>
-          <p className="text-lg font-bold text-purple-600">
+          <p className="text-lg font-bold text-sardis-400">
             {formatCurrency(data.amount)}
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             {data.count} transaction{data.count !== 1 ? 's' : ''}
           </p>
         </div>
@@ -84,27 +79,29 @@ export function SpendingChart({ data, period, currency = 'USD' }: SpendingChartP
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>
-            <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+            <stop offset="5%" stopColor="#ff4f00" stopOpacity={0.3}/>
+            <stop offset="95%" stopColor="#ff4f00" stopOpacity={0}/>
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#2f2e2c" />
         <XAxis
           dataKey="date"
           tickFormatter={formatDate}
           stroke="#6b7280"
           style={{ fontSize: '12px' }}
+          tick={{ fill: '#9ca3af' }}
         />
         <YAxis
           tickFormatter={(value) => `$${value.toLocaleString()}`}
           stroke="#6b7280"
           style={{ fontSize: '12px' }}
+          tick={{ fill: '#9ca3af' }}
         />
         <Tooltip content={<CustomTooltip />} />
         <Area
           type="monotone"
           dataKey="amount"
-          stroke="#7c3aed"
+          stroke="#ff4f00"
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorAmount)"

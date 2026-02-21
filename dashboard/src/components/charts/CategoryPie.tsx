@@ -2,7 +2,7 @@
  * CategoryPie - Donut/Pie chart for spending categories
  *
  * Displays category breakdown with legend and hover details.
- * Uses deep purple and amber color scheme.
+ * Dark theme matching Sardis dashboard design system.
  */
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -18,22 +18,21 @@ interface CategoryPieProps {
   data: CategoryItem[];
 }
 
-// Color palette matching the Sardis theme
+// Sardis orange + warm accent palette
 const COLORS = [
-  '#7c3aed', // Purple-600
+  '#ff4f00', // Sardis-500
   '#f59e0b', // Amber-500
-  '#8b5cf6', // Purple-500
+  '#ff7a3d', // Sardis-400
   '#fbbf24', // Amber-400
-  '#a78bfa', // Purple-400
+  '#fdba74', // Sardis-300
   '#fb923c', // Orange-400
-  '#c4b5fd', // Purple-300
+  '#fed7aa', // Sardis-200
   '#fdba74', // Orange-300
-  '#ddd6fe', // Purple-200
-  '#fed7aa', // Orange-200
+  '#ea580c', // Sardis-600
+  '#c2410c', // Sardis-700
 ];
 
 export function CategoryPie({ data }: CategoryPieProps) {
-  // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -43,22 +42,21 @@ export function CategoryPie({ data }: CategoryPieProps) {
     }).format(value);
   };
 
-  // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white border border-purple-200 rounded-lg shadow-lg p-3">
-          <p className="text-sm font-semibold text-gray-900 mb-1 capitalize">
+        <div className="bg-dark-200 border border-dark-100 p-3" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          <p className="text-sm font-semibold text-white mb-1 capitalize">
             {data.name}
           </p>
-          <p className="text-lg font-bold text-purple-600">
+          <p className="text-lg font-bold text-sardis-400">
             {formatCurrency(data.amount)}
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             {data.count} transaction{data.count !== 1 ? 's' : ''}
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-400">
             {data.percentage}% of total
           </p>
         </div>
@@ -67,12 +65,10 @@ export function CategoryPie({ data }: CategoryPieProps) {
     return null;
   };
 
-  // Custom label renderer
   const renderLabel = (entry: any) => {
     return `${entry.percentage}%`;
   };
 
-  // Custom legend
   const CustomLegend = ({ payload }: any) => {
     return (
       <div className="flex flex-wrap gap-2 justify-center mt-4">
@@ -82,7 +78,7 @@ export function CategoryPie({ data }: CategoryPieProps) {
               className="w-3 h-3 rounded-sm"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-xs text-gray-700 capitalize">
+            <span className="text-xs text-gray-400 capitalize">
               {entry.value}
             </span>
           </div>
@@ -110,11 +106,11 @@ export function CategoryPie({ data }: CategoryPieProps) {
           label={renderLabel}
           outerRadius={80}
           innerRadius={50}
-          fill="#8884d8"
+          fill="#ff4f00"
           dataKey="amount"
           nameKey="name"
         >
-          {data.map((entry, index) => (
+          {data.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
