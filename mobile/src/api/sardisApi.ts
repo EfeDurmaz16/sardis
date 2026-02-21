@@ -7,8 +7,26 @@ interface ApiConfig {
   apiKey: string;
 }
 
+// Demo data for when no API key is configured
+const DEMO_AGENTS: Agent[] = [
+  { id: 'agent_1', name: 'Shopping Agent', status: 'active', totalSpent: 342.50, budgetLimit: 1000, currency: 'USD', lastActivity: new Date().toISOString() },
+  { id: 'agent_2', name: 'Travel Booker', status: 'active', totalSpent: 1280.00, budgetLimit: 2000, currency: 'USD', lastActivity: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'agent_3', name: 'SaaS Subscriber', status: 'paused', totalSpent: 89.99, budgetLimit: 200, currency: 'USD', lastActivity: new Date(Date.now() - 86400000).toISOString() },
+];
+
+const DEMO_STATS: QuickStats = { activeAgents: 3, activeCards: 2, blockedTransactions: 1 };
+
+const DEMO_ALERTS: Alert[] = [
+  { id: 'alert_1', agentId: 'agent_2', severity: 'warning', message: 'Travel Booker approaching 65% budget limit', timestamp: new Date().toISOString(), read: false },
+  { id: 'alert_2', agentId: 'agent_3', severity: 'info', message: 'SaaS Subscriber paused by policy', timestamp: new Date(Date.now() - 7200000).toISOString(), read: true },
+];
+
 class SardisApiClient {
   private config: ApiConfig | null = null;
+
+  get isConfigured(): boolean {
+    return this.config !== null;
+  }
 
   configure(config: Partial<ApiConfig> & { apiKey: string }) {
     this.config = {
@@ -22,7 +40,8 @@ class SardisApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     if (!this.config) {
-      throw new Error('API client not configured. Call configure() first.');
+      // Return demo data instead of throwing
+      return this.getDemoResponse<T>(endpoint);
     }
 
     const url = `${this.config.baseUrl}${endpoint}`;
@@ -48,6 +67,16 @@ class SardisApiClient {
       console.error('API request failed:', error);
       throw error;
     }
+  }
+
+  private getDemoResponse<T>(endpoint: string): T {
+    if (endpoint.startsWith('/agents')) return DEMO_AGENTS as T;
+    if (endpoint.startsWith('/stats')) return DEMO_STATS as T;
+    if (endpoint.startsWith('/alerts')) return DEMO_ALERTS as T;
+    if (endpoint.startsWith('/approvals')) return [] as T;
+    if (endpoint.startsWith('/policies')) return [] as T;
+    if (endpoint.startsWith('/reports/spending')) return { totalSpent: 1712.49, transactions: 47, period: '30d' } as T;
+    return {} as T;
   }
 
   // Agents
