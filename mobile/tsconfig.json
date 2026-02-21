@@ -9,7 +9,9 @@
     "moduleResolution": "node",
     "target": "es2020",
     "module": "commonjs",
-    "lib": ["es2020"],
+    "lib": [
+      "es2020"
+    ],
     "allowJs": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -24,9 +26,7 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
