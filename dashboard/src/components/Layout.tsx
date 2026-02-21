@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   FlaskConical,
   Activity,
-  CheckSquare
+  CheckSquare,
+  BarChart3
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
