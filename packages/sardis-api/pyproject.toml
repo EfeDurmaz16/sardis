@@ -41,6 +41,7 @@ dependencies = [
     "fastapi>=0.109",
     "python-multipart>=0.0.7",
     "uvicorn>=0.23",
+    "websockets>=11.0",
     "sardis-core>=0.1.0",
     "sardis-ledger>=0.1.0",
     "sardis-chain>=0.1.0",

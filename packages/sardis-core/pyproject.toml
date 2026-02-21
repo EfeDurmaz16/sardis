@@ -43,6 +43,7 @@ dependencies = [
     "cryptography>=41.0",
     "apscheduler>=3.10",
     "asyncpg>=0.29",
+    "aiohttp>=3.8",
 ]
 
 [project.optional-dependencies]

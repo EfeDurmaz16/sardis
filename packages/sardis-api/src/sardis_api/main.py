@@ -104,6 +104,10 @@ from .routers import treasury_ops as treasury_ops_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
 from .routers import groups as groups_router
+from .routers import alerts as alerts_router
+from .routers import ws_alerts as ws_alerts_router
+from .routers import analytics as analytics_router
+from .routers import sandbox as sandbox_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -753,6 +757,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
 
+    # Alert routes (REST API and WebSocket)
+    app.include_router(alerts_router.router, prefix="/api/v2/alerts", tags=["alerts"])
+    app.include_router(ws_alerts_router.router, prefix="/api/v2")
+
+    # Analytics routes
+    app.include_router(analytics_router.router)
+
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
     app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])
 
@@ -760,6 +771,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):
         app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
         logger.info("Dev routes enabled (faucet, etc.)")
+
+    # Sandbox/Playground routes - no auth required, for developer onboarding
+    # Available in all environments but should be rate-limited in production
+    app.include_router(sandbox_router.router, prefix="/api/v2/sandbox", tags=["sandbox"])
+    logger.info("Sandbox/Playground routes enabled")
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
