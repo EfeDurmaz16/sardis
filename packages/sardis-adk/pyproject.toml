@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-adk"
-version = "0.2.0"
+version = "1.0.0"
 description = "Google Agent Development Kit (ADK) integration for Sardis"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 keywords = ["sardis", "adk", "google", "agent-development-kit", "payments", "ai-agents", "fintech"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -39,7 +39,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/EfeDurmaz16/sardis"
+Repository = "https://github.com/sardis-pay/sardis"
 Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 

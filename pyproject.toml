@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis"
-version = "0.3.1"
+version = "1.0.0"
 description = "Payment OS for the Agent Economy — non-custodial MPC wallets with natural language spending policies for AI agents"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [
     { name = "Efe Baran Durmaz", email = "efe@sardis.dev" }
 ]
@@ -73,7 +73,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/EfeDurmaz16/sardis"
+Repository = "https://github.com/sardis-pay/sardis"
 Changelog = "https://sardis.sh/docs/changelog"
 
 [tool.hatch.build.targets.wheel]

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-openai"
-version = "0.2.0"
+version = "1.0.0"
 description = "OpenAI function calling tools for Sardis - Payment OS for AI Agents"
 readme = "README.md"
 license = "MIT"
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     { name = "Sardis", email = "hello@sardis.sh" },
 ]
-keywords = ["sardis", "openai", "function-calling", "ai-agents", "payments"]
+keywords = ["sardis", "openai", "function-calling", "ai-agents", "payments", "ai", "agents"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -30,5 +30,5 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Repository = "https://github.com/sardis-labs/sardis"
+Repository = "https://github.com/sardis-pay/sardis"
 Documentation = "https://sardis.sh/docs/integrations/openai"

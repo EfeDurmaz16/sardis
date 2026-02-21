@@ -1,6 +1,6 @@
 {
   "name": "@sardis/sdk",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Official TypeScript SDK for the Sardis stablecoin execution layer - Enable AI agents to execute programmable payments using stablecoins",
   "type": "module",
   "main": "dist/cjs/index.cjs",
@@ -66,12 +66,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "url": "git+https://github.com/sardis-pay/sardis.git",
     "directory": "packages/sardis-sdk-js"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+    "url": "https://github.com/sardis-pay/sardis/issues"
   },
   "dependencies": {
     "axios": "^1.13.5",

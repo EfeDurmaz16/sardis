@@ -1,6 +1,6 @@
 {
   "name": "@sardis/ramp",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Sardis Fiat Ramp SDK - Bridge crypto wallets to traditional banking with fiat on/off ramp functionality",
   "type": "module",
   "main": "dist/index.cjs",
@@ -50,12 +50,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "url": "git+https://github.com/sardis-pay/sardis.git",
     "directory": "packages/sardis-ramp-js"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+    "url": "https://github.com/sardis-pay/sardis/issues"
   },
   "dependencies": {},
   "devDependencies": {

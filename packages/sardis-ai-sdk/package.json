@@ -1,6 +1,6 @@
 {
   "name": "@sardis/ai-sdk",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Sardis payment tools for Vercel AI SDK - Enable AI agents to make payments with policy guardrails",
   "keywords": [
     "ai",
@@ -23,12 +23,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "url": "git+https://github.com/sardis-pay/sardis.git",
     "directory": "packages/sardis-ai-sdk"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+    "url": "https://github.com/sardis-pay/sardis/issues"
   },
   "type": "module",
   "main": "./dist/index.js",

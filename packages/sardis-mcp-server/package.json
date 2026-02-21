@@ -1,6 +1,6 @@
 {
   "name": "@sardis/mcp-server",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Model Context Protocol (MCP) server for Sardis - Enable AI agents (Claude, Cursor, etc.) to execute secure payments with policy validation",
   "type": "module",
   "main": "dist/index.js",
@@ -59,12 +59,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "url": "git+https://github.com/sardis-pay/sardis.git",
     "directory": "packages/sardis-mcp-server"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+    "url": "https://github.com/sardis-pay/sardis/issues"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
@@ -95,7 +95,7 @@
   "mcp": {
     "name": "sardis",
     "description": "Enable AI agents to execute secure payments with Financial Hallucination Prevention - The Payment OS for the Agent Economy",
-    "version": "0.3.0",
+    "version": "1.0.0",
     "tools": [
       "sardis_get_balance",
       "sardis_get_wallet",

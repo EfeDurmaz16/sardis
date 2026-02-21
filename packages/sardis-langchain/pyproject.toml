@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-langchain"
-version = "0.2.0"
+version = "1.0.0"
 description = "LangChain integration for Sardis - Payment OS for the Agent Economy"
 readme = "README.md"
-authors = [{name = "Sardis"}]
+authors = [{name = "Sardis", email = "hello@sardis.sh"}]
 license = {text = "MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -48,7 +48,7 @@ all = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/EfeDurmaz16/sardis"
+Repository = "https://github.com/sardis-pay/sardis"
 Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/packages/sardis-langchain/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
