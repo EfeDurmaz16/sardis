@@ -205,7 +205,7 @@ function Enterprise() {
       <section className="py-28 md:py-36 relative">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">The $10.91B Problem</p>
+            <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">The Problem</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6 leading-tight">AI Agents Need to Spend Money</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               But your current infrastructure was built for humans, not autonomous systems.
