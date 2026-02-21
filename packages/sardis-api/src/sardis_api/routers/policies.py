@@ -522,6 +522,53 @@ async def apply_policy_from_nl(
         )
 
 
+@router.get("/templates", response_model=dict)
+async def get_policy_templates():
+    """
+    Get pre-built policy templates.
+
+    Returns structured policy templates that can be used as starting points
+    for common use cases. Each template includes complete SpendingPolicy
+    configuration with limits, merchant rules, and restrictions.
+    """
+    try:
+        from sardis_v2_core.nl_policy_parser import get_policy_templates as get_templates
+
+        templates_info = get_templates()
+
+        return {
+            "templates": templates_info,
+            "count": len(templates_info),
+        }
+    except ImportError:
+        # Fallback if parser not available
+        return {
+            "templates": {
+                "saas_only": {
+                    "name": "SaaS Only",
+                    "description": "Digital services and SaaS subscriptions only",
+                    "trust_level": "MEDIUM",
+                },
+                "procurement": {
+                    "name": "Procurement",
+                    "description": "Cloud vendors (AWS, GCP, Azure, etc.)",
+                    "trust_level": "MEDIUM",
+                },
+                "research": {
+                    "name": "Research",
+                    "description": "Data and digital research tools",
+                    "trust_level": "LOW",
+                },
+                "conservative": {
+                    "name": "Conservative",
+                    "description": "Low limits with approval requirements",
+                    "trust_level": "LOW",
+                },
+            },
+            "count": 4,
+        }
+
+
 @router.get("/examples", response_model=List[dict])
 async def get_policy_examples():
     """

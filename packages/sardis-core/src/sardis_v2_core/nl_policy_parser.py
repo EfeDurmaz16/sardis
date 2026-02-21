@@ -873,3 +873,172 @@ def parse_nl_policy_sync(
     parser = NLPolicyParser(api_key=api_key)
     extracted = parser.parse_sync(natural_language)
     return parser.to_spending_policy(extracted, agent_id)
+
+
+def get_policy_templates() -> dict[str, dict[str, str]]:
+    """
+    Get pre-built policy templates.
+
+    Returns:
+        Dict mapping template names to metadata (name, description, trust_level, limits)
+
+    Example:
+        >>> templates = get_policy_templates()
+        >>> templates["saas_only"]["description"]
+        'Digital services and SaaS subscriptions only, $500/tx, $5k/month'
+    """
+    return {
+        "saas_only": {
+            "name": "SaaS Only",
+            "description": "Digital services and SaaS subscriptions only, $500/tx, $5k/month",
+            "trust_level": "MEDIUM",
+            "per_tx": "$500",
+            "monthly": "$5,000",
+        },
+        "procurement": {
+            "name": "Procurement",
+            "description": "Cloud vendors (AWS, GCP, Azure, etc.), $1k/tx, $10k/month",
+            "trust_level": "MEDIUM",
+            "per_tx": "$1,000",
+            "monthly": "$10,000",
+        },
+        "travel": {
+            "name": "Travel",
+            "description": "Travel and services, no gambling/alcohol, $2k/tx, $5k/day",
+            "trust_level": "MEDIUM",
+            "per_tx": "$2,000",
+            "daily": "$5,000",
+        },
+        "research": {
+            "name": "Research",
+            "description": "Data and digital research tools, $100/tx, $1k/month",
+            "trust_level": "LOW",
+            "per_tx": "$100",
+            "monthly": "$1,000",
+        },
+        "conservative": {
+            "name": "Conservative",
+            "description": "Low limits with approval above $100, $50/tx, $100/day",
+            "trust_level": "LOW",
+            "per_tx": "$50",
+            "daily": "$100",
+        },
+        "cloud": {
+            "name": "Cloud Infrastructure",
+            "description": "Cloud providers only, $500/tx, $5k/month",
+            "trust_level": "MEDIUM",
+            "per_tx": "$500",
+            "monthly": "$5,000",
+        },
+        "ai_ml": {
+            "name": "AI/ML",
+            "description": "AI APIs (OpenAI, Anthropic), $200/tx, $3k/month",
+            "trust_level": "MEDIUM",
+            "per_tx": "$200",
+            "monthly": "$3,000",
+        },
+    }
+
+
+def get_policy_template(template_name: str, agent_id: str = "") -> Optional[SpendingPolicy]:
+    """
+    Get a pre-built policy template by name.
+
+    Args:
+        template_name: Template identifier (saas_only, procurement, etc.)
+        agent_id: Agent ID to assign to the policy
+
+    Returns:
+        SpendingPolicy if template exists, None otherwise
+
+    Example:
+        >>> policy = get_policy_template("conservative", "agent_123")
+        >>> policy.limit_per_tx
+        Decimal('50.00')
+    """
+    templates_map = {
+        "saas_only": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("500"),
+            limit_total=Decimal("10000"),
+            allowed_scopes=[SpendingScope.DIGITAL, SpendingScope.SERVICES],
+            daily_limit=TimeWindowLimit(window_type="daily", limit_amount=Decimal("1000")),
+            monthly_limit=TimeWindowLimit(window_type="monthly", limit_amount=Decimal("5000")),
+        ),
+        "procurement": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("1000"),
+            limit_total=Decimal("50000"),
+            allowed_scopes=[SpendingScope.ALL],
+            monthly_limit=TimeWindowLimit(window_type="monthly", limit_amount=Decimal("10000")),
+            merchant_rules=[
+                MerchantRule(rule_type="allow", merchant_id="aws"),
+                MerchantRule(rule_type="allow", merchant_id="google"),
+                MerchantRule(rule_type="allow", merchant_id="azure"),
+                MerchantRule(rule_type="allow", merchant_id="github"),
+                MerchantRule(rule_type="allow", merchant_id="stripe"),
+            ],
+        ),
+        "travel": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("2000"),
+            limit_total=Decimal("20000"),
+            allowed_scopes=[SpendingScope.SERVICES, SpendingScope.RETAIL],
+            daily_limit=TimeWindowLimit(window_type="daily", limit_amount=Decimal("5000")),
+            blocked_merchant_categories=["gambling", "alcohol"],
+        ),
+        "research": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.LOW,
+            limit_per_tx=Decimal("100"),
+            limit_total=Decimal("5000"),
+            allowed_scopes=[SpendingScope.DIGITAL, SpendingScope.DATA],
+            monthly_limit=TimeWindowLimit(window_type="monthly", limit_amount=Decimal("1000")),
+        ),
+        "conservative": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.LOW,
+            limit_per_tx=Decimal("50"),
+            limit_total=Decimal("1000"),
+            allowed_scopes=[SpendingScope.ALL],
+            approval_threshold=Decimal("100"),
+            daily_limit=TimeWindowLimit(window_type="daily", limit_amount=Decimal("100")),
+            weekly_limit=TimeWindowLimit(window_type="weekly", limit_amount=Decimal("500")),
+        ),
+        "cloud": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("500"),
+            limit_total=Decimal("20000"),
+            allowed_scopes=[SpendingScope.COMPUTE, SpendingScope.DATA],
+            monthly_limit=TimeWindowLimit(window_type="monthly", limit_amount=Decimal("5000")),
+            merchant_rules=[
+                MerchantRule(rule_type="allow", merchant_id="aws"),
+                MerchantRule(rule_type="allow", merchant_id="google"),
+                MerchantRule(rule_type="allow", merchant_id="azure"),
+                MerchantRule(rule_type="allow", merchant_id="digitalocean"),
+                MerchantRule(rule_type="allow", merchant_id="cloudflare"),
+            ],
+        ),
+        "ai_ml": lambda: SpendingPolicy(
+            agent_id=agent_id,
+            trust_level=TrustLevel.MEDIUM,
+            limit_per_tx=Decimal("200"),
+            limit_total=Decimal("10000"),
+            allowed_scopes=[SpendingScope.DIGITAL, SpendingScope.COMPUTE],
+            monthly_limit=TimeWindowLimit(window_type="monthly", limit_amount=Decimal("3000")),
+            merchant_rules=[
+                MerchantRule(rule_type="allow", merchant_id="openai"),
+                MerchantRule(rule_type="allow", merchant_id="anthropic"),
+                MerchantRule(rule_type="allow", merchant_id="google"),
+            ],
+        ),
+    }
+
+    if template_name not in templates_map:
+        return None
+
+    return templates_map[template_name]()
