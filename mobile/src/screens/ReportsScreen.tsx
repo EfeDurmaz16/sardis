@@ -46,7 +46,7 @@ export const ReportsScreen: React.FC = () => {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const blob = await sardisApi.exportReport(period, 'csv');
+      await sardisApi.exportReport(period, 'csv');
 
       // In a real app, you'd use a library like react-native-fs or expo-file-system
       // to save and share the file. For now, we'll just show a share dialog.

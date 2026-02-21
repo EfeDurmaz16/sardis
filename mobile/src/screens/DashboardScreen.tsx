@@ -12,7 +12,7 @@ import { colors } from '../theme/colors';
 import { sardisApi } from '../api/sardisApi';
 import { Agent, QuickStats } from '../types';
 
-const { width } = Dimensions.get('window');
+const { width: _screenWidth } = Dimensions.get('window');
 
 export const DashboardScreen: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);

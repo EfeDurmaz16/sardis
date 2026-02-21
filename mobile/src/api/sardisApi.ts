@@ -10,8 +10,11 @@ interface ApiConfig {
 class SardisApiClient {
   private config: ApiConfig | null = null;
 
-  configure(config: ApiConfig) {
-    this.config = config;
+  configure(config: Partial<ApiConfig> & { apiKey: string }) {
+    this.config = {
+      baseUrl: config.baseUrl ?? DEFAULT_BASE_URL,
+      apiKey: config.apiKey,
+    };
   }
 
   private async request<T>(

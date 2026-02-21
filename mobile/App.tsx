@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { colors } from './src/theme/colors';
 
@@ -14,7 +14,7 @@ import { PoliciesScreen } from './src/screens/PoliciesScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
 
 // Tab Icons (simplified - in real app use react-native-vector-icons or expo-icons)
-const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
+const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name: _name, focused }) => {
   return (
     <View style={{
       width: 24,
