@@ -93,3 +93,6 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.uv.sources]
+sardis-core = { path = "../sardis-core/dist/sardis_core-0.3.0-py3-none-any.whl" }

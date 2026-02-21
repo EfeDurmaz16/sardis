@@ -233,6 +233,12 @@ class SpendingPolicy:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Handle setting _spent_total as an alias for spent_total (for backward compatibility)."""
+        if name == "_spent_total":
+            name = "spent_total"
+        object.__setattr__(self, name, value)
+
     async def evaluate(
         self,
         wallet: "Wallet",  # Forward reference to avoid circular import

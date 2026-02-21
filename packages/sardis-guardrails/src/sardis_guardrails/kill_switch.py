@@ -7,7 +7,7 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict
+from typing import Any, Dict
 
 
 class ActivationReason(str, Enum):

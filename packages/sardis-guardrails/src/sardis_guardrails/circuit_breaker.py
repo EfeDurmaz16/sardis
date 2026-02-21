@@ -49,6 +49,7 @@ class CircuitBreakerStats:
     last_state_change: float = field(default_factory=time.time)
     total_calls: int = 0
     total_failures: int = 0
+    half_open_calls: int = 0
 
 
 class CircuitBreaker:
@@ -123,11 +124,12 @@ class CircuitBreaker:
 
             # Check half-open call limit
             if self.stats.state == CircuitState.HALF_OPEN:
-                if self.stats.total_calls > self.config.half_open_max_calls:
+                if self.stats.half_open_calls >= self.config.half_open_max_calls:
                     raise CircuitBreakerError(
                         f"Circuit breaker half-open for agent {self.agent_id}. "
                         "Max test calls exceeded."
                     )
+                self.stats.half_open_calls += 1
 
         # Execute function outside lock
         try:
@@ -176,6 +178,7 @@ class CircuitBreaker:
         self.stats.last_state_change = time.time()
         self.stats.success_count = 0
         self.stats.failure_count = 0
+        self.stats.half_open_calls = 0
 
     async def _on_success(self) -> None:
         """Handle successful call."""
@@ -188,6 +191,7 @@ class CircuitBreaker:
                 self.stats.last_state_change = time.time()
                 self.stats.failure_count = 0
                 self.stats.success_count = 0
+                self.stats.half_open_calls = 0
 
         elif self.stats.state == CircuitState.CLOSED:
             # Reset failure count on success

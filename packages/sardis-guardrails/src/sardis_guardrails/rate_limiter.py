@@ -174,28 +174,20 @@ class RateLimiter:
             limit = self._limits[limit_name]
             bucket = self._buckets[limit_name]
 
-            # Check token bucket
-            if not bucket.consume(1):
-                raise RateLimitError(
-                    f"Transaction rate limit exceeded for agent {self.agent_id}. "
-                    f"Limit: {limit.max_transactions} transactions per "
-                    f"{limit.window_seconds}s. "
-                    f"Available tokens: {bucket.available_tokens()}"
-                )
-
-            # Clean old transactions outside window
+            # Clean old transactions outside window first
             now = time.time()
             cutoff = now - limit.window_seconds
             self._transactions[limit_name] = [
                 tx for tx in self._transactions[limit_name] if tx.timestamp > cutoff
             ]
 
-            # Check sliding window count
-            if len(self._transactions[limit_name]) >= limit.max_transactions:
+            # Check token bucket for burst control
+            if not bucket.consume(1):
                 raise RateLimitError(
-                    f"Transaction count limit exceeded for agent {self.agent_id}. "
+                    f"Transaction rate limit exceeded for agent {self.agent_id}. "
                     f"Limit: {limit.max_transactions} transactions per "
-                    f"{limit.window_seconds}s window."
+                    f"{limit.window_seconds}s. "
+                    f"Available tokens: {bucket.available_tokens()}"
                 )
 
             # Check amount limit if configured
