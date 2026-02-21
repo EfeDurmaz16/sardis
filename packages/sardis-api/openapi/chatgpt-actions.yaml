@@ -882,3 +882,313 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /v2/guardrails/status:
+    get:
+      operationId: getGuardrailsStatus
+      summary: Get guardrails status
+      description: Check circuit breaker and kill switch status for a wallet
+      x-openai-isConsequential: false
+      parameters:
+        - name: X-Wallet-ID
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Wallet identifier
+      responses:
+        '200':
+          description: Guardrails status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet_id:
+                    type: string
+                  circuit_breaker:
+                    type: object
+                    properties:
+                      active:
+                        type: boolean
+                      reason:
+                        type: string
+                      triggered_at:
+                        type: string
+                        format: date-time
+                  kill_switch:
+                    type: object
+                    properties:
+                      active:
+                        type: boolean
+                      activated_by:
+                        type: string
+                      activated_at:
+                        type: string
+                        format: date-time
+                  status:
+                    type: string
+                    enum: [operational, halted]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/agents/identity/{agent_id}:
+    get:
+      operationId: getAgentIdentity
+      summary: Get agent identity
+      description: Retrieve agent identity with TAP verification status
+      x-openai-isConsequential: false
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Agent identifier
+      responses:
+        '200':
+          description: Agent identity retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id:
+                    type: string
+                  name:
+                    type: string
+                  public_key:
+                    type: string
+                  tap_verified:
+                    type: boolean
+                  wallet_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [active, inactive, suspended]
+                  created_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/agents/identity/{agent_id}/reputation:
+    get:
+      operationId: getAgentReputation
+      summary: Get agent reputation
+      description: Retrieve reputation score and ratings for an agent
+      x-openai-isConsequential: false
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Agent identifier
+      responses:
+        '200':
+          description: Reputation retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id:
+                    type: string
+                  overall_score:
+                    type: number
+                    description: Overall reputation score (1-5)
+                  total_ratings:
+                    type: integer
+                  trust_level:
+                    type: string
+                    enum: [low, medium, high, very_high]
+                  categories:
+                    type: object
+                    description: Reputation breakdown by category
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/escrow:
+    post:
+      operationId: createEscrow
+      summary: Create escrow
+      description: |
+        Create a new escrow agreement for agent-to-agent payments. Requires user confirmation
+        as it establishes a payment obligation.
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - buyer_wallet_id
+                - seller_wallet_id
+                - amount
+                - token
+              properties:
+                buyer_wallet_id:
+                  type: string
+                seller_wallet_id:
+                  type: string
+                amount:
+                  type: string
+                  description: Escrow amount (e.g., "500.00")
+                token:
+                  type: string
+                  description: Token symbol
+                chain:
+                  type: string
+                  description: Blockchain network
+                description:
+                  type: string
+                  description: Purpose of escrow
+                delivery_deadline:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Escrow created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  escrow_id:
+                    type: string
+                  contract_address:
+                    type: string
+                  status:
+                    type: string
+                    enum: [created, funded, delivered, completed, refunded]
+                  buyer:
+                    type: string
+                  seller:
+                    type: string
+                  amount:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/escrow/{escrow_id}:
+    get:
+      operationId: getEscrowStatus
+      summary: Get escrow status
+      description: Retrieve current status and details of an escrow agreement
+      x-openai-isConsequential: false
+      parameters:
+        - name: escrow_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Escrow identifier
+      responses:
+        '200':
+          description: Escrow status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  escrow_id:
+                    type: string
+                  contract_address:
+                    type: string
+                  status:
+                    type: string
+                    enum: [created, funded, delivered, completed, refunded]
+                  buyer:
+                    type: string
+                  seller:
+                    type: string
+                  amount:
+                    type: string
+                  funded:
+                    type: boolean
+                  delivery_confirmed:
+                    type: boolean
+                  released_amount:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Escrow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/audit/anchors:
+    get:
+      operationId: listAuditAnchors
+      summary: List audit anchors
+      description: Retrieve audit trail anchors for transaction verification
+      x-openai-isConsequential: false
+      parameters:
+        - name: wallet_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Audit anchors retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  anchors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        anchor_id:
+                          type: string
+                        wallet_id:
+                          type: string
+                        transaction_id:
+                          type: string
+                        merkle_root:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+                  total:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

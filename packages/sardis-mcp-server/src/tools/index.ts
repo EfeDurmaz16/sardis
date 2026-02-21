@@ -21,6 +21,7 @@ import { walletManagementToolDefinitions, walletManagementToolHandlers } from '.
 import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
 import { groupToolDefinitions, groupToolHandlers } from './groups.js';
 import { eventToolDefinitions, eventToolHandlers } from './events.js';
+import { guardrailsToolDefinitions, guardrailsToolHandlers } from './guardrails.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -56,6 +57,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...sandboxToolDefinitions,
   ...groupToolDefinitions,
   ...eventToolDefinitions,
+  ...guardrailsToolDefinitions,
 ];
 
 /**
@@ -75,6 +77,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...sandboxToolHandlers,
   ...groupToolHandlers,
   ...eventToolHandlers,
+  ...guardrailsToolHandlers,
 };
 
 /**
@@ -179,6 +182,13 @@ export const toolCategories = {
     'sardis_list_event_types',
     'sardis_get_event_history',
     'sardis_configure_webhook',
+  ],
+  guardrails: [
+    'sardis_check_circuit_breaker',
+    'sardis_activate_kill_switch',
+    'sardis_deactivate_kill_switch',
+    'sardis_check_rate_limits',
+    'sardis_get_behavioral_alerts',
   ],
 } as const;
 
