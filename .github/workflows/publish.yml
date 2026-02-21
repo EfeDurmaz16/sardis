@@ -1,0 +1,172 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish'
+        required: true
+        type: choice
+        options:
+          - python-all
+          - python-core
+          - python-sdk
+          - npm-sdk
+          - npm-mcp-server
+          - npm-ai-sdk
+
+jobs:
+  publish-python-core:
+    name: Publish Python Core Packages
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.package == 'python-all' || github.event.inputs.package == 'python-core' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build packages
+        run: |
+          cd packages/sardis-core && uv build
+          cd packages/sardis-api && uv build
+          cd packages/sardis-chain && uv build
+          cd packages/sardis-wallet && uv build
+          cd packages/sardis-protocol && uv build
+          cd packages/sardis-compliance && uv build
+          cd packages/sardis-ledger && uv build
+
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/sardis-core && uv publish
+          cd packages/sardis-api && uv publish
+          cd packages/sardis-chain && uv publish
+          cd packages/sardis-wallet && uv publish
+          cd packages/sardis-protocol && uv publish
+          cd packages/sardis-compliance && uv publish
+          cd packages/sardis-ledger && uv publish
+
+  publish-python-sdk:
+    name: Publish Python SDK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.package == 'python-all' || github.event.inputs.package == 'python-sdk' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build SDK
+        run: cd packages/sardis-sdk-python && uv build
+
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: cd packages/sardis-sdk-python && uv publish
+
+  publish-npm-sdk:
+    name: Publish npm SDK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.package == 'npm-sdk' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: pnpm --filter @sardis/sdk-js build
+
+      - name: Publish to npm
+        working-directory: packages/sardis-sdk-js
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks
+
+  publish-npm-mcp-server:
+    name: Publish npm MCP Server
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.package == 'npm-mcp-server' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build MCP Server
+        run: pnpm --filter @sardis/mcp-server build
+
+      - name: Publish to npm
+        working-directory: packages/sardis-mcp-server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks
+
+  publish-npm-ai-sdk:
+    name: Publish npm AI SDK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.package == 'npm-ai-sdk' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build AI SDK
+        run: pnpm --filter @sardis/ai-sdk build
+
+      - name: Publish to npm
+        working-directory: packages/sardis-ai-sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks

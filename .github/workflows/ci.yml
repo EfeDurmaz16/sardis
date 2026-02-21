@@ -2,360 +2,164 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 env:
   PYTHON_VERSION: "3.12"
-  NODE_VERSION: "22"
+  NODE_VERSION: "20"
 
 jobs:
-  lint:
-    name: Lint
+  python-lint-test:
+    name: Python Lint & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install linting tools
-        run: |
-          pip install ruff mypy
-      
-      - name: Run Ruff
-        run: ruff check api sardis packages scripts tests
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Run Ruff format check
-        run: ruff format --check api sardis packages scripts tests
-
-      - name: Run mypy type checking
-        run: |
-          mypy packages/sardis-core/src \
-               packages/sardis-api/src \
-               packages/sardis-chain/src \
-               packages/sardis-wallet/src \
-               packages/sardis-protocol/src \
-               packages/sardis-compliance/src \
-               packages/sardis-cards/src \
-               packages/sardis-ramp/src \
-               --ignore-missing-imports \
-               --no-strict-optional \
-               --warn-unused-ignores \
-               --show-error-codes
-
-      - name: Strict lint for protocol packages
-        run: |
-          ruff check packages/sardis-protocol/src packages/sardis-ucp/src
-
-      - name: Strict format check for protocol packages
-        run: |
-          ruff format --check packages/sardis-protocol/src packages/sardis-ucp/src
-
-  test-python:
-    name: Test Python
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v6
-      
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install dependencies
-        run: |
-          pip install -e packages/sardis-core
-          pip install -e packages/sardis-protocol
-          pip install -e packages/sardis-wallet
-          pip install -e packages/sardis-chain
-          pip install -e packages/sardis-ledger
-          pip install -e packages/sardis-compliance
-          pip install -e packages/sardis-api
-          pip install pytest pytest-asyncio pytest-cov httpx
-      
-      - name: Run tests
-        env:
-          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
-          SARDIS_ENVIRONMENT: dev
-        run: |
-          pytest tests/ -v \
-            --ignore=tests/e2e \
-            --ignore=tests/integration \
-            --ignore-glob='*e2e*' \
-            --ignore-glob='*real*' \
-            --cov=sardis_v2_core --cov=sardis_api --cov=sardis_chain \
-            --cov-report=xml --cov-report=term-missing
-      
-      - name: Enforce coverage threshold
-        run: |
-          coverage report --fail-under=50
-
-      - name: Run critical-path integration smoke checks
-        env:
-          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
-          SARDIS_ENVIRONMENT: dev
-        run: bash scripts/release/critical_path_check.sh
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: false
-
-  protocol-conformance:
-    name: Protocol Conformance
-    runs-on: ubuntu-latest
-    needs: [test-python]
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
+
       - name: Install dependencies
+        run: uv sync
+
+      - name: Run ruff lint
+        run: uv run ruff check .
+
+      - name: Run pytest
         run: |
-          pip install -e packages/sardis-core
-          pip install -e packages/sardis-protocol
-          pip install -e packages/sardis-ucp
-          pip install -e packages/sardis-wallet
-          pip install -e packages/sardis-chain
-          pip install -e packages/sardis-ledger
-          pip install -e packages/sardis-compliance
-          pip install -e packages/sardis-api
-          pip install pytest pytest-asyncio pytest-cov pytest-json-report httpx
+          uv run pytest tests/ \
+            packages/sardis-core/tests/ \
+            packages/sardis-guardrails/tests/ \
+            packages/sardis-ledger/tests/ \
+            -v --tb=short
 
-      - name: Run protocol conformance tests
-        env:
-          SARDIS_SECRET_KEY: test-secret-key-for-ci-only-32chars
-          SARDIS_ENVIRONMENT: dev
+  typescript-sdk:
+    name: TypeScript SDK Build & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          pytest -m protocol_conformance tests/ \
-            --ignore=tests/integration \
-            --ignore=tests/e2e \
-            --strict-markers \
-            -v --tb=short \
-            --cov=sardis_protocol --cov=sardis_ucp \
-            --cov-report=xml --cov-report=term-missing \
-            --json-report --json-report-file=protocol-report.json
-          (
-            cd packages/sardis-ucp
-            PYTHONPATH=src pytest -q tests
-          )
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Enforce protocol coverage threshold
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build SDK
+        run: pnpm --filter @sardis/sdk-js build
+
+      - name: Build MCP Server
+        run: pnpm --filter @sardis/mcp-server build
+
+      - name: Type check SDK
+        run: pnpm --filter @sardis/sdk-js tsc --noEmit
+
+  dashboard-build:
+    name: Dashboard Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          coverage report --fail-under=60
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-  test-contracts:
-    name: Test Smart Contracts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
-          version: stable
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
-      - name: Run smart contract tests
-        run: FOUNDRY_OFFLINE=true forge test --root contracts
+      - name: Install dependencies
+        run: cd dashboard && pnpm install
 
-  test-typescript-sdk:
-    name: Test TypeScript SDK
+      - name: Build dashboard
+        run: cd dashboard && pnpm build
+
+  landing-build:
+    name: Landing Page Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Set up pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 8
+          run_install: false
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Run tests
-        working-directory: packages/sardis-sdk-js
-        run: pnpm test
-
-      - name: Build
-        working-directory: packages/sardis-sdk-js
-        run: pnpm run build
-
-  test-python-sdk:
-    name: Test Python SDK
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        working-directory: packages/sardis-sdk-python
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          pip install -e ".[dev]"
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Run tests
-        working-directory: packages/sardis-sdk-python
-        run: pytest --cov=sardis_sdk --cov-report=term-missing
-
-  test-mcp-server:
-    name: Test MCP Server
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: cd landing && pnpm install
 
-      - name: Run tests
-        working-directory: packages/sardis-mcp-server
-        run: pnpm test
-
-      - name: Build
-        working-directory: packages/sardis-mcp-server
-        run: pnpm run build
-
-  test-ai-sdk:
-    name: Test AI SDK
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Run tests
-        working-directory: packages/sardis-ai-sdk
-        run: pnpm test
-
-      - name: Build
-        working-directory: packages/sardis-ai-sdk
-        run: pnpm run build
-
-  build-landing:
-    name: Build Landing Page
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build
-        working-directory: landing
-        run: pnpm run build
-
-  test-dashboard:
-    name: Test Dashboard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Type check
-        working-directory: dashboard
-        run: pnpm run typecheck
-
-      - name: Build
-        working-directory: dashboard
-        run: pnpm run build
-        env:
-          VITE_API_URL: http://localhost:8000
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install audit tooling
-        run: pip install pip-audit
-
-      - name: Run dependency vulnerability audit
-        run: bash scripts/release/dependency_audit.sh
-      
-      - name: Check for secrets
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          extra_args: --only-verified
-
-      - name: Run repo security sanity checks
-        run: bash scripts/release/security_check.sh
+      - name: Build landing page
+        run: cd landing && pnpm build

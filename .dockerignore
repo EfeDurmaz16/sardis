@@ -1,15 +1,124 @@
-node_modules
-.git
-.env
-*.pyc
-__pycache__
-.pytest_cache
-.mypy_cache
-dist
-build
-.next
-landing/node_modules
-dashboard/node_modules
-demos/*/node_modules
-*.egg-info
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
 .venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Node.js (for frontend/tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+.next
+
+# Contracts & build artifacts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test files
+tests/
+**/test_*.py
+**/tests/
+
+# Examples and demos
+examples/
+demos/
+
+# Scripts (not needed in container)
+scripts/
+
+# Landing page and dashboard (separate deployments)
+landing/
+dashboard/
+mobile/
+
+# Claude Code artifacts
+.claude/
+.omc/
+.rustshell_history
+
+# Vercel
+.vercel/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

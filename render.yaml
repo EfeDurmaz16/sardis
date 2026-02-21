@@ -1,0 +1,126 @@
+services:
+  # Sardis FastAPI Backend
+  - type: web
+    name: sardis-api
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      # Core configuration
+      - key: SARDIS_ENVIRONMENT
+        value: production
+      - key: SARDIS_CHAIN_MODE
+        value: live
+      - key: SARDIS_API_HOST
+        value: 0.0.0.0
+      - key: SARDIS_API_PORT
+        value: 8000
+      - key: SARDIS_TAP_ENFORCEMENT
+        value: enabled
+      - key: SARDIS_STRICT_CONFIG
+        value: "true"
+      - key: JWT_EXPIRATION_HOURS
+        value: "24"
+
+      # CORS configuration
+      - key: SARDIS_ALLOWED_ORIGINS
+        value: '["https://sardis.sh","https://www.sardis.sh","https://app.sardis.sh"]'
+      - key: SARDIS_ALLOWED_DOMAINS
+        value: '["sardis.sh"]'
+
+      # Database (managed PostgreSQL)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sardis-postgres
+          property: connectionString
+
+      # Redis (managed Redis)
+      - key: SARDIS_REDIS_URL
+        fromDatabase:
+          name: sardis-redis
+          property: connectionString
+
+      # Secrets (set in Render dashboard)
+      - key: SARDIS_SECRET_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: SARDIS_ADMIN_PASSWORD
+        sync: false
+
+      # MPC / Custody (Turnkey)
+      - key: TURNKEY_API_KEY
+        sync: false
+      - key: TURNKEY_API_PRIVATE_KEY
+        sync: false
+      - key: TURNKEY_ORGANIZATION_ID
+        sync: false
+
+      # Payment providers
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # Compliance
+      - key: PERSONA_API_KEY
+        sync: false
+      - key: PERSONA_TEMPLATE_ID
+        sync: false
+      - key: PERSONA_WEBHOOK_SECRET
+        sync: false
+      - key: ELLIPTIC_API_KEY
+        sync: false
+      - key: ELLIPTIC_API_SECRET
+        sync: false
+
+      # Virtual cards & treasury
+      - key: LITHIC_API_KEY
+        sync: false
+      - key: LITHIC_WEBHOOK_SECRET
+        sync: false
+
+      # Fiat ramp
+      - key: BRIDGE_API_KEY
+        sync: false
+      - key: BRIDGE_API_SECRET
+        sync: false
+      - key: BRIDGE_WEBHOOK_SECRET
+        sync: false
+      - key: ONRAMPER_API_KEY
+        sync: false
+      - key: ONRAMPER_WEBHOOK_SECRET
+        sync: false
+
+      # Monitoring
+      - key: SENTRY_DSN
+        sync: false
+
+      # RPC endpoints
+      - key: BASE_RPC_URL
+        sync: false
+      - key: POLYGON_RPC_URL
+        sync: false
+      - key: ETHEREUM_RPC_URL
+        sync: false
+      - key: ARBITRUM_RPC_URL
+        sync: false
+      - key: OPTIMISM_RPC_URL
+        sync: false
+
+# Managed databases
+databases:
+  - name: sardis-postgres
+    databaseName: sardis
+    plan: starter
+    region: oregon
+
+  - name: sardis-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
