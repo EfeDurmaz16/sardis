@@ -159,6 +159,7 @@ from .kya import (
     required_kya_level,
     kya_level_sufficient,
 )
+from .providers import IDenfyKYCProvider, ScorechainProvider
 from .retry import (
     CircuitState,
     RetryStrategy,
@@ -332,6 +333,9 @@ __all__ = [
     "create_kya_service",
     "required_kya_level",
     "kya_level_sufficient",
+    # Alternative Providers
+    "IDenfyKYCProvider",
+    "ScorechainProvider",
     # Version
     "__version__",
 ]
