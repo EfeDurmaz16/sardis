@@ -174,3 +174,14 @@ deploy/env/.env*.local
 landing/public/og-image.html
 security-audit-report/
 video/out/
+
+# Outreach (private contact data)
+scripts/outreach/
+
+# Local marketing/landing artifacts
+landing/public/moat/
+landing/public/pitch/
+site/
+
+# Local shell history artifacts
+.rustshell_history
