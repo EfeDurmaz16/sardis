@@ -1,12 +1,23 @@
 """Database connection and session management for Sardis."""
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 import asyncpg
 from asyncpg import Pool
+
+logger = logging.getLogger(__name__)
+
+
+def _normalized_database_url() -> str:
+    """Return DATABASE_URL normalized for asyncpg."""
+    database_url = os.getenv("DATABASE_URL", "postgresql://localhost/sardis")
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql://", 1)
+    return database_url
 
 
 class Database:
@@ -18,10 +29,7 @@ class Database:
     async def get_pool(cls) -> Pool:
         """Get or create the connection pool."""
         if cls._pool is None:
-            database_url = os.getenv("DATABASE_URL", "postgresql://localhost/sardis")
-            # Convert postgres:// to postgresql:// if needed (Heroku/Railway style)
-            if database_url.startswith("postgres://"):
-                database_url = database_url.replace("postgres://", "postgresql://", 1)
+            database_url = _normalized_database_url()
             
             # Neon serverless requires SSL and pgbouncer-compatible settings
             pool_kwargs: dict = {
@@ -915,3 +923,32 @@ CREATE INDEX IF NOT EXISTS idx_settlements_payee ON settlements(payee_agent_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_type ON settlements(settlement_type);
 CREATE INDEX IF NOT EXISTS idx_settlements_settled ON settlements(settled_at DESC);
 """
+
+
+class _DatabaseHandle:
+    """
+    Backward-compatible lightweight database handle.
+
+    Some older modules expect `get_database()` to return an object with
+    `.dsn` and optional `.pool` attributes.
+    """
+
+    def __init__(self, dsn: str):
+        self.dsn = dsn
+
+    @property
+    def pool(self) -> Optional[Pool]:
+        return Database._pool
+
+    async def get_pool(self) -> Pool:
+        return await Database.get_pool()
+
+
+async def get_db_pool() -> Pool:
+    """Backward-compatible helper used by analytics router."""
+    return await Database.get_pool()
+
+
+def get_database() -> _DatabaseHandle:
+    """Backward-compatible handle factory for scheduled jobs."""
+    return _DatabaseHandle(dsn=_normalized_database_url())
