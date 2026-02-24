@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import logging
 import os
+from dataclasses import asdict
 from decimal import Decimal
 from typing import Optional, List, Any, Literal
 import uuid
@@ -259,6 +260,35 @@ def create_cards_router(
         if requested_source in {"fiat", "stablecoin"}:
             return requested_source
         return "stablecoin" if _treasury_default_route() == "stablecoin_first" else "fiat"
+
+    def _active_provider_name() -> str:
+        impl = getattr(card_provider, "_provider", card_provider)
+        return str(getattr(impl, "name", "unknown"))
+
+    @r.get("/providers/readiness", dependencies=auth_deps)
+    async def get_provider_readiness():
+        from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
+
+        return {
+            "active_provider": _active_provider_name(),
+            "issuers": [asdict(row) for row in evaluate_issuer_readiness()],
+        }
+
+    @r.get("/providers/resolve", dependencies=auth_deps)
+    async def resolve_provider_for_wallet(
+        wallet_id: str = Query(...),
+        principal: Principal = Depends(require_principal),
+    ):
+        await _require_wallet_access(wallet_id, principal)
+        impl = getattr(card_provider, "_provider", card_provider)
+        if hasattr(impl, "resolve_provider_for_wallet"):
+            provider_name = await impl.resolve_provider_for_wallet(wallet_id)
+        else:
+            provider_name = _active_provider_name()
+        return {
+            "wallet_id": wallet_id,
+            "provider": provider_name,
+        }
 
     @r.post("", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
     async def issue_card(payload: IssueCardRequest, http_request: Request, principal: Principal = Depends(require_principal)):
