@@ -93,6 +93,7 @@ from .routers import wallets as wallets_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
+from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import checkout as checkout_router
 from .routers import policies as policies_router
 from .routers import compliance as compliance_router
@@ -670,22 +671,79 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         from sardis_api.repositories.card_repository import CardRepository
 
         card_repo = CardRepository(dsn=database_url if use_postgres else None)
+        from sardis_cards.providers.mock import MockProvider
 
-        lithic_api_key = os.getenv("LITHIC_API_KEY")
-        if lithic_api_key:
-            from sardis_cards.providers.lithic import LithicProvider
-            provider_impl = LithicProvider(api_key=lithic_api_key)
-            logger.info("Cards enabled with Lithic provider")
+        configured_primary = (settings.cards.primary_provider or "mock").strip().lower()
+        lithic_api_key = settings.lithic.api_key or os.getenv("LITHIC_API_KEY", "")
+        stripe_api_key = (
+            settings.stripe.api_key
+            or os.getenv("STRIPE_API_KEY", "")
+            or os.getenv("STRIPE_SECRET_KEY", "")
+        )
+        stripe_webhook_secret = settings.stripe.webhook_secret or os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+        provider_impl = MockProvider()
+        if configured_primary == "lithic":
+            if lithic_api_key:
+                try:
+                    from sardis_cards.providers.lithic import LithicProvider
+
+                    provider_impl = LithicProvider(
+                        api_key=lithic_api_key,
+                        environment=settings.lithic.environment,
+                    )
+                    logger.info("Cards enabled with Lithic provider")
+                except Exception as exc:
+                    logger.warning("Lithic provider init failed; using MockProvider: %s", exc)
+            else:
+                logger.warning(
+                    "Primary card provider is lithic but LITHIC_API_KEY is missing; using MockProvider"
+                )
+        elif configured_primary == "stripe_issuing":
+            if stripe_api_key:
+                try:
+                    from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+
+                    provider_impl = StripeIssuingProvider(
+                        api_key=stripe_api_key,
+                        webhook_secret=stripe_webhook_secret or None,
+                    )
+                    logger.info("Cards enabled with Stripe Issuing provider")
+                except Exception as exc:
+                    logger.warning("Stripe Issuing provider init failed; using MockProvider: %s", exc)
+            else:
+                logger.warning(
+                    "Primary card provider is stripe_issuing but STRIPE_API_KEY/STRIPE_SECRET_KEY is missing; using MockProvider"
+                )
         else:
-            from sardis_cards.providers.mock import MockProvider
-            provider_impl = MockProvider()
-            logger.warning(
-                "Cards enabled but LITHIC_API_KEY is missing; using MockProvider "
-                "(set LITHIC_API_KEY to enable real issuer integration)."
-            )
+            logger.info("Cards enabled with MockProvider (SARDIS_CARDS_PRIMARY_PROVIDER=mock)")
 
         card_provider = CardProviderCompatAdapter(provider_impl, card_repo)
-        webhook_secret = os.getenv("LITHIC_WEBHOOK_SECRET")
+        webhook_secret = settings.lithic.webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET")
+        asa_handler = None
+        asa_secret = (
+            settings.lithic.asa_webhook_secret
+            or os.getenv("LITHIC_ASA_WEBHOOK_SECRET", "")
+            or settings.lithic.webhook_secret
+            or os.getenv("LITHIC_WEBHOOK_SECRET", "")
+        )
+        if getattr(provider_impl, "name", "") == "lithic" and settings.lithic.asa_enabled:
+            if not asa_secret:
+                logger.warning("LITHIC_ASA is enabled but no ASA webhook secret is configured")
+            else:
+                from sardis_cards.webhooks import ASAHandler, CardWebhookHandler
+
+                async def _lookup_provider_card(card_token: str):
+                    if hasattr(provider_impl, "get_card"):
+                        return await provider_impl.get_card(card_token)
+                    return None
+
+                asa_handler = ASAHandler(
+                    webhook_handler=CardWebhookHandler(secret=asa_secret, provider="lithic"),
+                    card_lookup=_lookup_provider_card,
+                )
+                logger.info("Lithic ASA handler enabled")
+
         injected_router = cards_router.create_cards_router(
             card_repo,
             card_provider,
@@ -698,10 +756,50 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             treasury_repo=treasury_repo,
             agent_repo=agent_repo,
             canonical_repo=canonical_ledger_repo,
+            asa_handler=asa_handler,
         )
         app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
+
+    # Stripe inbound webhooks (Treasury + Issuing)
+    stripe_api_key = (
+        settings.stripe.api_key
+        or os.getenv("STRIPE_API_KEY", "")
+        or os.getenv("STRIPE_SECRET_KEY", "")
+    )
+    stripe_webhook_secret = settings.stripe.webhook_secret or os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    stripe_financial_account_id = (
+        settings.stripe.treasury_financial_account_id
+        or os.getenv("STRIPE_TREASURY_FINANCIAL_ACCOUNT_ID", "")
+    )
+    if stripe_api_key and stripe_webhook_secret:
+        from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
+
+        try:
+            from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+
+            issuing_provider = StripeIssuingProvider(
+                api_key=stripe_api_key,
+                webhook_secret=stripe_webhook_secret,
+            )
+            treasury_provider = StripeTreasuryProvider(
+                stripe_secret_key=stripe_api_key,
+                financial_account_id=stripe_financial_account_id or None,
+                environment="production" if settings.is_production else "sandbox",
+            )
+            app.dependency_overrides[stripe_webhooks_router.get_deps] = (
+                lambda: stripe_webhooks_router.StripeWebhookDeps(
+                    treasury_provider=treasury_provider,
+                    issuing_provider=issuing_provider,
+                )
+            )
+            app.include_router(stripe_webhooks_router.router)
+            logger.info("Stripe webhook router enabled at /stripe/webhooks")
+        except Exception as exc:
+            logger.warning("Stripe webhook router not enabled: %s", exc)
+    else:
+        logger.info("Stripe webhook router disabled (missing STRIPE API key or webhook secret)")
 
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,

@@ -62,6 +62,54 @@ class ChainConfig(BaseSettings):
     settlement_vault: str = ""
 
 
+class LithicConfig(BaseSettings):
+    """Lithic card issuing configuration."""
+
+    api_key: str = ""
+    environment: Literal["sandbox", "production"] = "sandbox"
+    webhook_secret: str = ""
+    asa_webhook_secret: str = ""
+    asa_enabled: bool = False
+
+    class Config:
+        env_prefix = "LITHIC_"
+
+
+class StripeConfig(BaseSettings):
+    """Stripe Issuing + Treasury configuration."""
+
+    api_key: str = ""
+    webhook_secret: str = ""
+    treasury_financial_account_id: str = ""
+    issuing_enabled: bool = True
+
+    class Config:
+        env_prefix = "STRIPE_"
+
+
+class CoinbaseConfig(BaseSettings):
+    """Coinbase CDP / x402 configuration."""
+
+    api_key_name: str = ""
+    api_key_private_key: str = ""
+    network_id: str = "base-mainnet"
+    x402_enabled: bool = False
+
+    class Config:
+        env_prefix = "COINBASE_CDP_"
+
+
+class CardStackConfig(BaseSettings):
+    """Card stack provider routing configuration."""
+
+    primary_provider: Literal["lithic", "stripe_issuing", "mock"] = "mock"
+    fallback_provider: Optional[Literal["lithic", "stripe_issuing"]] = None
+    on_chain_provider: Optional[Literal["coinbase_cdp"]] = None
+
+    class Config:
+        env_prefix = "SARDIS_CARDS_"
+
+
 class SardisSettings(BaseSettings):
     """Main Sardis configuration."""
     
@@ -127,6 +175,10 @@ class SardisSettings(BaseSettings):
     
     # Turnkey configuration (loaded from TURNKEY_* env vars)
     turnkey: TurnkeyConfig = Field(default_factory=TurnkeyConfig)
+    lithic: LithicConfig = Field(default_factory=LithicConfig)
+    stripe: StripeConfig = Field(default_factory=StripeConfig)
+    coinbase: CoinbaseConfig = Field(default_factory=CoinbaseConfig)
+    cards: CardStackConfig = Field(default_factory=CardStackConfig)
     
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"

@@ -94,6 +94,7 @@ def create_cards_router(
     treasury_repo=None,
     agent_repo: AgentRepository | None = None,
     canonical_repo=None,
+    asa_handler=None,
 ) -> APIRouter:
     """Create a cards router with injected dependencies."""
     r = APIRouter()
@@ -284,7 +285,7 @@ def create_cards_router(
             row = await card_repo.create(
                 card_id=card_id,
                 wallet_id=payload.wallet_id,
-                provider="lithic",
+                provider=str(getattr(provider_result, "provider", "unknown")),
                 provider_card_id=provider_result.provider_card_id,
                 card_type=payload.card_type,
                 limit_per_tx=float(payload.limit_per_tx),
@@ -631,6 +632,23 @@ def create_cards_router(
         if "active" in s or "open" in s:
             return "active"
         return s or "pending"
+
+    @r.post("/asa/authorize", include_in_schema=False)
+    async def lithic_asa_authorization(request: Request):
+        """Lithic Authorization Stream Access (ASA) real-time decision endpoint."""
+        if asa_handler is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="asa_handler_not_configured",
+            )
+        payload = await request.body()
+        signature = request.headers.get("x-lithic-hmac", "")
+        response = await asa_handler.handle_authorization(payload, signature)
+        return {
+            "decision": response.decision.value,
+            "reason": response.reason,
+            "token": response.token,
+        }
 
     @r.post("/webhooks", status_code=status.HTTP_200_OK)
     async def receive_card_webhook(request: Request):

@@ -75,7 +75,17 @@ from .exceptions import (
     get_exception_class,
     create_exception,
 )
-from .config import SardisSettings, load_settings, TurnkeyConfig, MPCProvider, ChainConfig
+from .config import (
+    SardisSettings,
+    load_settings,
+    TurnkeyConfig,
+    MPCProvider,
+    ChainConfig,
+    LithicConfig,
+    StripeConfig,
+    CoinbaseConfig,
+    CardStackConfig,
+)
 from .identity import AgentIdentity
 from .mandates import IntentMandate, CartMandate, PaymentMandate, MandateChain
 from .tokens import TokenType, TokenMetadata
@@ -258,6 +268,10 @@ __all__ = [
     "TurnkeyConfig",
     "MPCProvider",
     "ChainConfig",
+    "LithicConfig",
+    "StripeConfig",
+    "CoinbaseConfig",
+    "CardStackConfig",
     "AgentIdentity",
     "IntentMandate",
     "CartMandate",
