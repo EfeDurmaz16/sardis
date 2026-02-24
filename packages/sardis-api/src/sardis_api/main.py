@@ -90,6 +90,7 @@ from .routers import webhooks as webhooks_router
 from .routers import transactions as transactions_router
 from .routers import marketplace as marketplace_router
 from .routers import wallets as wallets_router
+from .routers import onchain_payments as onchain_payments_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
@@ -569,6 +570,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance=compliance,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+    app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        chain_executor=chain_exec,
+    )
+    app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
     app.dependency_overrides[a2a_router.get_deps] = lambda: a2a_router.A2ADependencies(
         wallet_repo=wallet_repo,

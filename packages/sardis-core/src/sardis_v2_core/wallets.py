@@ -77,6 +77,10 @@ class Wallet(BaseModel):
     entrypoint_address: Optional[str] = None
     paymaster_enabled: bool = False
     bundler_profile: Optional[str] = None
+    cdp_wallet_id: Optional[str] = None
+    cdp_wallet_address: Optional[str] = None
+    cdp_funded_amount: Decimal = Field(default=Decimal("0"))
+    x402_enabled: bool = False
     virtual_card: Optional[VirtualCard] = None
     is_active: bool = True
 
