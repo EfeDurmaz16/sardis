@@ -726,8 +726,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             or os.getenv("STRIPE_SECRET_KEY", "")
         )
         stripe_webhook_secret = settings.stripe.webhook_secret or os.getenv("STRIPE_WEBHOOK_SECRET", "")
+        provider_cache: dict[str, object] = {}
 
         def _build_provider(provider_name: str):
+            cached = provider_cache.get(provider_name)
+            if cached is not None:
+                return cached
             if provider_name == "lithic":
                 if not lithic_api_key:
                     logger.warning("LITHIC_API_KEY missing; cannot initialize Lithic provider")
@@ -735,10 +739,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 try:
                     from sardis_cards.providers.lithic import LithicProvider
 
-                    return LithicProvider(
+                    provider = LithicProvider(
                         api_key=lithic_api_key,
                         environment=settings.lithic.environment,
                     )
+                    provider_cache[provider_name] = provider
+                    return provider
                 except Exception as exc:
                     logger.warning("Lithic provider init failed: %s", exc)
                     return None
@@ -751,15 +757,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 try:
                     from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
-                    return StripeIssuingProvider(
+                    provider = StripeIssuingProvider(
                         api_key=stripe_api_key,
                         webhook_secret=stripe_webhook_secret or None,
                     )
+                    provider_cache[provider_name] = provider
+                    return provider
                 except Exception as exc:
                     logger.warning("Stripe Issuing provider init failed: %s", exc)
                     return None
             if provider_name == "mock":
-                return MockProvider()
+                provider = MockProvider()
+                provider_cache[provider_name] = provider
+                return provider
             if provider_name == "rain":
                 rain_api_key = settings.rain.api_key or os.getenv("RAIN_API_KEY", "")
                 if not rain_api_key:
@@ -769,13 +779,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     from sardis_cards.providers.partner_issuers import RainCardsProvider
 
                     rain_base_url = settings.rain.base_url or os.getenv("RAIN_BASE_URL", "https://api.rain.xyz")
-                    return RainCardsProvider(
+                    provider = RainCardsProvider(
                         api_key=rain_api_key,
                         base_url=rain_base_url,
                         program_id=settings.rain.program_id or os.getenv("RAIN_PROGRAM_ID", ""),
                         path_map=settings.rain.cards_path_map_json or os.getenv("RAIN_CARDS_PATH_MAP_JSON", ""),
                         method_map=settings.rain.cards_method_map_json or os.getenv("RAIN_CARDS_METHOD_MAP_JSON", ""),
                     )
+                    provider_cache[provider_name] = provider
+                    return provider
                 except Exception as exc:
                     logger.warning("Rain provider init failed: %s", exc)
                     return None
@@ -791,7 +803,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                         settings.bridge_cards.cards_base_url
                         or os.getenv("BRIDGE_CARDS_BASE_URL", "https://api.bridge.xyz")
                     )
-                    return BridgeCardsProvider(
+                    provider = BridgeCardsProvider(
                         api_key=bridge_api_key,
                         api_secret=settings.bridge_cards.api_secret or os.getenv("BRIDGE_API_SECRET", ""),
                         base_url=bridge_base_url,
@@ -805,6 +817,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                             or os.getenv("BRIDGE_CARDS_METHOD_MAP_JSON", "")
                         ),
                     )
+                    provider_cache[provider_name] = provider
+                    return provider
                 except Exception as exc:
                     logger.warning("Bridge cards provider init failed: %s", exc)
                     return None
@@ -838,6 +852,51 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         else:
             provider_impl = primary_provider
             logger.info("Cards enabled with provider=%s", configured_primary)
+
+        org_overrides_raw = (
+            settings.cards.org_provider_overrides_json
+            or os.getenv("SARDIS_CARDS_ORG_PROVIDER_OVERRIDES_JSON", "")
+        )
+        if org_overrides_raw and wallet_repo and agent_repo:
+            try:
+                parsed = json.loads(org_overrides_raw)
+            except json.JSONDecodeError:
+                parsed = {}
+                logger.warning("Invalid SARDIS_CARDS_ORG_PROVIDER_OVERRIDES_JSON; ignoring")
+            if isinstance(parsed, dict) and parsed:
+                org_provider_map: dict[str, object] = {}
+                for org_id, provider_name in parsed.items():
+                    provider_name_str = str(provider_name).strip().lower()
+                    provider_candidate = _build_provider(provider_name_str)
+                    if provider_candidate is None:
+                        logger.warning(
+                            "Could not initialize org-specific provider '%s' for org=%s",
+                            provider_name_str,
+                            org_id,
+                        )
+                        continue
+                    org_provider_map[str(org_id)] = provider_candidate
+                if org_provider_map:
+                    from sardis_cards.providers.org_router import OrganizationCardProviderRouter
+
+                    async def _resolve_wallet_org(wallet_id: str) -> str | None:
+                        wallet = await wallet_repo.get(wallet_id)
+                        if not wallet:
+                            return None
+                        agent = await agent_repo.get(wallet.agent_id)
+                        if not agent or not getattr(agent, "owner_id", None):
+                            return None
+                        return str(agent.owner_id)
+
+                    provider_impl = OrganizationCardProviderRouter(
+                        default_provider=provider_impl,
+                        providers_by_org=org_provider_map,  # type: ignore[arg-type]
+                        wallet_org_resolver=_resolve_wallet_org,
+                    )
+                    logger.info(
+                        "Cards org provider overrides enabled for %d org(s)",
+                        len(org_provider_map),
+                    )
 
         card_provider = CardProviderCompatAdapter(provider_impl, card_repo)
         webhook_secret = settings.lithic.webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET")

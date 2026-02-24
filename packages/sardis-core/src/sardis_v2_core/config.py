@@ -135,6 +135,7 @@ class CardStackConfig(BaseSettings):
     primary_provider: Literal["lithic", "stripe_issuing", "mock", "rain", "bridge_cards"] = "mock"
     fallback_provider: Optional[Literal["lithic", "stripe_issuing", "rain", "bridge_cards"]] = None
     on_chain_provider: Optional[Literal["coinbase_cdp"]] = None
+    org_provider_overrides_json: str = ""
 
     class Config:
         env_prefix = "SARDIS_CARDS_"
