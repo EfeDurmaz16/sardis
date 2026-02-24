@@ -85,6 +85,7 @@ class Card:
     frozen_at: Optional[datetime] = None
     cancelled_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
+    last_funded_at: Optional[datetime] = None
     
     @property
     def is_active(self) -> bool:

@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
+    "stripe>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,13 @@ dev = [
 ]
 lithic = [
     "lithic>=0.30.0",
+]
+stripe = [
+    "stripe>=7.0.0",
+]
+all = [
+    "lithic>=0.30.0",
+    "stripe>=7.0.0",
 ]
 
 [project.urls]

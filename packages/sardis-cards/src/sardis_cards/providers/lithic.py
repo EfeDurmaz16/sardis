@@ -94,7 +94,7 @@ class LithicProvider(CardProvider):
             card_type=self._map_card_type(lithic_card.type),
             status=self._map_card_status(lithic_card.state),
             funding_source=FundingSource.STABLECOIN,
-            limit_per_tx=Decimal(str(lithic_card.spend_limit / 100)) if lithic_card.spend_limit else Decimal("500"),
+            limit_per_tx=Decimal("500"),
             limit_daily=Decimal(str(lithic_card.spend_limit / 100)) if lithic_card.spend_limit else Decimal("2000"),
             limit_monthly=Decimal("10000"),
         )
@@ -202,7 +202,8 @@ class LithicProvider(CardProvider):
         limit_daily: Optional[Decimal] = None,
         limit_monthly: Optional[Decimal] = None,
     ) -> Card:
-        # Lithic uses a single spend_limit, we use the daily limit
+        # Lithic only supports a single spend_limit value.
+        # Sardis maps this to limit_daily and enforces per-tx/monthly locally.
         spend_limit = int((limit_daily or Decimal("2000")) * 100)
         
         lithic_card = await asyncio.to_thread(
