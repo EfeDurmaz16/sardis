@@ -682,41 +682,69 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         )
         stripe_webhook_secret = settings.stripe.webhook_secret or os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
-        provider_impl = MockProvider()
-        if configured_primary == "lithic":
-            if lithic_api_key:
+        def _build_provider(provider_name: str):
+            if provider_name == "lithic":
+                if not lithic_api_key:
+                    logger.warning("LITHIC_API_KEY missing; cannot initialize Lithic provider")
+                    return None
                 try:
                     from sardis_cards.providers.lithic import LithicProvider
 
-                    provider_impl = LithicProvider(
+                    return LithicProvider(
                         api_key=lithic_api_key,
                         environment=settings.lithic.environment,
                     )
-                    logger.info("Cards enabled with Lithic provider")
                 except Exception as exc:
-                    logger.warning("Lithic provider init failed; using MockProvider: %s", exc)
-            else:
-                logger.warning(
-                    "Primary card provider is lithic but LITHIC_API_KEY is missing; using MockProvider"
-                )
-        elif configured_primary == "stripe_issuing":
-            if stripe_api_key:
+                    logger.warning("Lithic provider init failed: %s", exc)
+                    return None
+            if provider_name == "stripe_issuing":
+                if not stripe_api_key:
+                    logger.warning(
+                        "STRIPE_API_KEY/STRIPE_SECRET_KEY missing; cannot initialize Stripe Issuing provider"
+                    )
+                    return None
                 try:
                     from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
-                    provider_impl = StripeIssuingProvider(
+                    return StripeIssuingProvider(
                         api_key=stripe_api_key,
                         webhook_secret=stripe_webhook_secret or None,
                     )
-                    logger.info("Cards enabled with Stripe Issuing provider")
                 except Exception as exc:
-                    logger.warning("Stripe Issuing provider init failed; using MockProvider: %s", exc)
-            else:
-                logger.warning(
-                    "Primary card provider is stripe_issuing but STRIPE_API_KEY/STRIPE_SECRET_KEY is missing; using MockProvider"
-                )
+                    logger.warning("Stripe Issuing provider init failed: %s", exc)
+                    return None
+            if provider_name == "mock":
+                return MockProvider()
+            logger.warning("Unknown card provider configured: %s", provider_name)
+            return None
+
+        primary_provider = _build_provider(configured_primary)
+        configured_fallback = (settings.cards.fallback_provider or "").strip().lower()
+        fallback_provider = None
+        if configured_fallback and configured_fallback != configured_primary:
+            fallback_provider = _build_provider(configured_fallback)
+
+        if primary_provider is None and fallback_provider is not None:
+            provider_impl = fallback_provider
+            logger.info(
+                "Primary card provider unavailable; using fallback provider=%s",
+                configured_fallback,
+            )
+        elif primary_provider is None:
+            provider_impl = MockProvider()
+            logger.warning("No card provider could be initialized; using MockProvider")
+        elif fallback_provider is not None:
+            from sardis_cards.providers.router import CardProviderRouter
+
+            provider_impl = CardProviderRouter(primary=primary_provider, fallback=fallback_provider)
+            logger.info(
+                "Cards enabled with routed providers primary=%s fallback=%s",
+                configured_primary,
+                configured_fallback,
+            )
         else:
-            logger.info("Cards enabled with MockProvider (SARDIS_CARDS_PRIMARY_PROVIDER=mock)")
+            provider_impl = primary_provider
+            logger.info("Cards enabled with provider=%s", configured_primary)
 
         card_provider = CardProviderCompatAdapter(provider_impl, card_repo)
         webhook_secret = settings.lithic.webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET")
@@ -727,7 +755,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             or settings.lithic.webhook_secret
             or os.getenv("LITHIC_WEBHOOK_SECRET", "")
         )
-        if getattr(provider_impl, "name", "") == "lithic" and settings.lithic.asa_enabled:
+        lithic_present = configured_primary == "lithic" or configured_fallback == "lithic"
+        if lithic_present and settings.lithic.asa_enabled:
             if not asa_secret:
                 logger.warning("LITHIC_ASA is enabled but no ASA webhook secret is configured")
             else:

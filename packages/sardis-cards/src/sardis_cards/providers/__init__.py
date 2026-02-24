@@ -2,10 +2,12 @@
 
 from .base import CardProvider
 from .mock import MockProvider
+from .router import CardProviderRouter
 
 __all__ = [
     "CardProvider",
     "MockProvider",
+    "CardProviderRouter",
 ]
 
 # Lithic provider is optional
