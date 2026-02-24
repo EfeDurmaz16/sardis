@@ -259,6 +259,8 @@ class StripeTreasuryProvider:
         self,
         amount: Decimal,
         description: str = "Fund agent virtual cards",
+        connected_account_id: Optional[str] = None,
+        metadata: Optional[dict[str, str]] = None,
     ) -> IssuingFundTransfer:
         """Transfer funds from Treasury to Issuing balance for card funding.
 
@@ -267,6 +269,8 @@ class StripeTreasuryProvider:
         Args:
             amount: Amount to transfer to Issuing balance
             description: Transfer description
+            connected_account_id: Optional Stripe Connect account ID (acct_...)
+            metadata: Optional additional metadata for reconciliation
 
         Returns:
             IssuingFundTransfer record
@@ -288,15 +292,25 @@ class StripeTreasuryProvider:
         )
 
         try:
+            topup_metadata = {
+                "sardis_purpose": "issuing_balance_funding",
+                "financial_account_id": self._financial_account_id or "",
+            }
+            if metadata:
+                topup_metadata.update(metadata)
+
+            create_kwargs: dict[str, Any] = {
+                "amount": amount_cents,
+                "currency": "usd",
+                "description": description,
+                "metadata": topup_metadata,
+            }
+            if connected_account_id:
+                create_kwargs["stripe_account"] = connected_account_id
+
             topup = await asyncio.to_thread(
                 self._stripe.Topup.create,
-                amount=amount_cents,
-                currency="usd",
-                description=description,
-                metadata={
-                    "sardis_purpose": "issuing_balance_funding",
-                    "financial_account_id": self._financial_account_id or "",
-                },
+                **create_kwargs,
             )
         except Exception as exc:
             logger.error("Stripe Top-up create failed: %s", exc)

@@ -758,6 +758,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     return None
             if provider_name == "mock":
                 return MockProvider()
+            if provider_name in {"rain", "bridge_cards"}:
+                logger.warning(
+                    "Card provider '%s' is configured but not integrated yet; falling back to another provider",
+                    provider_name,
+                )
+                return None
             logger.warning("Unknown card provider configured: %s", provider_name)
             return None
 
