@@ -6,7 +6,7 @@ import hashlib
 import time
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -24,6 +24,14 @@ class OnChainPaymentRequest(BaseModel):
     token: str = "USDC"
     chain: str = "base"
     memo: Optional[str] = None
+    rail: Optional[Literal["turnkey", "cdp"]] = Field(
+        default=None,
+        description="Execution rail override. If omitted, uses server default.",
+    )
+    cdp_wallet_id: Optional[str] = Field(
+        default=None,
+        description="Optional CDP wallet id override. Falls back to wallet.cdp_wallet_id.",
+    )
 
 
 class OnChainPaymentResponse(BaseModel):
@@ -37,6 +45,8 @@ class OnChainPaymentDependencies:
     wallet_repo: Any
     agent_repo: Any
     chain_executor: Any
+    coinbase_cdp_provider: Any = None
+    default_on_chain_provider: Optional[str] = None
 
 
 def get_deps() -> OnChainPaymentDependencies:
@@ -78,6 +88,46 @@ async def pay_onchain(
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
     await _require_wallet_access(wallet, principal, deps)
+
+    use_cdp_rail = False
+    if request.rail:
+        use_cdp_rail = request.rail == "cdp"
+    elif deps.default_on_chain_provider == "coinbase_cdp":
+        use_cdp_rail = True
+
+    if use_cdp_rail:
+        if request.token.upper() != "USDC":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="cdp_rail_only_supports_usdc",
+            )
+        if not deps.coinbase_cdp_provider:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="coinbase_cdp_not_configured",
+            )
+        cdp_wallet_id = request.cdp_wallet_id or getattr(wallet, "cdp_wallet_id", None)
+        if not cdp_wallet_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="cdp_wallet_id_required",
+            )
+        try:
+            tx_hash = await deps.coinbase_cdp_provider.send_usdc(
+                cdp_wallet_id=cdp_wallet_id,
+                to_address=request.to,
+                amount_usdc=request.amount,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"cdp_payment_failed: {exc}",
+            ) from exc
+        return OnChainPaymentResponse(
+            tx_hash=tx_hash,
+            explorer_url=_explorer_url(request.chain, tx_hash),
+            status="submitted",
+        )
 
     source_address = wallet.get_address(request.chain)
     if not source_address:

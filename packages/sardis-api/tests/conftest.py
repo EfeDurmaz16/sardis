@@ -22,6 +22,7 @@ for pkg in [
     "sardis-cards",
     "sardis-compliance",
     "sardis-checkout",
+    "sardis-coinbase",
 ]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists():

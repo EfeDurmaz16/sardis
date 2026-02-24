@@ -53,6 +53,7 @@ def _bootstrap_monorepo_sys_path() -> None:
         "sardis-cards",
         "sardis-compliance",
         "sardis-checkout",
+        "sardis-coinbase",
     ):
         src = packages_dir / pkg / "src"
         if src.is_dir():
@@ -559,6 +560,39 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1/auth")
     app.include_router(auth.router, prefix="/api/v2/auth")
 
+    configured_on_chain_provider = (
+        (settings.cards.on_chain_provider or os.getenv("SARDIS_CARDS_ON_CHAIN_PROVIDER", "")).strip().lower()
+        or None
+    )
+    coinbase_cdp_provider = None
+    coinbase_enabled = configured_on_chain_provider == "coinbase_cdp" or settings.coinbase.x402_enabled
+    if coinbase_enabled:
+        cdp_api_key_name = settings.coinbase.api_key_name or os.getenv("COINBASE_CDP_API_KEY_NAME", "")
+        cdp_api_key_private_key = (
+            settings.coinbase.api_key_private_key
+            or os.getenv("COINBASE_CDP_API_KEY_PRIVATE_KEY", "")
+        )
+        cdp_network_id = settings.coinbase.network_id or os.getenv("COINBASE_CDP_NETWORK_ID", "base-mainnet")
+        if cdp_api_key_name and cdp_api_key_private_key:
+            try:
+                from sardis_coinbase import CoinbaseCDPProvider
+
+                coinbase_cdp_provider = CoinbaseCDPProvider(
+                    api_key_name=cdp_api_key_name,
+                    api_key_private_key=cdp_api_key_private_key,
+                    network_id=cdp_network_id,
+                )
+                logger.info("Coinbase CDP provider initialized (network=%s)", cdp_network_id)
+            except Exception as exc:
+                logger.warning("Coinbase CDP provider initialization failed: %s", exc)
+        else:
+            logger.warning(
+                "Coinbase CDP is enabled but credentials are missing "
+                "(COINBASE_CDP_API_KEY_NAME / COINBASE_CDP_API_KEY_PRIVATE_KEY)"
+            )
+    app.state.coinbase_cdp_provider = coinbase_cdp_provider
+    app.state.on_chain_provider = configured_on_chain_provider
+
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
@@ -574,6 +608,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_exec,
+        coinbase_cdp_provider=coinbase_cdp_provider,
+        default_on_chain_provider=configured_on_chain_provider,
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
