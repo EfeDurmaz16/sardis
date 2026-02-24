@@ -37,13 +37,17 @@ def evaluate_issuer_readiness() -> list[IssuerReadiness]:
 
     This is intentionally lightweight: it does not call remote APIs.
     """
-    return [
-        _readiness(
+    stripe_api_key = os.getenv("STRIPE_API_KEY") or os.getenv("STRIPE_SECRET_KEY")
+    stripe_missing: tuple[str, ...] = tuple() if stripe_api_key else ("STRIPE_API_KEY|STRIPE_SECRET_KEY",)
+    rows = [
+        IssuerReadiness(
             name="stripe_issuing",
+            configured=bool(stripe_api_key),
             stablecoin_native=False,
             card_issuing=True,
-            required_env=("STRIPE_API_KEY",),
-            notes="Use STRIPE_SECRET_KEY as fallback in legacy envs.",
+            required_env=("STRIPE_API_KEY", "STRIPE_SECRET_KEY"),
+            missing_env=stripe_missing,
+            notes="Either STRIPE_API_KEY or STRIPE_SECRET_KEY must be configured.",
         ),
         _readiness(
             name="lithic",
@@ -67,3 +71,4 @@ def evaluate_issuer_readiness() -> list[IssuerReadiness]:
             notes="Bridge cards API access is feature-gated by account.",
         ),
     ]
+    return rows
