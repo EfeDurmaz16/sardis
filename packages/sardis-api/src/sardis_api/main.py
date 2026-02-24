@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -96,6 +97,7 @@ from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
 from .routers import stripe_webhooks as stripe_webhooks_router
+from .routers import stripe_funding as stripe_funding_router
 from .routers import checkout as checkout_router
 from .routers import policies as policies_router
 from .routers import compliance as compliance_router
@@ -840,7 +842,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
-    # Stripe inbound webhooks (Treasury + Issuing)
+    # Stripe treasury + funding + inbound webhooks
     stripe_api_key = (
         settings.stripe.api_key
         or os.getenv("STRIPE_API_KEY", "")
@@ -851,20 +853,58 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         settings.stripe.treasury_financial_account_id
         or os.getenv("STRIPE_TREASURY_FINANCIAL_ACCOUNT_ID", "")
     )
-    if stripe_api_key and stripe_webhook_secret:
+    stripe_connected_account_default = (
+        settings.stripe.connected_account_id
+        or os.getenv("STRIPE_CONNECTED_ACCOUNT_ID", "")
+    )
+    connected_account_map_raw = (
+        settings.stripe.connected_account_map_json
+        or os.getenv("STRIPE_CONNECTED_ACCOUNT_MAP_JSON", "")
+    )
+    connected_account_map: dict[str, str] = {}
+    if connected_account_map_raw:
+        try:
+            parsed = json.loads(connected_account_map_raw)
+            if isinstance(parsed, dict):
+                connected_account_map = {
+                    str(org_id): str(acct_id)
+                    for org_id, acct_id in parsed.items()
+                    if str(acct_id).strip()
+                }
+            else:
+                logger.warning("STRIPE_CONNECTED_ACCOUNT_MAP_JSON must be a JSON object")
+        except json.JSONDecodeError:
+            logger.warning("Invalid STRIPE_CONNECTED_ACCOUNT_MAP_JSON; ignoring")
+
+    treasury_provider = None
+    if stripe_api_key:
         from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
 
+        try:
+            treasury_provider = StripeTreasuryProvider(
+                stripe_secret_key=stripe_api_key,
+                financial_account_id=stripe_financial_account_id or None,
+                environment="production" if settings.is_production else "sandbox",
+            )
+            app.dependency_overrides[stripe_funding_router.get_deps] = (
+                lambda: stripe_funding_router.StripeFundingDeps(
+                    treasury_provider=treasury_provider,
+                    default_connected_account_id=stripe_connected_account_default,
+                    connected_account_map=connected_account_map,
+                )
+            )
+            app.include_router(stripe_funding_router.router, prefix="/api/v2")
+            logger.info("Stripe funding router enabled at /api/v2/stripe/funding")
+        except Exception as exc:
+            logger.warning("Stripe funding router not enabled: %s", exc)
+
+    if stripe_api_key and stripe_webhook_secret and treasury_provider is not None:
         try:
             from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
             issuing_provider = StripeIssuingProvider(
                 api_key=stripe_api_key,
                 webhook_secret=stripe_webhook_secret,
-            )
-            treasury_provider = StripeTreasuryProvider(
-                stripe_secret_key=stripe_api_key,
-                financial_account_id=stripe_financial_account_id or None,
-                environment="production" if settings.is_production else "sandbox",
             )
             app.dependency_overrides[stripe_webhooks_router.get_deps] = (
                 lambda: stripe_webhooks_router.StripeWebhookDeps(
@@ -877,7 +917,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         except Exception as exc:
             logger.warning("Stripe webhook router not enabled: %s", exc)
     else:
-        logger.info("Stripe webhook router disabled (missing STRIPE API key or webhook secret)")
+        logger.info("Stripe webhook router disabled (missing STRIPE API key/webhook secret)")
 
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,

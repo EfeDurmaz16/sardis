@@ -81,6 +81,8 @@ class StripeConfig(BaseSettings):
     api_key: str = ""
     webhook_secret: str = ""
     treasury_financial_account_id: str = ""
+    connected_account_id: str = ""
+    connected_account_map_json: str = ""
     issuing_enabled: bool = True
 
     class Config:
