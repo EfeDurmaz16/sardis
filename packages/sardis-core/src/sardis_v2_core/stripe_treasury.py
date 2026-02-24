@@ -7,6 +7,7 @@ Sardis never holds funds directly - Stripe holds the fiat under their license.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -129,6 +130,17 @@ class StripeTreasuryProvider:
         self._environment = environment
         self._base_url = "https://api.stripe.com/v1"
         self._initialized = False
+        self._stripe = None
+        try:
+            import stripe
+
+            stripe.api_key = stripe_secret_key
+            self._stripe = stripe
+        except ImportError:
+            logger.warning(
+                "Stripe SDK not installed; StripeTreasuryProvider will run in compatibility mode "
+                "(install with pip install stripe)"
+            )
         logger.info(
             "StripeTreasuryProvider initialized (env=%s, account=%s)",
             environment,
@@ -260,22 +272,54 @@ class StripeTreasuryProvider:
             IssuingFundTransfer record
         """
         self._ensure_initialized()
-        logger.info("Funding Issuing balance: $%s from Treasury %s", amount, self._financial_account_id)
+        if self._stripe is None:
+            raise RuntimeError(
+                "Stripe SDK is not available. Install stripe and configure STRIPE_API_KEY."
+            )
 
-        # In production:
-        # stripe.treasury.OutboundTransfer.create(
-        #     financial_account=self._financial_account_id,
-        #     amount=int(amount * 100),  # cents
-        #     currency="usd",
-        #     destination_payment_method="issuing_balance",
-        #     description=description,
-        # )
+        if amount <= 0:
+            raise ValueError("amount must be greater than zero")
+
+        amount_cents = int((amount * 100).to_integral_value())
+        logger.info(
+            "Funding Issuing balance via Stripe Top-up: $%s (account=%s)",
+            amount,
+            self._financial_account_id,
+        )
+
+        try:
+            topup = await asyncio.to_thread(
+                self._stripe.Topup.create,
+                amount=amount_cents,
+                currency="usd",
+                description=description,
+                metadata={
+                    "sardis_purpose": "issuing_balance_funding",
+                    "financial_account_id": self._financial_account_id or "",
+                },
+            )
+        except Exception as exc:
+            logger.error("Stripe Top-up create failed: %s", exc)
+            raise RuntimeError(
+                "Failed to create Stripe top-up for Issuing balance funding. "
+                "Ensure Issuing funding capabilities are enabled on your Stripe account."
+            ) from exc
+
+        status_map = {
+            "succeeded": TransferStatus.POSTED,
+            "pending": TransferStatus.PENDING,
+            "in_transit": TransferStatus.PROCESSING,
+            "reversed": TransferStatus.RETURNED,
+            "failed": TransferStatus.FAILED,
+            "canceled": TransferStatus.CANCELED,
+        }
+        mapped_status = status_map.get(str(topup.get("status", "")).lower(), TransferStatus.PROCESSING)
 
         return IssuingFundTransfer(
-            id=f"ift_sim_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            id=str(topup.get("id") or f"ift_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"),
             amount=amount,
-            currency="usd",
-            status=TransferStatus.PROCESSING,
+            currency=str(topup.get("currency", "usd")),
+            status=mapped_status,
             financial_account_id=self._financial_account_id or "",
             created_at=datetime.utcnow(),
         )
