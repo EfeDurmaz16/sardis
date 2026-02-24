@@ -760,12 +760,54 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     return None
             if provider_name == "mock":
                 return MockProvider()
-            if provider_name in {"rain", "bridge_cards"}:
-                logger.warning(
-                    "Card provider '%s' is configured but not integrated yet; falling back to another provider",
-                    provider_name,
-                )
-                return None
+            if provider_name == "rain":
+                rain_api_key = settings.rain.api_key or os.getenv("RAIN_API_KEY", "")
+                if not rain_api_key:
+                    logger.warning("RAIN_API_KEY missing; cannot initialize Rain provider")
+                    return None
+                try:
+                    from sardis_cards.providers.partner_issuers import RainCardsProvider
+
+                    rain_base_url = settings.rain.base_url or os.getenv("RAIN_BASE_URL", "https://api.rain.xyz")
+                    return RainCardsProvider(
+                        api_key=rain_api_key,
+                        base_url=rain_base_url,
+                        program_id=settings.rain.program_id or os.getenv("RAIN_PROGRAM_ID", ""),
+                        path_map=settings.rain.cards_path_map_json or os.getenv("RAIN_CARDS_PATH_MAP_JSON", ""),
+                        method_map=settings.rain.cards_method_map_json or os.getenv("RAIN_CARDS_METHOD_MAP_JSON", ""),
+                    )
+                except Exception as exc:
+                    logger.warning("Rain provider init failed: %s", exc)
+                    return None
+            if provider_name == "bridge_cards":
+                bridge_api_key = settings.bridge_cards.api_key or os.getenv("BRIDGE_API_KEY", "")
+                if not bridge_api_key:
+                    logger.warning("BRIDGE_API_KEY missing; cannot initialize Bridge cards provider")
+                    return None
+                try:
+                    from sardis_cards.providers.partner_issuers import BridgeCardsProvider
+
+                    bridge_base_url = (
+                        settings.bridge_cards.cards_base_url
+                        or os.getenv("BRIDGE_CARDS_BASE_URL", "https://api.bridge.xyz")
+                    )
+                    return BridgeCardsProvider(
+                        api_key=bridge_api_key,
+                        api_secret=settings.bridge_cards.api_secret or os.getenv("BRIDGE_API_SECRET", ""),
+                        base_url=bridge_base_url,
+                        program_id=settings.bridge_cards.program_id or os.getenv("BRIDGE_PROGRAM_ID", ""),
+                        path_map=(
+                            settings.bridge_cards.cards_path_map_json
+                            or os.getenv("BRIDGE_CARDS_PATH_MAP_JSON", "")
+                        ),
+                        method_map=(
+                            settings.bridge_cards.cards_method_map_json
+                            or os.getenv("BRIDGE_CARDS_METHOD_MAP_JSON", "")
+                        ),
+                    )
+                except Exception as exc:
+                    logger.warning("Bridge cards provider init failed: %s", exc)
+                    return None
             logger.warning("Unknown card provider configured: %s", provider_name)
             return None
 

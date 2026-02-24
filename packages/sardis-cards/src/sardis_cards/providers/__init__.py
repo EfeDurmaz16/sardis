@@ -3,13 +3,16 @@
 from .base import CardProvider
 from .issuer_readiness import IssuerReadiness, evaluate_issuer_readiness
 from .mock import MockProvider
+from .partner_issuers import BridgeCardsProvider, RainCardsProvider
 from .router import CardProviderRouter
 
 __all__ = [
+    "BridgeCardsProvider",
     "CardProvider",
     "IssuerReadiness",
     "MockProvider",
     "CardProviderRouter",
+    "RainCardsProvider",
     "evaluate_issuer_readiness",
 ]
 

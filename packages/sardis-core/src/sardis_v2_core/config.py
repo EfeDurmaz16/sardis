@@ -101,6 +101,34 @@ class CoinbaseConfig(BaseSettings):
         env_prefix = "COINBASE_CDP_"
 
 
+class RainConfig(BaseSettings):
+    """Rain stablecoin card issuing configuration."""
+
+    api_key: str = ""
+    program_id: str = ""
+    base_url: str = "https://api.rain.xyz"
+    webhook_secret: str = ""
+    cards_path_map_json: str = ""
+    cards_method_map_json: str = ""
+
+    class Config:
+        env_prefix = "RAIN_"
+
+
+class BridgeCardsConfig(BaseSettings):
+    """Bridge cards issuing configuration."""
+
+    api_key: str = ""
+    api_secret: str = ""
+    program_id: str = ""
+    cards_base_url: str = "https://api.bridge.xyz"
+    cards_path_map_json: str = ""
+    cards_method_map_json: str = ""
+
+    class Config:
+        env_prefix = "BRIDGE_"
+
+
 class CardStackConfig(BaseSettings):
     """Card stack provider routing configuration."""
 
@@ -180,6 +208,8 @@ class SardisSettings(BaseSettings):
     lithic: LithicConfig = Field(default_factory=LithicConfig)
     stripe: StripeConfig = Field(default_factory=StripeConfig)
     coinbase: CoinbaseConfig = Field(default_factory=CoinbaseConfig)
+    rain: RainConfig = Field(default_factory=RainConfig)
+    bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
     
     # Chain execution mode
