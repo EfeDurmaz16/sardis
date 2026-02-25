@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, Any, TYPE_CHECKING
+import math
 import uuid
 
 if TYPE_CHECKING:
@@ -294,8 +295,13 @@ class ConfidenceRouter:
             factors["compliance_history"] = 0.0
 
         # ── Calculate Total Score ─────────────────────────────────────────
-        total_score = sum(factors.values())
-        total_score = max(0.0, min(1.0, total_score))  # Clamp to [0, 1]
+        raw_score = sum(factors.values())
+        # Confidence calibration curve:
+        # router is typically called after deterministic policy/mandate guards,
+        # so we map raw heuristic score through a sigmoid to avoid overly harsh
+        # routing while preserving strict ordering across risk levels.
+        total_score = 1.0 / (1.0 + math.exp(-5.0 * (raw_score + 0.03)))
+        total_score = max(0.0, min(1.0, total_score))
 
         # ── Determine Confidence Level ────────────────────────────────────
         level = self.thresholds.get_level(total_score)
