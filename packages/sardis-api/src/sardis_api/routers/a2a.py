@@ -64,6 +64,56 @@ def _allow_unsigned_a2a_dev() -> bool:
     return _is_truthy(configured)
 
 
+def _enforce_a2a_trust_table() -> bool:
+    configured = os.getenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "").strip()
+    if configured:
+        return _is_truthy(configured)
+    return _is_production_env()
+
+
+def _parse_a2a_trust_table() -> dict[str, set[str]]:
+    """
+    Parse trust relations from env.
+
+    Format:
+      SARDIS_A2A_TRUST_RELATIONS="agent_a>agent_b|agent_c,agent_b>agent_a,*>agent_ops"
+    """
+    raw = os.getenv("SARDIS_A2A_TRUST_RELATIONS", "")
+    table: dict[str, set[str]] = {}
+    for item in raw.split(","):
+        relation = item.strip()
+        if not relation or ">" not in relation:
+            continue
+        sender, recipients = relation.split(">", 1)
+        sender_key = sender.strip()
+        if not sender_key:
+            continue
+        targets = {part.strip() for part in recipients.split("|") if part.strip()}
+        if not targets:
+            continue
+        table.setdefault(sender_key, set()).update(targets)
+    return table
+
+
+def _check_a2a_trust_relation(sender_agent_id: str, recipient_agent_id: str) -> tuple[bool, str]:
+    if not _enforce_a2a_trust_table():
+        return True, "trust_table_not_enforced"
+    if sender_agent_id == recipient_agent_id:
+        return True, "self_trusted"
+
+    table = _parse_a2a_trust_table()
+    if not table:
+        return False, "a2a_trust_table_not_configured"
+
+    sender_targets = table.get(sender_agent_id, set())
+    wildcard_targets = table.get("*", set())
+    if "*" in sender_targets or recipient_agent_id in sender_targets:
+        return True, "trusted_sender_relation"
+    if "*" in wildcard_targets or recipient_agent_id in wildcard_targets:
+        return True, "trusted_wildcard_relation"
+    return False, "a2a_agent_not_trusted"
+
+
 def _normalize_signature_algorithm(raw: str) -> str:
     value = (raw or "").strip().lower()
     if value in {"ed25519", "ecdsa-p256", "ecdsa_p256", "p256"}:
@@ -293,6 +343,16 @@ async def a2a_pay(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="cross_org_a2a_disabled",
+            )
+
+        trust_ok, trust_reason = _check_a2a_trust_relation(
+            sender_agent_id=req.sender_agent_id,
+            recipient_agent_id=req.recipient_agent_id,
+        )
+        if not trust_ok:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=trust_reason,
             )
 
         # Look up sender wallet
@@ -642,6 +702,23 @@ async def _handle_payment_request(
             correlation_id=msg.correlation_id,
             error="cross_org_a2a_disabled",
             error_code="forbidden",
+        )
+
+    trust_ok, trust_reason = _check_a2a_trust_relation(
+        sender_agent_id=sender_agent_id,
+        recipient_agent_id=recipient_agent_id,
+    )
+    if not trust_ok:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=trust_reason,
+            error_code=trust_reason,
         )
 
     # Look up recipient wallet to execute from
