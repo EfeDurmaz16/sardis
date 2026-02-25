@@ -41,25 +41,42 @@ class A2ATrustRepository:
         pool = await self._get_pool()
         if pool is None:
             return
+        environment = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
         async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS a2a_trust_relations (
-                    id UUID PRIMARY KEY,
-                    organization_id TEXT NOT NULL,
-                    sender_agent_id TEXT NOT NULL,
-                    recipient_agent_id TEXT NOT NULL,
-                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    UNIQUE (organization_id, sender_agent_id, recipient_agent_id)
-                );
-                CREATE INDEX IF NOT EXISTS idx_a2a_trust_org_sender
-                  ON a2a_trust_relations(organization_id, sender_agent_id);
-                CREATE INDEX IF NOT EXISTS idx_a2a_trust_org_recipient
-                  ON a2a_trust_relations(organization_id, recipient_agent_id);
-                """
-            )
+            if environment in {"prod", "production"}:
+                exists = await conn.fetchval(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'a2a_trust_relations'
+                    )
+                    """
+                )
+                if not exists:
+                    raise RuntimeError(
+                        "a2a_trust_relations table not found in production; "
+                        "run database migrations before starting the API"
+                    )
+            else:
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS a2a_trust_relations (
+                        id UUID PRIMARY KEY,
+                        organization_id TEXT NOT NULL,
+                        sender_agent_id TEXT NOT NULL,
+                        recipient_agent_id TEXT NOT NULL,
+                        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        UNIQUE (organization_id, sender_agent_id, recipient_agent_id)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_a2a_trust_org_sender
+                      ON a2a_trust_relations(organization_id, sender_agent_id);
+                    CREATE INDEX IF NOT EXISTS idx_a2a_trust_org_recipient
+                      ON a2a_trust_relations(organization_id, recipient_agent_id);
+                    """
+                )
         self._table_ready = True
 
     @staticmethod

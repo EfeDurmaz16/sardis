@@ -92,6 +92,9 @@ require_match 'test_security_policy_endpoint_returns_runtime_guardrails' \
 require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
   'packages/sardis-api/tests/test_a2a_trust_table.py' \
   'A2A trust table rejection test must exist'
+require_match 'test_ensure_table_prod_requires_migration' \
+  'packages/sardis-api/tests/test_a2a_trust_repository.py' \
+  'A2A trust repository must fail closed in production when table is missing'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then
@@ -105,6 +108,7 @@ if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
       packages/sardis-api/tests/test_secure_checkout_executor.py \
       packages/sardis-api/tests/test_secure_checkout_risk_response.py \
       packages/sardis-api/tests/test_a2a_trust_table.py \
+      packages/sardis-api/tests/test_a2a_trust_repository.py \
       packages/sardis-api/tests/test_stripe_funding.py; then
       failures=$((failures + 1))
     fi

@@ -56,6 +56,7 @@ All checks must pass:
 5. Verify A2A trust-table config:
    - `SARDIS_A2A_ENFORCE_TRUST_TABLE=1`
    - `SARDIS_A2A_TRUST_RELATIONS=sender_agent_id>recipient_a|recipient_b,...`
+   - Ensure DB migration created `a2a_trust_relations` before production boot.
    - `GET /api/v2/a2a/trust/table` returns expected relations.
 6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
 
