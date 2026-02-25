@@ -226,6 +226,10 @@ class SpendingPolicy:
     merchant_rules: list[MerchantRule] = field(default_factory=list)
     allowed_scopes: list[SpendingScope] = field(default_factory=lambda: [SpendingScope.ALL])
     blocked_merchant_categories: list[str] = field(default_factory=list)
+    allowed_chains: list[str] = field(default_factory=list)
+    allowed_tokens: list[str] = field(default_factory=list)
+    allowed_destination_addresses: list[str] = field(default_factory=list)
+    blocked_destination_addresses: list[str] = field(default_factory=list)
     require_preauth: bool = False
     approval_threshold: Optional[Decimal] = None
     max_drift_score: Optional[Decimal] = field(default_factory=lambda: Decimal("0.5"))
@@ -396,6 +400,60 @@ class SpendingPolicy:
         # route this to a human for sign-off before executing on-chain.
         if self.approval_threshold is not None and amount > self.approval_threshold:
             return True, "requires_approval"
+
+        return True, "OK"
+
+    @staticmethod
+    def _normalize_chain(value: Optional[str]) -> str:
+        return (value or "").strip().lower()
+
+    @staticmethod
+    def _normalize_token(value: Optional[str]) -> str:
+        return (value or "").strip().upper()
+
+    @staticmethod
+    def _normalize_destination(value: Optional[str]) -> str:
+        return (value or "").strip().lower()
+
+    def validate_execution_context(
+        self,
+        *,
+        destination: Optional[str],
+        chain: Optional[str],
+        token: Optional[str],
+    ) -> tuple[bool, str]:
+        """
+        Deterministic execution guard rails for on-chain payments.
+
+        This layer is intentionally model-agnostic and does not depend on
+        AI interpretation. It should be used as a final gate before execution.
+        """
+        chain_norm = self._normalize_chain(chain)
+        token_norm = self._normalize_token(token)
+        destination_norm = self._normalize_destination(destination)
+
+        allowed_chains = {self._normalize_chain(c) for c in self.allowed_chains if self._normalize_chain(c)}
+        allowed_tokens = {self._normalize_token(t) for t in self.allowed_tokens if self._normalize_token(t)}
+        allowed_destinations = {
+            self._normalize_destination(a) for a in self.allowed_destination_addresses if self._normalize_destination(a)
+        }
+        blocked_destinations = {
+            self._normalize_destination(a) for a in self.blocked_destination_addresses if self._normalize_destination(a)
+        }
+
+        if allowed_chains and chain_norm not in allowed_chains:
+            return False, "chain_not_allowlisted"
+
+        if allowed_tokens and token_norm not in allowed_tokens:
+            return False, "token_not_allowlisted"
+
+        if destination_norm:
+            if destination_norm in blocked_destinations:
+                return False, "destination_blocked"
+            if allowed_destinations and destination_norm not in allowed_destinations:
+                return False, "destination_not_allowlisted"
+        elif allowed_destinations:
+            return False, "destination_required_for_allowlist"
 
         return True, "OK"
     

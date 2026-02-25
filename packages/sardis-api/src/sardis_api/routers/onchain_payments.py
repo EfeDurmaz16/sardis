@@ -134,6 +134,17 @@ async def pay_onchain(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=reason or "spending_policy_denied",
                 )
+            if hasattr(policy, "validate_execution_context"):
+                rails_ok, rails_reason = policy.validate_execution_context(
+                    destination=request.to,
+                    chain=request.chain,
+                    token=request.token,
+                )
+                if not rails_ok:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=rails_reason or "execution_context_denied",
+                    )
             if reason == "requires_approval":
                 if deps.approval_service is not None:
                     approval = await deps.approval_service.create_approval(

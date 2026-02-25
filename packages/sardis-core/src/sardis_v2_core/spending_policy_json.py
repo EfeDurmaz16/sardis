@@ -68,6 +68,10 @@ def spending_policy_to_json(policy: SpendingPolicy) -> dict[str, Any]:
         "merchant_rules": [mr(r) for r in policy.merchant_rules],
         "allowed_scopes": [s.value for s in policy.allowed_scopes],
         "blocked_merchant_categories": list(policy.blocked_merchant_categories),
+        "allowed_chains": list(policy.allowed_chains),
+        "allowed_tokens": list(policy.allowed_tokens),
+        "allowed_destination_addresses": list(policy.allowed_destination_addresses),
+        "blocked_destination_addresses": list(policy.blocked_destination_addresses),
         "require_preauth": bool(policy.require_preauth),
         "max_hold_hours": int(policy.max_hold_hours),
         "created_at": _dt_to_iso(policy.created_at),
@@ -135,10 +139,17 @@ def spending_policy_from_json(data: dict[str, Any]) -> SpendingPolicy:
         merchant_rules=[mr(r) for r in (data.get("merchant_rules") or [])],
         allowed_scopes=allowed_scopes,
         blocked_merchant_categories=[str(x).lower() for x in (data.get("blocked_merchant_categories") or [])],
+        allowed_chains=[str(x).strip().lower() for x in (data.get("allowed_chains") or []) if str(x).strip()],
+        allowed_tokens=[str(x).strip().upper() for x in (data.get("allowed_tokens") or []) if str(x).strip()],
+        allowed_destination_addresses=[
+            str(x).strip().lower() for x in (data.get("allowed_destination_addresses") or []) if str(x).strip()
+        ],
+        blocked_destination_addresses=[
+            str(x).strip().lower() for x in (data.get("blocked_destination_addresses") or []) if str(x).strip()
+        ],
         require_preauth=bool(data.get("require_preauth", False)),
         max_hold_hours=int(data.get("max_hold_hours", 168)),
         created_at=_iso_to_dt(data.get("created_at", datetime.now(timezone.utc).isoformat())),
         updated_at=_iso_to_dt(data.get("updated_at", datetime.now(timezone.utc).isoformat())),
     )
     return policy
-

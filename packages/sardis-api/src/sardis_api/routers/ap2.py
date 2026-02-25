@@ -56,6 +56,7 @@ class Dependencies:
     approval_service: Optional["ApprovalService"] = None
     settings: Optional[object] = None
     wallet_manager: Optional[Any] = None
+    policy_store: Optional[Any] = None
 
 
 def get_deps() -> Dependencies:
@@ -255,6 +256,72 @@ async def execute_ap2_payment(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
             )
+
+        # Deterministic final gate (AI advisory-only mode):
+        # enforce chain/token/destination rails from persisted policy.
+        advisory_only = os.getenv("SARDIS_AI_ADVISORY_ONLY", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        env_name = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
+        if advisory_only:
+            if deps.policy_store is None:
+                if env_name in {"prod", "production"}:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="deterministic_policy_unavailable",
+                    )
+            else:
+                policy = await deps.policy_store.fetch_policy(payment.subject)
+                if policy is None:
+                    if env_name in {"prod", "production"}:
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="deterministic_policy_not_found",
+                        )
+                elif hasattr(policy, "validate_execution_context"):
+                    rails_ok, rails_reason = policy.validate_execution_context(
+                        destination=payment.destination,
+                        chain=payment.chain,
+                        token=payment.token,
+                    )
+                    if not rails_ok:
+                        if deps.approval_service:
+                            from decimal import Decimal
+
+                            amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
+                            approval = await deps.approval_service.create_approval(
+                                action="payment",
+                                requested_by=payment.subject,
+                                agent_id=payment.subject,
+                                wallet_id=getattr(payment, "wallet_id", None),
+                                vendor=payment.destination,
+                                amount=amount_decimal,
+                                purpose=f"AP2 payment to {payment.destination}",
+                                reason=f"deterministic_guardrail_violation:{rails_reason}",
+                                urgency="high",
+                                metadata={
+                                    "mandate_id": payment.mandate_id,
+                                    "risk_signal": "deterministic_guardrail",
+                                    "guardrail_reason": rails_reason,
+                                    "canonicalization_mode": payload.canonicalization_mode,
+                                },
+                            )
+                            return 202, AP2PaymentExecuteResponse(
+                                mandate_id=payment.mandate_id,
+                                ledger_tx_id="",
+                                chain_tx_hash="",
+                                chain=payment.chain,
+                                audit_anchor="",
+                                status="pending_approval",
+                                approval_id=approval.id,
+                            )
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail=rails_reason or "deterministic_guardrail_denied",
+                        )
 
         # Runtime safety guard: prompt-injection signal detection on AP2 envelope.
         prompt_guard_enabled = os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {

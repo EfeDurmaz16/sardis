@@ -282,6 +282,86 @@ def test_onchain_payment_policy_receives_recipient_as_merchant_id():
     assert captured["merchant_category"] == "onchain_transfer"
 
 
+def test_onchain_payment_denied_by_execution_context_guardrails():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SimpleNamespace(
+        validate_payment=lambda **_: (True, "OK"),
+        validate_execution_context=lambda **_: (False, "destination_not_allowlisted"),
+    )
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xnot_allowed",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "destination_not_allowlisted"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_passes_chain_token_destination_to_guardrails():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_guardrails_ok")
+    captured: dict = {}
+
+    def _validate_execution_context(**kwargs):
+        captured.update(kwargs)
+        return True, "OK"
+
+    policy = SimpleNamespace(
+        validate_payment=lambda **_: (True, "OK"),
+        validate_execution_context=_validate_execution_context,
+    )
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant_allowlisted",
+            "amount": "2.50",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "destination": "0xmerchant_allowlisted",
+        "chain": "base",
+        "token": "USDC",
+    }
+
+
 def test_onchain_payment_prompt_injection_returns_pending_approval():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()

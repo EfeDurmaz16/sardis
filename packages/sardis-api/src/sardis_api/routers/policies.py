@@ -639,6 +639,10 @@ async def get_active_policy(
         "limit_per_tx": str(policy.limit_per_tx),
         "limit_total": str(policy.limit_total),
         "blocked_merchant_categories": policy.blocked_merchant_categories,
+        "allowed_chains": policy.allowed_chains,
+        "allowed_tokens": policy.allowed_tokens,
+        "allowed_destination_addresses": policy.allowed_destination_addresses,
+        "blocked_destination_addresses": policy.blocked_destination_addresses,
         "merchant_rules_count": len(policy.merchant_rules),
         "require_preauth": policy.require_preauth,
     }

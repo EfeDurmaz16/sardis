@@ -478,6 +478,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         approval_service=approval_service,
         settings=settings,
         wallet_manager=wallet_mgr,
+        policy_store=policy_store,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
