@@ -639,6 +639,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
         compliance=compliance,
+        identity_registry=identity_registry,
     )
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
@@ -1127,10 +1128,22 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
         logger.info("Dev routes enabled (faucet, etc.)")
 
-    # Sandbox/Playground routes - no auth required, for developer onboarding
-    # Available in all environments but should be rate-limited in production
-    app.include_router(sandbox_router.router, prefix="/api/v2/sandbox", tags=["sandbox"])
-    logger.info("Sandbox/Playground routes enabled")
+    # Sandbox/Playground routes - no auth required, for developer onboarding.
+    # Default: enabled outside production, disabled in production unless explicitly enabled.
+    sandbox_env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    sandbox_flag = os.getenv("SARDIS_ENABLE_SANDBOX", "").strip().lower()
+    sandbox_enabled_explicit = sandbox_flag in ("1", "true", "yes", "on")
+    sandbox_disabled_explicit = sandbox_flag in ("0", "false", "no", "off")
+    if sandbox_env in ("prod", "production"):
+        sandbox_enabled = sandbox_enabled_explicit
+    else:
+        sandbox_enabled = not sandbox_disabled_explicit
+
+    if sandbox_enabled:
+        app.include_router(sandbox_router.router, prefix="/api/v2/sandbox", tags=["sandbox"])
+        logger.info("Sandbox/Playground routes enabled")
+    else:
+        logger.info("Sandbox/Playground routes disabled")
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])

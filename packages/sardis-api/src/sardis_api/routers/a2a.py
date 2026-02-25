@@ -7,7 +7,9 @@ Enables first-class agent-to-agent transfers:
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import logging
 import os
 import time
@@ -19,12 +21,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import AgentRepository, WalletRepository
+from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,120 @@ public_router = APIRouter()
 def _allow_cross_org_a2a() -> bool:
     raw = os.getenv("SARDIS_A2A_ALLOW_CROSS_ORG", "")
     return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_truthy(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_production_env() -> bool:
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    return env in {"prod", "production"}
+
+
+def _a2a_signature_required() -> bool:
+    configured = os.getenv("SARDIS_A2A_REQUIRE_SIGNATURE", "").strip()
+    if configured:
+        return _is_truthy(configured)
+    return _is_production_env()
+
+
+def _allow_unsigned_a2a_dev() -> bool:
+    configured = os.getenv("SARDIS_A2A_ALLOW_UNSIGNED_DEV", "1").strip()
+    return _is_truthy(configured)
+
+
+def _normalize_signature_algorithm(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if value in {"ed25519", "ecdsa-p256", "ecdsa_p256", "p256"}:
+        return "ecdsa-p256" if value in {"ecdsa-p256", "ecdsa_p256", "p256"} else "ed25519"
+    return ""
+
+
+def _decode_signature(signature_value: str) -> bytes:
+    value = (signature_value or "").strip()
+    if not value:
+        raise ValueError("missing_signature")
+
+    if value.startswith("0x"):
+        value = value[2:]
+    if value and all(c in "0123456789abcdefABCDEF" for c in value) and len(value) % 2 == 0:
+        try:
+            return bytes.fromhex(value)
+        except ValueError:
+            pass
+
+    padded = value + ("=" * ((4 - len(value) % 4) % 4))
+    for decoder in (base64.urlsafe_b64decode, base64.b64decode):
+        try:
+            return decoder(padded.encode())
+        except Exception:  # noqa: BLE001
+            continue
+    raise ValueError("invalid_signature_encoding")
+
+
+def _canonical_message_bytes(msg: "A2AMessageRequest") -> bytes:
+    payload_json = json.dumps(msg.payload or {}, separators=(",", ":"), sort_keys=True, ensure_ascii=True)
+    canonical = "|".join(
+        [
+            msg.message_id,
+            msg.message_type,
+            msg.sender_id,
+            msg.recipient_id,
+            msg.correlation_id or "",
+            msg.in_reply_to or "",
+            payload_json,
+        ]
+    )
+    return canonical.encode()
+
+
+async def _verify_a2a_message_signature(
+    msg: "A2AMessageRequest",
+    deps: "A2ADependencies",
+) -> tuple[bool, Optional[str]]:
+    signature_present = bool((msg.signature or "").strip())
+    if not signature_present:
+        if _a2a_signature_required() or not _allow_unsigned_a2a_dev():
+            return False, "signature_required"
+        return True, None
+
+    if not deps.identity_registry:
+        return False, "identity_registry_not_configured"
+
+    identity_record = await deps.identity_registry.get_async(msg.sender_id)
+    if not identity_record:
+        return False, "sender_identity_not_found"
+
+    expected_domain = os.getenv("SARDIS_A2A_SIGNATURE_DOMAIN", "sardis.sh").strip() or "sardis.sh"
+    if not identity_record.is_active(expected_domain):
+        return False, "sender_identity_domain_mismatch"
+
+    requested_algorithm = _normalize_signature_algorithm(msg.signature_algorithm)
+    if requested_algorithm and requested_algorithm != identity_record.algorithm:
+        return False, "signature_algorithm_mismatch"
+
+    try:
+        signature_bytes = _decode_signature(msg.signature or "")
+    except ValueError as exc:
+        return False, str(exc)
+
+    verifier = AgentIdentity(
+        agent_id=identity_record.agent_id,
+        public_key=identity_record.public_key,
+        algorithm=identity_record.algorithm,
+        domain=identity_record.domain,
+    )
+    valid = verifier.verify(
+        message=_canonical_message_bytes(msg),
+        signature=signature_bytes,
+        domain=expected_domain,
+        nonce=msg.message_id,
+        purpose=f"a2a:{msg.message_type}",
+    )
+    if not valid:
+        return False, "invalid_signature"
+    return True, None
 
 
 # ============================================================================
@@ -52,6 +170,7 @@ class A2ADependencies:
         wallet_manager: Any | None = None,
         ledger: LedgerStore | None = None,
         compliance: Any | None = None,
+        identity_registry: IdentityRegistry | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -59,6 +178,7 @@ class A2ADependencies:
         self.wallet_manager = wallet_manager
         self.ledger = ledger
         self.compliance = compliance
+        self.identity_registry = identity_registry
 
 
 def get_deps() -> A2ADependencies:
@@ -354,20 +474,34 @@ async def handle_a2a_message(
     """
     logger.info(f"A2A message received: type={msg.message_type}, from={msg.sender_id}, to={msg.recipient_id}")
 
-    if msg.message_type == "payment_request":
-        return await _handle_payment_request(msg, request, deps, principal)
-    elif msg.message_type == "credential_request":
-        return _handle_credential_request(msg)
-    elif msg.message_type == "ack":
+    signature_ok, signature_reason = await _verify_a2a_message_signature(msg, deps)
+    if not signature_ok:
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
-            message_type="ack",
+            message_type="error",
             sender_id=msg.recipient_id,
             recipient_id=msg.sender_id,
-            status="received",
+            status="failed",
             in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=f"A2A signature validation failed: {signature_reason}",
+            error_code=signature_reason or "invalid_signature",
         )
-    else:
+
+    async def _dispatch_message() -> A2AMessageResponse:
+        if msg.message_type == "payment_request":
+            return await _handle_payment_request(msg, request, deps, principal)
+        if msg.message_type == "credential_request":
+            return _handle_credential_request(msg)
+        if msg.message_type == "ack":
+            return A2AMessageResponse(
+                message_id=str(uuid.uuid4()),
+                message_type="ack",
+                sender_id=msg.recipient_id,
+                recipient_id=msg.sender_id,
+                status="received",
+                in_reply_to=msg.message_id,
+            )
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="error",
@@ -378,6 +512,26 @@ async def handle_a2a_message(
             error=f"Unsupported message type: {msg.message_type}",
             error_code="unsupported_message_type",
         )
+
+    body = await request.body()
+    duplicate_response = A2AMessageResponse(
+        message_id=msg.message_id,
+        message_type="ack",
+        sender_id=msg.recipient_id,
+        recipient_id=msg.sender_id,
+        status="duplicate",
+        in_reply_to=msg.message_id,
+        correlation_id=msg.correlation_id,
+        payload={"deduplicated": True},
+    )
+    return await run_with_replay_protection(
+        request=request,
+        provider="a2a",
+        event_id=msg.message_id,
+        body=body,
+        response_on_duplicate=duplicate_response,
+        fn=_dispatch_message,
+    )
 
 
 async def _handle_payment_request(
