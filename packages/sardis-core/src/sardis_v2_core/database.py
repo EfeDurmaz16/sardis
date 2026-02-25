@@ -774,6 +774,10 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     billing_cycle TEXT NOT NULL DEFAULT 'monthly',
     billing_day INTEGER NOT NULL DEFAULT 1,
     next_billing TIMESTAMPTZ NOT NULL,
+    destination_address TEXT,
+    token TEXT NOT NULL DEFAULT 'USDC',
+    chain TEXT NOT NULL DEFAULT 'base_sepolia',
+    memo TEXT,
     card_id TEXT,
     auto_approve BOOLEAN NOT NULL DEFAULT true,
     auto_approve_threshold_cents BIGINT NOT NULL DEFAULT 10000,
@@ -782,6 +786,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     notification_channel TEXT,
     status TEXT NOT NULL DEFAULT 'active',
     last_charged_at TIMESTAMPTZ,
+    autofund_enabled BOOLEAN NOT NULL DEFAULT false,
+    autofund_amount_cents BIGINT,
+    last_autofund_at TIMESTAMPTZ,
     failure_count INTEGER NOT NULL DEFAULT 0,
     max_failures INTEGER NOT NULL DEFAULT 3,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -792,6 +799,7 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_wallet ON subscriptions(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_next_billing ON subscriptions(next_billing);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_merchant ON subscriptions(merchant);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_chain_status ON subscriptions(chain, status, next_billing);
 
 -- Billing Events (per-cycle execution records)
 CREATE TABLE IF NOT EXISTS billing_events (

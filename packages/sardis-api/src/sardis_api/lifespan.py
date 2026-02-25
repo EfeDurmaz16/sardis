@@ -143,6 +143,34 @@ async def lifespan(app: FastAPI):
                 expire_approvals, job_id="approval_expiry_check", seconds=60,
             )
 
+            async def _recurring_billing_job() -> None:
+                from .routers.metrics import background_jobs_total
+
+                runner = getattr(app.state, "recurring_billing_runner", None)
+                if runner is None:
+                    return
+                try:
+                    limit = int(os.getenv("SARDIS_RECURRING_BILLING_BATCH_SIZE", "50"))
+                    results = await runner(limit=limit)
+                    status_value = "warning" if any(r.status == "failed" for r in results) else "success"
+                    background_jobs_total.labels(job_name="recurring_billing", status=status_value).inc()
+                    if results:
+                        logger.info(
+                            "Recurring billing job processed=%s charged=%s failed=%s",
+                            len(results),
+                            sum(1 for item in results if item.status == "charged"),
+                            sum(1 for item in results if item.status == "failed"),
+                        )
+                except Exception as e:
+                    background_jobs_total.labels(job_name="recurring_billing", status="error").inc()
+                    logger.exception("Recurring billing job failed: %s", e)
+
+            scheduler.add_interval_job(
+                _recurring_billing_job,
+                job_id="recurring_billing",
+                seconds=int(os.getenv("SARDIS_RECURRING_BILLING_INTERVAL_SECONDS", "60")),
+            )
+
             async def _treasury_reconciliation_job() -> None:
                 from .routers.metrics import background_jobs_total
 

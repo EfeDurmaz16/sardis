@@ -92,6 +92,7 @@ from .routers import webhooks as webhooks_router
 from .routers import transactions as transactions_router
 from .routers import marketplace as marketplace_router
 from .routers import wallets as wallets_router
+from .routers import subscriptions as subscriptions_router
 from .routers import onchain_payments as onchain_payments_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
@@ -155,7 +156,9 @@ from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.a2a_trust_repository import A2ATrustRepository
+from .repositories.subscriptions_repository import SubscriptionRepository
 from .providers.lithic_treasury import LithicTreasuryClient
+from .services.recurring_billing import RecurringBillingService
 
 # Configure structured logging
 setup_logging(
@@ -623,6 +626,25 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance=compliance,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+    subscription_repo = SubscriptionRepository(dsn=database_url if use_postgres else None)
+    recurring_billing_service = RecurringBillingService(
+        subscription_repo=subscription_repo,
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        chain_executor=chain_exec,
+        wallet_manager=wallet_mgr,
+        compliance=compliance,
+    )
+    app.state.recurring_billing_runner = recurring_billing_service.process_due_subscriptions
+    app.dependency_overrides[subscriptions_router.get_deps] = lambda: subscriptions_router.SubscriptionDependencies(
+        subscription_repo=subscription_repo,
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        recurring_service=recurring_billing_service,
+    )
+    app.include_router(subscriptions_router.router, prefix="/api/v2/subscriptions", tags=["subscriptions"])
+
     app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
