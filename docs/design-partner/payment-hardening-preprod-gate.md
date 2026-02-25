@@ -60,6 +60,9 @@ All checks must pass:
    - `GET /api/v2/a2a/trust/table` returns expected relations.
    - `GET /api/v2/a2a/trust/peers?sender_agent_id=...` returns only trusted peers by default.
 6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
+7. Validate on-chain goal-drift controls:
+   - `SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD` and `SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD` set explicitly.
+   - Drift in review band triggers approval; drift above block threshold is denied fail-closed.
 
 ## Failure Handling
 If this gate fails:

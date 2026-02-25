@@ -9,7 +9,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -46,6 +46,16 @@ class OnChainPaymentRequest(BaseModel):
     policy_id: Optional[str] = Field(
         default=None,
         description="Optional expected policy id/version pin. Execution fails on mismatch.",
+    )
+    goal_drift_score: Optional[Decimal] = Field(
+        default=None,
+        ge=Decimal("0"),
+        le=Decimal("1"),
+        description="Optional deterministic goal-drift score in [0,1] from caller-side verifier.",
+    )
+    goal_drift_reasons: list[str] = Field(
+        default_factory=list,
+        description="Optional structured drift reasons from external verifier.",
     )
 
 
@@ -125,6 +135,26 @@ def _contains_prompt_injection_signal(text: Optional[str]) -> Optional[str]:
 
 def _is_truthy_env(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _decimal_env(name: str, default: str) -> Decimal:
+    raw = (os.getenv(name, default) or default).strip()
+    try:
+        return Decimal(raw)
+    except (InvalidOperation, ValueError):
+        return Decimal(default)
+
+
+def _goal_drift_review_threshold() -> Decimal:
+    value = _decimal_env("SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD", "0.70")
+    return min(max(value, Decimal("0")), Decimal("1"))
+
+
+def _goal_drift_block_threshold() -> Decimal:
+    value = _decimal_env("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90")
+    review = _goal_drift_review_threshold()
+    value = min(max(value, Decimal("0")), Decimal("1"))
+    return max(value, review)
 
 
 def _kya_enforcement_enabled() -> bool:
@@ -346,9 +376,57 @@ async def pay_onchain(
                 merchant_id=request.to,
                 mcc_code=None,
                 merchant_category="onchain_transfer",
+                drift_score=request.goal_drift_score,
             )
             if not allowed:
                 deny_reason = reason or "spending_policy_denied"
+                if deny_reason == "goal_drift_exceeded" and deps.approval_service is not None:
+                    if policy_receipt is not None:
+                        policy_receipt["decision"] = "pending_approval"
+                        policy_receipt["reason"] = "goal_drift_exceeded"
+                        policy_receipt.setdefault("context", {})["goal_drift_score"] = (
+                            str(request.goal_drift_score) if request.goal_drift_score is not None else None
+                        )
+                        policy_receipt["context"]["goal_drift_reasons"] = request.goal_drift_reasons
+                        policy_audit_id = await _append_policy_audit_entry(
+                            deps=deps,
+                            mandate_id=policy_receipt["decision_id"],
+                            subject=wallet.agent_id,
+                            allowed=False,
+                            reason=policy_receipt["reason"],
+                            receipt_payload=policy_receipt,
+                        )
+                    approval = await deps.approval_service.create_approval(
+                        action="onchain_payment",
+                        requested_by=wallet.agent_id,
+                        agent_id=wallet.agent_id,
+                        wallet_id=wallet.wallet_id,
+                        vendor=request.to,
+                        amount=request.amount,
+                        purpose="On-chain payment",
+                        reason="goal_drift_exceeded",
+                        urgency="high",
+                        organization_id=principal.organization_id,
+                        metadata={
+                            "wallet_id": wallet_id,
+                            "token": request.token,
+                            "chain": request.chain,
+                            "rail": request.rail,
+                            "memo": request.memo,
+                            "goal_drift_score": str(request.goal_drift_score) if request.goal_drift_score is not None else None,
+                            "goal_drift_reasons": request.goal_drift_reasons,
+                        },
+                    )
+                    return OnChainPaymentResponse(
+                        tx_hash=None,
+                        explorer_url=None,
+                        status="pending_approval",
+                        approval_id=approval.id,
+                        policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+                        policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+                        policy_audit_id=policy_audit_id,
+                        compliance_audit_id=compliance_audit_id,
+                    )
                 record_policy_check(False, deny_reason)
                 record_policy_denial_spike(deny_reason)
                 if policy_receipt is not None:
@@ -484,6 +562,85 @@ async def pay_onchain(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="prompt_injection_signal_detected",
+            )
+
+    # Runtime goal-drift guard: advisory model output cannot bypass deterministic controls.
+    drift_score = request.goal_drift_score
+    if drift_score is not None:
+        review_threshold = _goal_drift_review_threshold()
+        block_threshold = _goal_drift_block_threshold()
+        if drift_score >= block_threshold:
+            deny_reason = "goal_drift_blocked"
+            record_policy_check(False, deny_reason)
+            record_policy_denial_spike(deny_reason)
+            if policy_receipt is not None:
+                policy_receipt["decision"] = "deny"
+                policy_receipt["reason"] = deny_reason
+                policy_receipt.setdefault("context", {})["goal_drift_score"] = str(drift_score)
+                policy_receipt["context"]["goal_drift_reasons"] = request.goal_drift_reasons
+                policy_audit_id = await _append_policy_audit_entry(
+                    deps=deps,
+                    mandate_id=policy_receipt["decision_id"],
+                    subject=wallet.agent_id,
+                    allowed=False,
+                    reason=policy_receipt["reason"],
+                    receipt_payload=policy_receipt,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=deny_reason,
+            )
+        if drift_score >= review_threshold:
+            if deps.approval_service is not None:
+                if policy_receipt is not None:
+                    policy_receipt["decision"] = "pending_approval"
+                    policy_receipt["reason"] = "goal_drift_review_required"
+                    policy_receipt.setdefault("context", {})["goal_drift_score"] = str(drift_score)
+                    policy_receipt["context"]["goal_drift_reasons"] = request.goal_drift_reasons
+                    policy_audit_id = await _append_policy_audit_entry(
+                        deps=deps,
+                        mandate_id=policy_receipt["decision_id"],
+                        subject=wallet.agent_id,
+                        allowed=False,
+                        reason=policy_receipt["reason"],
+                        receipt_payload=policy_receipt,
+                    )
+                approval = await deps.approval_service.create_approval(
+                    action="onchain_payment",
+                    requested_by=wallet.agent_id,
+                    agent_id=wallet.agent_id,
+                    wallet_id=wallet.wallet_id,
+                    vendor=request.to,
+                    amount=request.amount,
+                    purpose="On-chain payment",
+                    reason=f"goal_drift_review_required:{drift_score}",
+                    urgency="high",
+                    organization_id=principal.organization_id,
+                    metadata={
+                        "wallet_id": wallet_id,
+                        "token": request.token,
+                        "chain": request.chain,
+                        "rail": request.rail,
+                        "memo": request.memo,
+                        "goal_drift_score": str(drift_score),
+                        "goal_drift_reasons": request.goal_drift_reasons,
+                        "goal_drift_review_threshold": str(review_threshold),
+                        "goal_drift_block_threshold": str(block_threshold),
+                    },
+                )
+                return OnChainPaymentResponse(
+                    tx_hash=None,
+                    explorer_url=None,
+                    status="pending_approval",
+                    approval_id=approval.id,
+                    policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+                    policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+                    policy_audit_id=policy_audit_id,
+                    compliance_audit_id=compliance_audit_id,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="goal_drift_review_required",
             )
 
     if _kya_enforcement_enabled():

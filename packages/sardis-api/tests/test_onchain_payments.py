@@ -665,6 +665,114 @@ def test_onchain_payment_adversarial_prompt_patterns_require_approval(memo: str)
     chain_executor.dispatch_payment.assert_not_called()
 
 
+def test_onchain_payment_goal_drift_review_returns_pending_approval(monkeypatch):
+    monkeypatch.setenv("SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD", "0.70")
+    monkeypatch.setenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90")
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    approval_service = AsyncMock()
+    approval_service.create_approval.return_value = SimpleNamespace(id="appr_drift_review_1")
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        approval_service=approval_service,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.25",
+            "token": "USDC",
+            "chain": "base",
+            "goal_drift_score": "0.75",
+            "goal_drift_reasons": ["unexpected_vendor_class"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "pending_approval"
+    assert payload["approval_id"] == "appr_drift_review_1"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_goal_drift_block_denied(monkeypatch):
+    monkeypatch.setenv("SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD", "0.70")
+    monkeypatch.setenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90")
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    approval_service = AsyncMock()
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        approval_service=approval_service,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.25",
+            "token": "USDC",
+            "chain": "base",
+            "goal_drift_score": "0.95",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "goal_drift_blocked"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_policy_goal_drift_exceeded_creates_approval():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SimpleNamespace(validate_payment=lambda **_: (False, "goal_drift_exceeded"))
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+    approval_service = AsyncMock()
+    approval_service.create_approval.return_value = SimpleNamespace(id="appr_goal_drift_policy_1")
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+        approval_service=approval_service,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.25",
+            "token": "USDC",
+            "chain": "base",
+            "goal_drift_score": "0.82",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "pending_approval"
+    assert payload["approval_id"] == "appr_goal_drift_policy_1"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
 def test_onchain_payment_denied_when_kya_enforcement_enabled(monkeypatch):
     monkeypatch.setenv("SARDIS_KYA_ENFORCEMENT_ENABLED", "true")
     wallet_repo = AsyncMock()

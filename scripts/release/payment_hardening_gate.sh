@@ -44,6 +44,9 @@ require_match 'policy_pin_attestation_unavailable' \
 require_match 'PROMPT_INJECTION_PATTERNS' \
   'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
   'on-chain prompt injection patterns must be defined'
+require_match '_goal_drift_block_threshold' \
+  'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
+  'on-chain goal drift block threshold guard must be present'
 
 require_match 'cursor_scope_mismatch' \
   'packages/sardis-api/src/sardis_api/routers/compliance.py' \
@@ -80,6 +83,9 @@ require_match '/trust/peers' \
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
   'adversarial on-chain prompt test must exist'
+require_match 'test_onchain_payment_goal_drift_review_returns_pending_approval' \
+  'packages/sardis-api/tests/test_onchain_payments.py' \
+  'on-chain goal drift review path must be test covered'
 require_match 'test_topup_all_providers_failed_returns_502_and_records_attempts' \
   'packages/sardis-api/tests/test_stripe_funding.py' \
   'funding all-failed chaos test must exist'
