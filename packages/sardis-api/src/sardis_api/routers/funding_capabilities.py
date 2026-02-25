@@ -30,6 +30,25 @@ def _resolve_settings(deps: FundingCapabilitiesDeps):
     return load_settings()
 
 
+def _build_retry_order(
+    *,
+    preferred: list[str],
+    ready_by_provider: dict[str, bool],
+) -> list[str]:
+    order: list[str] = []
+    for provider in preferred:
+        key = str(provider or "").strip().lower()
+        if not key or key in order:
+            continue
+        if ready_by_provider.get(key, False):
+            order.append(key)
+    for provider, ready in sorted(ready_by_provider.items()):
+        if not ready or provider in order:
+            continue
+        order.append(provider)
+    return order
+
+
 @router.get("/capabilities")
 async def get_funding_capability_matrix(
     deps: FundingCapabilitiesDeps = Depends(get_deps),
@@ -116,15 +135,40 @@ async def get_funding_capability_matrix(
     stablecoin_ready_providers = sorted(
         [entry["provider"] for entry in providers if entry["funding_stablecoin_ready"]]
     )
+    fiat_ready_by_provider = {
+        str(entry["provider"]): bool(entry["funding_fiat_ready"])
+        for entry in providers
+    }
+    stablecoin_ready_by_provider = {
+        str(entry["provider"]): bool(entry["funding_stablecoin_ready"])
+        for entry in providers
+    }
+    primary_provider = getattr(settings.cards, "primary_provider", None)
+    fallback_provider = getattr(settings.cards, "fallback_provider", None)
+    on_chain_provider = getattr(settings.cards, "on_chain_provider", None)
+    preferred_fiat_order = [str(primary_provider or ""), str(fallback_provider or "")]
+    preferred_stablecoin_order = [
+        str(on_chain_provider or ""),
+        str(primary_provider or ""),
+        str(fallback_provider or ""),
+    ]
 
     return {
-        "primary_provider": getattr(settings.cards, "primary_provider", None),
-        "fallback_provider": getattr(settings.cards, "fallback_provider", None),
-        "on_chain_provider": getattr(settings.cards, "on_chain_provider", None),
+        "primary_provider": primary_provider,
+        "fallback_provider": fallback_provider,
+        "on_chain_provider": on_chain_provider,
         "default_fiat_connected_account": stripe_connected_account or None,
         "providers": providers,
         "rails": {
             "fiat_ready_providers": fiat_ready_providers,
             "stablecoin_ready_providers": stablecoin_ready_providers,
+            "fiat_retry_order": _build_retry_order(
+                preferred=preferred_fiat_order,
+                ready_by_provider=fiat_ready_by_provider,
+            ),
+            "stablecoin_retry_order": _build_retry_order(
+                preferred=preferred_stablecoin_order,
+                ready_by_provider=stablecoin_ready_by_provider,
+            ),
         },
     }

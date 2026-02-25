@@ -77,6 +77,7 @@ def test_capability_matrix_marks_stripe_fiat_ready(monkeypatch):
     assert providers["coinbase_cdp"]["onchain_rail_ready"] is False
     assert payload["primary_provider"] == "stripe_issuing"
     assert "stripe_issuing" in payload["rails"]["fiat_ready_providers"]
+    assert payload["rails"]["fiat_retry_order"][0] == "stripe_issuing"
 
 
 def test_capability_matrix_marks_coinbase_stablecoin_ready(monkeypatch):
@@ -94,6 +95,7 @@ def test_capability_matrix_marks_coinbase_stablecoin_ready(monkeypatch):
     assert providers["coinbase_cdp"]["funding_stablecoin_ready"] is True
     assert providers["coinbase_cdp"]["onchain_rail_ready"] is True
     assert "coinbase_cdp" in payload["rails"]["stablecoin_ready_providers"]
+    assert payload["rails"]["stablecoin_retry_order"][0] == "coinbase_cdp"
 
 
 def test_capability_matrix_requires_admin(monkeypatch):
