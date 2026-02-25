@@ -74,3 +74,24 @@ async def test_payment_identity_rejects_tampered_signature(client):
     resolve = await client.get(f"/api/v2/agents/payment-identities/{tampered}")
     assert resolve.status_code == 401
     assert "signature" in resolve.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_agent_auto_registers_kya_manifest(client):
+    create_agent = await client.post(
+        "/api/v2/agents",
+        json={
+            "name": "KYA Sync Agent",
+            "description": "agent should auto-register in KYA service",
+            "create_wallet": False,
+        },
+    )
+    assert create_agent.status_code == 201
+    agent_id = create_agent.json()["agent_id"]
+
+    kya_status = await client.get(f"/api/v2/compliance/kya/{agent_id}")
+    assert kya_status.status_code == 200
+    payload = kya_status.json()
+    assert payload["agent_id"] == agent_id
+    assert payload["level"] == "basic"
+    assert payload["status"] == "active"

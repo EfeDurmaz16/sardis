@@ -5,6 +5,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,7 @@ from sardis_v2_core import Agent, AgentPolicy, SpendingLimits, AgentRepository, 
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
+logger = logging.getLogger(__name__)
 
 
 # Request/Response Models
@@ -127,13 +129,29 @@ class PaymentIdentityResponse(BaseModel):
 
 # Dependency
 class AgentDependencies:
-    def __init__(self, agent_repo: AgentRepository, wallet_repo: WalletRepository):
+    def __init__(self, agent_repo: AgentRepository, wallet_repo: WalletRepository, kya_service=None):
         self.agent_repo = agent_repo
         self.wallet_repo = wallet_repo
+        self.kya_service = kya_service
 
 
 def get_deps() -> AgentDependencies:
     raise NotImplementedError("Dependency override required")
+
+
+def _is_truthy_env(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _kya_auto_registration_enabled() -> bool:
+    return _is_truthy_env(os.getenv("SARDIS_KYA_AUTO_REGISTER_ON_AGENT_CREATE", "true"))
+
+
+def _kya_strict_registration() -> bool:
+    explicit = os.getenv("SARDIS_KYA_STRICT_REGISTRATION", "")
+    if explicit:
+        return _is_truthy_env(explicit)
+    return (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower() in {"prod", "production"}
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -272,23 +290,33 @@ async def create_agent(
             auto_approve_below=request.policy.auto_approve_below,
         )
 
-    # Merge manifest into metadata if provided
-    agent_metadata = request.metadata or {}
-    kya_level = "none"
-    kya_status = "pending"
-    if request.manifest:
-        agent_metadata["manifest"] = {
-            "capabilities": request.manifest.capabilities,
-            "max_budget_per_tx": str(request.manifest.max_budget_per_tx),
-            "daily_budget": str(request.manifest.daily_budget),
-            "allowed_domains": request.manifest.allowed_domains,
-            "blocked_domains": request.manifest.blocked_domains,
-            "framework": request.manifest.framework,
-            "framework_version": request.manifest.framework_version,
-        }
-        # Agents registered with a manifest start at BASIC level
-        kya_level = "basic"
-        kya_status = "active"
+    # Build effective manifest payload for optional KYA auto-registration.
+    auto_register_kya = deps.kya_service is not None and _kya_auto_registration_enabled()
+    manifest_payload = {
+        "capabilities": request.manifest.capabilities if request.manifest else [],
+        "max_budget_per_tx": str(
+            request.manifest.max_budget_per_tx
+            if request.manifest
+            else (spending_limits.per_transaction if spending_limits else Decimal("100.00"))
+        ),
+        "daily_budget": str(
+            request.manifest.daily_budget
+            if request.manifest
+            else (spending_limits.daily if spending_limits else Decimal("1000.00"))
+        ),
+        "allowed_domains": request.manifest.allowed_domains if request.manifest else [],
+        "blocked_domains": request.manifest.blocked_domains if request.manifest else [],
+        "framework": request.manifest.framework if request.manifest else None,
+        "framework_version": request.manifest.framework_version if request.manifest else None,
+    }
+
+    # Persist manifest metadata when user supplied one, or when auto-registration is enabled.
+    agent_metadata = dict(request.metadata or {})
+    if request.manifest or auto_register_kya:
+        agent_metadata["manifest"] = manifest_payload
+
+    kya_level = "basic" if auto_register_kya else ("basic" if request.manifest else "none")
+    kya_status = "active" if auto_register_kya else ("active" if request.manifest else "pending")
 
     agent = await deps.agent_repo.create(
         name=request.name,
@@ -300,6 +328,49 @@ async def create_agent(
         kya_level=kya_level,
         kya_status=kya_status,
     )
+
+    if auto_register_kya:
+        strict_kya_registration = _kya_strict_registration()
+        try:
+            from sardis_compliance.kya import AgentManifest
+
+            kya_result = await deps.kya_service.register_agent(
+                AgentManifest(
+                    agent_id=agent.agent_id,
+                    owner_id=owner_id,
+                    capabilities=manifest_payload["capabilities"],
+                    max_budget_per_tx=Decimal(manifest_payload["max_budget_per_tx"]),
+                    daily_budget=Decimal(manifest_payload["daily_budget"]),
+                    allowed_domains=manifest_payload["allowed_domains"],
+                    blocked_domains=manifest_payload["blocked_domains"],
+                    framework=manifest_payload["framework"],
+                    framework_version=manifest_payload["framework_version"],
+                    description=request.description,
+                    metadata=agent_metadata,
+                )
+            )
+            updated_agent = await deps.agent_repo.update(
+                agent_id=agent.agent_id,
+                kya_level=kya_result.level.value,
+                kya_status=kya_result.status.value,
+            )
+            if updated_agent is not None:
+                agent = updated_agent
+        except Exception as exc:
+            logger.error("KYA auto-registration failed for agent %s: %s", agent.agent_id, exc)
+            if strict_kya_registration:
+                await deps.agent_repo.delete(agent.agent_id)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="kya_registration_failed",
+                ) from exc
+            downgraded = await deps.agent_repo.update(
+                agent_id=agent.agent_id,
+                kya_level="none",
+                kya_status="pending",
+            )
+            if downgraded is not None:
+                agent = downgraded
 
     # Optionally create a wallet for the agent
     if request.create_wallet:

@@ -1057,6 +1057,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
+        kya_service=kya_service,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
 
