@@ -2,9 +2,41 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.9.1',
+    version: '0.9.2',
     date: '2026-02-25',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Secure checkout approval quorum controls with configurable global/PAN-specific minimum approvals',
+          'Secure checkout distinct reviewer (4-eyes) validation for high-risk PAN execution lane',
+          'Lithic ASA runtime security policy endpoint: GET /api/v2/cards/asa/security-policy',
+          'A2A wallet-aware peer directory fields and trusted broadcast target list in trust discovery API',
+          'New ASA hardening tests in sardis-cards package and expanded payment hardening gate coverage',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Production-default fail-closed behavior for ASA card lookup errors',
+          'Production-default fail-closed behavior for ASA subscription matcher errors',
+          'Checkout PAN approvals now enforce quorum and can enforce distinct reviewers via runtime policy',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Payment hardening pre-prod guide updated with checkout quorum, ASA fail-closed, and wallet-aware A2A directory checks',
+          'Runtime security policy visibility expanded across checkout, ASA, and A2A control-plane surfaces',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.9.1',
+    date: '2026-02-25',
+    tag: '',
     changes: [
       {
         type: 'added',

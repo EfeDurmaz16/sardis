@@ -12,16 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A2A trust security posture endpoint: `GET /api/v2/a2a/trust/security-policy`
 - A2A trust mutation audit feed endpoint: `GET /api/v2/a2a/trust/audit/recent`
 - Deterministic trust-table hashing and compliance proof paths in trust API responses
+- Cards ASA security posture endpoint: `GET /api/v2/cards/asa/security-policy`
+- Wallet-aware A2A peer directory fields (`sender_wallet_addresses`, peer `wallet_addresses`, `broadcast_targets`)
 
 ### Changed
 - Trust relation mutations now support approval quorum (`approval_id` + `approval_ids`) with distinct reviewer checks
 - On-chain payment endpoint now evaluates goal-drift thresholds with review/block flow controls
 - Production mode now fails closed when A2A trust table migration is missing
+- Secure checkout now supports approval quorum (`approval_id` + `approval_ids`) and distinct reviewer enforcement for PAN lane
+- Secure checkout security-policy endpoint now exposes approval quorum runtime posture
 
 ### Security
 - 4-eyes approval enforcement added for trust relation mutations with strict org/action/metadata binding
 - Goal-drift fail-closed deny path for high-risk autonomous on-chain payment requests
 - Expanded payment hardening release gate coverage for trust, quorum, and goal-drift controls
+- ASA authorization flow now defaults to fail-closed in production for card lookup/subscription matcher errors
 
 ## [0.2.0] - 2026-02-11
 

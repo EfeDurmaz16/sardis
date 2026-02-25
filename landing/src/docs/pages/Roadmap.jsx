@@ -275,8 +275,8 @@ export default function Roadmap() {
     {
       version: 'v0.9.1',
       title: 'Zero-Trust Control Plane Hardening',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'A2A trust repository-backed relations with production fail-closed migration guards', done: true },
         { text: 'A2A trusted peer discovery endpoint with deterministic trust table hashing', done: true },
@@ -286,6 +286,22 @@ export default function Roadmap() {
         { text: 'Approval quorum controls with distinct reviewer requirements', done: true },
         { text: 'On-chain goal-drift review/block thresholds with deterministic approval/deny paths', done: true },
         { text: 'Strict payment hardening gate expanded with A2A/quorum/goal-drift controls', done: true },
+      ],
+    },
+    {
+      version: 'v0.9.2',
+      title: 'Checkout + ASA + Multi-Agent Directory Hardening',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'Secure checkout approval quorum controls (min approvals + PAN-specific min approvals)', done: true },
+        { text: 'Secure checkout distinct reviewer (4-eyes) enforcement for PAN lane approvals', done: true },
+        { text: 'Secure checkout runtime security-policy endpoint expanded with approval quorum posture', done: true },
+        { text: 'Lithic ASA fail-closed defaults for card lookup/subscription matcher errors in production', done: true },
+        { text: 'Cards ASA security-policy endpoint for admin runtime visibility', done: true },
+        { text: 'A2A trust peers endpoint extended with wallet-aware directory visibility', done: true },
+        { text: 'A2A trusted broadcast target list for orchestration fan-out', done: true },
+        { text: 'Payment hardening gate expanded to cover checkout quorum + ASA + wallet-aware A2A directory', done: true },
       ],
     },
     {
@@ -333,7 +349,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 13, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 14, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },
