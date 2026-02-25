@@ -21,6 +21,7 @@ from sardis_api.authz import Principal, require_principal
 
 class MerchantExecutionMode(str, Enum):
     TOKENIZED_API = "tokenized_api"
+    EMBEDDED_IFRAME = "embedded_iframe"
     PAN_ENTRY = "pan_entry"
     BLOCKED = "blocked"
 
@@ -93,6 +94,7 @@ class MerchantCapabilityResponse(BaseModel):
     mode_reason: str
     approval_likely_required: bool
     pan_execution_enabled: bool
+    pan_allowed_for_merchant: bool
 
 
 class SecureCheckoutJobResponse(BaseModel):
@@ -190,6 +192,10 @@ def _resolve_merchant_mode(host: str) -> tuple[MerchantExecutionMode, str]:
     if _host_matches(tokenized, host):
         return MerchantExecutionMode.TOKENIZED_API, "merchant_supports_tokenized_api"
 
+    embedded = _parse_csv_env("SARDIS_CHECKOUT_EMBEDDED_IFRAME_MERCHANTS")
+    if _host_matches(embedded, host):
+        return MerchantExecutionMode.EMBEDDED_IFRAME, "merchant_supports_embedded_iframe"
+
     return MerchantExecutionMode.PAN_ENTRY, "merchant_requires_pan_entry"
 
 
@@ -235,6 +241,25 @@ def _pan_execution_enabled() -> bool:
     if _is_production_env():
         return _is_truthy(os.getenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "0"))
     return _is_truthy(os.getenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1"))
+
+
+def _require_tokenized_in_prod() -> bool:
+    if not _is_production_env():
+        return False
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_REQUIRE_TOKENIZED_IN_PROD", "1"))
+
+
+def _pan_entry_allowed_for_host(host: str) -> bool:
+    allowlist = _parse_csv_env("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS")
+    return _host_matches(allowlist, host)
+
+
+def _pan_entry_policy_decision(host: str) -> tuple[bool, str]:
+    if not _pan_execution_enabled():
+        return False, "pan_execution_disabled"
+    if _require_tokenized_in_prod() and not _pan_entry_allowed_for_host(host):
+        return False, "pan_entry_not_allowlisted"
+    return True, "pan_entry_allowed"
 
 
 def _secret_ttl_seconds() -> int:
@@ -514,6 +539,11 @@ def create_secure_checkout_router() -> APIRouter:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
+        pan_allowed_for_merchant = True
+        if merchant_mode == MerchantExecutionMode.PAN_ENTRY:
+            pan_allowed_for_merchant, pan_mode_reason = _pan_entry_policy_decision(merchant_host)
+            if not pan_allowed_for_merchant:
+                mode_reason = pan_mode_reason
         threshold = _approval_threshold()
         amount = payload.amount or Decimal("0")
         approval_likely_required = (
@@ -527,6 +557,7 @@ def create_secure_checkout_router() -> APIRouter:
             mode_reason=mode_reason,
             approval_likely_required=approval_likely_required,
             pan_execution_enabled=_pan_execution_enabled(),
+            pan_allowed_for_merchant=pan_allowed_for_merchant,
         )
 
     @router.post("/secure/jobs", response_model=SecureCheckoutJobResponse, status_code=status.HTTP_201_CREATED)
@@ -566,6 +597,10 @@ def create_secure_checkout_router() -> APIRouter:
         merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
         if merchant_mode == MerchantExecutionMode.BLOCKED:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=mode_reason)
+        if merchant_mode == MerchantExecutionMode.PAN_ENTRY:
+            pan_allowed_for_merchant, pan_mode_reason = _pan_entry_policy_decision(merchant_host)
+            if not pan_allowed_for_merchant:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=pan_mode_reason)
 
         if wallet is None:
             policy_ok, policy_reason = (True, "OK")
@@ -674,7 +709,10 @@ def create_secure_checkout_router() -> APIRouter:
         if job["status"] != SecureCheckoutJobStatus.READY.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"job_not_ready:{job['status']}")
 
-        if job["merchant_mode"] == MerchantExecutionMode.TOKENIZED_API.value:
+        if job["merchant_mode"] in {
+            MerchantExecutionMode.TOKENIZED_API.value,
+            MerchantExecutionMode.EMBEDDED_IFRAME.value,
+        }:
             dispatch_ok, executor_ref, dispatch_error = await _dispatch_to_executor(job=job)
             if not dispatch_ok and _dispatch_required():
                 updated = await store.update_job(
@@ -690,19 +728,26 @@ def create_secure_checkout_router() -> APIRouter:
             updated = await store.update_job(
                 job_id,
                 status=SecureCheckoutJobStatus.DISPATCHED.value,
-                executor_ref=executor_ref or f"tokenized:{job_id}",
+                executor_ref=executor_ref
+                or (
+                    f"embedded_iframe:{job_id}"
+                    if job["merchant_mode"] == MerchantExecutionMode.EMBEDDED_IFRAME.value
+                    else f"tokenized:{job_id}"
+                ),
             )
             return _serialize_job(updated or job)
 
-        if not _pan_execution_enabled():
+        merchant_host = urlparse(job["merchant_origin"]).hostname or ""
+        pan_allowed_for_merchant, pan_mode_reason = _pan_entry_policy_decision(merchant_host)
+        if not pan_allowed_for_merchant:
             updated = await store.update_job(
                 job_id,
                 status=SecureCheckoutJobStatus.FAILED.value,
-                error_code="pan_execution_disabled",
-                error="PAN execution is disabled by policy",
+                error_code=pan_mode_reason,
+                error=f"PAN execution rejected: {pan_mode_reason}",
             )
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail=(updated or job).get("error_code"),
             )
 

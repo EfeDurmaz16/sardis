@@ -57,6 +57,12 @@ class _ApprovalService:
         return None
 
 
+class _PolicyStore:
+    async def fetch_policy(self, agent_id: str):
+        _ = agent_id
+        return None
+
+
 def _principal() -> Principal:
     return Principal(
         kind="api_key",
@@ -66,7 +72,7 @@ def _principal() -> Principal:
     )
 
 
-def _build_app() -> FastAPI:
+def _build_app(*, policy_store=None) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[require_principal] = _principal
     store = secure_checkout.InMemorySecureCheckoutStore()
@@ -75,7 +81,7 @@ def _build_app() -> FastAPI:
         agent_repo=_AgentRepo(),
         card_repo=_CardRepo(),
         card_provider=_CardProvider(),
-        policy_store=None,
+        policy_store=policy_store,
         approval_service=_ApprovalService(),
         store=store,
     )
@@ -193,6 +199,40 @@ def test_tokenized_merchant_path_avoids_pan_secret(monkeypatch):
     assert execute_payload["secret_ref"] is None
 
 
+def test_embedded_iframe_merchant_path_avoids_pan_secret(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_EMBEDDED_IFRAME_MERCHANTS", "checkout.issuer-elements.example.com")
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://checkout.issuer-elements.example.com/start",
+            "amount": "9.00",
+            "currency": "USD",
+            "intent_id": "intent_embedded_1",
+        },
+    )
+    assert created.status_code == 201
+    create_payload = created.json()
+    assert create_payload["merchant_mode"] == "embedded_iframe"
+    assert create_payload["status"] == "ready"
+    assert create_payload["approval_required"] is False
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{create_payload['job_id']}/execute",
+        json={},
+    )
+    assert executed.status_code == 200
+    execute_payload = executed.json()
+    assert execute_payload["status"] == "dispatched"
+    assert execute_payload["executor_ref"].startswith("embedded_iframe:")
+    assert execute_payload["secret_ref"] is None
+
+
 def test_merchant_capability_endpoint(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_TOKENIZED_MERCHANTS", "api.payments.example.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
@@ -212,6 +252,7 @@ def test_merchant_capability_endpoint(monkeypatch):
     tokenized_payload = tokenized.json()
     assert tokenized_payload["merchant_mode"] == "tokenized_api"
     assert tokenized_payload["approval_likely_required"] is False
+    assert tokenized_payload["pan_allowed_for_merchant"] is True
 
     pan_entry = client.post(
         "/api/v2/checkout/secure/merchant-capability",
@@ -225,6 +266,53 @@ def test_merchant_capability_endpoint(monkeypatch):
     pan_payload = pan_entry.json()
     assert pan_payload["merchant_mode"] == "pan_entry"
     assert pan_payload["approval_likely_required"] is True
+    assert pan_payload["pan_allowed_for_merchant"] is True
+
+
+def test_prod_pan_entry_requires_allowlist(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.delenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", raising=False)
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_blocked_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "pan_entry_not_allowlisted"
+
+
+def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_allow_1",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["merchant_mode"] == "pan_entry"
+    assert payload["status"] == "pending_approval"
 
 
 def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
