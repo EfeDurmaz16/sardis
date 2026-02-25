@@ -210,9 +210,12 @@ def test_export_evidence_bundle_contains_integrity_and_artifacts():
     assert payload["metadata"]["counts"]["policy_entries"] == 2
     assert payload["metadata"]["counts"]["approval_related_entries"] == 2
     assert payload["metadata"]["counts"]["attestation_entries"] >= 1
+    assert payload["integrity"]["bundle_digest"].startswith("sha256:")
     assert payload["integrity"]["entries_digest"].startswith("sha256:")
     assert payload["integrity"]["merkle_root"].startswith("merkle::")
     assert payload["integrity"]["hash_chain"]["length"] == 2
+    assert payload["integrity"]["chain_verification"]["supported_by_store"] is True
+    assert payload["integrity"]["chain_verification"]["verified"] is True
     assert payload["artifacts"]["approval"]["id"] == "appr_demo_1"
 
 

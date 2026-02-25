@@ -476,6 +476,11 @@ def _attestation_candidates(entries: list[dict[str, Any]]) -> list[dict[str, Any
     return out
 
 
+def _compute_bundle_digest(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+
 def _require_kya_service(deps: ComplianceDependencies):
     if deps.kya_service is None:
         raise HTTPException(
@@ -1065,6 +1070,40 @@ async def export_audit_evidence_bundle(
     if approval_id:
         verifier_hints.append("Cross-check approval_id against approval service export/logs")
 
+    chain_verification: dict[str, Any] = {
+        "supported_by_store": False,
+        "verified": None,
+        "error": None,
+    }
+    verifier = getattr(deps.audit_store, "verify_chain_integrity", None)
+    if callable(verifier):
+        verification_result = await _resolve_maybe_awaitable(verifier())
+        chain_verification["supported_by_store"] = True
+        if isinstance(verification_result, tuple) and len(verification_result) >= 2:
+            chain_verification["verified"] = bool(verification_result[0])
+            chain_verification["error"] = verification_result[1]
+        elif isinstance(verification_result, bool):
+            chain_verification["verified"] = verification_result
+        else:
+            chain_verification["verified"] = None
+            chain_verification["error"] = "unexpected_verifier_result"
+
+    bundle_digest = _compute_bundle_digest(
+        {
+            "generated_at": generated_at,
+            "scope": {
+                "mandate_id": mandate_id,
+                "approval_id": approval_id,
+                "limit": limit,
+            },
+            "counts": counts,
+            "entries_digest": entries_digest,
+            "merkle_root": merkle_root,
+            "hash_chain_head": hash_chain.get("head"),
+            "chain_verification": chain_verification,
+        }
+    )
+
     return {
         "metadata": {
             "generated_at": generated_at,
@@ -1077,10 +1116,12 @@ async def export_audit_evidence_bundle(
             "verifier_hints": verifier_hints,
         },
         "integrity": {
+            "bundle_digest": bundle_digest,
             "entries_digest": entries_digest,
             "merkle_root": f"merkle::{merkle_root}" if merkle_root else None,
             "leaf_count": len(leaves),
             "hash_chain": hash_chain,
+            "chain_verification": chain_verification,
         },
         "artifacts": {
             "approval": approval_record,
