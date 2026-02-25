@@ -52,6 +52,13 @@ class SecureCheckoutJobStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class SecurityIncidentSeverity(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 @dataclass
 class SecureCheckoutDependencies:
     wallet_repo: Any
@@ -724,6 +731,76 @@ def _dispatch_security_alert_enabled() -> bool:
     return _is_truthy(os.getenv("SARDIS_CHECKOUT_DISPATCH_SECURITY_ALERTS", "1"))
 
 
+def _parse_int_env(name: str, default: int, *, min_value: int, max_value: int) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        parsed = int(raw)
+    except ValueError:
+        parsed = default
+    return max(min_value, min(parsed, max_value))
+
+
+def _security_incident_severity(code: str) -> SecurityIncidentSeverity:
+    normalized = (code or "").strip().lower()
+    severity_overrides = {
+        "policy_denied": SecurityIncidentSeverity.MEDIUM,
+        "approval_required": SecurityIncidentSeverity.MEDIUM,
+        "merchant_anomaly": SecurityIncidentSeverity.HIGH,
+        "decline_burst": SecurityIncidentSeverity.HIGH,
+        "executor_auth_failed": SecurityIncidentSeverity.CRITICAL,
+        "attestation_replay": SecurityIncidentSeverity.CRITICAL,
+    }
+    return severity_overrides.get(normalized, SecurityIncidentSeverity.HIGH)
+
+
+def _security_incident_cooldown_seconds(severity: SecurityIncidentSeverity) -> int:
+    defaults = {
+        SecurityIncidentSeverity.LOW: 300,
+        SecurityIncidentSeverity.MEDIUM: 900,
+        SecurityIncidentSeverity.HIGH: 3600,
+        SecurityIncidentSeverity.CRITICAL: 21600,
+    }
+    env_name = f"SARDIS_CHECKOUT_INCIDENT_COOLDOWN_{severity.value.upper()}_SECONDS"
+    return _parse_int_env(env_name, defaults[severity], min_value=30, max_value=86400)
+
+
+def _security_incident_severity_set_env(name: str, default_csv: str) -> set[str]:
+    raw = os.getenv(name, default_csv)
+    return {part.strip().lower() for part in raw.split(",") if part.strip()}
+
+
+def _auto_rotate_on_security_incident_enabled() -> bool:
+    if _is_production_env():
+        return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT", "0"))
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT", "0"))
+
+
+def _auto_rotate_severities() -> set[str]:
+    return _security_incident_severity_set_env(
+        "SARDIS_CHECKOUT_AUTO_ROTATE_SEVERITIES",
+        "high,critical",
+    )
+
+
+def _auto_unfreeze_on_security_incident_enabled() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_UNFREEZE_ON_SECURITY_INCIDENT", "0"))
+
+
+def _auto_unfreeze_ops_approved() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_UNFREEZE_OPS_APPROVED", "0"))
+
+
+def _auto_unfreeze_allowed_severities() -> set[str]:
+    return _security_incident_severity_set_env(
+        "SARDIS_CHECKOUT_AUTO_UNFREEZE_ALLOWED_SEVERITIES",
+        "low,medium",
+    )
+
+
+def _auto_unfreeze_allowed_for_severity(severity: SecurityIncidentSeverity) -> bool:
+    return severity.value in _auto_unfreeze_allowed_severities()
+
+
 async def _emit_audit_event(
     deps: SecureCheckoutDependencies,
     *,
@@ -809,6 +886,150 @@ async def _dispatch_security_alert(
         logger.exception("Failed to dispatch secure checkout security alert")
 
 
+async def _try_rotate_incident_card(
+    *,
+    deps: SecureCheckoutDependencies,
+    job: dict[str, Any],
+    compromised_card: dict[str, Any],
+    reason_code: str,
+) -> None:
+    if not deps.card_provider or not deps.card_repo:
+        return
+
+    provider_card_id = str(compromised_card.get("provider_card_id") or "").strip()
+    if not provider_card_id:
+        return
+
+    try:
+        await deps.card_provider.cancel_card(provider_card_id=provider_card_id)
+        if hasattr(deps.card_repo, "update_status"):
+            await deps.card_repo.update_status(str(compromised_card.get("card_id") or ""), "cancelled")
+    except Exception:
+        logger.exception("Failed to cancel compromised card for rotation")
+        return
+
+    replacement_card_id = f"card_{uuid.uuid4().hex[:16]}"
+    wallet_id = str(job.get("wallet_id") or compromised_card.get("wallet_id") or "").strip()
+    if not wallet_id:
+        return
+
+    limit_per_tx = Decimal(str(compromised_card.get("limit_per_tx") or "500"))
+    limit_daily = Decimal(str(compromised_card.get("limit_daily") or "2000"))
+    limit_monthly = Decimal(str(compromised_card.get("limit_monthly") or "10000"))
+    card_type_raw = str(compromised_card.get("card_type") or "multi_use").strip().lower()
+    locked_merchant_id = compromised_card.get("locked_merchant_id")
+
+    try:
+        replacement = await deps.card_provider.create_card(
+            wallet_id=wallet_id,
+            card_type=card_type_raw,
+            limit_per_tx=limit_per_tx,
+            limit_daily=limit_daily,
+            limit_monthly=limit_monthly,
+            locked_merchant_id=locked_merchant_id,
+        )
+    except Exception:
+        # Compatibility: some provider adapters still expect CardType enum.
+        try:
+            from sardis_cards.models import CardType
+
+            fallback_card_type = CardType(card_type_raw) if card_type_raw in {item.value for item in CardType} else CardType.MULTI_USE
+            replacement = await deps.card_provider.create_card(
+                wallet_id=wallet_id,
+                card_type=fallback_card_type,
+                limit_per_tx=limit_per_tx,
+                limit_daily=limit_daily,
+                limit_monthly=limit_monthly,
+                locked_merchant_id=locked_merchant_id,
+            )
+        except Exception:
+            logger.exception("Failed to create replacement card during rotation")
+            return
+
+    if isinstance(replacement, dict):
+        replacement_provider_card_id = str(replacement.get("provider_card_id") or "").strip()
+    else:
+        replacement_provider_card_id = str(getattr(replacement, "provider_card_id", "") or "").strip()
+    if not replacement_provider_card_id:
+        return
+
+    try:
+        if hasattr(deps.card_provider, "activate_card"):
+            await deps.card_provider.activate_card(provider_card_id=replacement_provider_card_id)
+    except Exception:
+        logger.exception("Failed to activate replacement card during rotation")
+
+    if hasattr(deps.card_repo, "create"):
+        try:
+            await deps.card_repo.create(
+                card_id=replacement_card_id,
+                wallet_id=wallet_id,
+                provider=str(compromised_card.get("provider") or getattr(deps.card_provider, "name", "unknown")),
+                provider_card_id=replacement_provider_card_id,
+                card_type=card_type_raw,
+                limit_per_tx=float(limit_per_tx),
+                limit_daily=float(limit_daily),
+                limit_monthly=float(limit_monthly),
+            )
+            if hasattr(deps.card_repo, "update_status"):
+                await deps.card_repo.update_status(replacement_card_id, "active")
+        except Exception:
+            logger.exception("Failed to persist replacement card during rotation")
+
+    await _emit_audit_event(
+        deps,
+        event_type="secure_checkout.card_auto_rotated",
+        payload={
+            "job_id": job.get("job_id"),
+            "reason": reason_code,
+            "compromised_card_id": compromised_card.get("card_id"),
+            "replacement_card_id": replacement_card_id,
+            "replacement_provider_card_id": replacement_provider_card_id,
+        },
+    )
+
+
+def _schedule_auto_unfreeze_after_cooldown(
+    *,
+    deps: SecureCheckoutDependencies,
+    job: dict[str, Any],
+    card_id: str,
+    provider_card_id: str,
+    severity: SecurityIncidentSeverity,
+    cooldown_seconds: int,
+) -> None:
+    if not deps.card_provider or not deps.card_repo:
+        return
+    if not _auto_unfreeze_on_security_incident_enabled():
+        return
+    if not _auto_unfreeze_allowed_for_severity(severity):
+        return
+    if not _auto_unfreeze_ops_approved():
+        return
+
+    async def _runner() -> None:
+        await asyncio.sleep(cooldown_seconds)
+        try:
+            await deps.card_provider.unfreeze_card(provider_card_id=provider_card_id)
+            if hasattr(deps.card_repo, "update_status"):
+                await deps.card_repo.update_status(card_id, "active")
+            await _emit_audit_event(
+                deps,
+                event_type="secure_checkout.card_auto_unfrozen",
+                payload={
+                    "job_id": job.get("job_id"),
+                    "card_id": card_id,
+                    "provider_card_id": provider_card_id,
+                    "severity": severity.value,
+                    "cooldown_seconds": cooldown_seconds,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to auto-unfreeze card after cooldown")
+
+    asyncio.create_task(_runner())
+
+
 async def _handle_security_incident(
     *,
     deps: SecureCheckoutDependencies,
@@ -817,11 +1038,30 @@ async def _handle_security_incident(
     detail: str,
     secret_ref: Optional[str] = None,
 ) -> None:
+    severity = _security_incident_severity(code)
+    cooldown_seconds = _security_incident_cooldown_seconds(severity)
+    actions: list[str] = ["append_audit", "dispatch_alert"]
+    if _auto_freeze_on_security_incident_enabled():
+        actions.append("freeze_card")
+    if _auto_rotate_on_security_incident_enabled() and severity.value in _auto_rotate_severities():
+        actions.append("rotate_card")
+    if _auto_unfreeze_on_security_incident_enabled():
+        if _auto_unfreeze_allowed_for_severity(severity):
+            if _auto_unfreeze_ops_approved():
+                actions.append(f"auto_unfreeze_after_{cooldown_seconds}s")
+            else:
+                actions.append("auto_unfreeze_blocked_missing_ops_approval")
+        else:
+            actions.append("auto_unfreeze_not_allowed_for_severity")
+
     safe_detail = _redact_sensitive_text(detail)
     payload: dict[str, Any] = {
         "code": code,
+        "severity": severity.value,
         "detail": safe_detail,
         "secret_ref": secret_ref,
+        "cooldown_seconds": cooldown_seconds,
+        "planned_actions": actions,
     }
     if job:
         payload.update(
@@ -864,7 +1104,38 @@ async def _handle_security_incident(
                 "card_id": card_id,
                 "provider_card_id": provider_card_id,
                 "reason": code,
+                "severity": severity.value,
             },
+        )
+
+        if _auto_rotate_on_security_incident_enabled() and severity.value in _auto_rotate_severities():
+            await _try_rotate_incident_card(
+                deps=deps,
+                job=job,
+                compromised_card=card or {"card_id": card_id},
+                reason_code=code,
+            )
+
+        if _auto_unfreeze_on_security_incident_enabled() and not _auto_unfreeze_ops_approved():
+            await _emit_audit_event(
+                deps,
+                event_type="secure_checkout.card_unfreeze_pending_ops_approval",
+                payload={
+                    "job_id": job.get("job_id"),
+                    "card_id": card_id,
+                    "provider_card_id": provider_card_id,
+                    "severity": severity.value,
+                    "cooldown_seconds": cooldown_seconds,
+                },
+            )
+
+        _schedule_auto_unfreeze_after_cooldown(
+            deps=deps,
+            job=job,
+            card_id=card_id,
+            provider_card_id=provider_card_id,
+            severity=severity,
+            cooldown_seconds=cooldown_seconds,
         )
     except Exception:
         logger.exception("Failed to auto-freeze card for security incident")
