@@ -1103,7 +1103,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if use_postgres:
         secure_checkout_job_repo = SecureCheckoutJobRepository(dsn=database_url)
         secure_checkout_store = secure_checkout_router.RepositoryBackedSecureCheckoutStore(
-            secure_checkout_job_repo
+            secure_checkout_job_repo,
+            cache_service=cache_service,
         )
     secure_checkout_enabled = os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in (
         "1",
@@ -1122,6 +1123,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             policy_store=policy_store,
             approval_service=approval_service,
             audit_sink=audit_store,
+            cache_service=cache_service,
             store=secure_checkout_store,
         )
     )

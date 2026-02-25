@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from datetime import timedelta
 from decimal import Decimal
 
+from sardis_v2_core.cache import create_cache_service
 from sardis_api.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
+from sardis_api.routers.secure_checkout import RepositoryBackedSecureCheckoutStore
 
 
 def _sample_job(intent_id: str = "intent_repo_1") -> dict:
@@ -58,3 +61,33 @@ async def test_repository_memory_upsert_idempotent_by_intent():
     second = await repo.upsert_job(second_payload)
 
     assert first["job_id"] == second["job_id"]
+
+
+async def test_repository_backed_store_shares_secret_refs_across_instances():
+    repo = SecureCheckoutJobRepository(dsn="memory://")
+    cache = create_cache_service(redis_url=None)
+    store_a = RepositoryBackedSecureCheckoutStore(repo, cache_service=cache)
+    store_b = RepositoryBackedSecureCheckoutStore(repo, cache_service=cache)
+
+    secret_ref = "sec_shared_1"
+    await store_a.put_secret(
+        secret_ref,
+        {
+            "pan": "4111111111111111",
+            "cvv": "123",
+            "exp_month": 12,
+            "exp_year": 2030,
+            "merchant_origin": "https://example.com",
+            "amount": "5.00",
+            "currency": "USD",
+            "purpose": "agent_checkout",
+        },
+        expires_at=datetime.now(timezone.utc) + timedelta(seconds=30),
+    )
+
+    consumed_first = await store_b.consume_secret(secret_ref)
+    assert consumed_first is not None
+    assert consumed_first["pan"] == "4111111111111111"
+
+    consumed_second = await store_a.consume_secret(secret_ref)
+    assert consumed_second is None

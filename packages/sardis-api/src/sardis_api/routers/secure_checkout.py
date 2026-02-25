@@ -48,6 +48,7 @@ class SecureCheckoutDependencies:
     policy_store: Any | None = None
     approval_service: Any | None = None
     audit_sink: Any | None = None
+    cache_service: Any | None = None
     store: "InMemorySecureCheckoutStore | None" = None
 
 
@@ -503,10 +504,11 @@ def _resolve_store(deps: SecureCheckoutDependencies) -> InMemorySecureCheckoutSt
 class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
     """Persistent job storage + in-memory one-time secret storage."""
 
-    def __init__(self, job_repository: Any):
+    def __init__(self, job_repository: Any, cache_service: Any | None = None):
         super().__init__()
         self.is_persistent = True
         self._job_repository = job_repository
+        self._cache = cache_service
 
     async def upsert_job(self, job: dict[str, Any]) -> dict[str, Any]:
         if not self._job_repository:
@@ -522,6 +524,60 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
         if not self._job_repository:
             return await super().update_job(job_id, **fields)
         return await self._job_repository.update_job(job_id, **fields)
+
+    def _secret_key(self, secret_ref: str) -> str:
+        return f"sardis:checkout:secret:{secret_ref}"
+
+    def _consume_lock_resource(self, secret_ref: str) -> str:
+        return f"checkout:secret:consume:{secret_ref}"
+
+    async def put_secret(self, secret_ref: str, payload: dict[str, Any], expires_at: datetime) -> None:
+        if not self._cache:
+            await super().put_secret(secret_ref, payload, expires_at=expires_at)
+            return
+        ttl = int((expires_at - _now_utc()).total_seconds())
+        if ttl <= 0:
+            return
+        body = {
+            "payload": dict(payload),
+            "expires_at": expires_at.isoformat(),
+        }
+        await self._cache.set(self._secret_key(secret_ref), json.dumps(body), ttl=ttl)
+
+    async def drop_secret(self, secret_ref: str) -> None:
+        if not self._cache:
+            await super().drop_secret(secret_ref)
+            return
+        await self._cache.delete(self._secret_key(secret_ref))
+
+    async def consume_secret(self, secret_ref: str) -> Optional[dict[str, Any]]:
+        if not self._cache:
+            return await super().consume_secret(secret_ref)
+
+        lock_resource = self._consume_lock_resource(secret_ref)
+        try:
+            async with self._cache.lock(lock_resource, ttl_seconds=5, max_retries=3):
+                raw = await self._cache.get(self._secret_key(secret_ref))
+                if not raw:
+                    return None
+                await self._cache.delete(self._secret_key(secret_ref))
+        except TimeoutError:
+            return None
+
+        try:
+            body = json.loads(raw)
+            expires_at_raw = str(body.get("expires_at") or "").strip()
+            expires_at = datetime.fromisoformat(expires_at_raw) if expires_at_raw else _now_utc()
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if _now_utc() > expires_at:
+                return None
+            payload = body.get("payload")
+            if isinstance(payload, dict):
+                return payload
+            return None
+        except Exception:
+            return None
 
 
 def _allow_inmemory_store_in_prod() -> bool:
