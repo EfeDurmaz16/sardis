@@ -13,11 +13,20 @@ from sardis_api.routers.funding_capabilities import (
 )
 
 
-def _principal() -> Principal:
+def _admin_principal() -> Principal:
     return Principal(
         kind="api_key",
         organization_id="org_demo",
         scopes=["*"],
+        api_key=None,
+    )
+
+
+def _non_admin_principal() -> Principal:
+    return Principal(
+        kind="api_key",
+        organization_id="org_demo",
+        scopes=["read"],
         api_key=None,
     )
 
@@ -40,10 +49,12 @@ def _settings() -> SimpleNamespace:
     )
 
 
-def _build_app(settings_obj: SimpleNamespace) -> FastAPI:
+def _build_app(settings_obj: SimpleNamespace, *, admin: bool = True) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[get_deps] = lambda: FundingCapabilitiesDeps(settings=settings_obj)
-    app.dependency_overrides[require_principal] = _principal
+    app.dependency_overrides[require_principal] = (
+        _admin_principal if admin else _non_admin_principal
+    )
     app.include_router(router, prefix="/api/v2")
     return app
 
@@ -83,3 +94,13 @@ def test_capability_matrix_marks_coinbase_stablecoin_ready(monkeypatch):
     assert providers["coinbase_cdp"]["funding_stablecoin_ready"] is True
     assert providers["coinbase_cdp"]["onchain_rail_ready"] is True
     assert "coinbase_cdp" in payload["rails"]["stablecoin_ready_providers"]
+
+
+def test_capability_matrix_requires_admin(monkeypatch):
+    monkeypatch.setenv("STRIPE_API_KEY", "sk_test_123")
+    app = _build_app(_settings(), admin=False)
+    client = TestClient(app)
+
+    response = client.get("/api/v2/funding/capabilities")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin privileges required"

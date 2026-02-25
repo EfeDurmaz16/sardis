@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, require_admin_principal
 from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
 from sardis_v2_core.config import load_settings
 
@@ -33,7 +33,7 @@ def _resolve_settings(deps: FundingCapabilitiesDeps):
 @router.get("/capabilities")
 async def get_funding_capability_matrix(
     deps: FundingCapabilitiesDeps = Depends(get_deps),
-    _: Principal = Depends(require_principal),
+    _: Principal = Depends(require_admin_principal),
 ):
     settings = _resolve_settings(deps)
     issuer_rows = {row.name: row for row in evaluate_issuer_readiness()}
