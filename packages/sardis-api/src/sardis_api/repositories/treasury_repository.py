@@ -865,31 +865,48 @@ class TreasuryRepository:
         pool = await self._get_pool()
         if pool is None:
             return
+        environment = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
         async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS issuer_funding_attempts (
-                    id UUID PRIMARY KEY,
-                    organization_id TEXT NOT NULL,
-                    operation_id TEXT NOT NULL,
-                    attempt_index INT NOT NULL,
-                    provider TEXT NOT NULL,
-                    rail TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    error TEXT,
-                    amount_minor BIGINT NOT NULL,
-                    currency TEXT NOT NULL DEFAULT 'USD',
-                    connected_account_id TEXT,
-                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    UNIQUE(organization_id, operation_id, attempt_index)
-                );
-                CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_created
-                  ON issuer_funding_attempts(organization_id, created_at DESC);
-                CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_operation
-                  ON issuer_funding_attempts(organization_id, operation_id, attempt_index);
-                """
-            )
+            if environment in {"prod", "production"}:
+                exists = await conn.fetchval(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'issuer_funding_attempts'
+                    )
+                    """
+                )
+                if not exists:
+                    raise RuntimeError(
+                        "issuer_funding_attempts table not found in production; "
+                        "run database migrations before starting the API"
+                    )
+            else:
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS issuer_funding_attempts (
+                        id UUID PRIMARY KEY,
+                        organization_id TEXT NOT NULL,
+                        operation_id TEXT NOT NULL,
+                        attempt_index INT NOT NULL,
+                        provider TEXT NOT NULL,
+                        rail TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        error TEXT,
+                        amount_minor BIGINT NOT NULL,
+                        currency TEXT NOT NULL DEFAULT 'USD',
+                        connected_account_id TEXT,
+                        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        UNIQUE(organization_id, operation_id, attempt_index)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_created
+                      ON issuer_funding_attempts(organization_id, created_at DESC);
+                    CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_operation
+                      ON issuer_funding_attempts(organization_id, operation_id, attempt_index);
+                    """
+                )
         self._funding_attempt_table_ready = True
 
     async def record_issuing_funding_event(
