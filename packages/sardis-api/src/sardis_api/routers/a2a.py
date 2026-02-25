@@ -381,11 +381,13 @@ class A2ATrustCheckResponse(BaseModel):
     allowed: bool
     reason: str
     source: str
+    table_hash: str
 
 
 class A2ATrustTableResponse(BaseModel):
     enforced: bool
     source: str
+    table_hash: str
     relations: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -737,6 +739,7 @@ async def get_a2a_trust_table(
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
+        table_hash=_trust_table_hash(table),
         relations=normalized,
     )
 
@@ -764,6 +767,14 @@ async def check_a2a_trust(
         sender_agent_id=payload.sender_agent_id,
         recipient_agent_id=payload.recipient_agent_id,
     )
+    table_hash = _trust_table_hash({})
+    if _enforce_a2a_trust_table():
+        table, table_source = await _resolve_a2a_trust_table(
+            deps=deps,
+            organization_id=str(principal.organization_id),
+        )
+        if table_source != "repository_error":
+            table_hash = _trust_table_hash(table)
     return A2ATrustCheckResponse(
         sender_agent_id=payload.sender_agent_id,
         recipient_agent_id=payload.recipient_agent_id,
@@ -771,6 +782,7 @@ async def check_a2a_trust(
         allowed=allowed,
         reason=reason,
         source=source,
+        table_hash=table_hash,
     )
 
 
@@ -876,6 +888,7 @@ async def upsert_a2a_trust_relation(
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
+        table_hash=_trust_table_hash(table),
         relations=normalized,
     )
 
@@ -905,6 +918,7 @@ async def delete_a2a_trust_relation(
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
+        table_hash=_trust_table_hash(table),
         relations=normalized,
     )
 

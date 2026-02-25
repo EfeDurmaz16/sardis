@@ -134,6 +134,7 @@ def test_admin_can_view_a2a_trust_table(monkeypatch):
     assert payload["enforced"] is True
     assert payload["relations"]["agent_a"] == ["agent_b", "agent_ops"]
     assert payload["source"] == "env"
+    assert payload["table_hash"]
 
 
 def test_non_admin_cannot_view_a2a_trust_table():
@@ -157,6 +158,7 @@ def test_non_admin_can_check_trust_for_own_org_agents(monkeypatch):
     assert payload["allowed"] is True
     assert payload["reason"] == "trusted_sender_relation"
     assert payload["source"] == "env"
+    assert payload["table_hash"]
 
 
 def test_non_admin_trust_check_rejects_cross_org_agents(monkeypatch):
@@ -183,6 +185,7 @@ def test_admin_trust_table_prefers_repository_when_available(monkeypatch):
     payload = response.json()
     assert payload["source"] == "repository"
     assert payload["relations"]["agent_a"] == ["agent_repo"]
+    assert payload["table_hash"]
 
 
 def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch):
@@ -197,6 +200,7 @@ def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch
     assert upserted.status_code == 200
     upserted_payload = upserted.json()
     assert "agent_new" in upserted_payload["relations"]["agent_a"]
+    assert upserted_payload["table_hash"]
 
     deleted = client.request(
         "DELETE",
@@ -206,6 +210,7 @@ def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch
     assert deleted.status_code == 200
     deleted_payload = deleted.json()
     assert "agent_new" not in deleted_payload["relations"]["agent_a"]
+    assert deleted_payload["table_hash"]
 
 
 def test_trust_peers_returns_only_trusted_by_default(monkeypatch):
