@@ -21,6 +21,7 @@ from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_api.authz import require_principal
 from sardis_api.authz import Principal
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_v2_core import AgentRepository
 
 logger = logging.getLogger(__name__)
@@ -243,6 +244,11 @@ async def execute_payment(
     wallet = await deps.wallet_repo.get_by_agent(mandate.subject)
     if not wallet:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
+    await enforce_agent_payment_rate_limit(
+        agent_id=mandate.subject,
+        operation="mvp.payments.execute",
+        settings=deps.settings,
+    )
     pilot_policy = get_pilot_execution_policy(deps.settings)
     enforce_staging_live_guard(
         policy=pilot_policy,

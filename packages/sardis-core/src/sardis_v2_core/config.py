@@ -225,6 +225,10 @@ class SardisSettings(BaseSettings):
     erc4337_entrypoint_v07_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
     erc4337_rollout_stage: Literal["pilot", "beta", "ga"] = "pilot"
     erc4337_sponsor_stage_caps_json: str = ""
+    # Agent payment endpoint limiter (sliding window)
+    agent_payment_rate_limit_enabled: bool = True
+    agent_payment_rate_limit_max_requests: int = 30
+    agent_payment_rate_limit_window_seconds: int = 60
 
     @property
     def is_production(self) -> bool:

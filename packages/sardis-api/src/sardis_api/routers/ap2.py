@@ -21,6 +21,7 @@ from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import run_idempotent
 
@@ -444,6 +445,11 @@ async def execute_ap2_payment(
         wallet = await deps.wallet_repo.get_by_agent(payment.subject)
         if not wallet:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="wallet_not_found_for_agent")
+        await enforce_agent_payment_rate_limit(
+            agent_id=payment.subject,
+            operation="ap2.payments.execute",
+            settings=deps.settings,
+        )
         freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
         if not freeze_ok:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)

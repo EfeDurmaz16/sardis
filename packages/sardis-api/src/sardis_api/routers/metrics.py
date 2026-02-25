@@ -247,6 +247,19 @@ policy_denial_burst_window = Gauge(
     ["reason"],
 )
 
+# Agent-level payment rate limit metrics
+payment_agent_rate_limit_checks_total = Counter(
+    "sardis_payment_agent_rate_limit_checks_total",
+    "Agent payment rate-limit checks by operation",
+    ["operation", "result"],  # result: allowed|denied
+)
+
+payment_agent_rate_limited_total = Counter(
+    "sardis_payment_agent_rate_limited_total",
+    "Agent payment requests denied due to endpoint rate limits",
+    ["operation"],
+)
+
 
 # Metrics helper functions
 def record_payment(chain: str, token: str, amount_usd: float, status: str) -> None:
@@ -283,6 +296,15 @@ def record_policy_denial_spike(
     policy_denial_burst_window.labels(reason=key).set(len(bucket))
     if len(bucket) >= threshold:
         policy_denial_spikes_total.labels(reason=key).inc()
+
+
+def record_agent_payment_rate_limit(*, operation: str, allowed: bool) -> None:
+    """Record agent-level payment limiter decisions."""
+    op = (operation or "unknown").strip() or "unknown"
+    result = "allowed" if allowed else "denied"
+    payment_agent_rate_limit_checks_total.labels(operation=op, result=result).inc()
+    if not allowed:
+        payment_agent_rate_limited_total.labels(operation=op).inc()
 
 
 def record_http_request(method: str, endpoint: str, status: int, duration: float) -> None:

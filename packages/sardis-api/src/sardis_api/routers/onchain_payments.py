@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
@@ -82,6 +83,7 @@ class OnChainPaymentDependencies:
     coinbase_cdp_provider: Any = None
     default_on_chain_provider: Optional[str] = None
     audit_store: Any = None
+    settings: Any = None
 
 
 def get_deps() -> OnChainPaymentDependencies:
@@ -298,6 +300,11 @@ async def pay_onchain(
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
     await _require_wallet_access(wallet, principal, deps)
+    await enforce_agent_payment_rate_limit(
+        agent_id=wallet.agent_id,
+        operation="wallets.pay_onchain",
+        settings=deps.settings,
+    )
     env_name = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
     nonce = hashlib.sha256(
         f"{wallet_id}:{request.chain}:{request.token}:{request.to}:{request.amount}:{request.memo or ''}".encode()

@@ -656,6 +656,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         coinbase_cdp_provider=coinbase_cdp_provider,
         default_on_chain_provider=configured_on_chain_provider,
         audit_store=audit_store,
+        settings=settings,
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 

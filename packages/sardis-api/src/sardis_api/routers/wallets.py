@@ -16,6 +16,7 @@ from sardis_ledger.records import LedgerStore
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -515,6 +516,11 @@ async def transfer_crypto(
 
     async def _execute() -> tuple[int, object]:
         wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+        await enforce_agent_payment_rate_limit(
+            agent_id=wallet.agent_id,
+            operation="wallets.transfer",
+            settings=deps.settings,
+        )
 
         if not wallet.is_active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet is inactive")
