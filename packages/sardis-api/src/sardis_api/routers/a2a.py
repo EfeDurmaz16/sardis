@@ -73,6 +73,22 @@ def _enforce_a2a_trust_table() -> bool:
     return _is_production_env()
 
 
+def _require_approval_for_trust_mutations() -> bool:
+    configured = os.getenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "").strip()
+    if configured:
+        return _is_truthy(configured)
+    return _is_production_env()
+
+
+def _allowed_trust_mutation_approval_actions() -> set[str]:
+    raw = os.getenv(
+        "SARDIS_A2A_TRUST_RELATION_MUTATION_ALLOWED_ACTIONS",
+        "a2a_trust_mutation,a2a_trust_relation_change",
+    )
+    out = {part.strip().lower() for part in raw.split(",") if part.strip()}
+    return out or {"a2a_trust_mutation"}
+
+
 def _parse_a2a_trust_table() -> dict[str, set[str]]:
     """
     Parse trust relations from env.
@@ -232,6 +248,53 @@ async def _append_a2a_trust_audit_entry(
     return str(result or entry.audit_id)
 
 
+async def _validate_trust_mutation_approval(
+    *,
+    deps: "A2ADependencies",
+    principal: Principal,
+    operation: str,
+    sender_agent_id: str,
+    recipient_agent_id: str,
+    approval_id: Optional[str],
+) -> tuple[bool, str]:
+    if not _require_approval_for_trust_mutations():
+        return True, "approval_not_required"
+    if not approval_id:
+        return False, "approval_required"
+    if deps.approval_service is None:
+        return False, "approval_service_not_configured"
+    approval = await deps.approval_service.get_approval(approval_id)
+    if not approval:
+        return False, "approval_not_found"
+    if str(getattr(approval, "status", "")).strip().lower() != "approved":
+        return False, "approval_not_approved"
+    reviewed_by = str(getattr(approval, "reviewed_by", "") or "").strip()
+    if not reviewed_by:
+        return False, "approval_missing_reviewer"
+    approval_org_id = str(getattr(approval, "organization_id", "") or "").strip()
+    if approval_org_id and approval_org_id != str(principal.organization_id) and not principal.is_admin:
+        return False, "approval_org_mismatch"
+    action = str(getattr(approval, "action", "") or "").strip().lower()
+    if action not in _allowed_trust_mutation_approval_actions():
+        return False, "approval_action_mismatch"
+    metadata = getattr(approval, "metadata", {}) or {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    meta_sender = str(metadata.get("sender_agent_id", "") or "").strip()
+    meta_recipient = str(metadata.get("recipient_agent_id", "") or "").strip()
+    meta_operation = str(metadata.get("operation", "") or "").strip().lower()
+    meta_org = str(metadata.get("organization_id", "") or "").strip()
+    if meta_sender and meta_sender != sender_agent_id:
+        return False, "approval_sender_mismatch"
+    if meta_recipient and meta_recipient != recipient_agent_id:
+        return False, "approval_recipient_mismatch"
+    if meta_operation and meta_operation != operation.lower():
+        return False, "approval_operation_mismatch"
+    if meta_org and meta_org != str(principal.organization_id):
+        return False, "approval_org_mismatch"
+    return True, "approval_valid"
+
+
 def _normalize_signature_algorithm(raw: str) -> str:
     value = (raw or "").strip().lower()
     if value in {"ed25519", "ecdsa-p256", "ecdsa_p256", "p256"}:
@@ -341,6 +404,7 @@ class A2ADependencies:
         identity_registry: IdentityRegistry | None = None,
         trust_repo: Any | None = None,
         audit_store: Any | None = None,
+        approval_service: Any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -351,6 +415,7 @@ class A2ADependencies:
         self.identity_registry = identity_registry
         self.trust_repo = trust_repo
         self.audit_store = audit_store
+        self.approval_service = approval_service
 
 
 def get_deps() -> A2ADependencies:
@@ -439,18 +504,21 @@ class A2ATrustTableResponse(BaseModel):
     source: str
     table_hash: str
     audit_id: Optional[str] = None
+    approval_id: Optional[str] = None
     relations: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class A2ATrustRelationUpsertRequest(BaseModel):
     sender_agent_id: str
     recipient_agent_id: str
+    approval_id: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class A2ATrustRelationDeleteRequest(BaseModel):
     sender_agent_id: str
     recipient_agent_id: str
+    approval_id: Optional[str] = None
 
 
 class A2APeerTrustEntry(BaseModel):
@@ -1008,6 +1076,16 @@ async def upsert_a2a_trust_relation(
     upserter = getattr(repo, "upsert_relation", None)
     if not callable(upserter):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
+    approval_ok, approval_reason = await _validate_trust_mutation_approval(
+        deps=deps,
+        principal=principal,
+        operation="upsert_relation",
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        approval_id=payload.approval_id,
+    )
+    if not approval_ok:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=approval_reason)
     table_before, source_before = await _resolve_a2a_trust_table(
         deps=deps,
         organization_id=str(principal.organization_id),
@@ -1036,13 +1114,18 @@ async def upsert_a2a_trust_relation(
         after_table_hash=after_hash,
         source_before=source_before,
         source_after=source,
-        metadata={"request_metadata": payload.metadata},
+        metadata={
+            "request_metadata": payload.metadata,
+            "approval_id": payload.approval_id,
+            "approval_validation": approval_reason,
+        },
     )
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
         table_hash=after_hash,
         audit_id=audit_id,
+        approval_id=payload.approval_id if approval_ok else None,
         relations=normalized,
     )
 
@@ -1059,6 +1142,16 @@ async def delete_a2a_trust_relation(
     deleter = getattr(repo, "delete_relation", None)
     if not callable(deleter):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
+    approval_ok, approval_reason = await _validate_trust_mutation_approval(
+        deps=deps,
+        principal=principal,
+        operation="delete_relation",
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        approval_id=payload.approval_id,
+    )
+    if not approval_ok:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=approval_reason)
     table_before, source_before = await _resolve_a2a_trust_table(
         deps=deps,
         organization_id=str(principal.organization_id),
@@ -1086,13 +1179,18 @@ async def delete_a2a_trust_relation(
         after_table_hash=after_hash,
         source_before=source_before,
         source_after=source,
-        metadata={"deleted": bool(deleted)},
+        metadata={
+            "deleted": bool(deleted),
+            "approval_id": payload.approval_id,
+            "approval_validation": approval_reason,
+        },
     )
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
         table_hash=after_hash,
         audit_id=audit_id,
+        approval_id=payload.approval_id if approval_ok else None,
         relations=normalized,
     )
 

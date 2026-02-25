@@ -100,6 +100,33 @@ class _AuditStore:
         return self.entries[-limit:]
 
 
+class _ApprovalService:
+    def __init__(self) -> None:
+        self.items = {}
+
+    def add(
+        self,
+        approval_id: str,
+        *,
+        status: str = "approved",
+        reviewed_by: str = "reviewer@sardis.sh",
+        organization_id: str = "org_demo",
+        action: str = "a2a_trust_mutation",
+        metadata: dict | None = None,
+    ) -> None:
+        self.items[approval_id] = SimpleNamespace(
+            id=approval_id,
+            status=status,
+            reviewed_by=reviewed_by,
+            organization_id=organization_id,
+            action=action,
+            metadata=metadata or {},
+        )
+
+    async def get_approval(self, approval_id: str):
+        return self.items.get(approval_id)
+
+
 def _principal_admin() -> Principal:
     return Principal(
         kind="api_key",
@@ -118,7 +145,7 @@ def _principal_member() -> Principal:
     )
 
 
-def _build_app(*, admin: bool, trust_repo=None, audit_store=None) -> FastAPI:
+def _build_app(*, admin: bool, trust_repo=None, audit_store=None, approval_service=None) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[require_principal] = _principal_admin if admin else _principal_member
     app.dependency_overrides[a2a.get_deps] = lambda: a2a.A2ADependencies(
@@ -131,6 +158,7 @@ def _build_app(*, admin: bool, trust_repo=None, audit_store=None) -> FastAPI:
         identity_registry=None,
         trust_repo=trust_repo,
         audit_store=audit_store,
+        approval_service=approval_service,
     )
     app.include_router(a2a.router, prefix="/api/v2/a2a")
     return app
@@ -307,3 +335,43 @@ def test_admin_can_list_recent_a2a_trust_audit_entries(monkeypatch):
     assert payload["entries"][0]["provider"] == "a2a_trust"
     assert payload["entries"][0]["metadata"]["organization_id"] == "org_demo"
     assert payload["entries"][0]["proof_path"].startswith("/api/v2/compliance/audit/mandate/")
+
+
+def test_trust_relation_mutation_requires_approval_when_enabled(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "1")
+    trust_repo = _TrustRepo()
+    client = TestClient(_build_app(admin=True, trust_repo=trust_repo))
+
+    response = client.post(
+        "/api/v2/a2a/trust/relations",
+        json={"sender_agent_id": "agent_a", "recipient_agent_id": "agent_new"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "approval_required"
+
+
+def test_trust_relation_mutation_accepts_valid_approval(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "1")
+    trust_repo = _TrustRepo()
+    approval_service = _ApprovalService()
+    approval_service.add(
+        "appr_trust_1",
+        metadata={
+            "operation": "upsert_relation",
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "organization_id": "org_demo",
+        },
+    )
+    client = TestClient(_build_app(admin=True, trust_repo=trust_repo, approval_service=approval_service))
+
+    response = client.post(
+        "/api/v2/a2a/trust/relations",
+        json={"sender_agent_id": "agent_a", "recipient_agent_id": "agent_new", "approval_id": "appr_trust_1"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["approval_id"] == "appr_trust_1"
+    assert "agent_new" in payload["relations"]["agent_a"]
