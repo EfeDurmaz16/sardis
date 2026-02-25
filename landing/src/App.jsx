@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,21 +24,6 @@ const icons = {
   searchInsights: "/icons/search-insights-9.png",
   creditCardGear: "/icons/credit-card-gear-10.png",
   autoRenew: "/icons/auto-renew-0.png",
-};
-
-// Animation Variants
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
 };
 
 // Copy Command Component
@@ -107,6 +91,7 @@ function App() {
   const [scrolled, setScrolled] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Check for saved preference or system preference
@@ -158,15 +143,8 @@ function App() {
           </div>
 
           <div className="hidden md:flex items-center gap-1">
-            <Badge variant="outline" className="mr-6 border-emerald-600 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400 bg-transparent px-3 py-1 rounded-none">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 animate-pulse" />
-              DEVELOPER PREVIEW • LOOKING FOR DESIGN PARTNERS
-            </Badge>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <Link to="/docs">Docs</Link>
-            </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
-              <Link to="/enterprise">Enterprise</Link>
             </Button>
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-none" asChild>
               <a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noopener noreferrer">
@@ -178,10 +156,42 @@ function App() {
               className="ml-2 bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-semibold rounded-none shadow-md shadow-[var(--sardis-orange)]/20"
               onClick={() => setIsWaitlistOpen(true)}
             >
-              Become a Design Partner
+              Get Early Access
             </Button>
           </div>
+
+          {/* Mobile hamburger */}
+          <div className="flex md:hidden items-center gap-2">
+            <DarkModeToggle isDark={isDark} toggle={toggleDarkMode} />
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="w-10 h-10 border border-border hover:border-[var(--sardis-orange)] transition-colors flex items-center justify-center"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5 text-foreground" />
+              ) : (
+                <Menu className="w-5 h-5 text-foreground" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-sm">
+            <div className="container mx-auto px-6 py-4 flex flex-col gap-3">
+              <Link to="/docs" className="text-muted-foreground hover:text-foreground py-2" onClick={() => setIsMobileMenuOpen(false)}>Docs</Link>
+              <a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground py-2" onClick={() => setIsMobileMenuOpen(false)}>GitHub</a>
+              <Button
+                className="bg-[var(--sardis-orange)] text-white hover:bg-[var(--sardis-orange)]/90 font-semibold rounded-none shadow-md shadow-[var(--sardis-orange)]/20 w-full"
+                onClick={() => { setIsWaitlistOpen(true); setIsMobileMenuOpen(false); }}
+              >
+                Get Early Access
+              </Button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -193,25 +203,42 @@ function App() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <motion.div
-            initial="initial"
-            animate="animate"
-            variants={staggerContainer}
-            className="max-w-3xl mx-auto text-center"
-          >
-              <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight mb-6">
-                The Payment OS for the{" "}
-                <span className="text-[var(--sardis-orange)]">Agent Economy</span>
-              </motion.h1>
+          <div className="max-w-4xl mx-auto text-center">
+              <h1 className="mx-auto max-w-[15ch] text-balance text-[clamp(2.3rem,7vw,5.5rem)] font-sans font-semibold leading-[1.02] tracking-[-0.03em] mb-7">
+                Your AI agents can now pay for things. Safely.
+              </h1>
 
-              <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-                Give your agents programmable wallets with natural language spending limits. Prevent financial hallucinations before they happen.
-              </motion.p>
+              <p className="text-base md:text-xl text-muted-foreground mb-5 max-w-xl mx-auto leading-relaxed">
+                Set spending rules in plain English. Sardis enforces them before any money moves.
+              </p>
 
-              <motion.div variants={fadeInUp} className="max-w-2xl mx-auto">
+              <p className="text-sm md:text-[15px] text-muted-foreground mb-8">
+                For teams building autonomous AI agents that handle real transactions.
+              </p>
+
+              <div className="max-w-2xl mx-auto">
                 <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
-              </motion.div>
-          </motion.div>
+              </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Bar */}
+      <section className="py-10 border-t border-border">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { number: "9", label: "Framework SDKs" },
+              { number: "5", label: "Blockchains" },
+              { number: "4", label: "Payment Protocols" },
+              { number: "0", label: "Private Keys Stored" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="text-3xl font-display font-bold text-[var(--sardis-orange)]">{stat.number}</div>
+                <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -266,18 +293,13 @@ function App() {
         </div>
       </section>
 
-      {/* Problem Section: The Read-Only Trap */}
+      {/* Problem Section: What Happens Without Guardrails */}
       <section className="py-28 md:py-36 relative border-t border-border">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-20 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">The Problem</p>
-              <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6 leading-tight">The "Read-Only" Trap</h2>
+            <div>
+              <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">THE PROBLEM</p>
+              <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6 leading-tight">What Happens Without Guardrails</h2>
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
                 AI agents can reason, plan, and execute complex workflows — but they <strong className="text-foreground font-medium">fail at checkout</strong>.
               </p>
@@ -287,9 +309,10 @@ function App() {
 
               <ul className="space-y-4">
                 {[
-                  { text: "Agents get blocked by SMS 2FA", icon: icons.shieldLock },
-                  { text: "No spending limits or guardrails", icon: icons.policy },
-                  { text: "Impossible to audit agent spending", icon: icons.searchInsights }
+                  { text: "Retry loops turn $10 into $1,000", icon: icons.autoRenew },
+                  { text: "Decimal errors: $100.00 sent instead of $1.00", icon: icons.trendingUp },
+                  { text: "Task drift: spending on unrelated things", icon: icons.policy },
+                  { text: "Zero visibility: no per-agent audit trail", icon: icons.searchInsights }
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-lg text-destructive">
                     <div className="w-10 h-10 border border-destructive/30 flex items-center justify-center">
@@ -299,15 +322,9 @@ function App() {
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
+            <div className="relative">
               {/* Visual representation of the trap - A blocked terminal */}
               <div className="border border-border bg-card overflow-hidden">
                 <div className="bg-muted px-4 py-3 border-b border-border flex gap-2">
@@ -333,26 +350,25 @@ function App() {
               <div className="absolute -bottom-4 -left-4 bg-destructive text-white px-4 py-2 font-mono font-bold text-sm border border-destructive">
                 EXECUTION BLOCKED
               </div>
-            </motion.div>
-          </div>
-
-          {/* Playground Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-32 md:mt-40 max-w-5xl mx-auto"
-          >
-            <div className="text-center mb-10">
-              <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Interactive Demo</p>
-              <h3 className="text-3xl md:text-4xl font-bold font-display">Experience the Spending Firewall</h3>
             </div>
-            <SardisPlayground />
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Features Section: Banking for Bots */}
+      {/* Interactive Demo */}
+      <section className="py-24 border-t border-border">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-10">
+            <p className="text-sm font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Live Demo</p>
+            <h3 className="text-3xl md:text-4xl font-bold font-display">Try It Now</h3>
+          </div>
+          <div className="max-w-5xl mx-auto">
+            <SardisPlayground />
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section: Built for Agent Payments */}
       <section className="py-28 md:py-36 border-t border-border relative">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/2 -right-48 w-[500px] h-[500px] bg-[var(--sardis-orange)]/3 rounded-full blur-[120px]" />
@@ -360,9 +376,9 @@ function App() {
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
             <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">What You Get</p>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Banking for Bots</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Built for Agent Payments</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Programmable wallets, virtual cards, and spending controls purpose-built for AI agents.
+              Wallets, virtual cards, and spending controls designed for AI agents.
             </p>
           </div>
 
@@ -406,13 +422,9 @@ function App() {
                 span: false,
               },
             ].map((feature, i) => (
-              <motion.div
+              <div
                 key={i}
                 className={feature.span ? "md:col-span-2 lg:col-span-2" : ""}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
               >
                 <Card className={cn(
                   "h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group",
@@ -430,201 +442,9 @@ function App() {
                     </p>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Fiat Rails Section */}
-      <section className="py-24 border-t border-border bg-muted/30">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 text-[var(--sardis-teal-strong)] dark:text-[#9DD9D2] border-[var(--sardis-teal-strong)]/30 dark:border-[#9DD9D2]/30 rounded-none font-mono">FIAT RAILS</Badge>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Unified Payment Rails</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Fund agent wallets from your bank account. Pay via virtual card or direct transfer. Withdraw back to USD. One API, every rail.
-            </p>
-          </div>
-
-          {/* Flow Diagram */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-12 p-8 border border-border bg-card overflow-x-auto"
-          >
-            <div className="flex items-center justify-center gap-4 min-w-[600px]">
-              {/* Bank */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 border-2 border-[var(--sardis-orange)] flex items-center justify-center">
-                  <IsometricIcon src={icons.trendingUp} className="w-10 h-10" isDark={isDark} />
-                </div>
-                <span className="text-sm font-mono font-bold">Bank</span>
-                <span className="text-xs text-muted-foreground">ACH / Wire / Card</span>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex flex-col items-center gap-1">
-                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
-                <span className="text-xs text-muted-foreground font-mono">Fund</span>
-              </div>
-
-              {/* Treasury */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 border border-border flex items-center justify-center bg-muted">
-                  <IsometricIcon src={icons.autoRenew} className="w-10 h-10" isDark={isDark} />
-                </div>
-                <span className="text-sm font-mono font-bold">Treasury</span>
-                <span className="text-xs text-muted-foreground">USD first</span>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex flex-col items-center gap-1">
-                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
-                <span className="text-xs text-muted-foreground font-mono">Route</span>
-              </div>
-
-              {/* Sardis Wallet */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-20 h-20 border-2 border-[var(--sardis-orange)] flex items-center justify-center bg-[var(--sardis-orange)]/10">
-                  <IsometricIcon src={icons.wallet} className="w-12 h-12" isDark={isDark} />
-                </div>
-                <span className="text-sm font-mono font-bold text-[var(--sardis-orange)]">Sardis Wallet</span>
-                <span className="text-xs text-muted-foreground">Policy Engine</span>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex flex-col items-center gap-1">
-                <div className="h-0.5 w-12 bg-[var(--sardis-orange)]" />
-                <span className="text-xs text-muted-foreground font-mono">Spend</span>
-              </div>
-
-              {/* Outputs */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 border border-border flex items-center justify-center">
-                    <IsometricIcon src={icons.creditCardGear} className="w-7 h-7" isDark={isDark} />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-sm font-mono font-bold block">Virtual Card</span>
-                    <span className="text-xs text-muted-foreground">Pay anywhere</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 border border-border flex items-center justify-center">
-                    <IsometricIcon src={icons.handshake} className="w-7 h-7" isDark={isDark} />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-sm font-mono font-bold block">Direct</span>
-                    <span className="text-xs text-muted-foreground">Instant transfer</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 border border-border flex items-center justify-center">
-                    <IsometricIcon src={icons.trendingUp} className="w-7 h-7" isDark={isDark} />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-sm font-mono font-bold block">Bank Payout</span>
-                    <span className="text-xs text-muted-foreground">USD withdrawal</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: icons.trendingUp,
-                title: "Bank Funding",
-                description: "Fund agent wallets via provider-integrated ACH, wire, or card on-ramps.",
-                details: ["Provider-specific pricing", "Design-partner sandbox lanes", "Policy checks before spend"]
-              },
-              {
-                icon: icons.wallet,
-                title: "Unified Balance",
-                description: "One wallet balance powers everything — virtual cards, direct transfers, and merchant payouts.",
-                details: ["Policy enforcement on all spend", "Real-time balance tracking", "Unified balance view"]
-              },
-              {
-                icon: icons.creditCardGear,
-                title: "USD Payouts",
-                description: "Withdraw to any US bank account. Automatic compliance checks on every withdrawal.",
-                details: ["Provider-dependent settlement timing", "Compliance gating", "Off-ramp status tracking"]
-              }
-            ].map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
-                <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
-                  <CardHeader>
-                    <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
-                      <IsometricIcon src={feature.icon} className="w-10 h-10" isDark={isDark} />
-                    </div>
-                    <CardTitle className="text-lg font-semibold font-display">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
-                    <div className="pt-2 border-t border-border">
-                      {feature.details.map((detail, j) => (
-                        <div key={j} className="text-sm text-muted-foreground font-mono py-1">
-                          → {detail}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Code Example */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-12 border border-border overflow-hidden"
-          >
-            <div className="bg-muted px-4 py-3 border-b border-border flex items-center gap-2">
-              <div className="w-3 h-3 bg-destructive" />
-              <div className="w-3 h-3 bg-yellow-500" />
-              <div className="w-3 h-3 bg-emerald-500" />
-              <span className="ml-4 text-sm font-mono text-muted-foreground">treasury.ts</span>
-            </div>
-            <div className="p-6 font-mono text-sm leading-relaxed bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
-              <pre className="whitespace-pre">{`import { SardisClient } from '@sardis/sdk'
-
-const client = new SardisClient({ apiKey: 'sk_...' })
-
-// ACH collection (fund treasury)
-const funded = await client.treasury.fund({
-  financial_account_token: 'fa_issuing_123',
-  external_bank_account_token: 'eba_123',
-  amount_minor: 100000, // $1,000.00
-  method: 'ACH_NEXT_DAY',
-  sec_code: 'CCD',
-})
-
-// ACH payment (withdraw)
-const withdrawal = await client.treasury.withdraw({
-  financial_account_token: 'fa_issuing_123',
-  external_bank_account_token: 'eba_123',
-  amount_minor: 50000, // $500.00
-  method: 'ACH_NEXT_DAY',
-  sec_code: 'CCD',
-})
-
-const balances = await client.treasury.getBalances()`}</pre>
-            </div>
-          </motion.div>
         </div>
       </section>
 
@@ -638,7 +458,7 @@ const balances = await client.treasury.getBalances()`}</pre>
             <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Why Sardis</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">The Policy Firewall</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Others build payment rails. We build the intelligence layer that prevents financial hallucinations.
+              The policy engine that checks every transaction before money moves.
             </p>
           </div>
 
@@ -681,13 +501,9 @@ const balances = await client.treasury.getBalances()`}</pre>
                 unique: true
               }
             ].map((item, i) => (
-              <motion.div
+              <div
                 key={i}
                 className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
               >
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group relative">
                   {item.unique && (
@@ -709,27 +525,14 @@ const balances = await client.treasury.getBalances()`}</pre>
                     </p>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
 
-          {/* Comparison callout */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5"
-          >
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="text-center md:text-left">
-                <h3 className="text-base font-semibold font-display mb-2">No competitor offers NL policies + confidence routing + goal drift detection + Merkle audit</h3>
-                <p className="text-muted-foreground">We analyzed Locus, Payman, and Skyfire. They build rails — we build the intelligence layer. Read why.</p>
-              </div>
-              <Button variant="outline" className="rounded-none border-[var(--sardis-orange)] text-[var(--sardis-orange)] hover:bg-[var(--sardis-orange)] hover:text-white shrink-0" asChild>
-                <Link to="/docs/blog/why-sardis">Read the Analysis →</Link>
-              </Button>
-            </div>
-          </motion.div>
+          {/* Replacement for competitor callout */}
+          <div className="p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">
+            <p className="text-muted-foreground">The only platform combining natural language policies, per-transaction risk scoring, drift detection, and cryptographic audit — all without holding your private keys.</p>
+          </div>
         </div>
       </section>
 
@@ -775,13 +578,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 status: "Implemented"
               }
             ].map((protocol, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
+              <div key={i}>
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between mb-3">
@@ -801,17 +598,12 @@ const balances = await client.treasury.getBalances()`}</pre>
                     </p>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* x402 Micropayments highlight */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-8 p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors"
-          >
+          <div className="mt-8 p-6 border border-border hover:border-[var(--sardis-orange)] transition-colors">
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-16 h-16 border border-border flex items-center justify-center">
                 <IsometricIcon src={icons.creditCardGear} className="w-10 h-10" isDark={isDark} />
@@ -824,7 +616,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 Implemented
               </Badge>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -843,12 +635,7 @@ const balances = await client.treasury.getBalances()`}</pre>
           </div>
 
           {/* OpenClaw Hero Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-8 p-8 border-2 border-[var(--sardis-orange)] bg-[var(--sardis-orange)]/5 relative overflow-hidden"
-          >
+          <div className="mb-8 p-8 border-2 border-[var(--sardis-orange)] bg-[var(--sardis-orange)]/5 relative overflow-hidden">
             <div className="absolute top-3 right-3">
               <Badge className="bg-[var(--sardis-orange)] text-white rounded-none text-xs font-mono animate-pulse">
                 TRENDING
@@ -899,7 +686,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Other Frameworks Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -947,13 +734,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 badge: "TypeScript"
               },
             ].map((framework, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
-              >
+              <div key={i}>
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between mb-3">
@@ -975,24 +756,19 @@ const balances = await client.treasury.getBalances()`}</pre>
                     </code>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* Bottom CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-8 p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 text-center"
-          >
+          <div className="mt-8 p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 text-center">
             <p className="text-lg font-medium mb-2">
               Your framework not listed? Sardis has a REST API — if it speaks HTTP, it works.
             </p>
             <p className="text-sm text-muted-foreground">
               <Link to="/docs/api-reference" className="text-[var(--sardis-orange)] hover:underline">View API Reference →</Link>
             </p>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -1035,12 +811,8 @@ const balances = await client.treasury.getBalances()`}</pre>
                   desc: "Payment executes via the optimal rail — virtual card, bank transfer, or direct settlement."
                 }
               ].map((item, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.12 }}
                   className="relative"
                 >
                   {/* Step number circle */}
@@ -1049,7 +821,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                   </div>
                   <h4 className="font-semibold font-display mb-2">{item.title}</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -1106,13 +878,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 examples: ["KYC verification", "Mandate validation", "Capability proofs", "Trust scoring"]
               }
             ].map((useCase, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
+              <div key={i}>
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader>
                     <div className="flex items-start gap-4">
@@ -1137,7 +903,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -1184,13 +950,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 ]
               }
             ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
+              <div key={i}>
                 <Card className="h-full bg-card border-border hover:border-[var(--sardis-orange)] transition-all duration-200 rounded-none group">
                   <CardHeader>
                     <div className="w-16 h-16 border border-border flex items-center justify-center mb-4 group-hover:border-[var(--sardis-orange)] transition-colors">
@@ -1217,17 +977,12 @@ const balances = await client.treasury.getBalances()`}</pre>
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* Protocol packages highlight */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-12 p-8 border border-border"
-          >
+          <div className="mt-12 p-8 border border-border">
             <div className="text-center mb-8">
               <h3 className="text-lg font-semibold font-display mb-2">Protocol Packages</h3>
               <p className="text-muted-foreground">Standalone implementations of each protocol - use them independently or as part of Sardis.</p>
@@ -1245,90 +1000,7 @@ const balances = await client.treasury.getBalances()`}</pre>
                 </div>
               ))}
             </div>
-          </motion.div>
-
-          {/* Install SDKs Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-12"
-          >
-            <div className="text-center mb-8">
-              <Badge variant="outline" className="mb-4 text-yellow-600 dark:text-yellow-400 border-yellow-600/30 dark:border-yellow-400/30 rounded-none font-mono">EARLY ACCESS</Badge>
-              <h3 className="text-lg font-semibold font-display mb-2">Install the SDKs</h3>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Our packages are live on npm and PyPI. Currently in developer preview — become a design partner for early access and an API key.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Python SDKs */}
-              <div className="border border-border p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center">
-                    <span className="text-lg font-bold font-mono text-[var(--sardis-orange)]">Py</span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold font-display">Python Packages</h4>
-                    <div className="flex items-center gap-2">
-                      <a href="https://pypi.org/user/sardis/" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-[var(--sardis-orange)] font-mono">pypi.org/user/sardis →</a>
-                      <span className="text-xs font-mono px-1.5 py-0.5 bg-[var(--sardis-orange)]/10 text-[var(--sardis-orange)] border border-[var(--sardis-orange)]/20">4,600/mo</span>
-                    </div>
-                  </div>
-                </div>
-                <CopyCommand command="pip install sardis" />
-                <CopyCommand command="pip install sardis-core" />
-                <CopyCommand command="pip install sardis-protocol" />
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["sardis-openclaw", "sardis-openai", "sardis-langchain", "sardis-crewai", "sardis-adk", "sardis-agent-sdk", "sardis-guardrails", "sardis-api", "sardis-chain", "sardis-wallet", "sardis-ledger", "sardis-compliance", "sardis-cards", "sardis-cli", "sardis-checkout", "sardis-ramp", "sardis-ucp", "sardis-a2a"].map((pkg) => (
-                      <a key={pkg} href={`https://pypi.org/project/${pkg}/`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
-                        {pkg}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* npm SDKs */}
-              <div className="border border-border p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 border border-border flex items-center justify-center">
-                    <span className="text-lg font-bold font-mono text-[var(--sardis-orange)]">JS</span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold font-display">npm Packages</h4>
-                    <div className="flex items-center gap-2">
-                      <a href="https://www.npmjs.com/org/sardis" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-[var(--sardis-orange)] font-mono">npmjs.com/org/sardis →</a>
-                      <span className="text-xs font-mono px-1.5 py-0.5 bg-[var(--sardis-orange)]/10 text-[var(--sardis-orange)] border border-[var(--sardis-orange)]/20">2,190/mo</span>
-                    </div>
-                  </div>
-                </div>
-                <CopyCommand command="npm install @sardis/sdk" />
-                <CopyCommand command="npm install @sardis/mcp-server" />
-                <CopyCommand command="npm install @sardis/ai-sdk" />
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground font-mono mb-2">Also available:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["@sardis/ramp"].map((pkg) => (
-                      <a key={pkg} href={`https://www.npmjs.com/package/${pkg}`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono px-2 py-0.5 border border-border hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors">
-                        {pkg}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Early access note */}
-            <div className="mt-6 p-4 border border-yellow-600/30 dark:border-yellow-400/30 bg-yellow-500/5">
-              <p className="text-sm text-center text-muted-foreground">
-                <span className="font-bold text-yellow-600 dark:text-yellow-400">Note:</span> SDKs require a Sardis API key to connect to the hosted backend. The API is currently in private beta — <button onClick={() => setIsWaitlistOpen(true)} className="text-[var(--sardis-orange)] hover:underline font-medium">join the waitlist</button> to get early access.
-              </p>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -1421,7 +1093,7 @@ const balances = await client.treasury.getBalances()`}</pre>
       {/* CTA Section */}
       <section className="py-24 text-center border-t border-border">
         <div className="container mx-auto px-6">
-          <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6">Become a Design Partner</h2>
+          <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6">Get Early Access</h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
             We're looking for teams building AI agents that need payment capabilities. Get early access, hands-on support, and shape the product with us.
           </p>
