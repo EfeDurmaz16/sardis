@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import inspect
 import json
 import os
 import time
@@ -46,6 +47,7 @@ class SecureCheckoutDependencies:
     card_provider: Any
     policy_store: Any | None = None
     approval_service: Any | None = None
+    audit_sink: Any | None = None
     store: "InMemorySecureCheckoutStore | None" = None
 
 
@@ -490,6 +492,36 @@ def _resolve_store(deps: SecureCheckoutDependencies) -> InMemorySecureCheckoutSt
     return deps.store or _DEFAULT_STORE
 
 
+async def _emit_audit_event(
+    deps: SecureCheckoutDependencies,
+    *,
+    event_type: str,
+    payload: dict[str, Any],
+) -> None:
+    sink = deps.audit_sink
+    if not sink:
+        return
+    event = {
+        "event_type": event_type,
+        "ts": _now_utc().isoformat(),
+        "payload": payload,
+    }
+    record_callable = None
+    if hasattr(sink, "record_event"):
+        record_callable = getattr(sink, "record_event")
+    elif hasattr(sink, "write_event"):
+        record_callable = getattr(sink, "write_event")
+    elif callable(sink):
+        record_callable = sink
+
+    if record_callable is None:
+        return
+
+    result = record_callable(event)
+    if inspect.isawaitable(result):
+        await result
+
+
 async def _verify_executor_auth(
     *,
     deps: SecureCheckoutDependencies,
@@ -792,6 +824,20 @@ def create_secure_checkout_router() -> APIRouter:
             "error": None,
         }
         saved = await store.upsert_job(job)
+        await _emit_audit_event(
+            deps,
+            event_type="secure_checkout.job_created",
+            payload={
+                "job_id": saved["job_id"],
+                "intent_id": saved["intent_id"],
+                "wallet_id": saved["wallet_id"],
+                "merchant_origin": saved["merchant_origin"],
+                "merchant_mode": saved["merchant_mode"],
+                "status": saved["status"],
+                "approval_required": saved["approval_required"],
+                "policy_reason": saved.get("policy_reason"),
+            },
+        )
         return _serialize_job(saved)
 
     @router.get("/secure/jobs/{job_id}", response_model=SecureCheckoutJobResponse)
@@ -872,6 +918,19 @@ def create_secure_checkout_router() -> APIRouter:
                     else f"tokenized:{job_id}"
                 ),
             )
+            dispatched = updated or job
+            await _emit_audit_event(
+                deps,
+                event_type="secure_checkout.job_dispatched",
+                payload={
+                    "job_id": dispatched["job_id"],
+                    "intent_id": dispatched["intent_id"],
+                    "wallet_id": dispatched["wallet_id"],
+                    "merchant_mode": dispatched["merchant_mode"],
+                    "executor_ref": dispatched.get("executor_ref"),
+                    "secret_ref": None,
+                },
+            )
             return _serialize_job(updated or job)
 
         merchant_host = urlparse(job["merchant_origin"]).hostname or ""
@@ -947,6 +1006,20 @@ def create_secure_checkout_router() -> APIRouter:
             secret_expires_at=expires_at.isoformat(),
             executor_ref=executor_ref or f"secret_ref:{secret_ref}",
         )
+        dispatched = updated or job
+        await _emit_audit_event(
+            deps,
+            event_type="secure_checkout.job_dispatched",
+            payload={
+                "job_id": dispatched["job_id"],
+                "intent_id": dispatched["intent_id"],
+                "wallet_id": dispatched["wallet_id"],
+                "merchant_mode": dispatched["merchant_mode"],
+                "executor_ref": dispatched.get("executor_ref"),
+                "secret_ref_present": bool(dispatched.get("secret_ref")),
+                "secret_expires_at": dispatched.get("secret_expires_at"),
+            },
+        )
         return _serialize_job(updated or job)
 
     @router.post(
@@ -977,6 +1050,17 @@ def create_secure_checkout_router() -> APIRouter:
         payload = await store.consume_secret(secret_ref)
         if not payload:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="secret_not_found_or_expired")
+        await _emit_audit_event(
+            deps,
+            event_type="secure_checkout.secret_consumed",
+            payload={
+                "secret_ref": secret_ref,
+                "merchant_origin": payload.get("merchant_origin"),
+                "amount": payload.get("amount"),
+                "currency": payload.get("currency"),
+                "purpose": payload.get("purpose"),
+            },
+        )
         return ConsumeExecutorSecretResponse(**payload)
 
     @router.post(
@@ -1034,6 +1118,19 @@ def create_secure_checkout_router() -> APIRouter:
             error=error,
             secret_ref=None,
             secret_expires_at=None,
+        )
+        finalized = updated or job
+        await _emit_audit_event(
+            deps,
+            event_type="secure_checkout.job_finalized",
+            payload={
+                "job_id": finalized["job_id"],
+                "intent_id": finalized["intent_id"],
+                "wallet_id": finalized["wallet_id"],
+                "status": finalized["status"],
+                "executor_ref": finalized.get("executor_ref"),
+                "error_code": finalized.get("error_code"),
+            },
         )
         return _serialize_job(updated or job)
 

@@ -68,6 +68,14 @@ class _PolicyStore:
         return None
 
 
+class _AuditSink:
+    def __init__(self):
+        self.events: list[dict] = []
+
+    async def record_event(self, event: dict):
+        self.events.append(event)
+
+
 def _principal() -> Principal:
     return Principal(
         kind="api_key",
@@ -77,7 +85,7 @@ def _principal() -> Principal:
     )
 
 
-def _build_app(*, policy_store=None) -> FastAPI:
+def _build_app(*, policy_store=None, audit_sink=None) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[require_principal] = _principal
     store = secure_checkout.InMemorySecureCheckoutStore()
@@ -88,6 +96,7 @@ def _build_app(*, policy_store=None) -> FastAPI:
         card_provider=_CardProvider(),
         policy_store=policy_store,
         approval_service=_ApprovalService(),
+        audit_sink=audit_sink,
         store=store,
     )
     app.include_router(secure_checkout.router, prefix="/api/v2/checkout")
@@ -480,6 +489,62 @@ def test_consume_secret_requires_attestation_when_enabled(monkeypatch):
     assert consumed.status_code == 200
     payload = consumed.json()
     assert payload["pan"] == "4111111111111111"
+
+
+def test_secure_checkout_emits_audit_events_without_pan_fields(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    sink = _AuditSink()
+    app = _build_app(audit_sink=sink)
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "23.00",
+            "currency": "USD",
+            "intent_id": "intent_audit_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+    dispatch_payload = executed.json()
+    secret_ref = dispatch_payload["secret_ref"]
+    assert secret_ref
+
+    consumed = client.post(
+        f"/api/v2/checkout/secure/secrets/{secret_ref}/consume",
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert consumed.status_code == 200
+
+    completed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_audit"},
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert completed.status_code == 200
+
+    event_types = [event["event_type"] for event in sink.events]
+    assert "secure_checkout.job_created" in event_types
+    assert "secure_checkout.job_dispatched" in event_types
+    assert "secure_checkout.secret_consumed" in event_types
+    assert "secure_checkout.job_finalized" in event_types
+
+    serialized = json.dumps(sink.events)
+    assert "4111111111111111" not in serialized
+    assert "\"cvv\"" not in serialized
 
 
 def test_executor_attestation_replay_is_rejected(monkeypatch):
