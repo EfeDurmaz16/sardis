@@ -63,7 +63,13 @@ jobs:
           version: stable
 
       - name: Run gas ceiling tests
-        run: forge test --match-test "testGasCeiling_" --gas-report -vv
+        run: forge test --match-test "testGasCeiling_" --gas-report -vv | tee gas-report.txt
+
+      - name: Upload gas report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-gas-report
+          path: contracts/gas-report.txt
 
   typescript-sdk:
     name: TypeScript SDK Build & Type Check
