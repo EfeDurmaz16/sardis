@@ -26,6 +26,8 @@ class _AgentRepo:
 
 
 class _CardRepo:
+    status_updates: list[tuple[str, str]] = []
+
     async def get_by_card_id(self, card_id: str):
         return {
             "card_id": card_id,
@@ -38,8 +40,16 @@ class _CardRepo:
             "status": "active",
         }
 
+    async def update_status(self, card_id: str, status_value: str):
+        self.__class__.status_updates.append((card_id, status_value))
+        row = await self.get_by_card_id(card_id)
+        row["status"] = status_value
+        return row
+
 
 class _CardProvider:
+    freeze_calls: list[str] = []
+
     async def reveal_card_details(self, card_id: str, *, reason: str = ""):
         assert card_id == "card_1"
         return {
@@ -48,6 +58,10 @@ class _CardProvider:
             "exp_month": 12,
             "exp_year": 2030,
         }
+
+    async def freeze_card(self, provider_card_id: str):
+        self.__class__.freeze_calls.append(provider_card_id)
+        return {"provider_card_id": provider_card_id, "status": "frozen"}
 
 
 class _ApprovalService:
@@ -648,6 +662,59 @@ def test_secure_checkout_emits_audit_events_without_pan_fields(monkeypatch):
     serialized = json.dumps(sink.events)
     assert "4111111111111111" not in serialized
     assert "\"cvv\"" not in serialized
+
+
+def test_attestation_failure_triggers_auto_freeze(monkeypatch):
+    _CardProvider.freeze_calls = []
+    _CardRepo.status_updates = []
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY", "attest_secret")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_DISPATCH_SECURITY_ALERTS", "0")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "25.00",
+            "currency": "USD",
+            "intent_id": "intent_attestation_freeze_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+
+    complete_path = f"/api/v2/checkout/secure/jobs/{job_id}/complete"
+    body = json.dumps({"status": "completed", "executor_ref": "exec_fail"}).encode("utf-8")
+    headers = _executor_attestation_headers(
+        path=complete_path,
+        body=body,
+    )
+    headers["X-Sardis-Executor-Signature"] = "deadbeef"
+    failed = client.post(
+        complete_path,
+        content=body,
+        headers={**headers, "Content-Type": "application/json"},
+    )
+    assert failed.status_code == 401
+    assert failed.json()["detail"] == "executor_attestation_invalid_signature"
+
+    assert "provider_card_1" in _CardProvider.freeze_calls
+    assert ("card_1", "frozen") in _CardRepo.status_updates
 
 
 def test_executor_attestation_replay_is_rejected(monkeypatch):

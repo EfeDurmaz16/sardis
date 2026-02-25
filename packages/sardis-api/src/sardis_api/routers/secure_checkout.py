@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import inspect
 import json
+import logging
 import os
 import time
 import uuid
@@ -21,6 +22,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+
+logger = logging.getLogger(__name__)
 
 
 class MerchantExecutionMode(str, Enum):
@@ -627,6 +630,16 @@ def _is_persistent_store(store: Any) -> bool:
     return bool(getattr(store, "is_persistent", False))
 
 
+def _auto_freeze_on_security_incident_enabled() -> bool:
+    if _is_production_env():
+        return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT", "1"))
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT", "0"))
+
+
+def _dispatch_security_alert_enabled() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_DISPATCH_SECURITY_ALERTS", "1"))
+
+
 async def _emit_audit_event(
     deps: SecureCheckoutDependencies,
     *,
@@ -676,6 +689,99 @@ async def _emit_audit_event(
     result = record_callable(event)
     if inspect.isawaitable(result):
         await result
+
+
+async def _dispatch_security_alert(
+    *,
+    job: Optional[dict[str, Any]],
+    code: str,
+    detail: str,
+) -> None:
+    if not _dispatch_security_alert_enabled():
+        return
+    try:
+        from sardis_api.routers.alerts import dispatch_alert
+        from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+
+        alert = Alert(
+            alert_type=AlertType.POLICY_VIOLATION,
+            severity=AlertSeverity.CRITICAL,
+            message=f"Secure checkout security incident: {code}",
+            agent_id=None,
+            organization_id=None,
+            data={
+                "job_id": (job or {}).get("job_id"),
+                "wallet_id": (job or {}).get("wallet_id"),
+                "card_id": (job or {}).get("card_id"),
+                "merchant_origin": (job or {}).get("merchant_origin"),
+                "code": code,
+                "detail": detail,
+                "channels": ["websocket", "slack"],
+            },
+        )
+        await dispatch_alert(alert)
+    except Exception:
+        logger.exception("Failed to dispatch secure checkout security alert")
+
+
+async def _handle_security_incident(
+    *,
+    deps: SecureCheckoutDependencies,
+    job: Optional[dict[str, Any]],
+    code: str,
+    detail: str,
+    secret_ref: Optional[str] = None,
+) -> None:
+    payload: dict[str, Any] = {
+        "code": code,
+        "detail": detail,
+        "secret_ref": secret_ref,
+    }
+    if job:
+        payload.update(
+            {
+                "job_id": job.get("job_id"),
+                "intent_id": job.get("intent_id"),
+                "wallet_id": job.get("wallet_id"),
+                "card_id": job.get("card_id"),
+                "merchant_origin": job.get("merchant_origin"),
+            }
+        )
+    await _emit_audit_event(
+        deps,
+        event_type="secure_checkout.security_incident",
+        payload=payload,
+    )
+    await _dispatch_security_alert(job=job, code=code, detail=detail)
+
+    if not _auto_freeze_on_security_incident_enabled():
+        return
+    if not job or not deps.card_repo or not deps.card_provider:
+        return
+
+    card_id = str(job.get("card_id") or "").strip()
+    if not card_id:
+        return
+    try:
+        card = await deps.card_repo.get_by_card_id(card_id)
+        provider_card_id = str((card or {}).get("provider_card_id") or "").strip()
+        if not provider_card_id:
+            return
+        await deps.card_provider.freeze_card(provider_card_id=provider_card_id)
+        if hasattr(deps.card_repo, "update_status"):
+            await deps.card_repo.update_status(card_id, "frozen")
+        await _emit_audit_event(
+            deps,
+            event_type="secure_checkout.card_auto_frozen",
+            payload={
+                "job_id": job.get("job_id"),
+                "card_id": card_id,
+                "provider_card_id": provider_card_id,
+                "reason": code,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to auto-freeze card for security incident")
 
 
 async def _verify_executor_auth(
@@ -1208,17 +1314,28 @@ def create_secure_checkout_router() -> APIRouter:
         x_sardis_executor_signature: Optional[str] = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
-        await _verify_executor_auth(
-            deps=deps,
-            request=request,
-            token=x_sardis_executor_token,
-            timestamp=x_sardis_executor_timestamp,
-            nonce=x_sardis_executor_nonce,
-            signature=x_sardis_executor_signature,
-            payload_bytes=await request.body(),
-        )
-
         store = _resolve_store(deps)
+        body = await request.body()
+        try:
+            await _verify_executor_auth(
+                deps=deps,
+                request=request,
+                token=x_sardis_executor_token,
+                timestamp=x_sardis_executor_timestamp,
+                nonce=x_sardis_executor_nonce,
+                signature=x_sardis_executor_signature,
+                payload_bytes=body,
+            )
+        except HTTPException as exc:
+            await _handle_security_incident(
+                deps=deps,
+                job=None,
+                code="executor_auth_failed",
+                detail=str(exc.detail),
+                secret_ref=secret_ref,
+            )
+            raise
+
         payload = await store.consume_secret(secret_ref)
         if not payload:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="secret_not_found_or_expired")
@@ -1251,17 +1368,28 @@ def create_secure_checkout_router() -> APIRouter:
         x_sardis_executor_signature: Optional[str] = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
-        await _verify_executor_auth(
-            deps=deps,
-            request=request,
-            token=x_sardis_executor_token,
-            timestamp=x_sardis_executor_timestamp,
-            nonce=x_sardis_executor_nonce,
-            signature=x_sardis_executor_signature,
-            payload_bytes=await request.body(),
-        )
-
         store = _resolve_store(deps)
+        job_for_incident = await store.get_job(job_id)
+        body = await request.body()
+        try:
+            await _verify_executor_auth(
+                deps=deps,
+                request=request,
+                token=x_sardis_executor_token,
+                timestamp=x_sardis_executor_timestamp,
+                nonce=x_sardis_executor_nonce,
+                signature=x_sardis_executor_signature,
+                payload_bytes=body,
+            )
+        except HTTPException as exc:
+            await _handle_security_incident(
+                deps=deps,
+                job=job_for_incident,
+                code="executor_auth_failed",
+                detail=str(exc.detail),
+            )
+            raise
+
         completion_key = (x_sardis_completion_idempotency_key or "").strip()
         if completion_key:
             existing_receipt = await store.get_completion_receipt(completion_key)
