@@ -1,0 +1,15 @@
+# Global default owners
+* @EfeDurmaz16
+
+# API and core payment rails
+/packages/sardis-api/ @EfeDurmaz16
+/packages/sardis-core/ @EfeDurmaz16
+/packages/sardis-cards/ @EfeDurmaz16
+/packages/sardis-coinbase/ @EfeDurmaz16
+/packages/sardis-compliance/ @EfeDurmaz16
+
+# Security and operational controls
+/.github/workflows/ @EfeDurmaz16
+/scripts/ @EfeDurmaz16
+/docs/design-partner/ @EfeDurmaz16
+/docs/alerts/ @EfeDurmaz16

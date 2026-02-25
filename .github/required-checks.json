@@ -1,0 +1,9 @@
+{
+  "strict": true,
+  "contexts": [
+    "Python Lint & Test",
+    "TypeScript SDK Build & Type Check",
+    "Dashboard Build",
+    "Landing Page Build"
+  ]
+}
