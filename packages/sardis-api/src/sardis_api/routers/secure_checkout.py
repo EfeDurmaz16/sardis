@@ -413,6 +413,7 @@ class InMemorySecureCheckoutStore:
     """In-memory state for secure checkout jobs and one-time secret refs."""
 
     def __init__(self) -> None:
+        self.is_persistent = False
         self._jobs_by_id: dict[str, dict[str, Any]] = {}
         self._jobs_by_intent_id: dict[str, str] = {}
         self._secrets: dict[str, dict[str, Any]] = {}
@@ -492,6 +493,42 @@ def _resolve_store(deps: SecureCheckoutDependencies) -> InMemorySecureCheckoutSt
     return deps.store or _DEFAULT_STORE
 
 
+class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
+    """Persistent job storage + in-memory one-time secret storage."""
+
+    def __init__(self, job_repository: Any):
+        super().__init__()
+        self.is_persistent = True
+        self._job_repository = job_repository
+
+    async def upsert_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        if not self._job_repository:
+            return await super().upsert_job(job)
+        return await self._job_repository.upsert_job(job)
+
+    async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
+        if not self._job_repository:
+            return await super().get_job(job_id)
+        return await self._job_repository.get_job(job_id)
+
+    async def update_job(self, job_id: str, **fields: Any) -> Optional[dict[str, Any]]:
+        if not self._job_repository:
+            return await super().update_job(job_id, **fields)
+        return await self._job_repository.update_job(job_id, **fields)
+
+
+def _allow_inmemory_store_in_prod() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "0"))
+
+
+def _require_persistent_job_store() -> bool:
+    return _is_production_env() and not _allow_inmemory_store_in_prod()
+
+
+def _is_persistent_store(store: Any) -> bool:
+    return bool(getattr(store, "is_persistent", False))
+
+
 async def _emit_audit_event(
     deps: SecureCheckoutDependencies,
     *,
@@ -511,6 +548,27 @@ async def _emit_audit_event(
         record_callable = getattr(sink, "record_event")
     elif hasattr(sink, "write_event"):
         record_callable = getattr(sink, "write_event")
+    elif hasattr(sink, "append"):
+        try:
+            from sardis_compliance.checks import ComplianceAuditEntry
+        except Exception:
+            ComplianceAuditEntry = None  # type: ignore[assignment]
+
+        if ComplianceAuditEntry is not None:
+            entry = ComplianceAuditEntry(
+                mandate_id=str(payload.get("intent_id") or payload.get("job_id") or ""),
+                subject=str(payload.get("wallet_id") or ""),
+                allowed=event_type != "secure_checkout.job_failed",
+                reason=str(payload.get("error_code") or payload.get("status") or event_type),
+                rule_id=event_type,
+                provider="secure_checkout",
+                metadata=dict(payload),
+            )
+            record_callable = getattr(sink, "append")
+            result = record_callable(entry)
+            if inspect.isawaitable(result):
+                await result
+            return
     elif callable(sink):
         record_callable = sink
 
@@ -736,6 +794,11 @@ def create_secure_checkout_router() -> APIRouter:
         principal: Principal = Depends(require_principal),
     ):
         store = _resolve_store(deps)
+        if _require_persistent_job_store() and not _is_persistent_store(store):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="secure_checkout_persistent_store_required",
+            )
         wallet = await _require_wallet_access(
             deps=deps,
             principal=principal,
@@ -865,6 +928,11 @@ def create_secure_checkout_router() -> APIRouter:
         principal: Principal = Depends(require_principal),
     ):
         store = _resolve_store(deps)
+        if _require_persistent_job_store() and not _is_persistent_store(store):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="secure_checkout_persistent_store_required",
+            )
         job = await store.get_job(job_id)
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")

@@ -151,6 +151,7 @@ from .health import create_health_router
 from .card_adapter import CardProviderCompatAdapter
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.treasury_repository import TreasuryRepository
+from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .providers.lithic_treasury import LithicTreasuryClient
 
 # Configure structured logging
@@ -1099,6 +1100,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         app.include_router(checkout_router.public_router, prefix="/api/v2/checkout", tags=["checkout"])
 
     secure_checkout_store = secure_checkout_router.InMemorySecureCheckoutStore()
+    if use_postgres:
+        secure_checkout_job_repo = SecureCheckoutJobRepository(dsn=database_url)
+        secure_checkout_store = secure_checkout_router.RepositoryBackedSecureCheckoutStore(
+            secure_checkout_job_repo
+        )
+    secure_checkout_enabled = os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if settings.is_production and secure_checkout_enabled and not use_postgres:
+        raise RuntimeError("secure_checkout_executor requires PostgreSQL in production")
     app.dependency_overrides[secure_checkout_router.get_deps] = (
         lambda: secure_checkout_router.SecureCheckoutDependencies(
             wallet_repo=wallet_repo,
@@ -1107,10 +1121,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             card_provider=card_provider,
             policy_store=policy_store,
             approval_service=approval_service,
+            audit_sink=audit_store,
             store=secure_checkout_store,
         )
     )
-    if os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in ("1", "true", "yes", "on"):
+    if secure_checkout_enabled:
         app.include_router(
             secure_checkout_router.router,
             prefix="/api/v2/checkout",

@@ -308,6 +308,7 @@ def test_merchant_capability_endpoint(monkeypatch):
 
 def test_prod_pan_entry_requires_allowlist(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.delenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", raising=False)
     app = _build_app(policy_store=_PolicyStore())
@@ -330,6 +331,7 @@ def test_prod_pan_entry_requires_allowlist(monkeypatch):
 
 def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     app = _build_app(policy_store=_PolicyStore())
@@ -350,6 +352,27 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     payload = created.json()
     assert payload["merchant_mode"] == "pan_entry"
     assert payload["status"] == "pending_approval"
+
+
+def test_prod_requires_persistent_secure_checkout_store(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.delenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", raising=False)
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://api.payments.example.com/pay",
+            "amount": "12.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_store_required_1",
+        },
+    )
+    assert created.status_code == 503
+    assert created.json()["detail"] == "secure_checkout_persistent_store_required"
 
 
 def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
