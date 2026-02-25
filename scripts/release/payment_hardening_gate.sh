@@ -76,6 +76,9 @@ require_match '/secure/security-policy' \
 require_match '_check_a2a_trust_relation' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust table enforcement must be present'
+require_match '_append_a2a_trust_audit_entry' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A trust relation mutations must be audit logged'
 require_match '/trust/peers' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A peer discovery endpoint must be present'
@@ -107,6 +110,9 @@ require_match 'test_ensure_table_prod_requires_migration' \
 require_match 'test_trust_peers_returns_only_trusted_by_default' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A peer discovery endpoint must be test covered'
+require_match 'provider == \"a2a_trust\"' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A trust relation audit trail must be test covered'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then
@@ -120,6 +126,7 @@ if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
       packages/sardis-api/tests/test_secure_checkout_executor.py \
       packages/sardis-api/tests/test_secure_checkout_risk_response.py \
       packages/sardis-api/tests/test_a2a_trust_table.py \
+      packages/sardis-api/tests/test_a2a_trust_endpoints.py \
       packages/sardis-api/tests/test_a2a_trust_repository.py \
       packages/sardis-api/tests/test_stripe_funding.py; then
       failures=$((failures + 1))

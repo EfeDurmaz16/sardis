@@ -88,6 +88,15 @@ class _TrustRepo:
         return False
 
 
+class _AuditStore:
+    def __init__(self) -> None:
+        self.entries = []
+
+    def append(self, entry):
+        self.entries.append(entry)
+        return entry.audit_id
+
+
 def _principal_admin() -> Principal:
     return Principal(
         kind="api_key",
@@ -106,7 +115,7 @@ def _principal_member() -> Principal:
     )
 
 
-def _build_app(*, admin: bool, trust_repo=None) -> FastAPI:
+def _build_app(*, admin: bool, trust_repo=None, audit_store=None) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[require_principal] = _principal_admin if admin else _principal_member
     app.dependency_overrides[a2a.get_deps] = lambda: a2a.A2ADependencies(
@@ -118,6 +127,7 @@ def _build_app(*, admin: bool, trust_repo=None) -> FastAPI:
         compliance=None,
         identity_registry=None,
         trust_repo=trust_repo,
+        audit_store=audit_store,
     )
     app.include_router(a2a.router, prefix="/api/v2/a2a")
     return app
@@ -191,7 +201,8 @@ def test_admin_trust_table_prefers_repository_when_available(monkeypatch):
 def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch):
     monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
     trust_repo = _TrustRepo()
-    client = TestClient(_build_app(admin=True, trust_repo=trust_repo))
+    audit_store = _AuditStore()
+    client = TestClient(_build_app(admin=True, trust_repo=trust_repo, audit_store=audit_store))
 
     upserted = client.post(
         "/api/v2/a2a/trust/relations",
@@ -201,6 +212,7 @@ def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch
     upserted_payload = upserted.json()
     assert "agent_new" in upserted_payload["relations"]["agent_a"]
     assert upserted_payload["table_hash"]
+    assert upserted_payload["audit_id"]
 
     deleted = client.request(
         "DELETE",
@@ -211,6 +223,11 @@ def test_admin_can_upsert_and_delete_trust_relations_with_repository(monkeypatch
     deleted_payload = deleted.json()
     assert "agent_new" not in deleted_payload["relations"]["agent_a"]
     assert deleted_payload["table_hash"]
+    assert deleted_payload["audit_id"]
+    assert len(audit_store.entries) == 2
+    assert audit_store.entries[0].provider == "a2a_trust"
+    assert audit_store.entries[0].reason == "upsert_relation_applied"
+    assert audit_store.entries[1].reason == "delete_relation_applied"
 
 
 def test_trust_peers_returns_only_trusted_by_default(monkeypatch):

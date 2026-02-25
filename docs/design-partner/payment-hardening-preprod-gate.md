@@ -59,6 +59,7 @@ All checks must pass:
    - Ensure DB migration created `a2a_trust_relations` before production boot.
    - `GET /api/v2/a2a/trust/table` returns expected relations.
    - `GET /api/v2/a2a/trust/peers?sender_agent_id=...` returns only trusted peers by default.
+   - `POST/DELETE /api/v2/a2a/trust/relations` responses include `audit_id` and are exported by compliance audit evidence APIs.
 6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
 7. Validate on-chain goal-drift controls:
    - `SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD` and `SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD` set explicitly.

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from inspect import isawaitable
 import json
 import logging
 import os
@@ -29,6 +30,7 @@ from sardis_ledger.records import LedgerStore
 from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
+from sardis_compliance.checks import ComplianceAuditEntry
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +186,52 @@ async def _check_a2a_trust_relation_with_deps(
     return allowed, reason, source
 
 
+async def _append_a2a_trust_audit_entry(
+    *,
+    deps: "A2ADependencies",
+    organization_id: str,
+    actor_org_id: str,
+    action: str,
+    sender_agent_id: str,
+    recipient_agent_id: str,
+    before_table_hash: str,
+    after_table_hash: str,
+    source_before: str,
+    source_after: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[str]:
+    if deps.audit_store is None:
+        return None
+    mandate_seed = (
+        f"{organization_id}:{action}:{sender_agent_id}:{recipient_agent_id}:{after_table_hash}"
+    )
+    mandate_id = f"a2a_trust_{hashlib.sha256(mandate_seed.encode()).hexdigest()[:24]}"
+    entry = ComplianceAuditEntry(
+        mandate_id=mandate_id,
+        subject=f"org:{organization_id}",
+        allowed=True,
+        reason=f"{action}_applied",
+        rule_id=action,
+        provider="a2a_trust",
+        metadata={
+            "event_type": "a2a_trust.relation_change",
+            "organization_id": organization_id,
+            "actor_organization_id": actor_org_id,
+            "sender_agent_id": sender_agent_id,
+            "recipient_agent_id": recipient_agent_id,
+            "before_table_hash": before_table_hash,
+            "after_table_hash": after_table_hash,
+            "source_before": source_before,
+            "source_after": source_after,
+            **(metadata or {}),
+        },
+    )
+    result = deps.audit_store.append(entry)
+    if isawaitable(result):
+        result = await result
+    return str(result or entry.audit_id)
+
+
 def _normalize_signature_algorithm(raw: str) -> str:
     value = (raw or "").strip().lower()
     if value in {"ed25519", "ecdsa-p256", "ecdsa_p256", "p256"}:
@@ -292,6 +340,7 @@ class A2ADependencies:
         compliance: Any | None = None,
         identity_registry: IdentityRegistry | None = None,
         trust_repo: Any | None = None,
+        audit_store: Any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -301,6 +350,7 @@ class A2ADependencies:
         self.compliance = compliance
         self.identity_registry = identity_registry
         self.trust_repo = trust_repo
+        self.audit_store = audit_store
 
 
 def get_deps() -> A2ADependencies:
@@ -388,6 +438,7 @@ class A2ATrustTableResponse(BaseModel):
     enforced: bool
     source: str
     table_hash: str
+    audit_id: Optional[str] = None
     relations: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -874,6 +925,11 @@ async def upsert_a2a_trust_relation(
     upserter = getattr(repo, "upsert_relation", None)
     if not callable(upserter):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
+    table_before, source_before = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+    )
+    before_hash = _trust_table_hash(table_before)
     await upserter(
         organization_id=str(principal.organization_id),
         sender_agent_id=payload.sender_agent_id,
@@ -885,10 +941,25 @@ async def upsert_a2a_trust_relation(
         organization_id=str(principal.organization_id),
     )
     normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
+    after_hash = _trust_table_hash(table)
+    audit_id = await _append_a2a_trust_audit_entry(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+        actor_org_id=str(principal.organization_id),
+        action="upsert_relation",
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        before_table_hash=before_hash,
+        after_table_hash=after_hash,
+        source_before=source_before,
+        source_after=source,
+        metadata={"request_metadata": payload.metadata},
+    )
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
-        table_hash=_trust_table_hash(table),
+        table_hash=after_hash,
+        audit_id=audit_id,
         relations=normalized,
     )
 
@@ -905,7 +976,12 @@ async def delete_a2a_trust_relation(
     deleter = getattr(repo, "delete_relation", None)
     if not callable(deleter):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
-    await deleter(
+    table_before, source_before = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+    )
+    before_hash = _trust_table_hash(table_before)
+    deleted = await deleter(
         organization_id=str(principal.organization_id),
         sender_agent_id=payload.sender_agent_id,
         recipient_agent_id=payload.recipient_agent_id,
@@ -915,10 +991,25 @@ async def delete_a2a_trust_relation(
         organization_id=str(principal.organization_id),
     )
     normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
+    after_hash = _trust_table_hash(table)
+    audit_id = await _append_a2a_trust_audit_entry(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+        actor_org_id=str(principal.organization_id),
+        action="delete_relation",
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        before_table_hash=before_hash,
+        after_table_hash=after_hash,
+        source_before=source_before,
+        source_after=source,
+        metadata={"deleted": bool(deleted)},
+    )
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
         source=source,
-        table_hash=_trust_table_hash(table),
+        table_hash=after_hash,
+        audit_id=audit_id,
         relations=normalized,
     )
 

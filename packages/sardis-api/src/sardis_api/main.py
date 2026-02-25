@@ -649,6 +649,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance=compliance,
         identity_registry=identity_registry,
         trust_repo=a2a_trust_repo,
+        audit_store=audit_store,
     )
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
