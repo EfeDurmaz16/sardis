@@ -29,6 +29,7 @@ class SecureCheckoutJobStatus(str, Enum):
     PENDING_APPROVAL = "pending_approval"
     READY = "ready"
     DISPATCHED = "dispatched"
+    COMPLETED = "completed"
     FAILED = "failed"
     REJECTED = "rejected"
 
@@ -71,6 +72,12 @@ class ExecuteSecureCheckoutJobRequest(BaseModel):
     """Dispatch an already created secure checkout job."""
 
     approval_id: Optional[str] = None
+
+
+class CompleteSecureCheckoutJobRequest(BaseModel):
+    status: str = Field(pattern="^(completed|failed)$")
+    executor_ref: Optional[str] = None
+    failure_reason: Optional[str] = None
 
 
 class MerchantCapabilityRequest(BaseModel):
@@ -358,6 +365,10 @@ class InMemorySecureCheckoutStore:
                 "expires_at": expires_at,
                 "consumed": False,
             }
+
+    async def drop_secret(self, secret_ref: str) -> None:
+        async with self._lock:
+            self._secrets.pop(secret_ref, None)
 
     async def consume_secret(self, secret_ref: str) -> Optional[dict[str, Any]]:
         async with self._lock:
@@ -782,6 +793,61 @@ def create_secure_checkout_router() -> APIRouter:
         if not payload:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="secret_not_found_or_expired")
         return ConsumeExecutorSecretResponse(**payload)
+
+    @router.post(
+        "/secure/jobs/{job_id}/complete",
+        response_model=SecureCheckoutJobResponse,
+        include_in_schema=False,
+    )
+    async def complete_executor_job(
+        job_id: str,
+        payload: CompleteSecureCheckoutJobRequest,
+        x_sardis_executor_token: Optional[str] = Header(default=None),
+        deps: SecureCheckoutDependencies = Depends(get_deps),
+    ):
+        expected = os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
+        if expected:
+            presented = (x_sardis_executor_token or "").strip()
+            if not presented or not hmac.compare_digest(presented, expected):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_executor_token")
+        elif _is_production_env():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="executor_token_not_configured",
+            )
+
+        store = _resolve_store(deps)
+        job = await store.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        if job["status"] != SecureCheckoutJobStatus.DISPATCHED.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"job_not_dispatched:{job['status']}",
+            )
+
+        desired_status = SecureCheckoutJobStatus.COMPLETED.value
+        error_code = None
+        error = None
+        if payload.status == "failed":
+            desired_status = SecureCheckoutJobStatus.FAILED.value
+            error_code = "executor_failed"
+            error = payload.failure_reason or "executor_failed"
+
+        secret_ref = job.get("secret_ref")
+        if secret_ref:
+            await store.drop_secret(secret_ref)
+
+        updated = await store.update_job(
+            job_id,
+            status=desired_status,
+            executor_ref=payload.executor_ref or job.get("executor_ref"),
+            error_code=error_code,
+            error=error,
+            secret_ref=None,
+            secret_expires_at=None,
+        )
+        return _serialize_job(updated or job)
 
     return router
 

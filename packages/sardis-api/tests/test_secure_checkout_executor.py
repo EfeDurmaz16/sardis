@@ -268,3 +268,53 @@ def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
     payload = executed.json()
     assert payload["status"] == "dispatched"
     assert payload["executor_ref"] == "exec_123"
+
+
+def test_executor_can_complete_dispatched_job_and_revoke_secret(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "22.00",
+            "currency": "USD",
+            "intent_id": "intent_complete_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+    dispatch_payload = executed.json()
+    assert dispatch_payload["status"] == "dispatched"
+    assert dispatch_payload["secret_ref"]
+    secret_ref = dispatch_payload["secret_ref"]
+
+    completed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_1"},
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert completed.status_code == 200
+    done_payload = completed.json()
+    assert done_payload["status"] == "completed"
+    assert done_payload["executor_ref"] == "exec_done_1"
+    assert done_payload["secret_ref"] is None
+
+    consumed = client.post(
+        f"/api/v2/checkout/secure/secrets/{secret_ref}/consume",
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert consumed.status_code == 404
