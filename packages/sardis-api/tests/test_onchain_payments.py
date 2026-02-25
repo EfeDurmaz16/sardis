@@ -526,6 +526,53 @@ def test_onchain_payment_kyt_review_requires_approval():
     chain_executor.dispatch_payment.assert_not_called()
 
 
+def test_onchain_payment_kyt_org_override_reviews_medium_risk(monkeypatch):
+    monkeypatch.setenv(
+        "SARDIS_KYT_REVIEW_LEVELS_BY_ORG_JSON",
+        '{"org_demo":["medium","high","severe"]}',
+    )
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    sanctions_service = AsyncMock()
+    sanctions_service.screen_address.return_value = SimpleNamespace(
+        should_block=False,
+        risk_level=SimpleNamespace(value="medium"),
+        provider="elliptic",
+        reason="medium_risk_cluster",
+    )
+    approval_service = AsyncMock()
+    approval_service.create_approval.return_value = SimpleNamespace(id="appr_kyt_org_1")
+    audit_store = _AuditStore()
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        sanctions_service=sanctions_service,
+        approval_service=approval_service,
+        audit_store=audit_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "3.00",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "pending_approval"
+    assert payload["approval_id"] == "appr_kyt_org_1"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
 def test_onchain_payment_kyt_sanctions_hit_denied():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()

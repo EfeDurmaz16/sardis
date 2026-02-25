@@ -127,3 +127,24 @@ async def test_kyc_service_error_fails_closed():
 
     assert result.passed is False
     assert result.reason == "kyc_service_error"
+
+
+@pytest.mark.asyncio
+async def test_kyt_org_override_enables_medium_risk_review(monkeypatch):
+    monkeypatch.setenv(
+        "SARDIS_KYT_REVIEW_LEVELS_BY_ORG_JSON",
+        '{"org_risky":["medium","high","severe"]}',
+    )
+
+    result = await perform_compliance_checks(
+        deps=_deps(sanctions_service=_SanctionsService(risk_level="medium")),
+        agent_id="agent_1",
+        destination="0xmerchant",
+        chain="base",
+        amount_minor=10_000,
+        organization_id="org_risky",
+    )
+
+    assert result.passed is True
+    assert result.kyt_review_required is True
+    assert result.kyt_risk_level == "medium"

@@ -1,6 +1,7 @@
 """AP2 payment execution endpoints with compliance enforcement."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -99,6 +100,35 @@ def _kyt_review_levels() -> set[str]:
     return parsed or set(KYT_REVIEW_DEFAULT)
 
 
+def _kyt_review_levels_for_org(organization_id: Optional[str]) -> set[str]:
+    default_levels = _kyt_review_levels()
+    org_id = (organization_id or "").strip()
+    if not org_id:
+        return default_levels
+
+    raw = os.getenv("SARDIS_KYT_REVIEW_LEVELS_BY_ORG_JSON", "").strip()
+    if not raw:
+        return default_levels
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Invalid SARDIS_KYT_REVIEW_LEVELS_BY_ORG_JSON; using global defaults")
+        return default_levels
+    if not isinstance(parsed, dict):
+        return default_levels
+
+    value = parsed.get(org_id)
+    if value is None:
+        return default_levels
+    if isinstance(value, str):
+        levels = {part.strip().lower() for part in value.split(",") if part.strip()}
+    elif isinstance(value, list):
+        levels = {str(part).strip().lower() for part in value if str(part).strip()}
+    else:
+        return default_levels
+    return levels or default_levels
+
+
 def _sanctions_risk_level(screening_result: Any) -> str:
     level = getattr(screening_result, "risk_level", None)
     level_value = getattr(level, "value", level)
@@ -127,6 +157,7 @@ async def _compliance_checks_impl(
     amount_minor: int,
     source_address: Optional[str] = None,
     token: str = "USDC",
+    organization_id: Optional[str] = None,
 ) -> ComplianceCheckResult:
     """
     Perform all compliance checks for a payment.
@@ -242,7 +273,7 @@ async def _compliance_checks_impl(
                     highest_risk_result = screen
 
             result.sanctions_clear = True
-            review_levels = _kyt_review_levels()
+            review_levels = _kyt_review_levels_for_org(organization_id)
             if highest_risk_level in review_levels:
                 result.kyt_review_required = True
                 result.kyt_risk_level = highest_risk_level
@@ -660,6 +691,7 @@ async def execute_ap2_payment(
             amount_minor=payment.amount_minor,
             source_address=wallet.get_address(payment.chain) if hasattr(wallet, "get_address") else None,
             token=payment.token,
+            organization_id=principal.organization_id,
         )
 
         if not compliance.passed:
@@ -882,6 +914,7 @@ async def perform_compliance_checks(
     destination: str,
     chain: str,
     amount_minor: int,
+    organization_id: Optional[str] = None,
 ) -> ComplianceCheckResult:
     """
     Compatibility wrapper kept for tests/introspection:
@@ -893,4 +926,5 @@ async def perform_compliance_checks(
         destination=destination,
         chain=chain,
         amount_minor=amount_minor,
+        organization_id=organization_id,
     )

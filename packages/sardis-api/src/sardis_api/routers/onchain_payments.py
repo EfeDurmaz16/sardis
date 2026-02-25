@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from inspect import isawaitable
+import json
 import os
 import re
 import time
@@ -123,6 +124,34 @@ def _kyt_review_levels() -> set[str]:
     raw = os.getenv("SARDIS_KYT_REVIEW_LEVELS", "high,severe")
     parsed = {part.strip().lower() for part in raw.split(",") if part.strip()}
     return parsed or set(KYT_REVIEW_DEFAULT)
+
+
+def _kyt_review_levels_for_org(organization_id: Optional[str]) -> set[str]:
+    default_levels = _kyt_review_levels()
+    org_id = (organization_id or "").strip()
+    if not org_id:
+        return default_levels
+
+    raw = os.getenv("SARDIS_KYT_REVIEW_LEVELS_BY_ORG_JSON", "").strip()
+    if not raw:
+        return default_levels
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return default_levels
+    if not isinstance(parsed, dict):
+        return default_levels
+
+    value = parsed.get(org_id)
+    if value is None:
+        return default_levels
+    if isinstance(value, str):
+        levels = {part.strip().lower() for part in value.split(",") if part.strip()}
+    elif isinstance(value, list):
+        levels = {str(part).strip().lower() for part in value if str(part).strip()}
+    else:
+        return default_levels
+    return levels or default_levels
 
 
 def _sanctions_risk_level(screening_result: Any) -> str:
@@ -502,7 +531,7 @@ async def pay_onchain(
                     highest_risk_level = risk_level
                     highest_risk_result = screen
 
-            if highest_risk_level in _kyt_review_levels():
+            if highest_risk_level in _kyt_review_levels_for_org(principal.organization_id):
                 compliance_audit_id = await _append_compliance_audit_entry(
                     deps=deps,
                     mandate_id=preflight_audit_id,
