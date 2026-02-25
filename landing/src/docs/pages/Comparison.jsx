@@ -73,7 +73,7 @@ const comparisonData = [
   },
   {
     feature: 'MCP server for Claude',
-    sardis: '60+ tools',
+    sardis: '52 tools',
     creditCard: false,
     bankApi: false,
     custodialWallet: false,

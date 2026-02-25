@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import SardisPlayground from '../components/SardisPlayground';
 import SardisLogo from '../components/SardisLogo';
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
 
 // ─── MCP Tool Catalog ───────────────────────────────────────────────
 const MCP_TOOLS = [
@@ -442,6 +443,17 @@ export default function Playground() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
+      <SEO
+        title="AI Agent Payments Playground"
+        description="Explore Sardis AI agent payment tools, policy enforcement flows, and integration examples for MCP, Python, and TypeScript."
+        path="/playground"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Playground' },
+          ]),
+        ]}
+      />
       {/* ── Header ──────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -742,8 +754,8 @@ export default function Playground() {
             {[
               { label: "CHAINS", value: "5", sub: "Base, Polygon, Ethereum, Arbitrum, Optimism" },
               { label: "TOKENS", value: "5", sub: "USDC, USDT, EURC, PYUSD, DAI" },
-              { label: "PROTOCOLS", value: "4", sub: "AP2, UCP, A2A, TAP" },
-              { label: "PACKAGES", value: "19", sub: "npm + PyPI" },
+              { label: "PROTOCOLS", value: "5", sub: "AP2, UCP, A2A, TAP, x402" },
+              { label: "PACKAGES", value: "27", sub: "npm + PyPI + meta" },
             ].map((stat, i) => (
               <div key={i} className="p-5 border border-border hover:border-[var(--sardis-orange)] transition-colors">
                 <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground mb-1 font-mono">{stat.label}</div>

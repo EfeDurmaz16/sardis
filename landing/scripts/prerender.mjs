@@ -26,6 +26,7 @@ const DIST = path.join(ROOT, 'dist');
 const ROUTES = [
   // Top-level pages
   '/',
+  '/enterprise',
   '/playground',
   '/demo',
 
@@ -94,6 +95,7 @@ const ROUTES = [
   '/docs/blog/sardis-v0-8-3-demo-ops-cloud-deploy',
   '/docs/blog/sardis-v0-8-4-packages-live',
   '/docs/blog/sardis-v0-8-7-launch-hardening',
+  '/docs/blog/sardis-ai-agent-payments',
 ];
 
 const CONCURRENCY = 5;
@@ -124,17 +126,28 @@ function routeToOutputPath(route) {
 /**
  * Find a free port starting from the given number.
  */
-function findFreePort(start = 4173) {
-  return new Promise((resolve) => {
-    const server = createNetServer();
-    server.listen(start, () => {
-      const { port } = server.address();
-      server.close(() => resolve(port));
-    });
-    server.on('error', () => {
-      resolve(findFreePort(start + 1));
-    });
-  });
+async function findFreePort(start = 4173, max = 65535) {
+  for (let port = start; port <= max; port += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const found = await new Promise((resolve, reject) => {
+        const server = createNetServer();
+        server.once('error', reject);
+        server.listen(port, () => {
+          const addr = server.address();
+          const freePort = typeof addr === 'object' && addr ? addr.port : port;
+          server.close(() => resolve(freePort));
+        });
+      });
+      return found;
+    } catch (error) {
+      if (error && error.code === 'EADDRINUSE') {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error(`No free port found in range ${start}-${max}`);
 }
 
 /**
@@ -215,13 +228,17 @@ async function main() {
     preview: {
       port,
       strictPort: true,
+      host: '127.0.0.1',
       // Serve SPA fallback so all routes return index.html
       open: false,
     },
   });
 
-  await previewServer.listen();
-  const baseUrl = `http://localhost:${port}`;
+  if (typeof previewServer.listen === 'function') {
+    await previewServer.listen();
+  }
+  const resolvedLocalUrl = previewServer.resolvedUrls?.local?.[0];
+  const baseUrl = (resolvedLocalUrl || `http://127.0.0.1:${port}`).replace(/\/$/, '');
   console.log(`Preview server running at ${baseUrl}\n`);
 
   let browser;
@@ -250,7 +267,11 @@ async function main() {
     if (browser) {
       await browser.close().catch(() => {});
     }
-    await previewServer.close().catch(() => {});
+    if (typeof previewServer.close === 'function') {
+      await previewServer.close().catch(() => {});
+    } else if (previewServer.httpServer?.close) {
+      await new Promise((resolve) => previewServer.httpServer.close(resolve));
+    }
   }
 
   process.exit(exitCode);

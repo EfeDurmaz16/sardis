@@ -323,6 +323,10 @@ export default function Roadmap() {
       status: 'upcoming',
       date: 'Q1-Q2 2026',
       items: [
+        { text: 'P0: Immutable hard-limit layer for NL policy parser + fuzz/property tests', done: false },
+        { text: 'P1: Agent-level sliding window limiter on payment endpoints', done: false },
+        { text: 'P1: Mainnet gas profiling and optimization pass with CI gas ceilings', done: false },
+        { text: 'P1: Turnkey outage runbook + DR playbook (RTO/RPO + failover mode)', done: false },
         { text: 'Turnkey/Fireblocks UserOperation signing path (production signer support)', done: false },
         { text: 'Base Sepolia full E2E proof artifact with userOp hash and on-chain receipt', done: false },
         { text: 'Base mainnet ERC-4337 rollout with staged sponsor caps', done: false },

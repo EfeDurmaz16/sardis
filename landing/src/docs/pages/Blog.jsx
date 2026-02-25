@@ -1,8 +1,18 @@
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
 import WaitlistForm from '../../components/WaitlistForm';
+import SEO, { createBreadcrumbSchema } from '@/components/SEO';
 
 const posts = [
+  {
+    title: 'Sardis AI Agent Payments: What It Is and How It Works',
+    excerpt: 'A practical guide to Sardis AI payments infrastructure for autonomous agents: deterministic policy enforcement, approval controls, virtual cards, and auditable execution.',
+    date: '2026-02-25',
+    readTime: '4 min read',
+    category: 'Technical',
+    featured: true,
+    slug: 'sardis-ai-agent-payments',
+  },
   {
     title: 'Sardis v0.9.0: Multi-Provider Fiat Rails + AI Framework Integrations',
     excerpt: 'v0.9.0 ships Stripe Treasury + Issuing for fiat operations, Coinbase Onramp for zero-fee USDC, a per-agent sub-ledger system, and integrations across OpenAI, Gemini, Claude MCP, ChatGPT Actions, and OpenClaw.',
@@ -103,8 +113,8 @@ const posts = [
     slug: 'understanding-ap2',
   },
   {
-    title: 'MCP Server: 60+ Tools for AI Payments',
-    excerpt: 'Our MCP server expanded from 4 tools to 60+ operations. From treasury ACH flows and virtual cards to checkout sessions and agent discovery, you can add broad payment capabilities to Claude Desktop and Cursor without writing code.',
+    title: 'MCP Server: 52 Tools for AI Payments',
+    excerpt: 'Our MCP server expanded from 4 tools to 52 operations. From treasury ACH flows and virtual cards to checkout sessions and agent discovery, you can add broad payment capabilities to Claude Desktop and Cursor without writing code.',
     date: '2026-01-18',
     readTime: '5 min read',
     category: 'Tutorial',
@@ -252,6 +262,18 @@ export default function DocsBlog() {
 
   return (
     <article className="prose prose-invert max-w-none">
+      <SEO
+        title="Sardis Blog"
+        description="Product updates, release notes, and technical guides on Sardis AI agent payments infrastructure."
+        path="/docs/blog"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: 'Home', href: '/' },
+            { name: 'Documentation', href: '/docs' },
+            { name: 'Blog' },
+          ]),
+        ]}
+      />
       <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-500">

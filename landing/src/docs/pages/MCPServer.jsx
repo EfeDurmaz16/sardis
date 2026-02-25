@@ -5,7 +5,7 @@ export default function DocsMCPServer() {
     <>
       <SEO
         title="MCP Server for Claude & Cursor"
-        description="Add 60+ payment tools to Claude Desktop and Cursor with the Sardis MCP Server. Zero-code integration for wallet management, payments, treasury operations, and virtual cards."
+        description="Add 52 payment tools to Claude Desktop and Cursor with the Sardis MCP Server. Zero-code integration for wallet management, payments, treasury operations, and virtual cards."
         path="/docs/mcp-server"
         schemas={[
           createBreadcrumbSchema([
@@ -23,7 +23,7 @@ export default function DocsMCPServer() {
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">MCP Server</h1>
         <p className="text-xl text-muted-foreground">
-          60+ tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
+          52 tools for Claude, Cursor, and MCP-compatible AI assistants. Zero-code payment integration.
         </p>
       </div>
 

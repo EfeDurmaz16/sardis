@@ -69,6 +69,7 @@ import SardisV083DemoOpsCloudDeploy from './docs/pages/blog/SardisV083DemoOpsClo
 import SardisV084PackagesLive from './docs/pages/blog/SardisV084PackagesLive.jsx'
 import SardisV087LaunchHardening from './docs/pages/blog/SardisV087LaunchHardening.jsx'
 import SardisV09MultiProviderFiat from './docs/pages/blog/SardisV09MultiProviderFiat.jsx'
+import SardisAIAgentPayments from './docs/pages/blog/SardisAIAgentPayments.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
@@ -144,6 +145,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/sardis-v0-8-4-packages-live" element={<SardisV084PackagesLive />} />
           <Route path="blog/sardis-v0-8-7-launch-hardening" element={<SardisV087LaunchHardening />} />
           <Route path="blog/sardis-v0-9-0-multi-provider-fiat" element={<SardisV09MultiProviderFiat />} />
+          <Route path="blog/sardis-ai-agent-payments" element={<SardisAIAgentPayments />} />
           <Route path="changelog" element={<DocsChangelog />} />
           <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}

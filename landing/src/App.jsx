@@ -10,6 +10,7 @@ import SardisPlayground from "./components/SardisPlayground";
 import WaitlistForm from "./components/WaitlistForm";
 import SardisLogo from "./components/SardisLogo";
 import WaitlistModal from "./components/WaitlistModal";
+import SEO, { createOrganizationSchema, createSoftwareAppSchema, createWebSiteSchema } from "@/components/SEO";
 
 // Isometric Icons
 const icons = {
@@ -128,6 +129,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans selection:bg-primary/20">
+      <SEO
+        title="Sardis AI Agent Payments"
+        description="Sardis is AI agent payments infrastructure with policy-controlled wallets, virtual cards, and on-chain + fiat rails."
+        path="/"
+        schemas={[
+          createOrganizationSchema(),
+          createWebSiteSchema(),
+          createSoftwareAppSchema(),
+        ]}
+      />
 
       {/* Navigation */}
       <nav
@@ -219,6 +230,10 @@ function App() {
 
             <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-[54ch] mx-auto">
               For teams building autonomous AI agents that handle real transactions.
+            </p>
+
+            <p className="text-xs md:text-sm text-muted-foreground/90 mb-6 max-w-[62ch] mx-auto">
+              Sardis is AI agent payments infrastructure: deterministic controls for cards, fiat rails, and on-chain settlement.
             </p>
 
             <p className="text-xs md:text-sm text-[var(--sardis-orange)]/90 font-mono mb-8 max-w-[70ch] mx-auto">

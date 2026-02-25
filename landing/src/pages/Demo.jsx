@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useSardisDemo } from '@/components/demo/useSardisDemo'
 import TerminalView from '@/components/demo/TerminalView'
 import DashboardView from '@/components/demo/DashboardView'
+import SEO from '@/components/SEO'
 
 const TOUR_STEPS = [
   {
@@ -183,6 +184,12 @@ export default function Demo() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEO
+        title="Agent Payment Demo"
+        description="Interactive Sardis demo showing blocked and approved AI agent payment flows with policy enforcement and auditable controls."
+        path="/demo"
+        noindex
+      />
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:px-8">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between">
           <Link to="/" className="font-mono text-sm font-semibold text-foreground transition-colors hover:text-[var(--sardis-orange)]">

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import SardisLogo from "../components/SardisLogo";
 import WaitlistModal from "../components/WaitlistModal";
+import SEO, { createBreadcrumbSchema } from "@/components/SEO";
 
 // Isometric Icons
 const icons = {
@@ -111,6 +112,17 @@ function Enterprise() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans selection:bg-primary/20">
+      <SEO
+        title="Enterprise AI Agent Payments"
+        description="Enterprise-grade AI agent payments with deterministic policy enforcement, approval controls, and auditable transaction trails."
+        path="/enterprise"
+        schemas={[
+          createBreadcrumbSchema([
+            { name: "Home", href: "/" },
+            { name: "Enterprise" },
+          ]),
+        ]}
+      />
 
       {/* Navigation */}
       <nav

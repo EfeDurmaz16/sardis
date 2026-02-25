@@ -2,9 +2,39 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.9.3',
+    version: '0.9.4',
     date: '2026-02-25',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'New SEO-targeted blog guide: /docs/blog/sardis-ai-agent-payments',
+          'Page-level SEO metadata on homepage, enterprise, playground, demo, and docs blog index',
+          'P0/P1 hardening backlog document added for parser limits, rate limiting, gas optimization, and DR runbook',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Canonical host normalized to https://www.sardis.sh in SEO metadata and sitemap URLs',
+          'Sitemap updated with enterprise and Sardis AI payments content route plus refreshed lastmod dates',
+          'Brand-query relevance improved with Sardis AI payments copy alignment across homepage metadata',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'Prerender port discovery now handles EADDRINUSE safely and avoids invalid port overflow',
+          'MCP tool count references aligned to verified baseline (52)',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.9.3',
+    date: '2026-02-25',
+    tag: '',
     changes: [
       {
         type: 'added',

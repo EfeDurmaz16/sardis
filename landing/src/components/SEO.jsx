@@ -1,8 +1,8 @@
 import { Helmet } from 'react-helmet-async';
 
 const SITE_NAME = 'Sardis';
-const SITE_URL = 'https://sardis.sh';
-const DEFAULT_OG_IMAGE = 'https://sardis.sh/og-image.png';
+const SITE_URL = 'https://www.sardis.sh';
+const DEFAULT_OG_IMAGE = 'https://www.sardis.sh/og-image.png';
 const TWITTER_HANDLE = '@sardisHQ';
 
 /**
@@ -26,7 +26,11 @@ export default function SEO({
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={canonicalUrl} />
-      {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {noindex ? (
+        <meta name="robots" content="noindex, nofollow" />
+      ) : (
+        <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+      )}
 
       {/* Open Graph */}
       <meta property="og:type" content={type} />
@@ -34,6 +38,7 @@ export default function SEO({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:site_name" content={SITE_NAME} />
+      <meta property="og:locale" content="en_US" />
       <meta property="og:image" content={DEFAULT_OG_IMAGE} />
 
       {/* Article-specific OG */}
@@ -118,7 +123,7 @@ export function createSoftwareAppSchema() {
       'Virtual Visa/Mastercard card issuance',
       'Fiat on/off-ramp (ACH, wire, card)',
       'AP2, TAP, UCP, A2A, x402 protocol support',
-      'MCP server with 60+ tools for Claude',
+      'MCP server with 52 tools for Claude',
       'Python and TypeScript SDKs',
       'Append-only audit trail with Merkle tree anchoring',
       'ERC-4337 gasless smart wallets',
