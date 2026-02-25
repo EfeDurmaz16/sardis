@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stripe_issuing_funding_event
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_v2_core.funding import FundingAdapter, FundingRequest, StripeIssuingFundingAdapter
 
 router = APIRouter(prefix="/stripe/funding", tags=["stripe-funding"])
 
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/stripe/funding", tags=["stripe-funding"])
 @dataclass
 class StripeFundingDeps:
     treasury_provider: Any
+    funding_adapter: FundingAdapter | None = None
     treasury_repo: Any = None
     canonical_repo: Any = None
     default_connected_account_id: str = ""
@@ -100,6 +102,14 @@ def _status_value(value: Any) -> str:
     if value is None:
         return "processing"
     return str(getattr(value, "value", value)).strip().lower() or "processing"
+
+
+def _resolve_funding_adapter(deps: StripeFundingDeps) -> FundingAdapter | None:
+    if deps.funding_adapter is not None:
+        return deps.funding_adapter
+    if deps.treasury_provider is None:
+        return None
+    return StripeIssuingFundingAdapter(deps.treasury_provider)
 
 
 @router.get("/resolve-connected-account", response_model=ConnectedAccountResolution)
@@ -187,7 +197,8 @@ async def fund_issuing_balance(
     deps: StripeFundingDeps = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
-    if not deps.treasury_provider:
+    funding_adapter = _resolve_funding_adapter(deps)
+    if funding_adapter is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="stripe_treasury_not_configured",
@@ -217,22 +228,26 @@ async def fund_issuing_balance(
         if payload.metadata:
             metadata.update(payload.metadata)
 
-        transfer = await deps.treasury_provider.fund_issuing_balance(
-            amount=payload.amount,
-            description=payload.description,
-            connected_account_id=connected_account_id,
-            metadata=metadata,
+        transfer = await funding_adapter.fund(
+            FundingRequest(
+                amount=payload.amount,
+                currency="USD",
+                description=payload.description,
+                connected_account_id=connected_account_id,
+                metadata=metadata,
+            )
         )
-        transfer_id = str(getattr(transfer, "id", "")) or "unknown"
+        transfer_id = str(getattr(transfer, "transfer_id", "")) or "unknown"
         amount_value = Decimal(str(getattr(transfer, "amount", payload.amount)))
         currency_value = str(getattr(transfer, "currency", "usd")).upper()
         status_value = _status_value(getattr(transfer, "status", "processing"))
+        provider_name = str(getattr(transfer, "provider", "stripe")).strip().lower() or "stripe"
         amount_minor = int((amount_value * Decimal("100")).to_integral_value())
 
         if deps.treasury_repo is not None:
             await deps.treasury_repo.record_issuing_funding_event(
                 organization_id=principal.organization_id,
-                provider="stripe",
+                provider=provider_name,
                 transfer_id=transfer_id,
                 amount_minor=amount_minor,
                 currency=currency_value,
@@ -242,7 +257,7 @@ async def fund_issuing_balance(
                 metadata=metadata,
             )
 
-        if deps.canonical_repo is not None:
+        if deps.canonical_repo is not None and provider_name == "stripe":
             normalized = normalize_stripe_issuing_funding_event(
                 organization_id=principal.organization_id,
                 payload={

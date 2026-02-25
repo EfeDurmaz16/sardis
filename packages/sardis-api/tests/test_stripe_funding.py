@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from types import SimpleNamespace
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from sardis_api.routers.stripe_funding import (
     get_deps,
     router,
 )
+from sardis_v2_core.funding import FundingRequest, FundingResult
 
 
 class _FakeTreasuryProvider:
@@ -74,6 +76,26 @@ class _FakeCanonicalRepo:
     async def ingest_event(self, event, *, drift_tolerance_minor: int = 0):
         self.events.append((event, drift_tolerance_minor))
         return {"ok": True}
+
+
+class _FakeFundingAdapter:
+    provider = "coinbase_cdp"
+    rail = "stablecoin"
+
+    def __init__(self) -> None:
+        self.requests: list[FundingRequest] = []
+
+    async def fund(self, request: FundingRequest) -> FundingResult:
+        self.requests.append(request)
+        return FundingResult(
+            provider=self.provider,
+            rail=self.rail,
+            transfer_id="cdp_topup_1",
+            amount=request.amount,
+            currency=request.currency,
+            status="posted",
+            metadata={"path": "stablecoin"},
+        )
 
 
 def _principal() -> Principal:
@@ -224,3 +246,26 @@ def test_topup_history_and_reconcile_endpoints():
     assert summary["organization_id"] == "org_demo"
     assert summary["count"] == 1
     assert summary["total_minor"] == 750
+
+
+def test_topup_supports_provider_agnostic_adapter():
+    adapter = _FakeFundingAdapter()
+    treasury_repo = _FakeTreasuryRepo()
+    deps = StripeFundingDeps(
+        treasury_provider=None,
+        funding_adapter=adapter,
+        treasury_repo=treasury_repo,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/stripe/funding/issuing/topups",
+        json={"amount": "4.25", "description": "Stablecoin-backed funding"},
+    )
+
+    assert response.status_code == 200
+    assert adapter.requests
+    assert adapter.requests[0].amount == Decimal("4.25")
+    assert len(treasury_repo.record_calls) == 1
+    assert treasury_repo.record_calls[0]["provider"] == "coinbase_cdp"
