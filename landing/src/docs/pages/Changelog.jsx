@@ -2,9 +2,41 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.9.1',
+    date: '2026-02-25',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'A2A trust repository with admin relation upsert/delete and production fail-closed migration posture',
+          'A2A trusted peer discovery API with trusted/untrusted filtering and deterministic trust table hashing',
+          'A2A trust mutation audit feed with compliance proof links for verifiable evidence export',
+          'A2A runtime security-policy endpoint exposing signature, trust-table, and approval guardrail posture',
+          'Approval quorum controls for trust relation mutations with distinct reviewer requirements',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Trust relation mutations now require approved 4-eyes tokens with org/action/metadata binding checks',
+          'Goal-drift review/block thresholds added to on-chain payment execution with deterministic deny path',
+          'Payment hardening release gate expanded for trust, quorum, and goal-drift controls',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Landing and roadmap documentation aligned with zero-trust control plane rollout',
+          'Operational controls clarified for approval escalation and auditable mutation history',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.9.0',
     date: '2026-02-20',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

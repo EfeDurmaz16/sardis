@@ -255,8 +255,8 @@ export default function Roadmap() {
     {
       version: 'v0.9.0',
       title: 'Multi-Provider Fiat + AI Framework Integrations',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'Stripe Treasury provider (financial accounts, outbound payments, fund transfers)', done: true },
         { text: 'Stripe Issuing provider (virtual cards, spending limits, real-time auth webhooks)', done: true },
@@ -270,6 +270,22 @@ export default function Roadmap() {
         { text: 'MCP fiat tools (5 new tools for deposit, withdraw, card payment, balance)', done: true },
         { text: 'ChatGPT Actions OpenAPI spec (8 endpoints)', done: true },
         { text: 'Ledger batch and audit migration (021)', done: true },
+      ],
+    },
+    {
+      version: 'v0.9.1',
+      title: 'Zero-Trust Control Plane Hardening',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'A2A trust repository-backed relations with production fail-closed migration guards', done: true },
+        { text: 'A2A trusted peer discovery endpoint with deterministic trust table hashing', done: true },
+        { text: 'A2A trust mutation audit trail with compliance proof links', done: true },
+        { text: 'A2A runtime security-policy endpoint (signature/trust/quorum posture visibility)', done: true },
+        { text: '4-eyes approval enforcement for trust relation mutations', done: true },
+        { text: 'Approval quorum controls with distinct reviewer requirements', done: true },
+        { text: 'On-chain goal-drift review/block thresholds with deterministic approval/deny paths', done: true },
+        { text: 'Strict payment hardening gate expanded with A2A/quorum/goal-drift controls', done: true },
       ],
     },
     {
@@ -317,7 +333,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 12, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 13, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

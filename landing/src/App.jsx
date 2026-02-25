@@ -221,6 +221,10 @@ function App() {
               For teams building autonomous AI agents that handle real transactions.
             </p>
 
+            <p className="text-xs md:text-sm text-[var(--sardis-orange)]/90 font-mono mb-8 max-w-[70ch] mx-auto">
+              Zero-Trust Control Plane: signed control mutations, 4-eyes approval quorum, and Merkle-verifiable audit proofs.
+            </p>
+
             <div className="max-w-3xl mx-auto">
               <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
             </div>
@@ -490,7 +494,7 @@ function App() {
               {
                 icon: icons.searchInsights,
                 title: "Confidence Routing",
-                description: "Tiered approval workflows based on transaction confidence scores. Auto-approve, manager review, multi-sig, or human escalation.",
+                description: "Tiered approval workflows based on transaction confidence scores. Supports 4-eyes quorum with distinct reviewers for high-risk control mutations.",
                 unique: true
               },
               {
@@ -502,7 +506,7 @@ function App() {
               {
                 icon: icons.wallet,
                 title: "Merkle Audit Trail",
-                description: "Tamper-proof audit logs anchored to Base blockchain via Merkle trees. Cryptographic proof of every transaction.",
+                description: "Tamper-proof audit logs anchored to Base blockchain via Merkle trees. Cryptographic proof for transactions and trust-policy mutations.",
                 unique: true
               }
             ].map((item, i) => (
