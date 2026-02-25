@@ -46,6 +46,8 @@ class _FakeTreasuryRepo:
     def __init__(self) -> None:
         self.record_calls: list[dict[str, object]] = []
         self.items: list[dict[str, object]] = []
+        self.attempt_calls: list[dict[str, object]] = []
+        self.attempts: list[dict[str, object]] = []
 
     async def record_issuing_funding_event(self, **kwargs):
         self.record_calls.append(kwargs)
@@ -67,6 +69,25 @@ class _FakeTreasuryRepo:
             "total_minor": total_minor,
             "by_status": {"posted": len(items)},
         }
+
+    async def record_funding_attempt(self, **kwargs):
+        self.attempt_calls.append(kwargs)
+        row = dict(kwargs)
+        row["created_at"] = "2026-02-25T00:00:00+00:00"
+        self.attempts.append(row)
+        return row
+
+    async def list_funding_attempts(
+        self,
+        organization_id: str,
+        *,
+        operation_id: str | None = None,
+        limit: int = 200,
+    ):
+        rows = [i for i in self.attempts if i.get("organization_id") == organization_id]
+        if operation_id is not None:
+            rows = [i for i in rows if i.get("operation_id") == operation_id]
+        return rows[:limit]
 
 
 class _FakeCanonicalRepo:
@@ -95,6 +116,29 @@ class _FakeFundingAdapter:
             currency=request.currency,
             status="posted",
             metadata={"path": "stablecoin"},
+        )
+
+
+class _FailingFundingAdapter:
+    provider = "lithic"
+    rail = "fiat"
+
+    async def fund(self, request: FundingRequest) -> FundingResult:
+        raise RuntimeError("upstream_unavailable")
+
+
+class _FallbackFundingAdapter:
+    provider = "stripe"
+    rail = "fiat"
+
+    async def fund(self, request: FundingRequest) -> FundingResult:
+        return FundingResult(
+            provider=self.provider,
+            rail=self.rail,
+            transfer_id="tu_fallback_1",
+            amount=request.amount,
+            currency=request.currency,
+            status="posted",
         )
 
 
@@ -269,3 +313,35 @@ def test_topup_supports_provider_agnostic_adapter():
     assert adapter.requests[0].amount == Decimal("4.25")
     assert len(treasury_repo.record_calls) == 1
     assert treasury_repo.record_calls[0]["provider"] == "coinbase_cdp"
+
+
+def test_topup_retries_with_fallback_adapter_and_persists_attempts():
+    primary = _FailingFundingAdapter()
+    fallback = _FallbackFundingAdapter()
+    treasury_repo = _FakeTreasuryRepo()
+    deps = StripeFundingDeps(
+        treasury_provider=None,
+        funding_adapter=primary,
+        fallback_funding_adapter=fallback,
+        treasury_repo=treasury_repo,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/stripe/funding/issuing/topups",
+        json={"amount": "11.00", "description": "Retry flow"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["transfer_id"] == "tu_fallback_1"
+    assert len(treasury_repo.attempt_calls) == 2
+    assert treasury_repo.attempt_calls[0]["provider"] == "lithic"
+    assert treasury_repo.attempt_calls[0]["status_value"] == "failed"
+    assert treasury_repo.attempt_calls[1]["provider"] == "stripe"
+    assert treasury_repo.attempt_calls[1]["status_value"] == "success"
+
+    attempts = client.get("/api/v2/stripe/funding/issuing/topups/attempts")
+    assert attempts.status_code == 200
+    payload = attempts.json()
+    assert len(payload) == 2

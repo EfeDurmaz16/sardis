@@ -22,6 +22,8 @@ class TreasuryRepository:
         self._webhook_events: dict[tuple[str, str], dict[str, Any]] = {}
         self._issuing_funding_events: dict[tuple[str, str, str], dict[str, Any]] = {}
         self._issuer_funding_table_ready: bool = False
+        self._funding_attempts: dict[tuple[str, str, int], dict[str, Any]] = {}
+        self._funding_attempt_table_ready: bool = False
 
     def _use_postgres(self) -> bool:
         if self._pool is not None:
@@ -854,6 +856,42 @@ class TreasuryRepository:
             )
         self._issuer_funding_table_ready = True
 
+    async def _ensure_funding_attempt_table(self) -> None:
+        if self._funding_attempt_table_ready:
+            return
+        if not self._use_postgres():
+            self._funding_attempt_table_ready = True
+            return
+        pool = await self._get_pool()
+        if pool is None:
+            return
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS issuer_funding_attempts (
+                    id UUID PRIMARY KEY,
+                    organization_id TEXT NOT NULL,
+                    operation_id TEXT NOT NULL,
+                    attempt_index INT NOT NULL,
+                    provider TEXT NOT NULL,
+                    rail TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    error TEXT,
+                    amount_minor BIGINT NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'USD',
+                    connected_account_id TEXT,
+                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE(organization_id, operation_id, attempt_index)
+                );
+                CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_created
+                  ON issuer_funding_attempts(organization_id, created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_funding_attempts_org_operation
+                  ON issuer_funding_attempts(organization_id, operation_id, attempt_index);
+                """
+            )
+        self._funding_attempt_table_ready = True
+
     async def record_issuing_funding_event(
         self,
         *,
@@ -1035,6 +1073,137 @@ class TreasuryRepository:
                 "by_status": by_status,
             }
 
+    async def record_funding_attempt(
+        self,
+        *,
+        organization_id: str,
+        operation_id: str,
+        attempt_index: int,
+        provider: str,
+        rail: str,
+        status_value: str,
+        error_message: Optional[str] = None,
+        amount_minor: int,
+        currency: str,
+        connected_account_id: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        if not operation_id:
+            raise ValueError("operation_id is required")
+        if attempt_index <= 0:
+            raise ValueError("attempt_index must be greater than zero")
+
+        row = {
+            "id": str(uuid.uuid4()),
+            "organization_id": organization_id,
+            "operation_id": operation_id,
+            "attempt_index": int(attempt_index),
+            "provider": str(provider or "unknown").strip().lower(),
+            "rail": str(rail or "fiat").strip().lower(),
+            "status": str(status_value or "failed").strip().lower(),
+            "error": error_message,
+            "amount_minor": int(amount_minor),
+            "currency": str(currency or "USD").upper(),
+            "connected_account_id": connected_account_id,
+            "metadata": metadata or {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        if not self._use_postgres():
+            key = (organization_id, operation_id, int(attempt_index))
+            self._funding_attempts[key] = row
+            return row
+
+        await self._ensure_funding_attempt_table()
+        pool = await self._get_pool()
+        if pool is None:
+            raise RuntimeError("PostgreSQL pool unavailable")
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO issuer_funding_attempts (
+                    id, organization_id, operation_id, attempt_index, provider, rail, status, error,
+                    amount_minor, currency, connected_account_id, metadata, created_at
+                ) VALUES (
+                    $1::uuid, $2, $3, $4, $5, $6, $7, $8,
+                    $9, $10, $11, $12::jsonb, NOW()
+                )
+                ON CONFLICT (organization_id, operation_id, attempt_index) DO UPDATE SET
+                    provider = EXCLUDED.provider,
+                    rail = EXCLUDED.rail,
+                    status = EXCLUDED.status,
+                    error = EXCLUDED.error,
+                    amount_minor = EXCLUDED.amount_minor,
+                    currency = EXCLUDED.currency,
+                    connected_account_id = EXCLUDED.connected_account_id,
+                    metadata = EXCLUDED.metadata
+                """,
+                row["id"],
+                organization_id,
+                operation_id,
+                int(attempt_index),
+                row["provider"],
+                row["rail"],
+                row["status"],
+                row["error"],
+                row["amount_minor"],
+                row["currency"],
+                connected_account_id,
+                row["metadata"],
+            )
+            db_row = await conn.fetchrow(
+                """
+                SELECT *
+                FROM issuer_funding_attempts
+                WHERE organization_id = $1 AND operation_id = $2 AND attempt_index = $3
+                """,
+                organization_id,
+                operation_id,
+                int(attempt_index),
+            )
+            return dict(db_row) if db_row else row
+
+    async def list_funding_attempts(
+        self,
+        organization_id: str,
+        *,
+        operation_id: Optional[str] = None,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        if not self._use_postgres():
+            rows = [
+                value
+                for (org, op_id, _), value in self._funding_attempts.items()
+                if org == organization_id and (operation_id is None or op_id == operation_id)
+            ]
+            rows.sort(
+                key=lambda r: (str(r.get("operation_id", "")), int(r.get("attempt_index", 0) or 0)),
+                reverse=False,
+            )
+            rows = rows[-limit:]
+            return rows
+
+        await self._ensure_funding_attempt_table()
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        query = """
+            SELECT *
+            FROM issuer_funding_attempts
+            WHERE organization_id = $1
+        """
+        args: list[Any] = [organization_id]
+        idx = 2
+        if operation_id is not None:
+            query += f" AND operation_id = ${idx}"
+            args.append(operation_id)
+            idx += 1
+        query += f" ORDER BY created_at DESC, attempt_index ASC LIMIT ${idx}"
+        args.append(limit)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *args)
+            return [dict(r) for r in rows]
+
         await self._ensure_issuer_funding_table()
         pool = await self._get_pool()
         if pool is None:
@@ -1085,6 +1254,8 @@ class TreasuryRepository:
             for org, _ in self._external_bank_accounts.keys():
                 orgs.add(org)
             for org, _, _ in self._issuing_funding_events.keys():
+                orgs.add(org)
+            for org, _, _ in self._funding_attempts.keys():
                 orgs.add(org)
             return sorted(orgs)
         pool = await self._get_pool()

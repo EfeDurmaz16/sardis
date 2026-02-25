@@ -34,6 +34,16 @@ class FundingResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class FundingAttempt:
+    """Single provider attempt during a routed funding operation."""
+
+    provider: str
+    rail: FundingRail
+    status: Literal["success", "failed"]
+    error: str | None = None
+
+
 class FundingAdapter(Protocol):
     """Adapter protocol for provider-specific funding implementations."""
 
@@ -47,6 +57,52 @@ class FundingAdapter(Protocol):
 
     async def fund(self, request: FundingRequest) -> FundingResult:
         ...
+
+
+class FundingRoutingError(RuntimeError):
+    """Raised when all funding adapters fail."""
+
+    def __init__(self, message: str, *, attempts: list[FundingAttempt]) -> None:
+        super().__init__(message)
+        self.attempts = attempts
+
+
+async def execute_funding_with_failover(
+    adapters: list[FundingAdapter],
+    request: FundingRequest,
+) -> tuple[FundingResult, list[FundingAttempt]]:
+    """
+    Execute funding in deterministic adapter order.
+
+    Returns the first successful result and all attempt outcomes.
+    Raises FundingRoutingError when all adapters fail.
+    """
+    if not adapters:
+        raise FundingRoutingError("no_funding_adapters_configured", attempts=[])
+
+    attempts: list[FundingAttempt] = []
+    for adapter in adapters:
+        try:
+            result = await adapter.fund(request)
+            attempts.append(
+                FundingAttempt(
+                    provider=str(getattr(result, "provider", getattr(adapter, "provider", "unknown"))),
+                    rail=str(getattr(result, "rail", getattr(adapter, "rail", "fiat"))),  # type: ignore[arg-type]
+                    status="success",
+                )
+            )
+            return result, attempts
+        except Exception as exc:
+            attempts.append(
+                FundingAttempt(
+                    provider=str(getattr(adapter, "provider", "unknown")),
+                    rail=str(getattr(adapter, "rail", "fiat")),  # type: ignore[arg-type]
+                    status="failed",
+                    error=str(exc),
+                )
+            )
+
+    raise FundingRoutingError("all_funding_providers_failed", attempts=attempts)
 
 
 class StripeIssuingFundingAdapter:

@@ -13,7 +13,13 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stripe_issuing_funding_event
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
-from sardis_v2_core.funding import FundingAdapter, FundingRequest, StripeIssuingFundingAdapter
+from sardis_v2_core.funding import (
+    FundingAdapter,
+    FundingRequest,
+    FundingRoutingError,
+    StripeIssuingFundingAdapter,
+    execute_funding_with_failover,
+)
 
 router = APIRouter(prefix="/stripe/funding", tags=["stripe-funding"])
 
@@ -22,6 +28,7 @@ router = APIRouter(prefix="/stripe/funding", tags=["stripe-funding"])
 class StripeFundingDeps:
     treasury_provider: Any
     funding_adapter: FundingAdapter | None = None
+    fallback_funding_adapter: FundingAdapter | None = None
     treasury_repo: Any = None
     canonical_repo: Any = None
     default_connected_account_id: str = ""
@@ -77,6 +84,19 @@ class IssuingFundingReconcileResponse(BaseModel):
     by_status: dict[str, int] = Field(default_factory=dict)
 
 
+class FundingAttemptHistoryItem(BaseModel):
+    operation_id: str
+    attempt_index: int
+    provider: str
+    rail: str
+    status: str
+    error: Optional[str] = None
+    amount_minor: int
+    currency: str
+    connected_account_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
 def _resolve_connected_account(
     *,
     principal: Principal,
@@ -110,6 +130,52 @@ def _resolve_funding_adapter(deps: StripeFundingDeps) -> FundingAdapter | None:
     if deps.treasury_provider is None:
         return None
     return StripeIssuingFundingAdapter(deps.treasury_provider)
+
+
+def _ordered_funding_adapters(deps: StripeFundingDeps) -> list[FundingAdapter]:
+    primary = _resolve_funding_adapter(deps)
+    fallback = deps.fallback_funding_adapter
+    ordered: list[FundingAdapter] = []
+    for adapter in (primary, fallback):
+        if adapter is None:
+            continue
+        key = str(getattr(adapter, "provider", adapter.__class__.__name__)).strip().lower()
+        if any(str(getattr(existing, "provider", existing.__class__.__name__)).strip().lower() == key for existing in ordered):
+            continue
+        ordered.append(adapter)
+    return ordered
+
+
+async def _persist_funding_attempts(
+    *,
+    deps: StripeFundingDeps,
+    organization_id: str,
+    operation_id: str,
+    amount_minor: int,
+    currency: str,
+    connected_account_id: Optional[str],
+    attempts: list[dict[str, Any]],
+    metadata: dict[str, str],
+) -> None:
+    if deps.treasury_repo is None:
+        return
+    recorder = getattr(deps.treasury_repo, "record_funding_attempt", None)
+    if not callable(recorder):
+        return
+    for idx, attempt in enumerate(attempts, start=1):
+        await recorder(
+            organization_id=organization_id,
+            operation_id=operation_id,
+            attempt_index=idx,
+            provider=str(attempt.get("provider", "unknown")),
+            rail=str(attempt.get("rail", "fiat")),
+            status_value=str(attempt.get("status", "failed")),
+            error_message=attempt.get("error"),
+            amount_minor=amount_minor,
+            currency=currency,
+            connected_account_id=connected_account_id,
+            metadata=metadata,
+        )
 
 
 @router.get("/resolve-connected-account", response_model=ConnectedAccountResolution)
@@ -163,6 +229,46 @@ async def list_issuing_topup_history(
     return out
 
 
+@router.get("/issuing/topups/attempts", response_model=list[FundingAttemptHistoryItem])
+async def list_issuing_topup_attempts(
+    operation_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
+    deps: StripeFundingDeps = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    if deps.treasury_repo is None:
+        return []
+    lister = getattr(deps.treasury_repo, "list_funding_attempts", None)
+    if not callable(lister):
+        return []
+    rows = await lister(
+        principal.organization_id,
+        operation_id=operation_id,
+        limit=limit,
+    )
+    out: list[FundingAttemptHistoryItem] = []
+    for row in rows:
+        out.append(
+            FundingAttemptHistoryItem(
+                operation_id=str(row.get("operation_id", "")),
+                attempt_index=int(row.get("attempt_index", 0) or 0),
+                provider=str(row.get("provider", "unknown")),
+                rail=str(row.get("rail", "fiat")),
+                status=str(row.get("status", "failed")),
+                error=row.get("error"),
+                amount_minor=int(row.get("amount_minor", 0) or 0),
+                currency=str(row.get("currency", "USD")),
+                connected_account_id=row.get("connected_account_id"),
+                created_at=(
+                    row.get("created_at").isoformat()
+                    if hasattr(row.get("created_at"), "isoformat")
+                    else str(row.get("created_at")) if row.get("created_at") is not None else None
+                ),
+            )
+        )
+    return out
+
+
 @router.get("/issuing/topups/reconcile", response_model=IssuingFundingReconcileResponse)
 async def reconcile_issuing_topups(
     hours: int = Query(default=24, ge=1, le=24 * 90),
@@ -197,8 +303,8 @@ async def fund_issuing_balance(
     deps: StripeFundingDeps = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
-    funding_adapter = _resolve_funding_adapter(deps)
-    if funding_adapter is None:
+    ordered_adapters = _ordered_funding_adapters(deps)
+    if not ordered_adapters:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="stripe_treasury_not_configured",
@@ -228,15 +334,60 @@ async def fund_issuing_balance(
         if payload.metadata:
             metadata.update(payload.metadata)
 
-        transfer = await funding_adapter.fund(
-            FundingRequest(
-                amount=payload.amount,
+        funding_request = FundingRequest(
+            amount=payload.amount,
+            currency="USD",
+            description=payload.description,
+            connected_account_id=connected_account_id,
+            metadata=metadata,
+        )
+        amount_minor = int((payload.amount * Decimal("100")).to_integral_value())
+        try:
+            transfer, attempts = await execute_funding_with_failover(ordered_adapters, funding_request)
+        except FundingRoutingError as exc:
+            failed_attempts = [
+                {
+                    "provider": attempt.provider,
+                    "rail": attempt.rail,
+                    "status": attempt.status,
+                    "error": attempt.error,
+                }
+                for attempt in exc.attempts
+            ]
+            await _persist_funding_attempts(
+                deps=deps,
+                organization_id=principal.organization_id,
+                operation_id=str(idem_key),
+                amount_minor=amount_minor,
                 currency="USD",
-                description=payload.description,
                 connected_account_id=connected_account_id,
+                attempts=failed_attempts,
                 metadata=metadata,
             )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="funding_failed_all_providers",
+            ) from exc
+
+        await _persist_funding_attempts(
+            deps=deps,
+            organization_id=principal.organization_id,
+            operation_id=str(idem_key),
+            amount_minor=amount_minor,
+            currency="USD",
+            connected_account_id=connected_account_id,
+            attempts=[
+                {
+                    "provider": attempt.provider,
+                    "rail": attempt.rail,
+                    "status": attempt.status,
+                    "error": attempt.error,
+                }
+                for attempt in attempts
+            ],
+            metadata=metadata,
         )
+
         transfer_id = str(getattr(transfer, "transfer_id", "")) or "unknown"
         amount_value = Decimal(str(getattr(transfer, "amount", payload.amount)))
         currency_value = str(getattr(transfer, "currency", "usd")).upper()
