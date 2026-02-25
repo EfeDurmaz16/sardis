@@ -82,6 +82,9 @@ require_match '_append_a2a_trust_audit_entry' \
 require_match '/trust/peers' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A peer discovery endpoint must be present'
+require_match '/trust/audit/recent' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A trust audit visibility endpoint must be present'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
@@ -113,6 +116,9 @@ require_match 'test_trust_peers_returns_only_trusted_by_default' \
 require_match 'provider == \"a2a_trust\"' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust relation audit trail must be test covered'
+require_match 'test_admin_can_list_recent_a2a_trust_audit_entries' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A trust audit visibility endpoint must be test covered'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then

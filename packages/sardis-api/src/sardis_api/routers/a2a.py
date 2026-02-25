@@ -474,6 +474,24 @@ class A2ATrustPeersResponse(BaseModel):
     peers: list[A2APeerTrustEntry] = Field(default_factory=list)
 
 
+class A2ATrustAuditEntryResponse(BaseModel):
+    audit_id: str
+    mandate_id: str
+    subject: str
+    allowed: bool
+    reason: Optional[str] = None
+    rule_id: Optional[str] = None
+    provider: Optional[str] = None
+    evaluated_at: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class A2ATrustAuditListResponse(BaseModel):
+    organization_id: str
+    count: int
+    entries: list[A2ATrustAuditEntryResponse] = Field(default_factory=list)
+
+
 # ============================================================================
 # POST /pay — Agent-to-Agent Direct Payment
 # ============================================================================
@@ -910,6 +928,65 @@ async def list_a2a_trust_peers(
         total_candidates=max(len(agents) - 1, 0),
         trusted_count=trusted_count,
         peers=rows,
+    )
+
+
+@router.get("/trust/audit/recent", response_model=A2ATrustAuditListResponse)
+async def list_a2a_trust_audit_recent(
+    limit: int = Query(default=20, ge=1, le=200),
+    deps: A2ADependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    if deps.audit_store is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="audit_store_not_configured")
+    getter = getattr(deps.audit_store, "get_recent", None)
+    if not callable(getter):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="audit_store_recent_not_supported")
+    recent = getter(max(limit * 5, 50))
+    if isawaitable(recent):
+        recent = await recent
+    org_id = str(principal.organization_id)
+    out: list[A2ATrustAuditEntryResponse] = []
+    for item in recent or []:
+        raw = item.to_dict() if hasattr(item, "to_dict") else item
+        if not isinstance(raw, dict):
+            raw = {
+                "audit_id": str(getattr(item, "audit_id", "")),
+                "mandate_id": str(getattr(item, "mandate_id", "")),
+                "subject": str(getattr(item, "subject", "")),
+                "allowed": bool(getattr(item, "allowed", False)),
+                "reason": getattr(item, "reason", None),
+                "rule_id": getattr(item, "rule_id", None),
+                "provider": getattr(item, "provider", None),
+                "evaluated_at": str(getattr(item, "evaluated_at", "")),
+                "metadata": getattr(item, "metadata", {}) or {},
+            }
+        metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        if str(raw.get("provider", "")) != "a2a_trust":
+            continue
+        if str(metadata.get("organization_id", "")) != org_id:
+            continue
+        out.append(
+            A2ATrustAuditEntryResponse(
+                audit_id=str(raw.get("audit_id", "")),
+                mandate_id=str(raw.get("mandate_id", "")),
+                subject=str(raw.get("subject", "")),
+                allowed=bool(raw.get("allowed", False)),
+                reason=raw.get("reason"),
+                rule_id=raw.get("rule_id"),
+                provider=raw.get("provider"),
+                evaluated_at=str(raw.get("evaluated_at", "")),
+                metadata=metadata,
+            )
+        )
+        if len(out) >= limit:
+            break
+    return A2ATrustAuditListResponse(
+        organization_id=org_id,
+        count=len(out),
+        entries=out,
     )
 
 

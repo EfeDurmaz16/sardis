@@ -96,6 +96,9 @@ class _AuditStore:
         self.entries.append(entry)
         return entry.audit_id
 
+    def get_recent(self, limit=100):
+        return self.entries[-limit:]
+
 
 def _principal_admin() -> Principal:
     return Principal(
@@ -278,3 +281,28 @@ def test_trust_peers_rejects_non_admin_cross_org_sender(monkeypatch):
     response = client.get("/api/v2/a2a/trust/peers", params={"sender_agent_id": "agent_external"})
     assert response.status_code == 403
     assert response.json()["detail"] == "access_denied"
+
+
+def test_admin_can_list_recent_a2a_trust_audit_entries(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    trust_repo = _TrustRepo()
+    audit_store = _AuditStore()
+    client = TestClient(_build_app(admin=True, trust_repo=trust_repo, audit_store=audit_store))
+
+    client.post(
+        "/api/v2/a2a/trust/relations",
+        json={"sender_agent_id": "agent_a", "recipient_agent_id": "agent_new", "metadata": {"reason": "ops"}},
+    )
+    client.request(
+        "DELETE",
+        "/api/v2/a2a/trust/relations",
+        json={"sender_agent_id": "agent_a", "recipient_agent_id": "agent_new"},
+    )
+
+    response = client.get("/api/v2/a2a/trust/audit/recent", params={"limit": 10})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["organization_id"] == "org_demo"
+    assert payload["count"] == 2
+    assert payload["entries"][0]["provider"] == "a2a_trust"
+    assert payload["entries"][0]["metadata"]["organization_id"] == "org_demo"
