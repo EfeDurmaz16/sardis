@@ -94,6 +94,12 @@ require_match '_required_trust_mutation_approvals' \
 require_match '/trust/peers' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A peer discovery endpoint must be present'
+require_match 'include_wallet_addresses' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A peer discovery must support optional wallet address directory visibility'
+require_match 'broadcast_targets' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A peer discovery must expose trusted broadcast targets'
 require_match '/trust/audit/recent' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust audit visibility endpoint must be present'
@@ -140,6 +146,9 @@ require_match 'test_ensure_table_prod_requires_migration' \
 require_match 'test_trust_peers_returns_only_trusted_by_default' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A peer discovery endpoint must be test covered'
+require_match 'test_trust_peers_can_include_wallet_addresses_and_broadcast_targets' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A wallet-aware peer directory must be test covered'
 require_match 'provider == \"a2a_trust\"' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust relation audit trail must be test covered'

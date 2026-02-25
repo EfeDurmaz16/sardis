@@ -591,19 +591,24 @@ class A2APeerTrustEntry(BaseModel):
     owner_id: str
     is_active: bool
     wallet_id: Optional[str] = None
+    wallet_addresses: dict[str, str] = Field(default_factory=dict)
     kya_level: Optional[str] = None
     kya_status: Optional[str] = None
     trusted: bool
+    is_broadcast_target: bool = False
     trust_reason: str
 
 
 class A2ATrustPeersResponse(BaseModel):
     sender_agent_id: str
+    sender_wallet_id: Optional[str] = None
+    sender_wallet_addresses: dict[str, str] = Field(default_factory=dict)
     enforced: bool
     source: str
     table_hash: str
     total_candidates: int
     trusted_count: int
+    broadcast_targets: list[str] = Field(default_factory=list)
     peers: list[A2APeerTrustEntry] = Field(default_factory=list)
 
 
@@ -1002,6 +1007,7 @@ async def list_a2a_trust_peers(
     sender_agent_id: str = Query(..., description="Sender agent to evaluate trust from"),
     include_untrusted: bool = Query(default=False),
     include_inactive: bool = Query(default=False),
+    include_wallet_addresses: bool = Query(default=False),
     deps: A2ADependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -1030,7 +1036,39 @@ async def list_a2a_trust_peers(
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_unavailable")
 
     rows: list[A2APeerTrustEntry] = []
+    broadcast_targets: list[str] = []
     trusted_count = 0
+
+    async def _resolve_wallet_snapshot(
+        *,
+        agent_id: str,
+        fallback_wallet_id: Optional[str],
+    ) -> tuple[Optional[str], dict[str, str]]:
+        wallet_id = str(fallback_wallet_id or "") or None
+        addresses: dict[str, str] = {}
+        if not include_wallet_addresses:
+            return wallet_id, addresses
+        repo = getattr(deps, "wallet_repo", None)
+        getter = getattr(repo, "get_by_agent", None)
+        if callable(getter):
+            try:
+                wallet = await getter(agent_id)
+            except Exception:
+                wallet = None
+            if wallet is not None:
+                wallet_id = str(getattr(wallet, "wallet_id", "") or wallet_id or "") or None
+                raw_addresses = getattr(wallet, "addresses", {}) or {}
+                if isinstance(raw_addresses, dict):
+                    for chain, addr in raw_addresses.items():
+                        if addr:
+                            addresses[str(chain)] = str(addr)
+        return wallet_id, addresses
+
+    sender_wallet_id, sender_wallet_addresses = await _resolve_wallet_snapshot(
+        agent_id=sender_agent_id,
+        fallback_wallet_id=getattr(sender, "wallet_id", None),
+    )
+
     for candidate in agents:
         candidate_id = str(getattr(candidate, "agent_id", ""))
         if not candidate_id or candidate_id == sender_agent_id:
@@ -1046,29 +1084,41 @@ async def list_a2a_trust_peers(
             )
         if trusted:
             trusted_count += 1
+            if bool(getattr(candidate, "is_active", False)):
+                broadcast_targets.append(candidate_id)
         if not trusted and not include_untrusted:
             continue
+        wallet_id, wallet_addresses = await _resolve_wallet_snapshot(
+            agent_id=candidate_id,
+            fallback_wallet_id=getattr(candidate, "wallet_id", None),
+        )
         rows.append(
             A2APeerTrustEntry(
                 agent_id=candidate_id,
                 owner_id=str(getattr(candidate, "owner_id", "")),
                 is_active=bool(getattr(candidate, "is_active", False)),
-                wallet_id=getattr(candidate, "wallet_id", None),
+                wallet_id=wallet_id,
+                wallet_addresses=wallet_addresses,
                 kya_level=getattr(candidate, "kya_level", None),
                 kya_status=getattr(candidate, "kya_status", None),
                 trusted=trusted,
+                is_broadcast_target=trusted and bool(getattr(candidate, "is_active", False)),
                 trust_reason=reason,
             )
         )
 
     rows.sort(key=lambda item: (not item.trusted, item.agent_id))
+    broadcast_targets = sorted(set(broadcast_targets))
     return A2ATrustPeersResponse(
         sender_agent_id=sender_agent_id,
+        sender_wallet_id=sender_wallet_id,
+        sender_wallet_addresses=sender_wallet_addresses,
         enforced=enforced,
         source=source,
         table_hash=_trust_table_hash(table),
         total_candidates=max(len(agents) - 1, 0),
         trusted_count=trusted_count,
+        broadcast_targets=broadcast_targets,
         peers=rows,
     )
 

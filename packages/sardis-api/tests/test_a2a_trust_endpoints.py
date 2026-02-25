@@ -60,7 +60,24 @@ class _AgentRepo:
 
 class _WalletRepo:
     async def get_by_agent(self, agent_id: str):
-        return None
+        wallets = {
+            "agent_a": SimpleNamespace(
+                wallet_id="wallet_a",
+                addresses={
+                    "base_sepolia": "0xSenderBase",
+                    "polygon_amoy": "0xSenderPolygon",
+                },
+            ),
+            "agent_b": SimpleNamespace(
+                wallet_id="wallet_b",
+                addresses={"base_sepolia": "0xPeerBase"},
+            ),
+            "agent_c": SimpleNamespace(
+                wallet_id="wallet_c",
+                addresses={},
+            ),
+        }
+        return wallets.get(agent_id)
 
 
 class _TrustRepo:
@@ -300,6 +317,32 @@ def test_trust_peers_can_include_untrusted_and_inactive(monkeypatch):
     assert peers["agent_b"]["trusted"] is True
     assert peers["agent_c"]["trusted"] is False
     assert peers["agent_c"]["trust_reason"] == "a2a_agent_not_trusted"
+
+
+def test_trust_peers_can_include_wallet_addresses_and_broadcast_targets(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATIONS", "agent_a>agent_b|agent_c")
+    client = TestClient(_build_app(admin=False))
+
+    response = client.get(
+        "/api/v2/a2a/trust/peers",
+        params={
+            "sender_agent_id": "agent_a",
+            "include_untrusted": "true",
+            "include_inactive": "true",
+            "include_wallet_addresses": "true",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["sender_wallet_id"] == "wallet_a"
+    assert payload["sender_wallet_addresses"]["base_sepolia"] == "0xSenderBase"
+    assert payload["broadcast_targets"] == ["agent_b"]
+    peers = {item["agent_id"]: item for item in payload["peers"]}
+    assert peers["agent_b"]["wallet_id"] == "wallet_b"
+    assert peers["agent_b"]["wallet_addresses"]["base_sepolia"] == "0xPeerBase"
+    assert peers["agent_b"]["is_broadcast_target"] is True
+    assert peers["agent_c"]["is_broadcast_target"] is False
 
 
 def test_trust_peers_rejects_non_admin_cross_org_sender(monkeypatch):
