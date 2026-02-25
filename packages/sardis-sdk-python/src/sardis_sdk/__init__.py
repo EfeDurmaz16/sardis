@@ -31,7 +31,7 @@ Quick Start:
 from __future__ import annotations
 
 # Version
-__version__ = "0.3.3"
+__version__ = "1.0.0"
 
 # Core clients
 from .client import (

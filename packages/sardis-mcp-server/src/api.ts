@@ -13,7 +13,8 @@ import { MCP_SERVER_VERSION } from './version.js';
 export async function apiRequest<T>(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
+  extraHeaders?: Record<string, string>
 ): Promise<T> {
   const config = getConfig();
   const url = `${config.apiUrl}${path.startsWith('/') ? path : '/' + path}`;
@@ -26,6 +27,7 @@ export async function apiRequest<T>(
       'Content-Type': 'application/json',
       'User-Agent': `sardis-mcp-server/${MCP_SERVER_VERSION}`,
       ...(paymentIdentity ? { 'X-Sardis-Payment-Identity': paymentIdentity } : {}),
+      ...(extraHeaders || {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });

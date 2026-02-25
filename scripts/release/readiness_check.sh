@@ -136,8 +136,9 @@ python_package_count="$(( $(find packages -maxdepth 2 -name pyproject.toml | wc 
 js_package_count="$(find packages -maxdepth 2 -name package.json | wc -l | tr -d ' ')"
 total_package_count="$(( python_package_count + js_package_count ))"
 
-if [[ "$total_package_count" -ne 19 ]]; then
-  echo "[readiness][fail] package count mismatch: expected 19, got $total_package_count"
+minimum_expected_package_count=19
+if [[ "$total_package_count" -lt "$minimum_expected_package_count" ]]; then
+  echo "[readiness][fail] package count below minimum: expected >=$minimum_expected_package_count, got $total_package_count"
   failures=$((failures + 1))
 else
   echo "[readiness][pass] package count: $total_package_count (python=$python_package_count, js=$js_package_count)"

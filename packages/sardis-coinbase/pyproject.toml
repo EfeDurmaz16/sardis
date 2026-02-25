@@ -18,5 +18,9 @@ dependencies = [
 [project.optional-dependencies]
 cdp = ["cdp-sdk>=0.15.0"]
 
+[project.urls]
+Homepage = "https://sardis.sh"
+Repository = "https://github.com/sardis-pay/sardis"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_coinbase"]
