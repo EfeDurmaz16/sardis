@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
@@ -36,6 +37,13 @@ class DispatchJobResponse(BaseModel):
     execution_id: str
     job_id: str
     received_at: str
+
+
+class CompletionResult(BaseModel):
+    delivered: bool
+    attempts: int
+    status_code: int | None = None
+    error: str | None = None
 
 
 class InMemoryExecutorDispatchStore:
@@ -250,3 +258,75 @@ def create_executor_worker_app(store: InMemoryExecutorDispatchStore | None = Non
 def canonical_dispatch_payload_bytes(payload: dict[str, Any]) -> bytes:
     """Helper for tests/clients to sign dispatch payload exactly."""
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+class SecureCheckoutCompletionClient:
+    """Callback client for secure checkout completion notifications."""
+
+    def __init__(
+        self,
+        *,
+        callback_base_url: str,
+        executor_token: str,
+        timeout_seconds: float = 5.0,
+        max_attempts: int = 3,
+        backoff_seconds: float = 0.25,
+    ) -> None:
+        self._base_url = callback_base_url.rstrip("/")
+        self._token = executor_token.strip()
+        self._timeout_seconds = max(0.5, float(timeout_seconds))
+        self._max_attempts = max(1, int(max_attempts))
+        self._backoff_seconds = max(0.05, float(backoff_seconds))
+
+    async def complete_job(
+        self,
+        *,
+        job_id: str,
+        status_value: str,
+        executor_ref: str | None = None,
+        failure_reason: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> CompletionResult:
+        endpoint = f"{self._base_url}/api/v2/checkout/secure/jobs/{job_id}/complete"
+        payload: dict[str, Any] = {
+            "status": status_value,
+            "executor_ref": executor_ref,
+            "failure_reason": failure_reason,
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "X-Sardis-Executor-Token": self._token,
+        }
+        headers["X-Sardis-Completion-Idempotency-Key"] = (
+            idempotency_key.strip()
+            if idempotency_key and idempotency_key.strip()
+            else f"complete:{job_id}:{status_value}"
+        )
+
+        last_error: str | None = None
+        last_status: int | None = None
+        async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            for attempt in range(1, self._max_attempts + 1):
+                try:
+                    response = await client.post(endpoint, json=payload, headers=headers)
+                    last_status = response.status_code
+                    if response.status_code < 500:
+                        delivered = response.status_code < 400
+                        return CompletionResult(
+                            delivered=delivered,
+                            attempts=attempt,
+                            status_code=response.status_code,
+                            error=None if delivered else f"http_{response.status_code}",
+                        )
+                    last_error = f"http_{response.status_code}"
+                except Exception as exc:  # noqa: BLE001
+                    last_error = str(exc)
+                if attempt < self._max_attempts:
+                    await asyncio.sleep(self._backoff_seconds * attempt)
+
+        return CompletionResult(
+            delivered=False,
+            attempts=self._max_attempts,
+            status_code=last_status,
+            error=last_error or "delivery_failed",
+        )

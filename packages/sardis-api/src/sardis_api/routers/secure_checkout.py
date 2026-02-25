@@ -425,6 +425,7 @@ class InMemorySecureCheckoutStore:
         self._jobs_by_id: dict[str, dict[str, Any]] = {}
         self._jobs_by_intent_id: dict[str, str] = {}
         self._secrets: dict[str, dict[str, Any]] = {}
+        self._completion_receipts: dict[str, dict[str, Any]] = {}
         self._used_executor_nonces: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
@@ -481,6 +482,15 @@ class InMemorySecureCheckoutStore:
             self._secrets.pop(secret_ref, None)
             return payload
 
+    async def get_completion_receipt(self, idempotency_key: str) -> Optional[dict[str, Any]]:
+        async with self._lock:
+            item = self._completion_receipts.get(idempotency_key)
+            return dict(item) if item else None
+
+    async def put_completion_receipt(self, idempotency_key: str, job: dict[str, Any]) -> None:
+        async with self._lock:
+            self._completion_receipts[idempotency_key] = dict(job)
+
     async def mark_executor_nonce_used(self, nonce: str, *, ttl_seconds: int) -> bool:
         now = time.time()
         expires_at = now + float(ttl_seconds)
@@ -531,6 +541,9 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
     def _consume_lock_resource(self, secret_ref: str) -> str:
         return f"checkout:secret:consume:{secret_ref}"
 
+    def _completion_key(self, idempotency_key: str) -> str:
+        return f"sardis:checkout:completion:{idempotency_key}"
+
     async def put_secret(self, secret_ref: str, payload: dict[str, Any], expires_at: datetime) -> None:
         if not self._cache:
             await super().put_secret(secret_ref, payload, expires_at=expires_at)
@@ -578,6 +591,28 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
             return None
         except Exception:
             return None
+
+    async def get_completion_receipt(self, idempotency_key: str) -> Optional[dict[str, Any]]:
+        if not self._cache:
+            return await super().get_completion_receipt(idempotency_key)
+        raw = await self._cache.get(self._completion_key(idempotency_key))
+        if not raw:
+            return None
+        try:
+            item = json.loads(raw)
+            return item if isinstance(item, dict) else None
+        except Exception:
+            return None
+
+    async def put_completion_receipt(self, idempotency_key: str, job: dict[str, Any]) -> None:
+        if not self._cache:
+            await super().put_completion_receipt(idempotency_key, job)
+            return
+        await self._cache.set(
+            self._completion_key(idempotency_key),
+            json.dumps(dict(job), default=str),
+            ttl=86400,
+        )
 
 
 def _allow_inmemory_store_in_prod() -> bool:
@@ -1210,6 +1245,7 @@ def create_secure_checkout_router() -> APIRouter:
         payload: CompleteSecureCheckoutJobRequest,
         request: Request,
         x_sardis_executor_token: Optional[str] = Header(default=None),
+        x_sardis_completion_idempotency_key: Optional[str] = Header(default=None),
         x_sardis_executor_timestamp: Optional[str] = Header(default=None),
         x_sardis_executor_nonce: Optional[str] = Header(default=None),
         x_sardis_executor_signature: Optional[str] = Header(default=None),
@@ -1226,6 +1262,12 @@ def create_secure_checkout_router() -> APIRouter:
         )
 
         store = _resolve_store(deps)
+        completion_key = (x_sardis_completion_idempotency_key or "").strip()
+        if completion_key:
+            existing_receipt = await store.get_completion_receipt(completion_key)
+            if existing_receipt:
+                return _serialize_job(existing_receipt)
+
         job = await store.get_job(job_id)
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -1257,6 +1299,8 @@ def create_secure_checkout_router() -> APIRouter:
             secret_expires_at=None,
         )
         finalized = updated or job
+        if completion_key:
+            await store.put_completion_receipt(completion_key, finalized)
         await _emit_audit_event(
             deps,
             event_type="secure_checkout.job_finalized",

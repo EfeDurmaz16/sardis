@@ -499,6 +499,55 @@ def test_executor_can_complete_dispatched_job_and_revoke_secret(monkeypatch):
     assert consumed.status_code == 404
 
 
+def test_completion_callback_is_idempotent_with_idempotency_key(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "22.00",
+            "currency": "USD",
+            "intent_id": "intent_complete_idempotent_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+
+    headers = {
+        "X-Sardis-Executor-Token": "exec_secret",
+        "X-Sardis-Completion-Idempotency-Key": "comp_key_1",
+    }
+    first = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_idempotent"},
+        headers=headers,
+    )
+    assert first.status_code == 200
+    assert first.json()["status"] == "completed"
+
+    second = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_idempotent"},
+        headers=headers,
+    )
+    assert second.status_code == 200
+    assert second.json()["status"] == "completed"
+
+
 def test_consume_secret_requires_attestation_when_enabled(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")

@@ -4,10 +4,13 @@ import hmac
 import hashlib
 import time
 import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
 from sardis_api.executor_worker import (
+    SecureCheckoutCompletionClient,
     canonical_dispatch_payload_bytes,
     create_executor_worker_app,
 )
@@ -115,3 +118,65 @@ def test_worker_rejects_invalid_signature(monkeypatch):
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "dispatch_signature_invalid"
+
+
+async def test_completion_client_retries_and_succeeds():
+    completion_client = SecureCheckoutCompletionClient(
+        callback_base_url="https://api.sardis.sh",
+        executor_token="exec_secret",
+        timeout_seconds=1.0,
+        max_attempts=3,
+        backoff_seconds=0.01,
+    )
+
+    mock_http = AsyncMock()
+    mock_http.post.side_effect = [
+        Exception("timeout"),
+        SimpleNamespace(status_code=502),
+        SimpleNamespace(status_code=200),
+    ]
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__.return_value = mock_http
+    mock_cm.__aexit__.return_value = None
+
+    with patch("sardis_api.executor_worker.httpx.AsyncClient", return_value=mock_cm):
+        result = await completion_client.complete_job(
+            job_id="scj_worker_1",
+            status_value="completed",
+            executor_ref="exec_1",
+        )
+
+    assert result.delivered is True
+    assert result.attempts == 3
+    assert result.status_code == 200
+    assert mock_http.post.call_count == 3
+
+
+async def test_completion_client_returns_failure_after_retries():
+    completion_client = SecureCheckoutCompletionClient(
+        callback_base_url="https://api.sardis.sh",
+        executor_token="exec_secret",
+        timeout_seconds=1.0,
+        max_attempts=2,
+        backoff_seconds=0.01,
+    )
+
+    mock_http = AsyncMock()
+    mock_http.post.side_effect = [
+        SimpleNamespace(status_code=503),
+        SimpleNamespace(status_code=503),
+    ]
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__.return_value = mock_http
+    mock_cm.__aexit__.return_value = None
+
+    with patch("sardis_api.executor_worker.httpx.AsyncClient", return_value=mock_cm):
+        result = await completion_client.complete_job(
+            job_id="scj_worker_1",
+            status_value="failed",
+            failure_reason="browser_error",
+        )
+
+    assert result.delivered is False
+    assert result.attempts == 2
+    assert result.status_code == 503
