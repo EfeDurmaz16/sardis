@@ -146,6 +146,14 @@ class _FallbackFundingAdapter:
         )
 
 
+class _FailingFallbackFundingAdapter:
+    provider = "stripe"
+    rail = "fiat"
+
+    async def fund(self, request: FundingRequest) -> FundingResult:
+        raise TimeoutError("fallback_timeout")
+
+
 def _principal() -> Principal:
     return Principal(
         kind="api_key",
@@ -374,3 +382,55 @@ def test_topup_retries_with_fallback_adapter_and_persists_attempts():
     assert attempts.status_code == 200
     payload = attempts.json()
     assert len(payload) == 2
+
+
+def test_topup_all_providers_failed_returns_502_and_records_attempts():
+    primary = _FailingFundingAdapter()
+    fallback = _FailingFallbackFundingAdapter()
+    treasury_repo = _FakeTreasuryRepo()
+    before_primary_attempts = funding_provider_attempts_total.labels(
+        provider="lithic",
+        rail="fiat",
+        status="failed",
+    )._value.get()
+    before_fallback_attempts = funding_provider_attempts_total.labels(
+        provider="stripe",
+        rail="fiat",
+        status="failed",
+    )._value.get()
+    before_all_failed = funding_failover_events_total.labels(
+        result="all_failed",
+    )._value.get()
+    deps = StripeFundingDeps(
+        treasury_provider=None,
+        funding_adapter=primary,
+        fallback_funding_adapter=fallback,
+        treasury_repo=treasury_repo,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/stripe/funding/issuing/topups",
+        json={"amount": "11.00", "description": "Chaos all failed"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "funding_failed_all_providers"
+    assert len(treasury_repo.attempt_calls) == 2
+    assert treasury_repo.attempt_calls[0]["provider"] == "lithic"
+    assert treasury_repo.attempt_calls[0]["status_value"] == "failed"
+    assert treasury_repo.attempt_calls[1]["provider"] == "stripe"
+    assert treasury_repo.attempt_calls[1]["status_value"] == "failed"
+    assert (
+        funding_provider_attempts_total.labels(provider="lithic", rail="fiat", status="failed")._value.get()
+        == before_primary_attempts + 1
+    )
+    assert (
+        funding_provider_attempts_total.labels(provider="stripe", rail="fiat", status="failed")._value.get()
+        == before_fallback_attempts + 1
+    )
+    assert (
+        funding_failover_events_total.labels(result="all_failed")._value.get()
+        == before_all_failed + 1
+    )

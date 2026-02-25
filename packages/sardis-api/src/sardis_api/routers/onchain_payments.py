@@ -79,10 +79,12 @@ def get_deps() -> OnChainPaymentDependencies:
 
 
 PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\bignore\s+previous\s+instructions\b", re.IGNORECASE),
+    re.compile(r"\bignore\s+(all\s+)?(previous|prior)\s+instructions\b", re.IGNORECASE),
     re.compile(r"\boverride\s+safety\b", re.IGNORECASE),
     re.compile(r"\bbypass\s+policy\b", re.IGNORECASE),
     re.compile(r"\bdisable\s+compliance\b", re.IGNORECASE),
+    re.compile(r"\bjailbreak\b", re.IGNORECASE),
+    re.compile(r"\b(do\s+not|don't)\s+enforce\s+(policy|compliance)\b", re.IGNORECASE),
 )
 KYT_REVIEW_DEFAULT = {"high", "severe"}
 
