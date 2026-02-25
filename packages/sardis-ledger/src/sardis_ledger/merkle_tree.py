@@ -183,7 +183,11 @@ class MerkleTree:
                         # Our node is on the left, include right sibling
                         if i + 1 < len(current_level):
                             proof.append((right.hash, 'R'))
-                        # else: duplicated node, no sibling to add
+                        else:
+                            # Odd-node duplication is part of the hash path.
+                            # Include duplicated sibling so verification can
+                            # reconstruct the same parent hash.
+                            proof.append((right.hash, 'R'))
                     else:
                         # Our node is on the right, include left sibling
                         proof.append((left.hash, 'L'))

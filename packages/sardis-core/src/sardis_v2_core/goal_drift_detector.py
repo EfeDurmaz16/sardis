@@ -351,10 +351,8 @@ class GoalDriftDetector:
             ))
 
         # ── Test 2: Amount Distribution Shift ────────────────────────────
-        baseline_amounts = []  # Would need raw amounts from baseline
-        current_amounts = [float(tx.get("amount", 0)) for tx in recent_transactions]
-
-        # Instead, use statistical comparison of distribution parameters
+        # Use distribution-parameter comparison; raw baseline samples are
+        # intentionally not persisted in the profile.
         amount_deviation = self._compare_amount_distributions(
             baseline.amount_distribution,
             current.amount_distribution,
@@ -658,15 +656,32 @@ class GoalDriftDetector:
         """
         deviation = 0.0
 
-        # Compare means
-        if baseline["std"] > 0:
-            mean_z = abs(current["mean"] - baseline["mean"]) / baseline["std"]
-            deviation += mean_z
+        baseline_mean = float(baseline.get("mean", 0.0))
+        current_mean = float(current.get("mean", 0.0))
+        baseline_std = float(baseline.get("std", 0.0))
+        current_std = float(current.get("std", 0.0))
 
-        # Compare standard deviations (as ratio)
-        if baseline["std"] > 0:
-            std_ratio = abs(current["std"] - baseline["std"]) / baseline["std"]
+        # Compare means.
+        if baseline_std > 0.0:
+            mean_z = abs(current_mean - baseline_mean) / baseline_std
+            deviation += mean_z
+        else:
+            # When baseline std is zero (e.g., perfectly constant historical
+            # amounts), use relative mean shift so large jumps still trigger.
+            if baseline_mean > 0.0:
+                relative_shift = abs(current_mean - baseline_mean) / baseline_mean
+                deviation += relative_shift
+            elif current_mean > 0.0:
+                deviation += 5.0
+
+        # Compare standard deviations (as ratio-like effect size).
+        if baseline_std > 0.0:
+            std_ratio = abs(current_std - baseline_std) / baseline_std
             deviation += std_ratio
+        elif current_std > 0.0:
+            # Baseline had no variance; any recent variance is suspicious.
+            denominator = max(baseline_mean, 1.0)
+            deviation += current_std / denominator
 
         return deviation
 
