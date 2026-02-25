@@ -100,6 +100,12 @@ require_match '/trust/audit/recent' \
 require_match '/trust/security-policy' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A security policy visibility endpoint must be present'
+require_match 'SARDIS_ASA_FAIL_CLOSED_ON_CARD_LOOKUP_ERROR' \
+  'packages/sardis-cards/src/sardis_cards/webhooks.py' \
+  'ASA card lookup error fail-closed toggle must be present'
+require_match '/asa/security-policy' \
+  'packages/sardis-api/src/sardis_api/routers/cards.py' \
+  'cards router must expose ASA security policy visibility endpoint'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
@@ -149,6 +155,12 @@ require_match 'test_trust_relation_mutation_requires_approval_when_enabled' \
 require_match 'test_trust_relation_mutation_quorum_requires_two_distinct_reviewers' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust approval quorum must be test covered'
+require_match 'test_asa_card_lookup_error_fail_closed_in_production' \
+  'packages/sardis-cards/tests/test_asa_handler.py' \
+  'ASA fail-closed behavior must be test covered'
+require_match 'test_cards_asa_security_policy_endpoint' \
+  'packages/sardis-api/tests/test_cards_provider_introspection.py' \
+  'ASA security policy endpoint must be test covered'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then
@@ -164,7 +176,9 @@ if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
       packages/sardis-api/tests/test_a2a_trust_table.py \
       packages/sardis-api/tests/test_a2a_trust_endpoints.py \
       packages/sardis-api/tests/test_a2a_trust_repository.py \
-      packages/sardis-api/tests/test_stripe_funding.py; then
+      packages/sardis-api/tests/test_stripe_funding.py \
+      packages/sardis-api/tests/test_cards_provider_introspection.py \
+      packages/sardis-cards/tests/test_asa_handler.py; then
       failures=$((failures + 1))
     fi
   fi

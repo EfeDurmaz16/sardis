@@ -11,6 +11,7 @@ Scope:
 - Shared secret store enforcement for multi-instance PAN execution
 - Severity-based risk response (freeze/rotate/cooldown + ops approval gate)
 - PAN approval quorum + distinct reviewer (4-eyes) enforcement
+- Lithic ASA fail-closed posture for card lookup/subscription matcher failures
 - A2A trust-table enforcement for multi-agent peer payments
 - Funding failover chaos coverage
 
@@ -35,6 +36,7 @@ All checks must pass:
 - Secure checkout rejects invalid PAN reveal payloads and redacts audit payloads
 - Secure checkout fails closed in prod when shared secret store is missing
 - Secure checkout PAN approvals enforce configured quorum and distinct reviewer policy
+- Lithic ASA security policy is visible and fail-closed defaults are test-covered
 - Risk incident taxonomy + response orchestration code paths are present
 - A2A trust relation checks exist and are test-covered
 - Chaos/adversarial tests are present and executable
@@ -74,6 +76,10 @@ All checks must pass:
 7. Validate on-chain goal-drift controls:
    - `SARDIS_GOAL_DRIFT_REVIEW_THRESHOLD` and `SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD` set explicitly.
    - Drift in review band triggers approval; drift above block threshold is denied fail-closed.
+8. Verify ASA policy config:
+   - `SARDIS_ASA_FAIL_CLOSED_ON_CARD_LOOKUP_ERROR=1` (recommended for prod)
+   - `SARDIS_ASA_FAIL_CLOSED_ON_SUBSCRIPTION_ERROR=1` (recommended for prod)
+   - `GET /api/v2/cards/asa/security-policy` confirms expected runtime posture.
 
 ## Failure Handling
 If this gate fails:

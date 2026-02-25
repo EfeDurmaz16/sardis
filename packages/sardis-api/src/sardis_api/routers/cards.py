@@ -77,6 +77,13 @@ class SimulatePurchaseRequest(BaseModel):
     decline_reason: Optional[str] = Field(default=None, description="Optional decline reason")
 
 
+class ASASecurityPolicyResponse(BaseModel):
+    fail_closed_on_card_lookup_error: bool
+    fail_closed_on_subscription_error: bool
+    blocked_mcc_count: int
+    blocked_mccs: list[str] = Field(default_factory=list)
+
+
 # ---- Backward-compatible empty router (so existing imports don't break) ----
 router = APIRouter()
 
@@ -679,6 +686,26 @@ def create_cards_router(
             "reason": response.reason,
             "token": response.token,
         }
+
+    @r.get("/asa/security-policy", response_model=ASASecurityPolicyResponse, dependencies=auth_deps)
+    async def get_lithic_asa_security_policy(principal: Principal = Depends(require_principal)):
+        """Expose ASA runtime fail-closed policy to admins."""
+        if not principal.is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+        if asa_handler is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="asa_handler_not_configured",
+            )
+        if hasattr(asa_handler, "security_policy"):
+            payload = asa_handler.security_policy()
+            return ASASecurityPolicyResponse(**payload)
+        return ASASecurityPolicyResponse(
+            fail_closed_on_card_lookup_error=False,
+            fail_closed_on_subscription_error=False,
+            blocked_mcc_count=0,
+            blocked_mccs=[],
+        )
 
     @r.post("/webhooks", status_code=status.HTTP_200_OK)
     async def receive_card_webhook(request: Request):

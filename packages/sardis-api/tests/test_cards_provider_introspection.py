@@ -30,6 +30,16 @@ class _ResolverProvider:
         return "rain"
 
 
+class _ASAHandler:
+    def security_policy(self) -> dict:
+        return {
+            "fail_closed_on_card_lookup_error": True,
+            "fail_closed_on_subscription_error": True,
+            "blocked_mcc_count": 2,
+            "blocked_mccs": ["4829", "7995"],
+        }
+
+
 def _principal() -> Principal:
     return Principal(
         kind="api_key",
@@ -49,6 +59,21 @@ def _build_app() -> FastAPI:
         card_provider=provider_wrapper,
         wallet_repo=_WalletRepo(),
         agent_repo=_AgentRepo(),
+    )
+    app.include_router(router, prefix="/api/v2/cards")
+    return app
+
+
+def _build_app_with_asa_handler() -> FastAPI:
+    app = FastAPI()
+    app.dependency_overrides[require_principal] = _principal
+    provider_wrapper = SimpleNamespace(_provider=_ResolverProvider())
+    router = create_cards_router(
+        card_repo=_NoopCardRepo(),
+        card_provider=provider_wrapper,
+        wallet_repo=_WalletRepo(),
+        agent_repo=_AgentRepo(),
+        asa_handler=_ASAHandler(),
     )
     app.include_router(router, prefix="/api/v2/cards")
     return app
@@ -78,3 +103,17 @@ def test_cards_provider_resolve_endpoint():
     payload = response.json()
     assert payload["wallet_id"] == "wallet_1"
     assert payload["provider"] == "rain"
+
+
+def test_cards_asa_security_policy_endpoint():
+    app = _build_app_with_asa_handler()
+    client = TestClient(app)
+
+    response = client.get("/api/v2/cards/asa/security-policy")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["fail_closed_on_card_lookup_error"] is True
+    assert payload["fail_closed_on_subscription_error"] is True
+    assert payload["blocked_mcc_count"] == 2
+    assert payload["blocked_mccs"] == ["4829", "7995"]

@@ -12,8 +12,31 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+
+def _is_truthy(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_production_env() -> bool:
+    return os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower() in {"prod", "production"}
+
+
+def _asa_fail_closed_on_card_lookup_error() -> bool:
+    raw = (os.getenv("SARDIS_ASA_FAIL_CLOSED_ON_CARD_LOOKUP_ERROR", "") or "").strip()
+    if raw:
+        return _is_truthy(raw)
+    return _is_production_env()
+
+
+def _asa_fail_closed_on_subscription_match_error() -> bool:
+    raw = (os.getenv("SARDIS_ASA_FAIL_CLOSED_ON_SUBSCRIPTION_ERROR", "") or "").strip()
+    if raw:
+        return _is_truthy(raw)
+    return _is_production_env()
 
 
 class WebhookEventType(str, Enum):
@@ -264,6 +287,8 @@ class ASAHandler:
         policy_check: Optional[Callable[[str, Decimal, str, str], tuple[bool, str]]] = None,
         redis_client: Optional[Any] = None,
         subscription_matcher: Optional[Callable[[str, str, int], Any]] = None,
+        fail_closed_on_card_lookup_error: Optional[bool] = None,
+        fail_closed_on_subscription_error: Optional[bool] = None,
     ):
         """
         Args:
@@ -272,12 +297,24 @@ class ASAHandler:
             policy_check: Async callable(wallet_id, amount, merchant_mcc, merchant_name) -> (allowed, reason)
             redis_client: Optional Redis client for persistent idempotency
             subscription_matcher: Async callable(card_id, merchant_descriptor, amount_cents) -> Subscription or None
+            fail_closed_on_card_lookup_error: Decline authorization when card lookup errors
+            fail_closed_on_subscription_error: Decline authorization when subscription matcher errors
         """
         self._handler = webhook_handler
         self._card_lookup = card_lookup
         self._policy_check = policy_check
         self._redis = redis_client
         self._subscription_matcher = subscription_matcher
+        self._fail_closed_on_card_lookup_error = (
+            _asa_fail_closed_on_card_lookup_error()
+            if fail_closed_on_card_lookup_error is None
+            else bool(fail_closed_on_card_lookup_error)
+        )
+        self._fail_closed_on_subscription_error = (
+            _asa_fail_closed_on_subscription_match_error()
+            if fail_closed_on_subscription_error is None
+            else bool(fail_closed_on_subscription_error)
+        )
         self._processed: set[str] = set()
 
         # Blocked MCC codes (high-risk categories)
@@ -314,6 +351,15 @@ class ASAHandler:
     def add_blocked_mcc(self, mcc: str) -> None:
         """Add a merchant category code to the block list."""
         self._blocked_mccs.add(mcc)
+
+    def security_policy(self) -> dict[str, Any]:
+        """Expose runtime ASA security posture for admin visibility."""
+        return {
+            "fail_closed_on_card_lookup_error": self._fail_closed_on_card_lookup_error,
+            "fail_closed_on_subscription_error": self._fail_closed_on_subscription_error,
+            "blocked_mcc_count": len(self._blocked_mccs),
+            "blocked_mccs": sorted(self._blocked_mccs),
+        }
 
     async def handle_authorization(
         self,
@@ -403,6 +449,13 @@ class ASAHandler:
                     )
             except Exception as e:
                 logger.error(f"ASA: Subscription match failed: {e}")
+                if self._fail_closed_on_subscription_error:
+                    await self._mark_processed(asa_req.token)
+                    return ASAResponse(
+                        decision=ASADecision.DECLINE,
+                        reason="subscription_match_failed",
+                        token=asa_req.token,
+                    )
                 # Continue to normal flow on error
 
         # 6. Look up card and check spending limits
@@ -432,8 +485,14 @@ class ASAHandler:
                     )
             except Exception as e:
                 logger.error(f"ASA: Card lookup failed: {e}")
-                # Fail-open for card lookup errors to avoid blocking all transactions
-                # The card-level limits at Lithic will still apply
+                if self._fail_closed_on_card_lookup_error:
+                    await self._mark_processed(asa_req.token)
+                    return ASAResponse(
+                        decision=ASADecision.DECLINE,
+                        reason="card_lookup_failed",
+                        token=asa_req.token,
+                    )
+                # Fail-open fallback allowed in non-production only when explicitly configured.
 
         # 7. Check spending policy (if configured)
         if self._policy_check:
