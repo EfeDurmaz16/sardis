@@ -254,6 +254,65 @@ def test_export_evidence_bundle_supports_time_window_filter():
     assert payload["metadata"]["scope"]["end_at"] == "2026-02-25T23:59:59+00:00"
 
 
+def test_export_evidence_bundle_replay_safe_cursor_pagination():
+    audit_store = _AuditStoreWithChain()
+    client = _build_client(audit_store, approval_service=_ApprovalService())
+
+    first_page = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"approval_id": "appr_demo_1", "page_size": 1},
+    )
+    assert first_page.status_code == 200
+    first_payload = first_page.json()
+    first_pagination = first_payload["metadata"]["pagination"]
+    assert first_pagination["has_more"] is True
+    assert first_pagination["next_cursor"]
+    first_entry_id = first_payload["artifacts"]["audit_entries"][0]["audit_id"]
+
+    # Simulate new data appended after snapshot; cursor page should remain stable.
+    audit_store._entries.append(_AuditEntry(audit_id="a4", mandate_id="m4"))
+
+    second_page = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={
+            "approval_id": "appr_demo_1",
+            "page_size": 1,
+            "cursor": first_pagination["next_cursor"],
+        },
+    )
+    assert second_page.status_code == 200
+    second_payload = second_page.json()
+    second_entries = second_payload["artifacts"]["audit_entries"]
+    assert second_entries[0]["audit_id"] != first_entry_id
+    assert all(entry["audit_id"] != "a4" for entry in second_entries)
+
+
+def test_export_evidence_bundle_cursor_scope_mismatch_returns_400():
+    client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
+    first_page = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"approval_id": "appr_demo_1", "page_size": 1},
+    )
+    assert first_page.status_code == 200
+    cursor = first_page.json()["metadata"]["pagination"]["next_cursor"]
+    response = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"mandate_id": "m1", "page_size": 1, "cursor": cursor},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "cursor_scope_mismatch"
+
+
+def test_export_evidence_bundle_invalid_cursor_returns_400():
+    client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
+    response = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"approval_id": "appr_demo_1", "cursor": "not_a_valid_cursor"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "invalid_cursor"
+
+
 def test_verify_evidence_signature_roundtrip(monkeypatch):
     monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_SECRET", "test_signing_secret_123")
     monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_KEY_ID", "test-k1")

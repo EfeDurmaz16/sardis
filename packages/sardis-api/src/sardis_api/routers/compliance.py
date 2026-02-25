@@ -1,6 +1,7 @@
 """Compliance API endpoints for KYC and Sanctions screening."""
 from __future__ import annotations
 
+import base64
 from datetime import datetime, timezone
 import hashlib
 import hmac
@@ -515,6 +516,70 @@ def _evidence_signing_secret() -> str:
 
 def _evidence_signing_key_id() -> str:
     return (os.getenv("SARDIS_EVIDENCE_SIGNING_KEY_ID", "v1") or "v1").strip()
+
+
+def _evidence_cursor_secret() -> str:
+    configured = (os.getenv("SARDIS_EVIDENCE_CURSOR_SECRET", "") or "").strip()
+    if configured:
+        return configured
+    signing_secret = _evidence_signing_secret()
+    if signing_secret:
+        return signing_secret
+    if _is_production_env():
+        raise RuntimeError("evidence_cursor_secret_not_configured")
+    return "dev-insecure-evidence-cursor-secret"
+
+
+def _encode_evidence_cursor(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    signature = hmac.new(
+        _evidence_cursor_secret().encode(),
+        canonical.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    envelope = {
+        "v": 1,
+        "payload": payload,
+        "sig": signature,
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(envelope, sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).decode()
+    return encoded.rstrip("=")
+
+
+def _decode_evidence_cursor(token: str) -> dict[str, Any]:
+    raw = (token or "").strip()
+    if not raw:
+        raise ValueError("invalid_cursor")
+    padded = raw + "=" * (-len(raw) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(padded.encode()).decode()
+        envelope = json.loads(decoded)
+    except Exception as exc:
+        raise ValueError("invalid_cursor") from exc
+    if not isinstance(envelope, dict) or envelope.get("v") != 1:
+        raise ValueError("invalid_cursor")
+    payload = envelope.get("payload")
+    if not isinstance(payload, dict):
+        raise ValueError("invalid_cursor_payload")
+    signature = str(envelope.get("sig", ""))
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    expected = hmac.new(
+        _evidence_cursor_secret().encode(),
+        canonical.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise ValueError("invalid_cursor_signature")
+    return payload
+
+
+def _entry_sort_key(entry: dict[str, Any]) -> tuple[datetime, str]:
+    evaluated = _parse_iso_datetime(str(entry.get("evaluated_at", "")))
+    if evaluated is None:
+        evaluated = datetime.fromtimestamp(0, tz=timezone.utc)
+    return evaluated, str(entry.get("audit_id", ""))
 
 
 def _build_evidence_signature(payload: dict[str, Any]) -> dict[str, Any]:
@@ -1056,6 +1121,8 @@ async def export_audit_evidence_bundle(
     mandate_id: Optional[str] = Query(default=None),
     approval_id: Optional[str] = Query(default=None),
     limit: int = Query(default=500, ge=1, le=5000),
+    page_size: int = Query(default=250, ge=1, le=1000),
+    cursor: Optional[str] = Query(default=None, description="Opaque replay-safe pagination cursor"),
     start_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 lower bound for evaluated_at"),
     end_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 upper bound for evaluated_at"),
     include_signature: bool = Query(default=False),
@@ -1105,6 +1172,93 @@ async def export_audit_evidence_bundle(
                 continue
             windowed.append(entry)
         serialized = windowed
+    serialized.sort(key=_entry_sort_key, reverse=True)
+
+    scope_payload = {
+        "mandate_id": mandate_id,
+        "approval_id": approval_id,
+        "limit": limit,
+        "start_at": start_at,
+        "end_at": end_at,
+        "page_size": page_size,
+    }
+    scope_hash = _hash_json(scope_payload)
+    cursor_snapshot_at: datetime = datetime.now(timezone.utc)
+    cursor_last_key: Optional[tuple[datetime, str]] = None
+
+    if cursor:
+        try:
+            cursor_payload = _decode_evidence_cursor(cursor)
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+        if str(cursor_payload.get("scope_hash", "")) != scope_hash:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="cursor_scope_mismatch",
+            )
+        cursor_snapshot_at = _parse_iso_datetime(str(cursor_payload.get("snapshot_at", "")))  # type: ignore[assignment]
+        if cursor_snapshot_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_cursor_snapshot",
+            )
+        last_key = cursor_payload.get("last_key")
+        if not isinstance(last_key, dict):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_cursor_last_key",
+            )
+        last_key_dt = _parse_iso_datetime(str(last_key.get("evaluated_at", "")))
+        last_key_audit_id = str(last_key.get("audit_id", ""))
+        if last_key_dt is None or not last_key_audit_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid_cursor_last_key",
+            )
+        cursor_last_key = (last_key_dt, last_key_audit_id)
+
+    stable_entries = [
+        entry
+        for entry in serialized
+        if _entry_sort_key(entry)[0] <= cursor_snapshot_at
+    ]
+    if cursor_last_key is not None:
+        stable_entries = [
+            entry
+            for entry in stable_entries
+            if _entry_sort_key(entry) < cursor_last_key
+        ]
+
+    has_more = len(stable_entries) > page_size
+    serialized = stable_entries[:page_size]
+
+    next_cursor: Optional[str] = None
+    if has_more and serialized:
+        last_dt, last_audit_id = _entry_sort_key(serialized[-1])
+        cursor_payload = {
+            "scope_hash": scope_hash,
+            "snapshot_at": cursor_snapshot_at.isoformat(),
+            "last_key": {
+                "evaluated_at": last_dt.isoformat(),
+                "audit_id": last_audit_id,
+            },
+        }
+        try:
+            next_cursor = _encode_evidence_cursor(cursor_payload)
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
 
     policy_entries = [
         entry for entry in serialized if str(entry.get("provider", "")).strip().lower() == "policy_engine"
@@ -1175,8 +1329,15 @@ async def export_audit_evidence_bundle(
                 "mandate_id": mandate_id,
                 "approval_id": approval_id,
                 "limit": limit,
+                "page_size": page_size,
+                "cursor": cursor,
                 "start_at": start_at,
                 "end_at": end_at,
+            },
+            "pagination": {
+                "snapshot_at": cursor_snapshot_at.isoformat(),
+                "has_more": has_more,
+                "next_cursor": next_cursor,
             },
             "counts": counts,
             "entries_digest": entries_digest,
@@ -1193,8 +1354,17 @@ async def export_audit_evidence_bundle(
                 "mandate_id": mandate_id,
                 "approval_id": approval_id,
                 "limit": limit,
+                "page_size": page_size,
+                "cursor": cursor,
                 "start_at": start_at,
                 "end_at": end_at,
+            },
+            "pagination": {
+                "returned": len(serialized),
+                "has_more": has_more,
+                "next_cursor": next_cursor,
+                "snapshot_at": cursor_snapshot_at.isoformat(),
+                "replay_safe": True,
             },
             "counts": counts,
             "hints_version": "evidence-v1",
