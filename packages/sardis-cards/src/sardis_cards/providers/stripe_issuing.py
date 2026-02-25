@@ -539,3 +539,20 @@ class StripeIssuingProvider(CardProvider):
             return total
         except Exception:
             return Decimal("0")
+
+    async def reveal_card_details(
+        self,
+        provider_card_id: str,
+        *,
+        reason: str = "secure_checkout_executor",
+    ) -> dict:
+        """
+        Stripe card detail reveal is intentionally unsupported in this backend path.
+
+        Stripe Issuing card number retrieval is designed for client-side ephemeral key
+        flows (e.g., Issuing Elements), not long-lived server-side PAN handling.
+        """
+        raise NotImplementedError(
+            "Stripe Issuing PAN reveal is not enabled on the server path. "
+            "Use Stripe Issuing Elements or a dedicated PCI-controlled executor."
+        )

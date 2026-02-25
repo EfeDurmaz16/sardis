@@ -80,3 +80,45 @@ class CardProviderCompatAdapter:
                 merchant_descriptor=merchant_descriptor,
             )
         return None
+
+    async def reveal_card_details(
+        self,
+        card_id: str,
+        *,
+        reason: str = "secure_checkout_executor",
+    ) -> dict:
+        """
+        Resolve an internal card_id to provider_card_id and reveal details just-in-time.
+
+        This method deliberately returns raw details only to trusted internal callers.
+        It should never be exposed directly on public APIs.
+        """
+        card = await self._repo.get_by_card_id(card_id)
+        if not card or not card.get("provider_card_id"):
+            raise RuntimeError("Card not found or missing provider_card_id")
+
+        provider_reveal = getattr(self._provider, "reveal_card_details", None)
+        if not callable(provider_reveal):
+            provider_name = str(getattr(self._provider, "name", "unknown"))
+            raise RuntimeError(f"Provider does not support JIT reveal: {provider_name}")
+
+        details = await provider_reveal(
+            provider_card_id=card["provider_card_id"],
+            reason=reason,
+        )
+        if not isinstance(details, dict):
+            raise RuntimeError("Provider returned invalid card details payload")
+
+        pan = str(details.get("pan") or "")
+        if not pan:
+            raise RuntimeError("Provider did not return PAN")
+
+        exp_month = int(details.get("exp_month") or details.get("expiry_month") or 0)
+        exp_year = int(details.get("exp_year") or details.get("expiry_year") or 0)
+        cvv = str(details.get("cvv") or details.get("cvc") or "")
+        return {
+            "pan": pan,
+            "cvv": cvv,
+            "exp_month": exp_month,
+            "exp_year": exp_year,
+        }

@@ -318,6 +318,34 @@ class LithicProvider(CardProvider):
             status=TransactionStatus.PENDING,
             created_at=datetime.now(timezone.utc),
         )
+
+    async def reveal_card_details(
+        self,
+        provider_card_id: str,
+        *,
+        reason: str = "secure_checkout_executor",
+    ) -> dict:
+        """
+        Reveal full card details for tightly controlled internal execution flows.
+
+        Callers must ensure strict policy/approval checks and short-lived handling.
+        """
+        card_details = await asyncio.to_thread(
+            self._client.cards.retrieve, provider_card_id
+        )
+        pan = getattr(card_details, "pan", None)
+        if not pan:
+            raise ValueError("Could not retrieve card PAN from Lithic")
+
+        return {
+            "pan": str(pan),
+            "cvv": str(getattr(card_details, "cvv", "") or ""),
+            "exp_month": int(getattr(card_details, "exp_month", 0) or 0),
+            "exp_year": int(getattr(card_details, "exp_year", 0) or 0),
+            "provider_card_id": provider_card_id,
+            "provider": self.name,
+            "reason": reason,
+        }
     
     async def get_account_balance(
         self,

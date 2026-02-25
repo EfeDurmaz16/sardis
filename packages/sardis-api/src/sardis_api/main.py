@@ -100,6 +100,7 @@ from .routers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import stripe_funding as stripe_funding_router
 from .routers import checkout as checkout_router
+from .routers import secure_checkout as secure_checkout_router
 from .routers import policies as policies_router
 from .routers import compliance as compliance_router
 from .routers import admin as admin_router
@@ -730,6 +731,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(treasury_ops_router.router, prefix="/api/v2/treasury/ops", tags=["treasury-ops"])
 
     # Virtual Card routes (gated behind feature flag)
+    card_repo = None
+    card_provider = None
     if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
         from sardis_api.repositories.card_repository import CardRepository
 
@@ -1094,6 +1097,25 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
     if hasattr(checkout_router, "public_router"):
         app.include_router(checkout_router.public_router, prefix="/api/v2/checkout", tags=["checkout"])
+
+    secure_checkout_store = secure_checkout_router.InMemorySecureCheckoutStore()
+    app.dependency_overrides[secure_checkout_router.get_deps] = (
+        lambda: secure_checkout_router.SecureCheckoutDependencies(
+            wallet_repo=wallet_repo,
+            agent_repo=agent_repo,
+            card_repo=card_repo,
+            card_provider=card_provider,
+            policy_store=policy_store,
+            approval_service=approval_service,
+            store=secure_checkout_store,
+        )
+    )
+    if os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in ("1", "true", "yes", "on"):
+        app.include_router(
+            secure_checkout_router.router,
+            prefix="/api/v2/checkout",
+            tags=["checkout-secure"],
+        )
 
     app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
         policy_store=policy_store,
