@@ -125,6 +125,7 @@ async def pay_onchain(
             allowed, reason = policy.validate_payment(
                 amount=request.amount,
                 fee=Decimal("0"),
+                merchant_id=request.to,
                 mcc_code=None,
                 merchant_category="onchain_transfer",
             )
@@ -132,6 +133,37 @@ async def pay_onchain(
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=reason or "spending_policy_denied",
+                )
+            if reason == "requires_approval":
+                if deps.approval_service is not None:
+                    approval = await deps.approval_service.create_approval(
+                        action="onchain_payment",
+                        requested_by=wallet.agent_id,
+                        agent_id=wallet.agent_id,
+                        wallet_id=wallet.wallet_id,
+                        vendor=request.to,
+                        amount=request.amount,
+                        purpose="On-chain payment",
+                        reason="policy_requires_approval",
+                        urgency="medium",
+                        organization_id=principal.organization_id,
+                        metadata={
+                            "wallet_id": wallet_id,
+                            "token": request.token,
+                            "chain": request.chain,
+                            "rail": request.rail,
+                            "memo": request.memo,
+                        },
+                    )
+                    return OnChainPaymentResponse(
+                        tx_hash=None,
+                        explorer_url=None,
+                        status="pending_approval",
+                        approval_id=approval.id,
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="requires_approval",
                 )
 
     # Prompt-injection guard for agent-provided memo/input strings.
