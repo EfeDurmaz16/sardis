@@ -62,6 +62,11 @@ if ! bash scripts/release/ops_readiness_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating payment hardening gate"
+if ! bash scripts/release/payment_hardening_gate.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating mainnet proof and incident drill artifacts"
 if ! bash scripts/release/mainnet_ops_drill_check.sh; then
   failures=$((failures + 1))

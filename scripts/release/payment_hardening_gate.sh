@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+echo "[payment-hardening-gate] validating payment hardening controls"
+
+failures=0
+
+require_file() {
+  local file="$1"
+  if [[ ! -f "$file" ]]; then
+    echo "[payment-hardening-gate][fail] missing file: $file"
+    failures=$((failures + 1))
+  fi
+}
+
+require_match() {
+  local pattern="$1"
+  local file="$2"
+  local message="$3"
+  if ! rg -q "$pattern" "$file"; then
+    echo "[payment-hardening-gate][fail] $message ($file)"
+    failures=$((failures + 1))
+  fi
+}
+
+if ! command -v rg >/dev/null 2>&1; then
+  echo "[payment-hardening-gate][fail] rg command is required"
+  exit 1
+fi
+
+require_file "docs/design-partner/payment-hardening-preprod-gate.md"
+require_file "docs/design-partner/payment-hardening-slo-alerts.md"
+require_file "docs/design-partner/pci-approvals-and-db-hardening-checklist.md"
+
+require_match 'policy_pin_requires_active_policy' \
+  'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
+  'on-chain policy pin fail-closed guard must be present'
+require_match 'policy_pin_attestation_unavailable' \
+  'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
+  'on-chain policy attestation fail-closed guard must be present'
+require_match 'PROMPT_INJECTION_PATTERNS' \
+  'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
+  'on-chain prompt injection patterns must be defined'
+
+require_match 'cursor_scope_mismatch' \
+  'packages/sardis-api/src/sardis_api/routers/compliance.py' \
+  'evidence export cursor scope binding must be enforced'
+require_match 'Opaque replay-safe pagination cursor' \
+  'packages/sardis-api/src/sardis_api/routers/compliance.py' \
+  'evidence export must expose replay-safe cursor API'
+
+require_match 'card_details_invalid' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must reject invalid revealed card details'
+require_match '_sanitize_audit_payload' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout audit payload redaction must be present'
+require_match '_pan_executor_runtime_ready' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout PAN runtime readiness gate must be present'
+
+require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
+  'packages/sardis-api/tests/test_onchain_payments.py' \
+  'adversarial on-chain prompt test must exist'
+require_match 'test_topup_all_providers_failed_returns_502_and_records_attempts' \
+  'packages/sardis-api/tests/test_stripe_funding.py' \
+  'funding all-failed chaos test must exist'
+require_match 'test_pan_entry_execute_fail_closed_on_invalid_revealed_card_details' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'PAN invalid reveal fail-closed test must exist'
+
+if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
+  if ! command -v pytest >/dev/null 2>&1; then
+    echo "[payment-hardening-gate][fail] RUN_PAYMENT_HARDENING_TESTS=1 requires pytest"
+    failures=$((failures + 1))
+  else
+    echo "[payment-hardening-gate] running targeted payment hardening tests"
+    if ! pytest -q \
+      packages/sardis-api/tests/test_onchain_payments.py \
+      packages/sardis-api/tests/test_compliance_audit_api.py \
+      packages/sardis-api/tests/test_secure_checkout_executor.py \
+      packages/sardis-api/tests/test_stripe_funding.py; then
+      failures=$((failures + 1))
+    fi
+  fi
+else
+  echo "[payment-hardening-gate] skipping tests (set RUN_PAYMENT_HARDENING_TESTS=1 to enable)"
+fi
+
+if [[ "$failures" -gt 0 ]]; then
+  echo "[payment-hardening-gate] completed with $failures failure(s)"
+  exit 1
+fi
+
+echo "[payment-hardening-gate] pass"
