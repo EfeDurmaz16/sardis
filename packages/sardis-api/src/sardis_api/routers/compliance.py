@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import time
+from decimal import Decimal
 from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -266,6 +267,47 @@ class TransactionScreenRequest(BaseModel):
     token: str = "USDC"
 
 
+class KYARegisterRequest(BaseModel):
+    """Request to register an agent in KYA."""
+
+    agent_id: str
+    owner_id: str
+    capabilities: List[str] = Field(default_factory=list)
+    max_budget_per_tx: str = "50.00"
+    daily_budget: str = "500.00"
+    allowed_domains: List[str] = Field(default_factory=list)
+    blocked_domains: List[str] = Field(default_factory=list)
+    framework: Optional[str] = None
+    framework_version: Optional[str] = None
+    description: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class KYACheckRequestModel(BaseModel):
+    """Request payload for KYA evaluation."""
+
+    amount: str = "0"
+    merchant_id: Optional[str] = None
+    merchant_domain: Optional[str] = None
+
+
+class KYAUpgradeRequest(BaseModel):
+    """Request payload for KYA level upgrade."""
+
+    target_level: str = Field(..., description="Target KYA level: basic/verified/attested")
+    anchor_verification_id: Optional[str] = None
+    code_hash: Optional[str] = None
+    framework: Optional[str] = None
+    version: Optional[str] = None
+    attester: str = "self"
+
+
+class KYASuspendRequest(BaseModel):
+    """Request payload to suspend/revoke an agent."""
+
+    reason: str = "manual_review"
+
+
 # ============================================================================
 # Dependency Injection
 # ============================================================================
@@ -304,6 +346,15 @@ def _serialize_audit_entry(entry: Any) -> dict[str, Any]:
 def _compute_audit_entries_digest(entries: list[dict[str, Any]]) -> str:
     canonical = json.dumps(entries, sort_keys=True, separators=(",", ":"), default=str)
     return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+
+def _require_kya_service(deps: ComplianceDependencies):
+    if deps.kya_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="kya_service_not_configured",
+        )
+    return deps.kya_service
 
 
 # ============================================================================
@@ -403,6 +454,188 @@ async def check_kyc_required(
         "amount_minor": amount_minor,
         "kyc_required": required,
         "message": "KYC verification required before transaction" if required else "KYC not required",
+    }
+
+
+# ============================================================================
+# KYA Endpoints
+# ============================================================================
+
+@router.post("/kya/register")
+async def register_kya_agent(
+    request: KYARegisterRequest,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Register an agent manifest for KYA enforcement."""
+    kya_service = _require_kya_service(deps)
+    try:
+        from sardis_compliance.kya import AgentManifest
+
+        manifest = AgentManifest(
+            agent_id=request.agent_id,
+            owner_id=request.owner_id,
+            capabilities=request.capabilities,
+            max_budget_per_tx=Decimal(request.max_budget_per_tx),
+            daily_budget=Decimal(request.daily_budget),
+            allowed_domains=request.allowed_domains,
+            blocked_domains=request.blocked_domains,
+            framework=request.framework,
+            framework_version=request.framework_version,
+            description=request.description,
+            metadata=request.metadata,
+        )
+        result = await kya_service.register_agent(manifest)
+        return result.to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Failed to register KYA agent %s: %s", request.agent_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to register KYA agent: {exc}",
+        ) from exc
+
+
+@router.get("/kya/{agent_id}")
+async def get_kya_status(
+    agent_id: str,
+    deps: ComplianceDependencies = Depends(get_deps),
+):
+    """Get current KYA status for an agent."""
+    kya_service = _require_kya_service(deps)
+    manifest = kya_service.get_manifest(agent_id)
+    if manifest is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="agent_not_registered")
+    trust_score = await kya_service.get_trust_score(agent_id)
+    return {
+        "agent_id": agent_id,
+        "owner_id": manifest.owner_id,
+        "level": kya_service.get_level(agent_id).value,
+        "status": kya_service.get_status(agent_id).value,
+        "manifest_hash": manifest.manifest_hash,
+        "capabilities": manifest.capabilities,
+        "max_budget_per_tx": str(manifest.max_budget_per_tx),
+        "daily_budget": str(manifest.daily_budget),
+        "allowed_domains": manifest.allowed_domains,
+        "blocked_domains": manifest.blocked_domains,
+        "trust_score": trust_score.score if trust_score else None,
+        "is_alive": kya_service.is_alive(agent_id),
+    }
+
+
+@router.post("/kya/{agent_id}/check")
+async def check_kya_for_payment(
+    agent_id: str,
+    request: KYACheckRequestModel,
+    deps: ComplianceDependencies = Depends(get_deps),
+):
+    """Evaluate KYA policy for a potential payment."""
+    kya_service = _require_kya_service(deps)
+    try:
+        from sardis_compliance.kya import KYACheckRequest
+
+        result = await kya_service.check_agent(
+            KYACheckRequest(
+                agent_id=agent_id,
+                amount=Decimal(request.amount),
+                merchant_id=request.merchant_id,
+                merchant_domain=request.merchant_domain,
+            )
+        )
+        return result.to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/kya/{agent_id}/upgrade")
+async def upgrade_kya_level(
+    agent_id: str,
+    request: KYAUpgradeRequest,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Upgrade KYA level for an agent (verified/attested workflows)."""
+    kya_service = _require_kya_service(deps)
+    try:
+        from sardis_compliance.kya import CodeAttestation, KYALevel
+
+        target_level = KYALevel(request.target_level.strip().lower())
+        code_attestation = None
+        if target_level == KYALevel.ATTESTED:
+            if not request.code_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="code_hash_required_for_attested_upgrade",
+                )
+            code_attestation = CodeAttestation(
+                code_hash=request.code_hash,
+                framework=request.framework,
+                version=request.version,
+                attester=request.attester,
+            )
+        result = await kya_service.upgrade_level(
+            agent_id=agent_id,
+            target_level=target_level,
+            anchor_verification_id=request.anchor_verification_id,
+            code_attestation=code_attestation,
+        )
+        return result.to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/kya/{agent_id}/suspend")
+async def suspend_kya_agent(
+    agent_id: str,
+    request: KYASuspendRequest,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Suspend an agent's KYA status."""
+    kya_service = _require_kya_service(deps)
+    result = await kya_service.suspend_agent(agent_id=agent_id, reason=request.reason)
+    return result.to_dict()
+
+
+@router.post("/kya/{agent_id}/reactivate")
+async def reactivate_kya_agent(
+    agent_id: str,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Reactivate a suspended agent."""
+    kya_service = _require_kya_service(deps)
+    result = await kya_service.reactivate_agent(agent_id=agent_id)
+    return result.to_dict()
+
+
+@router.post("/kya/{agent_id}/heartbeat")
+async def heartbeat_kya_agent(
+    agent_id: str,
+    deps: ComplianceDependencies = Depends(get_deps),
+):
+    """Record an agent heartbeat for KYA liveness tracking."""
+    kya_service = _require_kya_service(deps)
+    kya_service.ping(agent_id)
+    return {
+        "agent_id": agent_id,
+        "is_alive": kya_service.is_alive(agent_id),
+        "status": kya_service.get_status(agent_id).value,
+    }
+
+
+@router.post("/kya/stale/sweep")
+async def sweep_stale_kya_agents(
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Suspend stale agents that missed heartbeat deadlines."""
+    kya_service = _require_kya_service(deps)
+    suspended = await kya_service.check_stale_agents()
+    return {
+        "suspended_agents": suspended,
+        "count": len(suspended),
     }
 
 
