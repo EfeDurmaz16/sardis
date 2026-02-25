@@ -48,6 +48,32 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# Immutable Hard-Limit Layer
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class ImmutableParserHardLimits:
+    """Non-overridable safety ceilings for NL-derived policies."""
+
+    max_per_tx: Decimal = Decimal("100000")       # $100k per transaction
+    max_daily: Decimal = Decimal("500000")        # $500k daily
+    max_monthly: Decimal = Decimal("5000000")     # $5M monthly/weekly
+    max_input_length: int = 2000                  # characters
+
+    def max_for_period(self, period: str) -> Decimal:
+        p = str(period or "").strip().lower()
+        if p == "per_transaction":
+            return self.max_per_tx
+        if p == "daily":
+            return self.max_daily
+        return self.max_monthly
+
+
+IMMUTABLE_PARSER_HARD_LIMITS = ImmutableParserHardLimits()
+
+
+# ============================================================================
 # Pydantic Models for LLM Extraction
 # ============================================================================
 
@@ -272,12 +298,11 @@ Extract the policy accurately and completely."""
         self._sync_client = instructor.from_openai(OpenAI(**client_kwargs))
         self._async_client = instructor.from_openai(AsyncOpenAI(**client_kwargs))
 
-    # SECURITY: Hard-coded upper bounds that no LLM output may exceed.
-    # These prevent prompt injection from setting absurdly high limits.
-    MAX_PER_TX = Decimal("100000")       # $100k per transaction
-    MAX_DAILY = Decimal("500000")        # $500k daily
-    MAX_MONTHLY = Decimal("5000000")     # $5M monthly
-    MAX_INPUT_LENGTH = 2000              # Characters
+    # SECURITY: immutable hard limits that no parser output may exceed.
+    MAX_PER_TX = IMMUTABLE_PARSER_HARD_LIMITS.max_per_tx
+    MAX_DAILY = IMMUTABLE_PARSER_HARD_LIMITS.max_daily
+    MAX_MONTHLY = IMMUTABLE_PARSER_HARD_LIMITS.max_monthly
+    MAX_INPUT_LENGTH = IMMUTABLE_PARSER_HARD_LIMITS.max_input_length
 
     # SECURITY: Patterns that indicate prompt injection attempts.
     # These are logged and stripped before the input reaches the LLM.
@@ -476,6 +501,34 @@ Extract the policy accurately and completely."""
                 f"Extracted global monthly limit ${extracted.global_monthly_limit} exceeds maximum ${self.MAX_MONTHLY}"
             )
 
+    def _enforce_immutable_policy_limits(self, policy: SpendingPolicy) -> None:
+        """Clamp converted policy values to immutable parser hard-limits.
+
+        SECURITY: This executes after NL extraction and conversion. Even if any
+        upstream step produces unsafe numeric values, final runtime policy limits
+        are deterministic and bounded.
+        """
+        if policy.limit_per_tx > self.MAX_PER_TX:
+            policy.limit_per_tx = self.MAX_PER_TX
+
+        if policy.daily_limit and policy.daily_limit.limit_amount > self.MAX_DAILY:
+            policy.daily_limit.limit_amount = self.MAX_DAILY
+
+        if policy.weekly_limit and policy.weekly_limit.limit_amount > self.MAX_MONTHLY:
+            policy.weekly_limit.limit_amount = self.MAX_MONTHLY
+
+        if policy.monthly_limit and policy.monthly_limit.limit_amount > self.MAX_MONTHLY:
+            policy.monthly_limit.limit_amount = self.MAX_MONTHLY
+
+        if policy.approval_threshold is not None and policy.approval_threshold > self.MAX_PER_TX:
+            policy.approval_threshold = self.MAX_PER_TX
+
+        for rule in policy.merchant_rules:
+            if rule.max_per_tx is not None and rule.max_per_tx > self.MAX_PER_TX:
+                rule.max_per_tx = self.MAX_PER_TX
+            if rule.daily_limit is not None and rule.daily_limit > self.MAX_DAILY:
+                rule.daily_limit = self.MAX_DAILY
+
     def parse_sync(self, natural_language_policy: str) -> ExtractedPolicy:
         """
         Parse natural language policy synchronously.
@@ -554,6 +607,9 @@ Extract the policy accurately and completely."""
         Returns:
             SpendingPolicy object ready for enforcement
         """
+        # SECURITY: enforce hard ceilings on extracted numeric values before conversion.
+        self._validate_extracted_amounts(extracted)
+
         # Start with a base policy
         policy = SpendingPolicy(
             policy_id=f"policy_{uuid.uuid4().hex[:16]}",
@@ -627,6 +683,9 @@ Extract the policy accurately and completely."""
         if extracted.requires_approval_above:
             policy.require_preauth = True
             policy.approval_threshold = Decimal(str(extracted.requires_approval_above))
+
+        # SECURITY: final deterministic hard-limit enforcement on policy object.
+        self._enforce_immutable_policy_limits(policy)
 
         return policy
 
@@ -737,8 +796,8 @@ class RegexPolicyParser:
         # Build spending limit with amount validation
         if amounts:
             amount = amounts[0]
-            # SECURITY: Apply same hard limits as LLM parser
-            _max = float(NLPolicyParser.MAX_PER_TX)
+            # SECURITY: Apply immutable hard-limits by period
+            _max = float(IMMUTABLE_PARSER_HARD_LIMITS.max_for_period(period))
             if amount > _max:
                 result["warnings"].append(
                     f"Amount ${amount} exceeds maximum ${_max}. Clamped."
