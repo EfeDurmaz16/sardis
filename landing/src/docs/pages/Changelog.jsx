@@ -2,9 +2,32 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
-    version: '0.9.2',
+    version: '0.9.3',
     date: '2026-02-25',
     tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Investor-facing competitive positioning brief updated for deterministic policy + approval + audit-trail narrative',
+          'Landing hero now highlights PAN-lane quorum, ASA fail-closed posture, and wallet-aware A2A trust routing',
+          'Dashboard runtime posture cards added for checkout controls, ASA behavior, and multi-agent trust visibility',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'MCP tool count references aligned to current verified audit baseline (52 tools)',
+          'Enterprise and main landing framework-integration copy updated for evidence consistency',
+          'Approvals page copy aligned with 4-eyes reviewer enforcement posture',
+        ]
+      },
+    ]
+  },
+  {
+    version: '0.9.2',
+    date: '2026-02-25',
+    tag: '',
     changes: [
       {
         type: 'added',

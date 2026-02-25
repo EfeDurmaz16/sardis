@@ -225,6 +225,12 @@ function App() {
               Zero-Trust Control Plane: signed control mutations, 4-eyes approval quorum, and Merkle-verifiable audit proofs.
             </p>
 
+            <div className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">PAN lane quorum</span>
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">ASA fail-closed</span>
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">Wallet-aware A2A trust</span>
+            </div>
+
             <div className="max-w-3xl mx-auto">
               <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
             </div>
@@ -409,7 +415,7 @@ function App() {
               {
                 icon: icons.creditCardGear,
                 title: "Virtual Cards",
-                description: "Instant Visa cards via Stripe Issuing or Lithic. Your agent can pay anywhere cards are accepted — online and physical POS.",
+                description: "Instant Visa cards via Stripe Issuing or Lithic. PAN handling stays in a hardened lane with approval and real-time auth guardrails.",
                 span: false,
               },
               {
@@ -488,7 +494,7 @@ function App() {
               {
                 icon: icons.terminal,
                 title: "Zero-Config MCP",
-                description: "One command to add 65+ payment and treasury tools to Claude or Cursor. No setup required.",
+                description: "One command to add 52 payment and treasury tools to Claude or Cursor. No setup required.",
                 unique: false
               },
               {
@@ -703,9 +709,9 @@ function App() {
               {
                 logo: "/icons/mcp.svg",
                 name: "Claude / MCP",
-                description: "65+ MCP tools. One command to add payments to Claude Desktop, Cursor, or any MCP client.",
+                description: "52 MCP tools. One command to add payments to Claude Desktop, Cursor, or any MCP client.",
                 code: "npx @sardis/mcp-server start",
-                badge: "65+ tools"
+                badge: "52 tools"
               },
               {
                 logo: "/icons/openai-2.svg",
@@ -943,7 +949,7 @@ function App() {
               {
                 icon: icons.autoRenew,
                 title: "MCP Server",
-                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 65+ tools for payments, wallets, treasury, fiat operations, holds, invoices, commerce, and guardrails.",
+                description: "Native integration with Claude, Cursor, and any MCP-compatible AI. 52 tools for payments, wallets, treasury, fiat operations, holds, invoices, commerce, and guardrails.",
                 links: [
                   { name: "npm package", url: "https://www.npmjs.com/package/@sardis/mcp-server" },
                   { name: "GitHub", url: "https://github.com/EfeDurmaz16/sardis" }

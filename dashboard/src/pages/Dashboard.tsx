@@ -120,6 +120,25 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Runtime security posture */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card p-4 border border-dark-100">
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Checkout Control</p>
+          <p className="text-sm text-white font-medium">PAN lane quorum active</p>
+          <p className="text-xs text-gray-400 mt-1">Distinct reviewer (4-eyes) required on high-risk approvals.</p>
+        </div>
+        <div className="card p-4 border border-dark-100">
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Card Auth</p>
+          <p className="text-sm text-white font-medium">ASA fail-closed enabled</p>
+          <p className="text-xs text-gray-400 mt-1">Lookup or matcher failures default to decline in production.</p>
+        </div>
+        <div className="card p-4 border border-dark-100">
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Multi-Agent Trust</p>
+          <p className="text-sm text-white font-medium">Wallet-aware peer directory</p>
+          <p className="text-xs text-gray-400 mt-1">Trusted broadcast targets visible for orchestration fan-out.</p>
+        </div>
+      </div>
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

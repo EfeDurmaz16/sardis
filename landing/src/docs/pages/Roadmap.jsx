@@ -291,8 +291,8 @@ export default function Roadmap() {
     {
       version: 'v0.9.2',
       title: 'Checkout + ASA + Multi-Agent Directory Hardening',
-      status: 'current',
-      date: 'Feb 2026 (Now)',
+      status: 'completed',
+      date: 'Feb 2026',
       items: [
         { text: 'Secure checkout approval quorum controls (min approvals + PAN-specific min approvals)', done: true },
         { text: 'Secure checkout distinct reviewer (4-eyes) enforcement for PAN lane approvals', done: true },
@@ -302,6 +302,19 @@ export default function Roadmap() {
         { text: 'A2A trust peers endpoint extended with wallet-aware directory visibility', done: true },
         { text: 'A2A trusted broadcast target list for orchestration fan-out', done: true },
         { text: 'Payment hardening gate expanded to cover checkout quorum + ASA + wallet-aware A2A directory', done: true },
+      ],
+    },
+    {
+      version: 'v0.9.3',
+      title: 'Investor Readiness + Runtime Posture Visibility',
+      status: 'current',
+      date: 'Feb 2026 (Now)',
+      items: [
+        { text: 'Competitive positioning brief updated for deterministic policy + approval + audit-trail messaging', done: true },
+        { text: 'Landing runtime posture highlights for PAN-lane quorum, ASA fail-closed, and wallet-aware A2A trust', done: true },
+        { text: 'Dashboard runtime control cards for checkout/ASA/trust posture visibility', done: true },
+        { text: 'MCP tool count references normalized to current verified baseline (52)', done: true },
+        { text: 'Partner/compliance go-to-market package polish for investor and design-partner conversations', done: true },
       ],
     },
     {

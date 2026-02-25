@@ -397,7 +397,7 @@ export default function ApprovalsPage() {
             Approval Flow
           </h1>
           <p className="text-gray-400 mt-1">
-            Human-in-the-loop approval for payments exceeding policy thresholds
+            Human-in-the-loop approval for payments exceeding policy thresholds with 4-eyes reviewer controls
           </p>
         </div>
         <button
@@ -412,6 +412,13 @@ export default function ApprovalsPage() {
           <Settings className="w-4 h-4" />
           Auto-Approve Rules
         </button>
+      </div>
+
+      <div className="bg-dark-300 border border-dark-100 p-4">
+        <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Runtime policy posture</p>
+        <p className="text-sm text-gray-200">
+          High-risk PAN execution requires approval quorum and distinct reviewers. Policy or auth uncertainty is treated as deny by default.
+        </p>
       </div>
 
       {/* Stats Summary */}

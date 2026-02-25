@@ -341,7 +341,7 @@ function Enterprise() {
             <p className="text-lg font-mono text-[var(--sardis-teal-strong)] dark:text-[#9DD9D2] tracking-[0.08em] font-bold mb-4 uppercase">Integrations</p>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Works With Every Major AI Framework</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              65+ MCP tools, 5 blockchain networks, 9 framework integrations. Your agents, your stack.
+              52 MCP tools, 5 blockchain networks, 9 framework integrations. Your agents, your stack.
             </p>
           </div>
 
@@ -382,7 +382,7 @@ function Enterprise() {
 
           <div className="text-center">
             <Badge variant="outline" className="text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">
-              65+ MCP TOOLS • 5 BLOCKCHAIN NETWORKS • 9 FRAMEWORK INTEGRATIONS
+              52 MCP TOOLS • 5 BLOCKCHAIN NETWORKS • 9 FRAMEWORK INTEGRATIONS
             </Badge>
           </div>
         </div>
