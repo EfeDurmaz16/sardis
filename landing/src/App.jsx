@@ -203,22 +203,27 @@ function App() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-              <h1 className="mx-auto max-w-[15ch] text-balance text-[clamp(2.3rem,7vw,5.5rem)] font-sans font-semibold leading-[1.02] tracking-[-0.03em] mb-7">
-                Your AI agents can now pay for things. Safely.
-              </h1>
+          <div className="max-w-5xl mx-auto text-center">
+            <p className="mb-5 inline-flex items-center border border-border bg-background/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              Policy-First Agent Payments
+            </p>
 
-              <p className="text-base md:text-xl text-muted-foreground mb-5 max-w-xl mx-auto leading-relaxed">
-                Set spending rules in plain English. Sardis enforces them before any money moves.
-              </p>
+            <h1 className="mx-auto max-w-[17ch] text-[clamp(2.45rem,7.4vw,5.8rem)] font-sans font-semibold leading-[1.04] tracking-[-0.028em] mb-6">
+              <span className="block">Your AI agents can now pay</span>
+              <span className="block">for things, safely.</span>
+            </h1>
 
-              <p className="text-sm md:text-[15px] text-muted-foreground mb-8">
-                For teams building autonomous AI agents that handle real transactions.
-              </p>
+            <p className="text-[1.05rem] md:text-[1.35rem] text-muted-foreground mb-4 max-w-2xl mx-auto leading-relaxed">
+              Set spending rules in plain English. Sardis enforces them before any money moves.
+            </p>
 
-              <div className="max-w-2xl mx-auto">
-                <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
-              </div>
+            <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-[54ch] mx-auto">
+              For teams building autonomous AI agents that handle real transactions.
+            </p>
+
+            <div className="max-w-3xl mx-auto">
+              <CopyCommand command="npx @sardis/mcp-server init --mode simulated && npx @sardis/mcp-server start" />
+            </div>
           </div>
         </div>
       </section>
