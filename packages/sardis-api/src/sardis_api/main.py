@@ -99,6 +99,7 @@ from .routers import cards as cards_router
 from .routers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import stripe_funding as stripe_funding_router
+from .routers import funding_capabilities as funding_capabilities_router
 from .routers import checkout as checkout_router
 from .routers import secure_checkout as secure_checkout_router
 from .routers import policies as policies_router
@@ -1059,6 +1060,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("Stripe webhook router not enabled: %s", exc)
     else:
         logger.info("Stripe webhook router disabled (missing STRIPE API key/webhook secret)")
+
+    app.dependency_overrides[funding_capabilities_router.get_deps] = (
+        lambda: funding_capabilities_router.FundingCapabilitiesDeps(settings=settings)
+    )
+    app.include_router(funding_capabilities_router.router, prefix="/api/v2")
 
     app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
