@@ -348,6 +348,62 @@ def _compute_audit_entries_digest(entries: list[dict[str, Any]]) -> str:
     return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
+def _hash_json(payload: Any) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _build_merkle_root(leaves: list[str]) -> str:
+    if not leaves:
+        return ""
+    level = list(leaves)
+    while len(level) > 1:
+        if len(level) % 2 == 1:
+            level.append(level[-1])
+        next_level: list[str] = []
+        for idx in range(0, len(level), 2):
+            next_level.append(hashlib.sha256((level[idx] + level[idx + 1]).encode()).hexdigest())
+        level = next_level
+    return level[0]
+
+
+def _build_merkle_proof(leaves: list[str], leaf_index: int) -> list[dict[str, str]]:
+    proof: list[dict[str, str]] = []
+    if not leaves:
+        return proof
+
+    level = list(leaves)
+    index = leaf_index
+    while len(level) > 1:
+        if len(level) % 2 == 1:
+            level.append(level[-1])
+        is_right = index % 2 == 1
+        sibling_index = index - 1 if is_right else index + 1
+        proof.append(
+            {
+                "position": "left" if is_right else "right",
+                "hash": level[sibling_index],
+            }
+        )
+        next_level: list[str] = []
+        for idx in range(0, len(level), 2):
+            next_level.append(hashlib.sha256((level[idx] + level[idx + 1]).encode()).hexdigest())
+        level = next_level
+        index //= 2
+    return proof
+
+
+def _verify_merkle_proof(leaf_hash: str, proof: list[dict[str, str]], root_hash: str) -> bool:
+    current = leaf_hash
+    for step in proof:
+        sibling = step["hash"]
+        if step["position"] == "left":
+            current = hashlib.sha256((sibling + current).encode()).hexdigest()
+        else:
+            current = hashlib.sha256((current + sibling).encode()).hexdigest()
+    return current == root_hash
+
+
 def _require_kya_service(deps: ComplianceDependencies):
     if deps.kya_service is None:
         raise HTTPException(
@@ -898,6 +954,56 @@ async def verify_audit_chain_integrity(
         "verified": verified,
         "error": error,
         "entry_count": entry_count,
+    }
+
+
+@router.get("/audit/mandate/{mandate_id}/proof/{audit_id}")
+async def get_mandate_audit_proof(
+    mandate_id: str,
+    audit_id: str,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Return Merkle inclusion proof for one audit entry within a mandate audit set."""
+    if deps.audit_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="audit_store_not_configured",
+        )
+
+    entries = await _resolve_maybe_awaitable(deps.audit_store.get_by_mandate(mandate_id))
+    serialized = [_serialize_audit_entry(entry) for entry in entries]
+    if not serialized:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="mandate_audit_not_found",
+        )
+
+    target_index = next(
+        (idx for idx, entry in enumerate(serialized) if str(entry.get("audit_id", "")) == audit_id),
+        None,
+    )
+    if target_index is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="audit_id_not_found_for_mandate",
+        )
+
+    leaves = [_hash_json(entry) for entry in serialized]
+    leaf_hash = leaves[target_index]
+    merkle_root = _build_merkle_root(leaves)
+    proof = _build_merkle_proof(leaves, target_index)
+    verified = _verify_merkle_proof(leaf_hash, proof, merkle_root)
+
+    return {
+        "mandate_id": mandate_id,
+        "audit_id": audit_id,
+        "entry": serialized[target_index],
+        "leaf_hash": leaf_hash,
+        "merkle_root": f"merkle::{merkle_root}",
+        "proof": proof,
+        "proof_verified": verified,
+        "entry_count": len(serialized),
     }
 
 

@@ -144,3 +144,27 @@ def test_verify_chain_integrity_unsupported_store():
     assert payload["supported"] is False
     assert payload["verified"] is None
     assert payload["error"] == "chain_verification_not_supported_by_store"
+
+
+def test_mandate_audit_proof_returns_merkle_proof():
+    client = _build_client(_AuditStoreWithChain())
+
+    response = client.get("/api/v2/compliance/audit/mandate/m1/proof/a2")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mandate_id"] == "m1"
+    assert payload["audit_id"] == "a2"
+    assert payload["leaf_hash"]
+    assert payload["merkle_root"].startswith("merkle::")
+    assert payload["proof_verified"] is True
+    assert payload["entry_count"] == 2
+
+
+def test_mandate_audit_proof_missing_entry_returns_404():
+    client = _build_client(_AuditStoreWithChain())
+
+    response = client.get("/api/v2/compliance/audit/mandate/m1/proof/unknown_audit")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "audit_id_not_found_for_mandate"
