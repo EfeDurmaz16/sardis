@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import re
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -33,6 +35,14 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 # KYC thresholds (amounts in minor units - cents for USD)
 KYC_THRESHOLD_MINOR = 100000  # $1000 requires KYC
 HIGH_VALUE_THRESHOLD_MINOR = 1000000  # $10000 enhanced verification
+PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bignore\s+previous\s+instructions\b", re.IGNORECASE),
+    re.compile(r"\boverride\s+safety\b", re.IGNORECASE),
+    re.compile(r"\bbypass\s+policy\b", re.IGNORECASE),
+    re.compile(r"\bdisable\s+compliance\b", re.IGNORECASE),
+    re.compile(r"\bsystem\s+prompt\b", re.IGNORECASE),
+    re.compile(r"\bdeveloper\s+mode\b", re.IGNORECASE),
+)
 
 
 @dataclass
@@ -63,7 +73,7 @@ class ComplianceCheckResult:
     rule: Optional[str] = None
 
 
-async def perform_compliance_checks(
+async def _compliance_checks_impl(
     deps: Dependencies,
     agent_id: str,
     destination: str,
@@ -146,6 +156,33 @@ async def perform_compliance_checks(
     return result
 
 
+def _iter_strings(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _iter_strings(v)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _iter_strings(item)
+
+
+def _detect_prompt_injection_signal(payload: AP2PaymentExecuteRequest) -> Optional[str]:
+    for text in _iter_strings(payload.intent):
+        for pattern in PROMPT_INJECTION_PATTERNS:
+            if pattern.search(text):
+                return pattern.pattern
+    for text in _iter_strings(payload.cart):
+        for pattern in PROMPT_INJECTION_PATTERNS:
+            if pattern.search(text):
+                return pattern.pattern
+    for text in _iter_strings(payload.payment):
+        for pattern in PROMPT_INJECTION_PATTERNS:
+            if pattern.search(text):
+                return pattern.pattern
+    return None
+
+
 @router.post("/payments/execute", response_model=AP2PaymentExecuteResponse)
 async def execute_ap2_payment(
     payload: AP2PaymentExecuteRequest,
@@ -219,8 +256,93 @@ async def execute_ap2_payment(
                 detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
             )
 
+        # Runtime safety guard: prompt-injection signal detection on AP2 envelope.
+        prompt_guard_enabled = os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if prompt_guard_enabled:
+            injection_match = _detect_prompt_injection_signal(payload)
+            if injection_match:
+                if deps.approval_service:
+                    from decimal import Decimal
+
+                    amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
+                    approval = await deps.approval_service.create_approval(
+                        action="payment",
+                        requested_by=payment.subject,
+                        agent_id=payment.subject,
+                        wallet_id=getattr(payment, "wallet_id", None),
+                        vendor=payment.merchant_domain,
+                        amount=amount_decimal,
+                        purpose=f"AP2 payment to {payment.merchant_domain}",
+                        reason=f"prompt_injection_signal_detected:{injection_match}",
+                        urgency="high",
+                        metadata={
+                            "mandate_id": payment.mandate_id,
+                            "risk_signal": "prompt_injection",
+                            "pattern": injection_match,
+                            "canonicalization_mode": payload.canonicalization_mode,
+                        },
+                    )
+                    return 202, AP2PaymentExecuteResponse(
+                        mandate_id=payment.mandate_id,
+                        ledger_tx_id="",
+                        chain_tx_hash="",
+                        chain=payment.chain,
+                        audit_anchor="",
+                        status="pending_approval",
+                        approval_id=approval.id,
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="prompt_injection_signal_detected",
+                )
+
+        # Runtime safety guard: goal drift threshold block/review.
+        drift_score = float(getattr(verification, "drift_score", 0.0) or 0.0)
+        drift_block_threshold = float(os.getenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90"))
+        if drift_score >= drift_block_threshold:
+            if deps.approval_service:
+                from decimal import Decimal
+
+                amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
+                approval = await deps.approval_service.create_approval(
+                    action="payment",
+                    requested_by=payment.subject,
+                    agent_id=payment.subject,
+                    wallet_id=getattr(payment, "wallet_id", None),
+                    vendor=payment.merchant_domain,
+                    amount=amount_decimal,
+                    purpose=f"AP2 payment to {payment.merchant_domain}",
+                    reason=f"goal_drift_score={drift_score:.3f} threshold={drift_block_threshold:.3f}",
+                    urgency="high",
+                    metadata={
+                        "mandate_id": payment.mandate_id,
+                        "risk_signal": "goal_drift",
+                        "drift_score": drift_score,
+                        "drift_reasons": getattr(verification, "drift_reasons", []),
+                        "canonicalization_mode": payload.canonicalization_mode,
+                    },
+                )
+                return 202, AP2PaymentExecuteResponse(
+                    mandate_id=payment.mandate_id,
+                    ledger_tx_id="",
+                    chain_tx_hash="",
+                    chain=payment.chain,
+                    audit_anchor="",
+                    status="pending_approval",
+                    approval_id=approval.id,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="goal_drift_blocked",
+            )
+
         # Step 2: Perform compliance checks
-        compliance = await perform_compliance_checks(
+        compliance = await _compliance_checks_impl(
             deps=deps,
             agent_id=payment.subject,
             destination=payment.destination,
@@ -338,4 +460,24 @@ async def execute_ap2_payment(
         key=str(key),
         payload=payload.model_dump(),
         fn=_execute,
+    )
+
+
+async def perform_compliance_checks(
+    deps: Dependencies,
+    agent_id: str,
+    destination: str,
+    chain: str,
+    amount_minor: int,
+) -> ComplianceCheckResult:
+    """
+    Compatibility wrapper kept for tests/introspection:
+    policy gate is enforced before this check inside execute_ap2_payment().
+    """
+    return await _compliance_checks_impl(
+        deps=deps,
+        agent_id=agent_id,
+        destination=destination,
+        chain=chain,
+        amount_minor=amount_minor,
     )

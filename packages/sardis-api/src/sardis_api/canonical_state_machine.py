@@ -211,6 +211,61 @@ def normalize_lithic_card_event(
     )
 
 
+def normalize_partner_card_event(
+    *,
+    organization_id: str,
+    provider: str,
+    payload: dict[str, Any],
+    event_type: str,
+    transaction_reference: str,
+) -> CanonicalEvent:
+    et = (event_type or "").strip().lower()
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    status = str(data.get("status") or payload.get("status") or "").lower()
+    canonical_event_type = "fiat.card.transaction_observed"
+    canonical_state: Optional[str] = "processing"
+    if "declined" in et or status in {"declined", "denied"}:
+        canonical_event_type = "fiat.card.declined"
+        canonical_state = "failed"
+    elif "settled" in et or status in {"settled", "completed"}:
+        canonical_event_type = "fiat.card.settled"
+        canonical_state = "settled"
+    elif "authorized" in et or "authorization" in et or status in {"authorized", "approved"}:
+        canonical_event_type = "fiat.card.authorized"
+        canonical_state = "authorized"
+
+    amount_minor = _safe_int(data.get("amount"))
+    event_ts = (
+        _parse_ts(data.get("created"))
+        or _parse_ts(data.get("settled_at"))
+        or _parse_ts(payload.get("created"))
+        or datetime.now(timezone.utc)
+    )
+    provider_event_id = str(payload.get("event_id") or payload.get("token") or payload.get("id") or "") or None
+    merchant_obj = data.get("merchant") if isinstance(data.get("merchant"), dict) else {}
+    return CanonicalEvent(
+        organization_id=organization_id,
+        provider=str(provider or "unknown"),
+        provider_event_id=provider_event_id,
+        provider_event_type=et or "unknown",
+        canonical_event_type=canonical_event_type,
+        rail="fiat_card",
+        external_reference=transaction_reference,
+        canonical_state=canonical_state,
+        direction="debit",
+        amount_minor=amount_minor,
+        currency=str(data.get("currency", "USD")),
+        event_ts=event_ts,
+        metadata={
+            "card_token": payload.get("card_token") or data.get("card_token") or data.get("card_id"),
+            "merchant": merchant_obj.get("name") or data.get("merchant_name"),
+            "decline_reason": data.get("decline_reason") or data.get("reason"),
+            "provider": provider,
+        },
+        raw_payload=payload,
+    )
+
+
 def normalize_stablecoin_event(
     *,
     organization_id: str,

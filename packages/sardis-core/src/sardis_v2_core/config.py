@@ -122,6 +122,7 @@ class BridgeCardsConfig(BaseSettings):
     api_secret: str = ""
     program_id: str = ""
     cards_base_url: str = "https://api.bridge.xyz"
+    webhook_secret: str = ""
     cards_path_map_json: str = ""
     cards_method_map_json: str = ""
 

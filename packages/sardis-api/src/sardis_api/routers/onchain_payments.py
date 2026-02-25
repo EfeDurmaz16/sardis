@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import re
 import time
 from dataclasses import dataclass
 from decimal import Decimal
@@ -35,9 +37,10 @@ class OnChainPaymentRequest(BaseModel):
 
 
 class OnChainPaymentResponse(BaseModel):
-    tx_hash: str
+    tx_hash: Optional[str] = None
     explorer_url: Optional[str] = None
     status: str = "submitted"
+    approval_id: Optional[str] = None
 
 
 @dataclass
@@ -45,12 +48,22 @@ class OnChainPaymentDependencies:
     wallet_repo: Any
     agent_repo: Any
     chain_executor: Any
+    policy_store: Any = None
+    approval_service: Any = None
     coinbase_cdp_provider: Any = None
     default_on_chain_provider: Optional[str] = None
 
 
 def get_deps() -> OnChainPaymentDependencies:
     raise NotImplementedError("must be overridden")
+
+
+PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bignore\s+previous\s+instructions\b", re.IGNORECASE),
+    re.compile(r"\boverride\s+safety\b", re.IGNORECASE),
+    re.compile(r"\bbypass\s+policy\b", re.IGNORECASE),
+    re.compile(r"\bdisable\s+compliance\b", re.IGNORECASE),
+)
 
 
 def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:
@@ -77,6 +90,16 @@ async def _require_wallet_access(wallet: Any, principal: Principal, deps: OnChai
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
 
+def _contains_prompt_injection_signal(text: Optional[str]) -> Optional[str]:
+    value = (text or "").strip()
+    if not value:
+        return None
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if pattern.search(value):
+            return pattern.pattern
+    return None
+
+
 @router.post("/{wallet_id}/pay/onchain", response_model=OnChainPaymentResponse, status_code=status.HTTP_200_OK)
 async def pay_onchain(
     wallet_id: str,
@@ -88,6 +111,63 @@ async def pay_onchain(
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
     await _require_wallet_access(wallet, principal, deps)
+
+    # Policy enforcement gate (fail-closed in production when policy store missing).
+    if deps.policy_store is None:
+        if (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower() in {"prod", "production"}:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="policy_store_not_configured",
+            )
+    else:
+        policy = await deps.policy_store.fetch_policy(wallet.agent_id)
+        if policy is not None:
+            allowed, reason = policy.validate_payment(
+                amount=request.amount,
+                fee=Decimal("0"),
+                mcc_code=None,
+                merchant_category="onchain_transfer",
+            )
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=reason or "spending_policy_denied",
+                )
+
+    # Prompt-injection guard for agent-provided memo/input strings.
+    if os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
+        match = _contains_prompt_injection_signal(request.memo)
+        if match:
+            if deps.approval_service is not None:
+                approval = await deps.approval_service.create_approval(
+                    action="onchain_payment",
+                    requested_by=wallet.agent_id,
+                    agent_id=wallet.agent_id,
+                    wallet_id=wallet.wallet_id,
+                    vendor=request.to,
+                    amount=request.amount,
+                    purpose="On-chain payment",
+                    reason=f"prompt_injection_signal_detected:{match}",
+                    urgency="high",
+                    organization_id=principal.organization_id,
+                    metadata={
+                        "wallet_id": wallet_id,
+                        "token": request.token,
+                        "chain": request.chain,
+                        "rail": request.rail,
+                        "memo": request.memo,
+                    },
+                )
+                return OnChainPaymentResponse(
+                    tx_hash=None,
+                    explorer_url=None,
+                    status="pending_approval",
+                    approval_id=approval.id,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="prompt_injection_signal_detected",
+            )
 
     use_cdp_rail = False
     if request.rail:

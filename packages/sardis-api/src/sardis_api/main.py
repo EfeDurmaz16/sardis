@@ -96,6 +96,7 @@ from .routers import onchain_payments as onchain_payments_router
 from .routers import agents as agents_router
 from .routers import api_keys as api_keys_router
 from .routers import cards as cards_router
+from .routers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import stripe_funding as stripe_funding_router
 from .routers import checkout as checkout_router
@@ -454,6 +455,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # Router registration
     # -----------------------------------------------------------------------
+    approval_service = None
+
     app.dependency_overrides[mandates.get_deps] = lambda: mandates.Dependencies(  # type: ignore[arg-type]
         wallet_manager=wallet_mgr,
         chain_executor=chain_exec,
@@ -472,6 +475,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         agent_repo=agent_repo,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
+        approval_service=approval_service,
         settings=settings,
         wallet_manager=wallet_mgr,
     )
@@ -610,6 +614,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_exec,
+        policy_store=policy_store,
+        approval_service=approval_service,
         coinbase_cdp_provider=coinbase_cdp_provider,
         default_on_chain_provider=configured_on_chain_provider,
     )
@@ -940,6 +946,22 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             asa_handler=asa_handler,
         )
         app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
+        app.dependency_overrides[partner_card_webhooks_router.get_deps] = (
+            lambda: partner_card_webhooks_router.PartnerCardWebhookDeps(
+                card_repo=card_repo,
+                wallet_repo=wallet_repo,
+                agent_repo=agent_repo,
+                canonical_repo=canonical_ledger_repo,
+                treasury_repo=treasury_repo,
+                rain_webhook_secret=settings.rain.webhook_secret or os.getenv("RAIN_WEBHOOK_SECRET", ""),
+                bridge_webhook_secret=(
+                    settings.bridge_cards.webhook_secret
+                    or os.getenv("BRIDGE_CARDS_WEBHOOK_SECRET", "")
+                ),
+                environment=settings.environment,
+            )
+        )
+        app.include_router(partner_card_webhooks_router.router, prefix="/api/v2", tags=["partner-card-webhooks"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 
