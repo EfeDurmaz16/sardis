@@ -61,6 +61,15 @@ require_match '_sanitize_audit_payload' \
 require_match '_pan_executor_runtime_ready' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout PAN runtime readiness gate must be present'
+require_match '_require_shared_secret_store' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must fail-closed without shared secret store in production'
+require_match '_security_incident_severity' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout incident severity taxonomy must be present'
+require_match '_check_a2a_trust_relation' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A trust table enforcement must be present'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
@@ -71,6 +80,12 @@ require_match 'test_topup_all_providers_failed_returns_502_and_records_attempts'
 require_match 'test_pan_entry_execute_fail_closed_on_invalid_revealed_card_details' \
   'packages/sardis-api/tests/test_secure_checkout_executor.py' \
   'PAN invalid reveal fail-closed test must exist'
+require_match 'test_security_incident_emits_severity_and_ops_approval_pending' \
+  'packages/sardis-api/tests/test_secure_checkout_risk_response.py' \
+  'secure checkout risk response taxonomy test must exist'
+require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
+  'packages/sardis-api/tests/test_a2a_trust_table.py' \
+  'A2A trust table rejection test must exist'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then
@@ -82,6 +97,8 @@ if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
       packages/sardis-api/tests/test_onchain_payments.py \
       packages/sardis-api/tests/test_compliance_audit_api.py \
       packages/sardis-api/tests/test_secure_checkout_executor.py \
+      packages/sardis-api/tests/test_secure_checkout_risk_response.py \
+      packages/sardis-api/tests/test_a2a_trust_table.py \
       packages/sardis-api/tests/test_stripe_funding.py; then
       failures=$((failures + 1))
     fi

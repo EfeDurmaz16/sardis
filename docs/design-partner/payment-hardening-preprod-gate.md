@@ -8,6 +8,9 @@ Scope:
 - Prompt-injection/jailbreak containment
 - Evidence export replay-safe pagination + signature verification path
 - PAN lane isolation (runtime readiness, reveal validation, audit redaction)
+- Shared secret store enforcement for multi-instance PAN execution
+- Severity-based risk response (freeze/rotate/cooldown + ops approval gate)
+- A2A trust-table enforcement for multi-agent peer payments
 - Funding failover chaos coverage
 
 ## Commands
@@ -29,6 +32,9 @@ All checks must pass:
 - On-chain router includes policy pin fail-closed controls
 - Compliance export includes replay-safe cursor scope binding
 - Secure checkout rejects invalid PAN reveal payloads and redacts audit payloads
+- Secure checkout fails closed in prod when shared secret store is missing
+- Risk incident taxonomy + response orchestration code paths are present
+- A2A trust relation checks exist and are test-covered
 - Chaos/adversarial tests are present and executable
 
 ## Recommended Pre-Prod Sequence
@@ -40,7 +46,18 @@ All checks must pass:
    - `SARDIS_CHECKOUT_EXECUTOR_TOKEN`
    - `SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION=1`
    - `SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY`
-4. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
+   - `SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE=0`
+4. Verify incident response config:
+   - `SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT=1`
+   - `SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT=1` (optional by risk appetite)
+   - `SARDIS_CHECKOUT_AUTO_UNFREEZE_ON_SECURITY_INCIDENT=1` only with:
+     - `SARDIS_CHECKOUT_AUTO_UNFREEZE_OPS_APPROVED=1`
+     - severity allowlist + cooldowns explicitly set.
+5. Verify A2A trust-table config:
+   - `SARDIS_A2A_ENFORCE_TRUST_TABLE=1`
+   - `SARDIS_A2A_TRUST_RELATIONS=sender_agent_id>recipient_a|recipient_b,...`
+   - `GET /api/v2/a2a/trust/table` returns expected relations.
+6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
 
 ## Failure Handling
 If this gate fails:
