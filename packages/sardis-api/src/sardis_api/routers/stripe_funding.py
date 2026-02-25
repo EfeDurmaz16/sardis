@@ -59,6 +59,10 @@ class FundIssuingBalanceResponse(BaseModel):
     amount: str
     currency: str
     status: str
+    provider: str
+    rail: str
+    attempt_count: int = 1
+    attempted_providers: list[str] = Field(default_factory=list)
     connected_account_id: Optional[str] = None
     connected_account_source: str
 
@@ -99,6 +103,12 @@ class FundingAttemptHistoryItem(BaseModel):
     currency: str
     connected_account_id: Optional[str] = None
     created_at: Optional[str] = None
+
+
+class FundingRoutingPlanItem(BaseModel):
+    position: int
+    provider: str
+    rail: str
 
 
 def _resolve_connected_account(
@@ -193,6 +203,22 @@ async def resolve_connected_account(
         requested=None,
     )
     return ConnectedAccountResolution(connected_account_id=connected_account_id, source=source)
+
+
+@router.get("/issuing/topups/routing-plan", response_model=list[FundingRoutingPlanItem])
+async def get_issuing_topup_routing_plan(
+    deps: StripeFundingDeps = Depends(get_deps),
+    _: Principal = Depends(require_principal),
+):
+    ordered_adapters = _ordered_funding_adapters(deps)
+    return [
+        FundingRoutingPlanItem(
+            position=index,
+            provider=str(getattr(adapter, "provider", "unknown")),
+            rail=str(getattr(adapter, "rail", "fiat")),
+        )
+        for index, adapter in enumerate(ordered_adapters, start=1)
+    ]
 
 
 @router.get("/issuing/topups/history", response_model=list[IssuingFundingHistoryItem])
@@ -414,6 +440,7 @@ async def fund_issuing_balance(
         currency_value = str(getattr(transfer, "currency", "usd")).upper()
         status_value = _status_value(getattr(transfer, "status", "processing"))
         provider_name = str(getattr(transfer, "provider", "stripe")).strip().lower() or "stripe"
+        rail_value = str(getattr(transfer, "rail", "fiat")).strip().lower() or "fiat"
         amount_minor = int((amount_value * Decimal("100")).to_integral_value())
 
         if deps.treasury_repo is not None:
@@ -453,6 +480,10 @@ async def fund_issuing_balance(
             amount=str(amount_value),
             currency=currency_value.lower(),
             status=status_value,
+            provider=provider_name,
+            rail=rail_value,
+            attempt_count=len(attempt_rows),
+            attempted_providers=[str(attempt.get("provider", "unknown")) for attempt in attempt_rows],
             connected_account_id=connected_account_id,
             connected_account_source=source,
         ).model_dump()

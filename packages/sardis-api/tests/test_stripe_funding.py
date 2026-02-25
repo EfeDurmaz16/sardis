@@ -191,6 +191,10 @@ def test_topup_uses_request_connected_account_id():
     payload = response.json()
     assert payload["connected_account_id"] == "acct_req_123"
     assert payload["connected_account_source"] == "request"
+    assert payload["provider"] == "stripe"
+    assert payload["rail"] == "fiat"
+    assert payload["attempt_count"] == 1
+    assert payload["attempted_providers"] == ["stripe"]
     assert treasury.calls[0]["connected_account_id"] == "acct_req_123"
     assert treasury.calls[0]["metadata"]["org_id"] == "org_demo"
     assert treasury.calls[0]["metadata"]["ticket"] == "t_1"
@@ -215,6 +219,8 @@ def test_topup_resolves_connected_account_from_org_map():
     payload = response.json()
     assert payload["connected_account_id"] == "acct_org_456"
     assert payload["connected_account_source"] == "org_map"
+    assert payload["provider"] == "stripe"
+    assert payload["rail"] == "fiat"
     assert treasury.calls[0]["connected_account_id"] == "acct_org_456"
 
 
@@ -248,6 +254,26 @@ def test_resolve_connected_account_endpoint_uses_default():
     payload = response.json()
     assert payload["connected_account_id"] == "acct_default_123"
     assert payload["source"] == "default"
+
+
+def test_routing_plan_endpoint_lists_adapter_order():
+    primary = _FailingFundingAdapter()
+    fallback = _FallbackFundingAdapter()
+    deps = StripeFundingDeps(
+        treasury_provider=None,
+        funding_adapter=primary,
+        fallback_funding_adapter=fallback,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.get("/api/v2/stripe/funding/issuing/topups/routing-plan")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == [
+        {"position": 1, "provider": "lithic", "rail": "fiat"},
+        {"position": 2, "provider": "stripe", "rail": "fiat"},
+    ]
 
 
 def test_topup_records_audit_and_canonical_event():
@@ -323,6 +349,11 @@ def test_topup_supports_provider_agnostic_adapter():
     assert response.status_code == 200
     assert adapter.requests
     assert adapter.requests[0].amount == Decimal("4.25")
+    payload = response.json()
+    assert payload["provider"] == "coinbase_cdp"
+    assert payload["rail"] == "stablecoin"
+    assert payload["attempt_count"] == 1
+    assert payload["attempted_providers"] == ["coinbase_cdp"]
     assert len(treasury_repo.record_calls) == 1
     assert treasury_repo.record_calls[0]["provider"] == "coinbase_cdp"
 
@@ -359,7 +390,12 @@ def test_topup_retries_with_fallback_adapter_and_persists_attempts():
     )
 
     assert response.status_code == 200
-    assert response.json()["transfer_id"] == "tu_fallback_1"
+    payload = response.json()
+    assert payload["transfer_id"] == "tu_fallback_1"
+    assert payload["provider"] == "stripe"
+    assert payload["rail"] == "fiat"
+    assert payload["attempt_count"] == 2
+    assert payload["attempted_providers"] == ["lithic", "stripe"]
     assert len(treasury_repo.attempt_calls) == 2
     assert treasury_repo.attempt_calls[0]["provider"] == "lithic"
     assert treasury_repo.attempt_calls[0]["status_value"] == "failed"
