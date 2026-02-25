@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import time
 import uuid
 from decimal import Decimal
@@ -31,6 +32,11 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 
 # Public router for unauthenticated endpoints (agent card)
 public_router = APIRouter()
+
+# Cross-org A2A should stay disabled unless explicitly opted in.
+def _allow_cross_org_a2a() -> bool:
+    raw = os.getenv("SARDIS_A2A_ALLOW_CROSS_ORG", "")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # ============================================================================
@@ -150,6 +156,8 @@ async def a2a_pay(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sender agent not found")
         if not sender_agent.is_active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sender agent is inactive")
+        if not principal.is_admin and sender_agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         # Look up recipient agent
         recipient_agent = await deps.agent_repo.get(req.recipient_agent_id)
@@ -157,6 +165,15 @@ async def a2a_pay(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipient agent not found")
         if not recipient_agent.is_active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Recipient agent is inactive")
+        if (
+            not principal.is_admin
+            and not _allow_cross_org_a2a()
+            and recipient_agent.owner_id != principal.organization_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="cross_org_a2a_disabled",
+            )
 
         # Look up sender wallet
         sender_wallet = await deps.wallet_repo.get_by_agent(req.sender_agent_id)
@@ -338,7 +355,7 @@ async def handle_a2a_message(
     logger.info(f"A2A message received: type={msg.message_type}, from={msg.sender_id}, to={msg.recipient_id}")
 
     if msg.message_type == "payment_request":
-        return await _handle_payment_request(msg, request, deps)
+        return await _handle_payment_request(msg, request, deps, principal)
     elif msg.message_type == "credential_request":
         return _handle_credential_request(msg)
     elif msg.message_type == "ack":
@@ -367,6 +384,7 @@ async def _handle_payment_request(
     msg: A2AMessageRequest,
     request: Request,
     deps: A2ADependencies,
+    principal: Principal,
 ) -> A2AMessageResponse:
     """Handle an inbound A2A payment request."""
     payload = msg.payload
@@ -388,6 +406,88 @@ async def _handle_payment_request(
             correlation_id=msg.correlation_id,
             error="Missing required fields: destination, amount_minor",
             error_code="invalid_request",
+        )
+
+    # Validate sender/recipient agents and enforce org boundaries.
+    sender_agent = await deps.agent_repo.get(sender_agent_id)
+    if not sender_agent:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="Sender agent not found",
+            error_code="sender_not_found",
+        )
+    if not sender_agent.is_active:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="Sender agent is inactive",
+            error_code="sender_inactive",
+        )
+
+    recipient_agent = await deps.agent_repo.get(recipient_agent_id)
+    if not recipient_agent:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="Recipient agent not found",
+            error_code="recipient_not_found",
+        )
+    if not recipient_agent.is_active:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="Recipient agent is inactive",
+            error_code="recipient_inactive",
+        )
+
+    if not principal.is_admin and recipient_agent.owner_id != principal.organization_id:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="Access denied",
+            error_code="forbidden",
+        )
+    if (
+        not principal.is_admin
+        and not _allow_cross_org_a2a()
+        and sender_agent.owner_id != principal.organization_id
+    ):
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error="cross_org_a2a_disabled",
+            error_code="forbidden",
         )
 
     # Look up recipient wallet to execute from
