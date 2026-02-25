@@ -154,6 +154,7 @@ from .card_adapter import CardProviderCompatAdapter
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
+from .repositories.a2a_trust_repository import A2ATrustRepository
 from .providers.lithic_treasury import LithicTreasuryClient
 
 # Configure structured logging
@@ -636,6 +637,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
+    a2a_trust_repo = A2ATrustRepository(dsn=database_url if use_postgres else None)
+    app.state.a2a_trust_repo = a2a_trust_repo
+
     app.dependency_overrides[a2a_router.get_deps] = lambda: a2a_router.A2ADependencies(
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
@@ -644,6 +648,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger=ledger_store,
         compliance=compliance,
         identity_registry=identity_registry,
+        trust_repo=a2a_trust_repo,
     )
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])

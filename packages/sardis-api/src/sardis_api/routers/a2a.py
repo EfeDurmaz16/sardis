@@ -95,16 +95,16 @@ def _parse_a2a_trust_table() -> dict[str, set[str]]:
     return table
 
 
-def _check_a2a_trust_relation(sender_agent_id: str, recipient_agent_id: str) -> tuple[bool, str]:
-    if not _enforce_a2a_trust_table():
-        return True, "trust_table_not_enforced"
+def _evaluate_trust_table(
+    *,
+    sender_agent_id: str,
+    recipient_agent_id: str,
+    table: dict[str, set[str]],
+) -> tuple[bool, str]:
     if sender_agent_id == recipient_agent_id:
         return True, "self_trusted"
-
-    table = _parse_a2a_trust_table()
     if not table:
         return False, "a2a_trust_table_not_configured"
-
     sender_targets = table.get(sender_agent_id, set())
     wildcard_targets = table.get("*", set())
     if "*" in sender_targets or recipient_agent_id in sender_targets:
@@ -112,6 +112,66 @@ def _check_a2a_trust_relation(sender_agent_id: str, recipient_agent_id: str) -> 
     if "*" in wildcard_targets or recipient_agent_id in wildcard_targets:
         return True, "trusted_wildcard_relation"
     return False, "a2a_agent_not_trusted"
+
+
+def _check_a2a_trust_relation(sender_agent_id: str, recipient_agent_id: str) -> tuple[bool, str]:
+    if not _enforce_a2a_trust_table():
+        return True, "trust_table_not_enforced"
+    return _evaluate_trust_table(
+        sender_agent_id=sender_agent_id,
+        recipient_agent_id=recipient_agent_id,
+        table=_parse_a2a_trust_table(),
+    )
+
+
+async def _resolve_a2a_trust_table(
+    *,
+    deps: "A2ADependencies",
+    organization_id: str,
+) -> tuple[dict[str, set[str]], str]:
+    repo = getattr(deps, "trust_repo", None)
+    if repo is not None and hasattr(repo, "get_trust_table"):
+        try:
+            table = await repo.get_trust_table(organization_id)
+            if table:
+                normalized = {
+                    str(sender): {str(recipient) for recipient in recipients}
+                    for sender, recipients in table.items()
+                }
+                return normalized, "repository"
+        except Exception:
+            logger.exception("A2A trust repository unavailable for org=%s", organization_id)
+            if _is_production_env():
+                return {}, "repository_error"
+    env_table = _parse_a2a_trust_table()
+    if env_table:
+        return env_table, "env"
+    return {}, "none"
+
+
+async def _check_a2a_trust_relation_with_deps(
+    *,
+    deps: "A2ADependencies",
+    organization_id: str,
+    sender_agent_id: str,
+    recipient_agent_id: str,
+) -> tuple[bool, str, str]:
+    if not _enforce_a2a_trust_table():
+        return True, "trust_table_not_enforced", "disabled"
+    table, source = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=organization_id,
+    )
+    if source == "repository_error":
+        return False, "a2a_trust_repository_unavailable", "repository"
+    allowed, reason = _evaluate_trust_table(
+        sender_agent_id=sender_agent_id,
+        recipient_agent_id=recipient_agent_id,
+        table=table,
+    )
+    if not table:
+        return False, reason, source
+    return allowed, reason, source
 
 
 def _normalize_signature_algorithm(raw: str) -> str:
@@ -221,6 +281,7 @@ class A2ADependencies:
         ledger: LedgerStore | None = None,
         compliance: Any | None = None,
         identity_registry: IdentityRegistry | None = None,
+        trust_repo: Any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -229,6 +290,7 @@ class A2ADependencies:
         self.ledger = ledger
         self.compliance = compliance
         self.identity_registry = identity_registry
+        self.trust_repo = trust_repo
 
 
 def get_deps() -> A2ADependencies:
@@ -308,11 +370,24 @@ class A2ATrustCheckResponse(BaseModel):
     enforced: bool
     allowed: bool
     reason: str
+    source: str
 
 
 class A2ATrustTableResponse(BaseModel):
     enforced: bool
+    source: str
     relations: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class A2ATrustRelationUpsertRequest(BaseModel):
+    sender_agent_id: str
+    recipient_agent_id: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class A2ATrustRelationDeleteRequest(BaseModel):
+    sender_agent_id: str
+    recipient_agent_id: str
 
 
 # ============================================================================
@@ -363,7 +438,9 @@ async def a2a_pay(
                 detail="cross_org_a2a_disabled",
             )
 
-        trust_ok, trust_reason = _check_a2a_trust_relation(
+        trust_ok, trust_reason, _ = await _check_a2a_trust_relation_with_deps(
+            deps=deps,
+            organization_id=str(principal.organization_id),
             sender_agent_id=req.sender_agent_id,
             recipient_agent_id=req.recipient_agent_id,
         )
@@ -614,14 +691,21 @@ async def handle_a2a_message(
 
 @router.get("/trust/table", response_model=A2ATrustTableResponse)
 async def get_a2a_trust_table(
+    deps: A2ADependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
     if not principal.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
-    table = _parse_a2a_trust_table()
+    table, source = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+    )
+    if source == "repository_error":
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_unavailable")
     normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
     return A2ATrustTableResponse(
         enforced=_enforce_a2a_trust_table(),
+        source=source,
         relations=normalized,
     )
 
@@ -643,7 +727,9 @@ async def check_a2a_trust(
         ):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access_denied")
 
-    allowed, reason = _check_a2a_trust_relation(
+    allowed, reason, source = await _check_a2a_trust_relation_with_deps(
+        deps=deps,
+        organization_id=str(principal.organization_id),
         sender_agent_id=payload.sender_agent_id,
         recipient_agent_id=payload.recipient_agent_id,
     )
@@ -653,6 +739,66 @@ async def check_a2a_trust(
         enforced=_enforce_a2a_trust_table(),
         allowed=allowed,
         reason=reason,
+        source=source,
+    )
+
+
+@router.post("/trust/relations", response_model=A2ATrustTableResponse)
+async def upsert_a2a_trust_relation(
+    payload: A2ATrustRelationUpsertRequest,
+    deps: A2ADependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    repo = getattr(deps, "trust_repo", None)
+    upserter = getattr(repo, "upsert_relation", None)
+    if not callable(upserter):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
+    await upserter(
+        organization_id=str(principal.organization_id),
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        metadata=payload.metadata,
+    )
+    table, source = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+    )
+    normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
+    return A2ATrustTableResponse(
+        enforced=_enforce_a2a_trust_table(),
+        source=source,
+        relations=normalized,
+    )
+
+
+@router.delete("/trust/relations", response_model=A2ATrustTableResponse)
+async def delete_a2a_trust_relation(
+    payload: A2ATrustRelationDeleteRequest,
+    deps: A2ADependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    repo = getattr(deps, "trust_repo", None)
+    deleter = getattr(repo, "delete_relation", None)
+    if not callable(deleter):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_not_configured")
+    await deleter(
+        organization_id=str(principal.organization_id),
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+    )
+    table, source = await _resolve_a2a_trust_table(
+        deps=deps,
+        organization_id=str(principal.organization_id),
+    )
+    normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
+    return A2ATrustTableResponse(
+        enforced=_enforce_a2a_trust_table(),
+        source=source,
+        relations=normalized,
     )
 
 
@@ -766,7 +912,9 @@ async def _handle_payment_request(
             error_code="forbidden",
         )
 
-    trust_ok, trust_reason = _check_a2a_trust_relation(
+    trust_ok, trust_reason, _ = await _check_a2a_trust_relation_with_deps(
+        deps=deps,
+        organization_id=str(principal.organization_id),
         sender_agent_id=sender_agent_id,
         recipient_agent_id=recipient_agent_id,
     )
