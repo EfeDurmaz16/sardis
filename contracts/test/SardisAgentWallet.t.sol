@@ -451,8 +451,19 @@ contract SardisAgentWalletTest is Test {
         vm.expectRevert("Token not allowed (stablecoins only)");
         wallet.pay(address(usdt), merchant1, 100 * 10**6, "allowlist re-enabled");
     }
-}
 
+    // ============ Gas Ceiling Tests ============
+
+    function testGasCeiling_Pay() public {
+        uint256 gasBefore = gasleft();
+        vm.prank(agent);
+        wallet.pay(address(usdc), merchant1, 1 * 10**6, "gas");
+        uint256 gasUsed = gasBefore - gasleft();
+
+        // CI ceiling for critical transfer path.
+        assertLt(gasUsed, 220000, "pay() gas ceiling regression");
+    }
+}
 
 
 

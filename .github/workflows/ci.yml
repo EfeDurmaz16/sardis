@@ -47,6 +47,24 @@ jobs:
             packages/sardis-ledger/tests/ \
             -v --tb=short
 
+  contracts-gas:
+    name: Contracts Gas Ceiling
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run gas ceiling tests
+        run: forge test --match-test "testGasCeiling_" --gas-report -vv
+
   typescript-sdk:
     name: TypeScript SDK Build & Type Check
     runs-on: ubuntu-latest
