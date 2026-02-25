@@ -125,6 +125,19 @@ class MerchantCapabilityResponse(BaseModel):
     pan_compliance_reason: str
 
 
+class SecureCheckoutSecurityPolicyResponse(BaseModel):
+    pan_execution_enabled: bool
+    require_shared_secret_store: bool
+    shared_secret_store_configured: bool
+    auto_freeze_on_security_incident: bool
+    auto_rotate_on_security_incident: bool
+    auto_rotate_severities: list[str] = Field(default_factory=list)
+    auto_unfreeze_on_security_incident: bool
+    auto_unfreeze_ops_approved: bool
+    auto_unfreeze_allowed_severities: list[str] = Field(default_factory=list)
+    incident_cooldown_seconds: dict[str, int] = Field(default_factory=dict)
+
+
 class SecureCheckoutJobResponse(BaseModel):
     job_id: str
     intent_id: str
@@ -1325,6 +1338,30 @@ async def _validate_approved_token(
 def create_secure_checkout_router() -> APIRouter:
     """Create secure checkout router."""
     router = APIRouter(dependencies=[Depends(require_principal)])
+
+    @router.get("/secure/security-policy", response_model=SecureCheckoutSecurityPolicyResponse)
+    async def get_security_policy(
+        deps: SecureCheckoutDependencies = Depends(get_deps),
+        principal: Principal = Depends(require_principal),
+    ):
+        if not principal.is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+        store = _resolve_store(deps)
+        return SecureCheckoutSecurityPolicyResponse(
+            pan_execution_enabled=_pan_execution_enabled(),
+            require_shared_secret_store=_require_shared_secret_store(),
+            shared_secret_store_configured=_has_shared_secret_store(store),
+            auto_freeze_on_security_incident=_auto_freeze_on_security_incident_enabled(),
+            auto_rotate_on_security_incident=_auto_rotate_on_security_incident_enabled(),
+            auto_rotate_severities=sorted(_auto_rotate_severities()),
+            auto_unfreeze_on_security_incident=_auto_unfreeze_on_security_incident_enabled(),
+            auto_unfreeze_ops_approved=_auto_unfreeze_ops_approved(),
+            auto_unfreeze_allowed_severities=sorted(_auto_unfreeze_allowed_severities()),
+            incident_cooldown_seconds={
+                level.value: _security_incident_cooldown_seconds(level)
+                for level in SecurityIncidentSeverity
+            },
+        )
 
     @router.post("/secure/merchant-capability", response_model=MerchantCapabilityResponse)
     async def get_merchant_capability(

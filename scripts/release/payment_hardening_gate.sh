@@ -67,6 +67,9 @@ require_match '_require_shared_secret_store' \
 require_match '_security_incident_severity' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout incident severity taxonomy must be present'
+require_match '/secure/security-policy' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout security-policy visibility endpoint must be present'
 require_match '_check_a2a_trust_relation' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust table enforcement must be present'
@@ -83,6 +86,9 @@ require_match 'test_pan_entry_execute_fail_closed_on_invalid_revealed_card_detai
 require_match 'test_security_incident_emits_severity_and_ops_approval_pending' \
   'packages/sardis-api/tests/test_secure_checkout_risk_response.py' \
   'secure checkout risk response taxonomy test must exist'
+require_match 'test_security_policy_endpoint_returns_runtime_guardrails' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout security-policy endpoint test must exist'
 require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
   'packages/sardis-api/tests/test_a2a_trust_table.py' \
   'A2A trust table rejection test must exist'

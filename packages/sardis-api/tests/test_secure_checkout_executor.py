@@ -118,9 +118,18 @@ def _principal() -> Principal:
     )
 
 
-def _build_app(*, policy_store=None, audit_sink=None, card_provider=None) -> FastAPI:
+def _non_admin_principal() -> Principal:
+    return Principal(
+        kind="api_key",
+        organization_id="org_demo",
+        scopes=["read"],
+        api_key=None,
+    )
+
+
+def _build_app(*, policy_store=None, audit_sink=None, card_provider=None, principal_factory=_principal) -> FastAPI:
     app = FastAPI()
-    app.dependency_overrides[require_principal] = _principal
+    app.dependency_overrides[require_principal] = principal_factory
     store = secure_checkout.InMemorySecureCheckoutStore()
     app.dependency_overrides[secure_checkout.get_deps] = lambda: secure_checkout.SecureCheckoutDependencies(
         wallet_repo=_WalletRepo(),
@@ -404,6 +413,43 @@ def test_merchant_capability_endpoint(monkeypatch):
     assert pan_payload["approval_likely_required"] is True
     assert pan_payload["pan_allowed_for_merchant"] is True
     assert pan_payload["pan_compliance_ready"] is True
+
+
+def test_security_policy_endpoint_returns_runtime_guardrails(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_ROTATE_SEVERITIES", "high,critical")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_UNFREEZE_ON_SECURITY_INCIDENT", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_UNFREEZE_OPS_APPROVED", "0")
+    monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_UNFREEZE_ALLOWED_SEVERITIES", "low,medium")
+    monkeypatch.setenv("SARDIS_CHECKOUT_INCIDENT_COOLDOWN_MEDIUM_SECONDS", "120")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    response = client.get("/api/v2/checkout/secure/security-policy")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pan_execution_enabled"] is True
+    assert payload["require_shared_secret_store"] is True
+    assert payload["shared_secret_store_configured"] is False
+    assert payload["auto_freeze_on_security_incident"] is True
+    assert payload["auto_rotate_on_security_incident"] is True
+    assert payload["auto_rotate_severities"] == ["critical", "high"]
+    assert payload["auto_unfreeze_on_security_incident"] is True
+    assert payload["auto_unfreeze_ops_approved"] is False
+    assert payload["auto_unfreeze_allowed_severities"] == ["low", "medium"]
+    assert payload["incident_cooldown_seconds"]["medium"] == 120
+
+
+def test_security_policy_endpoint_requires_admin():
+    app = _build_app(policy_store=_PolicyStore(), principal_factory=_non_admin_principal)
+    client = TestClient(app)
+
+    response = client.get("/api/v2/checkout/secure/security-policy")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin_required"
 
 
 def test_prod_pan_entry_requires_allowlist(monkeypatch):
