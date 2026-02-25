@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Any, Optional
 from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -236,6 +237,83 @@ def _secret_ttl_seconds() -> int:
     except ValueError:
         value = 60
     return max(10, min(value, 300))
+
+
+def _executor_dispatch_url() -> str:
+    return os.getenv("SARDIS_CHECKOUT_EXECUTOR_DISPATCH_URL", "").strip()
+
+
+def _dispatch_required() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_DISPATCH_REQUIRED", "0"))
+
+
+def _dispatch_timeout_seconds() -> float:
+    raw = os.getenv("SARDIS_CHECKOUT_DISPATCH_TIMEOUT_SECONDS", "5").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 5.0
+    return max(1.0, min(value, 30.0))
+
+
+async def _dispatch_to_executor(
+    *,
+    job: dict[str, Any],
+    secret_ref: Optional[str] = None,
+    secret_expires_at: Optional[str] = None,
+) -> tuple[bool, Optional[str], Optional[str]]:
+    """
+    Dispatch metadata-only execution request to an isolated worker.
+
+    Never includes PAN/CVV in payload. Worker must consume secret_ref separately.
+    """
+    dispatch_url = _executor_dispatch_url()
+    if not dispatch_url:
+        return True, None, None
+
+    token = (
+        os.getenv("SARDIS_CHECKOUT_EXECUTOR_DISPATCH_TOKEN", "").strip()
+        or os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
+    )
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    payload = {
+        "job_id": job["job_id"],
+        "intent_id": job["intent_id"],
+        "wallet_id": job["wallet_id"],
+        "card_id": job["card_id"],
+        "merchant_origin": job["merchant_origin"],
+        "merchant_mode": job["merchant_mode"],
+        "amount": str(job["amount"]),
+        "currency": job["currency"],
+        "purpose": job["purpose"],
+        "options": job.get("options") or {},
+        "secret_ref": secret_ref,
+        "secret_expires_at": secret_expires_at,
+    }
+
+    timeout = _dispatch_timeout_seconds()
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(dispatch_url, json=payload, headers=headers)
+    except Exception as exc:  # noqa: BLE001
+        return False, None, f"executor_dispatch_failed:{exc}"
+
+    if response.status_code >= 400:
+        return False, None, f"executor_dispatch_http_{response.status_code}"
+
+    executor_ref: Optional[str] = None
+    try:
+        body = response.json()
+        if isinstance(body, dict):
+            candidate = body.get("execution_id") or body.get("executor_ref") or body.get("job_id")
+            if candidate:
+                executor_ref = str(candidate)
+    except Exception:
+        executor_ref = None
+    return True, executor_ref, None
 
 
 class InMemorySecureCheckoutStore:
@@ -586,10 +664,22 @@ def create_secure_checkout_router() -> APIRouter:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"job_not_ready:{job['status']}")
 
         if job["merchant_mode"] == MerchantExecutionMode.TOKENIZED_API.value:
+            dispatch_ok, executor_ref, dispatch_error = await _dispatch_to_executor(job=job)
+            if not dispatch_ok and _dispatch_required():
+                updated = await store.update_job(
+                    job_id,
+                    status=SecureCheckoutJobStatus.FAILED.value,
+                    error_code="executor_dispatch_failed",
+                    error=dispatch_error or "executor_dispatch_failed",
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=(updated or job).get("error_code"),
+                )
             updated = await store.update_job(
                 job_id,
                 status=SecureCheckoutJobStatus.DISPATCHED.value,
-                executor_ref=f"tokenized:{job_id}",
+                executor_ref=executor_ref or f"tokenized:{job_id}",
             )
             return _serialize_job(updated or job)
 
@@ -641,12 +731,28 @@ def create_secure_checkout_router() -> APIRouter:
             "purpose": job["purpose"],
         }
         await store.put_secret(secret_ref, secret_payload, expires_at=expires_at)
+        dispatch_ok, executor_ref, dispatch_error = await _dispatch_to_executor(
+            job=job,
+            secret_ref=secret_ref,
+            secret_expires_at=expires_at.isoformat(),
+        )
+        if not dispatch_ok and _dispatch_required():
+            updated = await store.update_job(
+                job_id,
+                status=SecureCheckoutJobStatus.FAILED.value,
+                error_code="executor_dispatch_failed",
+                error=dispatch_error or "executor_dispatch_failed",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(updated or job).get("error_code"),
+            )
         updated = await store.update_job(
             job_id,
             status=SecureCheckoutJobStatus.DISPATCHED.value,
             secret_ref=secret_ref,
             secret_expires_at=expires_at.isoformat(),
-            executor_ref=f"secret_ref:{secret_ref}",
+            executor_ref=executor_ref or f"secret_ref:{secret_ref}",
         )
         return _serialize_job(updated or job)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -224,3 +225,46 @@ def test_merchant_capability_endpoint(monkeypatch):
     pan_payload = pan_entry.json()
     assert pan_payload["merchant_mode"] == "pan_entry"
     assert pan_payload["approval_likely_required"] is True
+
+
+def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_DISPATCH_URL", "https://executor.example.internal/jobs")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_dispatch_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    mock_response = SimpleNamespace(
+        status_code=200,
+        json=lambda: {"execution_id": "exec_123"},
+    )
+    mock_client = AsyncMock()
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+    mock_client.post.return_value = mock_response
+
+    with patch("sardis_api.routers.secure_checkout.httpx.AsyncClient", return_value=mock_client):
+        executed = client.post(
+            f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+            json={"approval_id": "appr_ok"},
+        )
+
+    assert executed.status_code == 200
+    payload = executed.json()
+    assert payload["status"] == "dispatched"
+    assert payload["executor_ref"] == "exec_123"
