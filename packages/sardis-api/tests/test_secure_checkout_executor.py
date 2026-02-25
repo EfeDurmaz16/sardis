@@ -85,7 +85,39 @@ class _LeakErrorCardProvider(_CardProvider):
 
 class _ApprovalService:
     async def get_approval(self, approval_id: str):
-        if approval_id == "appr_ok":
+        approvals = {
+            "appr_ok": SimpleNamespace(
+                id="appr_ok",
+                status="approved",
+                wallet_id="wallet_1",
+                organization_id="org_demo",
+                reviewed_by="reviewer_a",
+            ),
+            "appr_ok_2": SimpleNamespace(
+                id="appr_ok_2",
+                status="approved",
+                wallet_id="wallet_1",
+                organization_id="org_demo",
+                reviewed_by="reviewer_b",
+            ),
+            "appr_same_a": SimpleNamespace(
+                id="appr_same_a",
+                status="approved",
+                wallet_id="wallet_1",
+                organization_id="org_demo",
+                reviewed_by="reviewer_same",
+            ),
+            "appr_same_b": SimpleNamespace(
+                id="appr_same_b",
+                status="approved",
+                wallet_id="wallet_1",
+                organization_id="org_demo",
+                reviewed_by="reviewer_same",
+            ),
+        }
+        if approval_id in approvals:
+            return approvals[approval_id]
+        if approval_id == "appr_legacy_ok":
             return SimpleNamespace(
                 id=approval_id,
                 status="approved",
@@ -242,6 +274,82 @@ def test_pan_entry_execute_generates_secret_ref_without_exposing_pan(monkeypatch
         headers={"X-Sardis-Executor-Token": "exec_secret"},
     )
     assert consumed_again.status_code == 404
+
+
+def test_pan_entry_quorum_requires_two_approvals_when_configured(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_MIN_APPROVALS", "2")
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_DISTINCT_APPROVAL_REVIEWERS", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_pan_quorum_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["status"] == "pending_approval"
+    assert payload["approval_quorum_required"] == 2
+
+    insufficient = client.post(
+        f"/api/v2/checkout/secure/jobs/{payload['job_id']}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert insufficient.status_code == 403
+    assert insufficient.json()["detail"] == "approval_quorum_not_met:1/2"
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{payload['job_id']}/execute",
+        json={"approval_ids": ["appr_ok", "appr_ok_2"]},
+    )
+    assert executed.status_code == 200
+    execute_payload = executed.json()
+    assert execute_payload["status"] == "dispatched"
+    assert execute_payload["approval_id"] == "appr_ok"
+    assert execute_payload["approval_ids"] == ["appr_ok", "appr_ok_2"]
+
+
+def test_pan_entry_quorum_requires_distinct_reviewers(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_MIN_APPROVALS", "2")
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_DISTINCT_APPROVAL_REVIEWERS", "1")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_pan_distinct_1",
+            "approval_ids": ["appr_same_a", "appr_same_b"],
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["status"] == "pending_approval"
+
+    denied = client.post(
+        f"/api/v2/checkout/secure/jobs/{payload['job_id']}/execute",
+        json={"approval_ids": ["appr_same_a", "appr_same_b"]},
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == "approval_distinct_reviewer_quorum_not_met:1/2"
 
 
 def test_pan_entry_execute_fail_closed_on_invalid_revealed_card_details(monkeypatch):
@@ -440,6 +548,9 @@ def test_security_policy_endpoint_returns_runtime_guardrails(monkeypatch):
     assert payload["auto_unfreeze_on_security_incident"] is True
     assert payload["auto_unfreeze_ops_approved"] is False
     assert payload["auto_unfreeze_allowed_severities"] == ["low", "medium"]
+    assert payload["min_approvals"] == 1
+    assert payload["pan_min_approvals"] == 2
+    assert payload["require_distinct_approval_reviewers"] is True
     assert payload["incident_cooldown_seconds"]["medium"] == 120
 
 
@@ -526,7 +637,7 @@ def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
             "amount": "20.00",
             "currency": "USD",
             "intent_id": "intent_prod_runtime_ready_1",
-            "approval_id": "appr_ok",
+            "approval_ids": ["appr_ok", "appr_ok_2"],
         },
     )
     assert created.status_code == 201
@@ -534,7 +645,7 @@ def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
 
     executed = client.post(
         f"/api/v2/checkout/secure/jobs/{job_id}/execute",
-        json={"approval_id": "appr_ok"},
+        json={"approval_ids": ["appr_ok", "appr_ok_2"]},
     )
     assert executed.status_code == 503
     assert executed.json()["detail"] == "executor_dispatch_url_not_configured"
@@ -560,7 +671,7 @@ def test_prod_pan_execute_requires_shared_secret_store(monkeypatch):
             "amount": "20.00",
             "currency": "USD",
             "intent_id": "intent_prod_shared_secret_store_required_1",
-            "approval_id": "appr_ok",
+            "approval_ids": ["appr_ok", "appr_ok_2"],
         },
     )
     assert created.status_code == 201
@@ -568,7 +679,7 @@ def test_prod_pan_execute_requires_shared_secret_store(monkeypatch):
 
     executed = client.post(
         f"/api/v2/checkout/secure/jobs/{job_id}/execute",
-        json={"approval_id": "appr_ok"},
+        json={"approval_ids": ["appr_ok", "appr_ok_2"]},
     )
     assert executed.status_code == 503
     assert executed.json()["detail"] == "secure_secret_store_not_configured"

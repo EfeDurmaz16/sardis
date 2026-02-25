@@ -92,6 +92,7 @@ class CreateSecureCheckoutJobRequest(BaseModel):
     purpose: str = "agent_checkout"
     intent_id: str = Field(default_factory=lambda: f"intent_{uuid.uuid4().hex[:16]}")
     approval_id: Optional[str] = None
+    approval_ids: list[str] = Field(default_factory=list)
     options: SecureExecutionOptions = Field(default_factory=SecureExecutionOptions)
 
 
@@ -99,6 +100,7 @@ class ExecuteSecureCheckoutJobRequest(BaseModel):
     """Dispatch an already created secure checkout job."""
 
     approval_id: Optional[str] = None
+    approval_ids: list[str] = Field(default_factory=list)
 
 
 class CompleteSecureCheckoutJobRequest(BaseModel):
@@ -135,6 +137,9 @@ class SecureCheckoutSecurityPolicyResponse(BaseModel):
     auto_unfreeze_on_security_incident: bool
     auto_unfreeze_ops_approved: bool
     auto_unfreeze_allowed_severities: list[str] = Field(default_factory=list)
+    min_approvals: int
+    pan_min_approvals: int
+    require_distinct_approval_reviewers: bool
     incident_cooldown_seconds: dict[str, int] = Field(default_factory=dict)
 
 
@@ -150,6 +155,8 @@ class SecureCheckoutJobResponse(BaseModel):
     currency: str
     approval_required: bool
     approval_id: Optional[str] = None
+    approval_ids: list[str] = Field(default_factory=list)
+    approval_quorum_required: int = 0
     policy_reason: str = "OK"
     executor_ref: Optional[str] = None
     secret_ref: Optional[str] = None
@@ -276,6 +283,51 @@ def _approval_threshold() -> Decimal:
 
 def _require_approval_for_pan() -> bool:
     return _is_truthy(os.getenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1"))
+
+
+def _bounded_int_env(name: str, default: int, *, min_value: int = 1, max_value: int = 5) -> int:
+    raw = (os.getenv(name, "") or "").strip()
+    if not raw:
+        return max(min_value, min(default, max_value))
+    try:
+        value = int(raw)
+    except ValueError:
+        value = default
+    return max(min_value, min(value, max_value))
+
+
+def _checkout_min_approvals() -> int:
+    return _bounded_int_env("SARDIS_CHECKOUT_MIN_APPROVALS", 1)
+
+
+def _checkout_pan_min_approvals() -> int:
+    default = 2 if _is_production_env() else 1
+    configured = _bounded_int_env("SARDIS_CHECKOUT_PAN_MIN_APPROVALS", default)
+    return max(_checkout_min_approvals(), configured)
+
+
+def _checkout_require_distinct_approval_reviewers() -> bool:
+    raw = (os.getenv("SARDIS_CHECKOUT_REQUIRE_DISTINCT_APPROVAL_REVIEWERS", "") or "").strip()
+    if raw:
+        return _is_truthy(raw)
+    return _is_production_env() and _checkout_pan_min_approvals() > 1
+
+
+def _required_checkout_approvals(
+    *,
+    approval_required: bool,
+    merchant_mode: MerchantExecutionMode | str,
+) -> int:
+    if not approval_required:
+        return 0
+    mode_value = (
+        merchant_mode.value
+        if isinstance(merchant_mode, MerchantExecutionMode)
+        else str(merchant_mode or "").strip().lower()
+    )
+    if mode_value == MerchantExecutionMode.PAN_ENTRY.value:
+        return _checkout_pan_min_approvals()
+    return _checkout_min_approvals()
 
 
 def _pan_execution_enabled() -> bool:
@@ -1234,6 +1286,17 @@ async def _verify_executor_auth(
 
 
 def _serialize_job(job: dict[str, Any]) -> SecureCheckoutJobResponse:
+    approval_ids = list(job.get("approval_ids") or [])
+    approval_id = job.get("approval_id")
+    if approval_id and approval_id not in approval_ids:
+        approval_ids.insert(0, str(approval_id))
+    approval_quorum_required = int(
+        job.get("approval_quorum_required")
+        or _required_checkout_approvals(
+            approval_required=bool(job.get("approval_required")),
+            merchant_mode=str(job.get("merchant_mode") or ""),
+        )
+    )
     return SecureCheckoutJobResponse(
         job_id=job["job_id"],
         intent_id=job["intent_id"],
@@ -1245,7 +1308,9 @@ def _serialize_job(job: dict[str, Any]) -> SecureCheckoutJobResponse:
         amount=str(job["amount"]),
         currency=job["currency"],
         approval_required=bool(job["approval_required"]),
-        approval_id=job.get("approval_id"),
+        approval_id=approval_id,
+        approval_ids=approval_ids,
+        approval_quorum_required=approval_quorum_required,
         policy_reason=job.get("policy_reason", "OK"),
         executor_ref=job.get("executor_ref"),
         secret_ref=job.get("secret_ref"),
@@ -1314,25 +1379,59 @@ async def _validate_approved_token(
     *,
     deps: SecureCheckoutDependencies,
     approval_id: Optional[str],
+    approval_ids: Optional[list[str]],
     principal: Principal,
     wallet_id: str,
-) -> bool:
-    if not approval_id:
-        return False
+    min_approvals: int = 1,
+    require_distinct_reviewers: bool = False,
+) -> tuple[bool, str, list[str]]:
+    requested_ids: list[str] = []
+    if approval_id:
+        requested_ids.append(str(approval_id).strip())
+    requested_ids.extend(str(item).strip() for item in (approval_ids or []) if str(item).strip())
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for candidate in requested_ids:
+        if candidate and candidate not in seen:
+            deduped.append(candidate)
+            seen.add(candidate)
+
+    required = max(0, int(min_approvals))
+    if required == 0:
+        return True, "approval_not_required", []
+    if not deduped:
+        return False, "approval_required", []
+    if len(deduped) < required:
+        return False, f"approval_quorum_not_met:{len(deduped)}/{required}", []
     if not deps.approval_service:
-        return False
-    approval = await deps.approval_service.get_approval(approval_id)
-    if not approval:
-        return False
-    if getattr(approval, "status", None) != "approved":
-        return False
-    approval_wallet_id = getattr(approval, "wallet_id", None)
-    if approval_wallet_id and str(approval_wallet_id) != wallet_id:
-        return False
-    approval_org_id = getattr(approval, "organization_id", None)
-    if approval_org_id and str(approval_org_id) != principal.organization_id and not principal.is_admin:
-        return False
-    return True
+        return False, "approval_service_not_configured", []
+
+    validated: list[str] = []
+    reviewers: set[str] = set()
+    for candidate in deduped:
+        approval = await deps.approval_service.get_approval(candidate)
+        if not approval:
+            return False, "approval_not_found", validated
+        if str(getattr(approval, "status", "") or "").strip().lower() != "approved":
+            return False, "approval_not_approved", validated
+        approval_wallet_id = str(getattr(approval, "wallet_id", "") or "").strip()
+        if approval_wallet_id and approval_wallet_id != wallet_id:
+            return False, "approval_wallet_mismatch", validated
+        approval_org_id = str(getattr(approval, "organization_id", "") or "").strip()
+        if approval_org_id and approval_org_id != principal.organization_id and not principal.is_admin:
+            return False, "approval_org_mismatch", validated
+        reviewer = str(getattr(approval, "reviewed_by", "") or "").strip().lower()
+        if require_distinct_reviewers and not reviewer:
+            return False, "approval_missing_reviewer", validated
+        if reviewer:
+            reviewers.add(reviewer)
+        validated.append(candidate)
+
+    if len(validated) < required:
+        return False, f"approval_quorum_not_met:{len(validated)}/{required}", validated
+    if require_distinct_reviewers and len(reviewers) < required:
+        return False, f"approval_distinct_reviewer_quorum_not_met:{len(reviewers)}/{required}", validated
+    return True, "approval_valid", validated
 
 
 def create_secure_checkout_router() -> APIRouter:
@@ -1357,6 +1456,9 @@ def create_secure_checkout_router() -> APIRouter:
             auto_unfreeze_on_security_incident=_auto_unfreeze_on_security_incident_enabled(),
             auto_unfreeze_ops_approved=_auto_unfreeze_ops_approved(),
             auto_unfreeze_allowed_severities=sorted(_auto_unfreeze_allowed_severities()),
+            min_approvals=_checkout_min_approvals(),
+            pan_min_approvals=_checkout_pan_min_approvals(),
+            require_distinct_approval_reviewers=_checkout_require_distinct_approval_reviewers(),
             incident_cooldown_seconds={
                 level.value: _security_incident_cooldown_seconds(level)
                 for level in SecurityIncidentSeverity
@@ -1468,11 +1570,18 @@ def create_secure_checkout_router() -> APIRouter:
             or payload.amount >= _approval_threshold()
             or (merchant_mode == MerchantExecutionMode.PAN_ENTRY and _require_approval_for_pan())
         )
-        approval_ok = await _validate_approved_token(
+        required_approvals = _required_checkout_approvals(
+            approval_required=approval_required,
+            merchant_mode=merchant_mode,
+        )
+        approval_ok, _, validated_approval_ids = await _validate_approved_token(
             deps=deps,
             approval_id=payload.approval_id,
+            approval_ids=payload.approval_ids,
             principal=principal,
             wallet_id=payload.wallet_id,
+            min_approvals=required_approvals,
+            require_distinct_reviewers=_checkout_require_distinct_approval_reviewers(),
         )
         job_status = SecureCheckoutJobStatus.READY
         if approval_required and not approval_ok:
@@ -1492,7 +1601,9 @@ def create_secure_checkout_router() -> APIRouter:
             "currency": payload.currency.upper(),
             "purpose": payload.purpose,
             "approval_required": approval_required,
-            "approval_id": payload.approval_id if approval_ok else None,
+            "approval_id": validated_approval_ids[0] if approval_ok and validated_approval_ids else None,
+            "approval_ids": validated_approval_ids if approval_ok else [],
+            "approval_quorum_required": required_approvals,
             "policy_reason": policy_reason,
             "executor_ref": None,
             "secret_ref": None,
@@ -1516,9 +1627,13 @@ def create_secure_checkout_router() -> APIRouter:
                 "merchant_mode": saved["merchant_mode"],
                 "status": saved["status"],
                 "approval_required": saved["approval_required"],
+                "approval_quorum_required": saved.get("approval_quorum_required", required_approvals),
+                "approval_count": len(saved.get("approval_ids") or validated_approval_ids),
                 "policy_reason": saved.get("policy_reason"),
             },
         )
+        saved["approval_ids"] = saved.get("approval_ids") or validated_approval_ids
+        saved["approval_quorum_required"] = saved.get("approval_quorum_required") or required_approvals
         return _serialize_job(saved)
 
     @router.get("/secure/jobs/{job_id}", response_model=SecureCheckoutJobResponse)
@@ -1561,19 +1676,32 @@ def create_secure_checkout_router() -> APIRouter:
         )
 
         if job["status"] == SecureCheckoutJobStatus.PENDING_APPROVAL.value:
-            approval_ok = await _validate_approved_token(
+            required_approvals = int(
+                job.get("approval_quorum_required")
+                or _required_checkout_approvals(
+                    approval_required=bool(job.get("approval_required")),
+                    merchant_mode=str(job.get("merchant_mode") or ""),
+                )
+            )
+            approval_ok, approval_reason, validated_approval_ids = await _validate_approved_token(
                 deps=deps,
                 approval_id=payload.approval_id,
+                approval_ids=payload.approval_ids,
                 principal=principal,
                 wallet_id=job["wallet_id"],
+                min_approvals=required_approvals,
+                require_distinct_reviewers=_checkout_require_distinct_approval_reviewers(),
             )
             if not approval_ok:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="approval_required")
-            job = await store.update_job(
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=approval_reason)
+            updated_job = await store.update_job(
                 job_id,
                 status=SecureCheckoutJobStatus.READY.value,
-                approval_id=payload.approval_id,
-            ) or job
+                approval_id=validated_approval_ids[0] if validated_approval_ids else payload.approval_id,
+            )
+            job = updated_job or job
+            job["approval_ids"] = validated_approval_ids
+            job["approval_quorum_required"] = required_approvals
 
         if job["status"] != SecureCheckoutJobStatus.READY.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"job_not_ready:{job['status']}")
@@ -1617,7 +1745,12 @@ def create_secure_checkout_router() -> APIRouter:
                     "secret_ref": None,
                 },
             )
-            return _serialize_job(updated or job)
+            serialized_job = dict(updated or job)
+            if job.get("approval_ids"):
+                serialized_job["approval_ids"] = list(job.get("approval_ids") or [])
+            if job.get("approval_quorum_required"):
+                serialized_job["approval_quorum_required"] = job.get("approval_quorum_required")
+            return _serialize_job(serialized_job)
 
         merchant_host = urlparse(job["merchant_origin"]).hostname or ""
         pan_allowed_for_merchant, pan_mode_reason = _pan_entry_policy_decision(merchant_host)
@@ -1740,7 +1873,12 @@ def create_secure_checkout_router() -> APIRouter:
                 "secret_expires_at": dispatched.get("secret_expires_at"),
             },
         )
-        return _serialize_job(updated or job)
+        serialized_job = dict(updated or job)
+        if job.get("approval_ids"):
+            serialized_job["approval_ids"] = list(job.get("approval_ids") or [])
+        if job.get("approval_quorum_required"):
+            serialized_job["approval_quorum_required"] = job.get("approval_quorum_required")
+        return _serialize_job(serialized_job)
 
     @router.post(
         "/secure/secrets/{secret_ref}/consume",

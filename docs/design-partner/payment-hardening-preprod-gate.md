@@ -10,6 +10,7 @@ Scope:
 - PAN lane isolation (runtime readiness, reveal validation, audit redaction)
 - Shared secret store enforcement for multi-instance PAN execution
 - Severity-based risk response (freeze/rotate/cooldown + ops approval gate)
+- PAN approval quorum + distinct reviewer (4-eyes) enforcement
 - A2A trust-table enforcement for multi-agent peer payments
 - Funding failover chaos coverage
 
@@ -33,6 +34,7 @@ All checks must pass:
 - Compliance export includes replay-safe cursor scope binding
 - Secure checkout rejects invalid PAN reveal payloads and redacts audit payloads
 - Secure checkout fails closed in prod when shared secret store is missing
+- Secure checkout PAN approvals enforce configured quorum and distinct reviewer policy
 - Risk incident taxonomy + response orchestration code paths are present
 - A2A trust relation checks exist and are test-covered
 - Chaos/adversarial tests are present and executable
@@ -47,6 +49,9 @@ All checks must pass:
    - `SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION=1`
    - `SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY`
    - `SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE=0`
+   - `SARDIS_CHECKOUT_MIN_APPROVALS=1` (or higher by policy)
+   - `SARDIS_CHECKOUT_PAN_MIN_APPROVALS=2` (recommended for PAN entry lane)
+   - `SARDIS_CHECKOUT_REQUIRE_DISTINCT_APPROVAL_REVIEWERS=1`
 4. Verify incident response config:
    - `SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT=1`
    - `SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT=1` (optional by risk appetite)
