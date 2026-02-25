@@ -17,7 +17,7 @@ import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import AgentRepository, WalletRepository
@@ -93,6 +93,16 @@ def _parse_a2a_trust_table() -> dict[str, set[str]]:
             continue
         table.setdefault(sender_key, set()).update(targets)
     return table
+
+
+def _trust_table_hash(table: dict[str, set[str]]) -> str:
+    canonical = {
+        str(sender): sorted(str(recipient) for recipient in recipients)
+        for sender, recipients in sorted(table.items())
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, separators=(",", ":"), sort_keys=True, ensure_ascii=True).encode()
+    ).hexdigest()
 
 
 def _evaluate_trust_table(
@@ -388,6 +398,27 @@ class A2ATrustRelationUpsertRequest(BaseModel):
 class A2ATrustRelationDeleteRequest(BaseModel):
     sender_agent_id: str
     recipient_agent_id: str
+
+
+class A2APeerTrustEntry(BaseModel):
+    agent_id: str
+    owner_id: str
+    is_active: bool
+    wallet_id: Optional[str] = None
+    kya_level: Optional[str] = None
+    kya_status: Optional[str] = None
+    trusted: bool
+    trust_reason: str
+
+
+class A2ATrustPeersResponse(BaseModel):
+    sender_agent_id: str
+    enforced: bool
+    source: str
+    table_hash: str
+    total_candidates: int
+    trusted_count: int
+    peers: list[A2APeerTrustEntry] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -740,6 +771,82 @@ async def check_a2a_trust(
         allowed=allowed,
         reason=reason,
         source=source,
+    )
+
+
+@router.get("/trust/peers", response_model=A2ATrustPeersResponse)
+async def list_a2a_trust_peers(
+    sender_agent_id: str = Query(..., description="Sender agent to evaluate trust from"),
+    include_untrusted: bool = Query(default=False),
+    include_inactive: bool = Query(default=False),
+    deps: A2ADependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    sender = await deps.agent_repo.get(sender_agent_id)
+    if sender is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="sender_not_found")
+    if not principal.is_admin and sender.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access_denied")
+
+    lister = getattr(deps.agent_repo, "list", None)
+    if not callable(lister):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="agent_repository_list_not_configured")
+
+    org_id = str(sender.owner_id)
+    agents = await lister(owner_id=org_id, limit=1000, offset=0)
+    if not include_inactive:
+        agents = [item for item in agents if bool(getattr(item, "is_active", False))]
+
+    enforced = _enforce_a2a_trust_table()
+    if not enforced:
+        source = "disabled"
+        table: dict[str, set[str]] = {}
+    else:
+        table, source = await _resolve_a2a_trust_table(deps=deps, organization_id=org_id)
+        if source == "repository_error":
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="a2a_trust_repository_unavailable")
+
+    rows: list[A2APeerTrustEntry] = []
+    trusted_count = 0
+    for candidate in agents:
+        candidate_id = str(getattr(candidate, "agent_id", ""))
+        if not candidate_id or candidate_id == sender_agent_id:
+            continue
+        if not enforced:
+            trusted = True
+            reason = "trust_table_not_enforced"
+        else:
+            trusted, reason = _evaluate_trust_table(
+                sender_agent_id=sender_agent_id,
+                recipient_agent_id=candidate_id,
+                table=table,
+            )
+        if trusted:
+            trusted_count += 1
+        if not trusted and not include_untrusted:
+            continue
+        rows.append(
+            A2APeerTrustEntry(
+                agent_id=candidate_id,
+                owner_id=str(getattr(candidate, "owner_id", "")),
+                is_active=bool(getattr(candidate, "is_active", False)),
+                wallet_id=getattr(candidate, "wallet_id", None),
+                kya_level=getattr(candidate, "kya_level", None),
+                kya_status=getattr(candidate, "kya_status", None),
+                trusted=trusted,
+                trust_reason=reason,
+            )
+        )
+
+    rows.sort(key=lambda item: (not item.trusted, item.agent_id))
+    return A2ATrustPeersResponse(
+        sender_agent_id=sender_agent_id,
+        enforced=enforced,
+        source=source,
+        table_hash=_trust_table_hash(table),
+        total_candidates=max(len(agents) - 1, 0),
+        trusted_count=trusted_count,
+        peers=rows,
     )
 
 

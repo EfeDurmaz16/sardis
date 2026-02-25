@@ -73,6 +73,9 @@ require_match '/secure/security-policy' \
 require_match '_check_a2a_trust_relation' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust table enforcement must be present'
+require_match '/trust/peers' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A peer discovery endpoint must be present'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
@@ -95,6 +98,9 @@ require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
 require_match 'test_ensure_table_prod_requires_migration' \
   'packages/sardis-api/tests/test_a2a_trust_repository.py' \
   'A2A trust repository must fail closed in production when table is missing'
+require_match 'test_trust_peers_returns_only_trusted_by_default' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A peer discovery endpoint must be test covered'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then

@@ -58,6 +58,7 @@ All checks must pass:
    - `SARDIS_A2A_TRUST_RELATIONS=sender_agent_id>recipient_a|recipient_b,...`
    - Ensure DB migration created `a2a_trust_relations` before production boot.
    - `GET /api/v2/a2a/trust/table` returns expected relations.
+   - `GET /api/v2/a2a/trust/peers?sender_agent_id=...` returns only trusted peers by default.
 6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
 
 ## Failure Handling
