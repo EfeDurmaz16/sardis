@@ -8,6 +8,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -24,6 +25,15 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)
+_PAN_LIKE_DIGITS_RE = re.compile(r"\b\d{12,19}\b")
+_SENSITIVE_AUDIT_KEYS = {
+    "pan",
+    "cvv",
+    "cvc",
+    "card_number",
+    "full_number",
+    "track_data",
+}
 
 
 class MerchantExecutionMode(str, Enum):
@@ -285,6 +295,80 @@ def _secret_ttl_seconds() -> int:
     except ValueError:
         value = 60
     return max(10, min(value, 300))
+
+
+def _redact_sensitive_text(value: Any) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    return _PAN_LIKE_DIGITS_RE.sub("[REDACTED_PAN]", text)
+
+
+def _sanitize_audit_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    def _sanitize_value(key: str, value: Any) -> Any:
+        key_lower = (key or "").strip().lower()
+        if key_lower in _SENSITIVE_AUDIT_KEYS:
+            return "[REDACTED]"
+        if isinstance(value, dict):
+            return {k: _sanitize_value(str(k), v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_sanitize_value("", item) for item in value]
+        if isinstance(value, str):
+            return _redact_sensitive_text(value)
+        return value
+
+    return {k: _sanitize_value(str(k), v) for k, v in (payload or {}).items()}
+
+
+def _pan_executor_runtime_ready() -> tuple[bool, str]:
+    if not _is_production_env():
+        return True, "ok"
+    if not _executor_dispatch_url():
+        return False, "executor_dispatch_url_not_configured"
+    if not _dispatch_required():
+        return False, "executor_dispatch_required_in_production"
+    if not os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip():
+        return False, "executor_token_not_configured"
+    if _executor_attestation_enabled() and not _executor_attestation_key():
+        return False, "executor_attestation_key_not_configured"
+    return True, "ok"
+
+
+def _build_secret_payload_from_reveal(
+    *,
+    details: dict[str, Any],
+    merchant_origin: str,
+    amount: Any,
+    currency: str,
+    purpose: str,
+) -> dict[str, Any]:
+    pan = str(details.get("pan") or "").strip().replace(" ", "")
+    cvv = str(details.get("cvv") or details.get("cvc") or "").strip()
+    exp_month = int(details.get("exp_month") or 0)
+    exp_year = int(details.get("exp_year") or 0)
+    if exp_year < 100:
+        exp_year += 2000
+
+    if not pan or not pan.isdigit() or len(pan) < 12 or len(pan) > 19:
+        raise ValueError("invalid_pan")
+    if not cvv or not cvv.isdigit() or len(cvv) not in {3, 4}:
+        raise ValueError("invalid_cvv")
+    if exp_month < 1 or exp_month > 12:
+        raise ValueError("invalid_exp_month")
+    current_year = _now_utc().year
+    if exp_year < current_year or exp_year > current_year + 30:
+        raise ValueError("invalid_exp_year")
+
+    return {
+        "pan": pan,
+        "cvv": cvv,
+        "exp_month": exp_month,
+        "exp_year": exp_year,
+        "merchant_origin": merchant_origin,
+        "amount": str(amount),
+        "currency": currency,
+        "purpose": purpose,
+    }
 
 
 def _executor_dispatch_url() -> str:
@@ -649,10 +733,11 @@ async def _emit_audit_event(
     sink = deps.audit_sink
     if not sink:
         return
+    sanitized_payload = _sanitize_audit_payload(payload)
     event = {
         "event_type": event_type,
         "ts": _now_utc().isoformat(),
-        "payload": payload,
+        "payload": sanitized_payload,
     }
     record_callable = None
     if hasattr(sink, "record_event"):
@@ -668,12 +753,12 @@ async def _emit_audit_event(
         if ComplianceAuditEntry is not None:
             entry = ComplianceAuditEntry(
                 mandate_id=str(payload.get("intent_id") or payload.get("job_id") or ""),
-                subject=str(payload.get("wallet_id") or ""),
+                subject=str(sanitized_payload.get("wallet_id") or ""),
                 allowed=event_type != "secure_checkout.job_failed",
-                reason=str(payload.get("error_code") or payload.get("status") or event_type),
+                reason=str(sanitized_payload.get("error_code") or sanitized_payload.get("status") or event_type),
                 rule_id=event_type,
                 provider="secure_checkout",
-                metadata=dict(payload),
+                metadata=dict(sanitized_payload),
             )
             record_callable = getattr(sink, "append")
             result = record_callable(entry)
@@ -732,9 +817,10 @@ async def _handle_security_incident(
     detail: str,
     secret_ref: Optional[str] = None,
 ) -> None:
+    safe_detail = _redact_sensitive_text(detail)
     payload: dict[str, Any] = {
         "code": code,
-        "detail": detail,
+        "detail": safe_detail,
         "secret_ref": secret_ref,
     }
     if job:
@@ -752,7 +838,7 @@ async def _handle_security_incident(
         event_type="secure_checkout.security_incident",
         payload=payload,
     )
-    await _dispatch_security_alert(job=job, code=code, detail=detail)
+    await _dispatch_security_alert(job=job, code=code, detail=safe_detail)
 
     if not _auto_freeze_on_security_incident_enabled():
         return
@@ -1225,6 +1311,19 @@ def create_secure_checkout_router() -> APIRouter:
                 detail=(updated or job).get("error_code"),
             )
 
+        runtime_ready, runtime_reason = _pan_executor_runtime_ready()
+        if not runtime_ready:
+            updated = await store.update_job(
+                job_id,
+                status=SecureCheckoutJobStatus.FAILED.value,
+                error_code=runtime_reason,
+                error=runtime_reason,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(updated or job).get("error_code"),
+            )
+
         if not deps.card_provider:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1241,7 +1340,7 @@ def create_secure_checkout_router() -> APIRouter:
                 job_id,
                 status=SecureCheckoutJobStatus.FAILED.value,
                 error_code="card_details_reveal_failed",
-                error=str(exc),
+                error=_redact_sensitive_text(exc),
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1250,16 +1349,25 @@ def create_secure_checkout_router() -> APIRouter:
 
         secret_ref = f"sec_{uuid.uuid4().hex[:18]}"
         expires_at = _now_utc() + timedelta(seconds=_secret_ttl_seconds())
-        secret_payload = {
-            "pan": str(details.get("pan") or ""),
-            "cvv": str(details.get("cvv") or ""),
-            "exp_month": int(details.get("exp_month") or 0),
-            "exp_year": int(details.get("exp_year") or 0),
-            "merchant_origin": job["merchant_origin"],
-            "amount": str(job["amount"]),
-            "currency": job["currency"],
-            "purpose": job["purpose"],
-        }
+        try:
+            secret_payload = _build_secret_payload_from_reveal(
+                details=details if isinstance(details, dict) else {},
+                merchant_origin=job["merchant_origin"],
+                amount=job["amount"],
+                currency=job["currency"],
+                purpose=job["purpose"],
+            )
+        except ValueError as exc:
+            updated = await store.update_job(
+                job_id,
+                status=SecureCheckoutJobStatus.FAILED.value,
+                error_code="card_details_invalid",
+                error=_redact_sensitive_text(exc),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(updated or job).get("error_code"),
+            ) from exc
         await store.put_secret(secret_ref, secret_payload, expires_at=expires_at)
         dispatch_ok, executor_ref, dispatch_error = await _dispatch_to_executor(
             job=job,
