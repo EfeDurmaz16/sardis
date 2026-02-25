@@ -483,6 +483,7 @@ class A2ATrustAuditEntryResponse(BaseModel):
     rule_id: Optional[str] = None
     provider: Optional[str] = None
     evaluated_at: Optional[str] = None
+    proof_path: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -978,6 +979,11 @@ async def list_a2a_trust_audit_recent(
                 rule_id=raw.get("rule_id"),
                 provider=raw.get("provider"),
                 evaluated_at=str(raw.get("evaluated_at", "")),
+                proof_path=(
+                    f"/api/v2/compliance/audit/mandate/{raw.get('mandate_id')}/proof/{raw.get('audit_id')}"
+                    if raw.get("mandate_id") and raw.get("audit_id")
+                    else None
+                ),
                 metadata=metadata,
             )
         )

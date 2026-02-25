@@ -306,3 +306,4 @@ def test_admin_can_list_recent_a2a_trust_audit_entries(monkeypatch):
     assert payload["count"] == 2
     assert payload["entries"][0]["provider"] == "a2a_trust"
     assert payload["entries"][0]["metadata"]["organization_id"] == "org_demo"
+    assert payload["entries"][0]["proof_path"].startswith("/api/v2/compliance/audit/mandate/")
