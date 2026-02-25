@@ -127,9 +127,12 @@ jobs:
       - name: Build dashboard
         run: cd dashboard && pnpm build
 
-  landing-build:
+  build-landing:
     name: Landing Page Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -159,7 +162,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: cd landing && pnpm install
+        run: pnpm install
 
       - name: Build landing page
-        run: cd landing && pnpm build
+        run: pnpm build
