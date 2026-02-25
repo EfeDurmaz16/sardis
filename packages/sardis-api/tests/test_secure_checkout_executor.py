@@ -461,6 +461,7 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
 def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
@@ -491,6 +492,40 @@ def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
     )
     assert executed.status_code == 503
     assert executed.json()["detail"] == "executor_dispatch_url_not_configured"
+
+
+def test_prod_pan_execute_requires_shared_secret_store(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.delenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE", raising=False)
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_shared_secret_store_required_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 503
+    assert executed.json()["detail"] == "secure_secret_store_not_configured"
 
 
 def test_prod_pan_entry_requires_pci_attestation(monkeypatch):

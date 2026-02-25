@@ -516,6 +516,7 @@ class InMemorySecureCheckoutStore:
 
     def __init__(self) -> None:
         self.is_persistent = False
+        self.is_shared_secret_store = False
         self._jobs_by_id: dict[str, dict[str, Any]] = {}
         self._jobs_by_intent_id: dict[str, str] = {}
         self._secrets: dict[str, dict[str, Any]] = {}
@@ -611,6 +612,7 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
     def __init__(self, job_repository: Any, cache_service: Any | None = None):
         super().__init__()
         self.is_persistent = True
+        self.is_shared_secret_store = bool(cache_service)
         self._job_repository = job_repository
         self._cache = cache_service
 
@@ -713,12 +715,24 @@ def _allow_inmemory_store_in_prod() -> bool:
     return _is_truthy(os.getenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "0"))
 
 
+def _allow_inmemory_secret_store_in_prod() -> bool:
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE", "0"))
+
+
 def _require_persistent_job_store() -> bool:
     return _is_production_env() and not _allow_inmemory_store_in_prod()
 
 
 def _is_persistent_store(store: Any) -> bool:
     return bool(getattr(store, "is_persistent", False))
+
+
+def _require_shared_secret_store() -> bool:
+    return _is_production_env() and not _allow_inmemory_secret_store_in_prod()
+
+
+def _has_shared_secret_store(store: Any) -> bool:
+    return bool(getattr(store, "is_shared_secret_store", False))
 
 
 def _auto_freeze_on_security_incident_enabled() -> bool:
@@ -1579,6 +1593,18 @@ def create_secure_checkout_router() -> APIRouter:
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
+                detail=(updated or job).get("error_code"),
+            )
+
+        if _require_shared_secret_store() and not _has_shared_secret_store(store):
+            updated = await store.update_job(
+                job_id,
+                status=SecureCheckoutJobStatus.FAILED.value,
+                error_code="secure_secret_store_not_configured",
+                error="secure_secret_store_not_configured",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=(updated or job).get("error_code"),
             )
 
