@@ -1151,6 +1151,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         sanctions_service=sanctions_service,
         audit_store=audit_store,
         kya_service=kya_service,
+        policy_store=policy_store,
+        approval_service=approval_service,
     )
     app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
     if hasattr(compliance_router, "public_router"):

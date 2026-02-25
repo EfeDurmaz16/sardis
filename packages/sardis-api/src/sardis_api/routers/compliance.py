@@ -1,6 +1,7 @@
 """Compliance API endpoints for KYC and Sanctions screening."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import hashlib
 import hmac
 from inspect import isawaitable
@@ -315,11 +316,21 @@ class KYASuspendRequest(BaseModel):
 class ComplianceDependencies:
     """Dependencies for compliance endpoints."""
 
-    def __init__(self, kyc_service, sanctions_service, audit_store=None, kya_service=None):
+    def __init__(
+        self,
+        kyc_service,
+        sanctions_service,
+        audit_store=None,
+        kya_service=None,
+        policy_store=None,
+        approval_service=None,
+    ):
         self.kyc_service = kyc_service
         self.sanctions_service = sanctions_service
         self.audit_store = audit_store
         self.kya_service = kya_service
+        self.policy_store = policy_store
+        self.approval_service = approval_service
 
 
 def get_deps() -> ComplianceDependencies:
@@ -341,6 +352,26 @@ def _serialize_audit_entry(entry: Any) -> dict[str, Any]:
     if isinstance(entry, dict):
         return dict(entry)
     return {"raw": str(entry)}
+
+
+def _serialize_approval(approval: Any) -> dict[str, Any]:
+    if approval is None:
+        return {}
+    if hasattr(approval, "model_dump") and callable(approval.model_dump):
+        payload = approval.model_dump()
+        if isinstance(payload, dict):
+            return payload
+    if hasattr(approval, "__dict__"):
+        out: dict[str, Any] = {}
+        for key, value in vars(approval).items():
+            if hasattr(value, "isoformat"):
+                out[key] = value.isoformat()
+            else:
+                out[key] = value
+        return out
+    if isinstance(approval, dict):
+        return dict(approval)
+    return {"raw": str(approval)}
 
 
 def _compute_audit_entries_digest(entries: list[dict[str, Any]]) -> str:
@@ -402,6 +433,47 @@ def _verify_merkle_proof(leaf_hash: str, proof: list[dict[str, str]], root_hash:
         else:
             current = hashlib.sha256((current + sibling).encode()).hexdigest()
     return current == root_hash
+
+
+def _build_hash_chain_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    prev_hash = "0" * 64
+    head = prev_hash
+    tail = prev_hash
+    for idx, entry in enumerate(entries):
+        material = {
+            "index": idx,
+            "prev_hash": prev_hash,
+            "entry": entry,
+        }
+        canonical = json.dumps(material, sort_keys=True, separators=(",", ":"), default=str)
+        current = hashlib.sha256(canonical.encode()).hexdigest()
+        if idx == 0:
+            tail = current
+        head = current
+        prev_hash = current
+    return {
+        "algorithm": "sha256",
+        "genesis": "0" * 64,
+        "tail": tail if entries else None,
+        "head": head if entries else None,
+        "length": len(entries),
+    }
+
+
+def _attestation_candidates(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for entry in entries:
+        metadata = entry.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            continue
+        keys = set(metadata.keys())
+        if {
+            "policy_hash",
+            "audit_anchor",
+            "decision_id",
+        } & keys or "attestation" in str(entry.get("reason") or "").lower():
+            out.append(entry)
+    return out
 
 
 def _require_kya_service(deps: ComplianceDependencies):
@@ -913,6 +985,110 @@ async def get_recent_audit_entries(
         "count": len(serialized),
         "entries_digest": _compute_audit_entries_digest(serialized),
         "entries": serialized,
+    }
+
+
+@router.get("/audit/evidence/export")
+async def export_audit_evidence_bundle(
+    mandate_id: Optional[str] = Query(default=None),
+    approval_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=5000),
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """
+    Export a unified evidence bundle for policy/approval/audit verification.
+
+    This endpoint is intentionally append-only friendly:
+    - Pulls immutable audit entries from the compliance audit store.
+    - Adds optional approval artifact (if configured and requested).
+    - Returns deterministic integrity summaries for third-party verification.
+    """
+    if deps.audit_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="audit_store_not_configured",
+        )
+    if not mandate_id and not approval_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="mandate_id_or_approval_id_required",
+        )
+
+    if mandate_id:
+        entries = await _resolve_maybe_awaitable(deps.audit_store.get_by_mandate(mandate_id))
+    else:
+        entries = await _resolve_maybe_awaitable(deps.audit_store.get_recent(limit))
+    serialized = [_serialize_audit_entry(entry) for entry in entries]
+
+    policy_entries = [
+        entry for entry in serialized if str(entry.get("provider", "")).strip().lower() == "policy_engine"
+    ]
+    attestation_entries = _attestation_candidates(serialized)
+
+    approval_record: Optional[dict[str, Any]] = None
+    if approval_id and deps.approval_service is not None:
+        getter = getattr(deps.approval_service, "get_approval", None)
+        if callable(getter):
+            approval = await _resolve_maybe_awaitable(getter(approval_id))
+            if approval is not None:
+                approval_record = _serialize_approval(approval)
+
+    approval_related_entries = []
+    for entry in serialized:
+        metadata = entry.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            continue
+        if approval_id and str(metadata.get("approval_id", "")) == approval_id:
+            approval_related_entries.append(entry)
+
+    leaves = [_hash_json(entry) for entry in serialized]
+    merkle_root = _build_merkle_root(leaves)
+    entries_digest = _compute_audit_entries_digest(serialized)
+    hash_chain = _build_hash_chain_summary(serialized)
+
+    generated_at = datetime.now(timezone.utc).isoformat()
+    counts = {
+        "total_entries": len(serialized),
+        "policy_entries": len(policy_entries),
+        "approval_related_entries": len(approval_related_entries),
+        "attestation_entries": len(attestation_entries),
+        "has_approval_artifact": approval_record is not None,
+    }
+    verifier_hints = [
+        "Verify entries_digest against canonical JSON of entries",
+        "Verify merkle root from leaf hashes to prove inclusion",
+        "Verify hash_chain head by replaying prev_hash chain from genesis",
+    ]
+    if mandate_id:
+        verifier_hints.append("Cross-check mandate_id scope against payment/control plane event logs")
+    if approval_id:
+        verifier_hints.append("Cross-check approval_id against approval service export/logs")
+
+    return {
+        "metadata": {
+            "generated_at": generated_at,
+            "scope": {
+                "mandate_id": mandate_id,
+                "approval_id": approval_id,
+                "limit": limit,
+            },
+            "counts": counts,
+            "verifier_hints": verifier_hints,
+        },
+        "integrity": {
+            "entries_digest": entries_digest,
+            "merkle_root": f"merkle::{merkle_root}" if merkle_root else None,
+            "leaf_count": len(leaves),
+            "hash_chain": hash_chain,
+        },
+        "artifacts": {
+            "approval": approval_record,
+            "policy_decisions": policy_entries,
+            "attestations": attestation_entries,
+            "approval_related_entries": approval_related_entries,
+            "audit_entries": serialized,
+        },
     }
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -32,6 +33,16 @@ class _AuditEntry:
     mandate_id: str
 
     def to_dict(self):
+        metadata = {}
+        if self.audit_id == "a1":
+            metadata = {
+                "policy_hash": "sha256:policy",
+                "audit_anchor": "anchor_1",
+                "decision_id": "decision_1",
+                "approval_id": "appr_demo_1",
+            }
+        elif self.audit_id == "a2":
+            metadata = {"approval_id": "appr_demo_1"}
         return {
             "audit_id": self.audit_id,
             "mandate_id": self.mandate_id,
@@ -41,8 +52,22 @@ class _AuditEntry:
             "rule_id": "rule_1",
             "provider": "policy_engine",
             "evaluated_at": datetime.now(timezone.utc).isoformat(),
-            "metadata": {},
+            "metadata": metadata,
         }
+
+
+class _ApprovalService:
+    async def get_approval(self, approval_id: str):
+        if approval_id != "appr_demo_1":
+            return None
+        return SimpleNamespace(
+            id=approval_id,
+            status="approved",
+            action="onchain_payment",
+            requested_by="agent_1",
+            reviewed_by="ops@sardis.sh",
+            amount="42.00",
+        )
 
 
 class _AuditStoreWithChain:
@@ -84,12 +109,13 @@ def _admin_principal() -> Principal:
     return Principal(kind="api_key", organization_id="org_demo", scopes=["*"])
 
 
-def _build_client(audit_store) -> TestClient:
+def _build_client(audit_store, approval_service=None) -> TestClient:
     app = FastAPI()
     deps = ComplianceDependencies(
         kyc_service=_KYCService(),
         sanctions_service=_SanctionsService(),
         audit_store=audit_store,
+        approval_service=approval_service,
     )
     app.dependency_overrides[get_deps] = lambda: deps
     app.dependency_overrides[require_principal] = _admin_principal
@@ -168,3 +194,30 @@ def test_mandate_audit_proof_missing_entry_returns_404():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "audit_id_not_found_for_mandate"
+
+
+def test_export_evidence_bundle_contains_integrity_and_artifacts():
+    client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
+
+    response = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"mandate_id": "m1", "approval_id": "appr_demo_1"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["metadata"]["counts"]["total_entries"] == 2
+    assert payload["metadata"]["counts"]["policy_entries"] == 2
+    assert payload["metadata"]["counts"]["approval_related_entries"] == 2
+    assert payload["metadata"]["counts"]["attestation_entries"] >= 1
+    assert payload["integrity"]["entries_digest"].startswith("sha256:")
+    assert payload["integrity"]["merkle_root"].startswith("merkle::")
+    assert payload["integrity"]["hash_chain"]["length"] == 2
+    assert payload["artifacts"]["approval"]["id"] == "appr_demo_1"
+
+
+def test_export_evidence_bundle_requires_selector():
+    client = _build_client(_AuditStoreWithChain())
+    response = client.get("/api/v2/compliance/audit/evidence/export")
+    assert response.status_code == 400
+    assert response.json()["detail"] == "mandate_id_or_approval_id_required"
