@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+import time
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -87,6 +92,29 @@ def _build_app(*, policy_store=None) -> FastAPI:
     )
     app.include_router(secure_checkout.router, prefix="/api/v2/checkout")
     return app
+
+
+def _executor_attestation_headers(
+    *,
+    path: str,
+    method: str = "POST",
+    token: str = "exec_secret",
+    key: str = "attest_secret",
+    body: bytes = b"",
+    nonce: str | None = None,
+    timestamp: int | None = None,
+) -> dict[str, str]:
+    nonce_value = nonce or uuid.uuid4().hex
+    ts_value = str(timestamp or int(time.time()))
+    body_hash = hashlib.sha256(body).hexdigest()
+    canonical = "\n".join([method.upper(), path, ts_value, nonce_value, body_hash])
+    signature = hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
+    return {
+        "X-Sardis-Executor-Token": token,
+        "X-Sardis-Executor-Timestamp": ts_value,
+        "X-Sardis-Executor-Nonce": nonce_value,
+        "X-Sardis-Executor-Signature": signature,
+    }
 
 
 def test_pan_entry_job_requires_approval(monkeypatch):
@@ -406,3 +434,116 @@ def test_executor_can_complete_dispatched_job_and_revoke_secret(monkeypatch):
         headers={"X-Sardis-Executor-Token": "exec_secret"},
     )
     assert consumed.status_code == 404
+
+
+def test_consume_secret_requires_attestation_when_enabled(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY", "attest_secret")
+    app = _build_app()
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "22.00",
+            "currency": "USD",
+            "intent_id": "intent_attest_consume_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+    secret_ref = executed.json()["secret_ref"]
+
+    missing = client.post(
+        f"/api/v2/checkout/secure/secrets/{secret_ref}/consume",
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert missing.status_code == 401
+    assert missing.json()["detail"] == "executor_attestation_missing"
+
+    consume_path = f"/api/v2/checkout/secure/secrets/{secret_ref}/consume"
+    headers = _executor_attestation_headers(path=consume_path)
+    consumed = client.post(consume_path, headers=headers)
+    assert consumed.status_code == 200
+    payload = consumed.json()
+    assert payload["pan"] == "4111111111111111"
+
+
+def test_executor_attestation_replay_is_rejected(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY", "attest_secret")
+    app = _build_app()
+    client = TestClient(app)
+
+    created_1 = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_attest_replay_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    created_2 = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "21.00",
+            "currency": "USD",
+            "intent_id": "intent_attest_replay_2",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created_1.status_code == 201
+    assert created_2.status_code == 201
+    job_1 = created_1.json()["job_id"]
+    job_2 = created_2.json()["job_id"]
+
+    exec_1 = client.post(f"/api/v2/checkout/secure/jobs/{job_1}/execute", json={"approval_id": "appr_ok"})
+    exec_2 = client.post(f"/api/v2/checkout/secure/jobs/{job_2}/execute", json={"approval_id": "appr_ok"})
+    assert exec_1.status_code == 200
+    assert exec_2.status_code == 200
+
+    nonce = "replay_nonce_1"
+    ts = int(time.time())
+    body_1 = json.dumps({"status": "completed", "executor_ref": "exec_done_1"}).encode("utf-8")
+    complete_1_path = f"/api/v2/checkout/secure/jobs/{job_1}/complete"
+    headers_1 = _executor_attestation_headers(path=complete_1_path, nonce=nonce, timestamp=ts, body=body_1)
+    completed = client.post(
+        complete_1_path,
+        content=body_1,
+        headers={**headers_1, "Content-Type": "application/json"},
+    )
+    assert completed.status_code == 200
+
+    body_2 = json.dumps({"status": "completed", "executor_ref": "exec_done_2"}).encode("utf-8")
+    complete_2_path = f"/api/v2/checkout/secure/jobs/{job_2}/complete"
+    headers_2 = _executor_attestation_headers(path=complete_2_path, nonce=nonce, timestamp=ts, body=body_2)
+    replayed = client.post(
+        complete_2_path,
+        content=body_2,
+        headers={**headers_2, "Content-Type": "application/json"},
+    )
+    assert replayed.status_code == 401
+    assert replayed.json()["detail"] == "executor_attestation_replay"

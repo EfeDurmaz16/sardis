@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
+import json
 import os
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -13,7 +16,7 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -288,6 +291,46 @@ def _dispatch_timeout_seconds() -> float:
     return max(1.0, min(value, 30.0))
 
 
+def _dispatch_signing_key() -> str:
+    return os.getenv("SARDIS_CHECKOUT_EXECUTOR_DISPATCH_SIGNING_KEY", "").strip()
+
+
+def _executor_attestation_enabled() -> bool:
+    if _is_production_env():
+        return _is_truthy(os.getenv("SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION", "1"))
+    return _is_truthy(os.getenv("SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION", "0"))
+
+
+def _executor_attestation_key() -> str:
+    return os.getenv("SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY", "").strip()
+
+
+def _executor_attestation_ttl_seconds() -> int:
+    raw = os.getenv("SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_TTL_SECONDS", "120").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = 120
+    return max(30, min(value, 900))
+
+
+def _hash_payload_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _compute_executor_signature(
+    *,
+    key: str,
+    method: str,
+    path: str,
+    timestamp: str,
+    nonce: str,
+    payload_hash: str,
+) -> str:
+    canonical = "\n".join([method.upper(), path, timestamp, nonce, payload_hash])
+    return hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 async def _dispatch_to_executor(
     *,
     job: dict[str, Any],
@@ -327,6 +370,22 @@ async def _dispatch_to_executor(
     }
 
     timeout = _dispatch_timeout_seconds()
+    signing_key = _dispatch_signing_key()
+    if signing_key:
+        now_ts = str(int(time.time()))
+        nonce = uuid.uuid4().hex
+        payload_hash = _hash_payload_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        dispatch_path = urlparse(dispatch_url).path or "/"
+        headers["X-Sardis-Timestamp"] = now_ts
+        headers["X-Sardis-Nonce"] = nonce
+        headers["X-Sardis-Signature"] = _compute_executor_signature(
+            key=signing_key,
+            method="POST",
+            path=dispatch_path,
+            timestamp=now_ts,
+            nonce=nonce,
+            payload_hash=payload_hash,
+        )
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(dispatch_url, json=payload, headers=headers)
@@ -355,6 +414,7 @@ class InMemorySecureCheckoutStore:
         self._jobs_by_id: dict[str, dict[str, Any]] = {}
         self._jobs_by_intent_id: dict[str, str] = {}
         self._secrets: dict[str, dict[str, Any]] = {}
+        self._used_executor_nonces: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
     async def upsert_job(self, job: dict[str, Any]) -> dict[str, Any]:
@@ -410,12 +470,89 @@ class InMemorySecureCheckoutStore:
             self._secrets.pop(secret_ref, None)
             return payload
 
+    async def mark_executor_nonce_used(self, nonce: str, *, ttl_seconds: int) -> bool:
+        now = time.time()
+        expires_at = now + float(ttl_seconds)
+        async with self._lock:
+            expired = [n for n, exp in self._used_executor_nonces.items() if exp <= now]
+            for n in expired:
+                self._used_executor_nonces.pop(n, None)
+            if nonce in self._used_executor_nonces:
+                return False
+            self._used_executor_nonces[nonce] = expires_at
+            return True
+
 
 _DEFAULT_STORE = InMemorySecureCheckoutStore()
 
 
 def _resolve_store(deps: SecureCheckoutDependencies) -> InMemorySecureCheckoutStore:
     return deps.store or _DEFAULT_STORE
+
+
+async def _verify_executor_auth(
+    *,
+    deps: SecureCheckoutDependencies,
+    request: Request,
+    token: Optional[str],
+    timestamp: Optional[str],
+    nonce: Optional[str],
+    signature: Optional[str],
+    payload_bytes: bytes,
+) -> None:
+    expected = os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
+    if expected:
+        presented = (token or "").strip()
+        if not presented or not hmac.compare_digest(presented, expected):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_executor_token")
+    elif _is_production_env():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="executor_token_not_configured",
+        )
+
+    if not _executor_attestation_enabled():
+        return
+
+    key = _executor_attestation_key()
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="executor_attestation_key_not_configured",
+        )
+
+    ts = (timestamp or "").strip()
+    nonce_value = (nonce or "").strip()
+    signature_value = (signature or "").strip()
+    if not ts or not nonce_value or not signature_value:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="executor_attestation_missing")
+
+    try:
+        ts_value = int(ts)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="executor_attestation_invalid_ts") from exc
+
+    ttl_seconds = _executor_attestation_ttl_seconds()
+    now = int(time.time())
+    if abs(now - ts_value) > ttl_seconds:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="executor_attestation_expired")
+
+    payload_hash = _hash_payload_bytes(payload_bytes)
+    expected_sig = _compute_executor_signature(
+        key=key,
+        method=request.method,
+        path=request.url.path,
+        timestamp=ts,
+        nonce=nonce_value,
+        payload_hash=payload_hash,
+    )
+    if not hmac.compare_digest(signature_value, expected_sig):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="executor_attestation_invalid_signature")
+
+    store = _resolve_store(deps)
+    first_seen = await store.mark_executor_nonce_used(nonce_value, ttl_seconds=ttl_seconds)
+    if not first_seen:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="executor_attestation_replay")
 
 
 def _serialize_job(job: dict[str, Any]) -> SecureCheckoutJobResponse:
@@ -819,19 +956,22 @@ def create_secure_checkout_router() -> APIRouter:
     )
     async def consume_executor_secret(
         secret_ref: str,
+        request: Request,
         x_sardis_executor_token: Optional[str] = Header(default=None),
+        x_sardis_executor_timestamp: Optional[str] = Header(default=None),
+        x_sardis_executor_nonce: Optional[str] = Header(default=None),
+        x_sardis_executor_signature: Optional[str] = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
-        expected = os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
-        if expected:
-            presented = (x_sardis_executor_token or "").strip()
-            if not presented or not hmac.compare_digest(presented, expected):
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_executor_token")
-        elif _is_production_env():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="executor_token_not_configured",
-            )
+        await _verify_executor_auth(
+            deps=deps,
+            request=request,
+            token=x_sardis_executor_token,
+            timestamp=x_sardis_executor_timestamp,
+            nonce=x_sardis_executor_nonce,
+            signature=x_sardis_executor_signature,
+            payload_bytes=await request.body(),
+        )
 
         store = _resolve_store(deps)
         payload = await store.consume_secret(secret_ref)
@@ -847,19 +987,22 @@ def create_secure_checkout_router() -> APIRouter:
     async def complete_executor_job(
         job_id: str,
         payload: CompleteSecureCheckoutJobRequest,
+        request: Request,
         x_sardis_executor_token: Optional[str] = Header(default=None),
+        x_sardis_executor_timestamp: Optional[str] = Header(default=None),
+        x_sardis_executor_nonce: Optional[str] = Header(default=None),
+        x_sardis_executor_signature: Optional[str] = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
-        expected = os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
-        if expected:
-            presented = (x_sardis_executor_token or "").strip()
-            if not presented or not hmac.compare_digest(presented, expected):
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_executor_token")
-        elif _is_production_env():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="executor_token_not_configured",
-            )
+        await _verify_executor_auth(
+            deps=deps,
+            request=request,
+            token=x_sardis_executor_token,
+            timestamp=x_sardis_executor_timestamp,
+            nonce=x_sardis_executor_nonce,
+            signature=x_sardis_executor_signature,
+            payload_bytes=await request.body(),
+        )
 
         store = _resolve_store(deps)
         job = await store.get_job(job_id)
