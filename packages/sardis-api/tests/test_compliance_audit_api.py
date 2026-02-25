@@ -201,12 +201,14 @@ def test_mandate_audit_proof_missing_entry_returns_404():
     assert response.json()["detail"] == "audit_id_not_found_for_mandate"
 
 
-def test_export_evidence_bundle_contains_integrity_and_artifacts():
+def test_export_evidence_bundle_contains_integrity_and_artifacts(monkeypatch):
+    monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_SECRET", "test_signing_secret_123")
+    monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_KEY_ID", "test-k1")
     client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
 
     response = client.get(
         "/api/v2/compliance/audit/evidence/export",
-        params={"mandate_id": "m1", "approval_id": "appr_demo_1"},
+        params={"mandate_id": "m1", "approval_id": "appr_demo_1", "include_signature": "true"},
     )
 
     assert response.status_code == 200
@@ -221,6 +223,9 @@ def test_export_evidence_bundle_contains_integrity_and_artifacts():
     assert payload["integrity"]["hash_chain"]["length"] == 2
     assert payload["integrity"]["chain_verification"]["supported_by_store"] is True
     assert payload["integrity"]["chain_verification"]["verified"] is True
+    assert payload["signature"]["alg"] == "HS256"
+    assert payload["signature"]["kid"] == "test-k1"
+    assert payload["signature"]["token"]
     assert payload["artifacts"]["approval"]["id"] == "appr_demo_1"
 
 

@@ -498,6 +498,40 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _is_production_env() -> bool:
+    return (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower() in {"prod", "production"}
+
+
+def _evidence_signing_secret() -> str:
+    return (os.getenv("SARDIS_EVIDENCE_SIGNING_SECRET", "") or "").strip()
+
+
+def _evidence_signing_key_id() -> str:
+    return (os.getenv("SARDIS_EVIDENCE_SIGNING_KEY_ID", "v1") or "v1").strip()
+
+
+def _build_evidence_signature(payload: dict[str, Any]) -> dict[str, Any]:
+    secret = _evidence_signing_secret()
+    if not secret:
+        raise RuntimeError("evidence_signing_secret_not_configured")
+    from jwt import encode as jwt_encode
+
+    issued_at = int(time.time())
+    envelope = {
+        "iss": "sardis-api",
+        "iat": issued_at,
+        "evidence": payload,
+    }
+    kid = _evidence_signing_key_id()
+    token = jwt_encode(envelope, secret, algorithm="HS256", headers={"kid": kid, "typ": "JWT"})
+    return {
+        "alg": "HS256",
+        "kid": kid,
+        "issued_at": issued_at,
+        "token": token,
+    }
+
+
 def _require_kya_service(deps: ComplianceDependencies):
     if deps.kya_service is None:
         raise HTTPException(
@@ -1017,6 +1051,7 @@ async def export_audit_evidence_bundle(
     limit: int = Query(default=500, ge=1, le=5000),
     start_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 lower bound for evaluated_at"),
     end_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 upper bound for evaluated_at"),
+    include_signature: bool = Query(default=False),
     deps: ComplianceDependencies = Depends(get_deps),
     _: Principal = Depends(require_admin_principal),
 ):
@@ -1144,7 +1179,7 @@ async def export_audit_evidence_bundle(
         }
     )
 
-    return {
+    response_payload = {
         "metadata": {
             "generated_at": generated_at,
             "scope": {
@@ -1174,6 +1209,23 @@ async def export_audit_evidence_bundle(
             "audit_entries": serialized,
         },
     }
+    if include_signature:
+        sign_payload = {
+            "metadata": response_payload["metadata"],
+            "integrity": response_payload["integrity"],
+        }
+        try:
+            response_payload["signature"] = _build_evidence_signature(sign_payload)
+        except RuntimeError as exc:
+            if _is_production_env():
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=str(exc),
+                ) from exc
+            response_payload["signature"] = {
+                "error": str(exc),
+            }
+    return response_payload
 
 
 @router.get("/audit/verify-chain")
