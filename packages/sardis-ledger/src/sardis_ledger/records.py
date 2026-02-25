@@ -72,6 +72,8 @@ class ChainReceipt:
     confirmed: bool = True
     execution_path: str = "legacy_tx"
     user_op_hash: Optional[str] = None
+    proof_artifact_path: Optional[str] = None
+    proof_artifact_sha256: Optional[str] = None
 
     def __post_init__(self):
         if self.gas_price is not None:
@@ -90,6 +92,8 @@ class ChainReceipt:
             "confirmed": self.confirmed,
             "execution_path": self.execution_path,
             "user_op_hash": self.user_op_hash,
+            "proof_artifact_path": self.proof_artifact_path,
+            "proof_artifact_sha256": self.proof_artifact_sha256,
         }
 
 

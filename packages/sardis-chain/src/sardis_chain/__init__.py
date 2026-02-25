@@ -85,6 +85,11 @@ from .erc4337 import (
     PaymasterClient,
     PaymasterConfig,
     SponsoredUserOperation,
+    SponsorCapGuard,
+    SponsorCapExceeded,
+    StageCaps,
+    ERC4337ProofArtifact,
+    write_erc4337_proof_artifact,
 )
 from .gas_optimizer import (
     GasOptimizer,
@@ -163,6 +168,11 @@ __all__ = [
     "PaymasterClient",
     "PaymasterConfig",
     "SponsoredUserOperation",
+    "SponsorCapGuard",
+    "SponsorCapExceeded",
+    "StageCaps",
+    "ERC4337ProofArtifact",
+    "write_erc4337_proof_artifact",
     # Gas Optimizer
     "GasOptimizer",
     "GasOptimizerEstimate",

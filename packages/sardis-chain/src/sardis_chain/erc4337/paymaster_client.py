@@ -35,14 +35,20 @@ class PaymasterClient:
             raise RuntimeError(f"Paymaster RPC error ({method}): {data['error']}")
         return data.get("result")
 
-    async def sponsor_user_operation(self, user_op: UserOperation, entrypoint: str, chain: str) -> SponsoredUserOperation:
+    async def sponsor_user_operation(
+        self,
+        user_op: UserOperation,
+        entrypoint: str,
+        chain: str,
+        sponsorship_policy_id: str | None = None,
+    ) -> SponsoredUserOperation:
         result = await self._rpc(
             "pm_sponsorUserOperation",
             [
                 user_op.to_rpc(),
                 entrypoint,
                 {
-                    "sponsorshipPolicyId": f"sardis-{chain}",
+                    "sponsorshipPolicyId": sponsorship_policy_id or f"sardis-{chain}",
                 },
             ],
         )

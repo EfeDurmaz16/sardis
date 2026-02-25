@@ -85,6 +85,8 @@ class TransferResponse(BaseModel):
     audit_anchor: Optional[str] = None
     execution_path: Literal["legacy_tx", "erc4337_userop"] = "legacy_tx"
     user_op_hash: Optional[str] = None
+    proof_artifact_path: Optional[str] = None
+    proof_artifact_sha256: Optional[str] = None
 
 
 class WalletResponse(BaseModel):
@@ -646,6 +648,8 @@ async def transfer_crypto(
 
         execution_path = getattr(receipt, "execution_path", "legacy_tx")
         user_op_hash = getattr(receipt, "user_op_hash", None)
+        proof_artifact_path = getattr(receipt, "proof_artifact_path", None)
+        proof_artifact_sha256 = getattr(receipt, "proof_artifact_sha256", None)
         tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
         if deps.canonical_repo is not None:
             if execution_path == "erc4337_userop":
@@ -716,6 +720,8 @@ async def transfer_crypto(
             audit_anchor=getattr(receipt, "audit_anchor", None),
             execution_path=execution_path,
             user_op_hash=user_op_hash,
+            proof_artifact_path=proof_artifact_path,
+            proof_artifact_sha256=proof_artifact_sha256,
         )
 
     return await run_idempotent(

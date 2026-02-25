@@ -9,6 +9,7 @@ Requires:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -145,6 +146,65 @@ class FireblocksSigner:
     async def get_transaction_status(self, tx_id: str) -> Dict[str, Any]:
         """Get transaction status from Fireblocks."""
         return await self._request("GET", f"/transactions/{tx_id}")
+
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
+        """
+        Sign an ERC-4337 UserOperation hash via Fireblocks RAW operation.
+
+        Requires RAW signing to be enabled for the workspace.
+        """
+        payload_hex = user_op_hash.removeprefix("0x")
+        create_tx = await self._request(
+            "POST",
+            "/transactions",
+            {
+                "operation": "RAW",
+                "assetId": "ETH",
+                "source": {"type": "VAULT_ACCOUNT", "id": wallet_id},
+                "extraParameters": {
+                    "rawMessageData": {
+                        "messages": [{"content": payload_hex}],
+                    },
+                },
+                "note": "Sardis ERC-4337 UserOperation signature",
+            },
+        )
+        tx_id = str(create_tx.get("id", ""))
+        if not tx_id:
+            raise RuntimeError("Fireblocks RAW signing transaction did not return an ID")
+
+        for _ in range(60):
+            tx = await self.get_transaction_status(tx_id)
+            status = str(tx.get("status", "")).upper()
+            if status in {"COMPLETED", "CONFIRMED"}:
+                signed_messages = tx.get("signedMessages") or []
+                if not signed_messages:
+                    raise RuntimeError("Fireblocks RAW signing completed without signedMessages")
+                signature_obj = signed_messages[0].get("signature") or {}
+                full_sig = (
+                    signature_obj.get("fullSig")
+                    or signature_obj.get("fullSignature")
+                    or signature_obj.get("signature")
+                )
+                if isinstance(full_sig, str) and full_sig:
+                    return full_sig if full_sig.startswith("0x") else f"0x{full_sig}"
+
+                r = signature_obj.get("r")
+                s = signature_obj.get("s")
+                v = signature_obj.get("v")
+                if isinstance(r, str) and isinstance(s, str) and v is not None:
+                    r_hex = r.removeprefix("0x").zfill(64)
+                    s_hex = s.removeprefix("0x").zfill(64)
+                    v_int = int(v, 16) if isinstance(v, str) and v.startswith("0x") else int(v)
+                    if v_int < 27:
+                        v_int += 27
+                    return f"0x{r_hex}{s_hex}{v_int:02x}"
+                raise RuntimeError("Fireblocks signature payload missing r/s/v")
+            if status in {"FAILED", "REJECTED", "CANCELLED", "BLOCKED"}:
+                raise RuntimeError(f"Fireblocks RAW signing failed with status={status}")
+            await asyncio.sleep(1)
+
+        raise TimeoutError("Fireblocks RAW signing timed out")
 
     async def close(self) -> None:
         """Close the HTTP client."""

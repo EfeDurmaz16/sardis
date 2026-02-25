@@ -223,6 +223,8 @@ class SardisSettings(BaseSettings):
     pimlico_bundler_url: str = ""
     pimlico_paymaster_url: str = ""
     erc4337_entrypoint_v07_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
+    erc4337_rollout_stage: Literal["pilot", "beta", "ga"] = "pilot"
+    erc4337_sponsor_stage_caps_json: str = ""
 
     @property
     def is_production(self) -> bool:

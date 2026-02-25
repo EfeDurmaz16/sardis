@@ -78,6 +78,8 @@ from .erc4337.bundler_client import BundlerClient, BundlerConfig
 from .erc4337.paymaster_client import PaymasterClient, PaymasterConfig
 from .erc4337.user_operation import UserOperation, zero_hex
 from .erc4337.entrypoint import get_entrypoint_v07
+from .erc4337.sponsor_caps import SponsorCapGuard
+from .erc4337.proof_artifact import write_erc4337_proof_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -773,6 +775,11 @@ class MPCSignerPort(ABC):
         """Get the wallet address for a chain."""
         pass
 
+    @abstractmethod
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
+        """Sign an ERC-4337 UserOperation hash and return hex signature."""
+        pass
+
 
 class SimulatedMPCSigner(MPCSignerPort):
     """Simulated MPC signer for development."""
@@ -795,6 +802,10 @@ class SimulatedMPCSigner(MPCSignerPort):
         if key not in self._wallets:
             self._wallets[key] = "0x" + secrets.token_hex(20)
         return self._wallets[key]
+
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:  # noqa: ARG002
+        """Return a deterministic-length mock signature for simulated runs."""
+        return "0x" + secrets.token_hex(65)
 
 
 class TurnkeyMPCSigner(MPCSignerPort):
@@ -965,6 +976,89 @@ class TurnkeyMPCSigner(MPCSignerPort):
         logger.info(f"Transaction signed successfully")
         return signed_tx
 
+    @staticmethod
+    def _normalize_signature_hex(value: str) -> str:
+        sig = value.strip()
+        if not sig:
+            return ""
+        if not sig.startswith("0x"):
+            sig = f"0x{sig}"
+        return sig.lower()
+
+    @classmethod
+    def _extract_userop_signature(cls, activity: Dict[str, Any]) -> str:
+        result = activity.get("result", {}) if isinstance(activity, dict) else {}
+        sign_raw = (
+            result.get("signRawPayloadResult")
+            or result.get("signRawPayload")
+            or {}
+        )
+        if not isinstance(sign_raw, dict):
+            sign_raw = {}
+
+        for key in ("signature", "fullSignature", "fullSig"):
+            value = sign_raw.get(key) or result.get(key)
+            if isinstance(value, str) and value.strip():
+                return cls._normalize_signature_hex(value)
+
+        r = sign_raw.get("r")
+        s = sign_raw.get("s")
+        v = sign_raw.get("v")
+        if isinstance(r, str) and isinstance(s, str) and v is not None:
+            r_hex = r.removeprefix("0x").zfill(64)
+            s_hex = s.removeprefix("0x").zfill(64)
+            if isinstance(v, str):
+                try:
+                    v_int = int(v, 16) if v.startswith("0x") else int(v)
+                except ValueError:
+                    return ""
+            else:
+                v_int = int(v)
+            if v_int < 27:
+                v_int += 27
+            return f"0x{r_hex}{s_hex}{v_int:02x}"
+
+        return ""
+
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
+        """Sign ERC-4337 UserOperation hash with Turnkey raw-payload signing."""
+        payload_hex = user_op_hash if user_op_hash.startswith("0x") else f"0x{user_op_hash}"
+        sign_with = wallet_id
+        try:
+            address = await self.get_address(wallet_id, "base_sepolia")
+            if isinstance(address, str) and address.startswith("0x") and len(address) == 42:
+                sign_with = address
+        except Exception:
+            pass
+
+        activity_body = {
+            "type": "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+            "organizationId": self._org_id,
+            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+            "parameters": {
+                "signWith": sign_with,
+                "payload": payload_hex,
+                "encoding": "PAYLOAD_ENCODING_HEXADECIMAL",
+                "hashFunction": "HASH_FUNCTION_NO_OP",
+            },
+        }
+        result = await self._make_request(
+            "POST",
+            "/public/v1/submit/sign_raw_payload",
+            activity_body,
+        )
+
+        activity = result.get("activity", {})
+        activity_id = activity.get("id", "")
+        status = activity.get("status", "")
+        if status != "ACTIVITY_STATUS_COMPLETED" and activity_id:
+            activity = await self._poll_activity(activity_id)
+
+        signature = self._extract_userop_signature(activity)
+        if not signature:
+            raise RuntimeError("Turnkey did not return a usable UserOperation signature")
+        return signature
+
     async def get_address(self, wallet_id: str, chain: str) -> str:
         """Get wallet address from Turnkey."""
         result = await self._make_request(
@@ -1051,9 +1145,11 @@ class TurnkeyMPCSigner(MPCSignerPort):
 
     async def close(self):
         """Close HTTP client."""
-        if self._http_client:
-            await self._http_client.aclose()
-            self._http_client = None
+        client_close = getattr(self._client, "close", None)
+        if callable(client_close):
+            maybe_awaitable = client_close()
+            if asyncio.iscoroutine(maybe_awaitable):
+                await maybe_awaitable
 
 
 class LocalAccountSigner(MPCSignerPort):
@@ -1095,6 +1191,13 @@ class LocalAccountSigner(MPCSignerPort):
 
     async def get_address(self, wallet_id: str, chain: str) -> str:  # noqa: ARG002
         return self._address
+
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:  # noqa: ARG002
+        from eth_account.messages import encode_defunct
+
+        message = encode_defunct(hexstr=user_op_hash)
+        signed = self._account.sign_message(message)
+        return signed.signature.hex()
 
 
 @dataclass
@@ -1485,8 +1588,13 @@ class ChainExecutor:
         self._confirmation_trackers: Dict[str, ConfirmationTracker] = {}
         self._bundler: Optional[BundlerClient] = None
         self._paymaster: Optional[PaymasterClient] = None
+        self._erc4337_sponsor_guard: Optional[SponsorCapGuard] = None
 
         if self._erc4337_enabled:
+            self._erc4337_sponsor_guard = SponsorCapGuard(
+                stage=settings.erc4337_rollout_stage,
+                stage_caps_json=settings.erc4337_sponsor_stage_caps_json,
+            )
             self._init_erc4337_clients()
 
         # Initialize MPC signer based on settings
@@ -1908,16 +2016,16 @@ class ChainExecutor:
                 "Set SARDIS_PIMLICO_PAYMASTER_URL or SARDIS_PIMLICO_API_KEY."
             )
 
-    async def _sign_user_operation_hash(self, user_op_hash: str) -> str:
-        if isinstance(self._mpc_signer, LocalAccountSigner):
-            from eth_account.messages import encode_defunct
+    async def _sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
+        if not self._mpc_signer:
+            raise RuntimeError("No MPC signer configured for ERC-4337 signature.")
 
-            signed = self._mpc_signer._account.sign_message(encode_defunct(hexstr=user_op_hash))  # type: ignore[attr-defined]
-            return signed.signature.hex()
-        raise RuntimeError(
-            "ERC-4337 signing is currently supported with SARDIS_MPC__NAME=local. "
-            "Turnkey/Fireblocks UserOperation signing endpoint wiring is pending."
-        )
+        signature = await self._mpc_signer.sign_user_operation_hash(wallet_id, user_op_hash)
+        if not isinstance(signature, str) or not signature.strip():
+            raise RuntimeError("MPC signer returned empty UserOperation signature.")
+        if not signature.startswith("0x"):
+            signature = f"0x{signature}"
+        return signature
 
     async def _execute_erc4337_payment(
         self,
@@ -1974,15 +2082,30 @@ class ChainExecutor:
         user_op.max_fee_per_gas = 2_000_000_000
         user_op.max_priority_fee_per_gas = 1_000_000_000
 
+        if self._erc4337_sponsor_guard is not None:
+            estimated_cost_wei = self._erc4337_sponsor_guard.estimate_max_cost_wei(user_op)
+            self._erc4337_sponsor_guard.reserve(chain=chain, estimated_cost_wei=estimated_cost_wei)
+            logger.info(
+                "ERC-4337 sponsor cap reserved chain=%s stage=%s estimated_cost_wei=%s",
+                chain,
+                self._erc4337_sponsor_guard.stage,
+                estimated_cost_wei,
+            )
+
         sponsored = await self._paymaster.sponsor_user_operation(
             user_op=user_op,
             entrypoint=entrypoint,
             chain=chain,
+            sponsorship_policy_id=(
+                f"sardis-{chain}-{self._erc4337_sponsor_guard.stage}"
+                if self._erc4337_sponsor_guard is not None
+                else f"sardis-{chain}"
+            ),
         )
         user_op.paymaster_and_data = sponsored.paymaster_and_data
 
         user_op_hash = await self._bundler.get_user_operation_hash(user_op, entrypoint)
-        user_op.signature = await self._sign_user_operation_hash(user_op_hash)
+        user_op.signature = await self._sign_user_operation_hash(wallet_id, user_op_hash)
 
         submitted_hash = await self._bundler.send_user_operation(user_op, entrypoint)
         receipt = await self._bundler.wait_for_receipt(submitted_hash, timeout_seconds=180)
@@ -1992,6 +2115,27 @@ class ChainExecutor:
         if not tx_hash:
             raise RuntimeError("Bundler did not return a transaction hash for UserOperation.")
 
+        proof_artifact_path: str | None = None
+        proof_artifact_sha256: str | None = None
+        artifact_base_dir = os.getenv("SARDIS_ERC4337_PROOF_ARTIFACT_DIR", "artifacts/erc4337")
+        try:
+            artifact = write_erc4337_proof_artifact(
+                base_dir=artifact_base_dir,
+                mandate_id=mandate.mandate_id,
+                chain=chain,
+                wallet_id=wallet_id,
+                smart_account=smart_account,
+                entrypoint=entrypoint,
+                user_operation=user_op.to_rpc(),
+                user_op_hash=submitted_hash,
+                tx_hash=tx_hash,
+                receipt=receipt,
+            )
+            proof_artifact_path = artifact.path
+            proof_artifact_sha256 = artifact.sha256
+        except Exception as exc:
+            logger.warning("Failed to persist ERC-4337 proof artifact for %s: %s", mandate.mandate_id, exc)
+
         return ChainReceipt(
             tx_hash=tx_hash,
             chain=chain,
@@ -1999,6 +2143,8 @@ class ChainExecutor:
             audit_anchor=audit_anchor,
             execution_path="erc4337_userop",
             user_op_hash=submitted_hash,
+            proof_artifact_path=proof_artifact_path,
+            proof_artifact_sha256=proof_artifact_sha256,
         )
 
     async def _execute_live_payment(
