@@ -405,7 +405,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)
-    from sardis_compliance import create_kyc_service, create_sanctions_service
+    from sardis_compliance import create_kyc_service, create_sanctions_service, create_kya_service
     kyc_service = create_kyc_service(
         api_key=os.getenv("PERSONA_API_KEY"),
         template_id=os.getenv("PERSONA_TEMPLATE_ID"),
@@ -416,11 +416,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         api_key=os.getenv("ELLIPTIC_API_KEY"),
         api_secret=os.getenv("ELLIPTIC_API_SECRET"),
     )
+    kya_service = create_kya_service(
+        liveness_timeout=int(os.getenv("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300")),
+    )
     compliance = ComplianceEngine(
         settings=settings,
         audit_store=audit_store,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
+        kya_service=kya_service,
     )
     identity_registry = IdentityRegistry()
 
@@ -475,6 +479,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         agent_repo=agent_repo,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
+        kya_service=kya_service,
         approval_service=approval_service,
         settings=settings,
         wallet_manager=wallet_mgr,
@@ -618,6 +623,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_executor=chain_exec,
         policy_store=policy_store,
         approval_service=approval_service,
+        sanctions_service=sanctions_service,
+        kya_service=kya_service,
         coinbase_cdp_provider=coinbase_cdp_provider,
         default_on_chain_provider=configured_on_chain_provider,
         audit_store=audit_store,
@@ -1094,6 +1101,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
+        audit_store=audit_store,
+        kya_service=kya_service,
     )
     app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
     if hasattr(compliance_router, "public_router"):

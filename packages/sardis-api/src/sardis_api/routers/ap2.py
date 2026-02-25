@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, replace
+from decimal import Decimal
 from inspect import isawaitable
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -38,6 +39,7 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 # KYC thresholds (amounts in minor units - cents for USD)
 KYC_THRESHOLD_MINOR = 100000  # $1000 requires KYC
 HIGH_VALUE_THRESHOLD_MINOR = 1000000  # $10000 enhanced verification
+KYT_REVIEW_DEFAULT = {"high", "severe"}
 PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bignore\s+previous\s+instructions\b", re.IGNORECASE),
     re.compile(r"\boverride\s+safety\b", re.IGNORECASE),
@@ -55,6 +57,7 @@ class Dependencies:
     wallet_repo: "WalletRepository"
     agent_repo: AgentRepository
     kyc_service: Optional["KYCService"] = None
+    kya_service: Optional[Any] = None
     sanctions_service: Optional["SanctionsService"] = None
     approval_service: Optional["ApprovalService"] = None
     settings: Optional[object] = None
@@ -71,11 +74,49 @@ def get_deps() -> Dependencies:
 class ComplianceCheckResult:
     """Result of compliance checks."""
     passed: bool
+    kya_verified: bool = False
     kyc_verified: bool = False
     sanctions_clear: bool = True
+    kyt_review_required: bool = False
+    kyt_risk_level: Optional[str] = None
+    kyt_reason: Optional[str] = None
     reason: Optional[str] = None
     provider: Optional[str] = None
     rule: Optional[str] = None
+
+
+def _is_truthy_env(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _kya_enforcement_enabled() -> bool:
+    return _is_truthy_env(os.getenv("SARDIS_KYA_ENFORCEMENT_ENABLED", "false"))
+
+
+def _kyt_review_levels() -> set[str]:
+    raw = os.getenv("SARDIS_KYT_REVIEW_LEVELS", "high,severe")
+    parsed = {part.strip().lower() for part in raw.split(",") if part.strip()}
+    return parsed or set(KYT_REVIEW_DEFAULT)
+
+
+def _sanctions_risk_level(screening_result: Any) -> str:
+    level = getattr(screening_result, "risk_level", None)
+    level_value = getattr(level, "value", level)
+    if level_value is None:
+        return "unknown"
+    return str(level_value).strip().lower()
+
+
+def _risk_rank(level: str) -> int:
+    order = {
+        "low": 1,
+        "medium": 2,
+        "high": 3,
+        "severe": 4,
+        "blocked": 5,
+        "unknown": 0,
+    }
+    return order.get(level, 0)
 
 
 async def _compliance_checks_impl(
@@ -84,6 +125,8 @@ async def _compliance_checks_impl(
     destination: str,
     chain: str,
     amount_minor: int,
+    source_address: Optional[str] = None,
+    token: str = "USDC",
 ) -> ComplianceCheckResult:
     """
     Perform all compliance checks for a payment.
@@ -93,6 +136,43 @@ async def _compliance_checks_impl(
     2. Sanctions screening for sender and recipient addresses
     """
     result = ComplianceCheckResult(passed=True)
+    env_name = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
+
+    # Check KYA for agent-level constraints if explicitly enabled.
+    if _kya_enforcement_enabled():
+        if deps.kya_service is None:
+            if env_name in {"prod", "production"}:
+                result.passed = False
+                result.reason = "kya_service_not_configured"
+                result.provider = "sardis_kya"
+                result.rule = "kya_configuration"
+                return result
+        else:
+            try:
+                from sardis_compliance.kya import KYACheckRequest
+
+                amount_decimal = Decimal(str(amount_minor)) / Decimal("100")
+                kya_result = await deps.kya_service.check_agent(
+                    KYACheckRequest(
+                        agent_id=agent_id,
+                        amount=amount_decimal,
+                        merchant_id=destination,
+                    )
+                )
+                if not getattr(kya_result, "allowed", False):
+                    result.passed = False
+                    result.reason = "kya_denied"
+                    result.provider = "sardis_kya"
+                    result.rule = getattr(kya_result, "reason", None) or "kya_verification"
+                    return result
+                result.kya_verified = True
+            except Exception as e:
+                logger.error("KYA check failed for agent %s: %s", agent_id, e)
+                result.passed = False
+                result.reason = "kya_service_error"
+                result.provider = "sardis_kya"
+                result.rule = "kya_verification"
+                return result
     
     # Check KYC for high-value transactions
     if deps.kyc_service and amount_minor >= KYC_THRESHOLD_MINOR:
@@ -132,30 +212,54 @@ async def _compliance_checks_impl(
     # Screen destination address for sanctions
     if deps.sanctions_service:
         try:
-            # Screen the recipient address
+            # Screen recipient and source (if present) to strengthen KYT coverage.
+            screenings: list[tuple[str, Any]] = []
             screening_result = await deps.sanctions_service.screen_address(destination, chain=chain)
+            screenings.append((destination, screening_result))
+            if source_address and source_address.lower() != destination.lower():
+                source_result = await deps.sanctions_service.screen_address(source_address, chain=chain)
+                screenings.append((source_address, source_result))
 
-            if screening_result.should_block:
-                result.passed = False
-                result.sanctions_clear = False
-                result.reason = "sanctions_hit"
-                result.provider = screening_result.provider
-                result.rule = screening_result.reason or "sanctions"
+            highest_risk_level = "unknown"
+            highest_risk_result: Any = None
+            for screened_address, screen in screenings:
+                if getattr(screen, "should_block", False):
+                    result.passed = False
+                    result.sanctions_clear = False
+                    result.reason = "sanctions_hit"
+                    result.provider = getattr(screen, "provider", None)
+                    result.rule = getattr(screen, "reason", None) or "sanctions"
 
-                logger.warning(
-                    "Sanctions hit for destination %s: %s",
-                    destination,
-                    screening_result.reason,
-                )
-                return result
-                
+                    logger.warning(
+                        "Sanctions hit for %s: %s",
+                        screened_address,
+                        getattr(screen, "reason", None),
+                    )
+                    return result
+                risk_level = _sanctions_risk_level(screen)
+                if _risk_rank(risk_level) > _risk_rank(highest_risk_level):
+                    highest_risk_level = risk_level
+                    highest_risk_result = screen
+
             result.sanctions_clear = True
+            review_levels = _kyt_review_levels()
+            if highest_risk_level in review_levels:
+                result.kyt_review_required = True
+                result.kyt_risk_level = highest_risk_level
+                result.kyt_reason = (
+                    getattr(highest_risk_result, "reason", None)
+                    or f"kyt_{highest_risk_level}_risk_review_required"
+                )
+                result.provider = getattr(highest_risk_result, "provider", None) or "sanctions"
+                result.rule = f"kyt_risk:{highest_risk_level}"
             
         except Exception as e:
             logger.error(f"Sanctions screening failed for {destination}: {e}")
             # Fail closed for sanctions errors
             result.passed = False
             result.reason = "sanctions_service_error"
+            result.provider = "sanctions"
+            result.rule = "sanctions_service_error"
             return result
     
     return result
@@ -225,6 +329,34 @@ async def _append_policy_decision_audit(
         rule_id=receipt_payload.get("policy_id"),
         provider="policy_engine",
         metadata=receipt_payload,
+    )
+    result = deps.audit_store.append(entry)
+    if isawaitable(result):
+        result = await result
+    return str(result or entry.audit_id)
+
+
+async def _append_compliance_decision_audit(
+    *,
+    deps: Dependencies,
+    mandate_id: str,
+    subject: str,
+    allowed: bool,
+    reason: str,
+    provider: str,
+    rule_id: Optional[str] = None,
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[str]:
+    if deps.audit_store is None:
+        return None
+    entry = ComplianceAuditEntry(
+        mandate_id=mandate_id,
+        subject=subject,
+        allowed=allowed,
+        reason=reason,
+        rule_id=rule_id,
+        provider=provider,
+        metadata=metadata or {},
     )
     result = deps.audit_store.append(entry)
     if isawaitable(result):
@@ -383,8 +515,6 @@ async def execute_ap2_payment(
                                 receipt_payload=receipt,
                             )
                         if deps.approval_service:
-                            from decimal import Decimal
-
                             amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
                             approval = await deps.approval_service.create_approval(
                                 action="payment",
@@ -451,8 +581,6 @@ async def execute_ap2_payment(
             injection_match = _detect_prompt_injection_signal(payload)
             if injection_match:
                 if deps.approval_service:
-                    from decimal import Decimal
-
                     amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
                     approval = await deps.approval_service.create_approval(
                         action="payment",
@@ -490,8 +618,6 @@ async def execute_ap2_payment(
         drift_block_threshold = float(os.getenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90"))
         if drift_score >= drift_block_threshold:
             if deps.approval_service:
-                from decimal import Decimal
-
                 amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
                 approval = await deps.approval_service.create_approval(
                     action="payment",
@@ -532,6 +658,8 @@ async def execute_ap2_payment(
             destination=payment.destination,
             chain=payment.chain,
             amount_minor=payment.amount_minor,
+            source_address=wallet.get_address(payment.chain) if hasattr(wallet, "get_address") else None,
+            token=payment.token,
         )
 
         if not compliance.passed:
@@ -539,14 +667,116 @@ async def execute_ap2_payment(
                 f"Compliance check failed for mandate {payment.mandate_id}: "
                 f"{compliance.reason}"
             )
+            await _append_compliance_decision_audit(
+                deps=deps,
+                mandate_id=payment.mandate_id,
+                subject=payment.subject,
+                allowed=False,
+                reason=compliance.reason or "compliance_denied",
+                provider=compliance.provider or "compliance_engine",
+                rule_id=compliance.rule,
+                metadata={
+                    "phase": "pre_execution",
+                    "destination": payment.destination,
+                    "amount_minor": payment.amount_minor,
+                    "token": payment.token,
+                    "chain": payment.chain,
+                    "kyt_risk_level": compliance.kyt_risk_level,
+                },
+            )
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": compliance.reason,
                     "provider": compliance.provider,
                     "rule": compliance.rule,
+                    "kyt_risk_level": compliance.kyt_risk_level,
                 },
             )
+
+        if compliance.kyt_review_required:
+            await _append_compliance_decision_audit(
+                deps=deps,
+                mandate_id=payment.mandate_id,
+                subject=payment.subject,
+                allowed=False,
+                reason="kyt_review_required",
+                provider=compliance.provider or "sanctions",
+                rule_id=compliance.rule,
+                metadata={
+                    "phase": "pre_execution",
+                    "kyt_risk_level": compliance.kyt_risk_level,
+                    "kyt_reason": compliance.kyt_reason,
+                    "destination": payment.destination,
+                    "source": wallet.get_address(payment.chain) if hasattr(wallet, "get_address") else None,
+                    "amount_minor": payment.amount_minor,
+                    "token": payment.token,
+                    "chain": payment.chain,
+                },
+            )
+            if deps.approval_service:
+                amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
+                approval = await deps.approval_service.create_approval(
+                    action="payment",
+                    requested_by=payment.subject,
+                    agent_id=payment.subject,
+                    wallet_id=getattr(payment, "wallet_id", None),
+                    vendor=payment.destination,
+                    amount=amount_decimal,
+                    purpose=f"AP2 payment to {payment.destination}",
+                    reason=(
+                        f"kyt_review_required:risk={compliance.kyt_risk_level}"
+                        f":{compliance.kyt_reason or 'unspecified'}"
+                    ),
+                    urgency="high",
+                    metadata={
+                        "mandate_id": payment.mandate_id,
+                        "risk_signal": "kyt_risk",
+                        "kyt_risk_level": compliance.kyt_risk_level,
+                        "kyt_reason": compliance.kyt_reason,
+                        "canonicalization_mode": payload.canonicalization_mode,
+                    },
+                )
+                return 202, AP2PaymentExecuteResponse(
+                    mandate_id=payment.mandate_id,
+                    ledger_tx_id="",
+                    chain_tx_hash="",
+                    chain=payment.chain,
+                    audit_anchor="",
+                    status="pending_approval",
+                    compliance_provider=compliance.provider,
+                    compliance_rule=compliance.rule,
+                    approval_id=approval.id,
+                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "kyt_review_required",
+                    "provider": compliance.provider,
+                    "rule": compliance.rule,
+                    "kyt_risk_level": compliance.kyt_risk_level,
+                },
+            )
+
+        await _append_compliance_decision_audit(
+            deps=deps,
+            mandate_id=payment.mandate_id,
+            subject=payment.subject,
+            allowed=True,
+            reason="compliance_passed",
+            provider=compliance.provider or "compliance_engine",
+            rule_id=compliance.rule or "compliance_preflight",
+            metadata={
+                "phase": "pre_execution",
+                "destination": payment.destination,
+                "amount_minor": payment.amount_minor,
+                "token": payment.token,
+                "chain": payment.chain,
+                "kyt_risk_level": compliance.kyt_risk_level,
+                "kya_verified": compliance.kya_verified,
+                "kyc_verified": compliance.kyc_verified,
+            },
+        )
 
         # Step 2.5: Goal drift logging
         if verification.drift_score > 0:
@@ -566,7 +796,6 @@ async def execute_ap2_payment(
                 approval_threshold = getattr(policy, 'approval_threshold', None)
 
             if approval_threshold is not None:
-                from decimal import Decimal
                 amount_decimal = Decimal(str(payment.amount_minor)) / Decimal("100")
                 if amount_decimal > approval_threshold:
                     # Create approval request and return 202

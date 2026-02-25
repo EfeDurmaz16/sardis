@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from inspect import isawaitable
 import json
 import logging
 import os
 import time
-from typing import Optional, List
+from typing import Any, Optional, List
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_admin_principal, require_principal
@@ -272,14 +273,37 @@ class TransactionScreenRequest(BaseModel):
 class ComplianceDependencies:
     """Dependencies for compliance endpoints."""
 
-    def __init__(self, kyc_service, sanctions_service):
+    def __init__(self, kyc_service, sanctions_service, audit_store=None, kya_service=None):
         self.kyc_service = kyc_service
         self.sanctions_service = sanctions_service
+        self.audit_store = audit_store
+        self.kya_service = kya_service
 
 
 def get_deps() -> ComplianceDependencies:
     """Get compliance dependencies (override in main.py)."""
     raise NotImplementedError("Dependency override required")
+
+
+async def _resolve_maybe_awaitable(value: Any) -> Any:
+    if isawaitable(value):
+        return await value
+    return value
+
+
+def _serialize_audit_entry(entry: Any) -> dict[str, Any]:
+    if hasattr(entry, "to_dict") and callable(entry.to_dict):
+        payload = entry.to_dict()
+        if isinstance(payload, dict):
+            return payload
+    if isinstance(entry, dict):
+        return dict(entry)
+    return {"raw": str(entry)}
+
+
+def _compute_audit_entries_digest(entries: list[dict[str, Any]]) -> str:
+    canonical = json.dumps(entries, sort_keys=True, separators=(",", ":"), default=str)
+    return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
 # ============================================================================
@@ -533,12 +557,114 @@ async def get_compliance_status(
             "is_mock": "Mock" in deps.sanctions_service._provider.__class__.__name__,
             "cache_ttl": deps.sanctions_service._cache_ttl,
         },
+        "kya": {
+            "enabled": deps.kya_service is not None,
+            "provider": deps.kya_service.__class__.__name__ if deps.kya_service is not None else None,
+        },
+        "audit": {
+            "store": deps.audit_store.__class__.__name__ if deps.audit_store is not None else None,
+            "supports_chain_verification": bool(
+                deps.audit_store is not None
+                and callable(getattr(deps.audit_store, "verify_chain_integrity", None))
+            ),
+        },
         "environment": os.getenv("SARDIS_ENVIRONMENT", "development"),
         "message": (
             "Using production providers"
             if not ("Mock" in deps.kyc_service._provider.__class__.__name__)
             else "Using mock providers for development"
         ),
+    }
+
+
+@router.get("/audit/mandate/{mandate_id}")
+async def get_mandate_audit_trail(
+    mandate_id: str,
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Return immutable compliance audit entries for a mandate with deterministic digest."""
+    if deps.audit_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="audit_store_not_configured",
+        )
+
+    entries = await _resolve_maybe_awaitable(deps.audit_store.get_by_mandate(mandate_id))
+    serialized = [_serialize_audit_entry(entry) for entry in entries]
+    return {
+        "mandate_id": mandate_id,
+        "count": len(serialized),
+        "entries_digest": _compute_audit_entries_digest(serialized),
+        "entries": serialized,
+    }
+
+
+@router.get("/audit/recent")
+async def get_recent_audit_entries(
+    limit: int = Query(default=100, ge=1, le=1000),
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Return recent compliance audit entries for operational monitoring."""
+    if deps.audit_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="audit_store_not_configured",
+        )
+    entries = await _resolve_maybe_awaitable(deps.audit_store.get_recent(limit))
+    serialized = [_serialize_audit_entry(entry) for entry in entries]
+    return {
+        "limit": limit,
+        "count": len(serialized),
+        "entries_digest": _compute_audit_entries_digest(serialized),
+        "entries": serialized,
+    }
+
+
+@router.get("/audit/verify-chain")
+async def verify_audit_chain_integrity(
+    deps: ComplianceDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    """Verify append-only hash-chain integrity for compliance audit storage."""
+    if deps.audit_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="audit_store_not_configured",
+        )
+
+    verifier = getattr(deps.audit_store, "verify_chain_integrity", None)
+    entry_count = None
+    if callable(getattr(deps.audit_store, "count", None)):
+        entry_count = await _resolve_maybe_awaitable(deps.audit_store.count())
+
+    if not callable(verifier):
+        return {
+            "supported": False,
+            "verified": None,
+            "error": "chain_verification_not_supported_by_store",
+            "entry_count": entry_count,
+        }
+
+    verification_result = await _resolve_maybe_awaitable(verifier())
+    verified: Optional[bool]
+    error: Optional[str]
+    if isinstance(verification_result, tuple) and len(verification_result) >= 2:
+        verified = bool(verification_result[0])
+        error = verification_result[1]
+    elif isinstance(verification_result, bool):
+        verified = verification_result
+        error = None
+    else:
+        verified = None
+        error = "unexpected_verifier_result"
+
+    return {
+        "supported": True,
+        "verified": verified,
+        "error": error,
+        "entry_count": entry_count,
     }
 
 
