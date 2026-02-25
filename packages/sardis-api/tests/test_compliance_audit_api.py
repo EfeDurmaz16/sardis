@@ -43,6 +43,11 @@ class _AuditEntry:
             }
         elif self.audit_id == "a2":
             metadata = {"approval_id": "appr_demo_1"}
+        evaluated_at = {
+            "a1": "2026-02-24T10:00:00+00:00",
+            "a2": "2026-02-25T10:00:00+00:00",
+            "a3": "2026-02-26T10:00:00+00:00",
+        }.get(self.audit_id, datetime.now(timezone.utc).isoformat())
         return {
             "audit_id": self.audit_id,
             "mandate_id": self.mandate_id,
@@ -51,7 +56,7 @@ class _AuditEntry:
             "reason": "ok",
             "rule_id": "rule_1",
             "provider": "policy_engine",
-            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+            "evaluated_at": evaluated_at,
             "metadata": metadata,
         }
 
@@ -224,3 +229,21 @@ def test_export_evidence_bundle_requires_selector():
     response = client.get("/api/v2/compliance/audit/evidence/export")
     assert response.status_code == 400
     assert response.json()["detail"] == "mandate_id_or_approval_id_required"
+
+
+def test_export_evidence_bundle_supports_time_window_filter():
+    client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
+    response = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={
+            "mandate_id": "m1",
+            "approval_id": "appr_demo_1",
+            "start_at": "2026-02-25T00:00:00+00:00",
+            "end_at": "2026-02-25T23:59:59+00:00",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["metadata"]["counts"]["total_entries"] == 1
+    assert payload["metadata"]["scope"]["start_at"] == "2026-02-25T00:00:00+00:00"
+    assert payload["metadata"]["scope"]["end_at"] == "2026-02-25T23:59:59+00:00"

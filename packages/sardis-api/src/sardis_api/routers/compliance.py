@@ -481,6 +481,23 @@ def _compute_bundle_digest(payload: dict[str, Any]) -> str:
     return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
+def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(text)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except Exception:
+        return None
+
+
 def _require_kya_service(deps: ComplianceDependencies):
     if deps.kya_service is None:
         raise HTTPException(
@@ -998,6 +1015,8 @@ async def export_audit_evidence_bundle(
     mandate_id: Optional[str] = Query(default=None),
     approval_id: Optional[str] = Query(default=None),
     limit: int = Query(default=500, ge=1, le=5000),
+    start_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 lower bound for evaluated_at"),
+    end_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 upper bound for evaluated_at"),
     deps: ComplianceDependencies = Depends(get_deps),
     _: Principal = Depends(require_admin_principal),
 ):
@@ -1025,6 +1044,25 @@ async def export_audit_evidence_bundle(
     else:
         entries = await _resolve_maybe_awaitable(deps.audit_store.get_recent(limit))
     serialized = [_serialize_audit_entry(entry) for entry in entries]
+    start_dt = _parse_iso_datetime(start_at)
+    end_dt = _parse_iso_datetime(end_at)
+    if (start_at and start_dt is None) or (end_at and end_dt is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid_time_window",
+        )
+    if start_dt is not None or end_dt is not None:
+        windowed: list[dict[str, Any]] = []
+        for entry in serialized:
+            evaluated = _parse_iso_datetime(str(entry.get("evaluated_at", "")))
+            if evaluated is None:
+                continue
+            if start_dt is not None and evaluated < start_dt:
+                continue
+            if end_dt is not None and evaluated > end_dt:
+                continue
+            windowed.append(entry)
+        serialized = windowed
 
     policy_entries = [
         entry for entry in serialized if str(entry.get("provider", "")).strip().lower() == "policy_engine"
@@ -1095,6 +1133,8 @@ async def export_audit_evidence_bundle(
                 "mandate_id": mandate_id,
                 "approval_id": approval_id,
                 "limit": limit,
+                "start_at": start_at,
+                "end_at": end_at,
             },
             "counts": counts,
             "entries_digest": entries_digest,
@@ -1111,8 +1151,11 @@ async def export_audit_evidence_bundle(
                 "mandate_id": mandate_id,
                 "approval_id": approval_id,
                 "limit": limit,
+                "start_at": start_at,
+                "end_at": end_at,
             },
             "counts": counts,
+            "hints_version": "evidence-v1",
             "verifier_hints": verifier_hints,
         },
         "integrity": {
