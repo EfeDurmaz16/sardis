@@ -34,8 +34,11 @@ Usage:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import json
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -153,6 +156,16 @@ class AgentManifest:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AgentManifest":
+        created_at = data.get("created_at")
+        if isinstance(created_at, str):
+            try:
+                created_at_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                created_at_dt = datetime.now(timezone.utc)
+        elif isinstance(created_at, datetime):
+            created_at_dt = created_at
+        else:
+            created_at_dt = datetime.now(timezone.utc)
         return cls(
             agent_id=data["agent_id"],
             owner_id=data["owner_id"],
@@ -165,6 +178,7 @@ class AgentManifest:
             framework_version=data.get("framework_version"),
             description=data.get("description"),
             metadata=data.get("metadata", {}),
+            created_at=created_at_dt,
         )
 
     @property
@@ -408,6 +422,272 @@ class InMemoryKYAStore:
         self._code_attestations.pop(agent_id, None)
 
 
+class PostgresKYAStore(InMemoryKYAStore):
+    """PostgreSQL-backed KYA store with in-memory hot cache for fast checks."""
+
+    def __init__(self, dsn: str):
+        super().__init__()
+        self._dsn = dsn
+        self._pool = None
+        self._initialized = False
+        self._loaded = False
+        self._init_lock = asyncio.Lock()
+        self._load_lock = asyncio.Lock()
+        self._liveness_state: Dict[str, Dict[str, Any]] = {}
+
+    async def _get_pool(self):
+        if self._pool is None:
+            import asyncpg
+
+            dsn = self._dsn
+            if dsn.startswith("postgres://"):
+                dsn = dsn.replace("postgres://", "postgresql://", 1)
+            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
+        return self._pool
+
+    async def _ensure_initialized(self) -> None:
+        if self._initialized:
+            return
+        async with self._init_lock:
+            if self._initialized:
+                return
+
+            pool = await self._get_pool()
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+            async with pool.acquire() as conn:
+                if env in ("prod", "production"):
+                    exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'kya_agents')"
+                    )
+                    if not exists:
+                        raise RuntimeError(
+                            "kya_agents table not found. "
+                            "Run: ./scripts/run_migrations.sh"
+                        )
+                else:
+                    await conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS kya_agents (
+                            id SERIAL PRIMARY KEY,
+                            agent_id VARCHAR(255) UNIQUE NOT NULL,
+                            owner_id VARCHAR(255),
+                            manifest JSONB NOT NULL DEFAULT '{}'::jsonb,
+                            kya_level VARCHAR(32) NOT NULL DEFAULT 'none',
+                            kya_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                            trust_score JSONB,
+                            code_attestation JSONB,
+                            liveness JSONB,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_kya_agents_level ON kya_agents(kya_level);
+                        CREATE INDEX IF NOT EXISTS idx_kya_agents_status ON kya_agents(kya_status);
+                        """
+                    )
+
+            self._initialized = True
+
+    @staticmethod
+    def _parse_datetime(value: Any) -> datetime:
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        if isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+        return datetime.now(timezone.utc)
+
+    @classmethod
+    def _trust_score_from_dict(cls, agent_id: str, data: Any) -> Optional[AgentTrustScore]:
+        if not isinstance(data, dict):
+            return None
+        return AgentTrustScore(
+            agent_id=agent_id,
+            score=float(data.get("score", 0.0) or 0.0),
+            successful_payments=int(data.get("successful_payments", 0) or 0),
+            failed_payments=int(data.get("failed_payments", 0) or 0),
+            policy_violations=int(data.get("policy_violations", 0) or 0),
+            total_volume=Decimal(str(data.get("total_volume", "0"))),
+            uptime_ratio=float(data.get("uptime_ratio", 1.0) or 1.0),
+            age_days=int(data.get("age_days", 0) or 0),
+            last_updated=cls._parse_datetime(data.get("last_updated")),
+        )
+
+    @classmethod
+    def _code_attestation_from_dict(cls, data: Any) -> Optional[CodeAttestation]:
+        if not isinstance(data, dict):
+            return None
+        code_hash = str(data.get("code_hash", "")).strip()
+        if not code_hash:
+            return None
+        return CodeAttestation(
+            code_hash=code_hash,
+            framework=data.get("framework"),
+            version=data.get("version"),
+            attested_at=cls._parse_datetime(data.get("attested_at")),
+            attester=str(data.get("attester", "self")),
+            tee_attestation=data.get("tee_attestation"),
+        )
+
+    @staticmethod
+    def _trust_score_to_dict(score: AgentTrustScore) -> Dict[str, Any]:
+        return {
+            "score": score.score,
+            "successful_payments": score.successful_payments,
+            "failed_payments": score.failed_payments,
+            "policy_violations": score.policy_violations,
+            "total_volume": str(score.total_volume),
+            "uptime_ratio": score.uptime_ratio,
+            "age_days": score.age_days,
+            "last_updated": score.last_updated.isoformat(),
+        }
+
+    @staticmethod
+    def _code_attestation_to_dict(attestation: CodeAttestation) -> Dict[str, Any]:
+        return {
+            "code_hash": attestation.code_hash,
+            "framework": attestation.framework,
+            "version": attestation.version,
+            "attested_at": attestation.attested_at.isoformat(),
+            "attester": attestation.attester,
+            "tee_attestation": attestation.tee_attestation,
+        }
+
+    async def ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+
+        await self._ensure_initialized()
+        async with self._load_lock:
+            if self._loaded:
+                return
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT agent_id, owner_id, manifest, kya_level, kya_status,
+                           trust_score, code_attestation, liveness
+                    FROM kya_agents
+                    ORDER BY id ASC
+                    """
+                )
+
+            self._manifests.clear()
+            self._levels.clear()
+            self._statuses.clear()
+            self._trust_scores.clear()
+            self._code_attestations.clear()
+            self._liveness_state.clear()
+
+            for row in rows:
+                agent_id = str(row["agent_id"])
+                owner_id = str(row["owner_id"] or "")
+                manifest_data = row["manifest"] if isinstance(row["manifest"], dict) else {}
+                if not isinstance(manifest_data, dict):
+                    manifest_data = {}
+                if not manifest_data.get("agent_id"):
+                    manifest_data["agent_id"] = agent_id
+                if not manifest_data.get("owner_id"):
+                    manifest_data["owner_id"] = owner_id or "unknown"
+                manifest = AgentManifest.from_dict(manifest_data)
+                self.store_manifest(manifest)
+
+                level_raw = str(row["kya_level"] or KYALevel.NONE.value)
+                try:
+                    self.set_level(agent_id, KYALevel(level_raw))
+                except ValueError:
+                    self.set_level(agent_id, KYALevel.NONE)
+
+                status_raw = str(row["kya_status"] or KYAStatus.PENDING.value)
+                try:
+                    self.set_status(agent_id, KYAStatus(status_raw))
+                except ValueError:
+                    self.set_status(agent_id, KYAStatus.PENDING)
+
+                trust = self._trust_score_from_dict(agent_id, row["trust_score"])
+                if trust is not None:
+                    self.set_trust_score(agent_id, trust)
+
+                attestation = self._code_attestation_from_dict(row["code_attestation"])
+                if attestation is not None:
+                    self.set_code_attestation(agent_id, attestation)
+
+                liveness = row["liveness"] if isinstance(row["liveness"], dict) else {}
+                if isinstance(liveness, dict):
+                    self._liveness_state[agent_id] = dict(liveness)
+
+            self._loaded = True
+            logger.info("KYA store loaded from PostgreSQL with %d agent records", len(self._manifests))
+
+    def get_liveness(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        value = self._liveness_state.get(agent_id)
+        return dict(value) if value else None
+
+    async def persist_agent(self, agent_id: str, liveness: Optional[Dict[str, Any]] = None) -> None:
+        await self.ensure_loaded()
+        manifest = self.get_manifest(agent_id)
+        if manifest is None:
+            return
+
+        if liveness is not None:
+            self._liveness_state[agent_id] = dict(liveness)
+        liveness_payload = self._liveness_state.get(agent_id)
+
+        trust = self.get_trust_score(agent_id)
+        trust_payload = self._trust_score_to_dict(trust) if trust is not None else None
+        attestation = self.get_code_attestation(agent_id)
+        attestation_payload = self._code_attestation_to_dict(attestation) if attestation is not None else None
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO kya_agents (
+                    agent_id, owner_id, manifest, kya_level, kya_status,
+                    trust_score, code_attestation, liveness, updated_at
+                )
+                VALUES ($1, $2, $3::jsonb, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, NOW())
+                ON CONFLICT (agent_id) DO UPDATE
+                SET owner_id = EXCLUDED.owner_id,
+                    manifest = EXCLUDED.manifest,
+                    kya_level = EXCLUDED.kya_level,
+                    kya_status = EXCLUDED.kya_status,
+                    trust_score = EXCLUDED.trust_score,
+                    code_attestation = EXCLUDED.code_attestation,
+                    liveness = EXCLUDED.liveness,
+                    updated_at = NOW()
+                """,
+                agent_id,
+                manifest.owner_id,
+                json.dumps(manifest.to_dict()),
+                self.get_level(agent_id).value,
+                self.get_status(agent_id).value,
+                json.dumps(trust_payload) if trust_payload is not None else None,
+                json.dumps(attestation_payload) if attestation_payload is not None else None,
+                json.dumps(liveness_payload) if liveness_payload is not None else None,
+            )
+
+    async def delete_agent(self, agent_id: str) -> None:
+        await self._ensure_initialized()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM kya_agents WHERE agent_id = $1", agent_id)
+        self.remove(agent_id)
+
+    def remove(self, agent_id: str) -> None:
+        super().remove(agent_id)
+        self._liveness_state.pop(agent_id, None)
+
+    async def close(self) -> None:
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
+        self._initialized = False
+        self._loaded = False
+
+
 # ============ KYA Service ============
 
 
@@ -427,6 +707,42 @@ class KYAService:
     ):
         self._store = store or InMemoryKYAStore()
         self._liveness = liveness or AgentLivenessTracker(timeout_seconds=liveness_timeout)
+        self._liveness_hydrated = False
+
+    async def _ensure_store_ready(self) -> None:
+        ensure_loaded = getattr(self._store, "ensure_loaded", None)
+        if callable(ensure_loaded):
+            await ensure_loaded()
+            if isinstance(self._store, PostgresKYAStore) and not self._liveness_hydrated:
+                for agent_id in list(self._store._manifests.keys()):
+                    liveness = self._store.get_liveness(agent_id) or {}
+                    last_seen_raw = liveness.get("last_seen")
+                    if isinstance(last_seen_raw, str):
+                        try:
+                            ts = datetime.fromisoformat(last_seen_raw.replace("Z", "+00:00")).timestamp()
+                            self._liveness._last_seen[agent_id] = ts
+                        except ValueError:
+                            pass
+                    ping_count = liveness.get("ping_count")
+                    if ping_count is not None:
+                        try:
+                            self._liveness._ping_count[agent_id] = int(ping_count)
+                        except (TypeError, ValueError):
+                            pass
+                self._liveness_hydrated = True
+
+    async def _persist_agent_state(self, agent_id: str) -> None:
+        persist = getattr(self._store, "persist_agent", None)
+        if callable(persist):
+            last_seen = self._liveness.get_last_seen(agent_id)
+            ping_count = self._liveness._ping_count.get(agent_id, 0)
+            await persist(
+                agent_id,
+                liveness={
+                    "last_seen": last_seen.isoformat() if last_seen else None,
+                    "ping_count": ping_count,
+                },
+            )
 
     # ── Registration ──────────────────────────────────────────────
 
@@ -437,6 +753,7 @@ class KYAService:
         New agents start at BASIC level (email/API key verified).
         Higher levels require additional verification steps.
         """
+        await self._ensure_store_ready()
         self._store.store_manifest(manifest)
         self._store.set_level(manifest.agent_id, KYALevel.BASIC)
         self._store.set_status(manifest.agent_id, KYAStatus.ACTIVE)
@@ -447,6 +764,7 @@ class KYAService:
 
         # Start liveness tracking
         self._liveness.ping(manifest.agent_id)
+        await self._persist_agent_state(manifest.agent_id)
 
         logger.info(
             "Agent registered with KYA: agent_id=%s, owner=%s, level=BASIC",
@@ -476,6 +794,7 @@ class KYAService:
         3. Agent is alive (liveness check)
         4. Merchant domain is allowed (if specified)
         """
+        await self._ensure_store_ready()
         agent_id = request.agent_id
         level = self._store.get_level(agent_id)
         kya_status = self._store.get_status(agent_id)
@@ -589,6 +908,7 @@ class KYAService:
         - VERIFIED: Owner KYC verification (anchor_verification_id required)
         - ATTESTED: Code attestation + trust score >= 0.7
         """
+        await self._ensure_store_ready()
         current_level = self._store.get_level(agent_id)
         manifest = self._store.get_manifest(agent_id)
 
@@ -635,6 +955,7 @@ class KYAService:
 
         # Perform upgrade
         self._store.set_level(agent_id, target_level)
+        await self._persist_agent_state(agent_id)
 
         logger.info(
             "KYA level upgraded: agent_id=%s, %s → %s",
@@ -655,6 +976,7 @@ class KYAService:
 
     async def downgrade_level(self, agent_id: str, reason: str) -> KYAResult:
         """Downgrade agent KYA level (e.g., due to violations or stale liveness)."""
+        await self._ensure_store_ready()
         current = self._store.get_level(agent_id)
         manifest = self._store.get_manifest(agent_id)
 
@@ -667,6 +989,7 @@ class KYAService:
         }
         new_level = downgrade_map[current]
         self._store.set_level(agent_id, new_level)
+        await self._persist_agent_state(agent_id)
 
         logger.warning(
             "KYA level downgraded: agent_id=%s, %s → %s, reason=%s",
@@ -686,8 +1009,10 @@ class KYAService:
 
     async def suspend_agent(self, agent_id: str, reason: str) -> KYAResult:
         """Temporarily suspend an agent's KYA status."""
+        await self._ensure_store_ready()
         self._store.set_status(agent_id, KYAStatus.SUSPENDED)
         manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
 
         logger.warning("Agent KYA suspended: agent_id=%s, reason=%s", agent_id, reason)
 
@@ -702,10 +1027,12 @@ class KYAService:
 
     async def revoke_agent(self, agent_id: str, reason: str) -> KYAResult:
         """Permanently revoke an agent's KYA status."""
+        await self._ensure_store_ready()
         self._store.set_status(agent_id, KYAStatus.REVOKED)
         self._store.set_level(agent_id, KYALevel.NONE)
         self._liveness.remove(agent_id)
         manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
 
         logger.warning("Agent KYA revoked: agent_id=%s, reason=%s", agent_id, reason)
 
@@ -720,6 +1047,7 @@ class KYAService:
 
     async def reactivate_agent(self, agent_id: str) -> KYAResult:
         """Reactivate a suspended agent."""
+        await self._ensure_store_ready()
         current_status = self._store.get_status(agent_id)
         if current_status != KYAStatus.SUSPENDED:
             return KYAResult(
@@ -733,6 +1061,7 @@ class KYAService:
         self._store.set_status(agent_id, KYAStatus.ACTIVE)
         self._liveness.ping(agent_id)
         manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
 
         logger.info("Agent KYA reactivated: agent_id=%s", agent_id)
 
@@ -756,6 +1085,7 @@ class KYAService:
         policy_violation: bool = False,
     ) -> Optional[AgentTrustScore]:
         """Record a payment outcome for trust score calculation."""
+        await self._ensure_store_ready()
         trust = self._store.get_trust_score(agent_id)
         if trust is None:
             trust = AgentTrustScore(agent_id=agent_id)
@@ -777,16 +1107,19 @@ class KYAService:
 
         trust.recalculate()
         self._store.set_trust_score(agent_id, trust)
+        await self._persist_agent_state(agent_id)
         return trust
 
     async def get_trust_score(self, agent_id: str) -> Optional[AgentTrustScore]:
         """Get the current trust score for an agent."""
+        await self._ensure_store_ready()
         return self._store.get_trust_score(agent_id)
 
     # ── Code Attestation ──────────────────────────────────────────
 
     async def attest_code(self, agent_id: str, attestation: CodeAttestation) -> KYAResult:
         """Submit a code attestation for an agent."""
+        await self._ensure_store_ready()
         manifest = self._store.get_manifest(agent_id)
         if manifest is None:
             return KYAResult(
@@ -798,6 +1131,7 @@ class KYAService:
             )
 
         self._store.set_code_attestation(agent_id, attestation)
+        await self._persist_agent_state(agent_id)
 
         logger.info(
             "Code attestation recorded: agent_id=%s, hash=%s, framework=%s",
@@ -815,6 +1149,7 @@ class KYAService:
 
     async def verify_code_hash(self, agent_id: str, expected_hash: str) -> bool:
         """Verify that an agent's code hash matches the registered attestation."""
+        await self._ensure_store_ready()
         attestation = self._store.get_code_attestation(agent_id)
         if attestation is None:
             return False
@@ -823,15 +1158,27 @@ class KYAService:
     # ── Liveness ──────────────────────────────────────────────────
 
     def ping(self, agent_id: str) -> None:
-        """Record a liveness heartbeat."""
+        """Record a liveness heartbeat (in-memory fast path)."""
         self._liveness.ping(agent_id)
 
     def is_alive(self, agent_id: str) -> bool:
-        """Check if agent is alive."""
+        """Check if agent is alive (in-memory fast path)."""
+        return self._liveness.is_alive(agent_id)
+
+    async def ping_async(self, agent_id: str) -> None:
+        """Record a liveness heartbeat and persist state if backed by PostgreSQL."""
+        await self._ensure_store_ready()
+        self._liveness.ping(agent_id)
+        await self._persist_agent_state(agent_id)
+
+    async def is_alive_async(self, agent_id: str) -> bool:
+        """Check liveness after ensuring persisted state is loaded."""
+        await self._ensure_store_ready()
         return self._liveness.is_alive(agent_id)
 
     async def check_stale_agents(self) -> List[str]:
         """Check for stale agents and suspend them."""
+        await self._ensure_store_ready()
         stale = self._liveness.get_stale_agents()
         suspended = []
         for agent_id in stale:
@@ -844,15 +1191,30 @@ class KYAService:
     # ── Getters ───────────────────────────────────────────────────
 
     def get_manifest(self, agent_id: str) -> Optional[AgentManifest]:
-        """Get agent manifest."""
+        """Get agent manifest (in-memory fast path)."""
         return self._store.get_manifest(agent_id)
 
     def get_level(self, agent_id: str) -> KYALevel:
-        """Get agent KYA level."""
+        """Get agent KYA level (in-memory fast path)."""
         return self._store.get_level(agent_id)
 
     def get_status(self, agent_id: str) -> KYAStatus:
-        """Get agent KYA status."""
+        """Get agent KYA status (in-memory fast path)."""
+        return self._store.get_status(agent_id)
+
+    async def get_manifest_async(self, agent_id: str) -> Optional[AgentManifest]:
+        """Get agent manifest with persisted-state hydration."""
+        await self._ensure_store_ready()
+        return self._store.get_manifest(agent_id)
+
+    async def get_level_async(self, agent_id: str) -> KYALevel:
+        """Get agent KYA level with persisted-state hydration."""
+        await self._ensure_store_ready()
+        return self._store.get_level(agent_id)
+
+    async def get_status_async(self, agent_id: str) -> KYAStatus:
+        """Get agent KYA status with persisted-state hydration."""
+        await self._ensure_store_ready()
         return self._store.get_status(agent_id)
 
 
@@ -861,6 +1223,34 @@ class KYAService:
 
 def create_kya_service(
     liveness_timeout: int = 300,
+    dsn: Optional[str] = None,
 ) -> KYAService:
-    """Create a KYA service with default configuration."""
+    """
+    Create a KYA service.
+
+    Uses PostgreSQL persistence when DATABASE_URL is configured for postgres.
+    Falls back to in-memory store in dev/test if asyncpg is unavailable.
+    """
+    dsn = dsn or os.getenv("DATABASE_URL", "")
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+    is_production = env in ("prod", "production")
+    if dsn and dsn.startswith("postgres"):
+        try:
+            import asyncpg  # noqa: F401
+
+            return KYAService(
+                store=PostgresKYAStore(dsn),
+                liveness_timeout=liveness_timeout,
+            )
+        except ImportError:
+            if is_production:
+                raise RuntimeError(
+                    "Production requires asyncpg for persistent KYA state. "
+                    "Install asyncpg: pip install asyncpg"
+                )
+            logger.warning("asyncpg unavailable; using in-memory KYA store")
+    elif is_production and os.getenv("SARDIS_KYA_ENFORCEMENT_ENABLED", "false").lower() in {"1", "true", "yes", "on"}:
+        raise RuntimeError(
+            "Production KYA enforcement requires PostgreSQL DATABASE_URL."
+        )
     return KYAService(liveness_timeout=liveness_timeout)

@@ -418,6 +418,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     kya_service = create_kya_service(
         liveness_timeout=int(os.getenv("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300")),
+        dsn=database_url,
     )
     compliance = ComplianceEngine(
         settings=settings,

@@ -281,6 +281,24 @@ CREATE TABLE IF NOT EXISTS compliance_checks (
 CREATE INDEX idx_compliance_checks_subject ON compliance_checks(subject_type, subject_id);
 CREATE INDEX idx_compliance_checks_status ON compliance_checks(status);
 
+-- Persistent KYA state (manifest, trust and attestation snapshots)
+CREATE TABLE IF NOT EXISTS kya_agents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id VARCHAR(255) UNIQUE NOT NULL,
+    owner_id VARCHAR(255),
+    manifest JSONB NOT NULL DEFAULT '{}',
+    kya_level VARCHAR(32) NOT NULL DEFAULT 'none',
+    kya_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    trust_score JSONB,
+    code_attestation JSONB,
+    liveness JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_kya_agents_level ON kya_agents(kya_level);
+CREATE INDEX idx_kya_agents_status ON kya_agents(kya_status);
+
 -- =============================================================================
 -- Functions
 -- =============================================================================

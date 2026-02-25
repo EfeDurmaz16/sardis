@@ -477,6 +477,23 @@ CREATE TABLE IF NOT EXISTS sanctions_blocklist (
 );
 CREATE INDEX IF NOT EXISTS idx_blocklist_address ON sanctions_blocklist(address);
 
+-- KYA persistence (manifest + trust + attestations)
+CREATE TABLE IF NOT EXISTS kya_agents (
+    id SERIAL PRIMARY KEY,
+    agent_id VARCHAR(255) UNIQUE NOT NULL,
+    owner_id VARCHAR(255),
+    manifest JSONB NOT NULL DEFAULT '{}'::jsonb,
+    kya_level VARCHAR(32) NOT NULL DEFAULT 'none',
+    kya_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    trust_score JSONB,
+    code_attestation JSONB,
+    liveness JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_kya_agents_level ON kya_agents(kya_level);
+CREATE INDEX IF NOT EXISTS idx_kya_agents_status ON kya_agents(kya_status);
+
 -- Invoices
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id VARCHAR(100) PRIMARY KEY,

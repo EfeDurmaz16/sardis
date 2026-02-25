@@ -560,15 +560,18 @@ async def get_kya_status(
 ):
     """Get current KYA status for an agent."""
     kya_service = _require_kya_service(deps)
-    manifest = kya_service.get_manifest(agent_id)
+    manifest = await kya_service.get_manifest_async(agent_id)
     if manifest is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="agent_not_registered")
     trust_score = await kya_service.get_trust_score(agent_id)
+    level = await kya_service.get_level_async(agent_id)
+    kya_status = await kya_service.get_status_async(agent_id)
+    is_alive = await kya_service.is_alive_async(agent_id)
     return {
         "agent_id": agent_id,
         "owner_id": manifest.owner_id,
-        "level": kya_service.get_level(agent_id).value,
-        "status": kya_service.get_status(agent_id).value,
+        "level": level.value,
+        "status": kya_status.value,
         "manifest_hash": manifest.manifest_hash,
         "capabilities": manifest.capabilities,
         "max_budget_per_tx": str(manifest.max_budget_per_tx),
@@ -576,7 +579,7 @@ async def get_kya_status(
         "allowed_domains": manifest.allowed_domains,
         "blocked_domains": manifest.blocked_domains,
         "trust_score": trust_score.score if trust_score else None,
-        "is_alive": kya_service.is_alive(agent_id),
+        "is_alive": is_alive,
     }
 
 
@@ -673,11 +676,13 @@ async def heartbeat_kya_agent(
 ):
     """Record an agent heartbeat for KYA liveness tracking."""
     kya_service = _require_kya_service(deps)
-    kya_service.ping(agent_id)
+    await kya_service.ping_async(agent_id)
+    is_alive = await kya_service.is_alive_async(agent_id)
+    kya_status = await kya_service.get_status_async(agent_id)
     return {
         "agent_id": agent_id,
-        "is_alive": kya_service.is_alive(agent_id),
-        "status": kya_service.get_status(agent_id).value,
+        "is_alive": is_alive,
+        "status": kya_status.value,
     }
 
 

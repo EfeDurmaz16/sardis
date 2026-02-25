@@ -77,6 +77,8 @@ class PostgresAgentRepository:
             policy=policy,
             api_key_hash=meta.get("api_key_hash"),
             is_active=bool(row.get("is_active", True)),
+            kya_level=str(meta.get("kya_level", "none")),
+            kya_status=str(meta.get("kya_status", "pending")),
             metadata=meta,
             created_at=row.get("created_at") or datetime.now(timezone.utc),
             updated_at=row.get("updated_at") or datetime.now(timezone.utc),
@@ -90,12 +92,16 @@ class PostgresAgentRepository:
         spending_limits: Optional[SpendingLimits] = None,
         policy: Optional[AgentPolicy] = None,
         metadata: Optional[dict] = None,
+        kya_level: str = "none",
+        kya_status: str = "pending",
     ) -> Agent:
         pool = await self._get_pool()
         base_meta = dict(metadata or {})
         base_meta["owner_id"] = owner_id
         base_meta["spending_limits"] = (spending_limits or SpendingLimits()).model_dump(mode="json")
         base_meta["policy"] = (policy or AgentPolicy()).model_dump(mode="json")
+        base_meta["kya_level"] = kya_level
+        base_meta["kya_status"] = kya_status
 
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -212,6 +218,8 @@ class PostgresAgentRepository:
         policy: Optional[AgentPolicy] = None,
         is_active: Optional[bool] = None,
         metadata: Optional[dict] = None,
+        kya_level: Optional[str] = None,
+        kya_status: Optional[str] = None,
     ) -> Optional[Agent]:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -237,6 +245,10 @@ class PostgresAgentRepository:
                 meta["spending_limits"] = spending_limits.model_dump(mode="json")
             if policy is not None:
                 meta["policy"] = policy.model_dump(mode="json")
+            if kya_level is not None:
+                meta["kya_level"] = kya_level
+            if kya_status is not None:
+                meta["kya_status"] = kya_status
 
             import json as _json
             await conn.execute(
@@ -272,4 +284,3 @@ class PostgresAgentRepository:
         if self._pool is not None:
             await self._pool.close()
             self._pool = None
-
