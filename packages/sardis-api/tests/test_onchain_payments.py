@@ -7,11 +7,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
+import sardis_api.routers.onchain_payments as onchain_payments_router
 from sardis_api.routers.onchain_payments import (
     OnChainPaymentDependencies,
     get_deps,
     router,
 )
+from sardis_v2_core.policy_attestation import compute_policy_hash
 from sardis_v2_core.spending_policy import SpendingPolicy
 
 
@@ -410,6 +412,171 @@ def test_onchain_payment_returns_policy_receipt_fields_and_audits():
     assert payload["policy_audit_anchor"].startswith("merkle::")
     assert payload["policy_audit_id"]
     assert len(audit_store.entries) == 1
+
+
+def test_onchain_payment_policy_pin_requires_active_policy_store():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=None,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+            "policy_hash": "deadbeef",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "policy_pin_requires_active_policy"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_policy_hash_pin_mismatch_denied():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+            "policy_hash": "00" * 32,
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "policy_hash_mismatch"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_policy_id_pin_mismatch_denied():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+            "policy_id": "policy_wrong",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "policy_id_mismatch"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_policy_pins_match_and_execute():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_pin_ok")
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+            "policy_hash": compute_policy_hash(policy),
+            "policy_id": policy.policy_id,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tx_hash"] == "0xtx_pin_ok"
+    chain_executor.dispatch_payment.assert_awaited_once()
+
+
+def test_onchain_payment_policy_pin_denied_when_attestation_unavailable(monkeypatch):
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+    monkeypatch.setattr(onchain_payments_router, "_try_build_policy_receipt", lambda **_: None)
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+            "policy_hash": "any_pin",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "policy_pin_attestation_unavailable"
+    chain_executor.dispatch_payment.assert_not_called()
 
 
 def test_onchain_payment_prompt_injection_returns_pending_approval():

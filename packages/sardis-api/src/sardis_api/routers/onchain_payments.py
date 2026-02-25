@@ -39,6 +39,14 @@ class OnChainPaymentRequest(BaseModel):
         default=None,
         description="Optional CDP wallet id override. Falls back to wallet.cdp_wallet_id.",
     )
+    policy_hash: Optional[str] = Field(
+        default=None,
+        description="Optional expected policy hash pin. Execution fails on mismatch.",
+    )
+    policy_id: Optional[str] = Field(
+        default=None,
+        description="Optional expected policy id/version pin. Execution fails on mismatch.",
+    )
 
 
 class OnChainPaymentResponse(BaseModel):
@@ -269,11 +277,22 @@ async def pay_onchain(
     policy_receipt: Optional[dict[str, Any]] = None
     policy_audit_id: Optional[str] = None
     compliance_audit_id: Optional[str] = None
+    requested_policy_hash = (request.policy_hash or "").strip() or None
+    requested_policy_id = (request.policy_id or "").strip() or None
+    policy_pin_requested = requested_policy_hash is not None or requested_policy_id is not None
     if deps.policy_store is None:
         if env_name in {"prod", "production"}:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="policy_store_not_configured",
+            )
+        if policy_pin_requested:
+            deny_reason = "policy_pin_requires_active_policy"
+            record_policy_check(False, deny_reason)
+            record_policy_denial_spike(deny_reason)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=deny_reason,
             )
     else:
         policy = await deps.policy_store.fetch_policy(wallet.agent_id)
@@ -291,6 +310,34 @@ async def pay_onchain(
                     "chain": request.chain,
                 },
             )
+            if policy_pin_requested and policy_receipt is None:
+                deny_reason = "policy_pin_attestation_unavailable"
+                record_policy_check(False, deny_reason)
+                record_policy_denial_spike(deny_reason)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=deny_reason,
+                )
+            if requested_policy_hash and policy_receipt is not None:
+                actual_hash = str(policy_receipt.get("policy_hash", ""))
+                if actual_hash != requested_policy_hash:
+                    deny_reason = "policy_hash_mismatch"
+                    record_policy_check(False, deny_reason)
+                    record_policy_denial_spike(deny_reason)
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=deny_reason,
+                    )
+            if requested_policy_id and policy_receipt is not None:
+                actual_policy_id = str(policy_receipt.get("policy_id", ""))
+                if actual_policy_id != requested_policy_id:
+                    deny_reason = "policy_id_mismatch"
+                    record_policy_check(False, deny_reason)
+                    record_policy_denial_spike(deny_reason)
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=deny_reason,
+                    )
             allowed, reason = policy.validate_payment(
                 amount=request.amount,
                 fee=Decimal("0"),
@@ -389,6 +436,14 @@ async def pay_onchain(
                     detail="requires_approval",
                 )
             record_policy_check(True)
+        elif policy_pin_requested:
+            deny_reason = "policy_pin_requires_active_policy"
+            record_policy_check(False, deny_reason)
+            record_policy_denial_spike(deny_reason)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=deny_reason,
+            )
 
     # Prompt-injection guard for agent-provided memo/input strings.
     if os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
