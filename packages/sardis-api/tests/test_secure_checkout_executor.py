@@ -290,6 +290,7 @@ def test_merchant_capability_endpoint(monkeypatch):
     assert tokenized_payload["merchant_mode"] == "tokenized_api"
     assert tokenized_payload["approval_likely_required"] is False
     assert tokenized_payload["pan_allowed_for_merchant"] is True
+    assert tokenized_payload["pan_compliance_ready"] is True
 
     pan_entry = client.post(
         "/api/v2/checkout/secure/merchant-capability",
@@ -304,12 +305,15 @@ def test_merchant_capability_endpoint(monkeypatch):
     assert pan_payload["merchant_mode"] == "pan_entry"
     assert pan_payload["approval_likely_required"] is True
     assert pan_payload["pan_allowed_for_merchant"] is True
+    assert pan_payload["pan_compliance_ready"] is True
 
 
 def test_prod_pan_entry_requires_allowlist(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
     monkeypatch.delenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", raising=False)
     app = _build_app(policy_store=_PolicyStore())
     client = TestClient(app)
@@ -333,6 +337,8 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     app = _build_app(policy_store=_PolicyStore())
     client = TestClient(app)
@@ -352,6 +358,31 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     payload = created.json()
     assert payload["merchant_mode"] == "pan_entry"
     assert payload["status"] == "pending_approval"
+
+
+def test_prod_pan_entry_requires_pci_attestation(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    monkeypatch.delenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", raising=False)
+    monkeypatch.delenv("SARDIS_CHECKOUT_QSA_CONTACT", raising=False)
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_attestation_required_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "pan_compliance_not_attested"
 
 
 def test_prod_requires_persistent_secure_checkout_store(monkeypatch):

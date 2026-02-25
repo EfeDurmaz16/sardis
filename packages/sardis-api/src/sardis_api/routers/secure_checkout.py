@@ -100,6 +100,8 @@ class MerchantCapabilityResponse(BaseModel):
     approval_likely_required: bool
     pan_execution_enabled: bool
     pan_allowed_for_merchant: bool
+    pan_compliance_ready: bool
+    pan_compliance_reason: str
 
 
 class SecureCheckoutJobResponse(BaseModel):
@@ -262,6 +264,11 @@ def _pan_entry_allowed_for_host(host: str) -> bool:
 def _pan_entry_policy_decision(host: str) -> tuple[bool, str]:
     if not _pan_execution_enabled():
         return False, "pan_execution_disabled"
+    if _is_production_env():
+        if not _is_truthy(os.getenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "0")):
+            return False, "pan_compliance_not_attested"
+        if not os.getenv("SARDIS_CHECKOUT_QSA_CONTACT", "").strip():
+            return False, "pan_qsa_contact_missing"
     if _require_tokenized_in_prod() and not _pan_entry_allowed_for_host(host):
         return False, "pan_entry_not_allowlisted"
     return True, "pan_entry_allowed"
@@ -767,8 +774,12 @@ def create_secure_checkout_router() -> APIRouter:
 
         merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
         pan_allowed_for_merchant = True
+        pan_compliance_ready = True
+        pan_compliance_reason = "ok"
         if merchant_mode == MerchantExecutionMode.PAN_ENTRY:
             pan_allowed_for_merchant, pan_mode_reason = _pan_entry_policy_decision(merchant_host)
+            pan_compliance_ready = pan_mode_reason in {"pan_entry_allowed", "pan_entry_not_allowlisted"}
+            pan_compliance_reason = "ok" if pan_compliance_ready else pan_mode_reason
             if not pan_allowed_for_merchant:
                 mode_reason = pan_mode_reason
         threshold = _approval_threshold()
@@ -785,6 +796,8 @@ def create_secure_checkout_router() -> APIRouter:
             approval_likely_required=approval_likely_required,
             pan_execution_enabled=_pan_execution_enabled(),
             pan_allowed_for_merchant=pan_allowed_for_merchant,
+            pan_compliance_ready=pan_compliance_ready,
+            pan_compliance_reason=pan_compliance_reason,
         )
 
     @router.post("/secure/jobs", response_model=SecureCheckoutJobResponse, status_code=status.HTTP_201_CREATED)
