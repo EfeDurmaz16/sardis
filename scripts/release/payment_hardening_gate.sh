@@ -82,6 +82,9 @@ require_match '_append_a2a_trust_audit_entry' \
 require_match '_validate_trust_mutation_approval' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust relation mutations must enforce approval validation'
+require_match '_required_trust_mutation_approvals' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A trust relation mutations must support approval quorum controls'
 require_match '/trust/peers' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A peer discovery endpoint must be present'
@@ -131,6 +134,9 @@ require_match 'test_admin_can_view_a2a_security_policy' \
 require_match 'test_trust_relation_mutation_requires_approval_when_enabled' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust approval enforcement must be test covered'
+require_match 'test_trust_relation_mutation_quorum_requires_two_distinct_reviewers' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A trust approval quorum must be test covered'
 
 if [[ "${RUN_PAYMENT_HARDENING_TESTS:-0}" == "1" ]]; then
   if ! command -v pytest >/dev/null 2>&1; then

@@ -58,6 +58,7 @@ All checks must pass:
    - `SARDIS_A2A_TRUST_RELATIONS=sender_agent_id>recipient_a|recipient_b,...`
    - `SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL=1`
    - `SARDIS_A2A_TRUST_RELATION_MUTATION_ALLOWED_ACTIONS=a2a_trust_mutation,a2a_trust_relation_change`
+   - `SARDIS_A2A_TRUST_RELATION_MUTATION_MIN_APPROVALS=2` (distinct reviewers / 4-eyes)
    - Ensure DB migration created `a2a_trust_relations` before production boot.
    - `GET /api/v2/a2a/trust/table` returns expected relations.
    - `GET /api/v2/a2a/trust/peers?sender_agent_id=...` returns only trusted peers by default.

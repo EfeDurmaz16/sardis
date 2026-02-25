@@ -402,4 +402,74 @@ def test_trust_relation_mutation_accepts_valid_approval(monkeypatch):
     assert response.status_code == 200
     payload = response.json()
     assert payload["approval_id"] == "appr_trust_1"
+    assert payload["approval_ids"] == ["appr_trust_1"]
     assert "agent_new" in payload["relations"]["agent_a"]
+
+
+def test_trust_relation_mutation_quorum_requires_two_distinct_reviewers(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_MIN_APPROVALS", "2")
+    trust_repo = _TrustRepo()
+    approval_service = _ApprovalService()
+    approval_service.add(
+        "appr_trust_1",
+        reviewed_by="alice@sardis.sh",
+        metadata={
+            "operation": "upsert_relation",
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "organization_id": "org_demo",
+        },
+    )
+    client = TestClient(_build_app(admin=True, trust_repo=trust_repo, approval_service=approval_service))
+
+    not_enough = client.post(
+        "/api/v2/a2a/trust/relations",
+        json={"sender_agent_id": "agent_a", "recipient_agent_id": "agent_new", "approval_id": "appr_trust_1"},
+    )
+    assert not_enough.status_code == 403
+    assert not_enough.json()["detail"] == "approval_quorum_not_met:1/2"
+
+    approval_service.add(
+        "appr_trust_2",
+        reviewed_by="alice@sardis.sh",
+        metadata={
+            "operation": "upsert_relation",
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "organization_id": "org_demo",
+        },
+    )
+    same_reviewer = client.post(
+        "/api/v2/a2a/trust/relations",
+        json={
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "approval_ids": ["appr_trust_1", "appr_trust_2"],
+        },
+    )
+    assert same_reviewer.status_code == 403
+    assert same_reviewer.json()["detail"] == "approval_distinct_reviewer_quorum_not_met:1/2"
+
+    approval_service.add(
+        "appr_trust_3",
+        reviewed_by="bob@sardis.sh",
+        metadata={
+            "operation": "upsert_relation",
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "organization_id": "org_demo",
+        },
+    )
+    ok = client.post(
+        "/api/v2/a2a/trust/relations",
+        json={
+            "sender_agent_id": "agent_a",
+            "recipient_agent_id": "agent_new",
+            "approval_ids": ["appr_trust_1", "appr_trust_3"],
+        },
+    )
+    assert ok.status_code == 200
+    payload = ok.json()
+    assert payload["approval_ids"] == ["appr_trust_1", "appr_trust_3"]
