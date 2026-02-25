@@ -20,9 +20,22 @@ contract MockUSDC is ERC20 {
     }
 }
 
+contract MockUSDT is ERC20 {
+    constructor() ERC20("Mock USDT", "USDT") {}
+
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
 contract SardisAgentWalletTest is Test {
     SardisAgentWallet wallet;
     MockUSDC usdc;
+    MockUSDT usdt;
     
     address agent = address(0x1);
     address sardis = address(0x2);
@@ -58,9 +71,11 @@ contract SardisAgentWalletTest is Test {
             dailyLimit
         );
         usdc = new MockUSDC();
-        
+        usdt = new MockUSDT();
+
         // Fund wallet with USDC
         usdc.transfer(address(wallet), 10000 * 10**6);
+        usdt.mint(address(wallet), 10000 * 10**6);
 
         // Whitelist MockUSDC on the token allowlist
         vm.prank(sardis);
@@ -380,8 +395,63 @@ contract SardisAgentWalletTest is Test {
         assertFalse(allowed);
         assertEq(reason, "Exceeds per-transaction limit");
     }
-}
 
+    // ============ Token Allowlist Tests ============
+
+    function testPayRevertsWhenTokenNotAllowed() public {
+        vm.prank(agent);
+        vm.expectRevert("Token not allowed (stablecoins only)");
+        wallet.pay(address(usdt), merchant1, 100 * 10**6, "blocked token");
+    }
+
+    function testAllowTokenOnlySardis() public {
+        vm.prank(agent);
+        vm.expectRevert("Only Sardis");
+        wallet.allowToken(address(usdt));
+    }
+
+    function testAllowTokenEnablesPayment() public {
+        vm.prank(sardis);
+        wallet.allowToken(address(usdt));
+
+        vm.prank(agent);
+        wallet.pay(address(usdt), merchant1, 100 * 10**6, "allowed token");
+
+        assertEq(usdt.balanceOf(merchant1), 100 * 10**6);
+    }
+
+    function testRemoveTokenBlocksPaymentAgain() public {
+        vm.startPrank(sardis);
+        wallet.allowToken(address(usdt));
+        wallet.removeToken(address(usdt));
+        vm.stopPrank();
+
+        vm.prank(agent);
+        vm.expectRevert("Token not allowed (stablecoins only)");
+        wallet.pay(address(usdt), merchant1, 100 * 10**6, "removed token");
+    }
+
+    function testDisableTokenAllowlistTemporarilyAllowsToken() public {
+        vm.prank(sardis);
+        wallet.setTokenAllowlistEnforced(false);
+
+        vm.prank(agent);
+        wallet.pay(address(usdt), merchant1, 100 * 10**6, "allowlist disabled");
+
+        assertEq(usdt.balanceOf(merchant1), 100 * 10**6);
+    }
+
+    function testEnableTokenAllowlistRestoresGuardrail() public {
+        vm.startPrank(sardis);
+        wallet.setTokenAllowlistEnforced(false);
+        wallet.setTokenAllowlistEnforced(true);
+        vm.stopPrank();
+
+        vm.prank(agent);
+        vm.expectRevert("Token not allowed (stablecoins only)");
+        wallet.pay(address(usdt), merchant1, 100 * 10**6, "allowlist re-enabled");
+    }
+}
 
 
 
