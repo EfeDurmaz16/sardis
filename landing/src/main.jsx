@@ -45,6 +45,7 @@ import DocsComparison from './docs/pages/Comparison.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
 import DocsChangelog from './docs/pages/Changelog.jsx'
 import DocsRoadmap from './docs/pages/Roadmap.jsx'
+import DocsRuntimeGuardrails from './docs/pages/RuntimeGuardrails.jsx'
 // Legal
 import TermsOfService from './docs/pages/TermsOfService.jsx'
 import PrivacyPolicy from './docs/pages/PrivacyPolicy.jsx'
@@ -125,6 +126,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="deployment" element={<DocsDeployment />} />
           <Route path="faq" element={<DocsFAQ />} />
           <Route path="comparison" element={<DocsComparison />} />
+          <Route path="runtime-guardrails" element={<DocsRuntimeGuardrails />} />
           <Route path="blog" element={<DocsBlog />} />
           <Route path="blog/introducing-sardis" element={<IntroducingSardis />} />
           <Route path="blog/financial-hallucination-prevention" element={<FinancialHallucination />} />

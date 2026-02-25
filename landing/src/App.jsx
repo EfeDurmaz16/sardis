@@ -241,9 +241,24 @@ function App() {
             </p>
 
             <div className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
-              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">PAN lane quorum</span>
-              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">ASA fail-closed</span>
-              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">Wallet-aware A2A trust</span>
+              <Link
+                to="/docs/runtime-guardrails#pan-lane-quorum"
+                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
+              >
+                PAN lane quorum
+              </Link>
+              <Link
+                to="/docs/runtime-guardrails#asa-fail-closed"
+                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
+              >
+                ASA fail-closed
+              </Link>
+              <Link
+                to="/docs/runtime-guardrails#wallet-aware-a2a-trust"
+                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
+              >
+                Wallet-aware A2A trust
+              </Link>
             </div>
 
             <div className="max-w-3xl mx-auto">
