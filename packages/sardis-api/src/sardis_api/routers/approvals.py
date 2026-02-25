@@ -25,6 +25,7 @@ from sardis_v2_core.confidence_router import (
 )
 
 from sardis_api.authz import require_principal
+from sardis_api.routers.metrics import record_approval
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +234,7 @@ async def create_approval(
             organization_id=request.organization_id,
             metadata=request.metadata,
         )
+        record_approval(action=approval.action, status=approval.status, response_time=None)
 
         return ApprovalResponse.from_approval(approval)
 
@@ -307,6 +309,11 @@ async def approve_approval(
             metadata=updated_metadata,
         )
 
+    response_time = None
+    if approval.reviewed_at is not None and approval.created_at is not None:
+        response_time = max((approval.reviewed_at - approval.created_at).total_seconds(), 0.0)
+    record_approval(action=approval.action, status=approval.status, response_time=response_time)
+
     return ApprovalResponse.from_approval(approval)
 
 
@@ -336,6 +343,11 @@ async def deny_approval(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Approval {approval_id} not found or not pending",
         )
+
+    response_time = None
+    if approval.reviewed_at is not None and approval.created_at is not None:
+        response_time = max((approval.reviewed_at - approval.created_at).total_seconds(), 0.0)
+    record_approval(action=approval.action, status=approval.status, response_time=response_time)
 
     return ApprovalResponse.from_approval(approval)
 

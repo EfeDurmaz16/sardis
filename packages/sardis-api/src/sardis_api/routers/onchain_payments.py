@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_v2_core.policy_attestation import build_policy_decision_receipt
@@ -298,9 +299,12 @@ async def pay_onchain(
                 merchant_category="onchain_transfer",
             )
             if not allowed:
+                deny_reason = reason or "spending_policy_denied"
+                record_policy_check(False, deny_reason)
+                record_policy_denial_spike(deny_reason)
                 if policy_receipt is not None:
                     policy_receipt["decision"] = "deny"
-                    policy_receipt["reason"] = reason or "spending_policy_denied"
+                    policy_receipt["reason"] = deny_reason
                     policy_audit_id = await _append_policy_audit_entry(
                         deps=deps,
                         mandate_id=policy_receipt["decision_id"],
@@ -311,7 +315,7 @@ async def pay_onchain(
                     )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=reason or "spending_policy_denied",
+                    detail=deny_reason,
                 )
             if hasattr(policy, "validate_execution_context"):
                 rails_ok, rails_reason = policy.validate_execution_context(
@@ -320,9 +324,12 @@ async def pay_onchain(
                     token=request.token,
                 )
                 if not rails_ok:
+                    deny_reason = rails_reason or "execution_context_denied"
+                    record_policy_check(False, deny_reason)
+                    record_policy_denial_spike(deny_reason)
                     if policy_receipt is not None:
                         policy_receipt["decision"] = "deny"
-                        policy_receipt["reason"] = rails_reason or "execution_context_denied"
+                        policy_receipt["reason"] = deny_reason
                         policy_audit_id = await _append_policy_audit_entry(
                             deps=deps,
                             mandate_id=policy_receipt["decision_id"],
@@ -333,7 +340,7 @@ async def pay_onchain(
                         )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail=rails_reason or "execution_context_denied",
+                        detail=deny_reason,
                     )
             if reason == "requires_approval":
                 if deps.approval_service is not None:
@@ -381,6 +388,7 @@ async def pay_onchain(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="requires_approval",
                 )
+            record_policy_check(True)
 
     # Prompt-injection guard for agent-provided memo/input strings.
     if os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:

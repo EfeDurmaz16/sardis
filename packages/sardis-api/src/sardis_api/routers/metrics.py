@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections import deque
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Response
@@ -215,6 +216,37 @@ background_jobs_total = Counter(
     ["job_name", "status"],
 )
 
+# Funding reliability metrics
+funding_provider_attempts_total = Counter(
+    "sardis_funding_provider_attempts_total",
+    "Funding provider attempts by provider/rail/status",
+    ["provider", "rail", "status"],  # status: success|failed
+)
+
+funding_failover_events_total = Counter(
+    "sardis_funding_failover_events_total",
+    "Funding failover outcomes",
+    ["result"],  # result: success_after_failover|all_failed
+)
+
+provider_errors_total = Counter(
+    "sardis_provider_errors_total",
+    "External provider errors by provider/operation",
+    ["provider", "operation"],
+)
+
+policy_denial_spikes_total = Counter(
+    "sardis_policy_denial_spikes_total",
+    "Detected policy-denial spikes",
+    ["reason"],
+)
+
+policy_denial_burst_window = Gauge(
+    "sardis_policy_denial_burst_window",
+    "Current denial count in burst window",
+    ["reason"],
+)
+
 
 # Metrics helper functions
 def record_payment(chain: str, token: str, amount_usd: float, status: str) -> None:
@@ -232,6 +264,27 @@ def record_policy_check(allowed: bool, reason: Optional[str] = None) -> None:
         policy_denials_total.labels(reason=reason).inc()
 
 
+_POLICY_DENIAL_WINDOWS: dict[str, deque[float]] = {}
+
+
+def record_policy_denial_spike(
+    reason: str,
+    *,
+    window_seconds: int = 60,
+    threshold: int = 5,
+) -> None:
+    """Record denial spikes using a rolling in-memory burst window."""
+    key = str(reason or "unknown").strip() or "unknown"
+    now = time.time()
+    bucket = _POLICY_DENIAL_WINDOWS.setdefault(key, deque())
+    bucket.append(now)
+    while bucket and now - bucket[0] > float(window_seconds):
+        bucket.popleft()
+    policy_denial_burst_window.labels(reason=key).set(len(bucket))
+    if len(bucket) >= threshold:
+        policy_denial_spikes_total.labels(reason=key).inc()
+
+
 def record_http_request(method: str, endpoint: str, status: int, duration: float) -> None:
     """Record HTTP request metrics."""
     http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
@@ -243,6 +296,25 @@ def record_approval(action: str, status: str, response_time: Optional[float] = N
     approvals_total.labels(action=action, status=status).inc()
     if response_time and status in ("approved", "denied"):
         approval_response_time_seconds.labels(action=action).observe(response_time)
+
+
+def record_funding_attempt(provider: str, rail: str, status: str) -> None:
+    """Record one funding attempt and provider error signals."""
+    provider_value = str(provider or "unknown").strip().lower() or "unknown"
+    rail_value = str(rail or "fiat").strip().lower() or "fiat"
+    status_value = "success" if str(status).strip().lower() == "success" else "failed"
+    funding_provider_attempts_total.labels(
+        provider=provider_value,
+        rail=rail_value,
+        status=status_value,
+    ).inc()
+    if status_value == "failed":
+        provider_errors_total.labels(provider=provider_value, operation="funding").inc()
+
+
+def record_funding_failover_result(*, success_after_failover: bool) -> None:
+    result = "success_after_failover" if success_after_failover else "all_failed"
+    funding_failover_events_total.labels(result=result).inc()
 
 
 def record_compliance_check(check_type: str, result: str) -> None:

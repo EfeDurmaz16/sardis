@@ -115,6 +115,7 @@ from .routers import groups as groups_router
 from .routers import alerts as alerts_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import analytics as analytics_router
+from .routers import metrics as metrics_router
 from .routers import sandbox as sandbox_router
 
 # Conditional import for approvals router (may not exist yet)
@@ -1166,6 +1167,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Analytics routes
     app.include_router(analytics_router.router)
+    app.include_router(metrics_router.router)
 
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
     app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])

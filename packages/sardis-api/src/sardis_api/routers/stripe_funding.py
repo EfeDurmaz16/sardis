@@ -13,6 +13,10 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stripe_issuing_funding_event
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.routers.metrics import (
+    record_funding_attempt,
+    record_funding_failover_result,
+)
 from sardis_v2_core.funding import (
     FundingAdapter,
     FundingRequest,
@@ -364,11 +368,28 @@ async def fund_issuing_balance(
                 attempts=failed_attempts,
                 metadata=metadata,
             )
+            for attempt in failed_attempts:
+                record_funding_attempt(
+                    provider=str(attempt.get("provider", "unknown")),
+                    rail=str(attempt.get("rail", "fiat")),
+                    status=str(attempt.get("status", "failed")),
+                )
+            if len(failed_attempts) > 1:
+                record_funding_failover_result(success_after_failover=False)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="funding_failed_all_providers",
             ) from exc
 
+        attempt_rows = [
+            {
+                "provider": attempt.provider,
+                "rail": attempt.rail,
+                "status": attempt.status,
+                "error": attempt.error,
+            }
+            for attempt in attempts
+        ]
         await _persist_funding_attempts(
             deps=deps,
             organization_id=principal.organization_id,
@@ -376,17 +397,17 @@ async def fund_issuing_balance(
             amount_minor=amount_minor,
             currency="USD",
             connected_account_id=connected_account_id,
-            attempts=[
-                {
-                    "provider": attempt.provider,
-                    "rail": attempt.rail,
-                    "status": attempt.status,
-                    "error": attempt.error,
-                }
-                for attempt in attempts
-            ],
+            attempts=attempt_rows,
             metadata=metadata,
         )
+        for attempt in attempt_rows:
+            record_funding_attempt(
+                provider=str(attempt.get("provider", "unknown")),
+                rail=str(attempt.get("rail", "fiat")),
+                status=str(attempt.get("status", "failed")),
+            )
+        if len(attempt_rows) > 1 and any(str(a.get("status", "")).lower() == "failed" for a in attempt_rows[:-1]):
+            record_funding_failover_result(success_after_failover=True)
 
         transfer_id = str(getattr(transfer, "transfer_id", "")) or "unknown"
         amount_value = Decimal(str(getattr(transfer, "amount", payload.amount)))

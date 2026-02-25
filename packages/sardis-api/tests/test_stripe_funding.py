@@ -12,6 +12,10 @@ from sardis_api.routers.stripe_funding import (
     get_deps,
     router,
 )
+from sardis_api.routers.metrics import (
+    funding_failover_events_total,
+    funding_provider_attempts_total,
+)
 from sardis_v2_core.funding import FundingRequest, FundingResult
 
 
@@ -319,6 +323,19 @@ def test_topup_retries_with_fallback_adapter_and_persists_attempts():
     primary = _FailingFundingAdapter()
     fallback = _FallbackFundingAdapter()
     treasury_repo = _FakeTreasuryRepo()
+    before_primary_attempts = funding_provider_attempts_total.labels(
+        provider="lithic",
+        rail="fiat",
+        status="failed",
+    )._value.get()
+    before_fallback_attempts = funding_provider_attempts_total.labels(
+        provider="stripe",
+        rail="fiat",
+        status="success",
+    )._value.get()
+    before_failover = funding_failover_events_total.labels(
+        result="success_after_failover",
+    )._value.get()
     deps = StripeFundingDeps(
         treasury_provider=None,
         funding_adapter=primary,
@@ -340,6 +357,18 @@ def test_topup_retries_with_fallback_adapter_and_persists_attempts():
     assert treasury_repo.attempt_calls[0]["status_value"] == "failed"
     assert treasury_repo.attempt_calls[1]["provider"] == "stripe"
     assert treasury_repo.attempt_calls[1]["status_value"] == "success"
+    assert (
+        funding_provider_attempts_total.labels(provider="lithic", rail="fiat", status="failed")._value.get()
+        == before_primary_attempts + 1
+    )
+    assert (
+        funding_provider_attempts_total.labels(provider="stripe", rail="fiat", status="success")._value.get()
+        == before_fallback_attempts + 1
+    )
+    assert (
+        funding_failover_events_total.labels(result="success_after_failover")._value.get()
+        == before_failover + 1
+    )
 
     attempts = client.get("/api/v2/stripe/funding/issuing/topups/attempts")
     assert attempts.status_code == 200
