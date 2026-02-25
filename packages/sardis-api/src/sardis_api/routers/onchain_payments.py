@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from inspect import isawaitable
 import os
 import re
 import time
@@ -14,7 +15,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis_v2_core.policy_attestation import build_policy_decision_receipt
 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
 router = APIRouter()
@@ -41,6 +44,9 @@ class OnChainPaymentResponse(BaseModel):
     explorer_url: Optional[str] = None
     status: str = "submitted"
     approval_id: Optional[str] = None
+    policy_hash: Optional[str] = None
+    policy_audit_anchor: Optional[str] = None
+    policy_audit_id: Optional[str] = None
 
 
 @dataclass
@@ -52,6 +58,7 @@ class OnChainPaymentDependencies:
     approval_service: Any = None
     coinbase_cdp_provider: Any = None
     default_on_chain_provider: Optional[str] = None
+    audit_store: Any = None
 
 
 def get_deps() -> OnChainPaymentDependencies:
@@ -100,6 +107,50 @@ def _contains_prompt_injection_signal(text: Optional[str]) -> Optional[str]:
     return None
 
 
+def _try_build_policy_receipt(
+    *,
+    policy: Any,
+    decision: str,
+    reason: str,
+    context: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    try:
+        return build_policy_decision_receipt(
+            policy=policy,
+            decision=decision,
+            reason=reason,
+            context=context,
+        ).to_dict()
+    except Exception:
+        return None
+
+
+async def _append_policy_audit_entry(
+    *,
+    deps: OnChainPaymentDependencies,
+    mandate_id: str,
+    subject: str,
+    allowed: bool,
+    reason: str,
+    receipt_payload: dict[str, Any],
+) -> Optional[str]:
+    if deps.audit_store is None:
+        return None
+    entry = ComplianceAuditEntry(
+        mandate_id=mandate_id,
+        subject=subject,
+        allowed=allowed,
+        reason=reason,
+        rule_id=receipt_payload.get("policy_id"),
+        provider="policy_engine",
+        metadata=receipt_payload,
+    )
+    result = deps.audit_store.append(entry)
+    if isawaitable(result):
+        result = await result
+    return str(result or entry.audit_id)
+
+
 @router.post("/{wallet_id}/pay/onchain", response_model=OnChainPaymentResponse, status_code=status.HTTP_200_OK)
 async def pay_onchain(
     wallet_id: str,
@@ -113,6 +164,8 @@ async def pay_onchain(
     await _require_wallet_access(wallet, principal, deps)
 
     # Policy enforcement gate (fail-closed in production when policy store missing).
+    policy_receipt: Optional[dict[str, Any]] = None
+    policy_audit_id: Optional[str] = None
     if deps.policy_store is None:
         if (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower() in {"prod", "production"}:
             raise HTTPException(
@@ -122,6 +175,19 @@ async def pay_onchain(
     else:
         policy = await deps.policy_store.fetch_policy(wallet.agent_id)
         if policy is not None:
+            policy_receipt = _try_build_policy_receipt(
+                policy=policy,
+                decision="evaluate",
+                reason="policy_evaluation_started",
+                context={
+                    "wallet_id": wallet_id,
+                    "agent_id": wallet.agent_id,
+                    "destination": request.to,
+                    "amount": str(request.amount),
+                    "token": request.token,
+                    "chain": request.chain,
+                },
+            )
             allowed, reason = policy.validate_payment(
                 amount=request.amount,
                 fee=Decimal("0"),
@@ -130,6 +196,17 @@ async def pay_onchain(
                 merchant_category="onchain_transfer",
             )
             if not allowed:
+                if policy_receipt is not None:
+                    policy_receipt["decision"] = "deny"
+                    policy_receipt["reason"] = reason or "spending_policy_denied"
+                    policy_audit_id = await _append_policy_audit_entry(
+                        deps=deps,
+                        mandate_id=policy_receipt["decision_id"],
+                        subject=wallet.agent_id,
+                        allowed=False,
+                        reason=policy_receipt["reason"],
+                        receipt_payload=policy_receipt,
+                    )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=reason or "spending_policy_denied",
@@ -141,12 +218,34 @@ async def pay_onchain(
                     token=request.token,
                 )
                 if not rails_ok:
+                    if policy_receipt is not None:
+                        policy_receipt["decision"] = "deny"
+                        policy_receipt["reason"] = rails_reason or "execution_context_denied"
+                        policy_audit_id = await _append_policy_audit_entry(
+                            deps=deps,
+                            mandate_id=policy_receipt["decision_id"],
+                            subject=wallet.agent_id,
+                            allowed=False,
+                            reason=policy_receipt["reason"],
+                            receipt_payload=policy_receipt,
+                        )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=rails_reason or "execution_context_denied",
                     )
             if reason == "requires_approval":
                 if deps.approval_service is not None:
+                    if policy_receipt is not None:
+                        policy_receipt["decision"] = "pending_approval"
+                        policy_receipt["reason"] = "policy_requires_approval"
+                        policy_audit_id = await _append_policy_audit_entry(
+                            deps=deps,
+                            mandate_id=policy_receipt["decision_id"],
+                            subject=wallet.agent_id,
+                            allowed=False,
+                            reason=policy_receipt["reason"],
+                            receipt_payload=policy_receipt,
+                        )
                     approval = await deps.approval_service.create_approval(
                         action="onchain_payment",
                         requested_by=wallet.agent_id,
@@ -171,6 +270,9 @@ async def pay_onchain(
                         explorer_url=None,
                         status="pending_approval",
                         approval_id=approval.id,
+                        policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+                        policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+                        policy_audit_id=policy_audit_id,
                     )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -206,6 +308,9 @@ async def pay_onchain(
                     explorer_url=None,
                     status="pending_approval",
                     approval_id=approval.id,
+                    policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+                    policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+                    policy_audit_id=policy_audit_id,
                 )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -250,6 +355,9 @@ async def pay_onchain(
             tx_hash=tx_hash,
             explorer_url=_explorer_url(request.chain, tx_hash),
             status="submitted",
+            policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+            policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+            policy_audit_id=policy_audit_id,
         )
 
     source_address = wallet.get_address(request.chain)
@@ -310,9 +418,26 @@ async def pay_onchain(
             detail=f"onchain_payment_failed: {exc}",
         ) from exc
 
+    if policy_receipt is not None:
+        policy_receipt["decision"] = "allow"
+        policy_receipt["reason"] = "executed"
+        policy_receipt["context"]["mandate_id"] = mandate.mandate_id
+        policy_receipt["context"]["destination"] = request.to
+        policy_audit_id = await _append_policy_audit_entry(
+            deps=deps,
+            mandate_id=mandate.mandate_id,
+            subject=wallet.agent_id,
+            allowed=True,
+            reason="executed",
+            receipt_payload=policy_receipt,
+        )
+
     tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
     return OnChainPaymentResponse(
         tx_hash=tx_hash,
         explorer_url=_explorer_url(request.chain, tx_hash),
         status="submitted",
+        policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+        policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+        policy_audit_id=policy_audit_id,
     )

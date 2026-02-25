@@ -479,6 +479,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         settings=settings,
         wallet_manager=wallet_mgr,
         policy_store=policy_store,
+        audit_store=audit_store,
     )
     app.include_router(ap2.router, prefix="/api/v2/ap2")
 
@@ -619,6 +620,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         approval_service=approval_service,
         coinbase_cdp_provider=coinbase_cdp_provider,
         default_on_chain_provider=configured_on_chain_provider,
+        audit_store=audit_store,
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 

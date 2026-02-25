@@ -5,13 +5,16 @@ import logging
 import os
 import re
 from dataclasses import dataclass, replace
+from inspect import isawaitable
 from typing import TYPE_CHECKING, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 
+from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
 from sardis_v2_core.orchestrator import PaymentExecutionError
 from sardis_v2_core.mandates import MandateChain
+from sardis_v2_core.policy_attestation import build_policy_decision_receipt
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import Principal, require_principal
@@ -57,6 +60,7 @@ class Dependencies:
     settings: Optional[object] = None
     wallet_manager: Optional[Any] = None
     policy_store: Optional[Any] = None
+    audit_store: Optional[Any] = None
 
 
 def get_deps() -> Dependencies:
@@ -184,6 +188,50 @@ def _detect_prompt_injection_signal(payload: AP2PaymentExecuteRequest) -> Option
     return None
 
 
+def _try_build_policy_receipt(
+    *,
+    policy: Any,
+    decision: str,
+    reason: str,
+    context: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    try:
+        return build_policy_decision_receipt(
+            policy=policy,
+            decision=decision,
+            reason=reason,
+            context=context,
+        ).to_dict()
+    except Exception:
+        return None
+
+
+async def _append_policy_decision_audit(
+    *,
+    deps: Dependencies,
+    mandate_id: str,
+    subject: str,
+    allowed: bool,
+    reason: str,
+    receipt_payload: dict[str, Any],
+) -> Optional[str]:
+    if deps.audit_store is None:
+        return None
+    entry = ComplianceAuditEntry(
+        mandate_id=mandate_id,
+        subject=subject,
+        allowed=allowed,
+        reason=reason,
+        rule_id=receipt_payload.get("policy_id"),
+        provider="policy_engine",
+        metadata=receipt_payload,
+    )
+    result = deps.audit_store.append(entry)
+    if isawaitable(result):
+        result = await result
+    return str(result or entry.audit_id)
+
+
 @router.post("/payments/execute", response_model=AP2PaymentExecuteResponse)
 async def execute_ap2_payment(
     payload: AP2PaymentExecuteRequest,
@@ -252,6 +300,30 @@ async def execute_ap2_payment(
             )
         policy_result = await deps.wallet_manager.async_validate_policies(payment)
         if not getattr(policy_result, "allowed", False):
+            policy = await deps.policy_store.fetch_policy(payment.subject) if deps.policy_store else None
+            if policy is not None:
+                receipt = _try_build_policy_receipt(
+                    policy=policy,
+                    decision="deny",
+                    reason=getattr(policy_result, "reason", None) or "spending_policy_denied",
+                    context={
+                        "mandate_id": payment.mandate_id,
+                        "subject": payment.subject,
+                        "destination": payment.destination,
+                        "amount_minor": payment.amount_minor,
+                        "token": payment.token,
+                        "chain": payment.chain,
+                    },
+                )
+                if receipt is not None:
+                    await _append_policy_decision_audit(
+                        deps=deps,
+                        mandate_id=payment.mandate_id,
+                        subject=payment.subject,
+                        allowed=False,
+                        reason=receipt["reason"],
+                        receipt_payload=receipt,
+                    )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
@@ -288,6 +360,28 @@ async def execute_ap2_payment(
                         token=payment.token,
                     )
                     if not rails_ok:
+                        receipt = _try_build_policy_receipt(
+                            policy=policy,
+                            decision="deny",
+                            reason=rails_reason or "deterministic_guardrail_denied",
+                            context={
+                                "mandate_id": payment.mandate_id,
+                                "subject": payment.subject,
+                                "destination": payment.destination,
+                                "amount_minor": payment.amount_minor,
+                                "token": payment.token,
+                                "chain": payment.chain,
+                            },
+                        )
+                        if receipt is not None:
+                            await _append_policy_decision_audit(
+                                deps=deps,
+                                mandate_id=payment.mandate_id,
+                                subject=payment.subject,
+                                allowed=False,
+                                reason=receipt["reason"],
+                                receipt_payload=receipt,
+                            )
                         if deps.approval_service:
                             from decimal import Decimal
 
@@ -307,6 +401,7 @@ async def execute_ap2_payment(
                                     "risk_signal": "deterministic_guardrail",
                                     "guardrail_reason": rails_reason,
                                     "canonicalization_mode": payload.canonicalization_mode,
+                                    "policy_receipt": receipt,
                                 },
                             )
                             return 202, AP2PaymentExecuteResponse(
@@ -322,6 +417,28 @@ async def execute_ap2_payment(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail=rails_reason or "deterministic_guardrail_denied",
                         )
+                receipt = _try_build_policy_receipt(
+                    policy=policy,
+                    decision="allow",
+                    reason="deterministic_guardrail_passed",
+                    context={
+                        "mandate_id": payment.mandate_id,
+                        "subject": payment.subject,
+                        "destination": payment.destination,
+                        "amount_minor": payment.amount_minor,
+                        "token": payment.token,
+                        "chain": payment.chain,
+                    },
+                )
+                if receipt is not None:
+                    await _append_policy_decision_audit(
+                        deps=deps,
+                        mandate_id=payment.mandate_id,
+                        subject=payment.subject,
+                        allowed=True,
+                        reason=receipt["reason"],
+                        receipt_payload=receipt,
+                    )
 
         # Runtime safety guard: prompt-injection signal detection on AP2 envelope.
         prompt_guard_enabled = os.getenv("SARDIS_PROMPT_INJECTION_GUARD_ENABLED", "true").strip().lower() in {

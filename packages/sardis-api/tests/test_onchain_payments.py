@@ -12,6 +12,7 @@ from sardis_api.routers.onchain_payments import (
     get_deps,
     router,
 )
+from sardis_v2_core.spending_policy import SpendingPolicy
 
 
 def _admin_principal() -> Principal:
@@ -40,6 +41,15 @@ def _build_wallet() -> SimpleNamespace:
         cdp_wallet_id="cdp_wallet_1",
         get_address=lambda chain: "0xabc123",
     )
+
+
+class _AuditStore:
+    def __init__(self):
+        self.entries = []
+
+    def append(self, entry):
+        self.entries.append(entry)
+        return entry.audit_id
 
 
 def test_onchain_payment_turnkey_rail():
@@ -360,6 +370,46 @@ def test_onchain_payment_passes_chain_token_destination_to_guardrails():
         "chain": "base",
         "token": "USDC",
     }
+
+
+def test_onchain_payment_returns_policy_receipt_fields_and_audits():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_attested")
+    policy = SpendingPolicy(agent_id="agent_1")
+
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+    audit_store = _AuditStore()
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+        audit_store=audit_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.25",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["tx_hash"] == "0xtx_attested"
+    assert payload["policy_hash"]
+    assert payload["policy_audit_anchor"].startswith("merkle::")
+    assert payload["policy_audit_id"]
+    assert len(audit_store.entries) == 1
 
 
 def test_onchain_payment_prompt_injection_returns_pending_approval():
