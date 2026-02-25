@@ -40,3 +40,10 @@ def test_a2a_trust_table_rejects_untrusted_pair(monkeypatch):
     allowed, reason = a2a._check_a2a_trust_relation("agent_a", "agent_d")
     assert allowed is False
     assert reason == "a2a_agent_not_trusted"
+
+
+def test_parse_a2a_trust_table_supports_multiple_targets(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATIONS", "agent_a>agent_b|agent_c,agent_b>agent_a")
+    table = a2a._parse_a2a_trust_table()
+    assert table["agent_a"] == {"agent_b", "agent_c"}
+    assert table["agent_b"] == {"agent_a"}

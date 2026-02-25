@@ -297,6 +297,24 @@ class A2AMessageResponse(BaseModel):
     error_code: Optional[str] = None
 
 
+class A2ATrustCheckRequest(BaseModel):
+    sender_agent_id: str
+    recipient_agent_id: str
+
+
+class A2ATrustCheckResponse(BaseModel):
+    sender_agent_id: str
+    recipient_agent_id: str
+    enforced: bool
+    allowed: bool
+    reason: str
+
+
+class A2ATrustTableResponse(BaseModel):
+    enforced: bool
+    relations: dict[str, list[str]] = Field(default_factory=dict)
+
+
 # ============================================================================
 # POST /pay — Agent-to-Agent Direct Payment
 # ============================================================================
@@ -591,6 +609,50 @@ async def handle_a2a_message(
         body=body,
         response_on_duplicate=duplicate_response,
         fn=_dispatch_message,
+    )
+
+
+@router.get("/trust/table", response_model=A2ATrustTableResponse)
+async def get_a2a_trust_table(
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    table = _parse_a2a_trust_table()
+    normalized = {sender: sorted(recipients) for sender, recipients in table.items()}
+    return A2ATrustTableResponse(
+        enforced=_enforce_a2a_trust_table(),
+        relations=normalized,
+    )
+
+
+@router.post("/trust/check", response_model=A2ATrustCheckResponse)
+async def check_a2a_trust(
+    payload: A2ATrustCheckRequest,
+    deps: A2ADependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        sender_agent = await deps.agent_repo.get(payload.sender_agent_id)
+        recipient_agent = await deps.agent_repo.get(payload.recipient_agent_id)
+        if (
+            sender_agent is None
+            or recipient_agent is None
+            or sender_agent.owner_id != principal.organization_id
+            or recipient_agent.owner_id != principal.organization_id
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="access_denied")
+
+    allowed, reason = _check_a2a_trust_relation(
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+    )
+    return A2ATrustCheckResponse(
+        sender_agent_id=payload.sender_agent_id,
+        recipient_agent_id=payload.recipient_agent_id,
+        enforced=_enforce_a2a_trust_table(),
+        allowed=allowed,
+        reason=reason,
     )
 
 
