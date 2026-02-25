@@ -190,3 +190,37 @@ def test_tokenized_merchant_path_avoids_pan_secret(monkeypatch):
     assert execute_payload["status"] == "dispatched"
     assert execute_payload["executor_ref"].startswith("tokenized:")
     assert execute_payload["secret_ref"] is None
+
+
+def test_merchant_capability_endpoint(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_TOKENIZED_MERCHANTS", "api.payments.example.com")
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    app = _build_app()
+    client = TestClient(app)
+
+    tokenized = client.post(
+        "/api/v2/checkout/secure/merchant-capability",
+        json={
+            "merchant_url": "https://api.payments.example.com/pay",
+            "amount": "10.00",
+            "currency": "USD",
+        },
+    )
+    assert tokenized.status_code == 200
+    tokenized_payload = tokenized.json()
+    assert tokenized_payload["merchant_mode"] == "tokenized_api"
+    assert tokenized_payload["approval_likely_required"] is False
+
+    pan_entry = client.post(
+        "/api/v2/checkout/secure/merchant-capability",
+        json={
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "50.00",
+            "currency": "USD",
+        },
+    )
+    assert pan_entry.status_code == 200
+    pan_payload = pan_entry.json()
+    assert pan_payload["merchant_mode"] == "pan_entry"
+    assert pan_payload["approval_likely_required"] is True

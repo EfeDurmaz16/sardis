@@ -72,6 +72,21 @@ class ExecuteSecureCheckoutJobRequest(BaseModel):
     approval_id: Optional[str] = None
 
 
+class MerchantCapabilityRequest(BaseModel):
+    merchant_url: str
+    amount: Optional[Decimal] = Field(default=None, gt=0)
+    currency: str = "USD"
+
+
+class MerchantCapabilityResponse(BaseModel):
+    merchant_origin: str
+    merchant_host: str
+    merchant_mode: MerchantExecutionMode
+    mode_reason: str
+    approval_likely_required: bool
+    pan_execution_enabled: bool
+
+
 class SecureCheckoutJobResponse(BaseModel):
     job_id: str
     intent_id: str
@@ -394,6 +409,36 @@ async def _validate_approved_token(
 def create_secure_checkout_router() -> APIRouter:
     """Create secure checkout router."""
     router = APIRouter(dependencies=[Depends(require_principal)])
+
+    @router.post("/secure/merchant-capability", response_model=MerchantCapabilityResponse)
+    async def get_merchant_capability(
+        payload: MerchantCapabilityRequest,
+        deps: SecureCheckoutDependencies = Depends(get_deps),
+        principal: Principal = Depends(require_principal),
+    ):
+        # Keep the same wallet/org auth surface by requiring principal even for preflight.
+        _ = deps
+        _ = principal
+        try:
+            merchant_origin, merchant_host = _normalize_merchant_origin(payload.merchant_url)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+        merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
+        threshold = _approval_threshold()
+        amount = payload.amount or Decimal("0")
+        approval_likely_required = (
+            (merchant_mode == MerchantExecutionMode.PAN_ENTRY and _require_approval_for_pan())
+            or (payload.amount is not None and amount >= threshold)
+        )
+        return MerchantCapabilityResponse(
+            merchant_origin=merchant_origin,
+            merchant_host=merchant_host,
+            merchant_mode=merchant_mode,
+            mode_reason=mode_reason,
+            approval_likely_required=approval_likely_required,
+            pan_execution_enabled=_pan_execution_enabled(),
+        )
 
     @router.post("/secure/jobs", response_model=SecureCheckoutJobResponse, status_code=status.HTTP_201_CREATED)
     async def create_secure_job(
