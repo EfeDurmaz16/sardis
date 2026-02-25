@@ -88,6 +88,9 @@ require_match '/trust/peers' \
 require_match '/trust/audit/recent' \
   'packages/sardis-api/src/sardis_api/routers/a2a.py' \
   'A2A trust audit visibility endpoint must be present'
+require_match '/trust/security-policy' \
+  'packages/sardis-api/src/sardis_api/routers/a2a.py' \
+  'A2A security policy visibility endpoint must be present'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \
   'packages/sardis-api/tests/test_onchain_payments.py' \
@@ -122,6 +125,9 @@ require_match 'provider == \"a2a_trust\"' \
 require_match 'test_admin_can_list_recent_a2a_trust_audit_entries' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust audit visibility endpoint must be test covered'
+require_match 'test_admin_can_view_a2a_security_policy' \
+  'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
+  'A2A security policy visibility endpoint must be test covered'
 require_match 'test_trust_relation_mutation_requires_approval_when_enabled' \
   'packages/sardis-api/tests/test_a2a_trust_endpoints.py' \
   'A2A trust approval enforcement must be test covered'

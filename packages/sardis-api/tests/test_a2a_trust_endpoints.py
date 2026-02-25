@@ -337,6 +337,34 @@ def test_admin_can_list_recent_a2a_trust_audit_entries(monkeypatch):
     assert payload["entries"][0]["proof_path"].startswith("/api/v2/compliance/audit/mandate/")
 
 
+def test_admin_can_view_a2a_security_policy(monkeypatch):
+    monkeypatch.setenv("SARDIS_A2A_REQUIRE_SIGNATURE", "1")
+    monkeypatch.setenv("SARDIS_A2A_ALLOW_UNSIGNED_DEV", "0")
+    monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "1")
+    monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_ALLOWED_ACTIONS", "a2a_trust_mutation,a2a_trust_relation_change")
+    client = TestClient(_build_app(admin=True))
+
+    response = client.get("/api/v2/a2a/trust/security-policy")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["signature_required"] is True
+    assert payload["allow_unsigned_dev"] is False
+    assert payload["trust_table_enforced"] is True
+    assert payload["trust_mutation_approval_required"] is True
+    assert payload["trust_mutation_approval_actions"] == [
+        "a2a_trust_mutation",
+        "a2a_trust_relation_change",
+    ]
+
+
+def test_non_admin_cannot_view_a2a_security_policy():
+    client = TestClient(_build_app(admin=False))
+    response = client.get("/api/v2/a2a/trust/security-policy")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin_required"
+
+
 def test_trust_relation_mutation_requires_approval_when_enabled(monkeypatch):
     monkeypatch.setenv("SARDIS_A2A_ENFORCE_TRUST_TABLE", "1")
     monkeypatch.setenv("SARDIS_A2A_TRUST_RELATION_MUTATION_REQUIRE_APPROVAL", "1")

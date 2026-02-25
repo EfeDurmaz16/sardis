@@ -561,6 +561,14 @@ class A2ATrustAuditListResponse(BaseModel):
     entries: list[A2ATrustAuditEntryResponse] = Field(default_factory=list)
 
 
+class A2ASecurityPolicyResponse(BaseModel):
+    signature_required: bool
+    allow_unsigned_dev: bool
+    trust_table_enforced: bool
+    trust_mutation_approval_required: bool
+    trust_mutation_approval_actions: list[str] = Field(default_factory=list)
+
+
 # ============================================================================
 # POST /pay — Agent-to-Agent Direct Payment
 # ============================================================================
@@ -997,6 +1005,21 @@ async def list_a2a_trust_peers(
         total_candidates=max(len(agents) - 1, 0),
         trusted_count=trusted_count,
         peers=rows,
+    )
+
+
+@router.get("/trust/security-policy", response_model=A2ASecurityPolicyResponse)
+async def get_a2a_security_policy(
+    principal: Principal = Depends(require_principal),
+):
+    if not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+    return A2ASecurityPolicyResponse(
+        signature_required=_a2a_signature_required(),
+        allow_unsigned_dev=_allow_unsigned_a2a_dev(),
+        trust_table_enforced=_enforce_a2a_trust_table(),
+        trust_mutation_approval_required=_require_approval_for_trust_mutations(),
+        trust_mutation_approval_actions=sorted(_allowed_trust_mutation_approval_actions()),
     )
 
 

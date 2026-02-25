@@ -61,6 +61,7 @@ All checks must pass:
    - Ensure DB migration created `a2a_trust_relations` before production boot.
    - `GET /api/v2/a2a/trust/table` returns expected relations.
    - `GET /api/v2/a2a/trust/peers?sender_agent_id=...` returns only trusted peers by default.
+   - `GET /api/v2/a2a/trust/security-policy` matches expected runtime guardrails.
    - `POST/DELETE /api/v2/a2a/trust/relations` responses include `audit_id` and are exported by compliance audit evidence APIs.
    - `GET /api/v2/a2a/trust/audit/recent` shows latest trust mutation entries for org.
 6. Validate funding failover behavior in staging (primary unavailable -> fallback success / all-failed alerting path).
