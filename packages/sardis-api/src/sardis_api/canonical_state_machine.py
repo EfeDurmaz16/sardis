@@ -243,3 +243,55 @@ def normalize_stablecoin_event(
         raw_payload=raw_payload or {},
     )
 
+
+def normalize_stripe_issuing_funding_event(
+    *,
+    organization_id: str,
+    payload: dict[str, Any],
+    transfer_id: str,
+    connected_account_id: Optional[str] = None,
+) -> CanonicalEvent:
+    """
+    Normalize Stripe Issuing funding events into canonical journey records.
+
+    Rail semantics:
+    - rail: fiat_card_funding
+    - external_reference: topup/transfer id
+    """
+    raw_status = str(payload.get("status") or "").strip().lower()
+    status_map = {
+        "posted": ("fiat.card_funding.posted", "settled"),
+        "succeeded": ("fiat.card_funding.posted", "settled"),
+        "processing": ("fiat.card_funding.processing", "processing"),
+        "pending": ("fiat.card_funding.pending", "processing"),
+        "failed": ("fiat.card_funding.failed", "failed"),
+        "canceled": ("fiat.card_funding.canceled", "failed"),
+        "cancelled": ("fiat.card_funding.canceled", "failed"),
+        "returned": ("fiat.card_funding.returned", "returned"),
+    }
+    canonical_event_type, canonical_state = status_map.get(
+        raw_status,
+        ("fiat.card_funding.observed", "processing"),
+    )
+    amount_minor = _safe_int(payload.get("amount_minor"))
+    event_ts = _parse_ts(payload.get("created_at")) or datetime.now(timezone.utc)
+    return CanonicalEvent(
+        organization_id=organization_id,
+        provider="stripe",
+        provider_event_id=str(transfer_id) or None,
+        provider_event_type=raw_status or "unknown",
+        canonical_event_type=canonical_event_type,
+        rail="fiat_card_funding",
+        external_reference=str(transfer_id),
+        canonical_state=canonical_state,
+        direction="credit",
+        amount_minor=amount_minor,
+        currency=str(payload.get("currency") or "USD").upper(),
+        event_ts=event_ts,
+        metadata={
+            "source": "stripe_funding_topup",
+            "connected_account_id": connected_account_id,
+            "description": payload.get("description"),
+        },
+        raw_payload=payload,
+    )

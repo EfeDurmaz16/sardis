@@ -990,6 +990,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             app.dependency_overrides[stripe_funding_router.get_deps] = (
                 lambda: stripe_funding_router.StripeFundingDeps(
                     treasury_provider=treasury_provider,
+                    treasury_repo=treasury_repo,
+                    canonical_repo=canonical_ledger_repo,
                     default_connected_account_id=stripe_connected_account_default,
                     connected_account_map=connected_account_map,
                 )

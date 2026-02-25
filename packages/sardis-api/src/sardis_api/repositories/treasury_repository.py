@@ -20,6 +20,8 @@ class TreasuryRepository:
         self._balance_snapshots: list[dict[str, Any]] = []
         self._reservations: dict[str, dict[str, Any]] = {}
         self._webhook_events: dict[tuple[str, str], dict[str, Any]] = {}
+        self._issuing_funding_events: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self._issuer_funding_table_ready: bool = False
 
     def _use_postgres(self) -> bool:
         if self._pool is not None:
@@ -815,6 +817,264 @@ class TreasuryRepository:
             )
             return {"count": int(row["count"]), "total_minor": int(row["total_minor"])}
 
+    async def _ensure_issuer_funding_table(self) -> None:
+        if self._issuer_funding_table_ready:
+            return
+        if not self._use_postgres():
+            self._issuer_funding_table_ready = True
+            return
+        pool = await self._get_pool()
+        if pool is None:
+            return
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS issuer_funding_audit (
+                    id UUID PRIMARY KEY,
+                    organization_id TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    transfer_id TEXT NOT NULL,
+                    amount_minor BIGINT NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'USD',
+                    status TEXT NOT NULL,
+                    connected_account_id TEXT,
+                    idempotency_key TEXT,
+                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE(provider, transfer_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_issuer_funding_org_created
+                  ON issuer_funding_audit(organization_id, created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_issuer_funding_org_status
+                  ON issuer_funding_audit(organization_id, status);
+                CREATE INDEX IF NOT EXISTS idx_issuer_funding_org_connected
+                  ON issuer_funding_audit(organization_id, connected_account_id);
+                """
+            )
+        self._issuer_funding_table_ready = True
+
+    async def record_issuing_funding_event(
+        self,
+        *,
+        organization_id: str,
+        provider: str,
+        transfer_id: str,
+        amount_minor: int,
+        currency: str,
+        status_value: str,
+        connected_account_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        if not transfer_id:
+            raise ValueError("transfer_id is required")
+        provider_value = str(provider or "unknown").strip().lower()
+        status_normalized = str(status_value or "processing").strip().lower()
+        row = {
+            "id": str(uuid.uuid4()),
+            "organization_id": organization_id,
+            "provider": provider_value,
+            "transfer_id": transfer_id,
+            "amount_minor": int(amount_minor),
+            "currency": str(currency or "USD").upper(),
+            "status": status_normalized,
+            "connected_account_id": connected_account_id,
+            "idempotency_key": idempotency_key,
+            "metadata": metadata or {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        if not self._use_postgres():
+            key = (organization_id, provider_value, transfer_id)
+            existing = self._issuing_funding_events.get(key)
+            if existing:
+                existing.update(
+                    {
+                        "amount_minor": row["amount_minor"],
+                        "currency": row["currency"],
+                        "status": row["status"],
+                        "connected_account_id": row["connected_account_id"],
+                        "idempotency_key": row["idempotency_key"],
+                        "metadata": row["metadata"],
+                        "updated_at": row["updated_at"],
+                    }
+                )
+                return existing
+            self._issuing_funding_events[key] = row
+            return row
+
+        await self._ensure_issuer_funding_table()
+        pool = await self._get_pool()
+        if pool is None:
+            raise RuntimeError("PostgreSQL pool unavailable")
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO issuer_funding_audit (
+                    id, organization_id, provider, transfer_id, amount_minor, currency,
+                    status, connected_account_id, idempotency_key, metadata, created_at, updated_at
+                ) VALUES (
+                    $1::uuid, $2, $3, $4, $5, $6,
+                    $7, $8, $9, $10::jsonb, NOW(), NOW()
+                )
+                ON CONFLICT (provider, transfer_id) DO UPDATE SET
+                    amount_minor = EXCLUDED.amount_minor,
+                    currency = EXCLUDED.currency,
+                    status = EXCLUDED.status,
+                    connected_account_id = EXCLUDED.connected_account_id,
+                    idempotency_key = EXCLUDED.idempotency_key,
+                    metadata = EXCLUDED.metadata,
+                    updated_at = NOW()
+                """,
+                row["id"],
+                organization_id,
+                provider_value,
+                transfer_id,
+                row["amount_minor"],
+                row["currency"],
+                row["status"],
+                connected_account_id,
+                idempotency_key,
+                row["metadata"],
+            )
+            db_row = await conn.fetchrow(
+                """
+                SELECT *
+                FROM issuer_funding_audit
+                WHERE provider = $1 AND transfer_id = $2
+                """,
+                provider_value,
+                transfer_id,
+            )
+            return dict(db_row) if db_row else row
+
+    async def list_issuing_funding_events(
+        self,
+        organization_id: str,
+        *,
+        limit: int = 100,
+        provider: Optional[str] = None,
+        connected_account_id: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        if not self._use_postgres():
+            rows = [
+                value
+                for (org, _, _), value in self._issuing_funding_events.items()
+                if org == organization_id
+            ]
+            if provider:
+                p = str(provider).strip().lower()
+                rows = [r for r in rows if str(r.get("provider", "")).strip().lower() == p]
+            if connected_account_id:
+                rows = [r for r in rows if str(r.get("connected_account_id") or "") == connected_account_id]
+            rows.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
+            return rows[:limit]
+
+        await self._ensure_issuer_funding_table()
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        query = """
+            SELECT *
+            FROM issuer_funding_audit
+            WHERE organization_id = $1
+        """
+        args: list[Any] = [organization_id]
+        idx = 2
+        if provider:
+            query += f" AND provider = ${idx}"
+            args.append(str(provider).strip().lower())
+            idx += 1
+        if connected_account_id:
+            query += f" AND connected_account_id = ${idx}"
+            args.append(connected_account_id)
+            idx += 1
+        query += f" ORDER BY created_at DESC LIMIT ${idx}"
+        args.append(limit)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *args)
+            return [dict(r) for r in rows]
+
+    async def summarize_issuing_funding_events(
+        self,
+        organization_id: str,
+        *,
+        hours: int = 24,
+    ) -> dict[str, Any]:
+        if not self._use_postgres():
+            now = datetime.now(timezone.utc)
+            total_minor = 0
+            count = 0
+            by_status: dict[str, int] = {}
+            for (org, _, _), row in self._issuing_funding_events.items():
+                if org != organization_id:
+                    continue
+                created_at = row.get("created_at")
+                if isinstance(created_at, str):
+                    try:
+                        created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    except Exception:
+                        created_dt = now
+                elif isinstance(created_at, datetime):
+                    created_dt = created_at
+                else:
+                    created_dt = now
+                if (now - created_dt).total_seconds() > hours * 3600:
+                    continue
+                count += 1
+                total_minor += int(row.get("amount_minor", 0) or 0)
+                key = str(row.get("status", "unknown")).strip().lower() or "unknown"
+                by_status[key] = by_status.get(key, 0) + 1
+            return {
+                "organization_id": organization_id,
+                "window_hours": hours,
+                "count": count,
+                "total_minor": total_minor,
+                "by_status": by_status,
+            }
+
+        await self._ensure_issuer_funding_table()
+        pool = await self._get_pool()
+        if pool is None:
+            return {
+                "organization_id": organization_id,
+                "window_hours": hours,
+                "count": 0,
+                "total_minor": 0,
+                "by_status": {},
+            }
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT status, COUNT(*)::int AS count, COALESCE(SUM(amount_minor), 0)::bigint AS total_minor
+                FROM issuer_funding_audit
+                WHERE organization_id = $1
+                  AND created_at >= NOW() - ($2 || ' hours')::interval
+                GROUP BY status
+                ORDER BY status
+                """,
+                organization_id,
+                hours,
+            )
+            by_status: dict[str, int] = {}
+            total_minor = 0
+            count = 0
+            for row in rows:
+                key = str(row["status"])
+                c = int(row["count"])
+                by_status[key] = c
+                count += c
+                total_minor += int(row["total_minor"])
+            return {
+                "organization_id": organization_id,
+                "window_hours": hours,
+                "count": count,
+                "total_minor": total_minor,
+                "by_status": by_status,
+            }
+
     async def list_organization_ids(self) -> list[str]:
         if not self._use_postgres():
             orgs = set()
@@ -823,6 +1083,8 @@ class TreasuryRepository:
             for org, _ in self._financial_accounts.keys():
                 orgs.add(org)
             for org, _ in self._external_bank_accounts.keys():
+                orgs.add(org)
+            for org, _, _ in self._issuing_funding_events.keys():
                 orgs.add(org)
             return sorted(orgs)
         pool = await self._get_pool()
