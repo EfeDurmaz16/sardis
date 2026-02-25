@@ -252,3 +252,40 @@ def test_export_evidence_bundle_supports_time_window_filter():
     assert payload["metadata"]["counts"]["total_entries"] == 1
     assert payload["metadata"]["scope"]["start_at"] == "2026-02-25T00:00:00+00:00"
     assert payload["metadata"]["scope"]["end_at"] == "2026-02-25T23:59:59+00:00"
+
+
+def test_verify_evidence_signature_roundtrip(monkeypatch):
+    monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_SECRET", "test_signing_secret_123")
+    monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_KEY_ID", "test-k1")
+    client = _build_client(_AuditStoreWithChain(), approval_service=_ApprovalService())
+
+    export_response = client.get(
+        "/api/v2/compliance/audit/evidence/export",
+        params={"mandate_id": "m1", "approval_id": "appr_demo_1", "include_signature": "true"},
+    )
+    assert export_response.status_code == 200
+    export_payload = export_response.json()
+    token = export_payload["signature"]["token"]
+    digest = export_payload["integrity"]["bundle_digest"]
+
+    verify_response = client.post(
+        "/api/v2/compliance/audit/evidence/verify-signature",
+        json={"token": token, "expected_bundle_digest": digest},
+    )
+    assert verify_response.status_code == 200
+    verify_payload = verify_response.json()
+    assert verify_payload["valid"] is True
+    assert verify_payload["kid"] == "test-k1"
+    assert verify_payload["bundle_digest"] == digest
+
+
+def test_verify_evidence_signature_rejects_invalid_token(monkeypatch):
+    monkeypatch.setenv("SARDIS_EVIDENCE_SIGNING_SECRET", "test_signing_secret_123")
+    client = _build_client(_AuditStoreWithChain())
+
+    response = client.post(
+        "/api/v2/compliance/audit/evidence/verify-signature",
+        json={"token": "invalid.token.value"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("invalid_signature:")

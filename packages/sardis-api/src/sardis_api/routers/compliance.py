@@ -309,6 +309,13 @@ class KYASuspendRequest(BaseModel):
     reason: str = "manual_review"
 
 
+class EvidenceSignatureVerifyRequest(BaseModel):
+    """Request payload for evidence JWS verification."""
+
+    token: str
+    expected_bundle_digest: Optional[str] = None
+
+
 # ============================================================================
 # Dependency Injection
 # ============================================================================
@@ -1271,6 +1278,68 @@ async def verify_audit_chain_integrity(
         "verified": verified,
         "error": error,
         "entry_count": entry_count,
+    }
+
+
+@router.post("/audit/evidence/verify-signature")
+async def verify_evidence_signature(
+    payload: EvidenceSignatureVerifyRequest,
+    _: Principal = Depends(require_admin_principal),
+):
+    """Verify a signed evidence bundle JWS produced by export endpoint."""
+    secret = _evidence_signing_secret()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="evidence_signing_secret_not_configured",
+        )
+
+    from jwt import decode as jwt_decode, get_unverified_header
+    from jwt.exceptions import InvalidTokenError
+
+    try:
+        header = get_unverified_header(payload.token)
+        decoded = jwt_decode(
+            payload.token,
+            secret,
+            algorithms=["HS256"],
+            options={"require": ["iss", "iat", "evidence"]},
+        )
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"invalid_signature:{exc}",
+        ) from exc
+
+    evidence_payload = decoded.get("evidence")
+    if not isinstance(evidence_payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="invalid_signature_payload",
+        )
+
+    integrity = evidence_payload.get("integrity") or {}
+    if not isinstance(integrity, dict):
+        integrity = {}
+    bundle_digest = integrity.get("bundle_digest")
+
+    if payload.expected_bundle_digest and bundle_digest != payload.expected_bundle_digest:
+        return {
+            "valid": False,
+            "reason": "bundle_digest_mismatch",
+            "expected_bundle_digest": payload.expected_bundle_digest,
+            "actual_bundle_digest": bundle_digest,
+            "kid": header.get("kid"),
+            "alg": header.get("alg"),
+        }
+
+    return {
+        "valid": True,
+        "kid": header.get("kid"),
+        "alg": header.get("alg"),
+        "bundle_digest": bundle_digest,
+        "issued_at": decoded.get("iat"),
+        "issuer": decoded.get("iss"),
     }
 
 
