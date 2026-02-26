@@ -26,6 +26,8 @@ from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)
 _PAN_LIKE_DIGITS_RE = re.compile(r"\b\d{12,19}\b")
+_PAN_WITH_SEPARATORS_RE = re.compile(r"\b(?:\d[ -]?){12,19}\b")
+_CVV_INLINE_RE = re.compile(r"(?i)\b(cvv|cvc)\b\s*[:=]?\s*\d{3,4}\b")
 _SENSITIVE_AUDIT_KEYS = {
     "pan",
     "cvv",
@@ -34,6 +36,12 @@ _SENSITIVE_AUDIT_KEYS = {
     "full_number",
     "track_data",
     "secret_ref",
+}
+_DEFAULT_PAN_BOUNDARY_MODE = "issuer_hosted_iframe_plus_enclave_break_glass"
+_SUPPORTED_PAN_BOUNDARY_MODES = {
+    _DEFAULT_PAN_BOUNDARY_MODE,
+    "issuer_hosted_iframe_only",
+    "enclave_break_glass_only",
 }
 
 
@@ -391,6 +399,22 @@ def _pan_execution_enabled() -> bool:
     return _is_truthy(os.getenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1"))
 
 
+def _pan_boundary_mode() -> str:
+    configured = os.getenv(
+        "SARDIS_CHECKOUT_PAN_BOUNDARY_MODE",
+        _DEFAULT_PAN_BOUNDARY_MODE,
+    ).strip().lower()
+    if configured in _SUPPORTED_PAN_BOUNDARY_MODES:
+        return configured
+    if _is_production_env():
+        logger.warning(
+            "Invalid SARDIS_CHECKOUT_PAN_BOUNDARY_MODE=%s in production; forcing issuer_hosted_iframe_only",
+            configured,
+        )
+        return "issuer_hosted_iframe_only"
+    return _DEFAULT_PAN_BOUNDARY_MODE
+
+
 def _require_tokenized_in_prod() -> bool:
     if not _is_production_env():
         return False
@@ -403,6 +427,10 @@ def _pan_entry_allowed_for_host(host: str) -> bool:
 
 
 def _pan_entry_policy_decision(host: str) -> tuple[bool, str]:
+    boundary_mode = _pan_boundary_mode()
+    if boundary_mode == "issuer_hosted_iframe_only":
+        return False, "pan_boundary_mode_disallows_pan_entry"
+
     if not _pan_execution_enabled():
         return False, "pan_execution_disabled"
     if _is_production_env():
@@ -428,6 +456,8 @@ def _redact_sensitive_text(value: Any) -> str:
     text = str(value or "")
     if not text:
         return ""
+    text = _CVV_INLINE_RE.sub(lambda match: f"{match.group(1).lower()}=[REDACTED_CVV]", text)
+    text = _PAN_WITH_SEPARATORS_RE.sub("[REDACTED_PAN]", text)
     return _PAN_LIKE_DIGITS_RE.sub("[REDACTED_PAN]", text)
 
 
@@ -1689,10 +1719,7 @@ def create_secure_checkout_router() -> APIRouter:
             pan_entry_allowlist=sorted(pan_allowlist),
             production_pan_entry_requires_allowlist=_require_tokenized_in_prod(),
             pan_entry_break_glass_only=_require_tokenized_in_prod(),
-            pan_boundary_mode=os.getenv(
-                "SARDIS_CHECKOUT_PAN_BOUNDARY_MODE",
-                "issuer_hosted_iframe_plus_enclave_break_glass",
-            ).strip(),
+            pan_boundary_mode=_pan_boundary_mode(),
             issuer_hosted_reveal_preferred=True,
             supported_merchant_modes=[mode.value for mode in MerchantExecutionMode],
             recommended_default_mode=MerchantExecutionMode.EMBEDDED_IFRAME.value,

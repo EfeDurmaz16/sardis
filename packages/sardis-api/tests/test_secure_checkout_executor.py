@@ -84,6 +84,13 @@ class _LeakErrorCardProvider(_CardProvider):
         raise RuntimeError("provider leaked pan 4111111111111111 while failing")
 
 
+class _LeakPatternCardProvider(_CardProvider):
+    async def reveal_card_details(self, card_id: str, *, reason: str = ""):
+        _ = reason
+        assert card_id == "card_1"
+        raise RuntimeError("PAN 4111 1111 1111 1111 exposed; cvv=123")
+
+
 class _ApprovalService:
     async def get_approval(self, approval_id: str):
         approvals = {
@@ -437,6 +444,43 @@ def test_pan_entry_reveal_failure_redacts_sensitive_error(monkeypatch):
     assert "[REDACTED_PAN]" in (payload["error"] or "")
 
 
+def test_pan_entry_reveal_failure_redacts_spaced_pan_and_cvv(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    app = _build_app(card_provider=_LeakPatternCardProvider())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_pan_redaction_2",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 503
+    assert executed.json()["detail"] == "card_details_reveal_failed"
+
+    fetched = client.get(f"/api/v2/checkout/secure/jobs/{job_id}")
+    assert fetched.status_code == 200
+    payload = fetched.json()
+    assert "4111 1111 1111 1111" not in (payload["error"] or "")
+    assert "cvv=123" not in (payload["error"] or "").lower()
+    assert "[REDACTED_PAN]" in (payload["error"] or "")
+    assert "[REDACTED_CVV]" in (payload["error"] or "")
+
+
 def test_tokenized_merchant_path_avoids_pan_secret(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_TOKENIZED_MERCHANTS", "api.payments.example.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
@@ -641,6 +685,32 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     payload = created.json()
     assert payload["merchant_mode"] == "pan_entry"
     assert payload["status"] == "pending_approval"
+
+
+def test_prod_pan_boundary_mode_can_disallow_pan_entry(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_only")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_boundary_disallow_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "pan_boundary_mode_disallows_pan_entry"
 
 
 def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
