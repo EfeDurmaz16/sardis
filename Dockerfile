@@ -20,8 +20,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install uv in runtime stage
-RUN pip install --no-cache-dir uv
+# Install runtime tools
+RUN pip install --no-cache-dir uv "uvicorn[standard]"
 
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
