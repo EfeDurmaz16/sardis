@@ -177,7 +177,15 @@ class SardisSettings(BaseSettings):
     @property
     def allowed_origins_list(self) -> List[str]:
         """Return allowed origins as a list."""
+        canonical_prod_origins = [
+            "https://sardis.sh",
+            "https://www.sardis.sh",
+            "https://app.sardis.sh",
+        ]
+
         if not self.allowed_origins:
+            if self.environment in {"prod", "sandbox"}:
+                return canonical_prod_origins
             return ["http://localhost:3005", "http://localhost:5173"]
         raw = self.allowed_origins.strip()
 
@@ -187,12 +195,22 @@ class SardisSettings(BaseSettings):
             try:
                 parsed = json.loads(raw)
                 if isinstance(parsed, list):
-                    return [str(origin).strip() for origin in parsed if str(origin).strip()]
+                    origins = [str(origin).strip() for origin in parsed if str(origin).strip()]
+                    if self.environment in {"prod", "sandbox"}:
+                        for origin in canonical_prod_origins:
+                            if origin not in origins:
+                                origins.append(origin)
+                    return origins
             except json.JSONDecodeError:
                 # Fall through to CSV parsing for malformed values.
                 pass
 
-        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+        if self.environment in {"prod", "sandbox"}:
+            for origin in canonical_prod_origins:
+                if origin not in origins:
+                    origins.append(origin)
+        return origins
     
     # Security
     secret_key: str = ""

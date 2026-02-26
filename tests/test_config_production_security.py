@@ -58,6 +58,14 @@ def test_production_accepts_json_array_origins(monkeypatch) -> None:
     assert not any("SARDIS_ALLOWED_ORIGINS" in e for e in errors)
 
 
+def test_production_auto_appends_canonical_dashboard_origins(monkeypatch) -> None:
+    _set_required_env(monkeypatch)
+    settings = _base_settings("https://dashboard.sardis.sh")
+    origins = settings.allowed_origins_list
+    assert "https://app.sardis.sh" in origins
+    assert "https://www.sardis.sh" in origins
+
+
 def test_production_requires_live_chain_mode(monkeypatch) -> None:
     _set_required_env(monkeypatch)
     settings = _base_settings("https://app.sardis.sh")
