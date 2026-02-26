@@ -56,3 +56,25 @@ def test_production_accepts_json_array_origins(monkeypatch) -> None:
     settings = _base_settings('["https://app.sardis.sh","https://www.sardis.sh"]')
     errors = validate_production_config(settings)
     assert not any("SARDIS_ALLOWED_ORIGINS" in e for e in errors)
+
+
+def test_production_requires_live_chain_mode(monkeypatch) -> None:
+    _set_required_env(monkeypatch)
+    settings = _base_settings("https://app.sardis.sh")
+    errors = validate_production_config(settings)
+    assert any("SARDIS_CHAIN_MODE: Must be 'live' in production" in e for e in errors)
+
+
+def test_production_live_chain_mode_passes_chain_mode_guard(monkeypatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("SARDIS_CHAIN_MODE", "live")
+    settings = SardisSettings(
+        environment="prod",
+        secret_key="s" * 32,
+        database_url="postgresql://localhost/sardis",
+        ledger_dsn="postgresql://localhost/sardis",
+        allowed_origins="https://app.sardis.sh",
+        chain_mode="live",
+    )
+    errors = validate_production_config(settings)
+    assert not any("SARDIS_CHAIN_MODE: Must be 'live' in production" in e for e in errors)

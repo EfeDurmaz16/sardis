@@ -368,6 +368,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.state.turnkey_client = turnkey_client
 
+    if settings.is_production and getattr(settings, "chain_mode", "simulated") != "live":
+        logger.error(
+            "Production boot attempted with non-live chain mode (%s). "
+            "Set SARDIS_CHAIN_MODE=live to disable simulated execution.",
+            getattr(settings, "chain_mode", "simulated"),
+        )
+        raise RuntimeError("Production requires SARDIS_CHAIN_MODE=live; simulated execution is disabled")
+
     if getattr(settings, "chain_mode", "simulated") == "live":
         mpc_name = (os.getenv("SARDIS_MPC__NAME", settings.mpc.name) or settings.mpc.name).strip().lower()
         if mpc_name == "simulated":

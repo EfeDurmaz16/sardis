@@ -1884,6 +1884,11 @@ class ChainExecutor:
         account_type = getattr(mandate, "account_type", "mpc_v1")
 
         if self._simulated:
+            if self._settings.is_production:
+                raise RuntimeError(
+                    "Simulated chain execution is disabled in production. "
+                    "Set SARDIS_CHAIN_MODE=live and configure MPC signer."
+                )
             # Simulated mode - return mock receipt
             tx_hash = f"0x{secrets.token_hex(32)}"
             user_op_hash = f"0x{secrets.token_hex(32)}" if account_type == "erc4337_v2" else None

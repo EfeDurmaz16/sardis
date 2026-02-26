@@ -366,12 +366,25 @@ class TestChainExecutorSimulated:
     async def test_dispatch_payment_different_chains(self, simulated_settings):
         """Test dispatch_payment with different chains."""
         executor = ChainExecutor(simulated_settings)
-        
+
         for chain in ["base_sepolia", "polygon_amoy"]:
             mandate = create_test_mandate(chain=chain)
             receipt = await executor.dispatch_payment(mandate)
-            
+
             assert receipt.chain == chain
+
+    @pytest.mark.asyncio
+    async def test_dispatch_payment_simulated_blocked_in_production(self):
+        """Production must never execute simulated chain dispatch."""
+        from sardis_v2_core import SardisSettings
+
+        with patch.dict("os.environ", {"SARDIS_ENVIRONMENT": "prod", "DATABASE_URL": ""}):
+            settings = SardisSettings(chain_mode="simulated", environment="prod")
+        executor = ChainExecutor(settings)
+        mandate = create_test_mandate()
+
+        with pytest.raises(RuntimeError, match="Simulated chain execution is disabled in production"):
+            await executor.dispatch_payment(mandate)
 
 
 class TestChainRPCClient:
@@ -507,7 +520,6 @@ class TestChainExecutorHelpers:
         await executor.close()
         
         # Clients should be closed (no exception raised)
-
 
 
 

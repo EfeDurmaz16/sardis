@@ -240,6 +240,7 @@ class PaymentOrchestrator:
         self._enforce_trust = enforce_trust
         self._trust_operation = trust_operation
         env_chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
+        self._strict_live_mode = env_chain_mode == "live"
         self._require_chain_execution = (
             env_chain_mode == "live" if require_chain_execution is None else require_chain_execution
         )
@@ -665,6 +666,11 @@ class PaymentOrchestrator:
             if self._should_dispatch_on_chain():
                 await self._dispatch_leg_on_chain(flow, leg)
             else:
+                if self._strict_live_mode:
+                    raise ValueError(
+                        "Strict live mode forbids simulated multi-agent execution; "
+                        "configure chain_executor and wallet_repo."
+                    )
                 leg.tx_hash = self._simulated_tx_hash(flow.id, leg.id)
             leg.state = PaymentLegState.COMPLETED
             leg.completed_at = datetime.now(timezone.utc)

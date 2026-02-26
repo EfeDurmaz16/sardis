@@ -123,6 +123,21 @@ async def test_simulated_path_uses_deterministic_hash_when_live_not_required(mon
 
 
 @pytest.mark.asyncio
+async def test_strict_live_mode_blocks_simulated_path_even_when_not_required(monkeypatch) -> None:
+    monkeypatch.setenv("SARDIS_CHAIN_MODE", "live")
+    orchestrator = PaymentOrchestrator(require_chain_execution=False)
+    flow = await orchestrator.create_group_payment(
+        payers=[("agent_a", Decimal("2.50"))],
+        recipient_id="agent_b",
+        token="USDC",
+        chain="base",
+    )
+
+    with pytest.raises(ValueError, match="Strict live mode forbids simulated multi-agent execution"):
+        await orchestrator.execute_flow(flow.id)
+
+
+@pytest.mark.asyncio
 async def test_cascade_stops_after_executor_failure() -> None:
     repo = WalletRepository()
     await _seed_wallet(repo, agent_id="agent_1", seed=11)

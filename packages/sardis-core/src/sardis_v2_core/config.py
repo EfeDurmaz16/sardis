@@ -382,6 +382,9 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
         if not (os.getenv("REDIS_URL") or os.getenv("SARDIS_REDIS_URL") or os.getenv("UPSTASH_REDIS_URL")):
             errors.append("REDIS_URL: Required for distributed rate limiting (or set SARDIS_REDIS_URL/UPSTASH_REDIS_URL)")
 
+        if settings.environment == "prod" and settings.chain_mode != "live":
+            errors.append("SARDIS_CHAIN_MODE: Must be 'live' in production")
+
         # MPC configuration
         if settings.chain_mode == "live":
             mpc_name = settings.mpc.name
