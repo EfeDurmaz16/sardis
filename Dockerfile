@@ -8,7 +8,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy workspace files
-COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml README.md uv.lock* ./
 COPY sardis/ ./sardis/
 COPY packages/ ./packages/
 
