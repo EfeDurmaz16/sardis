@@ -67,6 +67,7 @@ class RecurringBillingService:
         wallet_manager,
         compliance,
         autofund_handler: Optional[AutoFundHandler] = None,
+        allow_simulated_autofund: bool = True,
     ):
         self._subscription_repo = subscription_repo
         self._wallet_repo = wallet_repo
@@ -75,6 +76,21 @@ class RecurringBillingService:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
         self._autofund_handler = autofund_handler
+        self._allow_simulated_autofund = bool(allow_simulated_autofund)
+
+    def configure_autofund_handler(
+        self,
+        handler: Optional[AutoFundHandler],
+        *,
+        allow_simulated_fallback: Optional[bool] = None,
+    ) -> None:
+        """Update recurring auto-fund runtime wiring.
+
+        Production/live mode should provide a real handler and disable simulated fallback.
+        """
+        self._autofund_handler = handler
+        if allow_simulated_fallback is not None:
+            self._allow_simulated_autofund = bool(allow_simulated_fallback)
 
     async def _estimate_wallet_balance_minor(self, wallet: Any, chain: str, token: str) -> int:
         if not self._chain_executor:
@@ -97,6 +113,8 @@ class RecurringBillingService:
             return None
         if self._autofund_handler is not None:
             return await self._autofund_handler(subscription, amount_minor)
+        if not self._allow_simulated_autofund:
+            raise RuntimeError("autofund_handler_not_configured")
         # Default simulated autofund artifact for deterministic testing/dev flows.
         digest = hashlib.sha256(f"{subscription['id']}:{amount_minor}".encode()).hexdigest()[:16]
         return f"autofund_sim_{digest}"

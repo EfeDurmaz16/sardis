@@ -271,3 +271,34 @@ async def test_recurring_service_processes_due_subscription():
     assert len(processed) == 1
     assert processed[0].status == "charged"
     assert sub_repo.items["sub_1"]["failure_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_autofund_simulated_fallback_enabled_for_dev():
+    recurring = RecurringBillingService(
+        subscription_repo=_FakeSubscriptionRepo(),
+        wallet_repo=_FakeWalletRepo(_Wallet(wallet_id="wallet_1", agent_id="agent_1")),
+        agent_repo=_FakeAgentRepo(),
+        chain_executor=_FakeChainExecutor(),
+        wallet_manager=_FakeWalletManager(),
+        compliance=_FakeCompliance(),
+        allow_simulated_autofund=True,
+    )
+    tx_ref = await recurring._maybe_autofund({"id": "sub_dev", "autofund_enabled": True}, 1_250_000)  # noqa: SLF001
+    assert tx_ref is not None
+    assert tx_ref.startswith("autofund_sim_")
+
+
+@pytest.mark.asyncio
+async def test_autofund_live_mode_requires_handler():
+    recurring = RecurringBillingService(
+        subscription_repo=_FakeSubscriptionRepo(),
+        wallet_repo=_FakeWalletRepo(_Wallet(wallet_id="wallet_1", agent_id="agent_1")),
+        agent_repo=_FakeAgentRepo(),
+        chain_executor=_FakeChainExecutor(),
+        wallet_manager=_FakeWalletManager(),
+        compliance=_FakeCompliance(),
+        allow_simulated_autofund=False,
+    )
+    with pytest.raises(RuntimeError, match="autofund_handler_not_configured"):
+        await recurring._maybe_autofund({"id": "sub_live", "autofund_enabled": True}, 2_500_000)  # noqa: SLF001

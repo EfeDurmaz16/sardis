@@ -465,8 +465,25 @@ class FiatPaymentOrchestrator:
                 ramp_session.session_id, ramp_session.provider,
             )
 
-            # 2. In production, we'd wait for Treasury webhook
-            # For now, simulate immediate credit
+            # 2. Only settle balances once provider reports completion.
+            # Pending/processing sessions must wait for webhook-driven treasury credit.
+            ramp_status_raw = getattr(ramp_session, "status", "pending")
+            ramp_status = str(getattr(ramp_status_raw, "value", ramp_status_raw)).strip().lower()
+            if ramp_status != "completed":
+                logger.info(
+                    "Off-ramp session pending settlement: session=%s status=%s",
+                    ramp_session.session_id,
+                    ramp_status,
+                )
+                return FiatPaymentResult(
+                    status="pending",
+                    flow="crypto_fund",
+                    agent_id=agent_id,
+                    amount=amount_usd,
+                    reference_id=wallet_address,
+                    description=f"Off-ramp session created; waiting for settlement ({ramp_status})",
+                    ramp_session_id=ramp_session.session_id,
+                )
 
             # 3. Ensure agent account exists
             account = await self._sub_ledger.get_account(agent_id)

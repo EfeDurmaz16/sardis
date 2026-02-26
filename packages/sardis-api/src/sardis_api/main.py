@@ -638,7 +638,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         compliance=compliance,
+        allow_simulated_autofund=settings.chain_mode != "live",
     )
+    if settings.chain_mode == "live":
+        # Live mode must not mint simulated autofund artifacts.
+        recurring_billing_service.configure_autofund_handler(
+            None,
+            allow_simulated_fallback=False,
+        )
     app.state.recurring_billing_runner = recurring_billing_service.process_due_subscriptions
     app.dependency_overrides[subscriptions_router.get_deps] = lambda: subscriptions_router.SubscriptionDependencies(
         subscription_repo=subscription_repo,
@@ -1132,6 +1139,57 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
             configured_primary_adapter = _build_funding_adapter(settings.funding.primary_adapter)
             configured_fallback_adapter = _build_funding_adapter(settings.funding.fallback_adapter or "")
+            ordered_funding_adapters = [
+                adapter for adapter in (configured_primary_adapter, configured_fallback_adapter) if adapter is not None
+            ]
+
+            if ordered_funding_adapters:
+                from sardis_v2_core.funding import FundingRequest, execute_funding_with_failover
+                from sardis_v2_core.tokens import TokenType, normalize_token_amount
+
+                async def _recurring_autofund_handler(subscription: dict[str, object], amount_minor: int) -> str:
+                    token_raw = str(subscription.get("token") or "USDC").upper()
+                    try:
+                        token_type = TokenType(token_raw)
+                    except ValueError as exc:
+                        raise ValueError(f"unsupported_autofund_token:{token_raw}") from exc
+                    amount = normalize_token_amount(token_type, max(int(amount_minor), 0))
+                    if amount <= 0:
+                        raise ValueError("autofund_amount_must_be_positive")
+                    request = FundingRequest(
+                        amount=amount,
+                        currency="USD",
+                        description=f"Recurring auto-fund for subscription {subscription.get('id', 'unknown')}",
+                        metadata={
+                            "source": "recurring_billing",
+                            "subscription_id": str(subscription.get("id", "")),
+                            "wallet_id": str(subscription.get("wallet_id", "")),
+                            "chain": str(subscription.get("chain", "")),
+                            "token": token_raw,
+                        },
+                    )
+                    transfer, attempts = await execute_funding_with_failover(ordered_funding_adapters, request)
+                    logger.info(
+                        "Recurring auto-fund routed provider=%s transfer_id=%s attempts=%d",
+                        transfer.provider,
+                        transfer.transfer_id,
+                        len(attempts),
+                    )
+                    return transfer.transfer_id
+
+                recurring_billing_service.configure_autofund_handler(
+                    _recurring_autofund_handler,
+                    allow_simulated_fallback=False,
+                )
+            elif settings.chain_mode == "live":
+                recurring_billing_service.configure_autofund_handler(
+                    None,
+                    allow_simulated_fallback=False,
+                )
+                logger.warning(
+                    "Live recurring auto-fund is enabled but no funding adapters are configured; "
+                    "autofund requests will fail closed."
+                )
 
             app.dependency_overrides[stripe_funding_router.get_deps] = (
                 lambda: stripe_funding_router.StripeFundingDeps(
