@@ -463,6 +463,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger=ledger_store,
     )
     app.state.chain_executor = chain_exec
+    app.state.wallet_repo = wallet_repo
     app.state.compliance_engine = compliance
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")

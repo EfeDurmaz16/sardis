@@ -48,7 +48,7 @@ from decimal import Decimal
 from typing import Optional, Literal, List
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_v2_core.a2a_escrow import EscrowManager, Escrow, EscrowState
@@ -58,6 +58,7 @@ from sardis_v2_core.exceptions import (
     SardisNotFoundError,
     SardisValidationError,
     SardisConflictError,
+    SardisTransactionFailedError,
 )
 from sardis_api.authz import Principal, require_principal
 
@@ -178,6 +179,10 @@ class SettlementResponse(BaseModel):
     amount: str
     token: str
     chain: str
+    block_number: Optional[int] = None
+    explorer_url: Optional[str] = None
+    execution_path: Optional[str] = None
+    user_op_hash: Optional[str] = None
 
     @classmethod
     def from_settlement(cls, settlement: SettlementResult) -> "SettlementResponse":
@@ -193,6 +198,10 @@ class SettlementResponse(BaseModel):
             amount=str(settlement.amount),
             token=settlement.token,
             chain=settlement.chain,
+            block_number=settlement.block_number,
+            explorer_url=settlement.explorer_url,
+            execution_path=settlement.execution_path,
+            user_op_hash=settlement.user_op_hash,
         )
 
 
@@ -338,6 +347,7 @@ async def confirm_delivery(
 @router.post("/escrows/{escrow_id}/release", response_model=EscrowResponse)
 async def release_escrow(
     escrow_id: str,
+    http_request: Request,
     request: ReleaseEscrowRequest = ReleaseEscrowRequest(),
     principal: Principal = Depends(require_principal),
 ) -> EscrowResponse:
@@ -349,9 +359,19 @@ async def release_escrow(
     the agents' wallet configuration).
     """
     manager = EscrowManager()
+    engine = SettlementEngine(
+        chain_executor=getattr(http_request.app.state, "chain_executor", None),
+        wallet_repo=getattr(http_request.app.state, "wallet_repo", None),
+    )
 
     try:
-        escrow = await manager.release_escrow(escrow_id, request.tx_hash)
+        settlement_tx_hash = request.tx_hash
+        if settlement_tx_hash is None:
+            escrow = await manager.get_escrow(escrow_id)
+            settlement = await engine.settle_on_chain(escrow)
+            settlement_tx_hash = settlement.tx_hash
+
+        escrow = await manager.release_escrow(escrow_id, settlement_tx_hash)
         return EscrowResponse.from_escrow(escrow)
 
     except SardisNotFoundError as e:
@@ -362,6 +382,16 @@ async def release_escrow(
     except SardisConflictError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        )
+    except SardisTransactionFailedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.message,
+        )
+    except SardisValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=e.message,
         )
 
