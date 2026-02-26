@@ -105,6 +105,12 @@ approval_response_time_seconds = Histogram(
     buckets=(60, 300, 900, 1800, 3600, 7200, 14400, 28800, 86400),  # 1min to 1day
 )
 
+approval_queue_depth = Gauge(
+    "sardis_approval_queue_depth",
+    "Current approval queue depth",
+    ["queue"],  # queue: pending, escalated
+)
+
 # Card metrics
 card_transactions_total = Counter(
     "sardis_card_transactions_total",
@@ -260,6 +266,13 @@ payment_agent_rate_limited_total = Counter(
     ["operation"],
 )
 
+payment_execution_duration_seconds = Histogram(
+    "sardis_payment_execution_duration_seconds",
+    "End-to-end payment endpoint latency in seconds",
+    ["rail", "outcome"],  # rail: onchain|fiat|unknown, outcome: success|error
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0),
+)
+
 
 # Metrics helper functions
 def record_payment(chain: str, token: str, amount_usd: float, status: str) -> None:
@@ -320,6 +333,12 @@ def record_approval(action: str, status: str, response_time: Optional[float] = N
         approval_response_time_seconds.labels(action=action).observe(response_time)
 
 
+def set_approval_queue_depth(*, pending_count: int, queue: str = "pending") -> None:
+    """Update approval queue depth gauge."""
+    queue_name = str(queue or "pending").strip().lower() or "pending"
+    approval_queue_depth.labels(queue=queue_name).set(max(int(pending_count), 0))
+
+
 def record_funding_attempt(provider: str, rail: str, status: str) -> None:
     """Record one funding attempt and provider error signals."""
     provider_value = str(provider or "unknown").strip().lower() or "unknown"
@@ -365,6 +384,16 @@ def record_cache_operation(operation: str, hit: bool) -> None:
 def record_error(error_type: str, severity: str = "error") -> None:
     """Record error metrics."""
     errors_total.labels(error_type=error_type, severity=severity).inc()
+
+
+def record_payment_execution_latency(*, rail: str, outcome: str, duration_seconds: float) -> None:
+    """Record end-to-end payment endpoint duration."""
+    rail_value = str(rail or "unknown").strip().lower() or "unknown"
+    outcome_value = "success" if str(outcome).strip().lower() == "success" else "error"
+    payment_execution_duration_seconds.labels(
+        rail=rail_value,
+        outcome=outcome_value,
+    ).observe(max(float(duration_seconds), 0.0))
 
 
 if metrics_auth_required():

@@ -146,6 +146,44 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
         if exclude_paths:
             self.config.exclude_paths = exclude_paths
 
+    @staticmethod
+    def _is_payment_endpoint(path: str) -> bool:
+        return (
+            "/pay" in path
+            or "/payments" in path
+            or "/checkout" in path
+            or "/cards" in path
+        )
+
+    @staticmethod
+    def _infer_payment_rail(path: str) -> str:
+        p = (path or "").lower()
+        if "onchain" in p or "/wallets/" in p:
+            return "onchain"
+        if "cards" in p or "stripe" in p or "treasury" in p:
+            return "fiat"
+        return "unknown"
+
+    def _record_metrics(self, *, method: str, path: str, status_code: int, duration_ms: float) -> None:
+        try:
+            from sardis_api.routers.metrics import (
+                record_http_request,
+                record_payment_execution_latency,
+            )
+
+            duration_seconds = max(duration_ms / 1000.0, 0.0)
+            record_http_request(method=method, endpoint=path, status=status_code, duration=duration_seconds)
+            if self._is_payment_endpoint(path):
+                outcome = "success" if status_code < 400 else "error"
+                record_payment_execution_latency(
+                    rail=self._infer_payment_rail(path),
+                    outcome=outcome,
+                    duration_seconds=duration_seconds,
+                )
+        except Exception:
+            # Metrics failures should never impact request processing.
+            logger.debug("metrics_recording_failed", exc_info=True)
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip logging for excluded paths
         if request.url.path in self.config.exclude_paths:
@@ -222,6 +260,13 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
             else:
                 logger.log(log_level, "Request completed", extra=response_context)
 
+            self._record_metrics(
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+            )
+
             # Add correlation ID to response headers
             response.headers["X-Request-ID"] = correlation_id
             response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
@@ -244,6 +289,12 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
                     "duration_ms": round(duration_ms, 2),
                 },
                 exc_info=True,
+            )
+            self._record_metrics(
+                method=method,
+                path=path,
+                status_code=500,
+                duration_ms=duration_ms,
             )
             raise
 

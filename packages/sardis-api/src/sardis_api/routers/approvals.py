@@ -25,7 +25,7 @@ from sardis_v2_core.confidence_router import (
 )
 
 from sardis_api.authz import require_principal
-from sardis_api.routers.metrics import record_approval
+from sardis_api.routers.metrics import record_approval, set_approval_queue_depth
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +197,19 @@ def get_deps() -> ApprovalsDependencies:
     return _deps
 
 
+async def _refresh_pending_queue_depth(deps: ApprovalsDependencies) -> None:
+    """Update metrics gauge for current pending approval queue depth."""
+    try:
+        pending = await deps.approval_service.list_approvals(
+            status=ApprovalStatus.PENDING,
+            limit=1000,
+            offset=0,
+        )
+        set_approval_queue_depth(pending_count=len(pending), queue="pending")
+    except Exception:
+        logger.debug("approval_queue_depth_refresh_failed", exc_info=True)
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================
@@ -235,6 +248,7 @@ async def create_approval(
             metadata=request.metadata,
         )
         record_approval(action=approval.action, status=approval.status, response_time=None)
+        await _refresh_pending_queue_depth(deps)
 
         return ApprovalResponse.from_approval(approval)
 
@@ -313,6 +327,7 @@ async def approve_approval(
     if approval.reviewed_at is not None and approval.created_at is not None:
         response_time = max((approval.reviewed_at - approval.created_at).total_seconds(), 0.0)
     record_approval(action=approval.action, status=approval.status, response_time=response_time)
+    await _refresh_pending_queue_depth(deps)
 
     return ApprovalResponse.from_approval(approval)
 
@@ -348,6 +363,7 @@ async def deny_approval(
     if approval.reviewed_at is not None and approval.created_at is not None:
         response_time = max((approval.reviewed_at - approval.created_at).total_seconds(), 0.0)
     record_approval(action=approval.action, status=approval.status, response_time=response_time)
+    await _refresh_pending_queue_depth(deps)
 
     return ApprovalResponse.from_approval(approval)
 
@@ -377,6 +393,7 @@ async def cancel_approval(
             detail=f"Approval {approval_id} not found or not pending",
         )
 
+    await _refresh_pending_queue_depth(deps)
     return ApprovalResponse.from_approval(approval)
 
 
@@ -413,6 +430,12 @@ async def list_approvals(
         limit=limit,
         offset=offset,
     )
+
+    if status in (None, ApprovalStatus.PENDING):
+        set_approval_queue_depth(
+            pending_count=len([a for a in approvals if a.status == ApprovalStatus.PENDING]),
+            queue="pending",
+        )
 
     return ApprovalListResponse(
         approvals=[ApprovalResponse.from_approval(a) for a in approvals],

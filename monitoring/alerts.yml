@@ -219,3 +219,44 @@ rules:
     channels: [slack-ops, pagerduty]
     labels:
       component: api
+
+  # ── Payment Control Plane ────────────────────────────────────
+  - name: payment_execution_latency_high
+    description: p95 payment execution latency exceeds 3 seconds
+    source: sardis_api
+    condition: histogram_quantile(0.95, sum(rate(sardis_payment_execution_duration_seconds_bucket[5m])) by (le, rail)) > 3
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: payments
+
+  - name: approval_queue_backlog
+    description: Pending approval queue depth exceeds 50 items
+    source: sardis_api
+    condition: sardis_approval_queue_depth{queue="pending"} > 50
+    for: 10m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: approvals
+
+  - name: policy_denial_spike_detected
+    description: Policy-denial bursts indicate drift or prompt-injection pressure
+    source: sardis_api
+    condition: increase(sardis_policy_denial_spikes_total[10m]) > 0
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: policy
+
+  - name: agent_rate_limit_burst
+    description: Agent payment endpoint rate-limit denials exceed threshold
+    source: sardis_api
+    condition: increase(sardis_payment_agent_rate_limited_total[5m]) > 20
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: api
