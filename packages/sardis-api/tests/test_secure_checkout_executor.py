@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers import secure_checkout
+from sardis_v2_core.spending_policy import SpendingPolicy
 
 
 class _WalletRepo:
@@ -158,6 +159,15 @@ class _PolicyStoreWithSnapshot:
     async def fetch_policy(self, agent_id: str):
         _ = agent_id
         return _PolicySnapshot()
+
+
+class _PolicyStoreWithRealPolicy:
+    async def fetch_policy(self, agent_id: str):
+        return SpendingPolicy(
+            agent_id=agent_id,
+            limit_per_tx=Decimal("250"),
+            approval_threshold=Decimal("150"),
+        )
 
 
 class _AuditSink:
@@ -1243,6 +1253,83 @@ def test_secure_checkout_job_evidence_export_returns_integrity_bundle(monkeypatc
     serialized = json.dumps(payload)
     assert "4111111111111111" not in serialized
     assert "\"cvv\"" not in serialized
+
+
+def test_prod_secure_checkout_requires_policy_snapshot_signer(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_TOKENIZED_MERCHANTS", "api.payments.example.com")
+    monkeypatch.delenv("SARDIS_CHECKOUT_POLICY_SIGNER_SECRET", raising=False)
+
+    app = _build_app(policy_store=_PolicyStoreWithRealPolicy())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://api.payments.example.com/pay",
+            "amount": "24.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_policy_snapshot_required_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "policy_snapshot_signer_not_configured"
+
+
+def test_secure_checkout_evidence_includes_signed_policy_snapshot_when_configured(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_POLICY_SIGNER_SECRET", "checkout-policy-secret")
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    sink = _AuditSink()
+    app = _build_app(audit_sink=sink, policy_store=_PolicyStoreWithRealPolicy())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "24.00",
+            "currency": "USD",
+            "intent_id": "intent_evidence_signed_snapshot_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+    secret_ref = executed.json()["secret_ref"]
+    assert secret_ref
+
+    consumed = client.post(
+        f"/api/v2/checkout/secure/secrets/{secret_ref}/consume",
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert consumed.status_code == 200
+
+    completed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_evidence_signed"},
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert completed.status_code == 200
+
+    evidence = client.get(f"/api/v2/checkout/secure/jobs/{job_id}/evidence")
+    assert evidence.status_code == 200
+    payload = evidence.json()
+    assert payload["policy"]["policy_snapshot_id"]
+    assert payload["policy"]["policy_snapshot_chain_hash"]
+    assert payload["policy"]["policy_snapshot_signer_kid"] == "checkout-policy-signer"
 
 
 def test_secure_checkout_job_evidence_export_requires_existing_job():

@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_v2_core.policy_attestation import build_signed_policy_snapshot, verify_signed_policy_snapshot
 
 logger = logging.getLogger(__name__)
 _PAN_LIKE_DIGITS_RE = re.compile(r"\b\d{12,19}\b")
@@ -230,6 +231,9 @@ class SecureCheckoutPolicyEvidence(BaseModel):
     policy_present: bool
     policy_reason: str
     policy_hash: Optional[str] = None
+    policy_snapshot_id: Optional[str] = None
+    policy_snapshot_chain_hash: Optional[str] = None
+    policy_snapshot_signer_kid: Optional[str] = None
     max_per_tx: Optional[str] = None
     max_daily: Optional[str] = None
     max_monthly: Optional[str] = None
@@ -274,6 +278,17 @@ def _is_truthy(value: str) -> bool:
 
 def _is_production_env() -> bool:
     return os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower() in {"prod", "production"}
+
+
+def _checkout_signed_policy_snapshot_required() -> bool:
+    raw = (os.getenv("SARDIS_CHECKOUT_REQUIRE_SIGNED_POLICY_SNAPSHOT", "") or "").strip()
+    if raw:
+        return _is_truthy(raw)
+    return _is_production_env()
+
+
+def _checkout_policy_signer_secret() -> str:
+    return (os.getenv("SARDIS_CHECKOUT_POLICY_SIGNER_SECRET", "") or "").strip()
 
 
 def _now_utc() -> datetime:
@@ -1161,6 +1176,34 @@ def _policy_snapshot(policy: Any) -> dict[str, Any]:
     return {k: v for k, v in snapshot.items() if v is not None}
 
 
+def _build_signed_checkout_policy_snapshot(policy: Any) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    secret = _checkout_policy_signer_secret()
+    if not secret:
+        if _checkout_signed_policy_snapshot_required():
+            return None, "policy_snapshot_signer_not_configured"
+        return None, None
+
+    try:
+        snapshot = build_signed_policy_snapshot(
+            policy=policy,
+            signer_secret=secret,
+            source_text="secure_checkout_policy",
+            signer_kid="checkout-policy-signer",
+        )
+    except Exception:
+        logger.exception("Failed to build signed checkout policy snapshot")
+        return None, "policy_snapshot_signing_failed"
+
+    verified, verify_reason = verify_signed_policy_snapshot(
+        snapshot=snapshot,
+        signer_secret=secret,
+        expected_prev_chain_hash=snapshot.prev_chain_hash,
+    )
+    if not verified:
+        return None, f"policy_snapshot_verification_failed:{verify_reason}"
+    return snapshot.to_dict(), None
+
+
 async def _collect_job_audit_events(
     deps: SecureCheckoutDependencies,
     *,
@@ -1262,12 +1305,22 @@ async def _collect_policy_evidence(
     if policy is None:
         return SecureCheckoutPolicyEvidence(policy_present=False, policy_reason=policy_reason)
 
+    signed_snapshot, snapshot_error = _build_signed_checkout_policy_snapshot(policy)
+    if snapshot_error:
+        return SecureCheckoutPolicyEvidence(
+            policy_present=True,
+            policy_reason=snapshot_error,
+        )
+
     snapshot = _policy_snapshot(policy)
     snapshot_hash = hashlib.sha256(_canonical_json_bytes(snapshot)).hexdigest() if snapshot else None
     return SecureCheckoutPolicyEvidence(
         policy_present=True,
         policy_reason=policy_reason,
         policy_hash=snapshot_hash,
+        policy_snapshot_id=_iso_or_none((signed_snapshot or {}).get("snapshot_id")),
+        policy_snapshot_chain_hash=_iso_or_none((signed_snapshot or {}).get("chain_hash")),
+        policy_snapshot_signer_kid=_iso_or_none((signed_snapshot or {}).get("signer_kid")),
         max_per_tx=_iso_or_none(snapshot.get("max_per_tx")),
         max_daily=_iso_or_none(snapshot.get("max_daily")),
         max_monthly=_iso_or_none(snapshot.get("max_monthly")),
@@ -1708,6 +1761,10 @@ async def _evaluate_policy(
     policy = await deps.policy_store.fetch_policy(wallet.agent_id)
     if not policy:
         return True, "OK"
+
+    _, snapshot_error = _build_signed_checkout_policy_snapshot(policy)
+    if snapshot_error:
+        return False, snapshot_error
 
     allowed, reason = policy.validate_payment(
         amount=amount,

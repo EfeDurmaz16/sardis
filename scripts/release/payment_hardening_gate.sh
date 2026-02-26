@@ -48,6 +48,9 @@ require_match 'PROMPT_INJECTION_PATTERNS' \
 require_match '_goal_drift_block_threshold' \
   'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
   'on-chain goal drift block threshold guard must be present'
+require_match '_signed_policy_snapshot_required' \
+  'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
+  'on-chain signed policy snapshot requirement guard must be present'
 
 require_match 'cursor_scope_mismatch' \
   'packages/sardis-api/src/sardis_api/routers/compliance.py' \
@@ -80,6 +83,12 @@ require_match '_require_shared_secret_store' \
 require_match '_required_checkout_approvals' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout must compute approval quorum requirements deterministically'
+require_match '_checkout_signed_policy_snapshot_required' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout signed policy snapshot guard must be present'
+require_match 'policy_snapshot_signer_not_configured' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must fail closed when signed policy snapshot is required but signer is missing'
 require_match 'approval_distinct_reviewer_quorum_not_met' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout must enforce distinct reviewer quorum when configured'
@@ -150,9 +159,18 @@ require_match 'test_pan_entry_quorum_requires_distinct_reviewers' \
 require_match 'test_prod_provider_profile_locks_boundary_mode_for_stripe' \
   'packages/sardis-api/tests/test_secure_checkout_executor.py' \
   'secure checkout provider profile lock must be test covered'
-require_match 'test_prod_provider_profile_lithic_allows_break_glass_pan_entry' \
+require_match 'test_prod_provider_profile_lithic_defaults_to_hosted_only' \
   'packages/sardis-api/tests/test_secure_checkout_executor.py' \
-  'secure checkout provider profile allow path must be test covered'
+  'secure checkout provider profile hosted-only default must be test covered'
+require_match 'test_prod_provider_profile_lithic_can_allow_break_glass_with_override' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout provider profile override path must be test covered'
+require_match 'test_prod_secure_checkout_requires_policy_snapshot_signer' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout prod signed snapshot requirement must be test covered'
+require_match 'test_secure_checkout_evidence_includes_signed_policy_snapshot_when_configured' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout evidence must include signed policy snapshot fields when configured'
 require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
   'packages/sardis-api/tests/test_a2a_trust_table.py' \
   'A2A trust table rejection test must exist'
