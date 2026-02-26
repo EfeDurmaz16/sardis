@@ -51,6 +51,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
-# Run the FastAPI application
-# Uses $PORT env var (Render sets PORT=10000, default 8000)
-CMD uvicorn sardis_api.main:create_app --factory --host 0.0.0.0 --port ${PORT}
+# Run the FastAPI application with monorepo package sources on PYTHONPATH.
+CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" uvicorn sardis_api.main:create_app --factory --host 0.0.0.0 --port ${PORT}
