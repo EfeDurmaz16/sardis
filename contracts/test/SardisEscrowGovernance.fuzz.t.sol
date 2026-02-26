@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/SardisEscrow.sol";
 
+contract GovernanceExecutorFuzzMock {}
+
 /**
  * @title SardisEscrow governance fuzz tests
  * @notice Property tests for arbiter timelock governance controls.
@@ -88,26 +90,27 @@ contract SardisEscrowGovernanceFuzzTest is Test {
     }
 
     function testFuzz_governanceExecutorCanMutateArbiter(
-        address governanceExecutor,
         address candidate,
         uint256 delayAfterEta
     ) public {
-        vm.assume(governanceExecutor != address(0));
-        vm.assume(governanceExecutor != owner);
-        vm.assume(governanceExecutor != arbiter);
         vm.assume(candidate != address(0));
         vm.assume(candidate != arbiter);
 
-        escrow.setGovernanceExecutor(governanceExecutor);
+        GovernanceExecutorFuzzMock governanceExecutor = new GovernanceExecutorFuzzMock();
+        address governanceExecutorAddr = address(governanceExecutor);
+        vm.assume(governanceExecutorAddr != owner);
+        vm.assume(governanceExecutorAddr != arbiter);
+        vm.assume(candidate != governanceExecutorAddr);
+        escrow.setGovernanceExecutor(governanceExecutorAddr);
 
-        vm.prank(governanceExecutor);
+        vm.prank(governanceExecutorAddr);
         escrow.proposeArbiter(candidate);
 
         uint256 eta = escrow.pendingArbiterEta();
         delayAfterEta = bound(delayAfterEta, 0, 30 days);
         vm.warp(eta + delayAfterEta);
 
-        vm.prank(governanceExecutor);
+        vm.prank(governanceExecutorAddr);
         escrow.executeArbiterUpdate();
 
         assertEq(escrow.arbiter(), candidate);

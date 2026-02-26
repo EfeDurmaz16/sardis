@@ -73,6 +73,15 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     /// @notice Optional governance executor (e.g., multisig) for timelocked admin ops
     address public governanceExecutor;
 
+    /// @notice Pending governance executor address awaiting timelock execution
+    address public pendingGovernanceExecutor;
+
+    /// @notice Earliest timestamp when pending governance executor can be executed
+    uint256 public pendingGovernanceExecutorEta;
+
+    /// @notice If true, only governance executor can run admin updates (owner loses admin bypass)
+    bool public governanceStrictMode;
+
     /// @notice Pending arbiter address awaiting timelock execution
     address public pendingArbiter;
 
@@ -81,6 +90,18 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
 
     /// @notice Timelock for arbiter changes
     uint256 public constant ARBITER_UPDATE_TIMELOCK = 2 days;
+
+    /// @notice Timelock for governance executor changes
+    uint256 public constant GOVERNANCE_EXECUTOR_UPDATE_TIMELOCK = 2 days;
+
+    /// @notice Pending owner address awaiting timelock execution
+    address public pendingOwner;
+
+    /// @notice Earliest timestamp when pending owner transfer can be executed
+    uint256 public ownershipTransferEta;
+
+    /// @notice Timelock for ownership transfer
+    uint256 public constant OWNERSHIP_TRANSFER_TIMELOCK = 2 days;
     
     /// @notice Fee percentage (basis points, 100 = 1%)
     uint256 public feeBps;
@@ -144,6 +165,24 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     event ArbiterUpdateCancelled(address indexed pendingArbiter);
 
     event GovernanceExecutorUpdated(address indexed oldExecutor, address indexed newExecutor);
+
+    event GovernanceExecutorUpdateProposed(
+        address indexed currentExecutor,
+        address indexed pendingExecutor,
+        uint256 executeAfter
+    );
+
+    event GovernanceExecutorUpdateExecuted(address indexed oldExecutor, address indexed newExecutor);
+
+    event GovernanceExecutorUpdateCancelled(address indexed pendingExecutor);
+
+    event GovernanceStrictModeEnabled(address indexed executor, address indexed enabledBy);
+
+    event OwnershipTransferProposed(address indexed newOwner, uint256 executeAfter);
+
+    event OwnershipTransferExecuted(address indexed oldOwner, address indexed newOwner);
+
+    event OwnershipTransferCancelled(address indexed cancelledOwner);
     
     // ============ Modifiers ============
     
@@ -163,10 +202,14 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     }
 
     modifier onlyGovernanceAdmin() {
-        require(
-            msg.sender == owner() || (governanceExecutor != address(0) && msg.sender == governanceExecutor),
-            "Only governance admin"
-        );
+        if (governanceStrictMode) {
+            require(governanceExecutor != address(0) && msg.sender == governanceExecutor, "Only governance executor");
+        } else {
+            require(
+                msg.sender == owner() || (governanceExecutor != address(0) && msg.sender == governanceExecutor),
+                "Only governance admin"
+            );
+        }
         _;
     }
     
@@ -609,12 +652,66 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
 
     /**
      * @notice Set governance executor (recommended: multisig/timelock contract)
-     * @dev Owner retains break-glass authority; executor can run timelocked admin ops.
+     * @dev Bootstrap-only path. In strict mode, updates must go through timelocked governance functions.
      */
     function setGovernanceExecutor(address _executor) external onlyOwner {
+        require(!governanceStrictMode, "Use timelocked executor update");
+        _validateGovernanceExecutor(_executor);
         address oldExecutor = governanceExecutor;
         governanceExecutor = _executor;
         emit GovernanceExecutorUpdated(oldExecutor, _executor);
+    }
+
+    /**
+     * @notice Propose governance executor update (timelocked)
+     * @dev In strict mode, proposal and execution can only be performed by current governance executor.
+     */
+    function proposeGovernanceExecutor(address _executor) external onlyGovernanceAdmin {
+        require(_executor != governanceExecutor, "Executor unchanged");
+        if (governanceStrictMode) {
+            require(_executor != address(0), "Strict mode requires executor");
+        }
+        _validateGovernanceExecutor(_executor);
+        pendingGovernanceExecutor = _executor;
+        pendingGovernanceExecutorEta = block.timestamp + GOVERNANCE_EXECUTOR_UPDATE_TIMELOCK;
+        emit GovernanceExecutorUpdateProposed(governanceExecutor, _executor, pendingGovernanceExecutorEta);
+    }
+
+    function executeGovernanceExecutorUpdate() external onlyGovernanceAdmin {
+        require(pendingGovernanceExecutorEta != 0, "No pending executor");
+        require(block.timestamp >= pendingGovernanceExecutorEta, "Timelock not expired");
+        if (governanceStrictMode) {
+            require(pendingGovernanceExecutor != address(0), "Strict mode requires executor");
+        }
+
+        address oldExecutor = governanceExecutor;
+        address newExecutor = pendingGovernanceExecutor;
+        governanceExecutor = newExecutor;
+        pendingGovernanceExecutor = address(0);
+        pendingGovernanceExecutorEta = 0;
+
+        emit GovernanceExecutorUpdated(oldExecutor, newExecutor);
+        emit GovernanceExecutorUpdateExecuted(oldExecutor, newExecutor);
+    }
+
+    function cancelGovernanceExecutorUpdate() external onlyGovernanceAdmin {
+        require(pendingGovernanceExecutorEta != 0, "No pending executor");
+        address cancelled = pendingGovernanceExecutor;
+        pendingGovernanceExecutor = address(0);
+        pendingGovernanceExecutorEta = 0;
+        emit GovernanceExecutorUpdateCancelled(cancelled);
+    }
+
+    /**
+     * @notice Enable strict governance mode
+     * @dev One-way switch. Once enabled, owner can no longer invoke governance-admin functions directly.
+     */
+    function enableGovernanceStrictMode() external onlyOwner {
+        require(!governanceStrictMode, "Strict mode already enabled");
+        require(governanceExecutor != address(0), "Executor required");
+        require(governanceExecutor.code.length > 0, "Executor must be contract");
+        governanceStrictMode = true;
+        emit GovernanceStrictModeEnabled(governanceExecutor, msg.sender);
     }
     
     function setFeeBps(uint256 _feeBps) external onlyGovernanceAdmin {
@@ -624,6 +721,41 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     function setMinAmount(uint256 _minAmount) external onlyGovernanceAdmin {
         minAmount = _minAmount;
+    }
+
+    // ============ Timelocked Ownership Transfer ============
+
+    /**
+     * @notice Override ownership transfer to enforce timelock
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        require(newOwner != address(0), "Invalid new owner");
+        require(newOwner != owner(), "Already owner");
+        pendingOwner = newOwner;
+        ownershipTransferEta = block.timestamp + OWNERSHIP_TRANSFER_TIMELOCK;
+        emit OwnershipTransferProposed(newOwner, ownershipTransferEta);
+    }
+
+    function executeOwnershipTransfer() external onlyOwner {
+        require(pendingOwner != address(0), "No pending transfer");
+        require(block.timestamp >= ownershipTransferEta, "Timelock not expired");
+
+        address oldOwner = owner();
+        address newOwner = pendingOwner;
+
+        pendingOwner = address(0);
+        ownershipTransferEta = 0;
+
+        super.transferOwnership(newOwner);
+        emit OwnershipTransferExecuted(oldOwner, newOwner);
+    }
+
+    function cancelOwnershipTransfer() external onlyOwner {
+        require(pendingOwner != address(0), "No pending transfer");
+        address cancelled = pendingOwner;
+        pendingOwner = address(0);
+        ownershipTransferEta = 0;
+        emit OwnershipTransferCancelled(cancelled);
     }
     
     // ============ View Functions ============
@@ -672,5 +804,14 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     function getEscrowCount() external view returns (uint256) {
         return escrowCounter;
+    }
+
+    // ============ Internal Validation ============
+
+    function _validateGovernanceExecutor(address _executor) internal view {
+        if (_executor == address(0)) {
+            return;
+        }
+        require(_executor.code.length > 0, "Executor must be contract");
     }
 }

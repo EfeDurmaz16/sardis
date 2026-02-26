@@ -20,6 +20,8 @@ contract MockUSDC is ERC20 {
     }
 }
 
+contract GovernanceExecutorMock {}
+
 contract SardisEscrowTest is Test {
     SardisEscrow escrow;
     MockUSDC usdc;
@@ -529,18 +531,19 @@ contract SardisEscrowTest is Test {
     }
 
     function testGovernanceExecutorCanMutateTimelockedArbiter() public {
-        address governance = address(0xABCD);
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        address governanceAddr = address(governance);
         address newArbiter = address(0x888);
 
-        escrow.setGovernanceExecutor(governance);
-        assertEq(escrow.governanceExecutor(), governance);
+        escrow.setGovernanceExecutor(governanceAddr);
+        assertEq(escrow.governanceExecutor(), governanceAddr);
 
-        vm.prank(governance);
+        vm.prank(governanceAddr);
         escrow.proposeArbiter(newArbiter);
         assertEq(escrow.pendingArbiter(), newArbiter);
 
         vm.warp(block.timestamp + escrow.ARBITER_UPDATE_TIMELOCK());
-        vm.prank(governance);
+        vm.prank(governanceAddr);
         escrow.executeArbiterUpdate();
 
         assertEq(escrow.arbiter(), newArbiter);
@@ -548,21 +551,119 @@ contract SardisEscrowTest is Test {
     }
 
     function testOnlyOwnerCanSetGovernanceExecutor() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
         vm.prank(buyer);
         vm.expectRevert();
+        escrow.setGovernanceExecutor(address(governance));
+    }
+
+    function testSetGovernanceExecutorRevertsForEOA() public {
+        vm.expectRevert("Executor must be contract");
         escrow.setGovernanceExecutor(address(0xA11CE));
     }
 
     function testNonGovernanceAdminCannotRunAdminUpdates() public {
-        address governance = address(0xABCD);
-        escrow.setGovernanceExecutor(governance);
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        escrow.setGovernanceExecutor(address(governance));
 
         vm.prank(seller);
         vm.expectRevert("Only governance admin");
         escrow.setFeeBps(150);
     }
-}
 
+    function testEnableGovernanceStrictModeRequiresContractExecutor() public {
+        vm.expectRevert("Executor required");
+        escrow.enableGovernanceStrictMode();
+    }
+
+    function testStrictModeBlocksOwnerGovernanceBypass() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        escrow.setGovernanceExecutor(address(governance));
+        escrow.enableGovernanceStrictMode();
+
+        vm.expectRevert("Only governance executor");
+        escrow.setFeeBps(150);
+    }
+
+    function testStrictModeAllowsExecutorGovernanceActions() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        address governanceAddr = address(governance);
+        escrow.setGovernanceExecutor(governanceAddr);
+        escrow.enableGovernanceStrictMode();
+
+        vm.prank(governanceAddr);
+        escrow.setFeeBps(150);
+
+        assertEq(escrow.feeBps(), 150);
+    }
+
+    function testTimelockedGovernanceExecutorUpdate() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        GovernanceExecutorMock nextGovernance = new GovernanceExecutorMock();
+
+        escrow.setGovernanceExecutor(address(governance));
+        escrow.enableGovernanceStrictMode();
+
+        vm.prank(address(governance));
+        escrow.proposeGovernanceExecutor(address(nextGovernance));
+        assertEq(escrow.pendingGovernanceExecutor(), address(nextGovernance));
+
+        vm.expectRevert("Timelock not expired");
+        vm.prank(address(governance));
+        escrow.executeGovernanceExecutorUpdate();
+
+        vm.warp(block.timestamp + escrow.GOVERNANCE_EXECUTOR_UPDATE_TIMELOCK());
+        vm.prank(address(governance));
+        escrow.executeGovernanceExecutorUpdate();
+
+        assertEq(escrow.governanceExecutor(), address(nextGovernance));
+        assertEq(escrow.pendingGovernanceExecutor(), address(0));
+        assertEq(escrow.pendingGovernanceExecutorEta(), 0);
+    }
+
+    function testSetGovernanceExecutorBlockedInStrictMode() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        GovernanceExecutorMock nextGovernance = new GovernanceExecutorMock();
+        escrow.setGovernanceExecutor(address(governance));
+        escrow.enableGovernanceStrictMode();
+
+        vm.expectRevert("Use timelocked executor update");
+        escrow.setGovernanceExecutor(address(nextGovernance));
+    }
+
+    function testOwnershipTransferIsTimelocked() public {
+        address newOwner = address(0xBEEF);
+        escrow.transferOwnership(newOwner);
+        assertEq(escrow.pendingOwner(), newOwner);
+        assertEq(escrow.owner(), address(this));
+
+        vm.warp(block.timestamp + escrow.OWNERSHIP_TRANSFER_TIMELOCK());
+        escrow.executeOwnershipTransfer();
+
+        assertEq(escrow.owner(), newOwner);
+        assertEq(escrow.pendingOwner(), address(0));
+        assertEq(escrow.ownershipTransferEta(), 0);
+    }
+
+    function testOwnershipTransferRevertsBeforeTimelock() public {
+        address newOwner = address(0xBEEF);
+        escrow.transferOwnership(newOwner);
+
+        vm.expectRevert("Timelock not expired");
+        escrow.executeOwnershipTransfer();
+    }
+
+    function testCancelOwnershipTransfer() public {
+        address newOwner = address(0xBEEF);
+        escrow.transferOwnership(newOwner);
+        assertEq(escrow.pendingOwner(), newOwner);
+
+        escrow.cancelOwnershipTransfer();
+        assertEq(escrow.pendingOwner(), address(0));
+        assertEq(escrow.ownershipTransferEta(), 0);
+        assertEq(escrow.owner(), address(this));
+    }
+}
 
 
 
