@@ -87,6 +87,11 @@ if ! bash scripts/release/compliance_execution_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating GA prep execution pack"
+if ! bash scripts/release/ga_prep_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating demo proof assets"
 if ! bash scripts/release/demo_proof_assets_check.sh; then
   failures=$((failures + 1))
