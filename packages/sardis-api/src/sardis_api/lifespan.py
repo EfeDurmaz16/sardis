@@ -104,8 +104,11 @@ async def lifespan(app: FastAPI):
             from sardis_v2_core.database import init_database
             await init_database()
             logger.info("Database schema initialized")
-        except (ImportError, OSError, RuntimeError, ValueError) as e:
-            logger.warning(f"Could not initialize database schema: {e}")
+        except Exception as e:  # noqa: BLE001
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+            if env in {"prod", "production"}:
+                raise
+            logger.warning(f"Could not initialize database schema in non-prod mode: {e}")
 
     # Setup signal handlers for graceful shutdown
     loop = asyncio.get_running_loop()
