@@ -12,8 +12,8 @@ Define deterministic PAN boundary defaults per issuer/provider so production can
 | Provider key | Default boundary mode | Rationale |
 | --- | --- | --- |
 | `stripe_issuing`, `stripe` | `issuer_hosted_iframe_only` | Keep PAN in issuer-hosted UI by default. |
-| `lithic` | `issuer_hosted_iframe_plus_enclave_break_glass` | Allow controlled break-glass PAN lane for merchants without embedded flow. |
-| `rain` | `issuer_hosted_iframe_plus_enclave_break_glass` | Same break-glass posture while partner capabilities are finalized. |
+| `lithic` | `issuer_hosted_iframe_only` | PCI-minimized default until provider reveal model is contractually certified. |
+| `rain` | `issuer_hosted_iframe_only` | PCI-minimized default until provider reveal model is contractually certified. |
 | `bridge` | `issuer_hosted_iframe_only` | Default to hosted-only until card reveal model is certified. |
 | `coinbase_cdp` | `issuer_hosted_iframe_only` | On-chain-first; PAN lane should remain constrained. |
 

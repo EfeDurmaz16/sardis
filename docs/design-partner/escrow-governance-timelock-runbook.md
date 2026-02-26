@@ -74,6 +74,13 @@ This enforces a review window before arbiter/governance/ownership authority chan
 
 Strict mode is intentionally one-way.
 
+In strict mode, ownership operations are also governance-executor gated:
+- `transferOwnership`
+- `executeOwnershipTransfer`
+- `cancelOwnershipTransfer`
+
+This removes single-owner proposal/execute ability after strict mode is enabled.
+
 ## Ownership Rotation
 
 1. Submit `transferOwnership(newOwner)` (proposes transfer with timelock).

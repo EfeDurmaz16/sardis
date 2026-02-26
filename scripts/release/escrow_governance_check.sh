@@ -54,6 +54,8 @@ require_match 'function cancelGovernanceExecutorUpdate' "$CONTRACT_FILE" "govern
 require_match 'function enableGovernanceStrictMode' "$CONTRACT_FILE" "strict governance mode function must exist"
 require_match 'function executeOwnershipTransfer' "$CONTRACT_FILE" "ownership transfer execution function must exist"
 require_match 'function cancelOwnershipTransfer' "$CONTRACT_FILE" "ownership transfer cancel function must exist"
+require_match 'modifier onlyOwnershipAdmin' "$CONTRACT_FILE" "ownership operations must use ownership admin modifier"
+require_match 'function transferOwnership\(address newOwner\) public override onlyOwnershipAdmin' "$CONTRACT_FILE" "ownership transfer must be governance-gated in strict mode"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[escrow-governance] completed with $failures failure(s)"

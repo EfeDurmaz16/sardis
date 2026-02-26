@@ -663,7 +663,25 @@ contract SardisEscrowTest is Test {
         assertEq(escrow.ownershipTransferEta(), 0);
         assertEq(escrow.owner(), address(this));
     }
-}
 
+    function testOwnershipTransferInStrictModeRequiresGovernanceExecutor() public {
+        GovernanceExecutorMock governance = new GovernanceExecutorMock();
+        escrow.setGovernanceExecutor(address(governance));
+        escrow.enableGovernanceStrictMode();
+
+        vm.expectRevert("Only governance executor");
+        escrow.transferOwnership(address(0xBEEF));
+
+        vm.prank(address(governance));
+        escrow.transferOwnership(address(0xBEEF));
+        assertEq(escrow.pendingOwner(), address(0xBEEF));
+
+        vm.warp(block.timestamp + escrow.OWNERSHIP_TRANSFER_TIMELOCK());
+        vm.prank(address(governance));
+        escrow.executeOwnershipTransfer();
+
+        assertEq(escrow.owner(), address(0xBEEF));
+    }
+}
 
 

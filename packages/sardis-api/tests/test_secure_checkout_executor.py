@@ -752,7 +752,7 @@ def test_prod_provider_profile_locks_boundary_mode_for_stripe(monkeypatch):
     assert payload["pan_boundary_mode_locked"] is True
 
 
-def test_prod_provider_profile_lithic_allows_break_glass_pan_entry(monkeypatch):
+def test_prod_provider_profile_lithic_defaults_to_hosted_only(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
     monkeypatch.setenv("SARDIS_CARDS_PRIMARY_PROVIDER", "lithic")
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
@@ -773,6 +773,45 @@ def test_prod_provider_profile_lithic_allows_break_glass_pan_entry(monkeypatch):
             "amount": "20.00",
             "currency": "USD",
             "intent_id": "intent_prod_pan_profile_lithic_allow_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "pan_provider_profile_disallows_pan_entry"
+
+    policy = client.get("/api/v2/checkout/secure/security-policy")
+    assert policy.status_code == 200
+    payload = policy.json()
+    assert payload["pan_provider"] == "lithic"
+    assert payload["pan_provider_boundary_mode"] == "issuer_hosted_iframe_only"
+    assert payload["pan_boundary_mode"] == "issuer_hosted_iframe_only"
+    assert payload["pan_boundary_mode_locked"] is True
+
+
+def test_prod_provider_profile_lithic_can_allow_break_glass_with_override(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CARDS_PRIMARY_PROVIDER", "lithic")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
+    monkeypatch.setenv(
+        "SARDIS_CHECKOUT_PAN_PROVIDER_BOUNDARY_MATRIX_JSON",
+        '{"lithic":"issuer_hosted_iframe_plus_enclave_break_glass"}',
+    )
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_profile_lithic_override_allow_1",
         },
     )
     assert created.status_code == 201

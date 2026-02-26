@@ -725,10 +725,20 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
 
     // ============ Timelocked Ownership Transfer ============
 
+    modifier onlyOwnershipAdmin() {
+        if (governanceStrictMode) {
+            require(governanceExecutor != address(0) && msg.sender == governanceExecutor, "Only governance executor");
+        } else {
+            require(msg.sender == owner(), "Ownable: caller is not the owner");
+        }
+        _;
+    }
+
     /**
      * @notice Override ownership transfer to enforce timelock
+     * @dev In strict governance mode, ownership operations can only be initiated by governance executor.
      */
-    function transferOwnership(address newOwner) public override onlyOwner {
+    function transferOwnership(address newOwner) public override onlyOwnershipAdmin {
         require(newOwner != address(0), "Invalid new owner");
         require(newOwner != owner(), "Already owner");
         pendingOwner = newOwner;
@@ -736,7 +746,7 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         emit OwnershipTransferProposed(newOwner, ownershipTransferEta);
     }
 
-    function executeOwnershipTransfer() external onlyOwner {
+    function executeOwnershipTransfer() external onlyOwnershipAdmin {
         require(pendingOwner != address(0), "No pending transfer");
         require(block.timestamp >= ownershipTransferEta, "Timelock not expired");
 
@@ -750,7 +760,7 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         emit OwnershipTransferExecuted(oldOwner, newOwner);
     }
 
-    function cancelOwnershipTransfer() external onlyOwner {
+    function cancelOwnershipTransfer() external onlyOwnershipAdmin {
         require(pendingOwner != address(0), "No pending transfer");
         address cancelled = pendingOwner;
         pendingOwner = address(0);

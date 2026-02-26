@@ -52,9 +52,9 @@ _DEFAULT_PROVIDER_BOUNDARY_MATRIX = {
     # conservative default for fiat-first issuers
     "stripe_issuing": "issuer_hosted_iframe_only",
     "stripe": "issuer_hosted_iframe_only",
-    # break-glass PAN path only when explicitly allowlisted/compliance-ready
-    "lithic": "issuer_hosted_iframe_plus_enclave_break_glass",
-    "rain": "issuer_hosted_iframe_plus_enclave_break_glass",
+    # PCI-minimized default: hosted-only until provider contract/reveal model is certified.
+    "lithic": "issuer_hosted_iframe_only",
+    "rain": "issuer_hosted_iframe_only",
     # funding/ramp rails default to hosted-only profile
     "bridge": "issuer_hosted_iframe_only",
     "coinbase_cdp": "issuer_hosted_iframe_only",
