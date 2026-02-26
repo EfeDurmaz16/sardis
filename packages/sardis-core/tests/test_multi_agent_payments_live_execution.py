@@ -36,6 +36,18 @@ class _FakeChainExecutor:
         )
 
 
+class _FakeTrustEvaluator:
+    def __init__(self, *, deny_counterparty: str | None = None) -> None:
+        self._deny_counterparty = deny_counterparty
+        self.calls = []
+
+    async def evaluate_trust(self, requester: str, counterparty: str, amount: Decimal, operation: str = "payment"):
+        self.calls.append((requester, counterparty, amount, operation))
+        if counterparty == self._deny_counterparty:
+            return {"approved": False, "denial_reason": "counterparty_not_trusted", "trust_score": 0.2}
+        return {"approved": True, "trust_score": 0.93}
+
+
 async def _seed_wallet(repo: WalletRepository, *, agent_id: str, seed: int) -> None:
     wallet = await repo.create(
         agent_id=agent_id,
@@ -140,3 +152,56 @@ async def test_cascade_stops_after_executor_failure() -> None:
     assert flow.legs[1].state == PaymentLegState.FAILED
     assert flow.legs[2].state == PaymentLegState.PENDING
     assert len(executor.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_trust_enforcement_blocks_untrusted_counterparty() -> None:
+    repo = WalletRepository()
+    await _seed_wallet(repo, agent_id="payer", seed=21)
+    await _seed_wallet(repo, agent_id="trusted_vendor", seed=22)
+    await _seed_wallet(repo, agent_id="blocked_vendor", seed=23)
+    executor = _FakeChainExecutor()
+    trust_evaluator = _FakeTrustEvaluator(deny_counterparty="blocked_vendor")
+    orchestrator = PaymentOrchestrator(
+        chain_executor=executor,
+        wallet_repo=repo,
+        trust_evaluator=trust_evaluator,
+        enforce_trust=True,
+        require_chain_execution=True,
+    )
+    flow = await orchestrator.create_split_payment(
+        payer_id="payer",
+        recipients=[
+            ("trusted_vendor", Decimal("0.50")),
+            ("blocked_vendor", Decimal("0.50")),
+        ],
+        total_amount=Decimal("20.00"),
+        token="USDC",
+        chain="base",
+    )
+
+    with pytest.raises(ValueError, match="counterparty_not_trusted"):
+        await orchestrator.execute_flow(flow.id)
+
+    assert len(trust_evaluator.calls) == 2
+    assert flow.legs[0].trust_approved is True
+    assert flow.legs[1].trust_approved is False
+    assert flow.legs[1].trust_reason == "counterparty_not_trusted"
+    assert len(executor.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_trust_enforcement_requires_evaluator_when_enabled() -> None:
+    orchestrator = PaymentOrchestrator(enforce_trust=True)
+    flow = await orchestrator.create_group_payment(
+        payers=[("agent_a", Decimal("1.00"))],
+        recipient_id="agent_b",
+        token="USDC",
+        chain="base",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Trust enforcement enabled but trust_evaluator is not configured",
+    ):
+        await orchestrator.execute_flow(flow.id)

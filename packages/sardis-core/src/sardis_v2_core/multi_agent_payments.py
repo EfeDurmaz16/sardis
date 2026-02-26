@@ -100,6 +100,16 @@ class WalletRepositoryPort(Protocol):
     async def get_by_agent(self, agent_id: str) -> Any: ...
 
 
+class TrustEvaluatorPort(Protocol):
+    async def evaluate_trust(
+        self,
+        requester: str,
+        counterparty: str,
+        amount: Decimal,
+        operation: str = "payment",
+    ) -> Any: ...
+
+
 # ============ Data Models ============
 
 
@@ -118,6 +128,9 @@ class PaymentLeg:
     explorer_url: Optional[str] = None
     execution_path: Optional[str] = None
     user_op_hash: Optional[str] = None
+    trust_approved: Optional[bool] = None
+    trust_reason: Optional[str] = None
+    trust_score: Optional[float] = None
     error: Optional[str] = None
     order: int = 0  # Execution order for cascading
     condition: Optional[str] = None  # Condition for cascading
@@ -138,6 +151,9 @@ class PaymentLeg:
             "explorer_url": self.explorer_url,
             "execution_path": self.execution_path,
             "user_op_hash": self.user_op_hash,
+            "trust_approved": self.trust_approved,
+            "trust_reason": self.trust_reason,
+            "trust_score": self.trust_score,
             "error": self.error,
             "order": self.order,
         }
@@ -210,13 +226,19 @@ class PaymentOrchestrator:
         *,
         chain_executor: Optional[ChainExecutorPort] = None,
         wallet_repo: Optional[WalletRepositoryPort] = None,
+        trust_evaluator: Optional[TrustEvaluatorPort] = None,
         domain: str = "sardis.sh",
         require_chain_execution: Optional[bool] = None,
+        enforce_trust: bool = False,
+        trust_operation: str = "payment",
     ) -> None:
         self._flows: Dict[str, PaymentFlow] = {}
         self._chain_executor = chain_executor
         self._wallet_repo = wallet_repo
+        self._trust_evaluator = trust_evaluator
         self._domain = domain
+        self._enforce_trust = enforce_trust
+        self._trust_operation = trust_operation
         env_chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
         self._require_chain_execution = (
             env_chain_mode == "live" if require_chain_execution is None else require_chain_execution
@@ -227,15 +249,21 @@ class PaymentOrchestrator:
         *,
         chain_executor: Optional[ChainExecutorPort] = None,
         wallet_repo: Optional[WalletRepositoryPort] = None,
+        trust_evaluator: Optional[TrustEvaluatorPort] = None,
         domain: Optional[str] = None,
+        enforce_trust: Optional[bool] = None,
     ) -> None:
         """Inject/replace execution dependencies at runtime."""
         if chain_executor is not None:
             self._chain_executor = chain_executor
         if wallet_repo is not None:
             self._wallet_repo = wallet_repo
+        if trust_evaluator is not None:
+            self._trust_evaluator = trust_evaluator
         if domain:
             self._domain = domain
+        if enforce_trust is not None:
+            self._enforce_trust = enforce_trust
 
     async def create_split_payment(
         self,
@@ -631,6 +659,7 @@ class PaymentOrchestrator:
         return flows
 
     async def _execute_leg(self, flow: PaymentFlow, leg: PaymentLeg) -> None:
+        await self._evaluate_leg_trust(leg)
         leg.state = PaymentLegState.EXECUTING
         try:
             if self._should_dispatch_on_chain():
@@ -658,6 +687,25 @@ class PaymentOrchestrator:
                 extra={"flow_id": flow.id, "leg_id": leg.id, "error": str(e)},
             )
             raise
+
+    async def _evaluate_leg_trust(self, leg: PaymentLeg) -> None:
+        if not self._enforce_trust and self._trust_evaluator is None:
+            return
+        if self._trust_evaluator is None:
+            raise ValueError("Trust enforcement enabled but trust_evaluator is not configured")
+
+        decision = await self._trust_evaluator.evaluate_trust(
+            requester=leg.payer_id,
+            counterparty=leg.recipient_id,
+            amount=leg.amount,
+            operation=self._trust_operation,
+        )
+        approved, reason, score = self._normalize_trust_decision(decision)
+        leg.trust_approved = approved
+        leg.trust_reason = reason
+        leg.trust_score = score
+        if not approved:
+            raise ValueError(reason or "trust_evaluation_denied")
 
     def _should_dispatch_on_chain(self) -> bool:
         has_deps = self._chain_executor is not None and self._wallet_repo is not None
@@ -734,6 +782,22 @@ class PaymentOrchestrator:
     def _simulated_tx_hash(flow_id: str, leg_id: str) -> str:
         digest = hashlib.sha256(f"simulated:{flow_id}:{leg_id}".encode()).hexdigest()
         return f"0x{digest}"
+
+    @staticmethod
+    def _normalize_trust_decision(
+        decision: Any,
+    ) -> tuple[bool, Optional[str], Optional[float]]:
+        if isinstance(decision, bool):
+            return decision, None if decision else "trust_evaluation_denied", None
+        if isinstance(decision, dict):
+            approved = bool(decision.get("approved", False))
+            reason = decision.get("denial_reason") or decision.get("reason")
+            score = decision.get("trust_score")
+            return approved, reason, float(score) if score is not None else None
+        approved = bool(getattr(decision, "approved", False))
+        reason = getattr(decision, "denial_reason", None) or getattr(decision, "reason", None)
+        score = getattr(decision, "trust_score", None)
+        return approved, reason, float(score) if score is not None else None
 
 
 def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:

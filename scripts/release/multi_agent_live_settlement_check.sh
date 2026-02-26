@@ -30,6 +30,7 @@ forbid_match() {
 
 TARGET_FILE="packages/sardis-core/src/sardis_v2_core/multi_agent_payments.py"
 require_match 'dispatch_payment' "$TARGET_FILE" "multi-agent flow must dispatch via chain executor when configured"
+require_match '_evaluate_leg_trust' "$TARGET_FILE" "multi-agent flow must evaluate trust before execution"
 forbid_match 'tx_hash = f"0x\{uuid4\(\)\.hex\}"' "$TARGET_FILE" "legacy uuid mock tx hashes must be removed"
 
 if [[ "$failures" -gt 0 ]]; then
