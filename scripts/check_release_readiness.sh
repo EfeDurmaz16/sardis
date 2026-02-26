@@ -49,6 +49,9 @@ echo "[release-readiness] Running Python SDK + protocol checks"
 echo "[release-readiness] Running ops readiness checks (SLO/alerts/pager/drill)"
 "$ROOT_DIR/scripts/release/ops_readiness_check.sh"
 
+echo "[release-readiness] Running smart-contract formal audit gate"
+"$ROOT_DIR/scripts/release/smart_contract_audit_check.sh"
+
 echo "[release-readiness] Verifying design partner checklist (engineering scope)"
 DESIGN_PARTNER_CHECKLIST="$ROOT_DIR/docs/design-partner/staging-hardening-checklist.json"
 if [[ -f "$DESIGN_PARTNER_CHECKLIST" ]]; then

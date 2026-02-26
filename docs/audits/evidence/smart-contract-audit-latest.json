@@ -1,0 +1,23 @@
+{
+  "status": "planned",
+  "audit_firm": "TBD",
+  "owner": "security@sardis.sh",
+  "started_at": "2026-02-26T00:00:00Z",
+  "completed_at": "",
+  "scope": {
+    "contracts": [
+      "contracts/src/SardisEscrow.sol",
+      "contracts/src/SardisSmartAccount.sol",
+      "contracts/src/SardisWalletFactory.sol"
+    ],
+    "chains": [
+      "base-sepolia",
+      "base-mainnet"
+    ]
+  },
+  "report": {
+    "url": "",
+    "sha256": ""
+  },
+  "notes": "Set status=completed and fill report.url + report.sha256 before strict prod release."
+}
