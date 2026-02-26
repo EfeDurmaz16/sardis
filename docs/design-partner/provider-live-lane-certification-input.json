@@ -1,0 +1,70 @@
+{
+  "pass_threshold": 23,
+  "providers": {
+    "stripe": {
+      "notes": "Pending partner confirmation. Baseline score reflects unknowns until meeting outputs are captured.",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 2,
+        "B2": 2,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      }
+    },
+    "lithic": {
+      "notes": "Partial implementation exists; live-lane certification is pending final latency/funding SLA checks.",
+      "scores": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 2,
+        "B1": 2,
+        "B2": 2,
+        "B3": 2,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      }
+    },
+    "rain": {
+      "notes": "Partner process in flight. Placeholder scores until API/auth/funding model is contractually confirmed.",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 1,
+        "B2": 1,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      }
+    },
+    "bridge": {
+      "notes": "Partner process in flight. Placeholder scores until API/auth/funding model is contractually confirmed.",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 1,
+        "B2": 1,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      }
+    }
+  }
+}
+

@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-02-26T11:04:07.111818+00:00",
+  "go_count": 0,
+  "input": "docs/design-partner/provider-live-lane-certification-input.json",
+  "no_go_count": 4,
+  "providers": [
+    {
+      "critical_zero_keys": [],
+      "decision": "NO_GO_SCORE",
+      "notes": "Pending partner confirmation. Baseline score reflects unknowns until meeting outputs are captured.",
+      "provider": "stripe",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 2,
+        "B2": 2,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      },
+      "threshold": 23,
+      "total": 13
+    },
+    {
+      "critical_zero_keys": [],
+      "decision": "NO_GO_SCORE",
+      "notes": "Partial implementation exists; live-lane certification is pending final latency/funding SLA checks.",
+      "provider": "lithic",
+      "scores": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 2,
+        "B1": 2,
+        "B2": 2,
+        "B3": 2,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      },
+      "threshold": 23,
+      "total": 17
+    },
+    {
+      "critical_zero_keys": [],
+      "decision": "NO_GO_SCORE",
+      "notes": "Partner process in flight. Placeholder scores until API/auth/funding model is contractually confirmed.",
+      "provider": "rain",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 1,
+        "B2": 1,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      },
+      "threshold": 23,
+      "total": 11
+    },
+    {
+      "critical_zero_keys": [],
+      "decision": "NO_GO_SCORE",
+      "notes": "Partner process in flight. Placeholder scores until API/auth/funding model is contractually confirmed.",
+      "provider": "bridge",
+      "scores": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 1,
+        "B2": 1,
+        "B3": 1,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1,
+        "D1": 1,
+        "E1": 1
+      },
+      "threshold": 23,
+      "total": 11
+    }
+  ],
+  "threshold": 23
+}

@@ -10,6 +10,7 @@ required=(
   "docs/design-partner/provider-meeting-kit-stripe-rain-15min.md"
   "docs/design-partner/provider-pre-report-web-q1-2026.md"
   "docs/design-partner/provider-live-lane-certification-scorecard.md"
+  "docs/design-partner/provider-live-lane-certification-input.json"
   "docs/marketing/diligence-response-sheet-stripe-q1-2026.md"
   "docs/marketing/diligence-response-sheet-lithic-q1-2026.md"
   "docs/marketing/diligence-response-sheet-rain-q1-2026.md"
@@ -23,9 +24,28 @@ for path in "${required[@]}"; do
   fi
 done
 
+STRICT_MODE="${SARDIS_PROVIDER_CERT_STRICT:-0}"
+if [[ "$STRICT_MODE" == "1" || "$STRICT_MODE" == "true" ]]; then
+  STRICT_ARG="--strict"
+  echo "[provider-cert] strict mode enabled"
+else
+  STRICT_ARG=""
+fi
+
+echo "[provider-cert] generating provider GO/NO-GO artifacts"
+python3 scripts/release/generate_provider_live_lane_artifact.py $STRICT_ARG
+
+echo "[provider-cert] running webhook/idempotency evidence checks"
+bash scripts/release/idempotency_replay_e2e_check.sh
+
 echo "[provider-cert] running provider contract smoke tests"
 python3 -m pytest -q \
   packages/sardis-cards/tests/test_provider_contract_matrix.py \
   packages/sardis-api/tests/test_partner_card_webhooks.py::test_partner_webhook_duplicate_event_is_idempotent
+
+if [[ ! -f "docs/audits/evidence/provider-live-lane-certification-latest.json" ]]; then
+  echo "[provider-cert] missing generated certification artifact"
+  exit 1
+fi
 
 echo "[provider-cert] OK"
