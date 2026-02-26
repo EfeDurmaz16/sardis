@@ -72,6 +72,30 @@ class _FakeTreasuryRepo:
         self.events.append(kwargs)
 
 
+class _FakeCacheService:
+    def __init__(self) -> None:
+        self._store: dict[str, str] = {}
+        self._locks: dict[str, str] = {}
+
+    async def get(self, key: str):
+        return self._store.get(key)
+
+    async def set(self, key: str, value: str, ttl: int = 0):
+        self._store[key] = value
+
+    async def acquire_lock(self, resource: str, ttl_seconds: int = 30):
+        owner = f"lock:{resource}"
+        if resource in self._locks:
+            return None
+        self._locks[resource] = owner
+        return owner
+
+    async def release_lock(self, resource: str, owner: str):
+        current = self._locks.get(resource)
+        if current == owner:
+            self._locks.pop(resource, None)
+
+
 def _build_app(deps: PartnerCardWebhookDeps) -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[get_deps] = lambda: deps
@@ -190,3 +214,52 @@ def test_rain_lifecycle_webhook_updates_card_status():
 
     assert response.status_code == 200
     assert card_repo.card["status"] == "frozen"
+
+
+def test_partner_webhook_duplicate_event_is_idempotent():
+    card_repo = _FakeCardRepo()
+    deps = PartnerCardWebhookDeps(
+        card_repo=card_repo,
+        wallet_repo=_FakeWalletRepo(),
+        agent_repo=_FakeAgentRepo(),
+        canonical_repo=_FakeCanonicalRepo(),
+        treasury_repo=_FakeTreasuryRepo(),
+        bridge_webhook_secret="bridge_secret",
+        environment="prod",
+    )
+    app = _build_app(deps)
+    app.state.cache_service = _FakeCacheService()
+    client = TestClient(app)
+
+    payload = {
+        "id": "evt_duplicate_1",
+        "type": "transaction.settled",
+        "data": {
+            "card_id": "card_provider_1",
+            "transaction_id": "tx_dup_1",
+            "amount": "3.25",
+            "currency": "USD",
+            "status": "settled",
+            "merchant_name": "Bridge Merchant",
+            "mcc": "5734",
+        },
+    }
+    body = json.dumps(payload).encode("utf-8")
+    sig = _sign("bridge_secret", body)
+
+    first = client.post(
+        "/api/v2/webhooks/cards/bridge",
+        content=body,
+        headers={"x-bridge-signature": sig},
+    )
+    second = client.post(
+        "/api/v2/webhooks/cards/bridge",
+        content=body,
+        headers={"x-bridge-signature": sig},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["status"] == "received"
+    assert second.json()["status"] == "received"
+    assert len(card_repo.transactions) == 1
