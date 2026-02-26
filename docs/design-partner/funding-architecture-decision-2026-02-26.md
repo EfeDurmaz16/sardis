@@ -32,8 +32,20 @@ Environment prefix: `SARDIS_FUNDING_`
 
 ## Current Adapter Wiring (Phase 1)
 
-- Wired: `stripe` (Stripe Treasury top-up adapter)
-- Not yet wired: `coinbase_cdp`, `rain`, `bridge` (explicit warning logs when requested)
+- Wired:
+  - `stripe` (Stripe Treasury top-up adapter)
+  - `rain` (HTTP top-up adapter)
+  - `bridge` (HTTP top-up adapter)
+  - `coinbase_cdp` (HTTP top-up adapter; requires dedicated topup API key)
+- Runtime still defaults to `fiat_first` unless strategy flag is changed.
+
+### New config/environment surface
+
+- `COINBASE_CDP_TOPUP_API_KEY`
+- `COINBASE_CDP_TOPUP_BASE_URL` (or `SARDIS_FUNDING` strategy defaults)
+- `COINBASE_CDP_TOPUP_PATH`
+- `RAIN_FUNDING_TOPUP_PATH`
+- `BRIDGE_FUNDING_TOPUP_PATH`
 
 ## Runtime Guardrails
 

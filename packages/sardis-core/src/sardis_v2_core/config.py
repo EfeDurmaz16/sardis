@@ -94,6 +94,9 @@ class CoinbaseConfig(BaseSettings):
 
     api_key_name: str = ""
     api_key_private_key: str = ""
+    topup_api_key: str = ""
+    topup_base_url: str = "https://api.coinbase.com"
+    topup_path: str = "/v1/funding/topups"
     network_id: str = "base-mainnet"
     x402_enabled: bool = False
 
@@ -108,6 +111,7 @@ class RainConfig(BaseSettings):
     program_id: str = ""
     base_url: str = "https://api.rain.xyz"
     webhook_secret: str = ""
+    funding_topup_path: str = "/v1/funding/topups"
     cards_path_map_json: str = ""
     cards_method_map_json: str = ""
 
@@ -122,6 +126,7 @@ class BridgeCardsConfig(BaseSettings):
     api_secret: str = ""
     program_id: str = ""
     cards_base_url: str = "https://api.bridge.xyz"
+    funding_topup_path: str = "/v1/funding/topups"
     webhook_secret: str = ""
     cards_path_map_json: str = ""
     cards_method_map_json: str = ""

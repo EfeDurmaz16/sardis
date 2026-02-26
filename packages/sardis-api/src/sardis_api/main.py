@@ -1068,7 +1068,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 environment="production" if settings.is_production else "sandbox",
             )
 
-            from sardis_v2_core.funding import StripeIssuingFundingAdapter
+            from sardis_v2_core.funding import HttpTopupFundingAdapter, StripeIssuingFundingAdapter
 
             def _build_funding_adapter(adapter_name: str):
                 normalized = (adapter_name or "").strip().lower()
@@ -1076,6 +1076,53 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     return None
                 if normalized == "stripe":
                     return StripeIssuingFundingAdapter(treasury_provider)
+                if normalized == "rain":
+                    rain_api_key = settings.rain.api_key or os.getenv("RAIN_API_KEY", "")
+                    if not rain_api_key:
+                        logger.warning("RAIN_API_KEY missing; cannot initialize Rain funding adapter")
+                        return None
+                    return HttpTopupFundingAdapter(
+                        provider="rain",
+                        rail="stablecoin",
+                        base_url=settings.rain.base_url or "https://api.rain.xyz",
+                        api_key=rain_api_key,
+                        topup_path=settings.rain.funding_topup_path or "/v1/funding/topups",
+                        auth_style="bearer",
+                        program_id=settings.rain.program_id or os.getenv("RAIN_PROGRAM_ID", ""),
+                    )
+                if normalized == "bridge":
+                    bridge_api_key = settings.bridge_cards.api_key or os.getenv("BRIDGE_API_KEY", "")
+                    if not bridge_api_key:
+                        logger.warning("BRIDGE_API_KEY missing; cannot initialize Bridge funding adapter")
+                        return None
+                    return HttpTopupFundingAdapter(
+                        provider="bridge",
+                        rail="stablecoin",
+                        base_url=settings.bridge_cards.cards_base_url or "https://api.bridge.xyz",
+                        api_key=bridge_api_key,
+                        api_secret=settings.bridge_cards.api_secret or os.getenv("BRIDGE_API_SECRET", ""),
+                        topup_path=settings.bridge_cards.funding_topup_path or "/v1/funding/topups",
+                        auth_style="x_api_key",
+                        program_id=settings.bridge_cards.program_id or os.getenv("BRIDGE_PROGRAM_ID", ""),
+                    )
+                if normalized == "coinbase_cdp":
+                    coinbase_topup_api_key = (
+                        settings.coinbase.topup_api_key
+                        or os.getenv("COINBASE_CDP_TOPUP_API_KEY", "")
+                    )
+                    if not coinbase_topup_api_key:
+                        logger.warning(
+                            "COINBASE_CDP_TOPUP_API_KEY missing; cannot initialize Coinbase funding adapter"
+                        )
+                        return None
+                    return HttpTopupFundingAdapter(
+                        provider="coinbase_cdp",
+                        rail="stablecoin",
+                        base_url=settings.coinbase.topup_base_url or "https://api.coinbase.com",
+                        api_key=coinbase_topup_api_key,
+                        topup_path=settings.coinbase.topup_path or "/v1/funding/topups",
+                        auth_style="bearer",
+                    )
                 logger.warning(
                     "Funding adapter '%s' requested but not wired in this deployment",
                     normalized,
