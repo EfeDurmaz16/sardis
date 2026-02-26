@@ -69,6 +69,15 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     /// @notice Sardis arbiter address for disputes
     address public arbiter;
+
+    /// @notice Pending arbiter address awaiting timelock execution
+    address public pendingArbiter;
+
+    /// @notice Earliest timestamp when pending arbiter can be executed
+    uint256 public pendingArbiterEta;
+
+    /// @notice Timelock for arbiter changes
+    uint256 public constant ARBITER_UPDATE_TIMELOCK = 2 days;
     
     /// @notice Fee percentage (basis points, 100 = 1%)
     uint256 public feeBps;
@@ -120,6 +129,16 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     event ConditionVerified(uint256 indexed escrowId, bytes32 indexed conditionHash);
 
     event ReleasedWithCondition(uint256 indexed escrowId, bytes32 indexed conditionHash);
+
+    event ArbiterUpdateProposed(
+        address indexed currentArbiter,
+        address indexed pendingArbiter,
+        uint256 executeAfter
+    );
+
+    event ArbiterUpdateExecuted(address indexed oldArbiter, address indexed newArbiter);
+
+    event ArbiterUpdateCancelled(address indexed pendingArbiter);
     
     // ============ Modifiers ============
     
@@ -541,8 +560,38 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     // ============ Admin Functions ============
     
     function setArbiter(address _arbiter) external onlyOwner {
+        // Backwards-compatible alias: setting arbiter now requires timelocked execution.
+        proposeArbiter(_arbiter);
+    }
+
+    function proposeArbiter(address _arbiter) public onlyOwner {
         require(_arbiter != address(0), "Invalid arbiter");
-        arbiter = _arbiter;
+        require(_arbiter != arbiter, "Arbiter unchanged");
+        pendingArbiter = _arbiter;
+        pendingArbiterEta = block.timestamp + ARBITER_UPDATE_TIMELOCK;
+        emit ArbiterUpdateProposed(arbiter, _arbiter, pendingArbiterEta);
+    }
+
+    function executeArbiterUpdate() external onlyOwner {
+        require(pendingArbiter != address(0), "No pending arbiter");
+        require(block.timestamp >= pendingArbiterEta, "Timelock not expired");
+
+        address oldArbiter = arbiter;
+        address newArbiter = pendingArbiter;
+
+        arbiter = newArbiter;
+        pendingArbiter = address(0);
+        pendingArbiterEta = 0;
+
+        emit ArbiterUpdateExecuted(oldArbiter, newArbiter);
+    }
+
+    function cancelArbiterUpdate() external onlyOwner {
+        require(pendingArbiter != address(0), "No pending arbiter");
+        address cancelled = pendingArbiter;
+        pendingArbiter = address(0);
+        pendingArbiterEta = 0;
+        emit ArbiterUpdateCancelled(cancelled);
     }
     
     function setFeeBps(uint256 _feeBps) external onlyOwner {
@@ -602,4 +651,3 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         return escrowCounter;
     }
 }
-

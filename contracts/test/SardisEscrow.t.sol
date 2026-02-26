@@ -486,8 +486,35 @@ contract SardisEscrowTest is Test {
     
     function testSetArbiter() public {
         address newArbiter = address(0x999);
+
         escrow.setArbiter(newArbiter);
+        assertEq(escrow.pendingArbiter(), newArbiter);
+        assertEq(escrow.arbiter(), arbiter); // unchanged before timelock
+
+        vm.warp(block.timestamp + escrow.ARBITER_UPDATE_TIMELOCK());
+        escrow.executeArbiterUpdate();
+
         assertEq(escrow.arbiter(), newArbiter);
+        assertEq(escrow.pendingArbiter(), address(0));
+    }
+
+    function testSetArbiterRevertsBeforeTimelock() public {
+        address newArbiter = address(0x999);
+        escrow.setArbiter(newArbiter);
+
+        vm.expectRevert("Timelock not expired");
+        escrow.executeArbiterUpdate();
+    }
+
+    function testCancelPendingArbiterUpdate() public {
+        address newArbiter = address(0x999);
+        escrow.setArbiter(newArbiter);
+        assertEq(escrow.pendingArbiter(), newArbiter);
+
+        escrow.cancelArbiterUpdate();
+        assertEq(escrow.pendingArbiter(), address(0));
+        assertEq(escrow.pendingArbiterEta(), 0);
+        assertEq(escrow.arbiter(), arbiter);
     }
     
     function testSetFeeBps() public {
@@ -501,7 +528,6 @@ contract SardisEscrowTest is Test {
         escrow.setFeeBps(501);
     }
 }
-
 
 
 
