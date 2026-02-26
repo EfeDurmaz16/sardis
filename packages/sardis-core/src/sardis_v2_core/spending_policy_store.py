@@ -94,6 +94,7 @@ class SpendingPolicyStore:
                 )
 
                 now = datetime.now(timezone.utc)
+                window_updates: list[tuple[object, Decimal, datetime]] = []
                 for window in windows:
                     window_type = window["window_type"]
                     limit_amount = Decimal(str(window["limit_amount"]))
@@ -110,22 +111,17 @@ class SpendingPolicyStore:
                     else:
                         continue
 
-                    # Reset window if expired
+                    # Compute effective spend for this window. If expired, reset in-memory first.
                     if now >= window_start + duration:
                         current_spent = Decimal("0")
-                        await conn.execute(
-                            """
-                            UPDATE time_window_limits
-                            SET current_spent = 0, window_start = $1
-                            WHERE id = $2
-                            """,
-                            now,
-                            window["id"],
-                        )
+                        window_start = now
 
                     # Check window limit
                     if current_spent + amount > limit_amount:
                         return False, f"{window_type}_limit_exceeded"
+
+                    # Store final value to persist in one batch statement.
+                    window_updates.append((window["id"], current_spent + amount, window_start))
 
                 # All checks passed — record the spend atomically
                 await conn.execute(
@@ -134,20 +130,31 @@ class SpendingPolicyStore:
                     SET spent_total = spent_total + $1, updated_at = NOW()
                     WHERE id = $2
                     """,
-                    float(amount),
+                    amount,
                     policy["id"],
                 )
 
-                # Update all time windows
-                for window in windows:
+                # Update all windows in one statement to minimize lock hold time.
+                if window_updates:
+                    window_ids = [w[0] for w in window_updates]
+                    window_spent = [w[1] for w in window_updates]
+                    window_starts = [w[2] for w in window_updates]
                     await conn.execute(
                         """
-                        UPDATE time_window_limits
-                        SET current_spent = current_spent + $1
-                        WHERE id = $2
+                        UPDATE time_window_limits tw
+                        SET current_spent = u.current_spent,
+                            window_start = u.window_start
+                        FROM (
+                            SELECT
+                                UNNEST($1::uuid[]) AS id,
+                                UNNEST($2::numeric[]) AS current_spent,
+                                UNNEST($3::timestamptz[]) AS window_start
+                        ) AS u
+                        WHERE tw.id = u.id
                         """,
-                        float(amount),
-                        window["id"],
+                        window_ids,
+                        window_spent,
+                        window_starts,
                     )
 
                 # Record velocity entry
@@ -157,7 +164,7 @@ class SpendingPolicyStore:
                     VALUES ($1, NOW(), $2, $3)
                     """,
                     policy["id"],
-                    float(amount),
+                    amount,
                     merchant_id,
                 )
 
