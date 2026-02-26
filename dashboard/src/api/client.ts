@@ -20,6 +20,36 @@ export interface AgentInstructionResponse {
   tx_id?: string
 }
 
+export interface EnterpriseSupportProfile {
+  organization_id: string
+  plan: 'free' | 'pro' | 'enterprise'
+  first_response_sla_minutes: number
+  resolution_sla_hours: number
+  channels: string[]
+  pager: boolean
+}
+
+export interface EnterpriseSupportTicket {
+  id: string
+  organization_id: string
+  requester_id: string
+  requester_kind: string
+  subject: string
+  description: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  category: 'payments' | 'compliance' | 'infrastructure' | 'cards' | 'other'
+  status: 'open' | 'acknowledged' | 'resolved' | 'closed'
+  first_response_due_at: string
+  resolution_due_at: string
+  acknowledged_at?: string | null
+  resolved_at?: string | null
+  response_sla_breached: boolean
+  resolution_sla_breached: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
 
 async function request<T>(
   endpoint: string,
@@ -165,6 +195,49 @@ export const riskApi = {
 export const healthApi = {
   check: () => requestV2<{ status: string; service: string; version: string; environment?: string }>('/health'),
   checkV1: () => request<{ status: string; service: string; version: string }>('/'),
+}
+
+// Enterprise Support APIs (V2 only)
+export const enterpriseSupportApi = {
+  profile: () => requestV2<EnterpriseSupportProfile>('/enterprise/support/profile'),
+
+  listTickets: (params?: {
+    status_filter?: 'open' | 'acknowledged' | 'resolved' | 'closed'
+    priority?: 'low' | 'medium' | 'high' | 'urgent'
+    limit?: number
+    offset?: number
+  }) => {
+    const search = new URLSearchParams()
+    if (params?.status_filter) search.set('status_filter', params.status_filter)
+    if (params?.priority) search.set('priority', params.priority)
+    if (typeof params?.limit === 'number') search.set('limit', String(params.limit))
+    if (typeof params?.offset === 'number') search.set('offset', String(params.offset))
+    const query = search.toString()
+    const suffix = query ? `?${query}` : ''
+    return requestV2<EnterpriseSupportTicket[]>(`/enterprise/support/tickets${suffix}`)
+  },
+
+  createTicket: (data: {
+    subject: string
+    description: string
+    priority?: 'low' | 'medium' | 'high' | 'urgent'
+    category?: 'payments' | 'compliance' | 'infrastructure' | 'cards' | 'other'
+    metadata?: Record<string, unknown>
+  }) => requestV2<EnterpriseSupportTicket>('/enterprise/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  acknowledgeTicket: (ticketId: string) =>
+    requestV2<EnterpriseSupportTicket>(`/enterprise/support/tickets/${ticketId}/acknowledge`, {
+      method: 'POST',
+    }),
+
+  resolveTicket: (ticketId: string, resolution_note?: string) =>
+    requestV2<EnterpriseSupportTicket>(`/enterprise/support/tickets/${ticketId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ resolution_note }),
+    }),
 }
 
 // AP2 Payment APIs (V2 only)

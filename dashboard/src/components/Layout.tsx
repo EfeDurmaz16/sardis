@@ -17,7 +17,8 @@ import {
   Target,
   Anchor,
   Award,
-  AlertTriangle
+  AlertTriangle,
+  Headset
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -42,6 +43,7 @@ const navigation = [
   { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
   { name: 'Agent Identity', href: '/agent-identity', icon: Award },
   { name: 'Goal Drift', href: '/goal-drift', icon: AlertTriangle },
+  { name: 'Enterprise Support', href: '/enterprise-support', icon: Headset },
 ]
 
 export default function Layout({ children }: LayoutProps) {

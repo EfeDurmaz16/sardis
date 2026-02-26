@@ -335,7 +335,7 @@ export default function Roadmap() {
         { text: 'Multi-tenant organization support', done: true },
         { text: 'Custom policy templates', done: true },
         { text: 'Advanced analytics dashboard', done: true },
-        { text: 'Enterprise SLA & support', done: false },
+        { text: 'Enterprise SLA & support', done: true },
       ],
     },
     {

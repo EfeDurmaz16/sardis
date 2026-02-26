@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -147,5 +147,57 @@ export function useHealth() {
     queryKey: ['health'],
     queryFn: healthApi.check,
     refetchInterval: 30000, // Refresh every 30 seconds
+  })
+}
+
+// Enterprise support
+export function useSupportProfile() {
+  return useQuery({
+    queryKey: ['support-profile'],
+    queryFn: enterpriseSupportApi.profile,
+  })
+}
+
+export function useSupportTickets(filters?: {
+  status_filter?: 'open' | 'acknowledged' | 'resolved' | 'closed'
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  limit?: number
+  offset?: number
+}) {
+  return useQuery({
+    queryKey: ['support-tickets', filters?.status_filter, filters?.priority, filters?.limit, filters?.offset],
+    queryFn: () => enterpriseSupportApi.listTickets(filters),
+  })
+}
+
+export function useCreateSupportTicket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: enterpriseSupportApi.createTicket,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['support-profile'] })
+    },
+  })
+}
+
+export function useAcknowledgeSupportTicket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ticketId: string) => enterpriseSupportApi.acknowledgeTicket(ticketId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
+    },
+  })
+}
+
+export function useResolveSupportTicket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, resolutionNote }: { ticketId: string; resolutionNote?: string }) =>
+      enterpriseSupportApi.resolveTicket(ticketId, resolutionNote),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
+    },
   })
 }

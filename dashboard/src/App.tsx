@@ -16,6 +16,7 @@ import ConfidenceRouterPage from './pages/ConfidenceRouter'
 import AuditAnchorsPage from './pages/AuditAnchors'
 import AgentIdentityPage from './pages/AgentIdentity'
 import GoalDriftPage from './pages/GoalDrift'
+import EnterpriseSupportPage from './pages/EnterpriseSupport'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -50,6 +51,7 @@ function AppRoutes() {
                 <Route path="/audit-anchors" element={<AuditAnchorsPage />} />
                 <Route path="/agent-identity" element={<AgentIdentityPage />} />
                 <Route path="/goal-drift" element={<GoalDriftPage />} />
+                <Route path="/enterprise-support" element={<EnterpriseSupportPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
