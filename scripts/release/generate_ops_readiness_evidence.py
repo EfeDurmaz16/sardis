@@ -70,6 +70,11 @@ def main() -> None:
     parser.add_argument("--max-failover-rto-min", type=float, default=15.0)
     parser.add_argument("--max-recovery-rto-min", type=float, default=60.0)
     parser.add_argument("--max-rpo-sec", type=float, default=0.0)
+    parser.add_argument(
+        "--strict-routing",
+        action="store_true",
+        help="Fail if critical alert route lacks pagerduty/human escalation defaults",
+    )
     args = parser.parse_args()
 
     drill_payload = _load_json(Path(args.drill_evidence))
@@ -131,6 +136,15 @@ def main() -> None:
             "pagerduty": 120,
         },
     )
+    critical_channels_raw = severity_channels.get("critical", [])
+    critical_channels = critical_channels_raw if isinstance(critical_channels_raw, list) else []
+    human_channels = {"pagerduty", "slack", "email"}
+    routing_checks = {
+        "critical_has_human_route": any(str(ch).lower() in human_channels for ch in critical_channels),
+        "critical_includes_pagerduty": any(str(ch).lower() == "pagerduty" for ch in critical_channels),
+        "pagerduty_cooldown_configured": "pagerduty" in cooldowns,
+        "pagerduty_configured": bool((os.getenv("PAGERDUTY_ROUTING_KEY", "") or "").strip()),
+    }
 
     artifact = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -148,7 +162,8 @@ def main() -> None:
         "alert_routing": {
             "severity_channels": severity_channels,
             "channel_cooldowns": cooldowns,
-            "pagerduty_configured": bool((os.getenv("PAGERDUTY_ROUTING_KEY", "") or "").strip()),
+            "pagerduty_configured": routing_checks["pagerduty_configured"],
+            "routing_checks": routing_checks,
         },
         "runbooks": runbooks,
     }
@@ -160,9 +175,10 @@ def main() -> None:
 
     if not all(checks.values()):
         raise SystemExit("[ops-evidence][fail] drill metrics exceed configured thresholds")
+    if args.strict_routing and not all(routing_checks.values()):
+        raise SystemExit("[ops-evidence][fail] strict routing checks failed")
     print("[ops-evidence] pass")
 
 
 if __name__ == "__main__":
     main()
-

@@ -26,6 +26,7 @@ Scope: Treasury and stablecoin payment incidents
    - canonical state ingestion lag
 3. Verify paging path:
    - monitoring workflow alert
+   - PagerDuty escalation for `SEV-1` within 2 minutes
    - Slack/incident channel ack in under 5 minutes
 4. Execute containment:
    - freeze risky rail if needed
@@ -42,4 +43,3 @@ Scope: Treasury and stablecoin payment incidents
 2. Mitigation start: under 10 minutes
 3. Recovery: under 30 minutes
 4. Postmortem published: under 24 hours
-

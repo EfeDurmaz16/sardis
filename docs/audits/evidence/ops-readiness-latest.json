@@ -6,6 +6,12 @@
       "slack": 180
     },
     "pagerduty_configured": false,
+    "routing_checks": {
+      "critical_has_human_route": true,
+      "critical_includes_pagerduty": true,
+      "pagerduty_configured": false,
+      "pagerduty_cooldown_configured": true
+    },
     "severity_channels": {
       "critical": [
         "websocket",
@@ -41,7 +47,7 @@
       "max_rpo_sec": 0.0
     }
   },
-  "generated_at": "2026-02-26T11:12:56.030044+00:00",
+  "generated_at": "2026-02-26T12:46:23.110367+00:00",
   "runbooks": [
     {
       "path": "docs/design-partner/ops-slo-alerts-rollback-runbook.md",
@@ -53,7 +59,7 @@
     },
     {
       "path": "docs/design-partner/incident-response-247-drill.md",
-      "sha256": "4c8982cbb628f4b17a309c2284cf9e132e56b33963f163f22eb443467f171553"
+      "sha256": "c7a437b8c51dfc946f36f92bae8ae9733a73b68644f75c334e319fa883e0cba5"
     },
     {
       "path": "docs/design-partner/reconciliation-load-chaos-slos.md",
