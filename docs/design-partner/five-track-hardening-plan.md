@@ -80,9 +80,11 @@ T4-C:
 
 T5-A:
 - secure checkout + approval + policy + attestation birleşik evidence export endpoint’i.
+  - Durum: ✅ Tamamlandı (`GET /api/v2/checkout/secure/jobs/{job_id}/evidence`)
 
 T5-B:
 - digest + hash-chain integrity summary.
+  - Durum: ✅ Tamamlandı (`integrity.digest_sha256`, `integrity.hash_chain_tail`)
 
 T5-C:
 - audit bundle metadata:
@@ -90,6 +92,7 @@ T5-C:
   - scope window
   - entry counts
   - verifier hints.
+  - Durum: ✅ Tamamlandı (`generated_at`, `scope_window`, `event_count`, `verifier_hints`)
 
 ## Delivery Rules
 

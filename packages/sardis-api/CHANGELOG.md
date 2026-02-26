@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deterministic trust-table hashing and compliance proof paths in trust API responses
 - Cards ASA security posture endpoint: `GET /api/v2/cards/asa/security-policy`
 - Wallet-aware A2A peer directory fields (`sender_wallet_addresses`, peer `wallet_addresses`, `broadcast_targets`)
+- Secure checkout evidence export endpoint: `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
+- Tamper-evident integrity metadata for checkout evidence bundles (`digest_sha256`, `hash_chain_tail`, `event_count`)
 
 ### Changed
 - Trust relation mutations now support approval quorum (`approval_id` + `approval_ids`) with distinct reviewer checks
