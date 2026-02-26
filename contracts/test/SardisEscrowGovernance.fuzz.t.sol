@@ -86,4 +86,30 @@ contract SardisEscrowGovernanceFuzzTest is Test {
         vm.expectRevert();
         escrow.executeArbiterUpdate();
     }
+
+    function testFuzz_governanceExecutorCanMutateArbiter(
+        address governanceExecutor,
+        address candidate,
+        uint256 delayAfterEta
+    ) public {
+        vm.assume(governanceExecutor != address(0));
+        vm.assume(governanceExecutor != owner);
+        vm.assume(governanceExecutor != arbiter);
+        vm.assume(candidate != address(0));
+        vm.assume(candidate != arbiter);
+
+        escrow.setGovernanceExecutor(governanceExecutor);
+
+        vm.prank(governanceExecutor);
+        escrow.proposeArbiter(candidate);
+
+        uint256 eta = escrow.pendingArbiterEta();
+        delayAfterEta = bound(delayAfterEta, 0, 30 days);
+        vm.warp(eta + delayAfterEta);
+
+        vm.prank(governanceExecutor);
+        escrow.executeArbiterUpdate();
+
+        assertEq(escrow.arbiter(), candidate);
+    }
 }

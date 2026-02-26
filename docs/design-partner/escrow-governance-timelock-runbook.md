@@ -10,7 +10,8 @@ This runbook defines the operational path for arbiter governance updates in `Sar
 Covered controls:
 1. Timelocked arbiter updates (`proposeArbiter` -> `executeArbiterUpdate`)
 2. Pending update cancellation (`cancelArbiterUpdate`)
-3. Audit evidence for governance decisions
+3. Governance executor delegation (`setGovernanceExecutor`)
+4. Audit evidence for governance decisions
 
 ## Contract Guarantees
 
@@ -18,9 +19,11 @@ The escrow contract includes:
 - `ARBITER_UPDATE_TIMELOCK` (2 days)
 - `pendingArbiter`
 - `pendingArbiterEta`
+- `governanceExecutor`
 - `proposeArbiter(address)`
 - `executeArbiterUpdate()`
 - `cancelArbiterUpdate()`
+- `setGovernanceExecutor(address)` (owner-only)
 
 This enforces a review window before arbiter authority changes.
 
@@ -29,6 +32,7 @@ This enforces a review window before arbiter authority changes.
 1. Create governance change ticket with:
    - current arbiter
    - proposed arbiter
+   - acting governance admin (`owner` or `governanceExecutor`)
    - risk assessment
    - rollback owner
 2. Submit `proposeArbiter(newArbiter)` transaction.

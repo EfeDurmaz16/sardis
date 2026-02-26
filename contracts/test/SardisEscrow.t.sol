@@ -527,8 +527,41 @@ contract SardisEscrowTest is Test {
         vm.expectRevert("Fee too high");
         escrow.setFeeBps(501);
     }
-}
 
+    function testGovernanceExecutorCanMutateTimelockedArbiter() public {
+        address governance = address(0xABCD);
+        address newArbiter = address(0x888);
+
+        escrow.setGovernanceExecutor(governance);
+        assertEq(escrow.governanceExecutor(), governance);
+
+        vm.prank(governance);
+        escrow.proposeArbiter(newArbiter);
+        assertEq(escrow.pendingArbiter(), newArbiter);
+
+        vm.warp(block.timestamp + escrow.ARBITER_UPDATE_TIMELOCK());
+        vm.prank(governance);
+        escrow.executeArbiterUpdate();
+
+        assertEq(escrow.arbiter(), newArbiter);
+        assertEq(escrow.pendingArbiter(), address(0));
+    }
+
+    function testOnlyOwnerCanSetGovernanceExecutor() public {
+        vm.prank(buyer);
+        vm.expectRevert();
+        escrow.setGovernanceExecutor(address(0xA11CE));
+    }
+
+    function testNonGovernanceAdminCannotRunAdminUpdates() public {
+        address governance = address(0xABCD);
+        escrow.setGovernanceExecutor(governance);
+
+        vm.prank(seller);
+        vm.expectRevert("Only governance admin");
+        escrow.setFeeBps(150);
+    }
+}
 
 
 

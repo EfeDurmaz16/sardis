@@ -70,6 +70,9 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     /// @notice Sardis arbiter address for disputes
     address public arbiter;
 
+    /// @notice Optional governance executor (e.g., multisig) for timelocked admin ops
+    address public governanceExecutor;
+
     /// @notice Pending arbiter address awaiting timelock execution
     address public pendingArbiter;
 
@@ -139,6 +142,8 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     event ArbiterUpdateExecuted(address indexed oldArbiter, address indexed newArbiter);
 
     event ArbiterUpdateCancelled(address indexed pendingArbiter);
+
+    event GovernanceExecutorUpdated(address indexed oldExecutor, address indexed newExecutor);
     
     // ============ Modifiers ============
     
@@ -154,6 +159,14 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     modifier onlyArbiter() {
         require(msg.sender == arbiter, "Only arbiter");
+        _;
+    }
+
+    modifier onlyGovernanceAdmin() {
+        require(
+            msg.sender == owner() || (governanceExecutor != address(0) && msg.sender == governanceExecutor),
+            "Only governance admin"
+        );
         _;
     }
     
@@ -559,12 +572,12 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
     
     // ============ Admin Functions ============
     
-    function setArbiter(address _arbiter) external onlyOwner {
+    function setArbiter(address _arbiter) external onlyGovernanceAdmin {
         // Backwards-compatible alias: setting arbiter now requires timelocked execution.
         proposeArbiter(_arbiter);
     }
 
-    function proposeArbiter(address _arbiter) public onlyOwner {
+    function proposeArbiter(address _arbiter) public onlyGovernanceAdmin {
         require(_arbiter != address(0), "Invalid arbiter");
         require(_arbiter != arbiter, "Arbiter unchanged");
         pendingArbiter = _arbiter;
@@ -572,7 +585,7 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         emit ArbiterUpdateProposed(arbiter, _arbiter, pendingArbiterEta);
     }
 
-    function executeArbiterUpdate() external onlyOwner {
+    function executeArbiterUpdate() external onlyGovernanceAdmin {
         require(pendingArbiter != address(0), "No pending arbiter");
         require(block.timestamp >= pendingArbiterEta, "Timelock not expired");
 
@@ -586,20 +599,30 @@ contract SardisEscrow is ReentrancyGuard, Ownable {
         emit ArbiterUpdateExecuted(oldArbiter, newArbiter);
     }
 
-    function cancelArbiterUpdate() external onlyOwner {
+    function cancelArbiterUpdate() external onlyGovernanceAdmin {
         require(pendingArbiter != address(0), "No pending arbiter");
         address cancelled = pendingArbiter;
         pendingArbiter = address(0);
         pendingArbiterEta = 0;
         emit ArbiterUpdateCancelled(cancelled);
     }
+
+    /**
+     * @notice Set governance executor (recommended: multisig/timelock contract)
+     * @dev Owner retains break-glass authority; executor can run timelocked admin ops.
+     */
+    function setGovernanceExecutor(address _executor) external onlyOwner {
+        address oldExecutor = governanceExecutor;
+        governanceExecutor = _executor;
+        emit GovernanceExecutorUpdated(oldExecutor, _executor);
+    }
     
-    function setFeeBps(uint256 _feeBps) external onlyOwner {
+    function setFeeBps(uint256 _feeBps) external onlyGovernanceAdmin {
         require(_feeBps <= 500, "Fee too high");
         feeBps = _feeBps;
     }
     
-    function setMinAmount(uint256 _minAmount) external onlyOwner {
+    function setMinAmount(uint256 _minAmount) external onlyGovernanceAdmin {
         minAmount = _minAmount;
     }
     
