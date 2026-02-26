@@ -34,6 +34,7 @@ fi
 require_file "docs/design-partner/payment-hardening-preprod-gate.md"
 require_file "docs/design-partner/payment-hardening-slo-alerts.md"
 require_file "docs/design-partner/pci-approvals-and-db-hardening-checklist.md"
+require_file "docs/design-partner/pan-boundary-provider-matrix.md"
 
 require_match 'policy_pin_requires_active_policy' \
   'packages/sardis-api/src/sardis_api/routers/onchain_payments.py' \
@@ -64,6 +65,15 @@ require_match '_sanitize_audit_payload' \
 require_match '_pan_executor_runtime_ready' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout PAN runtime readiness gate must be present'
+require_match '_pan_provider_boundary_matrix' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must support provider boundary matrix'
+require_match '_resolve_pan_boundary_mode' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must resolve effective pan boundary mode deterministically'
+require_match 'pan_provider_profile_disallows_pan_entry' \
+  'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
+  'secure checkout must expose provider profile lock reason'
 require_match '_require_shared_secret_store' \
   'packages/sardis-api/src/sardis_api/routers/secure_checkout.py' \
   'secure checkout must fail-closed without shared secret store in production'
@@ -137,6 +147,12 @@ require_match 'test_pan_entry_quorum_requires_two_approvals_when_configured' \
 require_match 'test_pan_entry_quorum_requires_distinct_reviewers' \
   'packages/sardis-api/tests/test_secure_checkout_executor.py' \
   'secure checkout distinct reviewer quorum must be test covered'
+require_match 'test_prod_provider_profile_locks_boundary_mode_for_stripe' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout provider profile lock must be test covered'
+require_match 'test_prod_provider_profile_lithic_allows_break_glass_pan_entry' \
+  'packages/sardis-api/tests/test_secure_checkout_executor.py' \
+  'secure checkout provider profile allow path must be test covered'
 require_match 'test_a2a_trust_table_rejects_untrusted_pair' \
   'packages/sardis-api/tests/test_a2a_trust_table.py' \
   'A2A trust table rejection test must exist'

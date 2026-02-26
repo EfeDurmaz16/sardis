@@ -36,13 +36,20 @@ Issuer plane (Stripe/Lithic/etc.):
 - `SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS=...` (break-glass allowlist)
 - `SARDIS_CHECKOUT_EMBEDDED_IFRAME_MERCHANTS=...`
 - `SARDIS_CHECKOUT_PAN_BOUNDARY_MODE=issuer_hosted_iframe_plus_enclave_break_glass`
+- `SARDIS_CHECKOUT_PAN_PROVIDER=...` (optional explicit provider key)
+- `SARDIS_CARDS_PRIMARY_PROVIDER=...` (fallback provider source)
+- `SARDIS_CHECKOUT_PAN_PROVIDER_BOUNDARY_MATRIX_JSON=...` (approved overrides only)
 - `SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION=1` (recommended)
 - `SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY=...`
 - `SARDIS_CHECKOUT_EXECUTOR_TOKEN=...`
 
 Security policy introspection:
 - `GET /api/v2/checkout/secure/security-policy`
-  - returns `pan_boundary_mode`, `pan_entry_break_glass_only`, and `pan_entry_allowlist`
+  - returns `pan_boundary_mode`, `pan_provider`, `pan_provider_boundary_mode`, `pan_boundary_mode_locked`, `pan_entry_break_glass_only`, and `pan_entry_allowlist`
+
+Provider matrix policy:
+- See `docs/design-partner/pan-boundary-provider-matrix.md` for default production mapping.
+- In production, requested boundary mode cannot be looser than provider profile.
 
 ## 4. Compliance/Legal Workstream
 

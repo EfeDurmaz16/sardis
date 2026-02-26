@@ -43,6 +43,22 @@ _SUPPORTED_PAN_BOUNDARY_MODES = {
     "issuer_hosted_iframe_only",
     "enclave_break_glass_only",
 }
+_BOUNDARY_MODE_STRICTNESS = {
+    "issuer_hosted_iframe_only": 0,
+    "enclave_break_glass_only": 1,
+    "issuer_hosted_iframe_plus_enclave_break_glass": 2,
+}
+_DEFAULT_PROVIDER_BOUNDARY_MATRIX = {
+    # conservative default for fiat-first issuers
+    "stripe_issuing": "issuer_hosted_iframe_only",
+    "stripe": "issuer_hosted_iframe_only",
+    # break-glass PAN path only when explicitly allowlisted/compliance-ready
+    "lithic": "issuer_hosted_iframe_plus_enclave_break_glass",
+    "rain": "issuer_hosted_iframe_plus_enclave_break_glass",
+    # funding/ramp rails default to hosted-only profile
+    "bridge": "issuer_hosted_iframe_only",
+    "coinbase_cdp": "issuer_hosted_iframe_only",
+}
 
 
 class MerchantExecutionMode(str, Enum):
@@ -144,6 +160,9 @@ class SecureCheckoutSecurityPolicyResponse(BaseModel):
     production_pan_entry_requires_allowlist: bool
     pan_entry_break_glass_only: bool
     pan_boundary_mode: str
+    pan_provider: str
+    pan_provider_boundary_mode: Optional[str] = None
+    pan_boundary_mode_locked: bool = False
     issuer_hosted_reveal_preferred: bool
     supported_merchant_modes: list[str] = Field(default_factory=list)
     recommended_default_mode: str
@@ -400,19 +419,76 @@ def _pan_execution_enabled() -> bool:
 
 
 def _pan_boundary_mode() -> str:
+    resolved, _, _ = _resolve_pan_boundary_mode()
+    return resolved
+
+
+def _pan_provider() -> str:
+    configured = (os.getenv("SARDIS_CHECKOUT_PAN_PROVIDER", "") or "").strip().lower()
+    if configured:
+        return configured
+    return (os.getenv("SARDIS_CARDS_PRIMARY_PROVIDER", "") or "").strip().lower()
+
+
+def _pan_provider_boundary_matrix() -> dict[str, str]:
+    matrix = dict(_DEFAULT_PROVIDER_BOUNDARY_MATRIX)
+    raw = (os.getenv("SARDIS_CHECKOUT_PAN_PROVIDER_BOUNDARY_MATRIX_JSON", "") or "").strip()
+    if not raw:
+        return matrix
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Invalid SARDIS_CHECKOUT_PAN_PROVIDER_BOUNDARY_MATRIX_JSON; using defaults")
+        return matrix
+    if not isinstance(parsed, dict):
+        logger.warning("SARDIS_CHECKOUT_PAN_PROVIDER_BOUNDARY_MATRIX_JSON must be an object; using defaults")
+        return matrix
+    for key, value in parsed.items():
+        provider = str(key or "").strip().lower()
+        mode = str(value or "").strip().lower()
+        if provider and mode in _SUPPORTED_PAN_BOUNDARY_MODES:
+            matrix[provider] = mode
+    return matrix
+
+
+def _provider_boundary_mode(provider: str) -> Optional[str]:
+    provider_key = str(provider or "").strip().lower()
+    if not provider_key:
+        return None
+    return _pan_provider_boundary_matrix().get(provider_key)
+
+
+def _resolve_pan_boundary_mode() -> tuple[str, Optional[str], bool]:
     configured = os.getenv(
         "SARDIS_CHECKOUT_PAN_BOUNDARY_MODE",
         _DEFAULT_PAN_BOUNDARY_MODE,
     ).strip().lower()
-    if configured in _SUPPORTED_PAN_BOUNDARY_MODES:
-        return configured
-    if _is_production_env():
-        logger.warning(
-            "Invalid SARDIS_CHECKOUT_PAN_BOUNDARY_MODE=%s in production; forcing issuer_hosted_iframe_only",
-            configured,
-        )
-        return "issuer_hosted_iframe_only"
-    return _DEFAULT_PAN_BOUNDARY_MODE
+    if configured not in _SUPPORTED_PAN_BOUNDARY_MODES:
+        if _is_production_env():
+            logger.warning(
+                "Invalid SARDIS_CHECKOUT_PAN_BOUNDARY_MODE=%s in production; forcing issuer_hosted_iframe_only",
+                configured,
+            )
+            configured = "issuer_hosted_iframe_only"
+        else:
+            configured = _DEFAULT_PAN_BOUNDARY_MODE
+
+    provider = _pan_provider()
+    provider_mode = _provider_boundary_mode(provider)
+    if not (_is_production_env() and provider_mode):
+        return configured, provider_mode, False
+
+    configured_rank = _BOUNDARY_MODE_STRICTNESS.get(configured, 99)
+    provider_rank = _BOUNDARY_MODE_STRICTNESS.get(provider_mode, 99)
+    if configured_rank <= provider_rank:
+        return configured, provider_mode, False
+    logger.info(
+        "PAN boundary mode %s is looser than provider profile %s for provider=%s; locking to provider profile",
+        configured,
+        provider_mode,
+        provider or "unknown",
+    )
+    return provider_mode, provider_mode, True
 
 
 def _require_tokenized_in_prod() -> bool:
@@ -427,8 +503,10 @@ def _pan_entry_allowed_for_host(host: str) -> bool:
 
 
 def _pan_entry_policy_decision(host: str) -> tuple[bool, str]:
-    boundary_mode = _pan_boundary_mode()
+    boundary_mode, provider_mode, locked = _resolve_pan_boundary_mode()
     if boundary_mode == "issuer_hosted_iframe_only":
+        if locked and provider_mode == "issuer_hosted_iframe_only":
+            return False, "pan_provider_profile_disallows_pan_entry"
         return False, "pan_boundary_mode_disallows_pan_entry"
 
     if not _pan_execution_enabled():
@@ -1712,6 +1790,7 @@ def create_secure_checkout_router() -> APIRouter:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
         store = _resolve_store(deps)
         pan_allowlist = _parse_csv_env("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS")
+        boundary_mode, provider_boundary_mode, boundary_locked = _resolve_pan_boundary_mode()
         return SecureCheckoutSecurityPolicyResponse(
             pan_execution_enabled=_pan_execution_enabled(),
             require_shared_secret_store=_require_shared_secret_store(),
@@ -1719,7 +1798,10 @@ def create_secure_checkout_router() -> APIRouter:
             pan_entry_allowlist=sorted(pan_allowlist),
             production_pan_entry_requires_allowlist=_require_tokenized_in_prod(),
             pan_entry_break_glass_only=_require_tokenized_in_prod(),
-            pan_boundary_mode=_pan_boundary_mode(),
+            pan_boundary_mode=boundary_mode,
+            pan_provider=_pan_provider() or "unknown",
+            pan_provider_boundary_mode=provider_boundary_mode,
+            pan_boundary_mode_locked=boundary_locked,
             issuer_hosted_reveal_preferred=True,
             supported_merchant_modes=[mode.value for mode in MerchantExecutionMode],
             recommended_default_mode=MerchantExecutionMode.EMBEDDED_IFRAME.value,

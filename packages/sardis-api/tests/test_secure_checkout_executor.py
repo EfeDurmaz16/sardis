@@ -610,6 +610,9 @@ def test_security_policy_endpoint_returns_runtime_guardrails(monkeypatch):
     assert payload["production_pan_entry_requires_allowlist"] is True
     assert payload["pan_entry_break_glass_only"] is True
     assert payload["pan_boundary_mode"] == "issuer_hosted_iframe_plus_enclave_break_glass"
+    assert payload["pan_provider"] in {"unknown", "mock"}
+    assert payload["pan_provider_boundary_mode"] is None
+    assert payload["pan_boundary_mode_locked"] is False
     assert payload["issuer_hosted_reveal_preferred"] is True
     assert payload["recommended_default_mode"] == "embedded_iframe"
     assert payload["pan_entry_allowlist"] == ["checkout.stripe.com", "www.amazon.com"]
@@ -711,6 +714,70 @@ def test_prod_pan_boundary_mode_can_disallow_pan_entry(monkeypatch):
     )
     assert created.status_code == 403
     assert created.json()["detail"] == "pan_boundary_mode_disallows_pan_entry"
+
+
+def test_prod_provider_profile_locks_boundary_mode_for_stripe(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CARDS_PRIMARY_PROVIDER", "stripe_issuing")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    # Intentionally looser than Stripe profile to verify production lock.
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_profile_lock_stripe_1",
+        },
+    )
+    assert created.status_code == 403
+    assert created.json()["detail"] == "pan_provider_profile_disallows_pan_entry"
+
+    policy = client.get("/api/v2/checkout/secure/security-policy")
+    assert policy.status_code == 200
+    payload = policy.json()
+    assert payload["pan_provider"] == "stripe_issuing"
+    assert payload["pan_provider_boundary_mode"] == "issuer_hosted_iframe_only"
+    assert payload["pan_boundary_mode"] == "issuer_hosted_iframe_only"
+    assert payload["pan_boundary_mode_locked"] is True
+
+
+def test_prod_provider_profile_lithic_allows_break_glass_pan_entry(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.setenv("SARDIS_CARDS_PRIMARY_PROVIDER", "lithic")
+    monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
+    app = _build_app(policy_store=_PolicyStore())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "20.00",
+            "currency": "USD",
+            "intent_id": "intent_prod_pan_profile_lithic_allow_1",
+        },
+    )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["merchant_mode"] == "pan_entry"
 
 
 def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
