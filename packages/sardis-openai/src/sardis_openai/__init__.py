@@ -32,4 +32,4 @@ __all__ = [
     "SARDIS_TOOL_DEFINITIONS",
 ]
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"

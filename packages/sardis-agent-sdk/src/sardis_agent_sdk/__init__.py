@@ -35,7 +35,7 @@ from .tools import (
     SARDIS_CREATE_HOLD_TOOL,
 )
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 __all__ = [
     # Main entry points

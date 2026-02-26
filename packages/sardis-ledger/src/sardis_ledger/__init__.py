@@ -142,7 +142,7 @@ try:
 except ImportError:
     HYBRID_AVAILABLE = False
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 
 __all__ = [
     # Version

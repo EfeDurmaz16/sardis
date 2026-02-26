@@ -1,6 +1,6 @@
 """Core domain primitives shared across Sardis services.
 
-Version: 0.2.3
+Version: 0.3.0
 
 This package provides the foundational components for the Sardis payment
 infrastructure, including:
@@ -492,4 +492,4 @@ from .fiat_orchestrator import (
     FiatPaymentResult,
 )
 
-__version__ = "0.2.4"
+__version__ = "0.3.0"

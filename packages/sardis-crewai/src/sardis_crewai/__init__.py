@@ -18,7 +18,7 @@ Quick start::
     # Or use pre-configured agents
     agent = create_finance_agent(client=client, wallet_id=wallet.wallet_id)
 """
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 # Tools
 from .tools import (
