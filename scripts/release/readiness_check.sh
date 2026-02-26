@@ -92,6 +92,11 @@ if ! bash scripts/release/compliance_execution_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating policy signer and MPC key governance"
+if ! bash scripts/release/key_governance_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating GA prep execution pack"
 if ! bash scripts/release/ga_prep_check.sh; then
   failures=$((failures + 1))
