@@ -118,6 +118,7 @@ from .routers import ws_alerts as ws_alerts_router
 from .routers import analytics as analytics_router
 from .routers import metrics as metrics_router
 from .routers import sandbox as sandbox_router
+from .routers import enterprise_support as enterprise_support_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -157,6 +158,7 @@ from .repositories.treasury_repository import TreasuryRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.a2a_trust_repository import A2ATrustRepository
 from .repositories.subscriptions_repository import SubscriptionRepository
+from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .providers.lithic_treasury import LithicTreasuryClient
 from .services.recurring_billing import RecurringBillingService
 
@@ -644,6 +646,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         recurring_service=recurring_billing_service,
     )
     app.include_router(subscriptions_router.router, prefix="/api/v2/subscriptions", tags=["subscriptions"])
+
+    enterprise_support_repo = EnterpriseSupportRepository(dsn=database_url if use_postgres else None)
+    app.dependency_overrides[enterprise_support_router.get_deps] = (
+        lambda: enterprise_support_router.EnterpriseSupportDependencies(
+            support_repo=enterprise_support_repo,
+        )
+    )
+    app.include_router(enterprise_support_router.router)
 
     app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
