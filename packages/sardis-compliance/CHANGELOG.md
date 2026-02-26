@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-26
+
+### Added
+- `FailoverKYCProvider` wrapper for primary/fallback KYC execution with deterministic inquiry routing.
+- `FailoverSanctionsProvider` wrapper for primary/fallback sanctions screening with provider-error-aware failover.
+- New failover test suite covering KYC and sanctions provider fallback behavior.
+
+### Changed
+- Provider exports now include canonical `IdenfyKYCProvider` alias in addition to legacy `IDenfyKYCProvider`.
+
 ## [0.3.0] - 2026-02-11
 
 ### Added
@@ -52,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audit logging for all operations
 - PII handling compliant with regulations
 
-[Unreleased]: https://github.com/sardis-io/sardis-compliance/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sardis-io/sardis-compliance/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/sardis-io/sardis-compliance/compare/v0.3.0...v0.4.1
 [0.2.0]: https://github.com/sardis-io/sardis-compliance/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sardis-io/sardis-compliance/releases/tag/v0.1.0

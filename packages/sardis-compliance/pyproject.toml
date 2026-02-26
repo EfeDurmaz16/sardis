@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-compliance"
-version = "0.4.0"
+version = "0.4.1"
 description = "Compliance and monitoring services for Sardis - KYC, Sanctions, PEP, Risk Scoring, and Reporting"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

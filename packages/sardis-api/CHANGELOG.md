@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-02-26
+
+### Added
+- Configurable compliance provider failover wiring in API bootstrap:
+  - KYC primary/fallback: Persona ↔ iDenfy
+  - Sanctions primary/fallback: Elliptic ↔ Scorechain
+- Deterministic provider failover test coverage for KYC and sanctions wrappers
+
+### Changed
+- On-chain payments now fall back from default CDP rail to chain executor when CDP is unavailable.
+- Explicit `rail=cdp` requests remain fail-closed (no implicit fallback) for deterministic behavior.
+
 ### Added
 - A2A trust peer discovery endpoint: `GET /api/v2/a2a/trust/peers`
 - A2A trust security posture endpoint: `GET /api/v2/a2a/trust/security-policy`
@@ -76,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Input validation on all endpoints
 - Secure header configuration
 
-[Unreleased]: https://github.com/sardis-io/sardis-api/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sardis-io/sardis-api/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/sardis-io/sardis-api/compare/v0.2.0...v0.3.1
 [0.2.0]: https://github.com/sardis-io/sardis-api/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sardis-io/sardis-api/releases/tag/v0.1.0

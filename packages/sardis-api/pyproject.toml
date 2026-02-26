@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-api"
-version = "0.3.0"
+version = "0.3.1"
 description = "FastAPI gateway for Sardis stablecoin execution"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
