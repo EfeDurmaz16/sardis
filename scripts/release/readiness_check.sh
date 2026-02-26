@@ -72,6 +72,11 @@ if ! bash scripts/release/a2a_live_settlement_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating live multi-agent settlement path"
+if ! bash scripts/release/multi_agent_live_settlement_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating mainnet proof and incident drill artifacts"
 if ! bash scripts/release/mainnet_ops_drill_check.sh; then
   failures=$((failures + 1))

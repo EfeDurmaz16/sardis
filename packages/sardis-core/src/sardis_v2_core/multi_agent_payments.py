@@ -44,13 +44,19 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 from uuid import uuid4
+
+from .mandates import PaymentMandate, VCProof
+from .tokens import TokenType, to_raw_token_amount
 
 logger = logging.getLogger("sardis.core.multi_agent_payments")
 
@@ -86,6 +92,14 @@ class PaymentLegState(str, Enum):
     SKIPPED = "skipped"
 
 
+class ChainExecutorPort(Protocol):
+    async def dispatch_payment(self, mandate: PaymentMandate) -> Any: ...
+
+
+class WalletRepositoryPort(Protocol):
+    async def get_by_agent(self, agent_id: str) -> Any: ...
+
+
 # ============ Data Models ============
 
 
@@ -100,6 +114,10 @@ class PaymentLeg:
     chain: str = "base"
     state: PaymentLegState = PaymentLegState.PENDING
     tx_hash: Optional[str] = None
+    block_number: Optional[int] = None
+    explorer_url: Optional[str] = None
+    execution_path: Optional[str] = None
+    user_op_hash: Optional[str] = None
     error: Optional[str] = None
     order: int = 0  # Execution order for cascading
     condition: Optional[str] = None  # Condition for cascading
@@ -116,6 +134,10 @@ class PaymentLeg:
             "chain": self.chain,
             "state": self.state.value,
             "tx_hash": self.tx_hash,
+            "block_number": self.block_number,
+            "explorer_url": self.explorer_url,
+            "execution_path": self.execution_path,
+            "user_op_hash": self.user_op_hash,
             "error": self.error,
             "order": self.order,
         }
@@ -183,8 +205,37 @@ class PaymentOrchestrator:
     and round-robin payments between multiple agents.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        chain_executor: Optional[ChainExecutorPort] = None,
+        wallet_repo: Optional[WalletRepositoryPort] = None,
+        domain: str = "sardis.sh",
+        require_chain_execution: Optional[bool] = None,
+    ) -> None:
         self._flows: Dict[str, PaymentFlow] = {}
+        self._chain_executor = chain_executor
+        self._wallet_repo = wallet_repo
+        self._domain = domain
+        env_chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
+        self._require_chain_execution = (
+            env_chain_mode == "live" if require_chain_execution is None else require_chain_execution
+        )
+
+    def configure_execution_dependencies(
+        self,
+        *,
+        chain_executor: Optional[ChainExecutorPort] = None,
+        wallet_repo: Optional[WalletRepositoryPort] = None,
+        domain: Optional[str] = None,
+    ) -> None:
+        """Inject/replace execution dependencies at runtime."""
+        if chain_executor is not None:
+            self._chain_executor = chain_executor
+        if wallet_repo is not None:
+            self._wallet_repo = wallet_repo
+        if domain:
+            self._domain = domain
 
     async def create_split_payment(
         self,
@@ -455,28 +506,7 @@ class PaymentOrchestrator:
             if leg.state != PaymentLegState.PENDING:
                 continue
 
-            leg.state = PaymentLegState.EXECUTING
-
-            try:
-                # In production, this would call the chain executor
-                # For now, mark as completed (actual execution via orchestrator.py)
-                leg.state = PaymentLegState.COMPLETED
-                leg.completed_at = datetime.now(timezone.utc)
-                leg.tx_hash = f"0x{uuid4().hex}"
-
-                logger.info(
-                    "Payment leg completed",
-                    extra={
-                        "leg_id": leg.id,
-                        "payer": leg.payer_id,
-                        "recipient": leg.recipient_id,
-                        "amount": str(leg.amount),
-                    },
-                )
-            except Exception as e:
-                leg.state = PaymentLegState.FAILED
-                leg.error = str(e)
-                logger.error("Payment leg failed", extra={"leg_id": leg.id, "error": str(e)})
+            await self._execute_leg(flow, leg)
 
     async def _execute_cascade(self, flow: PaymentFlow) -> None:
         """Execute legs sequentially with condition checks."""
@@ -497,9 +527,7 @@ class PaymentOrchestrator:
             leg.state = PaymentLegState.EXECUTING
 
             try:
-                leg.state = PaymentLegState.COMPLETED
-                leg.completed_at = datetime.now(timezone.utc)
-                leg.tx_hash = f"0x{uuid4().hex}"
+                await self._execute_leg(flow, leg)
             except Exception as e:
                 leg.state = PaymentLegState.FAILED
                 leg.error = str(e)
@@ -549,9 +577,7 @@ class PaymentOrchestrator:
             if leg.state == PaymentLegState.PENDING:
                 leg.state = PaymentLegState.EXECUTING
                 try:
-                    leg.state = PaymentLegState.COMPLETED
-                    leg.completed_at = datetime.now(timezone.utc)
-                    leg.tx_hash = f"0x{uuid4().hex}"
+                    await self._execute_leg(flow, leg)
                     return leg
                 except Exception as e:
                     leg.state = PaymentLegState.FAILED
@@ -603,3 +629,127 @@ class PaymentOrchestrator:
             flows = [f for f in flows if f.state == state]
 
         return flows
+
+    async def _execute_leg(self, flow: PaymentFlow, leg: PaymentLeg) -> None:
+        leg.state = PaymentLegState.EXECUTING
+        try:
+            if self._should_dispatch_on_chain():
+                await self._dispatch_leg_on_chain(flow, leg)
+            else:
+                leg.tx_hash = self._simulated_tx_hash(flow.id, leg.id)
+            leg.state = PaymentLegState.COMPLETED
+            leg.completed_at = datetime.now(timezone.utc)
+            logger.info(
+                "Payment leg completed",
+                extra={
+                    "flow_id": flow.id,
+                    "leg_id": leg.id,
+                    "payer": leg.payer_id,
+                    "recipient": leg.recipient_id,
+                    "amount": str(leg.amount),
+                    "tx_hash": leg.tx_hash,
+                },
+            )
+        except Exception as e:
+            leg.state = PaymentLegState.FAILED
+            leg.error = str(e)
+            logger.error(
+                "Payment leg failed",
+                extra={"flow_id": flow.id, "leg_id": leg.id, "error": str(e)},
+            )
+            raise
+
+    def _should_dispatch_on_chain(self) -> bool:
+        has_deps = self._chain_executor is not None and self._wallet_repo is not None
+        if self._require_chain_execution and not has_deps:
+            raise ValueError(
+                "Live chain execution required but chain_executor/wallet_repo are not configured"
+            )
+        return has_deps
+
+    async def _dispatch_leg_on_chain(self, flow: PaymentFlow, leg: PaymentLeg) -> None:
+        assert self._chain_executor is not None  # guarded by _should_dispatch_on_chain
+        assert self._wallet_repo is not None
+
+        payer_wallet = await self._wallet_repo.get_by_agent(leg.payer_id)
+        if payer_wallet is None:
+            raise ValueError(f"Payer wallet not found for agent: {leg.payer_id}")
+        payee_wallet = await self._wallet_repo.get_by_agent(leg.recipient_id)
+        if payee_wallet is None:
+            raise ValueError(f"Payee wallet not found for agent: {leg.recipient_id}")
+
+        destination = payee_wallet.get_address(leg.chain)
+        if not destination:
+            raise ValueError(
+                f"Payee wallet has no address for chain '{leg.chain}' (agent={leg.recipient_id})"
+            )
+
+        token_symbol = str(leg.token).upper()
+        try:
+            token_type = TokenType(token_symbol)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported token in multi-agent flow: {leg.token}") from exc
+
+        amount_minor = to_raw_token_amount(token_type, leg.amount)
+        nonce = hashlib.sha256(f"flow:{flow.id}:leg:{leg.id}".encode()).hexdigest()
+        audit_hash = hashlib.sha256(
+            f"multi_agent_leg:{flow.id}:{leg.id}:{leg.payer_id}:{leg.recipient_id}:{leg.amount}:{token_symbol}:{leg.chain}".encode()
+        ).hexdigest()
+        mandate = PaymentMandate(
+            mandate_id=f"multi_leg_{nonce[:16]}",
+            mandate_type="payment",
+            issuer=f"agent:{leg.payer_id}",
+            subject=leg.payer_id,
+            expires_at=int(time.time()) + 300,
+            nonce=nonce,
+            proof=VCProof(
+                verification_method=f"wallet:{getattr(payer_wallet, 'wallet_id', leg.payer_id)}#key-1",
+                created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                proof_value="multi-agent-payment",
+            ),
+            domain=self._domain,
+            purpose="checkout",
+            chain=leg.chain,
+            token=token_symbol,
+            amount_minor=amount_minor,
+            destination=destination,
+            audit_hash=audit_hash,
+            wallet_id=getattr(payer_wallet, "wallet_id", None),
+            account_type=getattr(payer_wallet, "account_type", "mpc_v1"),
+            smart_account_address=getattr(payer_wallet, "smart_account_address", None),
+            merchant_domain=self._domain,
+        )
+        receipt = await self._chain_executor.dispatch_payment(mandate)
+        tx_hash = getattr(receipt, "tx_hash", None)
+        if not tx_hash:
+            raise ValueError("Chain executor returned empty tx_hash")
+
+        leg.tx_hash = tx_hash
+        leg.block_number = getattr(receipt, "block_number", None)
+        leg.execution_path = getattr(receipt, "execution_path", None)
+        leg.user_op_hash = getattr(receipt, "user_op_hash", None)
+        leg.explorer_url = _explorer_url(leg.chain, tx_hash)
+
+    @staticmethod
+    def _simulated_tx_hash(flow_id: str, leg_id: str) -> str:
+        digest = hashlib.sha256(f"simulated:{flow_id}:{leg_id}".encode()).hexdigest()
+        return f"0x{digest}"
+
+
+def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:
+    chain_key = (chain or "").strip().lower()
+    if chain_key in {"base", "base-mainnet"}:
+        return f"https://basescan.org/tx/{tx_hash}"
+    if chain_key in {"base-sepolia", "base_sepolia"}:
+        return f"https://sepolia.basescan.org/tx/{tx_hash}"
+    if chain_key in {"ethereum", "eth-mainnet"}:
+        return f"https://etherscan.io/tx/{tx_hash}"
+    if chain_key in {"ethereum-sepolia", "sepolia"}:
+        return f"https://sepolia.etherscan.io/tx/{tx_hash}"
+    if chain_key in {"polygon", "polygon-mainnet"}:
+        return f"https://polygonscan.com/tx/{tx_hash}"
+    if chain_key in {"arbitrum", "arbitrum-mainnet"}:
+        return f"https://arbiscan.io/tx/{tx_hash}"
+    if chain_key in {"optimism", "optimism-mainnet"}:
+        return f"https://optimistic.etherscan.io/tx/{tx_hash}"
+    return None
