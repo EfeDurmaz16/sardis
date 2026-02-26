@@ -52,6 +52,11 @@ if ! bash scripts/release/webhook_conformance_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating idempotency/replay e2e checks"
+if ! bash scripts/release/idempotency_replay_e2e_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating deployment config consistency"
 if ! bash scripts/release/deployment_config_check.sh; then
   failures=$((failures + 1))
