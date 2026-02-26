@@ -1,0 +1,63 @@
+{
+  "alert_routing": {
+    "channel_cooldowns": {
+      "email": 300,
+      "pagerduty": 120,
+      "slack": 180
+    },
+    "pagerduty_configured": false,
+    "severity_channels": {
+      "critical": [
+        "websocket",
+        "slack",
+        "email",
+        "pagerduty"
+      ],
+      "info": [
+        "websocket"
+      ],
+      "warning": [
+        "websocket",
+        "slack"
+      ]
+    }
+  },
+  "drill": {
+    "checks": {
+      "failover_rto_within_target": true,
+      "recovery_rto_within_target": true,
+      "rpo_within_target": true
+    },
+    "drill_id": "turnkey_drill_2026-02-26",
+    "failover_rto_min": 9.5,
+    "measured_rpo_sec": 0.0,
+    "owner": "sre_oncall",
+    "recovery_rto_min": 47.17,
+    "scenario": "turnkey_outage_failover_mode_activation",
+    "source": "docs/audits/evidence/turnkey-outage-drill-latest.json",
+    "thresholds": {
+      "max_failover_rto_min": 15.0,
+      "max_recovery_rto_min": 60.0,
+      "max_rpo_sec": 0.0
+    }
+  },
+  "generated_at": "2026-02-26T11:12:56.030044+00:00",
+  "runbooks": [
+    {
+      "path": "docs/design-partner/ops-slo-alerts-rollback-runbook.md",
+      "sha256": "ec7eee41c4136c3dbdeecea7c066ec7ed58f552d080b80370e764f85bd4cd6ee"
+    },
+    {
+      "path": "docs/design-partner/mainnet-proof-and-rollback-runbook.md",
+      "sha256": "e399b1adfb8044fb3155362062c5f04b8c75a7e2c6121693496707bb0cc98441"
+    },
+    {
+      "path": "docs/design-partner/incident-response-247-drill.md",
+      "sha256": "4c8982cbb628f4b17a309c2284cf9e132e56b33963f163f22eb443467f171553"
+    },
+    {
+      "path": "docs/design-partner/reconciliation-load-chaos-slos.md",
+      "sha256": "ec31fe818f924a9ad6a4dee5ec3dfbaae764842fb390eb6c585f1d2734512de9"
+    }
+  ]
+}

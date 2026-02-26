@@ -30,6 +30,7 @@ require_file "docs/design-partner/ops-slo-alerts-rollback-runbook.md"
 require_file "docs/design-partner/mainnet-proof-and-rollback-runbook.md"
 require_file "docs/design-partner/incident-response-247-drill.md"
 require_file "docs/design-partner/reconciliation-load-chaos-slos.md"
+require_file "docs/audits/evidence/turnkey-outage-drill-latest.json"
 require_file "scripts/health_monitor.sh"
 require_file ".github/workflows/monitoring.yml"
 
@@ -52,6 +53,13 @@ echo "[ops-readiness] running alert routing smoke tests"
 python3 -m pytest -q \
   packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_uses_severity_channel_map \
   packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_cooldown_suppresses_duplicate
+
+echo "[ops-readiness] generating ops evidence artifact"
+python3 scripts/release/generate_ops_readiness_evidence.py \
+  --drill-evidence docs/audits/evidence/turnkey-outage-drill-latest.json \
+  --output docs/audits/evidence/ops-readiness-latest.json
+
+require_file "docs/audits/evidence/ops-readiness-latest.json"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[ops-readiness] completed with $failures failure(s)"
