@@ -154,6 +154,71 @@ def test_onchain_payment_uses_default_cdp_provider():
     chain_executor.dispatch_payment.assert_not_called()
 
 
+def test_onchain_payment_default_cdp_falls_back_to_chain_on_provider_error():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_chain_fallback")
+    cdp_provider = AsyncMock()
+    cdp_provider.send_usdc.side_effect = RuntimeError("cdp unavailable")
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        coinbase_cdp_provider=cdp_provider,
+        default_on_chain_provider="coinbase_cdp",
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "3.00",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tx_hash"] == "0xtx_chain_fallback"
+    cdp_provider.send_usdc.assert_awaited_once()
+    chain_executor.dispatch_payment.assert_awaited_once()
+
+
+def test_onchain_payment_default_cdp_falls_back_to_chain_when_cdp_not_configured():
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_chain")
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        coinbase_cdp_provider=None,
+        default_on_chain_provider="coinbase_cdp",
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tx_hash"] == "0xtx_chain"
+    chain_executor.dispatch_payment.assert_awaited_once()
+
+
 def test_onchain_payment_denied_by_policy():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()

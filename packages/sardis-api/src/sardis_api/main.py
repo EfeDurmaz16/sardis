@@ -415,17 +415,153 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)
-    from sardis_compliance import create_kyc_service, create_sanctions_service, create_kya_service
-    kyc_service = create_kyc_service(
-        api_key=os.getenv("PERSONA_API_KEY"),
-        template_id=os.getenv("PERSONA_TEMPLATE_ID"),
-        webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-        environment="production" if settings.is_production else "sandbox",
+    from sardis_compliance import (
+        create_kyc_service,
+        create_sanctions_service,
+        create_kya_service,
+        KYCService,
+        SanctionsService,
+        FailoverKYCProvider,
+        FailoverSanctionsProvider,
+        PersonaKYCProvider,
+        EllipticProvider,
+        MockKYCProvider,
+        MockSanctionsProvider,
     )
-    sanctions_service = create_sanctions_service(
-        api_key=os.getenv("ELLIPTIC_API_KEY"),
-        api_secret=os.getenv("ELLIPTIC_API_SECRET"),
+    from sardis_compliance.providers import IdenfyKYCProvider, ScorechainProvider
+
+    kyc_environment = "production" if settings.is_production else "sandbox"
+    kyc_primary_name = (os.getenv("SARDIS_KYC_PRIMARY_PROVIDER", "persona") or "persona").strip().lower()
+    kyc_fallback_name = (os.getenv("SARDIS_KYC_FALLBACK_PROVIDER", "") or "").strip().lower()
+
+    def _build_kyc_provider(name: str):
+        if not name:
+            return None
+        if name == "persona":
+            persona_api_key = os.getenv("PERSONA_API_KEY", "")
+            persona_template_id = os.getenv("PERSONA_TEMPLATE_ID", "")
+            if not persona_api_key or not persona_template_id:
+                return None
+            return PersonaKYCProvider(
+                api_key=persona_api_key,
+                template_id=persona_template_id,
+                webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
+                environment=kyc_environment,
+            )
+        if name == "idenfy":
+            idenfy_api_key = os.getenv("IDENFY_API_KEY", "")
+            idenfy_api_secret = os.getenv("IDENFY_API_SECRET", "")
+            if not idenfy_api_key or not idenfy_api_secret or IdenfyKYCProvider is None:
+                return None
+            return IdenfyKYCProvider(
+                api_key=idenfy_api_key,
+                api_secret=idenfy_api_secret,
+                webhook_secret=os.getenv("IDENFY_WEBHOOK_SECRET") or idenfy_api_secret,
+                environment=kyc_environment,
+            )
+        if name == "mock":
+            return MockKYCProvider()
+        return None
+
+    kyc_primary_provider = _build_kyc_provider(kyc_primary_name)
+    kyc_fallback_provider = (
+        _build_kyc_provider(kyc_fallback_name)
+        if kyc_fallback_name and kyc_fallback_name != kyc_primary_name
+        else None
     )
+    if kyc_primary_provider and kyc_fallback_provider:
+        kyc_service = KYCService(provider=FailoverKYCProvider(kyc_primary_provider, kyc_fallback_provider))
+        logger.info(
+            "KYC service configured with failover primary=%s fallback=%s",
+            kyc_primary_name,
+            kyc_fallback_name,
+        )
+    elif kyc_primary_provider:
+        kyc_service = KYCService(provider=kyc_primary_provider)
+        logger.info("KYC service configured with provider=%s", kyc_primary_name)
+    elif kyc_fallback_provider:
+        kyc_service = KYCService(provider=kyc_fallback_provider)
+        logger.warning(
+            "KYC primary provider unavailable; using fallback provider=%s",
+            kyc_fallback_name,
+        )
+    else:
+        if settings.is_production:
+            raise RuntimeError(
+                "Production requires at least one KYC provider. "
+                "Configure Persona (PERSONA_API_KEY, PERSONA_TEMPLATE_ID) or "
+                "iDenfy (IDENFY_API_KEY, IDENFY_API_SECRET)."
+            )
+        kyc_service = create_kyc_service(
+            api_key=os.getenv("PERSONA_API_KEY"),
+            template_id=os.getenv("PERSONA_TEMPLATE_ID"),
+            webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
+            environment=kyc_environment,
+        )
+
+    sanctions_primary_name = (os.getenv("SARDIS_SANCTIONS_PRIMARY_PROVIDER", "elliptic") or "elliptic").strip().lower()
+    sanctions_fallback_name = (os.getenv("SARDIS_SANCTIONS_FALLBACK_PROVIDER", "") or "").strip().lower()
+
+    def _build_sanctions_provider(name: str):
+        if not name:
+            return None
+        if name == "elliptic":
+            elliptic_api_key = os.getenv("ELLIPTIC_API_KEY", "")
+            elliptic_api_secret = os.getenv("ELLIPTIC_API_SECRET", "")
+            if not elliptic_api_key or not elliptic_api_secret:
+                return None
+            return EllipticProvider(
+                api_key=elliptic_api_key,
+                api_secret=elliptic_api_secret,
+            )
+        if name == "scorechain":
+            scorechain_api_key = os.getenv("SCORECHAIN_API_KEY", "")
+            if not scorechain_api_key or ScorechainProvider is None:
+                return None
+            return ScorechainProvider(api_key=scorechain_api_key)
+        if name == "mock":
+            return MockSanctionsProvider()
+        return None
+
+    sanctions_primary_provider = _build_sanctions_provider(sanctions_primary_name)
+    sanctions_fallback_provider = (
+        _build_sanctions_provider(sanctions_fallback_name)
+        if sanctions_fallback_name and sanctions_fallback_name != sanctions_primary_name
+        else None
+    )
+    if sanctions_primary_provider and sanctions_fallback_provider:
+        sanctions_service = SanctionsService(
+            provider=FailoverSanctionsProvider(
+                sanctions_primary_provider,
+                sanctions_fallback_provider,
+            )
+        )
+        logger.info(
+            "Sanctions service configured with failover primary=%s fallback=%s",
+            sanctions_primary_name,
+            sanctions_fallback_name,
+        )
+    elif sanctions_primary_provider:
+        sanctions_service = SanctionsService(provider=sanctions_primary_provider)
+        logger.info("Sanctions service configured with provider=%s", sanctions_primary_name)
+    elif sanctions_fallback_provider:
+        sanctions_service = SanctionsService(provider=sanctions_fallback_provider)
+        logger.warning(
+            "Sanctions primary provider unavailable; using fallback provider=%s",
+            sanctions_fallback_name,
+        )
+    else:
+        if settings.is_production:
+            raise RuntimeError(
+                "Production requires at least one sanctions provider. "
+                "Configure Elliptic (ELLIPTIC_API_KEY, ELLIPTIC_API_SECRET) or "
+                "Scorechain (SCORECHAIN_API_KEY)."
+            )
+        sanctions_service = create_sanctions_service(
+            api_key=os.getenv("ELLIPTIC_API_KEY"),
+            api_secret=os.getenv("ELLIPTIC_API_SECRET"),
+        )
+
     kya_service = create_kya_service(
         liveness_timeout=int(os.getenv("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300")),
         dsn=database_url,

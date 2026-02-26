@@ -134,6 +134,86 @@ class SanctionsProvider(ABC):
         pass
 
 
+class FailoverSanctionsProvider(SanctionsProvider):
+    """Sanctions provider wrapper with primary->fallback behavior."""
+
+    def __init__(
+        self,
+        primary: SanctionsProvider,
+        fallback: SanctionsProvider,
+        failover_on_provider_error: bool = True,
+    ):
+        self._primary = primary
+        self._fallback = fallback
+        self._failover_on_provider_error = failover_on_provider_error
+
+    @staticmethod
+    def _looks_like_provider_error(result: ScreeningResult) -> bool:
+        reason = (result.reason or "").strip().lower()
+        if not reason:
+            return False
+        return (not result.is_sanctioned) and any(token in reason for token in ("api error", "failed", "timeout"))
+
+    async def screen_wallet(
+        self,
+        request: WalletScreeningRequest,
+    ) -> ScreeningResult:
+        try:
+            primary_result = await self._primary.screen_wallet(request)
+        except Exception as primary_exc:
+            logger.warning("Sanctions primary screen_wallet failed; using fallback: %s", primary_exc)
+            return await self._fallback.screen_wallet(request)
+        if (
+            self._failover_on_provider_error
+            and primary_result.should_block
+            and self._looks_like_provider_error(primary_result)
+        ):
+            logger.warning(
+                "Sanctions primary returned provider-error block; retrying with fallback for address=%s",
+                request.address,
+            )
+            return await self._fallback.screen_wallet(request)
+        return primary_result
+
+    async def screen_transaction(
+        self,
+        request: TransactionScreeningRequest,
+    ) -> ScreeningResult:
+        try:
+            primary_result = await self._primary.screen_transaction(request)
+        except Exception as primary_exc:
+            logger.warning("Sanctions primary screen_transaction failed; using fallback: %s", primary_exc)
+            return await self._fallback.screen_transaction(request)
+        if (
+            self._failover_on_provider_error
+            and primary_result.should_block
+            and self._looks_like_provider_error(primary_result)
+        ):
+            logger.warning(
+                "Sanctions primary returned provider-error block; retrying fallback for tx=%s",
+                request.tx_hash,
+            )
+            return await self._fallback.screen_transaction(request)
+        return primary_result
+
+    async def add_to_blocklist(
+        self,
+        address: str,
+        reason: str,
+    ) -> bool:
+        primary_ok = await self._primary.add_to_blocklist(address, reason)
+        fallback_ok = await self._fallback.add_to_blocklist(address, reason)
+        return bool(primary_ok and fallback_ok)
+
+    async def remove_from_blocklist(
+        self,
+        address: str,
+    ) -> bool:
+        primary_ok = await self._primary.remove_from_blocklist(address)
+        fallback_ok = await self._fallback.remove_from_blocklist(address)
+        return bool(primary_ok and fallback_ok)
+
+
 class EllipticProvider(SanctionsProvider):
     """
     Elliptic sanctions screening provider implementation.
@@ -672,4 +752,3 @@ def create_sanctions_service(
         provider = MockSanctionsProvider()
 
     return SanctionsService(provider=provider)
-

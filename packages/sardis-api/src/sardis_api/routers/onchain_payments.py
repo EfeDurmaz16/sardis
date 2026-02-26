@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from inspect import isawaitable
 import json
+import logging
 import os
 import re
 import time
@@ -24,6 +25,7 @@ from sardis_v2_core.policy_attestation import build_policy_decision_receipt
 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class OnChainPaymentRequest(BaseModel):
@@ -862,49 +864,60 @@ async def pay_onchain(
                 detail="sanctions_service_error",
             ) from exc
 
-    use_cdp_rail = False
-    if request.rail:
-        use_cdp_rail = request.rail == "cdp"
-    elif deps.default_on_chain_provider == "coinbase_cdp":
-        use_cdp_rail = True
+    explicit_cdp_rail = request.rail == "cdp"
+    use_cdp_rail = explicit_cdp_rail or (request.rail is None and deps.default_on_chain_provider == "coinbase_cdp")
 
     if use_cdp_rail:
         if request.token.upper() != "USDC":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="cdp_rail_only_supports_usdc",
-            )
-        if not deps.coinbase_cdp_provider:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="coinbase_cdp_not_configured",
-            )
+            if explicit_cdp_rail:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="cdp_rail_only_supports_usdc",
+                )
+            use_cdp_rail = False
+        if use_cdp_rail and not deps.coinbase_cdp_provider:
+            if explicit_cdp_rail:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="coinbase_cdp_not_configured",
+                )
+            use_cdp_rail = False
         cdp_wallet_id = request.cdp_wallet_id or getattr(wallet, "cdp_wallet_id", None)
-        if not cdp_wallet_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="cdp_wallet_id_required",
-            )
-        try:
-            tx_hash = await deps.coinbase_cdp_provider.send_usdc(
-                cdp_wallet_id=cdp_wallet_id,
-                to_address=request.to,
-                amount_usdc=request.amount,
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"cdp_payment_failed: {exc}",
-            ) from exc
-        return OnChainPaymentResponse(
-            tx_hash=tx_hash,
-            explorer_url=_explorer_url(request.chain, tx_hash),
-            status="submitted",
-            policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
-            policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
-            policy_audit_id=policy_audit_id,
-            compliance_audit_id=compliance_audit_id,
-        )
+        if use_cdp_rail and not cdp_wallet_id:
+            if explicit_cdp_rail:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="cdp_wallet_id_required",
+                )
+            use_cdp_rail = False
+        if use_cdp_rail:
+            try:
+                tx_hash = await deps.coinbase_cdp_provider.send_usdc(
+                    cdp_wallet_id=cdp_wallet_id,
+                    to_address=request.to,
+                    amount_usdc=request.amount,
+                )
+            except Exception as exc:
+                if explicit_cdp_rail:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"cdp_payment_failed: {exc}",
+                    ) from exc
+                logger.warning(
+                    "Default CDP rail failed for wallet=%s; falling back to chain executor: %s",
+                    wallet_id,
+                    exc,
+                )
+            else:
+                return OnChainPaymentResponse(
+                    tx_hash=tx_hash,
+                    explorer_url=_explorer_url(request.chain, tx_hash),
+                    status="submitted",
+                    policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
+                    policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
+                    policy_audit_id=policy_audit_id,
+                    compliance_audit_id=compliance_audit_id,
+                )
 
     source_address = source_address or (
         wallet.get_address(request.chain) if hasattr(wallet, "get_address") else None

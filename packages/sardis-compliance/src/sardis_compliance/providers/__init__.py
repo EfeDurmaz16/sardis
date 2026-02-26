@@ -5,8 +5,10 @@ with zero monthly fees and per-transaction pricing.
 """
 
 try:
-    from .idenfy import IDenfyKYCProvider
+    from .idenfy import IdenfyKYCProvider
+    IDenfyKYCProvider = IdenfyKYCProvider
 except ImportError:
+    IdenfyKYCProvider = None  # type: ignore[assignment,misc]
     IDenfyKYCProvider = None  # type: ignore[assignment,misc]
 
 try:
@@ -15,6 +17,7 @@ except ImportError:
     ScorechainProvider = None  # type: ignore[assignment,misc]
 
 __all__ = [
+    "IdenfyKYCProvider",
     "IDenfyKYCProvider",
     "ScorechainProvider",
 ]

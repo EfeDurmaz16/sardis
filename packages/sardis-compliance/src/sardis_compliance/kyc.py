@@ -159,6 +159,81 @@ class KYCProvider(ABC):
         pass
 
 
+class FailoverKYCProvider(KYCProvider):
+    """KYC provider wrapper with deterministic primary->fallback failover."""
+
+    def __init__(
+        self,
+        primary: KYCProvider,
+        fallback: KYCProvider,
+    ):
+        self._primary = primary
+        self._fallback = fallback
+        self._inquiry_provider: Dict[str, KYCProvider] = {}
+
+    async def create_inquiry(
+        self,
+        request: VerificationRequest,
+    ) -> InquirySession:
+        try:
+            session = await self._primary.create_inquiry(request)
+            if session.inquiry_id:
+                self._inquiry_provider[session.inquiry_id] = self._primary
+            return session
+        except Exception as primary_exc:
+            logger.warning("KYC primary provider create_inquiry failed; using fallback: %s", primary_exc)
+            session = await self._fallback.create_inquiry(request)
+            if session.inquiry_id:
+                self._inquiry_provider[session.inquiry_id] = self._fallback
+            return session
+
+    async def get_inquiry_status(
+        self,
+        inquiry_id: str,
+    ) -> KYCResult:
+        preferred = self._inquiry_provider.get(inquiry_id, self._primary)
+        secondary = self._fallback if preferred is self._primary else self._primary
+        try:
+            result = await preferred.get_inquiry_status(inquiry_id)
+            self._inquiry_provider[inquiry_id] = preferred
+            return result
+        except Exception as primary_exc:
+            logger.warning("KYC provider get_inquiry_status failed; trying alternate provider: %s", primary_exc)
+            result = await secondary.get_inquiry_status(inquiry_id)
+            self._inquiry_provider[inquiry_id] = secondary
+            return result
+
+    async def cancel_inquiry(
+        self,
+        inquiry_id: str,
+    ) -> bool:
+        preferred = self._inquiry_provider.get(inquiry_id, self._primary)
+        secondary = self._fallback if preferred is self._primary else self._primary
+        try:
+            return await preferred.cancel_inquiry(inquiry_id)
+        except Exception as primary_exc:
+            logger.warning("KYC provider cancel_inquiry failed; trying alternate provider: %s", primary_exc)
+            return await secondary.cancel_inquiry(inquiry_id)
+
+    async def verify_webhook(
+        self,
+        payload: bytes,
+        signature: str,
+    ) -> bool:
+        primary_valid = False
+        try:
+            primary_valid = await self._primary.verify_webhook(payload, signature)
+        except Exception as primary_exc:
+            logger.warning("KYC primary verify_webhook failed; trying fallback: %s", primary_exc)
+        if primary_valid:
+            return True
+        try:
+            return await self._fallback.verify_webhook(payload, signature)
+        except Exception as fallback_exc:
+            logger.warning("KYC fallback verify_webhook failed: %s", fallback_exc)
+            return False
+
+
 class PersonaKYCProvider(KYCProvider):
     """
     Persona KYC provider implementation.
@@ -772,4 +847,3 @@ def create_kyc_service(
         provider = MockKYCProvider()
 
     return KYCService(provider=provider)
-
