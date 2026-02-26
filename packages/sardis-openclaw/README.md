@@ -177,7 +177,7 @@ All skills enforce these security principles:
 - [Sardis Website](https://sardis.sh)
 - [Documentation](https://sardis.sh/docs)
 - [API Reference](https://api.sardis.sh/v2/docs)
-- [GitHub](https://github.com/sardis-labs/sardis)
+- [GitHub](https://github.com/EfeDurmaz16/sardis)
 - [OpenClaw Documentation](https://docs.openclaw.ai)
 - [ClawHub](https://clawhub.ai)
 - [Support](mailto:support@sardis.sh)

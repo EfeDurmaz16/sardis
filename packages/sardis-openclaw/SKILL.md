@@ -183,6 +183,6 @@ Always check response status codes:
 
 - Website: https://sardis.sh
 - Documentation: https://sardis.sh/docs
-- GitHub: https://github.com/sardis-labs/sardis
+- GitHub: https://github.com/EfeDurmaz16/sardis
 - API Reference: https://api.sardis.sh/v2/docs
 - Support: support@sardis.sh

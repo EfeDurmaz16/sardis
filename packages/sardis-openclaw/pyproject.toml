@@ -26,5 +26,5 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Repository = "https://github.com/sardis-labs/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 Documentation = "https://sardis.sh/docs"
