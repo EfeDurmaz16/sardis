@@ -8,6 +8,7 @@ echo "[provider-cert] validating required artifacts"
 
 required=(
   "docs/design-partner/provider-meeting-kit-stripe-rain-15min.md"
+  "docs/design-partner/provider-pre-report-web-q1-2026.md"
   "docs/design-partner/provider-live-lane-certification-scorecard.md"
   "docs/marketing/diligence-response-sheet-stripe-q1-2026.md"
   "docs/marketing/diligence-response-sheet-lithic-q1-2026.md"

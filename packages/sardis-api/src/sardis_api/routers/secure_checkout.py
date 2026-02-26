@@ -132,6 +132,13 @@ class SecureCheckoutSecurityPolicyResponse(BaseModel):
     pan_execution_enabled: bool
     require_shared_secret_store: bool
     shared_secret_store_configured: bool
+    pan_entry_allowlist: list[str] = Field(default_factory=list)
+    production_pan_entry_requires_allowlist: bool
+    pan_entry_break_glass_only: bool
+    pan_boundary_mode: str
+    issuer_hosted_reveal_preferred: bool
+    supported_merchant_modes: list[str] = Field(default_factory=list)
+    recommended_default_mode: str
     auto_freeze_on_security_incident: bool
     auto_rotate_on_security_incident: bool
     auto_rotate_severities: list[str] = Field(default_factory=list)
@@ -1674,10 +1681,21 @@ def create_secure_checkout_router() -> APIRouter:
         if not principal.is_admin:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
         store = _resolve_store(deps)
+        pan_allowlist = _parse_csv_env("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS")
         return SecureCheckoutSecurityPolicyResponse(
             pan_execution_enabled=_pan_execution_enabled(),
             require_shared_secret_store=_require_shared_secret_store(),
             shared_secret_store_configured=_has_shared_secret_store(store),
+            pan_entry_allowlist=sorted(pan_allowlist),
+            production_pan_entry_requires_allowlist=_require_tokenized_in_prod(),
+            pan_entry_break_glass_only=_require_tokenized_in_prod(),
+            pan_boundary_mode=os.getenv(
+                "SARDIS_CHECKOUT_PAN_BOUNDARY_MODE",
+                "issuer_hosted_iframe_plus_enclave_break_glass",
+            ).strip(),
+            issuer_hosted_reveal_preferred=True,
+            supported_merchant_modes=[mode.value for mode in MerchantExecutionMode],
+            recommended_default_mode=MerchantExecutionMode.EMBEDDED_IFRAME.value,
             auto_freeze_on_security_incident=_auto_freeze_on_security_incident_enabled(),
             auto_rotate_on_security_incident=_auto_rotate_on_security_incident_enabled(),
             auto_rotate_severities=sorted(_auto_rotate_severities()),

@@ -546,6 +546,7 @@ def test_merchant_capability_endpoint(monkeypatch):
 def test_security_policy_endpoint_returns_runtime_guardrails(monkeypatch):
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com,checkout.stripe.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_FREEZE_ON_SECURITY_INCIDENT", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_ROTATE_ON_SECURITY_INCIDENT", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_AUTO_ROTATE_SEVERITIES", "high,critical")
@@ -562,6 +563,13 @@ def test_security_policy_endpoint_returns_runtime_guardrails(monkeypatch):
     assert payload["pan_execution_enabled"] is True
     assert payload["require_shared_secret_store"] is True
     assert payload["shared_secret_store_configured"] is False
+    assert payload["production_pan_entry_requires_allowlist"] is True
+    assert payload["pan_entry_break_glass_only"] is True
+    assert payload["pan_boundary_mode"] == "issuer_hosted_iframe_plus_enclave_break_glass"
+    assert payload["issuer_hosted_reveal_preferred"] is True
+    assert payload["recommended_default_mode"] == "embedded_iframe"
+    assert payload["pan_entry_allowlist"] == ["checkout.stripe.com", "www.amazon.com"]
+    assert payload["supported_merchant_modes"] == ["tokenized_api", "embedded_iframe", "pan_entry", "blocked"]
     assert payload["auto_freeze_on_security_incident"] is True
     assert payload["auto_rotate_on_security_incident"] is True
     assert payload["auto_rotate_severities"] == ["critical", "high"]

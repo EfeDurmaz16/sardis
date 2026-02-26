@@ -35,9 +35,14 @@ Issuer plane (Stripe/Lithic/etc.):
 - `SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED=0` (default in production)
 - `SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS=...` (break-glass allowlist)
 - `SARDIS_CHECKOUT_EMBEDDED_IFRAME_MERCHANTS=...`
+- `SARDIS_CHECKOUT_PAN_BOUNDARY_MODE=issuer_hosted_iframe_plus_enclave_break_glass`
 - `SARDIS_CHECKOUT_ENFORCE_EXECUTOR_ATTESTATION=1` (recommended)
 - `SARDIS_CHECKOUT_EXECUTOR_ATTESTATION_KEY=...`
 - `SARDIS_CHECKOUT_EXECUTOR_TOKEN=...`
+
+Security policy introspection:
+- `GET /api/v2/checkout/secure/security-policy`
+  - returns `pan_boundary_mode`, `pan_entry_break_glass_only`, and `pan_entry_allowlist`
 
 ## 4. Compliance/Legal Workstream
 
