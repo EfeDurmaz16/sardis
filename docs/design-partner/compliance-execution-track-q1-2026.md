@@ -33,12 +33,17 @@ Owner: Sardis Compliance + Platform + Security
 1. Run `bash scripts/release/compliance_execution_check.sh` in CI/nightly.
 2. Persist test artifacts and release-gate output in immutable build logs.
 3. Link build/run IDs into evidence package for control owners.
+4. Generate hash-based evidence manifest:
+   - `python3 scripts/release/generate_soc2_evidence_manifest.py --output artifacts/compliance/soc2-evidence-manifest.json`
+5. Validate measured DR targets:
+   - `bash scripts/release/drill_metrics_check.sh`
 
 ### Required evidence outputs
 - Test command and timestamp.
 - Commit SHA + branch.
 - Pass/fail outcome and failure root cause if any.
 - Control mapping reference (see cadence file).
+- Evidence manifest with SHA256 digests (`artifacts/compliance/soc2-evidence-manifest.json`).
 
 ## 3) Control Testing Cadence
 

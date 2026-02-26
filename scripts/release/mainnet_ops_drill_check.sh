@@ -28,6 +28,7 @@ require_match() {
 
 require_file "docs/design-partner/mainnet-proof-and-rollback-runbook.md"
 require_file "docs/design-partner/incident-response-247-drill.md"
+require_file "docs/audits/evidence/turnkey-outage-drill-latest.json"
 
 require_match 'Rollback' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet runbook must include rollback steps"
 require_match 'Cloud Run' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet runbook must include API rollback surface"
@@ -39,5 +40,7 @@ if [[ "$failures" -gt 0 ]]; then
   exit 1
 fi
 
-echo "[mainnet-ops-drill] pass"
+echo "[mainnet-ops-drill] validating measured RTO/RPO evidence"
+bash scripts/release/drill_metrics_check.sh
 
+echo "[mainnet-ops-drill] pass"

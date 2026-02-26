@@ -10,6 +10,7 @@ Owner: Compliance Engineering
 | `CTRL-POLICY-IMMUTABLE` | Hard limits cannot be bypassed by NL prompt | `pytest packages/sardis-core/tests/test_nl_policy_parser_hard_limits.py` | Core Platform |
 | `CTRL-ATTEST-INTEGRITY` | Policy attestation and chain integrity remain valid | `pytest packages/sardis-core/tests/test_policy_attestation.py` | Core Platform |
 | `CTRL-COMPLIANCE-GATE` | Compliance gate blocks invalid/unsafe payment requests | `pytest packages/sardis-api/tests/test_compliance_gate.py` | API Team |
+| `CTRL-IDEMPOTENCY-E2E` | Webhook + payment replay/idempotency guarantees remain intact | `bash scripts/release/idempotency_replay_e2e_check.sh` | API Team |
 
 ## Monthly Controls
 
@@ -18,6 +19,7 @@ Owner: Compliance Engineering
 | `CTRL-AUDIT-STORE` | Audit store writes/reads preserve evidence integrity | `pytest packages/sardis-compliance/tests/test_audit_store_async.py` | Compliance Team |
 | `CTRL-OPS-ALERTING` | Alert routing/cooldown runbook remains executable | `bash scripts/release/ops_readiness_check.sh` | SRE |
 | `CTRL-PROVIDER-CERT` | Live-lane provider certification artifacts remain valid | `bash scripts/release/provider_live_lane_cert_check.sh` | Integrations |
+| `CTRL-STRICT-CONTRACTS` | Contract test/fuzz/format gates remain strict in CI profile | `bash scripts/release/contracts_strict_check.sh` | Smart Contracts |
 
 ## Quarterly Controls
 
@@ -25,6 +27,7 @@ Owner: Compliance Engineering
 | --- | --- | --- | --- |
 | `CTRL-DR-ROLLBACK` | Incident and rollback drills remain actionable | `bash scripts/release/mainnet_ops_drill_check.sh` | SRE + Security |
 | `CTRL-COMPLIANCE-EXEC` | Compliance execution pack is complete | `bash scripts/release/compliance_execution_check.sh` | Compliance Engineering |
+| `CTRL-DR-METRICS` | Measured RTO/RPO evidence stays within target bounds | `bash scripts/release/drill_metrics_check.sh` | SRE + Compliance |
 
 ## Escalation Policy
 

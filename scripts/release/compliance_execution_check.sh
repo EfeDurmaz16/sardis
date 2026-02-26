@@ -30,6 +30,7 @@ require_file "docs/design-partner/compliance-execution-track-q1-2026.md"
 require_file "docs/audits/control-testing-cadence-q1-2026.md"
 require_file "docs/design-partner/pci-approvals-and-db-hardening-checklist.md"
 require_file "docs/design-partner/acquirer-sponsor-bank-qsa-ownership.md"
+require_file "docs/audits/evidence/turnkey-outage-drill-latest.json"
 
 require_match 'PCI Scope Boundary' docs/design-partner/compliance-execution-track-q1-2026.md "compliance track must define PCI scope boundary"
 require_match 'SOC2 Evidence Automation' docs/design-partner/compliance-execution-track-q1-2026.md "compliance track must define SOC2 evidence automation"
@@ -41,6 +42,9 @@ if [[ "$failures" -gt 0 ]]; then
   echo "[compliance-exec] completed with $failures failure(s)"
   exit 1
 fi
+
+echo "[compliance-exec] generating SOC2/PCI evidence manifest"
+python3 scripts/release/generate_soc2_evidence_manifest.py --root . --output artifacts/compliance/soc2-evidence-manifest.json
 
 echo "[compliance-exec] running control test pack"
 python3 -m pytest -q \

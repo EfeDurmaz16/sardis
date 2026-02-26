@@ -75,3 +75,12 @@ Treat Turnkey as degraded when one of these crosses threshold:
 - Canary payment flow success on staging and production canary org.
 - Incident commander signs off and records closure in incident log.
 
+## Evidence Artifact
+
+- Latest drill metrics artifact: `docs/audits/evidence/turnkey-outage-drill-latest.json`
+- Automated validation command:
+  - `bash scripts/release/drill_metrics_check.sh`
+- Validation must pass:
+  - failover `RTO <= 15 min`
+  - recovery `RTO <= 60 min`
+  - measured `RPO <= 0 sec`

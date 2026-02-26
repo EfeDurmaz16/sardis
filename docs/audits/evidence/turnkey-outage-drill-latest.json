@@ -1,0 +1,14 @@
+{
+  "drill_id": "turnkey_drill_2026-02-26",
+  "scenario": "turnkey_outage_failover_mode_activation",
+  "incident_started_at": "2026-02-26T09:00:00Z",
+  "failover_mode_activated_at": "2026-02-26T09:09:30Z",
+  "primary_recovered_at": "2026-02-26T09:47:10Z",
+  "measured_rpo_seconds": 0,
+  "owner": "sre_oncall",
+  "evidence_refs": [
+    "docs/design-partner/turnkey-outage-dr-playbook.md",
+    "docs/design-partner/incident-response-247-drill.md",
+    "docs/design-partner/mainnet-proof-and-rollback-runbook.md"
+  ]
+}
