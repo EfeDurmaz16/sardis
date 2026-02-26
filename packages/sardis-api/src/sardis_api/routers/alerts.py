@@ -24,6 +24,7 @@ from sardis_v2_core.alert_channels import (
     SlackChannel,
     DiscordChannel,
     EmailChannel,
+    PagerDutyChannel,
     WebSocketChannel,
 )
 from sardis_api.authz import Principal, require_principal
@@ -78,7 +79,7 @@ class AlertResponse(BaseModel):
 
 
 class ConfigureChannelRequest(BaseModel):
-    channel_type: str = Field(..., description="Channel type (slack, discord, email, websocket)")
+    channel_type: str = Field(..., description="Channel type (slack, discord, email, pagerduty, websocket)")
     enabled: bool = Field(default=True, description="Whether the channel is enabled")
     config: dict[str, Any] = Field(default_factory=dict, description="Channel-specific configuration")
 
@@ -155,6 +156,16 @@ def get_deps() -> AlertDependencies:
                     from_email=from_email,
                     to_emails=[e.strip() for e in to_emails if e.strip()],
                     use_tls=os.getenv("SMTP_USE_TLS", "true").lower() == "true",
+                ),
+            )
+
+        pagerduty_routing_key = os.getenv("PAGERDUTY_ROUTING_KEY", "").strip()
+        if pagerduty_routing_key:
+            _dispatcher.register_channel(
+                "pagerduty",
+                PagerDutyChannel(
+                    routing_key=pagerduty_routing_key,
+                    source=os.getenv("PAGERDUTY_SOURCE", "sardis.api"),
                 ),
             )
 
@@ -521,6 +532,22 @@ async def configure_channel(
                 from_email=request.config["from_email"],
                 to_emails=to_emails,
                 use_tls=request.config.get("use_tls", True),
+            ),
+            enabled=request.enabled,
+        )
+
+    elif channel_type == "pagerduty":
+        routing_key = request.config.get("routing_key")
+        if not routing_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="routing_key required for PagerDuty channel",
+            )
+        deps.dispatcher.register_channel(
+            "pagerduty",
+            PagerDutyChannel(
+                routing_key=routing_key,
+                source=request.config.get("source", "sardis.api"),
             ),
             enabled=request.enabled,
         )

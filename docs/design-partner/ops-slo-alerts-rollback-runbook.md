@@ -19,18 +19,21 @@
 {
   "info": ["websocket"],
   "warning": ["websocket", "slack"],
-  "critical": ["websocket", "slack", "email"]
+  "critical": ["websocket", "slack", "email", "pagerduty"]
 }
 ```
 - `SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON`:
 ```json
 {
   "slack": 180,
-  "email": 300
+  "email": 300,
+  "pagerduty": 120
 }
 ```
+- `PAGERDUTY_ROUTING_KEY`: enables PagerDuty Events API v2 channel for human paging.
+- Optional: `PAGERDUTY_SOURCE` (default: `sardis.api`).
 - Pager route convention:
-  - `critical` alerts must include at least one human-paged destination (`slack` or `email`).
+  - `critical` alerts must include at least one human-paged destination (`pagerduty`, `slack`, or `email`).
   - keep `websocket` on for dashboard visibility, but do not rely on it as sole critical route.
 
 ### Automated checks

@@ -340,6 +340,90 @@ Details:
             return False
 
 
+class PagerDutyChannel(AlertChannel):
+    """PagerDuty Events API v2 channel for human-paged critical alerts."""
+
+    def __init__(
+        self,
+        routing_key: str,
+        *,
+        source: str = "sardis.api",
+        event_action: str = "trigger",
+        dedup_prefix: str = "sardis",
+    ) -> None:
+        self.routing_key = routing_key
+        self.source = source
+        self.event_action = event_action
+        self.dedup_prefix = dedup_prefix
+
+    def _dedup_key(self, alert: Alert) -> str:
+        org = alert.organization_id or "_"
+        agent = alert.agent_id or "_"
+        return f"{self.dedup_prefix}:{alert.alert_type.value}:{org}:{agent}:{alert.severity.value}"
+
+    async def send(self, alert: Alert) -> bool:
+        """Send alert to PagerDuty Events API."""
+        try:
+            import aiohttp
+
+            severity_map = {
+                AlertSeverity.INFO: "info",
+                AlertSeverity.WARNING: "warning",
+                AlertSeverity.CRITICAL: "critical",
+            }
+
+            payload = {
+                "routing_key": self.routing_key,
+                "event_action": self.event_action,
+                "dedup_key": self._dedup_key(alert),
+                "payload": {
+                    "summary": alert.message[:1024],
+                    "source": self.source,
+                    "severity": severity_map.get(alert.severity, "warning"),
+                    "timestamp": alert.timestamp.isoformat(),
+                    "component": "sardis-payments",
+                    "custom_details": {
+                        "alert_id": alert.id,
+                        "alert_type": alert.alert_type.value,
+                        "organization_id": alert.organization_id,
+                        "agent_id": alert.agent_id,
+                        "data": alert.data,
+                    },
+                },
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "https://events.pagerduty.com/v2/enqueue",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as response:
+                    if response.status not in [200, 202]:
+                        logger.error(
+                            "PagerDutyChannel: Failed to send alert %s, status=%s",
+                            alert.id,
+                            response.status,
+                        )
+                        return False
+                    body = await response.json(content_type=None)
+                    status_value = str(body.get("status", "")).lower() if isinstance(body, dict) else ""
+                    if status_value not in {"success", "ok", ""}:
+                        logger.error(
+                            "PagerDutyChannel: Non-success response for alert %s: %s",
+                            alert.id,
+                            body,
+                        )
+                        return False
+                    logger.info("PagerDutyChannel: Sent alert %s", alert.id)
+                    return True
+        except ImportError:
+            logger.error("PagerDutyChannel: aiohttp not installed")
+            return False
+        except Exception as e:
+            logger.error(f"PagerDutyChannel send error: {e}")
+            return False
+
+
 class AlertDispatcher:
     """Routes alerts to configured channels based on severity and preferences."""
 

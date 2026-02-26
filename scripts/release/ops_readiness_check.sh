@@ -43,6 +43,7 @@ require_match 'Cloud Run' docs/design-partner/ops-slo-alerts-rollback-runbook.md
 require_match 'Vercel' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include frontend rollback"
 require_match 'SARDIS_ALERT_SEVERITY_CHANNELS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document severity routing"
 require_match 'SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document cooldown tuning"
+require_match 'PAGERDUTY_ROUTING_KEY' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document PagerDuty routing"
 require_match 'Mainnet' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet proof runbook must be explicit"
 require_match 'SEV-1' docs/design-partner/incident-response-247-drill.md "incident drill doc must define severity tiers"
 require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "reconciliation chaos doc must define SLOs"

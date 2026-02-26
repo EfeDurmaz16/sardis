@@ -9,6 +9,7 @@ from sardis_v2_core.alert_channels import (
     SlackChannel,
     DiscordChannel,
     EmailChannel,
+    PagerDutyChannel,
 )
 
 
@@ -279,6 +280,46 @@ async def test_email_channel_send_success(sample_alert):
         mock_server.login.assert_called_once()
         mock_server.sendmail.assert_called_once()
         mock_server.quit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_pagerduty_channel_send_success(sample_alert):
+    """Test PagerDuty channel send success."""
+    with patch("aiohttp.ClientSession") as mock_session:
+        mock_response = AsyncMock()
+        mock_response.status = 202
+        mock_response.json = AsyncMock(return_value={"status": "success"})
+        post_ctx = MagicMock()
+        post_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+        post_ctx.__aexit__ = AsyncMock(return_value=None)
+        session_ctx = MagicMock()
+        session_ctx.post = MagicMock(return_value=post_ctx)
+        mock_session.return_value.__aenter__.return_value = session_ctx
+
+        channel = PagerDutyChannel(routing_key="pd_routing_key")
+        result = await channel.send(sample_alert)
+
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_pagerduty_channel_send_fails_on_non_success_status(sample_alert):
+    """PagerDuty non-2xx response must fail."""
+    with patch("aiohttp.ClientSession") as mock_session:
+        mock_response = AsyncMock()
+        mock_response.status = 500
+        mock_response.json = AsyncMock(return_value={"status": "error"})
+        post_ctx = MagicMock()
+        post_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+        post_ctx.__aexit__ = AsyncMock(return_value=None)
+        session_ctx = MagicMock()
+        session_ctx.post = MagicMock(return_value=post_ctx)
+        mock_session.return_value.__aenter__.return_value = session_ctx
+
+        channel = PagerDutyChannel(routing_key="pd_routing_key")
+        result = await channel.send(sample_alert)
+
+        assert result is False
 
 
 @pytest.mark.asyncio
