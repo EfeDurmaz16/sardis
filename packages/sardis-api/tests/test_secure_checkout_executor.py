@@ -5,6 +5,7 @@ import hmac
 import json
 import time
 import uuid
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -131,6 +132,25 @@ class _PolicyStore:
     async def fetch_policy(self, agent_id: str):
         _ = agent_id
         return None
+
+
+class _PolicySnapshot:
+    max_per_tx = Decimal("250")
+    max_daily = Decimal("1000")
+    max_monthly = Decimal("10000")
+    approval_threshold = Decimal("150")
+
+    def validate_payment(self, *, amount: Decimal, fee: Decimal, mcc_code=None, merchant_category=None):
+        _ = fee, mcc_code, merchant_category
+        if amount > self.max_per_tx:
+            return False, "per_tx_limit_exceeded"
+        return True, "OK"
+
+
+class _PolicyStoreWithSnapshot:
+    async def fetch_policy(self, agent_id: str):
+        _ = agent_id
+        return _PolicySnapshot()
 
 
 class _AuditSink:
@@ -973,6 +993,80 @@ def test_secure_checkout_emits_audit_events_without_pan_fields(monkeypatch):
     serialized = json.dumps(sink.events)
     assert "4111111111111111" not in serialized
     assert "\"cvv\"" not in serialized
+
+
+def test_secure_checkout_job_evidence_export_returns_integrity_bundle(monkeypatch):
+    monkeypatch.setenv("SARDIS_CHECKOUT_REQUIRE_APPROVAL_FOR_PAN", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
+    monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
+    sink = _AuditSink()
+    app = _build_app(audit_sink=sink, policy_store=_PolicyStoreWithSnapshot())
+    client = TestClient(app)
+
+    created = client.post(
+        "/api/v2/checkout/secure/jobs",
+        json={
+            "wallet_id": "wallet_1",
+            "card_id": "card_1",
+            "merchant_url": "https://www.amazon.com/checkout",
+            "amount": "24.00",
+            "currency": "USD",
+            "intent_id": "intent_evidence_1",
+            "approval_id": "appr_ok",
+        },
+    )
+    assert created.status_code == 201
+    job_id = created.json()["job_id"]
+
+    executed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/execute",
+        json={"approval_id": "appr_ok"},
+    )
+    assert executed.status_code == 200
+    secret_ref = executed.json()["secret_ref"]
+    assert secret_ref
+
+    consumed = client.post(
+        f"/api/v2/checkout/secure/secrets/{secret_ref}/consume",
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert consumed.status_code == 200
+
+    completed = client.post(
+        f"/api/v2/checkout/secure/jobs/{job_id}/complete",
+        json={"status": "completed", "executor_ref": "exec_done_evidence"},
+        headers={"X-Sardis-Executor-Token": "exec_secret"},
+    )
+    assert completed.status_code == 200
+
+    evidence = client.get(f"/api/v2/checkout/secure/jobs/{job_id}/evidence")
+    assert evidence.status_code == 200
+    payload = evidence.json()
+
+    assert payload["job"]["job_id"] == job_id
+    assert payload["job"]["status"] == "completed"
+    assert payload["approvals"]
+    assert payload["approvals"][0]["approval_id"] == "appr_ok"
+    assert payload["policy"]["policy_present"] is True
+    assert payload["policy"]["policy_hash"]
+    assert payload["integrity"]["digest_sha256"]
+    assert payload["integrity"]["hash_chain_entries"] >= 1
+    assert payload["integrity"]["event_count"] >= 3
+    assert payload["generated_at"]
+    assert payload["scope_window"]["job_created_at"]
+    assert payload["scope_window"]["job_updated_at"]
+
+    serialized = json.dumps(payload)
+    assert "4111111111111111" not in serialized
+    assert "\"cvv\"" not in serialized
+
+
+def test_secure_checkout_job_evidence_export_requires_existing_job():
+    app = _build_app()
+    client = TestClient(app)
+    response = client.get("/api/v2/checkout/secure/jobs/scj_missing/evidence")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Job not found"
 
 
 def test_attestation_failure_triggers_auto_freeze(monkeypatch):

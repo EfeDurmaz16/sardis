@@ -33,6 +33,7 @@ _SENSITIVE_AUDIT_KEYS = {
     "card_number",
     "full_number",
     "track_data",
+    "secret_ref",
 }
 
 
@@ -180,6 +181,53 @@ class ConsumeExecutorSecretResponse(BaseModel):
     amount: str
     currency: str
     purpose: str
+
+
+class SecureCheckoutApprovalEvidence(BaseModel):
+    approval_id: str
+    status: str
+    reviewed_by: Optional[str] = None
+    wallet_id: Optional[str] = None
+    organization_id: Optional[str] = None
+    reviewed_at: Optional[str] = None
+
+
+class SecureCheckoutPolicyEvidence(BaseModel):
+    policy_present: bool
+    policy_reason: str
+    policy_hash: Optional[str] = None
+    max_per_tx: Optional[str] = None
+    max_daily: Optional[str] = None
+    max_monthly: Optional[str] = None
+    approval_threshold: Optional[str] = None
+
+
+class SecureCheckoutAttestationEvidence(BaseModel):
+    dispatch_required: bool
+    dispatch_url_configured: bool
+    executor_attestation_enabled: bool
+    executor_attestation_ttl_seconds: int
+    shared_secret_store_required: bool
+    shared_secret_store_configured: bool
+
+
+class SecureCheckoutEvidenceIntegrity(BaseModel):
+    digest_sha256: str
+    hash_chain_tail: Optional[str] = None
+    hash_chain_entries: int = 0
+    event_count: int = 0
+
+
+class SecureCheckoutEvidenceExportResponse(BaseModel):
+    job: SecureCheckoutJobResponse
+    approvals: list[SecureCheckoutApprovalEvidence] = Field(default_factory=list)
+    policy: SecureCheckoutPolicyEvidence
+    attestation: SecureCheckoutAttestationEvidence
+    audit_events: list[dict[str, Any]] = Field(default_factory=list)
+    integrity: SecureCheckoutEvidenceIntegrity
+    generated_at: str
+    scope_window: dict[str, Optional[str]] = Field(default_factory=dict)
+    verifier_hints: list[str] = Field(default_factory=list)
 
 
 def get_deps() -> SecureCheckoutDependencies:
@@ -485,6 +533,30 @@ def _executor_attestation_ttl_seconds() -> int:
 
 def _hash_payload_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, Enum):
+        return value.value
+    return str(value)
+
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=_json_default).encode("utf-8")
+
+
+def _hash_chain_tail(events: list[dict[str, Any]]) -> tuple[Optional[str], int]:
+    if not events:
+        return None, 0
+    previous = hashlib.sha256(b"secure_checkout_evidence_v1").hexdigest()
+    for item in events:
+        event_hash = hashlib.sha256(_canonical_json_bytes(item)).hexdigest()
+        previous = hashlib.sha256(f"{previous}:{event_hash}".encode("utf-8")).hexdigest()
+    return previous, len(events)
 
 
 def _compute_executor_signature(
@@ -930,6 +1002,162 @@ async def _emit_audit_event(
     result = record_callable(event)
     if inspect.isawaitable(result):
         await result
+
+
+def _iso_or_none(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    text = str(value).strip()
+    return text or None
+
+
+def _to_plain_dict(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if hasattr(value, "model_dump"):
+        dumped = value.model_dump()  # type: ignore[call-arg]
+        if isinstance(dumped, dict):
+            return dumped
+    if hasattr(value, "dict"):
+        dumped = value.dict()  # type: ignore[call-arg]
+        if isinstance(dumped, dict):
+            return dumped
+    if hasattr(value, "__dict__"):
+        return dict(vars(value))
+    return {}
+
+
+def _policy_snapshot(policy: Any) -> dict[str, Any]:
+    raw = _to_plain_dict(policy)
+    if not raw:
+        for key in ("max_per_tx", "max_daily", "max_monthly", "approval_threshold"):
+            if hasattr(policy, key):
+                raw[key] = getattr(policy, key)
+    snapshot = {
+        "max_per_tx": raw.get("max_per_tx"),
+        "max_daily": raw.get("max_daily"),
+        "max_monthly": raw.get("max_monthly"),
+        "approval_threshold": raw.get("approval_threshold"),
+    }
+    return {k: v for k, v in snapshot.items() if v is not None}
+
+
+async def _collect_job_audit_events(
+    deps: SecureCheckoutDependencies,
+    *,
+    job_id: str,
+    intent_id: str,
+) -> list[dict[str, Any]]:
+    sink = deps.audit_sink
+    if not sink:
+        return []
+
+    events: list[Any] = []
+    if hasattr(sink, "events"):
+        raw_events = getattr(sink, "events")
+        if isinstance(raw_events, list):
+            events.extend(raw_events)
+    elif hasattr(sink, "list_events"):
+        try:
+            result = sink.list_events()  # type: ignore[attr-defined]
+            if inspect.isawaitable(result):
+                result = await result
+            if isinstance(result, list):
+                events.extend(result)
+        except Exception:
+            events = []
+
+    filtered: list[dict[str, Any]] = []
+    for entry in events:
+        item = _to_plain_dict(entry)
+        if not item:
+            continue
+        payload = _to_plain_dict(item.get("payload"))
+        entry_job_id = str(payload.get("job_id") or "").strip()
+        entry_intent_id = str(payload.get("intent_id") or "").strip()
+        if entry_job_id != job_id and entry_intent_id != intent_id:
+            continue
+        filtered.append(
+            {
+                "event_type": str(item.get("event_type") or ""),
+                "ts": _iso_or_none(item.get("ts")),
+                "payload": payload,
+            }
+        )
+    filtered.sort(key=lambda e: str(e.get("ts") or ""))
+    return filtered
+
+
+async def _collect_approval_evidence(
+    deps: SecureCheckoutDependencies,
+    approval_ids: list[str],
+) -> list[SecureCheckoutApprovalEvidence]:
+    if not approval_ids:
+        return []
+    evidence: list[SecureCheckoutApprovalEvidence] = []
+    for approval_id in approval_ids:
+        status_value = "unknown"
+        reviewed_by = None
+        wallet_id = None
+        organization_id = None
+        reviewed_at = None
+        if deps.approval_service:
+            try:
+                approval = await deps.approval_service.get_approval(approval_id)
+            except Exception:
+                approval = None
+            if approval is None:
+                status_value = "not_found"
+            else:
+                status_value = str(getattr(approval, "status", "") or "found")
+                reviewed_by = _iso_or_none(getattr(approval, "reviewed_by", None))
+                wallet_id = _iso_or_none(getattr(approval, "wallet_id", None))
+                organization_id = _iso_or_none(getattr(approval, "organization_id", None))
+                reviewed_at = _iso_or_none(getattr(approval, "reviewed_at", None))
+        evidence.append(
+            SecureCheckoutApprovalEvidence(
+                approval_id=approval_id,
+                status=status_value,
+                reviewed_by=reviewed_by,
+                wallet_id=wallet_id,
+                organization_id=organization_id,
+                reviewed_at=reviewed_at,
+            )
+        )
+    return evidence
+
+
+async def _collect_policy_evidence(
+    deps: SecureCheckoutDependencies,
+    *,
+    wallet: Any,
+    policy_reason: str,
+) -> SecureCheckoutPolicyEvidence:
+    if not deps.policy_store or wallet is None:
+        return SecureCheckoutPolicyEvidence(policy_present=False, policy_reason=policy_reason)
+
+    try:
+        policy = await deps.policy_store.fetch_policy(wallet.agent_id)
+    except Exception:
+        policy = None
+    if policy is None:
+        return SecureCheckoutPolicyEvidence(policy_present=False, policy_reason=policy_reason)
+
+    snapshot = _policy_snapshot(policy)
+    snapshot_hash = hashlib.sha256(_canonical_json_bytes(snapshot)).hexdigest() if snapshot else None
+    return SecureCheckoutPolicyEvidence(
+        policy_present=True,
+        policy_reason=policy_reason,
+        policy_hash=snapshot_hash,
+        max_per_tx=_iso_or_none(snapshot.get("max_per_tx")),
+        max_daily=_iso_or_none(snapshot.get("max_daily")),
+        max_monthly=_iso_or_none(snapshot.get("max_monthly")),
+        approval_threshold=_iso_or_none(snapshot.get("approval_threshold")),
+    )
 
 
 async def _dispatch_security_alert(
@@ -1652,6 +1880,81 @@ def create_secure_checkout_router() -> APIRouter:
             wallet_id=job["wallet_id"],
         )
         return _serialize_job(job)
+
+    @router.get("/secure/jobs/{job_id}/evidence", response_model=SecureCheckoutEvidenceExportResponse)
+    async def get_secure_job_evidence(
+        job_id: str,
+        deps: SecureCheckoutDependencies = Depends(get_deps),
+        principal: Principal = Depends(require_principal),
+    ):
+        store = _resolve_store(deps)
+        job = await store.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        wallet = await _require_wallet_access(
+            deps=deps,
+            principal=principal,
+            wallet_id=job["wallet_id"],
+        )
+
+        job_payload = _serialize_job(job)
+        approval_ids = list(job_payload.approval_ids or [])
+        approvals = await _collect_approval_evidence(deps, approval_ids)
+        policy = await _collect_policy_evidence(
+            deps,
+            wallet=wallet,
+            policy_reason=str(job.get("policy_reason") or "OK"),
+        )
+        store_has_shared_secrets = _has_shared_secret_store(store)
+        attestation = SecureCheckoutAttestationEvidence(
+            dispatch_required=_dispatch_required(),
+            dispatch_url_configured=bool(_executor_dispatch_url()),
+            executor_attestation_enabled=_executor_attestation_enabled(),
+            executor_attestation_ttl_seconds=_executor_attestation_ttl_seconds(),
+            shared_secret_store_required=_require_shared_secret_store(),
+            shared_secret_store_configured=store_has_shared_secrets,
+        )
+        events = await _collect_job_audit_events(
+            deps,
+            job_id=job_payload.job_id,
+            intent_id=job_payload.intent_id,
+        )
+        digest_material = {
+            "job": job_payload.model_dump(),
+            "approvals": [item.model_dump() for item in approvals],
+            "policy": policy.model_dump(),
+            "attestation": attestation.model_dump(),
+            "audit_events": events,
+        }
+        digest_sha256 = hashlib.sha256(_canonical_json_bytes(digest_material)).hexdigest()
+        chain_tail, chain_entries = _hash_chain_tail(events)
+        integrity = SecureCheckoutEvidenceIntegrity(
+            digest_sha256=digest_sha256,
+            hash_chain_tail=chain_tail,
+            hash_chain_entries=chain_entries,
+            event_count=len(events),
+        )
+        scope_window = {
+            "job_created_at": job_payload.created_at,
+            "job_updated_at": job_payload.updated_at,
+            "first_event_at": events[0]["ts"] if events else None,
+            "last_event_at": events[-1]["ts"] if events else None,
+        }
+        return SecureCheckoutEvidenceExportResponse(
+            job=job_payload,
+            approvals=approvals,
+            policy=policy,
+            attestation=attestation,
+            audit_events=events,
+            integrity=integrity,
+            generated_at=_now_utc().isoformat(),
+            scope_window=scope_window,
+            verifier_hints=[
+                "Recompute digest_sha256 from canonical JSON of job/approvals/policy/attestation/audit_events.",
+                "Rebuild hash_chain_tail by replaying audit_events in timestamp order.",
+                "Cross-check approval_id values against approvals service records.",
+            ],
+        )
 
     @router.post("/secure/jobs/{job_id}/execute", response_model=SecureCheckoutJobResponse)
     async def execute_secure_job(
