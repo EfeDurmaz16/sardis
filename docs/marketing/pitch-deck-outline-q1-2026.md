@@ -28,6 +28,7 @@ Audience: Seed / pre-Series A fintech + AI infra investors
 - Approval orchestration (quorum + distinct reviewers)
 - Verifiable audit trail (Merkle anchors + evidence exports)
 - Multi-rail execution (cards + fiat treasury + on-chain)
+- Key line to say: "Model output is advisory; deterministic policy is final authority."
 
 ## Slide 5: Product Architecture
 
@@ -55,6 +56,7 @@ Audience: Seed / pre-Series A fintech + AI infra investors
 - Built-in human approval for high-risk flows
 - Audit-ready evidence artifacts per critical payment path
 - Wallet-aware A2A trust and approval-gated trust mutation model
+- Positioning line: "Rails are replaceable modules; governance and proof are the moat."
 
 ## Slide 8: Enterprise Readiness
 
@@ -86,7 +88,24 @@ Audience: Seed / pre-Series A fintech + AI infra investors
   - sponsor bank / issuer partnerships
   - enterprise design-partner intros
 
-## Slide 12: Appendix (Diligence Artifacts)
+### Suggested allocation example (for a $6M seed)
+
+| Area | Allocation | Why |
+|------|------------|-----|
+| Mainnet deployment + reliability | 60% | signer redundancy, ops hardening, on-call maturity |
+| Enterprise sales + pilots | 25% | shorten design-partner to paid conversion |
+| Security/compliance engineering | 15% | SOC2/PCI readiness and continuous assurance |
+
+## Slide 12: Diligence Q&A (Investor Objections)
+
+- "Stripe/issuer can build this."
+  - Response: "They provide rails; Sardis provides deterministic governance and cross-rail proof."
+- "What if agent wallet access is compromised?"
+  - Response: "Fail-closed policy, approval quorum, velocity controls, freeze/rotate response prevent large unauthorized outflow."
+- "How do auditors verify what happened?"
+  - Response: "Per-flow evidence bundle with digest/hash-chain integrity and explicit verifier hints."
+
+## Slide 13: Appendix (Diligence Artifacts)
 
 - Hardening test suites and CI gates
 - Security posture endpoints (checkout/ASA/A2A)
@@ -98,3 +117,4 @@ Audience: Seed / pre-Series A fintech + AI infra investors
 - Keep model decisions "advisory"; deterministic policy + approval is final decision layer.
 - Emphasize PCI-minimization path: tokenized/embedded first, isolated PAN lane only when necessary.
 - Show one real evidence payload during demo (`/api/v2/checkout/secure/jobs/{job_id}/evidence`).
+- While demoing evidence payload, call out integrity fields explicitly (`digest_sha256`, `hash_chain_tail`) as verifiability primitives.
