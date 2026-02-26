@@ -4,6 +4,23 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY_SDK_DIR="$ROOT_DIR/packages/sardis-sdk-python"
 
+# Make local monorepo packages importable during readiness checks.
+# This avoids false negatives when optional integrations exist in-repo
+# but are not pre-installed in the active interpreter.
+MONOREPO_PYTHONPATH=""
+for src_dir in "$ROOT_DIR"/packages/*/src; do
+  if [[ -d "$src_dir" ]]; then
+    if [[ -z "$MONOREPO_PYTHONPATH" ]]; then
+      MONOREPO_PYTHONPATH="$src_dir"
+    else
+      MONOREPO_PYTHONPATH="${MONOREPO_PYTHONPATH}:$src_dir"
+    fi
+  fi
+done
+if [[ -n "$MONOREPO_PYTHONPATH" ]]; then
+  export PYTHONPATH="$MONOREPO_PYTHONPATH${PYTHONPATH:+:$PYTHONPATH}"
+fi
+
 echo "[1/5] Checking Python package version consistency"
 python3 - <<'PY'
 import re
