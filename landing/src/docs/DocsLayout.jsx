@@ -60,6 +60,7 @@ const navigation = [
       { name: 'Blockchain Infrastructure', href: '/docs/blockchain-infrastructure' },
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
+      { name: 'Provider Diligence', href: '/docs/provider-diligence' },
       { name: 'Runtime Guardrails', href: '/docs/runtime-guardrails' },
       { name: 'Deployment', href: '/docs/deployment' },
       { name: 'Why Sardis', href: '/docs/comparison' },

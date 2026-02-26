@@ -226,6 +226,9 @@ SARDIS_CHAIN=base               # Default chain
 ## Links
 
 - Website: https://sardis.sh
+- Docs: https://www.sardis.sh/docs
+- Runtime Guardrails: https://www.sardis.sh/docs/runtime-guardrails
+- Provider Diligence: https://www.sardis.sh/docs/provider-diligence
 - GitHub: https://github.com/EfeDurmaz16/sardis
 - npm: @sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp
 - PyPI: sardis, sardis-sdk

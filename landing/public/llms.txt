@@ -234,6 +234,8 @@ Base URL: `https://api.sardis.sh/api/v2`
 - `/docs/a2a` - Agent-to-Agent payments
 - `/docs/authentication` - API authentication
 - `/docs/security` - Security model
+- `/docs/provider-diligence` - Stripe/Lithic/Rain/Bridge diligence sheets
+- `/docs/runtime-guardrails` - PAN lane quorum, ASA fail-closed, wallet-aware A2A trust
 - `/docs/deployment` - Deployment guide
 - `/docs/faq` - Frequently asked questions
 - `/docs/changelog` - Version history

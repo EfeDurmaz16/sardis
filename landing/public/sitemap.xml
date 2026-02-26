@@ -188,6 +188,18 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.sardis.sh/docs/provider-diligence</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/runtime-guardrails</loc>
+    <lastmod>2026-02-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.sardis.sh/docs/deployment</loc>
     <lastmod>2026-02-12</lastmod>
     <changefreq>monthly</changefreq>
