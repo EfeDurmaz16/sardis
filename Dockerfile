@@ -15,6 +15,21 @@ COPY packages/ ./packages/
 # Install dependencies with uv
 RUN uv sync --frozen --no-dev
 
+# Install monorepo packages (editable) so sardis_api and its transitive deps
+# are importable with matching runtime dependencies inside the venv.
+RUN /app/.venv/bin/pip install --no-cache-dir \
+    -e /app/packages/sardis-core \
+    -e /app/packages/sardis-wallet \
+    -e /app/packages/sardis-chain \
+    -e /app/packages/sardis-protocol \
+    -e /app/packages/sardis-ledger \
+    -e /app/packages/sardis-cards \
+    -e /app/packages/sardis-compliance \
+    -e /app/packages/sardis-checkout \
+    -e /app/packages/sardis-coinbase \
+    -e /app/packages/sardis-ramp \
+    -e /app/packages/sardis-api
+
 # Stage 2: Runtime
 FROM python:3.12-slim
 
