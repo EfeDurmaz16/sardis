@@ -15,6 +15,8 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -45,6 +47,7 @@ from .spending_policy import (
 )
 
 logger = logging.getLogger(__name__)
+audit_logger = logging.getLogger("sardis.audit.nl_policy_parser")
 
 
 # ============================================================================
@@ -289,6 +292,8 @@ Extract the policy accurately and completely."""
             )
 
         self.temperature = temperature
+        self._last_warnings: list[str] = []
+        self._audit_events: list[dict[str, Any]] = []
 
         # Initialize sync and async clients (Groq is OpenAI-compatible)
         client_kwargs: dict[str, Any] = {"api_key": self.api_key}
@@ -297,6 +302,71 @@ Extract the policy accurately and completely."""
 
         self._sync_client = instructor.from_openai(OpenAI(**client_kwargs))
         self._async_client = instructor.from_openai(AsyncOpenAI(**client_kwargs))
+
+    def _ensure_audit_state(self) -> None:
+        if not hasattr(self, "_last_warnings"):
+            self._last_warnings = []
+        if not hasattr(self, "_audit_events"):
+            self._audit_events = []
+
+    @staticmethod
+    def _hash_text(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    def _record_audit_event(
+        self,
+        *,
+        action: str,
+        parser_type: str,
+        source_text: str = "",
+        extracted: Optional["ExtractedPolicy"] = None,
+        policy: Optional[SpendingPolicy] = None,
+        warnings: Optional[list[str]] = None,
+    ) -> None:
+        """Record audit evidence for every NL -> policy conversion step."""
+        self._ensure_audit_state()
+        normalized = unicodedata.normalize("NFKC", source_text or "")
+        warning_list = list(warnings or [])
+        event: dict[str, Any] = {
+            "audit_event_id": f"nlpa_{uuid.uuid4().hex[:16]}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "action": action,
+            "parser_type": parser_type,
+            "source_hash": self._hash_text(normalized),
+            "source_length": len(normalized),
+            "warning_count": len(warning_list),
+            "warnings": warning_list,
+        }
+
+        if extracted is not None and hasattr(extracted, "model_dump"):
+            extracted_payload = extracted.model_dump(mode="json")
+            event["extracted_hash"] = self._hash_text(
+                json.dumps(extracted_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+            )
+            event["extracted_limit_count"] = len(extracted_payload.get("spending_limits") or [])
+
+        if policy is not None:
+            from .policy_attestation import compute_policy_hash
+
+            event["policy_id"] = policy.policy_id
+            event["policy_hash"] = compute_policy_hash(policy)
+            event["policy_rule_count"] = len(policy.merchant_rules)
+
+        self._audit_events.append(event)
+        # Keep bounded in-memory evidence buffer.
+        if len(self._audit_events) > 1000:
+            self._audit_events = self._audit_events[-1000:]
+
+        audit_logger.info("nl_policy_parser_audit_event", extra={"nl_policy_audit": event})
+
+    def get_audit_events(self) -> list[dict[str, Any]]:
+        """Return a copy of recent parser audit events."""
+        self._ensure_audit_state()
+        return list(self._audit_events)
+
+    def get_last_warnings(self) -> list[str]:
+        self._ensure_audit_state()
+        return list(self._last_warnings)
 
     # SECURITY: immutable hard limits that no parser output may exceed.
     MAX_PER_TX = IMMUTABLE_PARSER_HARD_LIMITS.max_per_tx
@@ -560,6 +630,13 @@ Extract the policy accurately and completely."""
         )
         # SECURITY: Full structural validation (amounts + fields + integrity)
         self._last_warnings = self._validate_extracted_policy(extracted, natural_language_policy)
+        self._record_audit_event(
+            action="parse_sync",
+            parser_type="llm",
+            source_text=natural_language_policy,
+            extracted=extracted,
+            warnings=self._last_warnings,
+        )
         return extracted
 
     async def parse(self, natural_language_policy: str) -> ExtractedPolicy:
@@ -590,6 +667,13 @@ Extract the policy accurately and completely."""
         )
         # SECURITY: Full structural validation (amounts + fields + integrity)
         self._last_warnings = self._validate_extracted_policy(extracted, natural_language_policy)
+        self._record_audit_event(
+            action="parse_async",
+            parser_type="llm",
+            source_text=natural_language_policy,
+            extracted=extracted,
+            warnings=self._last_warnings,
+        )
         return extracted
 
     def to_spending_policy(
@@ -686,6 +770,14 @@ Extract the policy accurately and completely."""
 
         # SECURITY: final deterministic hard-limit enforcement on policy object.
         self._enforce_immutable_policy_limits(policy)
+        self._record_audit_event(
+            action="to_spending_policy",
+            parser_type="llm",
+            source_text=extracted.description or "",
+            extracted=extracted,
+            policy=policy,
+            warnings=self.get_last_warnings(),
+        )
 
         return policy
 
@@ -739,6 +831,16 @@ class RegexPolicyParser:
         r'(?:if\s+(?:it\s+is|(?:the\s+)?category\s+(?:is|=))\s+|for\s+)(\w+)\s*[,:]?\s*(?:make\s+|set\s+)?(?:the\s+)?max(?:imum)?\s+\$?(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:per\s+transaction|per[_\s]tx)',
         re.I,
     )
+
+    def __init__(self) -> None:
+        self._audit_events: list[dict[str, Any]] = []
+
+    @staticmethod
+    def _hash_text(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    def get_audit_events(self) -> list[dict[str, Any]]:
+        return list(self._audit_events)
 
     def parse(self, natural_language_policy: str) -> dict:
         """
@@ -838,6 +940,22 @@ class RegexPolicyParser:
             if threshold > _max:
                 threshold = _max
             result["requires_approval_above"] = threshold
+
+        audit_event = {
+            "audit_event_id": f"nlpa_{uuid.uuid4().hex[:16]}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "action": "regex_parse",
+            "parser_type": "regex",
+            "source_hash": self._hash_text(sanitized),
+            "source_length": len(sanitized),
+            "warning_count": len(result.get("warnings", [])),
+            "warnings": list(result.get("warnings", [])),
+            "extracted_limit_count": len(result.get("spending_limits", [])),
+        }
+        self._audit_events.append(audit_event)
+        if len(self._audit_events) > 1000:
+            self._audit_events = self._audit_events[-1000:]
+        audit_logger.info("nl_policy_parser_audit_event", extra={"nl_policy_audit": audit_event})
 
         return result
 

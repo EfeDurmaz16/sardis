@@ -94,3 +94,40 @@ def test_regex_parser_clamps_by_period_hard_limit() -> None:
 
     assert daily["spending_limits"][0]["max_amount"] == float(IMMUTABLE_PARSER_HARD_LIMITS.max_daily)
     assert monthly["spending_limits"][0]["max_amount"] == float(IMMUTABLE_PARSER_HARD_LIMITS.max_monthly)
+
+
+def test_to_spending_policy_writes_audit_event() -> None:
+    parser = _parser_without_clients()
+    extracted = ExtractedPolicy(
+        name="policy",
+        description="spend max $100 per day on aws",
+        spending_limits=[
+            ExtractedSpendingLimit(
+                vendor_pattern="aws",
+                max_amount=100.0,
+                period="daily",
+                currency="USD",
+            )
+        ],
+        is_active=True,
+    )
+
+    parser.to_spending_policy(extracted, agent_id="agent_1")
+    events = parser.get_audit_events()
+
+    assert events
+    last = events[-1]
+    assert last["action"] == "to_spending_policy"
+    assert last["parser_type"] == "llm"
+    assert last["extracted_limit_count"] == 1
+    assert "policy_hash" in last
+
+
+def test_regex_parser_writes_audit_event() -> None:
+    parser = RegexPolicyParser()
+    parser.parse("spend $50 daily on openai")
+    events = parser.get_audit_events()
+    assert events
+    last = events[-1]
+    assert last["action"] == "regex_parse"
+    assert last["parser_type"] == "regex"
