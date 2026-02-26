@@ -102,6 +102,11 @@ if ! bash scripts/release/key_governance_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating escrow governance timelock controls"
+if ! bash scripts/release/escrow_governance_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating GA prep execution pack"
 if ! bash scripts/release/ga_prep_check.sh; then
   failures=$((failures + 1))
