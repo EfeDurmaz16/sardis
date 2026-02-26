@@ -21,13 +21,15 @@ Sardis is the deterministic trust and control layer between AI agents and paymen
 - Multi-agent trust controls (trusted peer graph + wallet-aware broadcast targets).
 - Multi-rail execution under one control plane (cards, fiat treasury, on-chain).
 
-## What shipped recently (v0.9.2 hardening)
+## What shipped recently (v0.10 hardening)
 
-- Secure checkout quorum with PAN-lane specific approval minimums.
-- Distinct reviewer enforcement for high-risk PAN execution.
-- Lithic ASA fail-closed defaults for lookup/matcher failures in production.
-- Runtime security-policy introspection endpoints for checkout, ASA, and A2A trust.
-- Wallet-aware A2A trusted peer directory + broadcast target visibility.
+- Immutable hard-limit layer for NL policy parser + fuzz/property coverage.
+- Agent-level sliding-window limiter on payment endpoints (429 + Retry-After).
+- ERC-4337 production signer path (Turnkey/Fireblocks) + staged sponsor cap controls.
+- CI gas ceiling tests + gas report artifact publishing.
+- Turnkey outage DR playbook with RTO/RPO and failover mode guidance.
+- Secure checkout evidence export bundle with digest/hash-chain integrity metadata.
+- Enterprise SLA/support endpoints + dashboard workflows for ticket lifecycle.
 
 ## Verified diligence numbers
 
