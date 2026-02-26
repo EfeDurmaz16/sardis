@@ -143,6 +143,7 @@ def upgrade() -> None:
     op.create_index('idx_tx_to', 'transactions', ['to_wallet_id'])
     op.create_index('idx_tx_status', 'transactions', ['status'])
     op.create_index('idx_tx_created', 'transactions', [sa.text('created_at DESC')])
+    op.create_index('idx_tx_status_created', 'transactions', ['status', sa.text('created_at DESC')])
     op.create_index('idx_tx_idempotency', 'transactions', ['idempotency_key'], postgresql_where=sa.text('idempotency_key IS NOT NULL'))
 
     # On-Chain Records
@@ -182,6 +183,7 @@ def upgrade() -> None:
     )
     op.create_index('idx_holds_wallet', 'holds', ['wallet_id'])
     op.create_index('idx_holds_status', 'holds', ['status'])
+    op.create_index('idx_holds_capture_tx', 'holds', ['capture_tx_id'])
 
     # Mandates
     op.create_table(
@@ -202,6 +204,7 @@ def upgrade() -> None:
     )
     op.create_index('idx_mandates_subject', 'mandates', ['subject'])
     op.create_index('idx_mandates_type', 'mandates', ['mandate_type'])
+    op.create_index('idx_mandates_tx', 'mandates', ['transaction_id'])
 
     # Replay Cache
     op.create_table(

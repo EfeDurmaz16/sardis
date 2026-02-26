@@ -146,6 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_wallet_id);
 CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_wallet_id);
 CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_status_created ON transactions(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 -- -----------------------------------------------------------------------------
@@ -189,6 +190,7 @@ CREATE TABLE IF NOT EXISTS holds (
 
 CREATE INDEX IF NOT EXISTS idx_holds_wallet ON holds(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_holds_status ON holds(status);
+CREATE INDEX IF NOT EXISTS idx_holds_capture_tx ON holds(capture_tx_id);
 
 -- -----------------------------------------------------------------------------
 -- Mandates (AP2)
@@ -211,6 +213,7 @@ CREATE TABLE IF NOT EXISTS mandates (
 
 CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
 CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
+CREATE INDEX IF NOT EXISTS idx_mandates_tx ON mandates(transaction_id);
 
 -- -----------------------------------------------------------------------------
 -- Replay Cache

@@ -285,6 +285,7 @@ CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_wallet_id);
 CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_wallet_id);
 CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_status_created ON transactions(status, created_at DESC);
 
 -- On-Chain Records
 CREATE TABLE IF NOT EXISTS on_chain_records (
@@ -323,6 +324,7 @@ CREATE TABLE IF NOT EXISTS holds (
 
 CREATE INDEX IF NOT EXISTS idx_holds_wallet ON holds(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_holds_status ON holds(status);
+CREATE INDEX IF NOT EXISTS idx_holds_capture_tx ON holds(capture_tx_id);
 
 -- Virtual Cards (pre-loaded cards for fiat on-ramp)
 CREATE TABLE IF NOT EXISTS virtual_cards (
@@ -409,6 +411,7 @@ CREATE TABLE IF NOT EXISTS mandates (
 
 CREATE INDEX IF NOT EXISTS idx_mandates_subject ON mandates(subject);
 CREATE INDEX IF NOT EXISTS idx_mandates_type ON mandates(mandate_type);
+CREATE INDEX IF NOT EXISTS idx_mandates_tx ON mandates(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_mandates_status ON mandates(status);
 
 -- Checkout sessions
