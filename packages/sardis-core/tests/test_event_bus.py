@@ -252,3 +252,28 @@ async def test_sync_handler():
     assert len(received_events) == 2
     assert any(handler_type == "sync" for handler_type, _ in received_events)
     assert any(handler_type == "async" for handler_type, _ in received_events)
+
+
+@pytest.mark.asyncio
+async def test_fire_and_forget_tasks_are_tracked_and_cleaned_up():
+    """Background tasks should not accumulate in the event bus."""
+    bus = EventBus()
+    received_events = []
+
+    async def slow_handler(event: WebhookEvent):
+        await asyncio.sleep(0.01)
+        received_events.append(event)
+
+    bus.subscribe("policy.*", slow_handler)
+
+    for _ in range(10):
+        await bus.emit(
+            EventType.POLICY_CREATED,
+            data={"test": "data"},
+            fire_and_forget=True,
+        )
+
+    await bus.wait_for_background_tasks(timeout=1.0)
+
+    assert len(received_events) == 10
+    assert len(bus._background_tasks) == 0

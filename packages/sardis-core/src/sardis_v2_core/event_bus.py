@@ -42,6 +42,7 @@ class EventBus:
 
     _subscribers: dict[str, list[Callable]] = field(default_factory=dict)
     _webhook_service: Optional[WebhookService] = None
+    _background_tasks: set[asyncio.Task[Any]] = field(default_factory=set)
 
     def subscribe(self, event_pattern: str, handler: Callable) -> None:
         """Subscribe to events matching a pattern.
@@ -127,8 +128,8 @@ class EventBus:
         # Execute handlers
         if matching_handlers:
             if fire_and_forget:
-                # Fire and forget - run in background
-                asyncio.create_task(self._execute_handlers(event, matching_handlers))
+                # Fire and forget with task tracking to avoid unbounded growth.
+                self._schedule_background(self._execute_handlers(event, matching_handlers))
             else:
                 # Wait for handlers to complete
                 await self._execute_handlers(event, matching_handlers)
@@ -136,7 +137,7 @@ class EventBus:
         # Emit to webhook service if configured
         if self._webhook_service:
             if fire_and_forget:
-                asyncio.create_task(self._webhook_service.emit(event))
+                self._schedule_background(self._webhook_service.emit(event))
             else:
                 await self._webhook_service.emit(event)
 
@@ -161,6 +162,29 @@ class EventBus:
                     f"Handler {handler.__name__} failed for {event.event_type}: {e}",
                     exc_info=True,
                 )
+
+    def _schedule_background(self, coro: Any) -> None:
+        """Schedule a background coroutine while tracking task lifecycle."""
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._on_background_task_done)
+
+    def _on_background_task_done(self, task: asyncio.Task[Any]) -> None:
+        """Remove completed task and surface errors in logs."""
+        self._background_tasks.discard(task)
+        if task.cancelled():
+            return
+        try:
+            task.result()
+        except Exception:
+            logger.exception("Event bus background task failed")
+
+    async def wait_for_background_tasks(self, timeout: Optional[float] = None) -> None:
+        """Wait for all currently tracked background tasks to complete."""
+        if not self._background_tasks:
+            return
+        pending = list(self._background_tasks)
+        await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), timeout=timeout)
 
     def _matches_pattern(self, event_type: str, pattern: str) -> bool:
         """Check if event type matches subscription pattern (wildcard support).
