@@ -47,6 +47,14 @@ Sardis provides:
 - **Complete audit trail**: Full visibility into agent spending
 - **Multi-rail payments**: Crypto (stablecoins) + fiat (virtual cards, bank transfers)
 
+### Recent Hardening Updates (Q1 2026)
+
+- Immutable hard-limit layer for NL policy parsing with fuzz/property tests.
+- Agent-level sliding-window payment rate limiting on execution endpoints.
+- Secure checkout evidence export bundle:
+  - `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
+  - Includes `digest_sha256`, hash-chain tail, scope window, and verifier hints.
+
 ### Key Differentiators
 
 | Feature | Sardis | Traditional |

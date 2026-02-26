@@ -20,7 +20,7 @@ An AI agent wallet is a crypto wallet controlled by an AI agent for making auton
 Sardis enforces spending policies at the protocol level using a Policy Firewall. Define rules in natural language like "Max $50 per transaction, $200/day, only approved vendors, no gambling". Every transaction is validated against these rules before execution. The agent cannot override or bypass policies. Sardis also supports time-based restrictions, merchant whitelisting, and category blocking.
 
 ### How do I integrate Sardis with Claude?
-Use the Sardis MCP server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 50+ tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed.
+Use the Sardis MCP server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 52 tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed.
 
 ### How do I integrate Sardis with ChatGPT or OpenAI?
 Use the Sardis Python SDK with OpenAI function calling. Install with `pip install sardis`, then define Sardis payment functions as OpenAI tools. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) for ChatGPT-native commerce.
@@ -44,7 +44,7 @@ Three rails: (1) Stablecoin payments on 5 chains, (2) Virtual Visa/Mastercard ca
 AP2 is a consortium standard from Google, PayPal, Mastercard, and Visa (60+ partners). It uses a three-phase mandate chain: Intent → Cart → Payment. Sardis verifies the complete chain before executing any transaction.
 
 ### Which AI frameworks does Sardis support?
-Claude MCP (50+ tools), LangChain, OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, AutoGPT, and more. Python and TypeScript SDKs work with any framework.
+Claude MCP (52 tools), LangChain, OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, AutoGPT, and more. Python and TypeScript SDKs work with any framework.
 
 ### Is Sardis suitable for enterprise?
 Yes. Enterprise features include custom spending limits, multi-agent fleet management, compliance-grade audit trails with Merkle proofs, KYC/AML integration (Persona + Elliptic), and dedicated support.
@@ -208,6 +208,11 @@ Base URL: `https://api.sardis.sh/api/v2`
 - `POST /holds` - Create a hold (reserve funds)
 - `POST /holds/{id}/capture` - Capture hold
 - `POST /holds/{id}/release` - Release hold
+
+### Secure Checkout
+- `POST /checkout/secure/jobs` - Create secure checkout job
+- `POST /checkout/secure/jobs/{job_id}/execute` - Dispatch secure checkout execution
+- `GET /checkout/secure/jobs/{job_id}/evidence` - Export auditable evidence bundle (digest + hash-chain metadata)
 
 ## Documentation Structure
 

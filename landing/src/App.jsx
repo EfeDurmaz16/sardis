@@ -219,25 +219,17 @@ function App() {
               Policy-First Agent Payments
             </p>
 
-            <h1 className="mx-auto max-w-[17ch] text-[clamp(2.45rem,7.4vw,5.8rem)] font-sans font-semibold leading-[1.04] tracking-[-0.028em] mb-6">
-              <span className="block">Your AI agents can now pay</span>
-              <span className="block">for things, safely.</span>
+            <h1 className="mx-auto max-w-[15ch] text-[clamp(2.45rem,7.4vw,5.8rem)] font-sans font-semibold leading-[1.04] tracking-[-0.028em] mb-6">
+              <span className="block">AI agents that can pay,</span>
+              <span className="block">safely.</span>
             </h1>
 
-            <p className="text-[1.05rem] md:text-[1.35rem] text-muted-foreground mb-4 max-w-2xl mx-auto leading-relaxed">
-              Set spending rules in plain English. Sardis enforces them before any money moves.
+            <p className="text-[1.05rem] md:text-[1.35rem] text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Define spending rules in plain English. Sardis enforces them before execution.
             </p>
 
-            <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-[54ch] mx-auto">
-              For teams building autonomous AI agents that handle real transactions.
-            </p>
-
-            <p className="text-xs md:text-sm text-muted-foreground/90 mb-6 max-w-[62ch] mx-auto">
-              Sardis is AI agent payments infrastructure: deterministic controls for cards, fiat rails, and on-chain settlement.
-            </p>
-
-            <p className="text-xs md:text-sm text-[var(--sardis-orange)]/90 font-mono mb-8 max-w-[70ch] mx-auto">
-              Zero-Trust Control Plane: signed control mutations, 4-eyes approval quorum, and Merkle-verifiable audit proofs.
+            <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-[58ch] mx-auto">
+              Cards, fiat rails, and on-chain payments under one deterministic control plane.
             </p>
 
             <div className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
