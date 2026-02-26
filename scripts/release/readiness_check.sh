@@ -67,6 +67,11 @@ if ! bash scripts/release/payment_hardening_gate.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating strict contracts gate"
+if ! bash scripts/release/contracts_strict_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating live A2A settlement path"
 if ! bash scripts/release/a2a_live_settlement_check.sh; then
   failures=$((failures + 1))

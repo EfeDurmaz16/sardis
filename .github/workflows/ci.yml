@@ -71,6 +71,36 @@ jobs:
           name: contracts-gas-report
           path: contracts/gas-report.txt
 
+  contracts-strict:
+    name: Contracts Strict Forge
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Show Foundry versions
+        run: |
+          forge --version
+          cast --version
+          anvil --version
+
+      - name: Enforce formatting
+        run: forge fmt --check
+
+      - name: Build contracts (strict profile)
+        run: forge build --profile ci --sizes -vv
+
+      - name: Run full contract test suite (strict profile)
+        run: forge test --profile ci -vvv
+
   typescript-sdk:
     name: TypeScript SDK Build & Type Check
     runs-on: ubuntu-latest
