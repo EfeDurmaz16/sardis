@@ -82,6 +82,11 @@ if ! bash scripts/release/non_custodial_posture_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating compliance execution track"
+if ! bash scripts/release/compliance_execution_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating demo proof assets"
 if ! bash scripts/release/demo_proof_assets_check.sh; then
   failures=$((failures + 1))
