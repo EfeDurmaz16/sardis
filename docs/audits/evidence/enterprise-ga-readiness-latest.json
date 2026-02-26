@@ -1,0 +1,38 @@
+{
+  "api_freeze_checks": {
+    "freeze_policy_documented": true,
+    "stable_v2_path_documented": true,
+    "version_header_documented": true
+  },
+  "generated_at": "2026-02-26T11:18:44.606203+00:00",
+  "ops_checks": {
+    "failover_rto_within_target": true,
+    "recovery_rto_within_target": true,
+    "rpo_within_target": true
+  },
+  "overall_ready": false,
+  "provider_checks": {
+    "all_providers_go": false,
+    "artifact_present": true,
+    "go_count": 0,
+    "no_go_count": 4,
+    "provider_count": 4
+  },
+  "readiness": {
+    "api_freeze_ok": true,
+    "ops_dr_ok": true,
+    "provider_live_lane_ok": false,
+    "soc2_manifest_ok": true
+  },
+  "soc2_checks": {
+    "evidence_count": 6,
+    "has_evidence_items": true,
+    "manifest_present": true
+  },
+  "sources": {
+    "ga_doc": "docs/design-partner/ga-prep-execution-pack-q1-2026.md",
+    "ops_evidence": "docs/audits/evidence/ops-readiness-latest.json",
+    "provider_cert": "docs/audits/evidence/provider-live-lane-certification-latest.json",
+    "soc2_manifest": "artifacts/compliance/soc2-evidence-manifest.json"
+  }
+}

@@ -46,4 +46,18 @@ bash scripts/release/provider_live_lane_cert_check.sh
 bash scripts/release/mainnet_ops_drill_check.sh
 python3 -m pytest -q packages/sardis-api/tests/test_middleware_security.py -k api_version_header
 
+STRICT_MODE="${SARDIS_GA_STRICT:-0}"
+STRICT_ARG=""
+if [[ "$STRICT_MODE" == "1" || "$STRICT_MODE" == "true" ]]; then
+  STRICT_ARG="--strict"
+  echo "[ga-prep] strict mode enabled"
+fi
+
+python3 scripts/release/generate_enterprise_ga_readiness_artifact.py $STRICT_ARG
+
+if [[ ! -f "docs/audits/evidence/enterprise-ga-readiness-latest.json" ]]; then
+  echo "[ga-prep][fail] missing enterprise GA readiness artifact"
+  exit 1
+fi
+
 echo "[ga-prep] pass"
