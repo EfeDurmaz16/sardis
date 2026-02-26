@@ -1,0 +1,53 @@
+name: Nightly Sandbox E2E
+
+on:
+  schedule:
+    - cron: "20 4 * * *"
+  workflow_dispatch:
+    inputs:
+      run_live_sandbox:
+        description: "Run live sandbox tests (requires provider secrets)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  nightly-sandbox:
+    name: Sandbox Smoke + Optional Live E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run nightly sandbox smoke
+        env:
+          SARDIS_SANDBOX_BASE_URL: ${{ secrets.SARDIS_SANDBOX_BASE_URL }}
+          RUN_LIVE_SANDBOX_TESTS: ${{ github.event.inputs.run_live_sandbox == 'true' && '1' || '0' }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          LITHIC_API_KEY: ${{ secrets.LITHIC_API_KEY }}
+          COINBASE_CDP_API_KEY_NAME: ${{ secrets.COINBASE_CDP_API_KEY_NAME }}
+          COINBASE_CDP_API_KEY_PRIVATE_KEY: ${{ secrets.COINBASE_CDP_API_KEY_PRIVATE_KEY }}
+        run: bash scripts/ci/run_nightly_sandbox_smoke.sh
