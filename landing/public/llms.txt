@@ -213,6 +213,12 @@ Base URL: `https://api.sardis.sh/api/v2`
 - `POST /checkout/secure/jobs` - Create secure checkout job
 - `POST /checkout/secure/jobs/{job_id}/execute` - Dispatch secure checkout execution
 - `GET /checkout/secure/jobs/{job_id}/evidence` - Export auditable evidence bundle (digest + hash-chain metadata)
+- `GET /checkout/secure/security-policy` - Runtime secure-checkout posture (quorum, 4-eyes, PAN lane)
+
+### Runtime Security Policy & Readiness
+- `GET /cards/asa/security-policy` - Lithic ASA fail-closed posture
+- `GET /a2a/trust/security-policy` - Wallet-aware A2A trust posture
+- `GET /cards/providers/readiness` - Issuer/provider readiness report (sandbox/live capability matrix)
 
 ## Documentation Structure
 
@@ -240,6 +246,7 @@ Base URL: `https://api.sardis.sh/api/v2`
 - `/docs/faq` - Frequently asked questions
 - `/docs/changelog` - Version history
 - `/docs/blog` - Technical blog posts
+- `/docs/blog/sardis-v0-9-5-strict-live-ops-hardening` - Strict live mode + operations hardening release
 
 ## Use Cases
 
@@ -261,6 +268,8 @@ Base URL: `https://api.sardis.sh/api/v2`
 - **Compliance**: Integrated KYC (Persona) and AML sanctions screening (Elliptic)
 - **Replay Protection**: Mandate caching prevents duplicate transaction execution
 - **Rate Limiting**: Built-in rate limiting on all API endpoints
+- **Strict Live Mode**: Simulated paths are disabled for production money movement lanes
+- **Evidence Exports**: Replay/idempotency proofs + DR/SOC2 evidence manifests for operator review
 
 ## Pricing
 
@@ -495,41 +504,27 @@ Notifications sent at each billing stage:
 
 ## Status
 
-- **Current Version**: v0.8.7 (Smart Wallets + DB Persistence + Recurring Payments + Launch Hardening)
-- **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
-- **Mainnet Launch**: Q2 2026
-- **Protocols**: AP2, UCP, A2A, TAP, x402 all implemented
+- **Current Version**: v0.9.5 (Strict Live Mode + Operations Hardening)
+- **Infrastructure**: Staging API on Cloud Run, dashboard + landing on Vercel
+- **Mainnet Launch Track**: Q2 2026
+- **Protocols**: AP2, UCP, A2A, TAP, x402 implemented
 
-## What's New in v0.8.4 (February 2026)
+## What's New in v0.9.5 (February 2026)
 
-- **Lithic Sandbox Cards** - Real Lithic virtual card issuance and transaction simulation in sandbox
-- **Stablecoin-Only Smart Contract** - On-chain token allowlist prevents non-stablecoin transfers
-- **Human-in-the-Loop Approval Queue** - Full create/approve/deny/expire/cancel lifecycle with webhooks
-- **Goal Drift Detection** - Detect when agent spending patterns deviate from intended goals
-- **Dashboard Cards Page** - Custom Sardis-branded card UI with issue/freeze/simulate/transactions
-- **Live Demo Mode** - Landing page demo connects to real Lithic sandbox for provable transactions
+- **Strict live-path controls** for payment execution and funding lanes
+- **Replay/idempotency release gates** for webhook and payment pipeline safety
+- **Pager alert routing + SLO visibility** with runbook-driven response posture
+- **DR evidence artifacts** with measured RTO/RPO snapshots
+- **Dashboard runtime preflight** showing checkout/ASA/A2A security-policy posture
 
-### v0.8.5
+## What's New in v0.9.0-v0.9.4
 
-- **Production-Grade Retry** - Configurable retry with exponential backoff and circuit breakers for all providers
-- **SAR Persistence** - Suspicious Activity Reports persisted to PostgreSQL (FinCEN 5-year retention)
-- **MCP Server v0.2.7** - 52 tools, sandbox demo walkthrough, prompts capability
-- **Sandbox Demo Tool** - `sardis_sandbox_demo` for guided capability walkthrough
-
-### Previous (v0.8.0)
-
-- **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset
-- **Alembic Migrations** - Database schema versioning with 6 migrations
-- **Wallet Freeze** - Freeze/unfreeze capability with transaction blocking
-- **Velocity Limits** - Daily/weekly/monthly limits for off-ramp operations
-- **EIP-2771 Meta-Transactions** - Gasless transactions support
-- **Batch Transfers** - Single API call for multiple transfers
-- **Invoices API** - Full CRUD for merchant invoice management
-- **Fireblocks Integration** - Institutional-grade MPC signing option
-- **Prometheus Metrics** - Production monitoring endpoint
-- **Sentry Integration** - Error tracking and alerting
+- **Multi-provider fiat rails** (Stripe Treasury + Issuing, Coinbase Onramp, router fallback)
+- **A2A trust hardening** with 4-eyes mutation controls and trust-table hashing
+- **PAN lane runtime guardrails** with quorum and distinct reviewer enforcement
+- **SEO/docs expansion** for provider diligence and runtime guardrails
 
 ---
 
-*Last updated: February 2026*
-*Version: 2.4*
+*Last updated: February 26, 2026*
+*Version: 2.5*

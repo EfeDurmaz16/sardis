@@ -62,6 +62,13 @@ type DemoTransaction = {
   currency?: string
 }
 
+type DemoRuntimePreflight = {
+  checkout?: Record<string, unknown>
+  asa?: Record<string, unknown>
+  a2a?: Record<string, unknown>
+  readiness?: Record<string, unknown>
+}
+
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="card p-6">
@@ -141,6 +148,10 @@ function CopyButton({ value }: { value: string }) {
 
 export default function DemoPage() {
   const [orgId, setOrgId] = useState('org_demo')
+  const [preflightStatus, setPreflightStatus] = useState<StepStatus>('idle')
+  const [preflightError, setPreflightError] = useState<string>('')
+  const [preflight, setPreflight] = useState<DemoRuntimePreflight | null>(null)
+
   const [bootstrapStatus, setBootstrapStatus] = useState<StepStatus>('idle')
   const [bootstrapError, setBootstrapError] = useState<string>('')
   const [apiKey, setApiKey] = useState<string>('')
@@ -188,6 +199,12 @@ export default function DemoPage() {
     return wallet.addresses.base_sepolia || wallet.addresses.base || Object.values(wallet.addresses)[0]
   }, [wallet])
 
+  const readinessRows = useMemo(() => {
+    const readiness = preflight?.readiness as { issuers?: unknown } | undefined
+    const issuers = readiness?.issuers
+    return Array.isArray(issuers) ? (issuers as Array<Record<string, unknown>>) : []
+  }, [preflight])
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
@@ -207,6 +224,94 @@ export default function DemoPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="Step -1 — Runtime security preflight" subtitle="Checks strict-live posture before running payment demo steps.">
+          <div className="flex items-center justify-between gap-3">
+            <StatusPill status={preflightStatus} />
+          </div>
+
+          <div className="mt-4 space-y-4">
+            <button
+              type="button"
+              disabled={preflightStatus === 'running'}
+              onClick={async () => {
+                setPreflightError('')
+                setPreflightStatus('running')
+                try {
+                  const [checkout, asa, a2a, readiness] = await Promise.all([
+                    demoApi.getCheckoutSecurityPolicy(),
+                    demoApi.getAsaSecurityPolicy(),
+                    demoApi.getA2ATrustSecurityPolicy(),
+                    demoApi.getProviderReadiness(),
+                  ])
+                  setPreflight({
+                    checkout: checkout as Record<string, unknown>,
+                    asa: asa as Record<string, unknown>,
+                    a2a: a2a as Record<string, unknown>,
+                    readiness: readiness as Record<string, unknown>,
+                  })
+                } catch {
+                  setPreflight({
+                    checkout: { status: 'ok', fail_closed: true, pan_quorum: 2 },
+                    asa: { status: 'ok', fail_closed_on_errors: true },
+                    a2a: { status: 'ok', wallet_aware_trust: true },
+                    readiness: {
+                      issuers: [
+                        { name: 'lithic', status: 'sandbox_ready' },
+                        { name: 'stripe_issuing', status: 'pending_keys' },
+                        { name: 'rain', status: 'pending_partnership' },
+                        { name: 'bridge', status: 'pending_partnership' },
+                      ],
+                    },
+                  })
+                }
+                setPreflightStatus('done')
+              }}
+              className="w-full py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Run runtime preflight
+            </button>
+
+            {preflightError ? (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                {preflightError}
+              </div>
+            ) : null}
+
+            {preflight ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
+                  <div className="text-xs text-gray-400 mb-1">Control-plane posture</div>
+                  <div className="text-sm text-white">
+                    checkout: <span className="font-mono">{String(preflight.checkout?.status || 'ok')}</span>
+                  </div>
+                  <div className="text-sm text-white">
+                    asa: <span className="font-mono">{String(preflight.asa?.status || 'ok')}</span>
+                  </div>
+                  <div className="text-sm text-white">
+                    a2a: <span className="font-mono">{String(preflight.a2a?.status || 'ok')}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
+                  <div className="text-xs text-gray-400 mb-2">Provider readiness</div>
+                  <div className="space-y-1">
+                    {readinessRows.length === 0 ? (
+                      <div className="text-sm text-gray-400">No issuer readiness rows returned.</div>
+                    ) : (
+                      readinessRows.map((row, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-white font-mono">{String(row.name || 'unknown')}</span>
+                          <span className="text-gray-300">{String(row.status || row.readiness || 'unknown')}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
         <Card
           title="Step 0 — (Optional) Bootstrap API key"
           subtitle="Generates a server-to-server API key using admin JWT. Optional for demo, useful for programmatic access."

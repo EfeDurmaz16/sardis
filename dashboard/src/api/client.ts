@@ -765,4 +765,16 @@ export const demoApi = {
 
   listCardTransactions: (cardId: string, limit = 50) =>
     requestV2<JsonObject[]>(`/cards/${cardId}/transactions?limit=${limit}`),
+
+  getCheckoutSecurityPolicy: () =>
+    requestV2<JsonObject>('/checkout/secure/security-policy'),
+
+  getAsaSecurityPolicy: () =>
+    requestV2<JsonObject>('/cards/asa/security-policy'),
+
+  getA2ATrustSecurityPolicy: () =>
+    requestV2<JsonObject>('/a2a/trust/security-policy'),
+
+  getProviderReadiness: () =>
+    requestV2<JsonObject>('/cards/providers/readiness'),
 }

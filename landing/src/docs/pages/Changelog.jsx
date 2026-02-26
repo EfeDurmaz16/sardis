@@ -2,9 +2,40 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.9.5',
+    date: '2026-02-26',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Strict live-mode hardening lane documented across docs/roadmap/changelog with provider certification checklist',
+          'PagerDuty alert routing configuration and DR metrics evidence capture pipeline for production incidents',
+          'Secure checkout runtime posture surfaced in dashboard demo flow (checkout, ASA, A2A trust policy preflight)',
+          'Release artifact docs expanded for idempotency/replay proof and compliance evidence manifests',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'landing/public/llms.txt and llms-full.txt updated with runtime security-policy endpoints and provider readiness route',
+          'Sitemap/SEO freshness updates for docs, llms resources, and latest hardening release coverage',
+          'Developer docs index aligned with deterministic controls and strict-live rollout posture',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'PAN lane control narrative aligned to fail-closed approvals and policy-bound execution',
+          'Operational guidance now emphasizes deterministic deny behavior on provider outage and replay anomalies',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.9.4',
     date: '2026-02-25',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

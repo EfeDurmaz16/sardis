@@ -307,7 +307,7 @@ export default function Roadmap() {
     {
       version: 'v0.9.3',
       title: 'Investor Readiness + Runtime Posture Visibility',
-      status: 'current',
+      status: 'completed',
       date: 'Feb 2026 (Now)',
       items: [
         { text: 'Competitive positioning brief updated for deterministic policy + approval + audit-trail messaging', done: true },
@@ -320,8 +320,8 @@ export default function Roadmap() {
     {
       version: 'v0.10.0',
       title: 'ERC-4337 Implementation & Enterprise Features',
-      status: 'current',
-      date: 'Q1-Q2 2026 (In Progress)',
+      status: 'completed',
+      date: 'Q1 2026',
       items: [
         { text: 'P0: Immutable hard-limit layer for NL policy parser + fuzz/property tests', done: true },
         { text: 'P1: Agent-level sliding window limiter on payment endpoints', done: true },
@@ -336,6 +336,32 @@ export default function Roadmap() {
         { text: 'Custom policy templates', done: true },
         { text: 'Advanced analytics dashboard', done: true },
         { text: 'Enterprise SLA & support', done: true },
+      ],
+    },
+    {
+      version: 'v0.10.1',
+      title: 'Strict Live Mode + Operations Hardening',
+      status: 'current',
+      date: 'Q1 2026 (In Progress)',
+      items: [
+        { text: 'Simulated-path hard-disable guards expanded on production money movement routes', done: true },
+        { text: 'Webhook and payment idempotency/replay proof gate elevated to release requirement', done: true },
+        { text: 'SLO dashboard + PagerDuty alert routing + runbook evidence automation', done: true },
+        { text: 'DR incident drill evidence bundles with measured RTO/RPO snapshots', done: true },
+        { text: 'PCI boundary pattern finalization (issuer-hosted reveal/iframe or enclave lane)', done: false },
+        { text: 'Provider live-lane certification matrix (Stripe/Lithic/Rain/Bridge) with auth timeout + webhook SLA checks', done: false },
+      ],
+    },
+    {
+      version: 'v0.10.2',
+      title: 'Provider Certification + GA Control Gates',
+      status: 'upcoming',
+      date: 'Q2 2026',
+      items: [
+        { text: 'Stripe/Lithic/Rain/Bridge commercial + technical certification sign-off', done: false },
+        { text: 'Funding adapters wired to live credentials with failover behavior validation', done: false },
+        { text: 'SOC2 evidence cadence automation + PCI scope boundary control testing', done: false },
+        { text: 'API freeze/versioning policy with rollback proof pack for GA launch', done: false },
       ],
     },
     {
@@ -366,7 +392,7 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 14, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 17, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
           { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },

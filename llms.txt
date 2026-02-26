@@ -187,6 +187,12 @@ Append-only ledger with Merkle tree anchoring for cryptographic proof of all tra
 ### Secure Checkout Evidence
 For PAN-lane secure checkout flows, Sardis provides evidence export with digest/hash-chain integrity metadata:
 - `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
+- `GET /api/v2/checkout/secure/security-policy`
+
+### Runtime Security Policy & Readiness
+- `GET /api/v2/cards/asa/security-policy`
+- `GET /api/v2/a2a/trust/security-policy`
+- `GET /api/v2/cards/providers/readiness`
 
 ## Supported Chains & Tokens
 
@@ -222,6 +228,12 @@ SARDIS_AGENT_ID=agent_...       # Agent identity
 SARDIS_MODE=simulated|live      # Mode (default: simulated)
 SARDIS_CHAIN=base               # Default chain
 ```
+
+## Release Status
+
+- **Current Version**: v0.9.5 (Strict Live Mode + Operations Hardening)
+- **Main focus**: deterministic policy enforcement, replay/idempotency proofs, and incident-evidence automation
+- **Live-track**: provider certification + PCI boundary finalization for PAN lane
 
 ## Links
 

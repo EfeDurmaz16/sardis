@@ -53,9 +53,17 @@ Sardis provides:
 - Agent-level sliding-window payment rate limiting on execution endpoints.
 - Strategy-driven funding controls (`fiat_first|stablecoin_first|hybrid`) for issuer top-ups.
 - Provider diligence sheets published for Stripe, Lithic, Rain, and Bridge.
+- Strict live-mode disable controls on production money movement paths.
+- Idempotency/replay conformance release gates for webhook + payment pipelines.
+- SLO dashboard + PagerDuty alert routing + DR evidence manifests.
 - Secure checkout evidence export bundle:
   - `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
   - Includes `digest_sha256`, hash-chain tail, scope window, and verifier hints.
+- Runtime security-policy posture endpoints:
+  - `GET /api/v2/checkout/secure/security-policy`
+  - `GET /api/v2/cards/asa/security-policy`
+  - `GET /api/v2/a2a/trust/security-policy`
+  - `GET /api/v2/cards/providers/readiness`
 
 ### Key Differentiators
 
@@ -1851,11 +1859,20 @@ function removeToken(address token) external onlySardis;
 
 ## Status
 
-- **Current Version**: v0.8.5 (Production Retry + Async Wrapping)
+- **Current Version**: v0.9.5 (Strict Live Mode + Operations Hardening)
 - **MCP Server**: v0.2.7 on npm (1,000+ installs, 52 tools)
 - **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
 - **Mainnet Launch**: Q2 2026
 - **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
+
+## What's New in v0.9.5 (February 2026)
+
+### Strict Live Mode + Operations Hardening
+- Simulated path hard-disable posture for production money movement.
+- Replay/idempotency evidence gates for webhook and payment pipelines.
+- Pager alert routing plus runbook-bound SLO operations monitoring.
+- DR incident drill evidence with measured RTO/RPO artifacts.
+- Runtime preflight posture visibility via checkout/ASA/A2A security-policy endpoints.
 
 ## What's New in v0.8.5 (February 2026)
 
@@ -1960,5 +1977,5 @@ policy = {
 
 ---
 
-*Last updated: February 2026*
-*Version: 2.3*
+*Last updated: February 26, 2026*
+*Version: 2.4*

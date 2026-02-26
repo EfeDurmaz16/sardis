@@ -5,6 +5,15 @@ import SEO, { createBreadcrumbSchema } from '@/components/SEO';
 
 const posts = [
   {
+    title: 'Sardis v0.9.5: Strict Live Mode + Operations Hardening',
+    excerpt: 'v0.9.5 strengthens strict-live execution for payment rails: replay/idempotency proof gates, PagerDuty + SLO alert routing, DR evidence automation, and runtime security-policy preflight visibility in the dashboard demo.',
+    date: '2026-02-26',
+    readTime: '5 min read',
+    category: 'Release',
+    featured: true,
+    slug: 'sardis-v0-9-5-strict-live-ops-hardening',
+  },
+  {
     title: 'Sardis AI Agent Payments: What It Is and How It Works',
     excerpt: 'A practical guide to Sardis AI payments infrastructure for autonomous agents: deterministic policy enforcement, approval controls, virtual cards, and auditable execution.',
     date: '2026-02-25',
