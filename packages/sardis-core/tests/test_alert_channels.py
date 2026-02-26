@@ -136,6 +136,54 @@ async def test_dispatcher_disabled_channel_not_called(sample_alert):
 
 
 @pytest.mark.asyncio
+async def test_dispatcher_uses_severity_channel_map(sample_alert):
+    """Critical/warning/info can route to different channel sets."""
+    dispatcher = AlertDispatcher()
+
+    websocket_channel = AsyncMock()
+    websocket_channel.send = AsyncMock(return_value=True)
+    pager_channel = AsyncMock()
+    pager_channel.send = AsyncMock(return_value=True)
+
+    dispatcher.register_channel("websocket", websocket_channel)
+    dispatcher.register_channel("pager", pager_channel)
+    dispatcher.set_severity_channel_map(
+        {
+            "warning": ["websocket"],
+            "critical": ["websocket", "pager"],
+        }
+    )
+
+    warning_alert = Alert(
+        alert_type=AlertType.PAYMENT_EXECUTED,
+        severity=AlertSeverity.WARNING,
+        message="Warning",
+        organization_id="org_456",
+    )
+    await dispatcher.dispatch(warning_alert)
+
+    websocket_channel.send.assert_called_once()
+    pager_channel.send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_cooldown_suppresses_duplicate(sample_alert):
+    """Duplicate alerts in cooldown window should not re-dispatch."""
+    dispatcher = AlertDispatcher()
+    slack_channel = AsyncMock()
+    slack_channel.send = AsyncMock(return_value=True)
+    dispatcher.register_channel("slack", slack_channel)
+    dispatcher.set_channel_cooldowns({"slack": 120})
+
+    first = await dispatcher.dispatch(sample_alert, channels=["slack"])
+    second = await dispatcher.dispatch(sample_alert, channels=["slack"])
+
+    assert first["slack"] is True
+    assert second["slack"] is True
+    slack_channel.send.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_websocket_channel_no_manager():
     """Test WebSocket channel without connection manager."""
     channel = WebSocketChannel(connection_manager=None)
@@ -176,11 +224,12 @@ async def test_slack_channel_send_success(sample_alert):
     with patch("aiohttp.ClientSession") as mock_session:
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_response.__aexit__ = AsyncMock(return_value=None)
-
-        mock_post = AsyncMock(return_value=mock_response)
-        mock_session.return_value.__aenter__.return_value.post = mock_post
+        post_ctx = MagicMock()
+        post_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+        post_ctx.__aexit__ = AsyncMock(return_value=None)
+        session_ctx = MagicMock()
+        session_ctx.post = MagicMock(return_value=post_ctx)
+        mock_session.return_value.__aenter__.return_value = session_ctx
 
         channel = SlackChannel(webhook_url="https://hooks.slack.com/test")
         result = await channel.send(sample_alert)
@@ -194,11 +243,12 @@ async def test_discord_channel_send_success(sample_alert):
     with patch("aiohttp.ClientSession") as mock_session:
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_response.__aexit__ = AsyncMock(return_value=None)
-
-        mock_post = AsyncMock(return_value=mock_response)
-        mock_session.return_value.__aenter__.return_value.post = mock_post
+        post_ctx = MagicMock()
+        post_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+        post_ctx.__aexit__ = AsyncMock(return_value=None)
+        session_ctx = MagicMock()
+        session_ctx.post = MagicMock(return_value=post_ctx)
+        mock_session.return_value.__aenter__.return_value = session_ctx
 
         channel = DiscordChannel(webhook_url="https://discord.com/api/webhooks/test")
         result = await channel.send(sample_alert)

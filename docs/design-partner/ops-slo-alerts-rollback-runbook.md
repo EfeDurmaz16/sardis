@@ -13,6 +13,26 @@
 
 ## Alerting
 
+### Production routing/tuning knobs
+- `SARDIS_ALERT_SEVERITY_CHANNELS_JSON`:
+```json
+{
+  "info": ["websocket"],
+  "warning": ["websocket", "slack"],
+  "critical": ["websocket", "slack", "email"]
+}
+```
+- `SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON`:
+```json
+{
+  "slack": 180,
+  "email": 300
+}
+```
+- Pager route convention:
+  - `critical` alerts must include at least one human-paged destination (`slack` or `email`).
+  - keep `websocket` on for dashboard visibility, but do not rely on it as sole critical route.
+
 ### Automated checks
 - GitHub workflow: `.github/workflows/monitoring.yml`
   - Runs on schedule and manual dispatch

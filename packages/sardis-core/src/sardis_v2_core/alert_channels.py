@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -345,6 +346,9 @@ class AlertDispatcher:
     def __init__(self) -> None:
         self.channels: dict[str, AlertChannel] = {}
         self.channel_configs: dict[str, ChannelConfig] = {}
+        self._severity_channel_map: dict[AlertSeverity, list[str]] = {}
+        self._channel_cooldowns_seconds: dict[str, int] = {}
+        self._last_sent_at: dict[str, float] = {}
 
     def register_channel(self, name: str, channel: AlertChannel, enabled: bool = True) -> None:
         """Register an alert channel."""
@@ -367,6 +371,60 @@ class AlertDispatcher:
         if name in self.channel_configs:
             self.channel_configs[name].enabled = enabled
 
+    def set_severity_channel_map(self, severity_map: dict[str, list[str]]) -> None:
+        """Set default channels per alert severity."""
+        parsed: dict[AlertSeverity, list[str]] = {}
+        for severity_raw, channels in severity_map.items():
+            if not isinstance(channels, list):
+                continue
+            try:
+                severity = AlertSeverity(str(severity_raw).strip().lower())
+            except ValueError:
+                logger.warning("AlertDispatcher: unknown severity key '%s' ignored", severity_raw)
+                continue
+            parsed[severity] = [str(channel).strip() for channel in channels if str(channel).strip()]
+        self._severity_channel_map = parsed
+
+    def set_channel_cooldowns(self, cooldowns_seconds: dict[str, int]) -> None:
+        """Set per-channel dedupe cooldown windows."""
+        parsed: dict[str, int] = {}
+        for channel_name, cooldown in cooldowns_seconds.items():
+            try:
+                value = int(cooldown)
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                parsed[str(channel_name).strip()] = value
+        self._channel_cooldowns_seconds = parsed
+
+    def _resolve_target_channels(self, alert: Alert, channels: Optional[list[str]]) -> list[str]:
+        if channels:
+            return channels
+        severity_channels = self._severity_channel_map.get(alert.severity)
+        if severity_channels:
+            return severity_channels
+        return list(self.channels.keys())
+
+    def _cooldown_key(self, channel_name: str, alert: Alert) -> str:
+        org = alert.organization_id or "_"
+        agent = alert.agent_id or "_"
+        return f"{channel_name}:{alert.severity.value}:{alert.alert_type.value}:{org}:{agent}"
+
+    def _within_cooldown(self, channel_name: str, alert: Alert) -> bool:
+        cooldown = self._channel_cooldowns_seconds.get(channel_name, 0)
+        if cooldown <= 0:
+            return False
+        key = self._cooldown_key(channel_name, alert)
+        now = time.monotonic()
+        previous = self._last_sent_at.get(key)
+        if previous is not None and (now - previous) < cooldown:
+            return True
+        return False
+
+    def _mark_sent(self, channel_name: str, alert: Alert) -> None:
+        key = self._cooldown_key(channel_name, alert)
+        self._last_sent_at[key] = time.monotonic()
+
     async def dispatch(self, alert: Alert, channels: Optional[list[str]] = None) -> dict[str, bool]:
         """
         Dispatch an alert to specified channels.
@@ -378,7 +436,7 @@ class AlertDispatcher:
         Returns:
             Dictionary mapping channel names to send success status
         """
-        target_channels = channels or list(self.channels.keys())
+        target_channels = self._resolve_target_channels(alert, channels)
         results: dict[str, bool] = {}
 
         # Filter to only enabled channels
@@ -389,20 +447,33 @@ class AlertDispatcher:
 
         # Send to all channels concurrently
         tasks = []
+        dispatched_channels: list[str] = []
         for channel_name in enabled_channels:
             if channel_name in self.channels:
+                if self._within_cooldown(channel_name, alert):
+                    logger.info(
+                        "AlertDispatcher: cooldown skip channel=%s alert_type=%s severity=%s",
+                        channel_name,
+                        alert.alert_type.value,
+                        alert.severity.value,
+                    )
+                    results[channel_name] = True
+                    continue
                 channel = self.channels[channel_name]
                 tasks.append(self._send_with_name(channel_name, channel, alert))
+                dispatched_channels.append(channel_name)
 
         if tasks:
             results_list = await asyncio.gather(*tasks, return_exceptions=True)
-            for i, channel_name in enumerate(enabled_channels):
+            for i, channel_name in enumerate(dispatched_channels):
                 result = results_list[i]
                 if isinstance(result, Exception):
                     logger.error(f"Channel '{channel_name}' error: {result}")
                     results[channel_name] = False
                 else:
                     results[channel_name] = result
+                    if result:
+                        self._mark_sent(channel_name, alert)
 
         return results
 

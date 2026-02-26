@@ -41,9 +41,16 @@ require_match 'SLO' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops 
 require_match 'Rollback' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must define rollback procedures"
 require_match 'Cloud Run' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include API rollback"
 require_match 'Vercel' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include frontend rollback"
+require_match 'SARDIS_ALERT_SEVERITY_CHANNELS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document severity routing"
+require_match 'SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document cooldown tuning"
 require_match 'Mainnet' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet proof runbook must be explicit"
 require_match 'SEV-1' docs/design-partner/incident-response-247-drill.md "incident drill doc must define severity tiers"
 require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "reconciliation chaos doc must define SLOs"
+
+echo "[ops-readiness] running alert routing smoke tests"
+python3 -m pytest -q \
+  packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_uses_severity_channel_map \
+  packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_cooldown_suppresses_duplicate
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[ops-readiness] completed with $failures failure(s)"

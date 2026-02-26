@@ -1,6 +1,7 @@
 """REST API endpoints for alert management."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -156,6 +157,24 @@ def get_deps() -> AlertDependencies:
                     use_tls=os.getenv("SMTP_USE_TLS", "true").lower() == "true",
                 ),
             )
+
+        severity_channels_raw = os.getenv("SARDIS_ALERT_SEVERITY_CHANNELS_JSON", "")
+        if severity_channels_raw.strip():
+            try:
+                parsed_map = json.loads(severity_channels_raw)
+                if isinstance(parsed_map, dict):
+                    _dispatcher.set_severity_channel_map(parsed_map)
+            except json.JSONDecodeError:
+                logger.warning("Invalid SARDIS_ALERT_SEVERITY_CHANNELS_JSON; ignored")
+
+        channel_cooldowns_raw = os.getenv("SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON", "")
+        if channel_cooldowns_raw.strip():
+            try:
+                parsed_cooldowns = json.loads(channel_cooldowns_raw)
+                if isinstance(parsed_cooldowns, dict):
+                    _dispatcher.set_channel_cooldowns(parsed_cooldowns)
+            except json.JSONDecodeError:
+                logger.warning("Invalid SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON; ignored")
 
     return AlertDependencies(
         rule_engine=_rule_engine,
