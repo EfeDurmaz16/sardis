@@ -3,6 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STRICT_MODE="${STRICT_MODE:-0}"
+ENVIRONMENT="${SARDIS_ENVIRONMENT:-dev}"
+
+if [[ "$ENVIRONMENT" == "prod" || "$ENVIRONMENT" == "production" ]]; then
+  STRICT_MODE=1
+  export SARDIS_STRICT_RELEASE_GATES=1
+  export SARDIS_PROVIDER_CERT_STRICT=1
+  export SARDIS_GA_STRICT=1
+fi
 
 echo "[release-readiness] Starting checks (STRICT_MODE=${STRICT_MODE})"
 

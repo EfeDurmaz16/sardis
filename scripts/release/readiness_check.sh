@@ -7,6 +7,12 @@ cd "$ROOT_DIR"
 echo "[readiness] starting checks"
 
 failures=0
+environment="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$environment" == "prod" || "$environment" == "production" ]]; then
+  export SARDIS_STRICT_RELEASE_GATES=1
+  export SARDIS_PROVIDER_CERT_STRICT=1
+  export SARDIS_GA_STRICT=1
+fi
 
 check_cmd() {
   local cmd="$1"

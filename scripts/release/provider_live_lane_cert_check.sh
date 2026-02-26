@@ -25,6 +25,14 @@ for path in "${required[@]}"; do
 done
 
 STRICT_MODE="${SARDIS_PROVIDER_CERT_STRICT:-0}"
+ENVIRONMENT="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$ENVIRONMENT" == "prod" || "$ENVIRONMENT" == "production" ]]; then
+  STRICT_MODE=1
+fi
+if [[ "${SARDIS_STRICT_RELEASE_GATES:-0}" == "1" || "${SARDIS_STRICT_RELEASE_GATES:-0}" == "true" ]]; then
+  STRICT_MODE=1
+fi
+
 if [[ "$STRICT_MODE" == "1" || "$STRICT_MODE" == "true" ]]; then
   STRICT_ARG="--strict"
   echo "[provider-cert] strict mode enabled"

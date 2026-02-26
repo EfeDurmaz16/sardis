@@ -21,7 +21,11 @@ from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment
 from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_v2_core.policy_attestation import build_policy_decision_receipt
+from sardis_v2_core.policy_attestation import (
+    build_policy_decision_receipt,
+    build_signed_policy_snapshot,
+    verify_signed_policy_snapshot,
+)
 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
 router = APIRouter()
@@ -139,6 +143,49 @@ def _contains_prompt_injection_signal(text: Optional[str]) -> Optional[str]:
 
 def _is_truthy_env(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _signed_policy_snapshot_required() -> bool:
+    raw = (os.getenv("SARDIS_REQUIRE_SIGNED_POLICY_SNAPSHOT", "") or "").strip()
+    if raw:
+        return _is_truthy_env(raw)
+    env_name = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
+    return env_name in {"prod", "production"}
+
+
+def _policy_snapshot_signer_secret() -> str:
+    return (os.getenv("SARDIS_POLICY_SIGNER_SECRET", "") or "").strip()
+
+
+def _build_policy_snapshot_envelope(
+    *,
+    policy: Any,
+    source_text: str,
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    secret = _policy_snapshot_signer_secret()
+    if not secret:
+        if _signed_policy_snapshot_required():
+            return None, "policy_snapshot_signer_not_configured"
+        return None, None
+
+    try:
+        snapshot = build_signed_policy_snapshot(
+            policy=policy,
+            signer_secret=secret,
+            source_text=source_text,
+        )
+    except Exception as exc:  # pragma: no cover - defensive boundary
+        logger.exception("policy snapshot signing failed: %s", exc)
+        return None, "policy_snapshot_signing_failed"
+
+    verified, verify_reason = verify_signed_policy_snapshot(
+        snapshot=snapshot,
+        signer_secret=secret,
+        expected_prev_chain_hash=snapshot.prev_chain_hash,
+    )
+    if not verified:
+        return None, f"policy_snapshot_verification_failed:{verify_reason}"
+    return snapshot.to_dict(), None
 
 
 def _decimal_env(name: str, default: str) -> Decimal:
@@ -316,6 +363,7 @@ async def pay_onchain(
 
     # Policy enforcement gate (fail-closed in production when policy store missing).
     policy_receipt: Optional[dict[str, Any]] = None
+    policy_snapshot: Optional[dict[str, Any]] = None
     policy_audit_id: Optional[str] = None
     compliance_audit_id: Optional[str] = None
     requested_policy_hash = (request.policy_hash or "").strip() or None
@@ -338,6 +386,17 @@ async def pay_onchain(
     else:
         policy = await deps.policy_store.fetch_policy(wallet.agent_id)
         if policy is not None:
+            policy_snapshot, snapshot_error = _build_policy_snapshot_envelope(
+                policy=policy,
+                source_text=request.memo or "",
+            )
+            if snapshot_error:
+                record_policy_check(False, snapshot_error)
+                record_policy_denial_spike(snapshot_error)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=snapshot_error,
+                )
             policy_receipt = _try_build_policy_receipt(
                 policy=policy,
                 decision="evaluate",
@@ -351,6 +410,10 @@ async def pay_onchain(
                     "chain": request.chain,
                 },
             )
+            if policy_snapshot is not None and policy_receipt is not None:
+                policy_receipt.setdefault("context", {})["policy_snapshot_id"] = policy_snapshot.get("snapshot_id")
+                policy_receipt["context"]["policy_snapshot_chain_hash"] = policy_snapshot.get("chain_hash")
+                policy_receipt["context"]["policy_signer_kid"] = policy_snapshot.get("signer_kid")
             if policy_pin_requested and policy_receipt is None:
                 deny_reason = "policy_pin_attestation_unavailable"
                 record_policy_check(False, deny_reason)

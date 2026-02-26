@@ -18,6 +18,11 @@ from sardis_v2_core.policy_attestation import compute_policy_hash
 from sardis_v2_core.spending_policy import SpendingPolicy
 
 
+@pytest.fixture(autouse=True)
+def _disable_agent_rate_limit(monkeypatch):
+    monkeypatch.setenv("SARDIS_AGENT_PAYMENT_RATE_LIMIT_ENABLED", "0")
+
+
 def _admin_principal() -> Principal:
     return Principal(
         kind="api_key",
@@ -478,6 +483,98 @@ def test_onchain_payment_returns_policy_receipt_fields_and_audits():
     assert payload["policy_audit_anchor"].startswith("merkle::")
     assert payload["policy_audit_id"]
     assert len(audit_store.entries) == 1
+
+
+def test_onchain_payment_prod_requires_policy_snapshot_signer(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "prod")
+    monkeypatch.delenv("SARDIS_POLICY_SIGNER_SECRET", raising=False)
+
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.00",
+            "token": "USDC",
+            "chain": "base",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "policy_snapshot_signer_not_configured"
+    chain_executor.dispatch_payment.assert_not_called()
+
+
+def test_onchain_payment_prod_executes_with_signed_policy_snapshot(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "prod")
+    monkeypatch.setenv("SARDIS_POLICY_SIGNER_SECRET", "unit-test-policy-secret")
+
+    wallet_repo = AsyncMock()
+    wallet_repo.get.return_value = _build_wallet()
+    chain_executor = AsyncMock()
+    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_snapshot_ok")
+    policy = SpendingPolicy(agent_id="agent_1")
+    policy_store = AsyncMock()
+    policy_store.fetch_policy.return_value = policy
+    audit_store = _AuditStore()
+    sanctions_service = AsyncMock()
+    sanctions_service.screen_address.return_value = SimpleNamespace(
+        should_block=False,
+        risk_level="low",
+        provider="elliptic",
+        reason="clear",
+    )
+
+    deps = OnChainPaymentDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=None,
+        chain_executor=chain_executor,
+        policy_store=policy_store,
+        audit_store=audit_store,
+        sanctions_service=sanctions_service,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/wallets/wallet_1/pay/onchain",
+        json={
+            "to": "0xmerchant",
+            "amount": "1.10",
+            "token": "USDC",
+            "chain": "base",
+            "memo": "cloud hosting renewal",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tx_hash"] == "0xtx_snapshot_ok"
+    assert len(audit_store.entries) >= 1
+    policy_entries = [
+        entry for entry in audit_store.entries
+        if getattr(entry, "provider", None) == "policy_engine"
+    ]
+    assert policy_entries, "expected at least one policy_engine audit entry"
+    metadata = getattr(policy_entries[-1], "metadata", {}) or {}
+    context = metadata.get("context", {})
+    assert context.get("policy_snapshot_id")
+    assert context.get("policy_snapshot_chain_hash")
+    assert context.get("policy_signer_kid") == "policy-signer"
 
 
 def test_onchain_payment_policy_pin_requires_active_policy_store():

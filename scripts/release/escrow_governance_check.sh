@@ -8,6 +8,10 @@ echo "[escrow-governance] validating timelock governance controls"
 
 failures=0
 strict_mode="${SARDIS_STRICT_RELEASE_GATES:-0}"
+environment="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$environment" == "prod" || "$environment" == "production" ]]; then
+  strict_mode=1
+fi
 
 require_file() {
   local file="$1"

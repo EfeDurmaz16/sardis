@@ -8,6 +8,10 @@ echo "[ops-readiness] validating ops SLO/alert/rollback artifacts"
 
 failures=0
 strict_mode="${SARDIS_STRICT_RELEASE_GATES:-0}"
+environment="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$environment" == "prod" || "$environment" == "production" ]]; then
+  strict_mode=1
+fi
 strict_arg=""
 if [[ "$strict_mode" == "1" || "$strict_mode" == "true" ]]; then
   strict_arg="--strict-routing"

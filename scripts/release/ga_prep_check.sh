@@ -47,10 +47,18 @@ bash scripts/release/mainnet_ops_drill_check.sh
 python3 -m pytest -q packages/sardis-api/tests/test_middleware_security.py -k api_version_header
 
 STRICT_MODE="${SARDIS_GA_STRICT:-0}"
+ENVIRONMENT="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$ENVIRONMENT" == "prod" || "$ENVIRONMENT" == "production" ]]; then
+  STRICT_MODE=1
+fi
 STRICT_ARG=""
 if [[ "$STRICT_MODE" == "1" || "$STRICT_MODE" == "true" ]]; then
   STRICT_ARG="--strict"
   echo "[ga-prep] strict mode enabled"
+fi
+
+if [[ "$STRICT_MODE" == "1" || "$STRICT_MODE" == "true" ]]; then
+  export SARDIS_PROVIDER_CERT_STRICT=1
 fi
 
 python3 scripts/release/generate_enterprise_ga_readiness_artifact.py $STRICT_ARG
