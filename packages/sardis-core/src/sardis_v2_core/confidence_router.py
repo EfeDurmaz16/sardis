@@ -161,6 +161,52 @@ class ConfidenceRouter:
         """
         self.thresholds = thresholds or ConfidenceThresholds()
 
+    @staticmethod
+    def _build_history_stats(history: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build single-pass aggregates used by confidence factors."""
+        merchant_counts: dict[str, int] = {}
+        hour_counts: dict[int, int] = {}
+        amount_count = 0
+        amount_mean = 0.0
+        amount_m2 = 0.0
+
+        for tx in history:
+            merchant = tx.get("merchant_id") or tx.get("merchant")
+            if merchant:
+                merchant_key = str(merchant)
+                merchant_counts[merchant_key] = merchant_counts.get(merchant_key, 0) + 1
+
+            tx_time = tx.get("timestamp")
+            if isinstance(tx_time, str):
+                tx_time = datetime.fromisoformat(tx_time.replace('Z', '+00:00'))
+            if isinstance(tx_time, datetime):
+                hour_counts[tx_time.hour] = hour_counts.get(tx_time.hour, 0) + 1
+
+            tx_amount = tx.get("amount")
+            if tx_amount is None:
+                continue
+            value = float(tx_amount)
+            amount_count += 1
+            delta = value - amount_mean
+            amount_mean += delta / amount_count
+            delta2 = value - amount_mean
+            amount_m2 += delta * delta2
+
+        std_dev = 0.0
+        if amount_count > 1:
+            variance = amount_m2 / (amount_count - 1)
+            std_dev = math.sqrt(max(0.0, variance))
+        elif amount_count == 1:
+            std_dev = amount_mean * 0.5
+
+        return {
+            "merchant_counts": merchant_counts,
+            "hour_counts": hour_counts,
+            "amount_count": amount_count,
+            "amount_mean": amount_mean,
+            "amount_std_dev": std_dev,
+        }
+
     def calculate_confidence(
         self,
         agent_id: str,
@@ -197,6 +243,8 @@ class ConfidenceRouter:
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
 
+        history_stats = self._build_history_stats(history) if history else None
+
         # ── Factor 1: KYA Level (0.0–0.30 contribution) ──────────────────
         # Higher KYA = higher baseline confidence
         kya_scores = {"none": 0.0, "basic": 0.10, "verified": 0.20, "attested": 0.30}
@@ -222,13 +270,13 @@ class ConfidenceRouter:
 
         # ── Factor 3: Merchant Familiarity (0.0–0.20 contribution) ───────
         # Repeat merchants = higher confidence
-        if history and merchant_id:
-            merchant_txs = [tx for tx in history if tx.get("merchant_id") == merchant_id or tx.get("merchant") == merchant_id]
-            if len(merchant_txs) >= 10:
+        if history_stats and merchant_id:
+            merchant_count = history_stats["merchant_counts"].get(str(merchant_id), 0)
+            if merchant_count >= 10:
                 factors["merchant_familiarity"] = 0.20
-            elif len(merchant_txs) >= 5:
+            elif merchant_count >= 5:
                 factors["merchant_familiarity"] = 0.15
-            elif len(merchant_txs) >= 2:
+            elif merchant_count >= 2:
                 factors["merchant_familiarity"] = 0.10
             else:
                 factors["merchant_familiarity"] = 0.0  # New merchant
@@ -237,47 +285,30 @@ class ConfidenceRouter:
 
         # ── Factor 4: Amount Normalcy (0.0–0.15 contribution) ────────────
         # Transaction amount within typical range = higher confidence
-        if history:
-            amounts = [float(tx.get("amount", 0)) for tx in history if tx.get("amount")]
-            if amounts:
-                import statistics
-                mean_amount = statistics.mean(amounts)
-                if len(amounts) > 1:
-                    std_dev = statistics.stdev(amounts)
+        if history_stats and history_stats["amount_count"] > 0:
+            mean_amount = history_stats["amount_mean"]
+            std_dev = history_stats["amount_std_dev"]
+            # Z-score check
+            if std_dev > 0:
+                z_score = abs((float(amount) - mean_amount) / std_dev)
+                if z_score <= 1.0:
+                    factors["amount_normalcy"] = 0.15  # Within 1 std dev
+                elif z_score <= 2.0:
+                    factors["amount_normalcy"] = 0.10  # Within 2 std dev
+                elif z_score <= 3.0:
+                    factors["amount_normalcy"] = 0.05  # Within 3 std dev
                 else:
-                    std_dev = mean_amount * 0.5  # Assume 50% variance for single tx
-
-                # Z-score check
-                if std_dev > 0:
-                    z_score = abs((float(amount) - mean_amount) / std_dev)
-                    if z_score <= 1.0:
-                        factors["amount_normalcy"] = 0.15  # Within 1 std dev
-                    elif z_score <= 2.0:
-                        factors["amount_normalcy"] = 0.10  # Within 2 std dev
-                    elif z_score <= 3.0:
-                        factors["amount_normalcy"] = 0.05  # Within 3 std dev
-                    else:
-                        factors["amount_normalcy"] = 0.0  # Outlier
-                else:
-                    factors["amount_normalcy"] = 0.10  # No variance, moderate confidence
+                    factors["amount_normalcy"] = 0.0  # Outlier
             else:
-                factors["amount_normalcy"] = 0.05
+                factors["amount_normalcy"] = 0.10  # No variance, moderate confidence
         else:
             factors["amount_normalcy"] = 0.05
 
         # ── Factor 5: Time-of-Day Pattern (0.0–0.05 contribution) ────────
         # Transactions during typical hours = higher confidence
-        if history:
-            # Build hourly distribution
-            hour_counts: dict[int, int] = {}
-            for tx in history:
-                tx_time = tx.get("timestamp")
-                if isinstance(tx_time, str):
-                    tx_time = datetime.fromisoformat(tx_time.replace('Z', '+00:00'))
-                if isinstance(tx_time, datetime):
-                    hour_counts[tx_time.hour] = hour_counts.get(tx_time.hour, 0) + 1
-
+        if history_stats:
             current_hour = timestamp.hour
+            hour_counts = history_stats["hour_counts"]
             if current_hour in hour_counts and hour_counts[current_hour] >= 2:
                 factors["time_pattern"] = 0.05  # Typical hour
             else:

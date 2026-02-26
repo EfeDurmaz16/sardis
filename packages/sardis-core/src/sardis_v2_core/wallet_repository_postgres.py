@@ -163,9 +163,11 @@ class PostgresWalletRepository:
                        w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
                        w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
                        w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
-                       w.created_at, w.updated_at
+                       w.created_at, w.updated_at,
+                       a.external_id AS agent_external_id
                 FROM wallets w
-                WHERE w.agent_id = (SELECT id FROM agents WHERE external_id = $1)
+                JOIN agents a ON a.id = w.agent_id
+                WHERE a.external_id = $1
                 ORDER BY w.created_at DESC
                 LIMIT 1
                 """,
@@ -173,7 +175,7 @@ class PostgresWalletRepository:
             )
             if not row:
                 return None
-            return self._wallet_from_row(dict(row), agent_id)
+            return self._wallet_from_row(dict(row), str(row["agent_external_id"]))
 
     async def list(
         self,
@@ -188,7 +190,7 @@ class PostgresWalletRepository:
             params: list[Any] = []
             idx = 1
             if agent_id:
-                where.append(f"w.agent_id = (SELECT id FROM agents WHERE external_id = ${idx})")
+                where.append(f"a.external_id = ${idx}")
                 params.append(agent_id)
                 idx += 1
             if is_active is not None:
@@ -215,6 +217,34 @@ class PostgresWalletRepository:
                 offset,
             )
             return [self._wallet_from_row(dict(r), str(r["agent_external_id"])) for r in rows]
+
+    async def get_many(self, wallet_ids: list[str]) -> list[Wallet]:
+        """Batch load wallets by external IDs in a single query."""
+        if not wallet_ids:
+            return []
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
+                       w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
+                       w.created_at, w.updated_at,
+                       a.external_id AS agent_external_id
+                FROM wallets w
+                JOIN agents a ON a.id = w.agent_id
+                WHERE w.external_id = ANY($1::varchar[])
+                """,
+                wallet_ids,
+            )
+
+            by_id: dict[str, Wallet] = {}
+            for row in rows:
+                wallet = self._wallet_from_row(dict(row), str(row["agent_external_id"]))
+                by_id[wallet.wallet_id] = wallet
+            return [by_id[wallet_id] for wallet_id in wallet_ids if wallet_id in by_id]
 
     async def update(
         self,

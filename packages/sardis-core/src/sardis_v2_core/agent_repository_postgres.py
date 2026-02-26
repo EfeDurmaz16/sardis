@@ -133,26 +133,26 @@ class PostgresAgentRepository:
             row = await conn.fetchrow(
                 """
                 SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
-                       o.external_id AS organization_external_id
+                       o.external_id AS organization_external_id,
+                       w.external_id AS wallet_external_id
                 FROM agents a
                 LEFT JOIN organizations o ON o.id = a.organization_id
+                LEFT JOIN LATERAL (
+                    SELECT external_id
+                    FROM wallets
+                    WHERE agent_id = a.id
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) w ON TRUE
                 WHERE a.external_id = $1
                 """,
                 agent_id,
             )
             if not row:
                 return None
-            wallet_row = await conn.fetchrow(
-                """
-                SELECT w.external_id
-                FROM wallets w
-                WHERE w.agent_id = (SELECT id FROM agents WHERE external_id = $1)
-                ORDER BY w.created_at DESC
-                LIMIT 1
-                """,
-                agent_id,
+            wallet_external_id = (
+                str(row["wallet_external_id"]) if row["wallet_external_id"] is not None else None
             )
-            wallet_external_id = str(wallet_row["external_id"]) if wallet_row else None
             return self._agent_from_row(dict(row), wallet_external_id)
 
     async def list(
@@ -180,9 +180,17 @@ class PostgresAgentRepository:
             rows = await conn.fetch(
                 f"""
                 SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
-                       o.external_id AS organization_external_id
+                       o.external_id AS organization_external_id,
+                       w.external_id AS wallet_external_id
                 FROM agents a
                 LEFT JOIN organizations o ON o.id = a.organization_id
+                LEFT JOIN LATERAL (
+                    SELECT external_id
+                    FROM wallets
+                    WHERE agent_id = a.id
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) w ON TRUE
                 {where_sql}
                 ORDER BY a.created_at DESC
                 LIMIT ${idx} OFFSET ${idx + 1}
@@ -194,20 +202,47 @@ class PostgresAgentRepository:
 
             agents: list[Agent] = []
             for r in rows:
-                agent_id = str(r["external_id"])
-                wallet_row = await conn.fetchrow(
-                    """
-                    SELECT w.external_id
-                    FROM wallets w
-                    WHERE w.agent_id = (SELECT id FROM agents WHERE external_id = $1)
-                    ORDER BY w.created_at DESC
-                    LIMIT 1
-                    """,
-                    agent_id,
+                wallet_external_id = (
+                    str(r["wallet_external_id"]) if r["wallet_external_id"] is not None else None
                 )
-                wallet_external_id = str(wallet_row["external_id"]) if wallet_row else None
                 agents.append(self._agent_from_row(dict(r), wallet_external_id))
             return agents
+
+    async def get_many(self, agent_ids: list[str]) -> list[Agent]:
+        """Batch load agents by external IDs in a single query."""
+        if not agent_ids:
+            return []
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
+                       o.external_id AS organization_external_id,
+                       w.external_id AS wallet_external_id
+                FROM agents a
+                LEFT JOIN organizations o ON o.id = a.organization_id
+                LEFT JOIN LATERAL (
+                    SELECT external_id
+                    FROM wallets
+                    WHERE agent_id = a.id
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) w ON TRUE
+                WHERE a.external_id = ANY($1::varchar[])
+                """,
+                agent_ids,
+            )
+
+            by_id: dict[str, Agent] = {}
+            for row in rows:
+                wallet_external_id = (
+                    str(row["wallet_external_id"]) if row["wallet_external_id"] is not None else None
+                )
+                agent = self._agent_from_row(dict(row), wallet_external_id)
+                by_id[agent.agent_id] = agent
+
+            return [by_id[agent_id] for agent_id in agent_ids if agent_id in by_id]
 
     async def update(
         self,

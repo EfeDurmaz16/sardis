@@ -4,6 +4,7 @@ import inspect
 from datetime import datetime, timezone
 
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
+from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 
 
 def test_postgres_agent_repo_create_accepts_kya_fields():
@@ -41,3 +42,13 @@ def test_agent_from_row_maps_kya_fields_from_metadata():
 
     assert agent.kya_level == "verified"
     assert agent.kya_status == "active"
+
+
+def test_postgres_agent_repo_exposes_batch_get_many():
+    sig = inspect.signature(PostgresAgentRepository.get_many)
+    assert "agent_ids" in sig.parameters
+
+
+def test_postgres_wallet_repo_exposes_batch_get_many():
+    sig = inspect.signature(PostgresWalletRepository.get_many)
+    assert "wallet_ids" in sig.parameters

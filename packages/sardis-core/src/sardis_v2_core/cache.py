@@ -389,6 +389,7 @@ class CacheService:
 
     # Cache key prefixes
     PREFIX_BALANCE = "balance"
+    PREFIX_BALANCE_VERSION = "balance_version"
     PREFIX_WALLET = "wallet"
     PREFIX_AGENT = "agent"
     PREFIX_RATE_LIMIT = "rate"
@@ -487,6 +488,20 @@ class CacheService:
         """Build a cache key."""
         return f"sardis:{prefix}:{':'.join(parts)}"
 
+    async def _get_balance_version(self, wallet_id: str) -> str:
+        """Return the cache generation for wallet balances."""
+        version_key = self._key(self.PREFIX_BALANCE_VERSION, wallet_id)
+        version = await self._backend.get(version_key)
+        return version or "0"
+
+    def _balance_key(self, wallet_id: str, token: str, version: str) -> str:
+        """Versioned wallet balance cache key."""
+        return self._key(self.PREFIX_BALANCE, wallet_id, version, token)
+
+    def _legacy_balance_key(self, wallet_id: str, token: str) -> str:
+        """Backward-compatible pre-versioning key."""
+        return self._key(self.PREFIX_BALANCE, wallet_id, token)
+
     # Auth / session security
 
     async def revoke_jwt_jti(self, jti: str, ttl_seconds: int) -> bool:
@@ -508,7 +523,8 @@ class CacheService:
 
     async def get_balance(self, wallet_id: str, token: str) -> Optional[Decimal]:
         """Get cached wallet balance."""
-        key = self._key(self.PREFIX_BALANCE, wallet_id, token)
+        version = await self._get_balance_version(wallet_id)
+        key = self._balance_key(wallet_id, token, version)
         start = time.time()
         try:
             value = await self._backend.get(key)
@@ -522,6 +538,10 @@ class CacheService:
 
             if value is not None:
                 return Decimal(value)
+            # Compatibility fallback for entries written before versioning.
+            legacy = await self._backend.get(self._legacy_balance_key(wallet_id, token))
+            if legacy is not None:
+                return Decimal(legacy)
             return None
         except Exception as e:
             if self._metrics:
@@ -532,7 +552,8 @@ class CacheService:
         self, wallet_id: str, token: str, balance: Decimal, ttl: Optional[int] = None
     ) -> bool:
         """Cache wallet balance."""
-        key = self._key(self.PREFIX_BALANCE, wallet_id, token)
+        version = await self._get_balance_version(wallet_id)
+        key = self._balance_key(wallet_id, token, version)
         start = time.time()
         try:
             result = await self._backend.set(key, str(balance), ttl or self.TTL_BALANCE)
@@ -549,10 +570,13 @@ class CacheService:
 
     async def invalidate_balance(self, wallet_id: str, token: str) -> bool:
         """Invalidate cached balance."""
-        key = self._key(self.PREFIX_BALANCE, wallet_id, token)
+        version = await self._get_balance_version(wallet_id)
+        key = self._balance_key(wallet_id, token, version)
+        legacy_key = self._legacy_balance_key(wallet_id, token)
         start = time.time()
         try:
             result = await self._backend.delete(key)
+            await self._backend.delete(legacy_key)
             latency_ms = (time.time() - start) * 1000
 
             if self._metrics:
@@ -566,11 +590,18 @@ class CacheService:
 
     async def invalidate_wallet_balances(self, wallet_id: str) -> int:
         """Invalidate all balances for a wallet."""
-        # For simplicity, we invalidate known tokens
+        # Bump generation first so stale writers can no longer affect reads.
+        version_key = self._key(self.PREFIX_BALANCE_VERSION, wallet_id)
+        new_version = await self._backend.incr(version_key)
+
+        # Best-effort cleanup of previous generation + legacy keys for known tokens.
+        old_version = str(max(0, int(new_version) - 1))
         tokens = ["USDC", "USDT", "PYUSD", "EURC"]
         count = 0
         for token in tokens:
-            if await self.invalidate_balance(wallet_id, token):
+            if await self._backend.delete(self._balance_key(wallet_id, token, old_version)):
+                count += 1
+            if await self._backend.delete(self._legacy_balance_key(wallet_id, token)):
                 count += 1
         return count
 

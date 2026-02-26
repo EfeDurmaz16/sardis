@@ -318,6 +318,28 @@ class TestCacheService:
         assert count >= 3
 
     @pytest.mark.asyncio
+    async def test_balance_generation_blocks_stale_writes_after_invalidation(self):
+        """Old-generation writes should never be returned after invalidation."""
+        cache = CacheService.create()
+        wallet_id = "wallet_321"
+        token = "USDC"
+
+        await cache.set_balance(wallet_id, token, Decimal("100"))
+        old_version = await cache._get_balance_version(wallet_id)
+        old_key = cache._balance_key(wallet_id, token, old_version)
+        assert await cache._backend.get(old_key) == "100"
+
+        await cache.invalidate_wallet_balances(wallet_id)
+        assert await cache.get_balance(wallet_id, token) is None
+
+        # Simulate a stale concurrent writer still writing old-generation data.
+        await cache._backend.set(old_key, "999", ttl=60)
+        assert await cache.get_balance(wallet_id, token) is None
+
+        await cache.set_balance(wallet_id, token, Decimal("123"))
+        assert await cache.get_balance(wallet_id, token) == Decimal("123")
+
+    @pytest.mark.asyncio
     async def test_wallet_operations(self):
         """Test wallet data caching."""
         cache = CacheService.create()
