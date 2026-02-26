@@ -1067,13 +1067,36 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 financial_account_id=stripe_financial_account_id or None,
                 environment="production" if settings.is_production else "sandbox",
             )
+
+            from sardis_v2_core.funding import StripeIssuingFundingAdapter
+
+            def _build_funding_adapter(adapter_name: str):
+                normalized = (adapter_name or "").strip().lower()
+                if not normalized:
+                    return None
+                if normalized == "stripe":
+                    return StripeIssuingFundingAdapter(treasury_provider)
+                logger.warning(
+                    "Funding adapter '%s' requested but not wired in this deployment",
+                    normalized,
+                )
+                return None
+
+            configured_primary_adapter = _build_funding_adapter(settings.funding.primary_adapter)
+            configured_fallback_adapter = _build_funding_adapter(settings.funding.fallback_adapter or "")
+
             app.dependency_overrides[stripe_funding_router.get_deps] = (
                 lambda: stripe_funding_router.StripeFundingDeps(
                     treasury_provider=treasury_provider,
+                    funding_adapter=configured_primary_adapter,
+                    fallback_funding_adapter=configured_fallback_adapter,
                     treasury_repo=treasury_repo,
                     canonical_repo=canonical_ledger_repo,
                     default_connected_account_id=stripe_connected_account_default,
                     connected_account_map=connected_account_map,
+                    funding_strategy=settings.funding.strategy,
+                    stablecoin_prefund_enabled=settings.funding.stablecoin_prefund_enabled,
+                    require_connected_account=settings.funding.require_connected_account,
                 )
             )
             app.include_router(stripe_funding_router.router, prefix="/api/v2")

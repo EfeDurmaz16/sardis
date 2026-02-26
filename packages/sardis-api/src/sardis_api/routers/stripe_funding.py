@@ -37,6 +37,9 @@ class StripeFundingDeps:
     canonical_repo: Any = None
     default_connected_account_id: str = ""
     connected_account_map: dict[str, str] | None = None
+    funding_strategy: str = "fiat_first"
+    stablecoin_prefund_enabled: bool = False
+    require_connected_account: bool = False
 
 
 def get_deps() -> StripeFundingDeps:
@@ -111,6 +114,12 @@ class FundingRoutingPlanItem(BaseModel):
     rail: str
 
 
+class FundingStrategyResponse(BaseModel):
+    strategy: str
+    stablecoin_prefund_enabled: bool
+    require_connected_account: bool
+
+
 def _resolve_connected_account(
     *,
     principal: Principal,
@@ -158,6 +167,13 @@ def _ordered_funding_adapters(deps: StripeFundingDeps) -> list[FundingAdapter]:
             continue
         ordered.append(adapter)
     return ordered
+
+
+def _normalized_strategy(value: str) -> str:
+    strategy = (value or "fiat_first").strip().lower()
+    if strategy in {"stablecoin_first", "hybrid", "fiat_first"}:
+        return strategy
+    return "fiat_first"
 
 
 async def _persist_funding_attempts(
@@ -219,6 +235,18 @@ async def get_issuing_topup_routing_plan(
         )
         for index, adapter in enumerate(ordered_adapters, start=1)
     ]
+
+
+@router.get("/issuing/topups/strategy", response_model=FundingStrategyResponse)
+async def get_issuing_topup_strategy(
+    deps: StripeFundingDeps = Depends(get_deps),
+    _: Principal = Depends(require_principal),
+):
+    return FundingStrategyResponse(
+        strategy=_normalized_strategy(deps.funding_strategy),
+        stablecoin_prefund_enabled=bool(deps.stablecoin_prefund_enabled),
+        require_connected_account=bool(deps.require_connected_account),
+    )
 
 
 @router.get("/issuing/topups/history", response_model=list[IssuingFundingHistoryItem])
@@ -334,6 +362,14 @@ async def fund_issuing_balance(
     principal: Principal = Depends(require_principal),
 ):
     ordered_adapters = _ordered_funding_adapters(deps)
+    strategy = _normalized_strategy(deps.funding_strategy)
+
+    if strategy == "stablecoin_first" and not deps.stablecoin_prefund_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="stablecoin_prefund_disabled",
+        )
+
     if not ordered_adapters:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -345,6 +381,12 @@ async def fund_issuing_balance(
         deps=deps,
         requested=payload.connected_account_id,
     )
+
+    if deps.require_connected_account and not connected_account_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="connected_account_required_by_policy",
+        )
 
     if connected_account_id and not connected_account_id.startswith("acct_"):
         raise HTTPException(

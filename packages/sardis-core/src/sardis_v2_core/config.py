@@ -142,6 +142,19 @@ class CardStackConfig(BaseSettings):
         env_prefix = "SARDIS_CARDS_"
 
 
+class FundingRoutingConfig(BaseSettings):
+    """Funding routing strategy for issuer top-ups."""
+
+    strategy: Literal["fiat_first", "stablecoin_first", "hybrid"] = "fiat_first"
+    primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge"] = "stripe"
+    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge"]] = None
+    stablecoin_prefund_enabled: bool = False
+    require_connected_account: bool = False
+
+    class Config:
+        env_prefix = "SARDIS_FUNDING_"
+
+
 class SardisSettings(BaseSettings):
     """Main Sardis configuration."""
     
@@ -213,6 +226,7 @@ class SardisSettings(BaseSettings):
     rain: RainConfig = Field(default_factory=RainConfig)
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
+    funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
     
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"

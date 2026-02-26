@@ -276,6 +276,59 @@ def test_routing_plan_endpoint_lists_adapter_order():
     ]
 
 
+def test_strategy_endpoint_exposes_runtime_funding_policy():
+    deps = StripeFundingDeps(
+        treasury_provider=_FakeTreasuryProvider(),
+        funding_strategy="hybrid",
+        stablecoin_prefund_enabled=True,
+        require_connected_account=True,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.get("/api/v2/stripe/funding/issuing/topups/strategy")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "strategy": "hybrid",
+        "stablecoin_prefund_enabled": True,
+        "require_connected_account": True,
+    }
+
+
+def test_stablecoin_first_rejected_when_prefund_disabled():
+    deps = StripeFundingDeps(
+        treasury_provider=_FakeTreasuryProvider(),
+        funding_strategy="stablecoin_first",
+        stablecoin_prefund_enabled=False,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/stripe/funding/issuing/topups",
+        json={"amount": "2.00", "description": "blocked by strategy"},
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "stablecoin_prefund_disabled"
+
+
+def test_require_connected_account_policy_enforced():
+    deps = StripeFundingDeps(
+        treasury_provider=_FakeTreasuryProvider(),
+        require_connected_account=True,
+    )
+    app = _build_app(deps)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v2/stripe/funding/issuing/topups",
+        json={"amount": "2.00", "description": "connected account required"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "connected_account_required_by_policy"
+
+
 def test_topup_records_audit_and_canonical_event():
     treasury = _FakeTreasuryProvider()
     treasury_repo = _FakeTreasuryRepo()
