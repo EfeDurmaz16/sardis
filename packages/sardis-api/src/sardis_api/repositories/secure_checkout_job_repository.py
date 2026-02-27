@@ -23,14 +23,8 @@ class SecureCheckoutJobRepository:
 
     async def _get_pool(self):
         if self._pool is None:
-            if not self._use_postgres():
-                return None
-            import asyncpg
-            dsn = self._dsn
-            if dsn.startswith("postgres://"):
-                dsn = dsn.replace("postgres://", "postgresql://", 1)
-            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=8)
-            await self._ensure_schema()
+            from sardis_v2_core.database import Database
+            self._pool = await Database.get_pool()
         return self._pool
 
     async def _ensure_schema(self) -> None:

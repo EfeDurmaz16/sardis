@@ -180,15 +180,8 @@ class PostgresAuditStore:
         if self._initialized:
             return
 
-        try:
-            import asyncpg
-        except ImportError:
-            raise RuntimeError(
-                "asyncpg is required for PostgreSQL audit store. "
-                "Install with: pip install asyncpg"
-            )
-
-        self._pool = await asyncpg.create_pool(self._dsn, min_size=2, max_size=10)
+        from sardis_v2_core.database import Database
+        self._pool = await Database.get_pool()
 
         # In production, expect migrations to have created this table.
         # In dev/test, create it directly.

@@ -420,11 +420,8 @@ class LedgerStore:
     async def _get_pg_pool(self):
         """Lazy initialization of PostgreSQL pool."""
         if self._pg_pool is None:
-            import asyncpg
-            dsn = self._dsn
-            if dsn.startswith("postgres://"):
-                dsn = dsn.replace("postgres://", "postgresql://", 1)
-            self._pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
+            from sardis_v2_core.database import Database
+            self._pg_pool = await Database.get_pool()
         return self._pg_pool
 
     def append(self, payment_mandate, chain_receipt: ChainReceipt) -> Transaction:

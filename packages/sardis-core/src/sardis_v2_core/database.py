@@ -32,9 +32,10 @@ class Database:
             database_url = _normalized_database_url()
             
             # Neon serverless requires SSL and pgbouncer-compatible settings
+            # Single shared pool — replaces per-repository pool proliferation.
             pool_kwargs: dict = {
                 "min_size": 2,
-                "max_size": 10,
+                "max_size": 20,
                 "command_timeout": 60,
             }
 
@@ -43,8 +44,8 @@ class Database:
                 ssl_ctx = ssl.create_default_context()
                 pool_kwargs.update({
                     "ssl": ssl_ctx,
-                    "min_size": 1,
-                    "max_size": 5,
+                    "min_size": 2,
+                    "max_size": 15,
                     "statement_cache_size": 0,  # Required for pgbouncer/Neon pooler
                 })
 

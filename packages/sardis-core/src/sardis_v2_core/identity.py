@@ -143,11 +143,8 @@ class IdentityRegistry:
 
     async def _get_pool(self):
         if self._pool is None:
-            import asyncpg
-            dsn = self._dsn
-            if dsn and dsn.startswith("postgres://"):
-                dsn = dsn.replace("postgres://", "postgresql://", 1)
-            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
+            from sardis_v2_core.database import Database
+            self._pool = await Database.get_pool()
         return self._pool
 
     def issue(self, agent_id: str, public_key: bytes, domain: str, algorithm: AllowedKeys = "ed25519") -> IdentityRecord:

@@ -58,12 +58,9 @@ class APIKeyManager:
 
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
-        if self._pg_pool is None and self._use_postgres:
-            import asyncpg
-            dsn = self._dsn
-            if dsn.startswith("postgres://"):
-                dsn = dsn.replace("postgres://", "postgresql://", 1)
-            self._pg_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
+        if self._pg_pool is None:
+            from sardis_v2_core.database import Database
+            self._pg_pool = await Database.get_pool()
         return self._pg_pool
 
     async def _ensure_org_uuid(self, conn, organization_external_id: str) -> str:

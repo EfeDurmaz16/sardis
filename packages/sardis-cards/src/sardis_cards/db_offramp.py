@@ -52,12 +52,8 @@ class PostgresOfframpService:
 
     async def _get_pool(self):
         if self._pool is None:
-            import asyncpg
-
-            dsn = self._dsn
-            if dsn.startswith("postgres://"):
-                dsn = dsn.replace("postgres://", "postgresql://", 1)
-            self._pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
+            from sardis_v2_core.database import Database
+            self._pool = await Database.get_pool()
         return self._pool
 
     async def get_quote(
@@ -274,6 +270,5 @@ class PostgresOfframpService:
         }
 
     async def close(self) -> None:
-        if self._pool is not None:
-            await self._pool.close()
-            self._pool = None
+        # Pool lifecycle managed by Database.close() at app shutdown
+        pass
