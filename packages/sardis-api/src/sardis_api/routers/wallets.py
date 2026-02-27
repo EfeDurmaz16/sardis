@@ -1,7 +1,9 @@
 """Wallet API endpoints."""
 from __future__ import annotations
 
+import logging
 import os
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List, Literal
 
@@ -9,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import AgentRepository, Wallet, WalletRepository
+from sardis_v2_core.tokens import TokenType, normalize_token_amount
 from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core.transactions import validate_wallet_not_frozen
@@ -17,6 +20,8 @@ from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -134,6 +139,14 @@ class BalanceResponse(BaseModel):
     token: str
     balance: str
     address: str
+
+
+class MultiChainBalanceResponse(BaseModel):
+    wallet_id: str
+    total_usd: str
+    total_eur: str
+    balances: list[BalanceResponse]
+    queried_at: str
 
 
 # Dependency
@@ -387,7 +400,6 @@ async def get_wallet_balance(
         )
 
     # Validate token
-    from sardis_v2_core.tokens import TokenType
     try:
         token_enum = TokenType(token)
     except ValueError:
@@ -396,35 +408,37 @@ async def get_wallet_balance(
             detail=f"Invalid token: {token}",
         )
 
+    # Check cache first
+    cache = getattr(deps, "cache", None) or getattr(deps.settings, "_cache", None)
+    if cache is not None:
+        try:
+            cached = await cache.get_balance(wallet_id, token)
+            if cached is not None:
+                return BalanceResponse(
+                    wallet_id=wallet_id,
+                    chain=chain,
+                    token=token,
+                    balance=str(cached),
+                    address=address,
+                )
+        except Exception:
+            pass  # cache miss or error — fall through to chain query
+
     # Query balance from chain
     balance = Decimal("0.00")
 
     if deps.chain_executor:
         try:
-            # Get the RPC client for this chain
-            rpc_client = deps.chain_executor._get_rpc_client(chain)
-
-            # Get token contract address
-            token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
-            token_address = token_addresses.get(token)
-
-            if token_address:
-                # Query ERC20 balance using balanceOf(address)
-                # balanceOf selector: 0x70a08231
-                balance_data = "0x70a08231" + address[2:].lower().zfill(64)
-                result = await rpc_client._call("eth_call", [
-                    {"to": token_address, "data": balance_data},
-                    "latest"
-                ])
-
-                if result and result != "0x":
-                    # Convert from minor units (6 decimals for USDC)
-                    balance_minor = int(result, 16)
-                    balance = Decimal(balance_minor) / Decimal(10**6)
+            balance = await deps.chain_executor.get_token_balance(address, chain, token)
         except Exception as e:
-            # Log error but return 0 balance instead of failing
-            import logging
-            logging.getLogger(__name__).warning(f"Failed to query balance for {wallet_id}: {e}")
+            logger.warning(f"Failed to query balance for {wallet_id}: {e}")
+
+    # Populate cache on successful query
+    if cache is not None:
+        try:
+            await cache.set_balance(wallet_id, token, balance)
+        except Exception:
+            pass
 
     return BalanceResponse(
         wallet_id=wallet_id,
@@ -432,6 +446,75 @@ async def get_wallet_balance(
         token=token,
         balance=str(balance),
         address=address,
+    )
+
+
+@router.get("/{wallet_id}/balances", response_model=MultiChainBalanceResponse)
+async def get_wallet_balances(
+    wallet_id: str,
+    chains: str | None = Query(default=None, description="Comma-separated chain filter"),
+    tokens: str | None = Query(default=None, description="Comma-separated token filter"),
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Aggregate stablecoin balances across all supported chains in parallel."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    # Use the first available address (EVM addresses are the same across chains)
+    address: str | None = None
+    for _, addr in wallet.addresses.items():
+        if addr:
+            address = addr
+            break
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Wallet has no on-chain address",
+        )
+
+    # Parse filters
+    chain_filter = [c.strip() for c in chains.split(",") if c.strip()] if chains else None
+    token_filter = [t.strip() for t in tokens.split(",") if t.strip()] if tokens else None
+
+    if not deps.chain_executor:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chain executor not available",
+        )
+
+    raw_balances = await deps.chain_executor.get_all_balances(
+        address=address,
+        chains=chain_filter,
+        tokens=token_filter,
+    )
+
+    # Build response with USD/EUR aggregation
+    usd_pegged = {"USDC", "USDT", "PYUSD"}
+    eur_pegged = {"EURC"}
+    total_usd = Decimal("0")
+    total_eur = Decimal("0")
+    balance_items: list[BalanceResponse] = []
+
+    for b in raw_balances:
+        bal = Decimal(b["balance"])
+        if b["token"] in usd_pegged:
+            total_usd += bal
+        elif b["token"] in eur_pegged:
+            total_eur += bal
+        balance_items.append(BalanceResponse(
+            wallet_id=wallet_id,
+            chain=b["chain"],
+            token=b["token"],
+            balance=b["balance"],
+            address=b["address"],
+        ))
+
+    return MultiChainBalanceResponse(
+        wallet_id=wallet_id,
+        total_usd=str(total_usd),
+        total_eur=str(total_eur),
+        balances=balance_items,
+        queried_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

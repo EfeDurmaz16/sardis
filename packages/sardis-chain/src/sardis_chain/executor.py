@@ -2646,6 +2646,55 @@ class ChainExecutor:
             },
         }
 
+    async def get_token_balance(self, address: str, chain: str, token: str) -> Decimal:
+        """Query ERC20 balance for address on chain. Returns normalized Decimal."""
+        from sardis_v2_core.tokens import TokenType, normalize_token_amount
+
+        chain_tokens = STABLECOIN_ADDRESSES.get(chain, {})
+        contract = chain_tokens.get(token)
+        if not contract:
+            return Decimal("0")
+
+        rpc = self._get_rpc_client(chain)
+        await rpc.connect()
+        padded = "0x70a08231" + address.lower().replace("0x", "").zfill(64)
+        result = await rpc.eth_call({"to": contract, "data": padded})
+        raw = int(result, 16) if result and result != "0x" else 0
+        return normalize_token_amount(TokenType(token), raw)
+
+    async def get_all_balances(
+        self,
+        address: str,
+        chains: list[str] | None = None,
+        tokens: list[str] | None = None,
+    ) -> list[dict]:
+        """Query balances across all chains/tokens in parallel. Returns list of {chain, token, balance, address}."""
+        tasks = []
+        query_params: list[tuple[str, str]] = []
+        target_chains = chains or [
+            c for c in STABLECOIN_ADDRESSES
+            if "_sepolia" not in c and c != "solana_devnet" and c != "solana"
+        ]
+        for chain in target_chains:
+            chain_tokens = STABLECOIN_ADDRESSES.get(chain, {})
+            for token_symbol in chain_tokens:
+                if tokens and token_symbol not in tokens:
+                    continue
+                tasks.append(self.get_token_balance(address, chain, token_symbol))
+                query_params.append((chain, token_symbol))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        balances = []
+        for (chain, token), result in zip(query_params, results):
+            balance = result if isinstance(result, Decimal) else Decimal("0")
+            balances.append({
+                "chain": chain,
+                "token": token,
+                "balance": str(balance),
+                "address": address,
+            })
+        return balances
+
     async def close(self):
         """Close all connections and cleanup resources."""
         # Close production RPC clients
