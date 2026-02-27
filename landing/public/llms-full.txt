@@ -684,7 +684,7 @@ mandate = AP2.create_mandate(
 tx = wallet.pay_with_mandate(mandate)
 ```
 
-### TAP (Trust Anchor Protocol)
+### TAP (Trusted Agent Protocol)
 
 Cryptographic identity verification for agents.
 

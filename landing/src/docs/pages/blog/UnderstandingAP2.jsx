@@ -260,7 +260,7 @@ print(result.ap2_chain)
 
         <h2>TAP Integration</h2>
         <p>
-          AP2 works hand-in-hand with TAP (Trust Anchor Protocol) for identity verification.
+          AP2 works hand-in-hand with TAP (Trusted Agent Protocol) for identity verification.
           While AP2 handles payment authorization, TAP verifies that the agent making the
           request is who it claims to be.
         </p>

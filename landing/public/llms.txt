@@ -75,7 +75,7 @@ The core innovation is the **Policy Firewall** - a natural language policy engin
 
 ### Supported Protocols
 - **AP2** (Agent Payment Protocol) - Google, PayPal, Mastercard, Visa consortium (60+ partners)
-- **TAP** (Trust Anchor Protocol) - Ed25519/ECDSA cryptographic identity verification
+- **TAP** (Trusted Agent Protocol) - Ed25519/ECDSA cryptographic identity verification
 - **UCP** (Universal Commerce Protocol) - Standardized checkout flows and cart management
 - **A2A** (Agent-to-Agent) - Google-developed multi-agent communication and payments
 - **x402** (HTTP 402) - Coinbase micropayment protocol for pay-per-API-call

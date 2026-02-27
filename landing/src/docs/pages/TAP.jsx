@@ -6,7 +6,7 @@ export default function DocsTAP() {
           <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-500">PROTOCOLS</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">TAP Protocol</h1>
-        <p className="text-xl text-muted-foreground">Trust Anchor Protocol - Cryptographic identity verification for agents.</p>
+        <p className="text-xl text-muted-foreground">Trusted Agent Protocol - Cryptographic identity verification for agents.</p>
       </div>
 
       <section className="mb-12">

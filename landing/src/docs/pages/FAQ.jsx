@@ -42,7 +42,7 @@ const faqs = [
       },
       {
         q: 'What protocols does Sardis support?',
-        a: 'Sardis implements five core protocols: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments with 60+ consortium partners; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trust Anchor Protocol) - cryptographic identity verification; and x402 for HTTP micropayments. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) compatibility for ChatGPT-native commerce flows.'
+        a: 'Sardis implements five core protocols: AP2 (Agent Payment Protocol) - the Google/PayPal/Mastercard/Visa standard for mandate-based payments with 60+ consortium partners; UCP (Universal Commerce Protocol) - standardized checkout flows; A2A (Agent-to-Agent) - Google\'s multi-agent communication protocol; TAP (Trusted Agent Protocol) - cryptographic identity verification; and x402 for HTTP micropayments. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) compatibility for ChatGPT-native commerce flows.'
       },
       {
         q: 'Is Sardis custodial or non-custodial?',

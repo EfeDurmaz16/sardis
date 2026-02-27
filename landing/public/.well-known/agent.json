@@ -36,7 +36,7 @@
     {
       "name": "TAP",
       "version": "1.0",
-      "description": "Trust Anchor Protocol for agent identity verification"
+      "description": "Trusted Agent Protocol for agent identity verification"
     },
     {
       "name": "UCP",

@@ -610,7 +610,7 @@ function App() {
               {
                 icon: icons.verifiedUser,
                 name: "TAP",
-                fullName: "Trust Anchor Protocol",
+                fullName: "Trusted Agent Protocol",
                 description: "Cryptographic identity verification. Agent attestation and credential chains.",
                 status: "Implemented"
               }

@@ -668,7 +668,7 @@ const releases = [
           'MCP Server expanded from 4 to 36+ tools',
           'AP2 mandate adapter for UCP-AP2 interoperability',
           'Agent discovery service with TTL caching',
-          'TAP (Trust Anchor Protocol) identity verification',
+          'TAP (Trusted Agent Protocol) identity verification',
         ]
       },
       {

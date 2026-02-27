@@ -20,7 +20,7 @@ const navigation = [
       { name: 'AP2 (Payment)', href: '/docs/ap2' },
       { name: 'UCP (Commerce)', href: '/docs/ucp' },
       { name: 'A2A (Agent-to-Agent)', href: '/docs/a2a' },
-      { name: 'TAP (Trust Anchor)', href: '/docs/tap' },
+      { name: 'TAP (Trusted Agent)', href: '/docs/tap' },
       { name: 'ACP (Commerce)', href: '/docs/acp' },
     ],
   },

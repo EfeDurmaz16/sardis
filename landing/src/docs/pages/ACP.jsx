@@ -245,7 +245,7 @@ console.log('Order:', order.orderId, order.status);`}</pre>
           <Link to="/docs/ap2" className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">AP2 (Payment)</Link>
           <Link to="/docs/ucp" className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">UCP (Commerce)</Link>
           <Link to="/docs/a2a" className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">A2A (Agent-to-Agent)</Link>
-          <Link to="/docs/tap" className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">TAP (Trust Anchor)</Link>
+          <Link to="/docs/tap" className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">TAP (Trusted Agent)</Link>
         </div>
       </section>
     </article>

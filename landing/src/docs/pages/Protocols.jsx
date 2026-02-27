@@ -83,7 +83,7 @@ export default function DocsProtocols() {
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                 <Key01Icon size={22} className="text-purple-500" />
               </div>
-              <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">TAP (Trust Anchor Protocol)</h3>
+              <h3 className="font-bold font-display text-lg group-hover:text-[var(--sardis-orange)]">TAP (Trusted Agent Protocol)</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed pl-14">Cryptographic identity verification. Ed25519/ECDSA signatures.</p>
           </Link>

@@ -263,7 +263,7 @@ export default function WhySardis() {
         </p>
         <ul>
           <li><strong>AP2:</strong> The Google/PayPal/Visa/Mastercard mandate chain standard</li>
-          <li><strong>TAP:</strong> Trust Anchor Protocol for agent identity</li>
+          <li><strong>TAP:</strong> Trusted Agent Protocol for agent identity</li>
           <li><strong>UCP:</strong> Universal Commerce Protocol for checkout flows</li>
           <li><strong>A2A:</strong> Google's agent-to-agent communication protocol</li>
           <li><strong>x402:</strong> Coinbase's HTTP 402 micropayment protocol</li>
