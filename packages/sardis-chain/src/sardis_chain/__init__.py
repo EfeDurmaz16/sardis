@@ -51,6 +51,9 @@ from .executor import (
     GasEstimate,
     GasPriceProtection,
     GasPriceSpikeError,
+    MPCSignerPort,
+    FailoverMPCSigner,
+    SimulatedMPCSigner,
 )
 from .deposit_monitor import (
     DepositMonitor,
@@ -140,6 +143,10 @@ __all__ = [
     "GasEstimate",
     "GasPriceProtection",
     "GasPriceSpikeError",
+    # MPC Signers
+    "MPCSignerPort",
+    "FailoverMPCSigner",
+    "SimulatedMPCSigner",
     # Deposit Monitor
     "DepositMonitor",
     "Deposit",

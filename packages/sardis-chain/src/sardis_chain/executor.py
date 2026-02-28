@@ -244,68 +244,91 @@ STABLECOIN_ADDRESSES = {
 }
 
 # Sardis contract addresses by chain (populated after deployment)
-# See docs/contracts-deployment.md for deployment instructions
 #
 # Environment variable overrides (format: SARDIS_{CHAIN}_{CONTRACT}_ADDRESS)
-# Example: SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS=0x...
+# Example: SARDIS_BASE_WALLET_FACTORY_ADDRESS=0x...
 #
-# Deployment order:
-#   1. Base Sepolia (primary testnet)
-#   2. Polygon Amoy
-#   3. Ethereum Sepolia
-#   4. Arbitrum Sepolia
-#   5. Optimism Sepolia
+# Deployment order (testnets first, then mainnets):
+#   1. Base Sepolia (primary testnet)  -- DEPLOYED
+#   2. Polygon Amoy, Ethereum Sepolia, Arbitrum Sepolia, Optimism Sepolia
+#   3. Base mainnet (first production chain)
+#   4. Polygon, Arbitrum, Optimism mainnets
+#   5. Ethereum mainnet (highest gas, last)
 #
-# After deployment, either:
-#   a) Set environment variables for each chain, OR
-#   b) Update the addresses in this file and redeploy
+# Mainnet deployment note:
+#   Contracts are non-custodial (no funds held in contracts themselves).
+#   The WalletFactory creates deterministic CREATE2 wallets and the Escrow
+#   holds funds only during active agent-to-agent trades (time-bounded).
+#   A formal audit is strongly recommended before mainnet deployment but
+#   is not strictly required for non-custodial factory/registry contracts.
+#   Set env var SARDIS_ALLOW_UNAUDITED_MAINNET=1 to deploy without audit.
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
         "wallet_factory": "0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
         "escrow": "0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "polygon_amoy": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "ethereum_sepolia": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "arbitrum_sepolia": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "optimism_sepolia": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
-    # Mainnets - requires audit before deployment
+    # Mainnets - set addresses after deployment via env vars or here
     "base": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "polygon": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "ethereum": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "arbitrum": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     "optimism": {
         "wallet_factory": "",
         "escrow": "",
+        "agent_registry": "",
+        "smart_account_factory": "",
     },
     # Solana - requires different contract architecture (Anchor programs)
     # NOTE: Solana integration is EXPERIMENTAL and NOT IMPLEMENTED
     "solana_devnet": {
-        "wallet_program": "",  # Solana uses programs, not contracts
+        "wallet_program": "",
         "escrow_program": "",
         "experimental": True,
         "not_implemented": True,
@@ -806,6 +829,119 @@ class SimulatedMPCSigner(MPCSignerPort):
     async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:  # noqa: ARG002
         """Return a deterministic-length mock signature for simulated runs."""
         return "0x" + secrets.token_hex(65)
+
+
+class FailoverMPCSigner(MPCSignerPort):
+    """MPC signer with automatic failover between primary and backup providers.
+
+    Tries the primary signer first. On failure, falls back to the backup signer.
+    Tracks consecutive failures and can switch the active primary.
+    """
+
+    FAILURE_THRESHOLD = 3  # Switch primary after this many consecutive failures
+
+    def __init__(
+        self,
+        primary: MPCSignerPort,
+        backup: MPCSignerPort,
+        *,
+        primary_name: str = "primary",
+        backup_name: str = "backup",
+    ):
+        self._primary = primary
+        self._backup = backup
+        self._primary_name = primary_name
+        self._backup_name = backup_name
+        self._consecutive_primary_failures = 0
+        self._swapped = False
+
+    @property
+    def _active(self) -> MPCSignerPort:
+        return self._backup if self._swapped else self._primary
+
+    @property
+    def _fallback(self) -> MPCSignerPort:
+        return self._primary if self._swapped else self._backup
+
+    @property
+    def _active_name(self) -> str:
+        return self._backup_name if self._swapped else self._primary_name
+
+    @property
+    def _fallback_name(self) -> str:
+        return self._primary_name if self._swapped else self._backup_name
+
+    def _record_failure(self) -> None:
+        self._consecutive_primary_failures += 1
+        if self._consecutive_primary_failures >= self.FAILURE_THRESHOLD:
+            logger.warning(
+                "MPC signer %s hit %d consecutive failures, swapping to %s",
+                self._active_name,
+                self._consecutive_primary_failures,
+                self._fallback_name,
+            )
+            self._swapped = not self._swapped
+            self._consecutive_primary_failures = 0
+
+    def _record_success(self) -> None:
+        self._consecutive_primary_failures = 0
+
+    async def sign_transaction(self, wallet_id: str, tx: TransactionRequest) -> str:
+        try:
+            result = await self._active.sign_transaction(wallet_id, tx)
+            self._record_success()
+            return result
+        except Exception as primary_err:
+            logger.warning(
+                "MPC %s sign_transaction failed: %s, trying %s",
+                self._active_name, primary_err, self._fallback_name,
+            )
+            self._record_failure()
+            try:
+                return await self._fallback.sign_transaction(wallet_id, tx)
+            except Exception as backup_err:
+                raise Exception(
+                    f"Both MPC signers failed: {self._active_name}={primary_err}, "
+                    f"{self._fallback_name}={backup_err}"
+                ) from backup_err
+
+    async def get_address(self, wallet_id: str, chain: str) -> str:
+        try:
+            result = await self._active.get_address(wallet_id, chain)
+            self._record_success()
+            return result
+        except Exception as primary_err:
+            logger.warning(
+                "MPC %s get_address failed: %s, trying %s",
+                self._active_name, primary_err, self._fallback_name,
+            )
+            self._record_failure()
+            try:
+                return await self._fallback.get_address(wallet_id, chain)
+            except Exception as backup_err:
+                raise Exception(
+                    f"Both MPC signers failed: {self._active_name}={primary_err}, "
+                    f"{self._fallback_name}={backup_err}"
+                ) from backup_err
+
+    async def sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
+        try:
+            result = await self._active.sign_user_operation_hash(wallet_id, user_op_hash)
+            self._record_success()
+            return result
+        except Exception as primary_err:
+            logger.warning(
+                "MPC %s sign_user_operation_hash failed: %s, trying %s",
+                self._active_name, primary_err, self._fallback_name,
+            )
+            self._record_failure()
+            try:
+                return await self._fallback.sign_user_operation_hash(wallet_id, user_op_hash)
+            except Exception as backup_err:
+                raise Exception(
+                    f"Both MPC signers failed: {self._active_name}={primary_err}, "
+                    f"{self._fallback_name}={backup_err}"
+                ) from backup_err
 
 
 class TurnkeyMPCSigner(MPCSignerPort):
