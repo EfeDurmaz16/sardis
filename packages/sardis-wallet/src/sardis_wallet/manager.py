@@ -189,6 +189,27 @@ class EnhancedWalletManager:
     # pipeline defined in spending_policy.py.
     # =========================================================================
 
+    # Conservative gas fee estimates in USD per chain for ERC-20 transfers.
+    # Used in policy checks so spending limits account for total transaction cost.
+    # These are upper-bound estimates; actual fees are typically lower on L2s.
+    _GAS_FEE_ESTIMATES_USD: Dict[str, Decimal] = {
+        "ethereum": Decimal("5.00"),
+        "base": Decimal("0.01"),
+        "base_sepolia": Decimal("0.01"),
+        "polygon": Decimal("0.02"),
+        "polygon_amoy": Decimal("0.02"),
+        "arbitrum": Decimal("0.02"),
+        "optimism": Decimal("0.02"),
+    }
+    _DEFAULT_GAS_FEE_USD = Decimal("0.10")
+
+    @classmethod
+    def _estimate_gas_fee(cls, chain: str) -> Decimal:
+        """Return a conservative gas fee estimate in USD for policy checks."""
+        return cls._GAS_FEE_ESTIMATES_USD.get(
+            chain.lower(), cls._DEFAULT_GAS_FEE_USD
+        )
+
     @staticmethod
     def _amount_from_mandate(mandate: PaymentMandate) -> Decimal:
         token = TokenType(str(mandate.token).upper())
@@ -215,9 +236,10 @@ class EnhancedWalletManager:
 
         amount = self._amount_from_mandate(mandate)
         merchant_id = self._merchant_id_from_mandate(mandate)
+        estimated_fee = self._estimate_gas_fee(mandate.chain)
         ok, reason = policy.validate_payment(
             amount,
-            Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
+            estimated_fee,
             merchant_id=merchant_id,
             scope=SpendingScope.ALL,
         )
@@ -246,9 +268,10 @@ class EnhancedWalletManager:
 
         amount = self._amount_from_mandate(mandate)
         merchant_id = self._merchant_id_from_mandate(mandate)
+        estimated_fee = self._estimate_gas_fee(mandate.chain)
         ok, reason = policy.validate_payment(
             amount,
-            Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
+            estimated_fee,
             merchant_id=merchant_id,
             scope=SpendingScope.ALL,
         )
@@ -348,10 +371,11 @@ class EnhancedWalletManager:
         merchant_id = self._merchant_id_from_mandate(mandate)
 
         # Check spending policy
+        estimated_fee = self._estimate_gas_fee(chain)
         ok, reason = await policy.evaluate(
             wallet=wallet,
             amount=amount,
-            fee=Decimal("0"),  # TODO(audit-F08): estimate gas fee before policy check
+            fee=estimated_fee,
             chain=chain,
             token=token,
             merchant_id=merchant_id,
