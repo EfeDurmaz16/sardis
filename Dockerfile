@@ -36,7 +36,7 @@ FROM python:3.14-slim
 WORKDIR /app
 
 # Install runtime tools
-RUN pip install --no-cache-dir uv "uvicorn[standard]"
+RUN pip install --no-cache-dir uv "uvicorn[standard]" gunicorn
 
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -66,5 +66,14 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
-# Run the FastAPI application with monorepo package sources on PYTHONPATH.
-CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" uvicorn sardis_api.main:create_app --factory --host 0.0.0.0 --port ${PORT}
+# Run with gunicorn + uvicorn workers for production concurrency.
+# SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
+CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
+    gunicorn sardis_api.main:create_app \
+    --factory \
+    -w ${SARDIS_WORKERS:-4} \
+    -k uvicorn.workers.UvicornWorker \
+    -b 0.0.0.0:${PORT} \
+    --access-logfile - \
+    --error-logfile - \
+    --capture-output
