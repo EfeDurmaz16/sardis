@@ -498,10 +498,14 @@ class WebhookService:
     MAX_RETRIES = 3
     RETRY_DELAYS = [1, 5, 30]  # seconds
     DELIVERY_TIMEOUT = 10  # seconds
+    MAX_CONCURRENT_DELIVERIES = 20
+    MAX_PENDING_TASKS = 500
 
     def __init__(self, repository: WebhookRepository):
         self._repo = repository
         self._http_client = None
+        self._semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_DELIVERIES)
+        self._pending_count = 0
 
     async def _get_client(self):
         """Get or create HTTP client."""
@@ -511,15 +515,35 @@ class WebhookService:
         return self._http_client
 
     async def emit(self, event: WebhookEvent) -> None:
-        """Emit an event to all matching subscriptions (async, non-blocking)."""
+        """Emit an event to all matching subscriptions (async, non-blocking).
+
+        Uses a semaphore to limit concurrent deliveries and rejects new
+        tasks when the pending queue exceeds MAX_PENDING_TASKS.
+        """
         subscriptions = await self._repo.list_subscriptions(active_only=True)
         matching = [s for s in subscriptions if s.subscribes_to(event.event_type.value)]
 
         for sub in matching:
-            # Fire and forget
-            asyncio.create_task(self._deliver_with_retries(event, sub))
+            if self._pending_count >= self.MAX_PENDING_TASKS:
+                logger.warning(
+                    f"Webhook backpressure: dropping delivery to {sub.subscription_id} "
+                    f"({self._pending_count} pending tasks)"
+                )
+                continue
+            self._pending_count += 1
+            asyncio.create_task(self._throttled_deliver(event, sub))
 
         logger.debug(f"Emitted {event.event_type.value} to {len(matching)} subscriptions")
+
+    async def _throttled_deliver(
+        self, event: WebhookEvent, subscription: WebhookSubscription
+    ) -> DeliveryAttempt:
+        """Deliver with semaphore-based concurrency limiting."""
+        try:
+            async with self._semaphore:
+                return await self._deliver_with_retries(event, subscription)
+        finally:
+            self._pending_count -= 1
 
     async def emit_and_wait(self, event: WebhookEvent) -> dict[str, DeliveryAttempt]:
         """Emit and wait for all deliveries to complete."""
