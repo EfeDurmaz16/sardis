@@ -612,6 +612,9 @@ export const cardsApi = {
   getEphemeralKey: (cardId: string) =>
     requestV2<{ ephemeral_key_secret: string; nonce: string }>(`/cards/${cardId}/ephemeral-key`, { method: 'POST' }),
 
+  revealCard: (cardId: string) =>
+    requestV2<{ card_number: string; cvc: string; exp_month: number; exp_year: number; last4: string; brand: string; status: string }>(`/cards/${cardId}/reveal`, { method: 'POST' }),
+
   freeze: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}/freeze`, { method: 'POST' }),
 
   unfreeze: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}/unfreeze`, { method: 'POST' }),

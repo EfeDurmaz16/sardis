@@ -593,6 +593,62 @@ def create_cards_router(
             await _require_wallet_access(str(wallet_id), principal)
         return await card_repo.list_transactions(card_id, limit)
 
+    @r.post("/{card_id}/reveal", dependencies=auth_deps)
+    async def reveal_card_details(card_id: str, principal: Principal = Depends(require_principal)):
+        """
+        Reveal full card details (number, CVC, expiry) for Stripe Issuing cards.
+
+        Only available in test/sandbox mode. In production, use Stripe Issuing
+        Elements on the frontend for PCI-compliant PAN display.
+        """
+        card = await card_repo.get_by_card_id(card_id)
+        if not card:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
+
+        provider_card_id = card.get("provider_card_id", "")
+        if not provider_card_id or not provider_card_id.startswith("ic_"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Card reveal is only available for Stripe Issuing cards",
+            )
+
+        import stripe as stripe_lib
+        stripe_api_key = os.getenv("STRIPE_API_KEY", "") or os.getenv("STRIPE_SECRET_KEY", "")
+        if not stripe_api_key:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Stripe not configured")
+
+        # Only allow in test mode (sk_test_ keys)
+        if not stripe_api_key.startswith("sk_test_"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Card reveal via API is only available in test mode. Use Stripe Issuing Elements in production.",
+            )
+
+        client = stripe_lib.StripeClient(stripe_api_key)
+        try:
+            stripe_card = client.issuing.cards.retrieve(
+                provider_card_id,
+                params={"expand": ["number", "cvc"]},
+            )
+            return {
+                "card_number": getattr(stripe_card, "number", None),
+                "cvc": getattr(stripe_card, "cvc", None),
+                "exp_month": stripe_card.exp_month,
+                "exp_year": stripe_card.exp_year,
+                "last4": stripe_card.last4,
+                "brand": getattr(stripe_card, "brand", "Visa"),
+                "status": stripe_card.status,
+            }
+        except Exception as exc:
+            logger.exception("Failed to reveal card %s", card_id)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Stripe card reveal failed: {exc}",
+            )
+
     @r.post("/{card_id}/ephemeral-key", dependencies=auth_deps)
     async def create_ephemeral_key(card_id: str, principal: Principal = Depends(require_principal)):
         """

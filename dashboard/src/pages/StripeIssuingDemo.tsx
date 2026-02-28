@@ -3,11 +3,7 @@ import { CreditCard, Plus, Eye, EyeOff, Snowflake, Sun, ShoppingCart, Check, Cop
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '../api/client'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 import type { Agent } from '../types'
-
-const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
 
 type AgentOption = Pick<Agent, 'agent_id' | 'name' | 'wallet_id'>
 
@@ -33,6 +29,7 @@ function PANReveal({ cardId, providerCardId }: { cardId: string; providerCardId:
   const [cardNumber, setCardNumber] = useState<string | null>(null)
   const [cvc, setCvc] = useState<string | null>(null)
   const [expiry, setExpiry] = useState<string | null>(null)
+  const [brand, setBrand] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -42,6 +39,7 @@ function PANReveal({ cardId, providerCardId }: { cardId: string; providerCardId:
       setCardNumber(null)
       setCvc(null)
       setExpiry(null)
+      setBrand(null)
       return
     }
 
@@ -49,42 +47,21 @@ function PANReveal({ cardId, providerCardId }: { cardId: string; providerCardId:
     setError(null)
 
     try {
-      const { nonce, ephemeral_key_secret } = await cardsApi.getEphemeralKey(cardId)
-
-      if (!STRIPE_PK) {
-        // Fallback demo mode when no publishable key
-        setCardNumber('4242 4242 4242 4242')
-        setCvc('123')
-        setExpiry('12/28')
-        setRevealed(true)
-        setLoading(false)
-        return
-      }
-
-      const stripe = await loadStripe(STRIPE_PK)
-      if (!stripe) throw new Error('Stripe failed to load')
-
-      const result = await stripe.createEphemeralKeyNonce({
-        issuingCard: providerCardId,
-      })
-
-      if (result.error) {
-        throw new Error(result.error.message)
-      }
-
-      // For actual Stripe Elements PAN reveal, we'd use the
-      // IssuingCardNumberDisplay, IssuingCardCvcDisplay, etc.
-      // For now, show the ephemeral key was obtained successfully
-      setCardNumber(`•••• •••• •••• ${providerCardId.slice(-4)}`)
-      setCvc('•••')
-      setExpiry('••/••')
+      const data = await cardsApi.revealCard(cardId)
+      // Format card number with spaces
+      const num = data.card_number || ''
+      const formatted = num.replace(/(.{4})/g, '$1 ').trim()
+      setCardNumber(formatted)
+      setCvc(data.cvc || '•••')
+      setExpiry(`${String(data.exp_month).padStart(2, '0')}/${String(data.exp_year).slice(-2)}`)
+      setBrand(data.brand || 'Visa')
       setRevealed(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reveal card details')
     } finally {
       setLoading(false)
     }
-  }, [revealed, cardId, providerCardId])
+  }, [revealed, cardId])
 
   const handleCopy = useCallback(() => {
     if (cardNumber) {
