@@ -102,15 +102,18 @@ class MerkleProofResponse(BaseModel):
     message: str
 
 
-# Dependency injection placeholder
+# Dependency injection
 
 class AnchorDependencies:
     """Dependencies for anchor endpoints."""
 
-    def __init__(self):
-        # TODO: Initialize with actual LedgerAnchor instance
-        self.anchor_service = None
-        self.ledger_engine = None
+    def __init__(
+        self,
+        anchor_service: Any = None,
+        ledger_store: Any = None,
+    ):
+        self.anchor_service = anchor_service
+        self.ledger_store = ledger_store
 
 
 def get_anchor_deps() -> AnchorDependencies:
@@ -243,15 +246,25 @@ async def create_anchor(
     Optionally specify entry range or let system collect all unanchored entries.
     """
     try:
-        if deps.anchor_service is None or deps.ledger_engine is None:
+        if deps.anchor_service is None or deps.ledger_store is None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Anchor service not configured",
             )
 
-        # Get unanchored entries from ledger
-        # TODO: Implement actual entry collection from ledger_engine
-        entries: list[dict] = []
+        # Get recent entries from ledger store for anchoring
+        try:
+            raw_entries = await deps.ledger_store.get_recent_entries(
+                limit=request.max_entries,
+            )
+            entries = [
+                e.to_dict() if hasattr(e, "to_dict") else dict(e)
+                for e in raw_entries
+            ]
+        except (AttributeError, NotImplementedError):
+            # Fallback: ledger store may not support get_recent_entries
+            entries = []
+            logger.warning("Ledger store does not support get_recent_entries")
 
         if not entries:
             return CreateAnchorResponse(

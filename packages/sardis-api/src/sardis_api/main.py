@@ -119,6 +119,7 @@ from .routers import analytics as analytics_router
 from .routers import metrics as metrics_router
 from .routers import sandbox as sandbox_router
 from .routers import enterprise_support as enterprise_support_router
+from .routers import audit_anchors as audit_anchors_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -822,6 +823,22 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         )
     )
     app.include_router(enterprise_support_router.router)
+
+    # Audit anchors - blockchain-anchored audit trail
+    try:
+        from sardis_ledger.anchor import LedgerAnchor, AnchorConfig
+        anchor_config = AnchorConfig(chain="base")
+        anchor_service = LedgerAnchor(config=anchor_config)
+        app.dependency_overrides[audit_anchors_router.get_anchor_deps] = (
+            lambda: audit_anchors_router.AnchorDependencies(
+                anchor_service=anchor_service,
+                ledger_store=ledger_store,
+            )
+        )
+        logger.info("Audit anchor service initialized")
+    except ImportError:
+        logger.warning("sardis-ledger anchor module not available, audit anchoring disabled")
+    app.include_router(audit_anchors_router.router)
 
     app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
