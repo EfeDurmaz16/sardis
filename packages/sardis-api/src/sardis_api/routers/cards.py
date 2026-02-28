@@ -34,6 +34,13 @@ class IssueCardRequest(BaseModel):
     limit_monthly: Decimal = Field(default=Decimal("10000.00"))
     locked_merchant_id: Optional[str] = None
     funding_source: str = Field(default="fiat")
+    # Cardholder identity — the responsible human (org owner) behind the agent.
+    # All fields are optional for backward compatibility; providers fall back to
+    # "Sardis Agent" defaults when not supplied.
+    cardholder_name: Optional[str] = Field(default=None, description="Full name of the cardholder (org owner)")
+    cardholder_email: Optional[str] = Field(default=None, description="Email address of the cardholder")
+    cardholder_phone: Optional[str] = Field(default=None, description="E.164 phone number of the cardholder")
+    reuse_cardholder_id: Optional[str] = Field(default=None, description="Existing provider cardholder ID to reuse instead of creating a new one")
 
 
 class FundCardRequest(BaseModel):
@@ -318,6 +325,10 @@ def create_cards_router(
                 limit_per_tx=float(payload.limit_per_tx),
                 limit_daily=float(payload.limit_daily),
                 limit_monthly=float(payload.limit_monthly),
+                cardholder_name=payload.cardholder_name,
+                cardholder_email=payload.cardholder_email,
+                cardholder_phone=payload.cardholder_phone,
+                reuse_cardholder_id=payload.reuse_cardholder_id,
             )
             row = await card_repo.create(
                 card_id=card_id,
@@ -581,6 +592,51 @@ def create_cards_router(
         if wallet_id:
             await _require_wallet_access(str(wallet_id), principal)
         return await card_repo.list_transactions(card_id, limit)
+
+    @r.post("/{card_id}/ephemeral-key", dependencies=auth_deps)
+    async def create_ephemeral_key(card_id: str, principal: Principal = Depends(require_principal)):
+        """
+        Create a Stripe ephemeral key for Issuing Elements (PAN reveal).
+
+        The frontend uses this nonce to securely display sensitive card details
+        (card number, CVC, expiry) via Stripe Issuing Elements without the
+        server ever seeing the PAN.
+        """
+        card = await card_repo.get_by_card_id(card_id)
+        if not card:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+        wallet_id = card.get("wallet_id")
+        if wallet_id:
+            await _require_wallet_access(str(wallet_id), principal)
+
+        provider_card_id = card.get("provider_card_id", "")
+        if not provider_card_id or not provider_card_id.startswith("ic_"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ephemeral keys are only available for Stripe Issuing cards",
+            )
+
+        import stripe as stripe_lib
+        stripe_api_key = os.getenv("STRIPE_API_KEY", "") or os.getenv("STRIPE_SECRET_KEY", "")
+        if not stripe_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Stripe API key not configured",
+            )
+
+        client = stripe_lib.StripeClient(stripe_api_key)
+        try:
+            ek = client.ephemeral_keys.create(
+                params={"issuing_card": provider_card_id},
+                options={"stripe_version": "2025-03-31.basil"},
+            )
+            return {"ephemeral_key_secret": ek.secret, "nonce": getattr(ek, "nonce", ek.secret)}
+        except Exception as exc:
+            logger.exception("Failed to create ephemeral key for card %s", card_id)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Stripe ephemeral key creation failed: {exc}",
+            )
 
     @r.post("/{card_id}/simulate-purchase", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
     async def simulate_purchase(card_id: str, request: SimulatePurchaseRequest, principal: Principal = Depends(require_principal)):

@@ -33,6 +33,7 @@ const navigation = [
   { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },
+  { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },

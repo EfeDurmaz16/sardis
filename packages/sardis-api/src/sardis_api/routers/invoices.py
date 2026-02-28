@@ -204,3 +204,47 @@ async def update_invoice_status(
         payer_agent_id=row.get("payer_agent_id"),
         reference=row.get("reference"),
     )
+
+
+async def reconcile_invoice_with_deposit(
+    invoice_id: str,
+    amount_paid: str,
+    deposit_id: str,
+) -> bool:
+    """Reconcile an invoice with a confirmed inbound deposit.
+
+    Called by InboundPaymentService when a deposit matches a payment request
+    linked to an invoice. Updates invoice status from pending → paid/partial.
+    """
+    row = await Database.fetchrow(
+        "SELECT invoice_id, amount, status FROM invoices WHERE invoice_id = $1",
+        invoice_id,
+    )
+    if not row:
+        return False
+
+    if row["status"] == "paid":
+        return True  # Already reconciled
+
+    now = datetime.now(timezone.utc)
+    invoice_amount = Decimal(row["amount"])
+    paid_amount = Decimal(amount_paid)
+
+    new_status = "paid" if paid_amount >= invoice_amount else "partial"
+
+    await Database.execute(
+        """
+        UPDATE invoices SET
+            status = $2,
+            amount_paid = $3,
+            paid_at = $4,
+            updated_at = $5
+        WHERE invoice_id = $1
+        """,
+        invoice_id,
+        new_status,
+        amount_paid,
+        now if new_status == "paid" else None,
+        now,
+    )
+    return True

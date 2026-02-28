@@ -78,6 +78,7 @@ import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Enterprise from './pages/Enterprise.jsx'
+// import LandingV2 from './pages/LandingV2.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -90,6 +91,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/demo" element={<Demo />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/enterprise" element={<Enterprise />} />
+        {/* <Route path="/v2" element={<LandingV2 />} /> */}
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />

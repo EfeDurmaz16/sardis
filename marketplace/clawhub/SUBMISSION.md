@@ -6,7 +6,7 @@
 - **Category:** Finance / Payments
 - **Package:** `sardis-openclaw`
 - **PyPI:** `pip install sardis-openclaw`
-- **GitHub:** https://github.com/sardis-labs/sardis/tree/main/packages/sardis-openclaw
+- **GitHub:** https://github.com/EfeDurmaz16/sardis/tree/main/packages/sardis-openclaw
 
 ## Submission Steps
 

@@ -595,6 +595,9 @@ export const cardsApi = {
     limit_per_tx?: string
     limit_daily?: string
     limit_monthly?: string
+    cardholder_name?: string
+    cardholder_email?: string
+    cardholder_phone?: string
   }) => requestV2<JsonObject>('/cards', {
     method: 'POST',
     body: JSON.stringify({
@@ -605,6 +608,9 @@ export const cardsApi = {
       ...data,
     }),
   }),
+
+  getEphemeralKey: (cardId: string) =>
+    requestV2<{ ephemeral_key_secret: string; nonce: string }>(`/cards/${cardId}/ephemeral-key`, { method: 'POST' }),
 
   freeze: (cardId: string) => requestV2<JsonObject>(`/cards/${cardId}/freeze`, { method: 'POST' }),
 

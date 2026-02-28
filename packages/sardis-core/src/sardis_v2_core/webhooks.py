@@ -73,6 +73,11 @@ class EventType(str, Enum):
     CARD_DECLINED = "card.declined"
     CARD_FROZEN = "card.frozen"
 
+    # Deposit events (inbound payments)
+    DEPOSIT_DETECTED = "deposit.detected"
+    DEPOSIT_CONFIRMED = "deposit.confirmed"
+    PAYMENT_RECEIVED = "payment.received"
+
     # Compliance events
     COMPLIANCE_CHECK_PASSED = "compliance.check.passed"
     COMPLIANCE_CHECK_FAILED = "compliance.check.failed"
@@ -727,6 +732,45 @@ def create_payment_event(
     }
     if error:
         data["transaction"]["error"] = error
+    return WebhookEvent(event_type=event_type, data=data)
+
+
+def create_deposit_event(
+    event_type: EventType,
+    deposit_id: str,
+    wallet_id: str,
+    agent_id: str,
+    tx_hash: str,
+    chain: str,
+    token: str,
+    amount: Decimal,
+    from_address: str,
+    to_address: str,
+    status: str,
+    confirmations: int = 0,
+    payment_request_id: Optional[str] = None,
+    ledger_entry_id: Optional[str] = None,
+) -> WebhookEvent:
+    """Create a deposit/inbound payment event."""
+    data: dict = {
+        "deposit": {
+            "id": deposit_id,
+            "wallet_id": wallet_id,
+            "agent_id": agent_id,
+            "tx_hash": tx_hash,
+            "chain": chain,
+            "token": token,
+            "amount": amount,
+            "from_address": from_address,
+            "to_address": to_address,
+            "status": status,
+            "confirmations": confirmations,
+        }
+    }
+    if payment_request_id:
+        data["deposit"]["payment_request_id"] = payment_request_id
+    if ledger_entry_id:
+        data["deposit"]["ledger_entry_id"] = ledger_entry_id
     return WebhookEvent(event_type=event_type, data=data)
 
 

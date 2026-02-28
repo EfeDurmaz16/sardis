@@ -47,7 +47,7 @@
       "max_rpo_sec": 0.0
     }
   },
-  "generated_at": "2026-02-26T12:46:23.110367+00:00",
+  "generated_at": "2026-02-26T13:49:11.968580+00:00",
   "runbooks": [
     {
       "path": "docs/design-partner/ops-slo-alerts-rollback-runbook.md",

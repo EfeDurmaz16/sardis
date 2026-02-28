@@ -162,6 +162,14 @@ class StripeIssuingProvider(CardProvider):
             created_at=datetime.fromtimestamp(stripe_auth.get("created", 0), tz=timezone.utc),
         )
 
+    @staticmethod
+    def _split_name(full_name: str) -> tuple[str, str]:
+        """Split a full name into first and last name parts."""
+        parts = full_name.strip().split(None, 1)
+        if len(parts) == 1:
+            return parts[0], ""
+        return parts[0], parts[1]
+
     async def create_card(
         self,
         wallet_id: str,
@@ -170,6 +178,10 @@ class StripeIssuingProvider(CardProvider):
         limit_daily: Decimal,
         limit_monthly: Decimal,
         locked_merchant_id: Optional[str] = None,
+        cardholder_name: Optional[str] = None,
+        cardholder_email: Optional[str] = None,
+        cardholder_phone: Optional[str] = None,
+        reuse_cardholder_id: Optional[str] = None,
     ) -> Card:
         # Build spending controls
         spending_limits = []
@@ -200,40 +212,56 @@ class StripeIssuingProvider(CardProvider):
         if locked_merchant_id and card_type == CardType.MERCHANT_LOCKED:
             spending_controls["allowed_merchants"] = [locked_merchant_id]
 
-        # Block certain categories by default (gambling, adult content)
-        spending_controls["blocked_categories"] = [
-            "gambling",
-            "government_services",
-        ]
+        # No blocked categories by default — policy engine handles restrictions
 
-        # Create cardholder if needed (Stripe requires a cardholder)
-        cardholder = await asyncio.to_thread(
-            self._stripe.issuing.Cardholder.create,
-            type="individual",
-            name=f"Sardis Agent Wallet {wallet_id[:8]}",
-            email=f"agent-{wallet_id[:8]}@sardis.sh",
-            billing={
-                "address": {
-                    "line1": "123 Main St",
-                    "city": "San Francisco",
-                    "state": "CA",
-                    "postal_code": "94102",
-                    "country": "US",
-                }
-            },
-            metadata={
-                "wallet_id": wallet_id,
-                "managed_by": "sardis",
-            },
-        )
+        # Resolve cardholder: reuse existing or create a new one.
+        # cardholder = the responsible human (org owner) who registered the agent.
+        if reuse_cardholder_id:
+            cardholder_id = reuse_cardholder_id
+        else:
+            # Resolve display values, falling back to "Sardis Agent" defaults for
+            # backward compatibility when no real cardholder info is supplied.
+            display_name = cardholder_name or "Sardis Agent"
+            email = cardholder_email or f"agent-{wallet_id[:8]}@sardis.sh"
+            phone = cardholder_phone or "+15555550100"
+            first_name, last_name = self._split_name(display_name)
+            if not last_name:
+                last_name = "Agent"
+
+            cardholder = await asyncio.to_thread(
+                self._stripe.issuing.Cardholder.create,
+                type="individual",
+                name=display_name,
+                email=email,
+                phone_number=phone,
+                individual={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "dob": {"day": 1, "month": 1, "year": 1990},
+                },
+                billing={
+                    "address": {
+                        "line1": "123 Main St",
+                        "city": "San Francisco",
+                        "state": "CA",
+                        "postal_code": "94102",
+                        "country": "US",
+                    }
+                },
+                metadata={
+                    "wallet_id": wallet_id,
+                    "managed_by": "sardis",
+                },
+            )
+            cardholder_id = cardholder.id
 
         # Create the card
         stripe_card = await asyncio.to_thread(
             self._stripe.issuing.Card.create,
-            cardholder=cardholder.id,
+            cardholder=cardholder_id,
             currency="usd",
             type="virtual",
-            status="active",  # Activate immediately
+            status="inactive",  # Activate after cardholder verification
             spending_controls=spending_controls,
             metadata={
                 "wallet_id": wallet_id,

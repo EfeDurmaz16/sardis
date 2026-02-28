@@ -31,6 +31,10 @@ class CardProviderCompatAdapter:
         limit_daily: float,
         limit_monthly: float,
         locked_merchant_id: str | None = None,
+        cardholder_name: str | None = None,
+        cardholder_email: str | None = None,
+        cardholder_phone: str | None = None,
+        reuse_cardholder_id: str | None = None,
     ):
         ct = {
             "single_use": CardType.SINGLE_USE,
@@ -44,6 +48,10 @@ class CardProviderCompatAdapter:
             limit_daily=Decimal(str(limit_daily)),
             limit_monthly=Decimal(str(limit_monthly)),
             locked_merchant_id=locked_merchant_id,
+            cardholder_name=cardholder_name,
+            cardholder_email=cardholder_email,
+            cardholder_phone=cardholder_phone,
+            reuse_cardholder_id=reuse_cardholder_id,
         )
 
     async def fund_card(self, card_id: str, amount: float):

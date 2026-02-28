@@ -17,6 +17,7 @@ import AuditAnchorsPage from './pages/AuditAnchors'
 import AgentIdentityPage from './pages/AgentIdentity'
 import GoalDriftPage from './pages/GoalDrift'
 import EnterpriseSupportPage from './pages/EnterpriseSupport'
+import StripeIssuingDemoPage from './pages/StripeIssuingDemo'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -52,6 +53,7 @@ function AppRoutes() {
                 <Route path="/agent-identity" element={<AgentIdentityPage />} />
                 <Route path="/goal-drift" element={<GoalDriftPage />} />
                 <Route path="/enterprise-support" element={<EnterpriseSupportPage />} />
+                <Route path="/stripe-issuing" element={<StripeIssuingDemoPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

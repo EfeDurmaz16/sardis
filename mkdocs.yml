@@ -1,8 +1,8 @@
 site_name: Sardis Documentation
 site_description: Payment OS for the Agent Economy - AI agent payment infrastructure
 site_url: https://sardis.sh/docs
-repo_url: https://github.com/sardis-labs/sardis
-repo_name: sardis-labs/sardis
+repo_url: https://github.com/EfeDurmaz16/sardis
+repo_name: EfeDurmaz16/sardis
 
 docs_dir: docs/docs
 

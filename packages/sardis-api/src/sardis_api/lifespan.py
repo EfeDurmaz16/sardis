@@ -366,6 +366,38 @@ async def lifespan(app: FastAPI):
             app.state.scheduler = scheduler
             logger.info("Background scheduler started with jobs registered")
 
+    # Deposit monitor (opt-in via SARDIS_ENABLE_DEPOSIT_MONITOR=1)
+    enable_deposit_monitor = os.getenv("SARDIS_ENABLE_DEPOSIT_MONITOR", "").lower() in (
+        "1", "true", "yes", "on",
+    )
+    if enable_deposit_monitor:
+        try:
+            from sardis_chain.deposit_monitor import DepositMonitor, MonitorConfig
+
+            monitor_config = MonitorConfig(
+                chains=[c.strip() for c in os.getenv("SARDIS_DEPOSIT_MONITOR_CHAINS", "base_sepolia").split(",") if c.strip()],
+                confirmations_required=int(os.getenv("SARDIS_DEPOSIT_CONFIRMATIONS", "1")),
+                poll_interval=float(os.getenv("SARDIS_DEPOSIT_POLL_INTERVAL", "5.0")),
+            )
+            deposit_monitor = DepositMonitor(config=monitor_config)
+
+            inbound_service = getattr(app.state, "inbound_payment_service", None)
+            if inbound_service:
+                # Wire monitor into service and register callback
+                inbound_service._deposit_monitor = deposit_monitor
+                deposit_monitor.add_callback(inbound_service.on_deposit_callback)
+                # Register all existing wallet addresses
+                registered = await inbound_service.register_wallet_addresses()
+                logger.info("DepositMonitor: registered %d wallet addresses", registered)
+
+            await deposit_monitor.start()
+            app.state.deposit_monitor = deposit_monitor
+            logger.info("DepositMonitor started (chains=%s)", monitor_config.chains)
+        except ImportError:
+            logger.warning("DepositMonitor enabled but sardis_chain.deposit_monitor not available")
+        except Exception as e:
+            logger.warning("DepositMonitor startup failed: %s", e)
+
     app.state.startup_time = time.time()
     app.state.ready = True
     logger.info("Sardis API started successfully")
@@ -376,6 +408,14 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Sardis API...")
     shutdown_state.start_shutdown()
     await shutdown_state.wait_for_requests()
+
+    # Stop deposit monitor
+    if hasattr(app.state, "deposit_monitor") and app.state.deposit_monitor:
+        try:
+            await app.state.deposit_monitor.stop()
+            logger.info("DepositMonitor stopped")
+        except (RuntimeError, OSError, ValueError, AttributeError) as e:
+            logger.warning(f"Error stopping DepositMonitor: {e}")
 
     if hasattr(app.state, "scheduler"):
         try:
