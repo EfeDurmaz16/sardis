@@ -1803,7 +1803,7 @@ class ChainExecutor:
         if mpc_config.name == "turnkey":
             if self._turnkey_client is not None:
                 # Use the shared TurnkeyClient from sardis-wallet (single connection)
-                self._mpc_signer = TurnkeyMPCSigner(self._turnkey_client)
+                primary_signer = TurnkeyMPCSigner(self._turnkey_client)
             else:
                 # Fallback: create a standalone client (e.g. in tests)
                 from sardis_wallet.turnkey_client import TurnkeyClient
@@ -1813,7 +1813,31 @@ class ChainExecutor:
                     organization_id=mpc_config.credential_id,
                     base_url=mpc_config.api_base or "https://api.turnkey.com",
                 )
-                self._mpc_signer = TurnkeyMPCSigner(standalone)
+                primary_signer = TurnkeyMPCSigner(standalone)
+
+            # If Lit Protocol credentials are available, wrap in FailoverMPCSigner
+            lit_api_key = os.getenv("LIT_PROTOCOL_API_KEY", "")
+            if lit_api_key:
+                try:
+                    from .lit_signer import LitProtocolSigner
+                    lit_signer = LitProtocolSigner(api_key=lit_api_key)
+                    self._mpc_signer = FailoverMPCSigner(
+                        primary=primary_signer,
+                        backup=lit_signer,
+                        primary_name="turnkey",
+                        backup_name="lit-protocol",
+                    )
+                    logger.info(
+                        "MPC failover enabled: Turnkey (primary) + Lit Protocol (backup)"
+                    )
+                except Exception as e:
+                    logger.warning("Lit Protocol backup init failed, using Turnkey only: %s", e)
+                    self._mpc_signer = primary_signer
+            else:
+                self._mpc_signer = primary_signer
+        elif mpc_config.name == "lit":
+            from .lit_signer import LitProtocolSigner
+            self._mpc_signer = LitProtocolSigner()
         elif mpc_config.name == "fireblocks":
             from .fireblocks_signer import FireblocksSigner
             self._mpc_signer = FireblocksSigner()

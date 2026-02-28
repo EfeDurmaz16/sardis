@@ -2,7 +2,7 @@
 
 This package provides the blockchain execution layer for stablecoin operations:
 - Multi-chain support (Ethereum, Base, Polygon, Arbitrum)
-- MPC custody integration (Turnkey, Fireblocks)
+- MPC custody integration (Turnkey, Lit Protocol, Fireblocks)
 - Transaction execution with gas estimation
 - Nonce management and confirmation tracking
 - MEV protection and deposit monitoring
@@ -94,6 +94,7 @@ from .erc4337 import (
     ERC4337ProofArtifact,
     write_erc4337_proof_artifact,
 )
+from .lit_signer import LitProtocolSigner
 from .gas_optimizer import (
     GasOptimizer,
     GasEstimate as GasOptimizerEstimate,
@@ -147,6 +148,7 @@ __all__ = [
     "MPCSignerPort",
     "FailoverMPCSigner",
     "SimulatedMPCSigner",
+    "LitProtocolSigner",
     # Deposit Monitor
     "DepositMonitor",
     "Deposit",
