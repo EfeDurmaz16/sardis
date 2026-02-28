@@ -205,16 +205,32 @@ class MetaTransactionRelayer:
     5. Returns transaction receipt
     """
 
-    # Trusted forwarder contract addresses per chain
-    FORWARDER_ADDRESSES = {
-        "base": "0x0000000000000000000000000000000000000000",  # TODO: Deploy forwarder
-        "base_sepolia": "0x0000000000000000000000000000000000000000",
-        "polygon": "0x0000000000000000000000000000000000000000",
-        "polygon_amoy": "0x0000000000000000000000000000000000000000",
-        "ethereum": "0x0000000000000000000000000000000000000000",
-        "arbitrum": "0x0000000000000000000000000000000000000000",
-        "optimism": "0x0000000000000000000000000000000000000000",
+    # Trusted forwarder contract addresses per chain.
+    # Override via environment: SARDIS_FORWARDER_<CHAIN>=0x...
+    # e.g. SARDIS_FORWARDER_BASE=0xabc...
+    # Defaults to OpenZeppelin MinimalForwarder deployments where available.
+    _DEFAULT_FORWARDER_ADDRESSES = {
+        "base": "",
+        "base_sepolia": "",
+        "polygon": "",
+        "polygon_amoy": "",
+        "ethereum": "",
+        "arbitrum": "",
+        "optimism": "",
     }
+
+    # execute((address,address,uint256,uint256,uint256,bytes),bytes)
+    EXECUTE_SELECTOR = "47153f82"
+
+    @classmethod
+    def get_forwarder_addresses(cls) -> Dict[str, str]:
+        """Load forwarder addresses from env vars, falling back to defaults."""
+        import os
+        addresses = {}
+        for chain, default in cls._DEFAULT_FORWARDER_ADDRESSES.items():
+            env_key = f"SARDIS_FORWARDER_{chain.upper()}"
+            addresses[chain] = os.getenv(env_key, default)
+        return addresses
 
     def __init__(
         self,
@@ -239,7 +255,8 @@ class MetaTransactionRelayer:
         self.chain_name = chain_name
 
         # Get forwarder address for this chain
-        self.forwarder_address = self.FORWARDER_ADDRESSES.get(chain_name.lower())
+        addresses = self.get_forwarder_addresses()
+        self.forwarder_address = addresses.get(chain_name.lower(), "")
         if not self.forwarder_address or self.forwarder_address == "0x" + "0" * 40:
             logger.warning(
                 f"No forwarder contract deployed for {chain_name}. "
@@ -396,23 +413,69 @@ class MetaTransactionRelayer:
 
     def _encode_execute_call(self, request: ForwardRequest) -> str:
         """
-        Encode the execute() call to the forwarder contract.
+        ABI-encode the execute((ForwardRequest), bytes signature) call.
 
-        This is a simplified version. In production, use web3.py's contract encoding.
+        Follows Solidity ABI encoding for:
+          execute((address,address,uint256,uint256,uint256,bytes), bytes)
 
         Args:
             request: ForwardRequest to encode
 
         Returns:
-            Encoded calldata as hex string
+            Encoded calldata as hex string (0x-prefixed)
         """
-        # Function selector for execute(ForwardRequest,bytes)
-        # This is a placeholder - actual encoding requires web3.py
-        selector = "0x00000000"  # TODO: Compute actual selector
+        sig = request.signature or ""
+        sig_bytes = bytes.fromhex(sig.removeprefix("0x")) if sig else b""
 
-        # For now, return a placeholder
-        # In production, use: contract.encode_abi("execute", [request_tuple, signature])
-        return selector
+        # ABI-encode the ForwardRequest struct fields
+        from_addr = bytes.fromhex(request.from_address[2:].lower().zfill(64))
+        to_addr = bytes.fromhex(request.to_address[2:].lower().zfill(64))
+        value_bytes = request.value.to_bytes(32, byteorder="big")
+        gas_bytes = request.gas.to_bytes(32, byteorder="big")
+        nonce_bytes = request.nonce.to_bytes(32, byteorder="big")
+
+        data_raw = request.data if isinstance(request.data, bytes) else bytes.fromhex(request.data)
+
+        # Head: selector + 2 offset pointers (struct at 0x40, sig at dynamic)
+        # Struct is: 5 static fields (5*32=160 bytes) + dynamic `data`
+        # Offsets are relative to the start of the params area
+
+        # offset to struct (tuple) = 0x40 (64) because we have 2 words of offsets
+        struct_offset = 64
+        # struct static = 5*32 = 160, then dynamic offset word (32) + data length word (32) + padded data
+        data_padded_len = ((len(data_raw) + 31) // 32) * 32
+        struct_total = 160 + 32 + 32 + data_padded_len  # 5 fields + data_offset + data_len + data_padded
+        sig_offset = struct_offset + struct_total
+
+        # Build encoding
+        parts = []
+        # Selector
+        parts.append(bytes.fromhex(self.EXECUTE_SELECTOR))
+        # Offset to struct (word 0)
+        parts.append(struct_offset.to_bytes(32, "big"))
+        # Offset to signature bytes (word 1)
+        parts.append(sig_offset.to_bytes(32, "big"))
+
+        # -- Struct encoding --
+        # 5 static fields
+        parts.append(from_addr)
+        parts.append(to_addr)
+        parts.append(value_bytes)
+        parts.append(gas_bytes)
+        parts.append(nonce_bytes)
+        # Offset to `data` within struct (relative to struct start) = 6*32 = 192
+        parts.append((192).to_bytes(32, "big"))
+        # Length of data
+        parts.append(len(data_raw).to_bytes(32, "big"))
+        # data (padded to 32 bytes)
+        parts.append(data_raw + b"\x00" * (data_padded_len - len(data_raw)))
+
+        # -- Signature bytes encoding --
+        sig_padded_len = ((len(sig_bytes) + 31) // 32) * 32
+        parts.append(len(sig_bytes).to_bytes(32, "big"))
+        parts.append(sig_bytes + b"\x00" * (sig_padded_len - len(sig_bytes)))
+
+        return "0x" + b"".join(parts).hex()
 
     async def relay_batch(
         self, requests: list[ForwardRequest]
@@ -495,5 +558,6 @@ def is_meta_tx_supported(chain: str) -> bool:
     Returns:
         True if forwarder contract is deployed
     """
-    forwarder = MetaTransactionRelayer.FORWARDER_ADDRESSES.get(chain.lower())
-    return forwarder is not None and forwarder != "0x" + "0" * 40
+    addresses = MetaTransactionRelayer.get_forwarder_addresses()
+    forwarder = addresses.get(chain.lower(), "")
+    return bool(forwarder) and forwarder != "0x" + "0" * 40
