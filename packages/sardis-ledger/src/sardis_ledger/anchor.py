@@ -83,14 +83,17 @@ class LedgerAnchor:
     - Proof generation for individual entries
     """
 
-    def __init__(self, config: AnchorConfig):
+    def __init__(self, config: AnchorConfig, chain_provider: Any | None = None):
         """
         Initialize ledger anchor service.
 
         Args:
             config: Anchor configuration
+            chain_provider: Optional chain provider for real blockchain submission.
+                            If None, simulated mode is used (suitable for dev/test).
         """
         self.config = config
+        self._chain_provider = chain_provider
         self._anchors: dict[str, AnchorRecord] = {}
         self._entry_to_anchor: dict[str, str] = {}  # Map entry_id -> anchor_id
         self._anchor_trees: dict[str, MerkleTree] = {}  # Store trees for proof generation
@@ -178,30 +181,30 @@ class LedgerAnchor:
             raise ValueError(f"Anchor {anchor.anchor_id} already submitted")
 
         try:
-            # TODO: Integrate with sardis-chain executor
-            # For now, simulate blockchain submission
+            if self._chain_provider is not None:
+                # Real chain submission via ABI-encoded contract call
+                # Encode anchor(bytes32, string) call
+                merkle_root_bytes = bytes.fromhex(anchor.merkle_root)
+                tx_receipt = await self._chain_provider.send_anchor_tx(
+                    contract_address=self.config.contract_address,
+                    merkle_root=merkle_root_bytes,
+                    anchor_id=anchor.anchor_id,
+                )
+                anchor.transaction_hash = tx_receipt["tx_hash"]
+                anchor.block_number = tx_receipt.get("block_number")
+                anchor.gas_used = tx_receipt.get("gas_used")
+            else:
+                # Simulated mode - generate fake tx_hash for dev/test
+                anchor.transaction_hash = f"0x{uuid.uuid4().hex}{uuid.uuid4().hex[:32]}"
+                anchor.block_number = 1000000
+                anchor.gas_used = 50000
 
-            # In production, this would:
-            # 1. Get Web3 provider for the configured chain
-            # 2. Call smart contract method to store merkle_root
-            # 3. Wait for transaction confirmation
-            # 4. Return transaction hash and block number
-
-            # Simulated transaction hash
-            tx_hash = f"0x{uuid.uuid4().hex[:64]}"
-
-            # Update anchor record
-            anchor.transaction_hash = tx_hash
             anchor.status = AnchorStatus.ANCHORED
-            anchor.block_number = 1000000  # Simulated block number
-            anchor.gas_used = 50000  # Simulated gas
-
             logger.info(
                 f"Anchored {anchor.anchor_id} to {anchor.chain}: "
-                f"tx={tx_hash[:16]}..., block={anchor.block_number}"
+                f"tx={anchor.transaction_hash[:16]}..., block={anchor.block_number}"
             )
-
-            return tx_hash
+            return anchor.transaction_hash
 
         except Exception as e:
             anchor.status = AnchorStatus.FAILED
@@ -235,17 +238,27 @@ class LedgerAnchor:
             return False
 
         try:
-            # TODO: Integrate with sardis-chain to read from blockchain
-            # For now, simulate verification
-
-            # In production, this would:
-            # 1. Get Web3 provider for the chain
-            # 2. Call smart contract method to read stored root
-            # 3. Compare with anchor.merkle_root
-            # 4. Verify transaction exists and is confirmed
-
-            logger.info(f"Verified anchor {anchor_id} on {anchor.chain}")
-            return True
+            if self._chain_provider is not None:
+                # Real verification: call verify(bytes32) on the contract
+                merkle_root_bytes = bytes.fromhex(anchor.merkle_root)
+                on_chain_timestamp = await self._chain_provider.call_verify(
+                    contract_address=self.config.contract_address,
+                    merkle_root=merkle_root_bytes,
+                )
+                if on_chain_timestamp == 0:
+                    logger.warning(f"Anchor {anchor_id} not found on-chain")
+                    return False
+                logger.info(f"Verified anchor {anchor_id} on {anchor.chain}, anchored at timestamp {on_chain_timestamp}")
+                return True
+            else:
+                # Simulated mode - verify anchor exists locally with valid state
+                has_valid_state = (
+                    anchor.transaction_hash is not None
+                    and anchor.merkle_root
+                    and anchor.status == AnchorStatus.ANCHORED
+                )
+                logger.info(f"Verified anchor {anchor_id} on {anchor.chain} (simulated)")
+                return has_valid_state
 
         except Exception as e:
             logger.error(f"Failed to verify anchor {anchor_id}: {e}")
@@ -363,11 +376,31 @@ class LedgerAnchor:
             logger.warning(f"Tree not available for anchor {anchor_id}")
             return None
 
-        # Find entry index - this is simplified
-        # In production, we'd need to store indices
-        # For now, return empty proof as placeholder
-        logger.info(f"Generated proof for entry {entry_id} in anchor {anchor_id}")
-        return []
+        # Find entry index in tree leaves
+        # The tree stores leaf hashes; we need to find which index corresponds to this entry
+        anchor = self._anchors.get(anchor_id)
+        if not anchor:
+            return None
+
+        # Search for entry index by iterating stored entry mappings
+        # Build ordered list of entries for this anchor
+        anchor_entries = [
+            eid for eid, aid in self._entry_to_anchor.items()
+            if aid == anchor_id
+        ]
+        try:
+            entry_index = anchor_entries.index(entry_id)
+        except ValueError:
+            logger.warning(f"Entry {entry_id} not found in anchor {anchor_id} entries")
+            return None
+
+        try:
+            proof = tree.get_proof(entry_index)
+            logger.info(f"Generated proof for entry {entry_id} in anchor {anchor_id} (index={entry_index})")
+            return proof
+        except (IndexError, ValueError) as e:
+            logger.warning(f"Could not generate proof for entry {entry_id}: {e}")
+            return None
 
 
 class AnchorScheduler:
@@ -378,14 +411,17 @@ class AnchorScheduler:
     based on configured intervals and entry thresholds.
     """
 
-    def __init__(self, config: AnchorConfig):
+    def __init__(self, config: AnchorConfig, chain_provider: Any | None = None):
         """
         Initialize anchor scheduler.
 
         Args:
             config: Anchor configuration
+            chain_provider: Optional chain provider passed through to LedgerAnchor instances.
+                            If None, simulated mode is used.
         """
         self.config = config
+        self._chain_provider = chain_provider
         self._running = False
         self._task: Optional[asyncio.Task] = None
 

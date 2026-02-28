@@ -161,6 +161,7 @@ from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .providers.lithic_treasury import LithicTreasuryClient
 from .services.recurring_billing import RecurringBillingService
+from sardis_v2_core.inbound_payment_service import InboundPaymentService
 
 # Configure structured logging
 setup_logging(
@@ -762,6 +763,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.coinbase_cdp_provider = coinbase_cdp_provider
     app.state.on_chain_provider = configured_on_chain_provider
 
+    # Inbound payment service (deposit monitoring + receive endpoints)
+    from sardis_v2_core.event_bus import get_default_bus
+    event_bus = get_default_bus()
+    event_bus.set_webhook_service(webhook_service)
+
+    inbound_payment_service = InboundPaymentService(
+        event_bus=event_bus,
+        ledger=ledger_store,
+        sanctions_service=sanctions_service,
+        wallet_repo=wallet_repo,
+    )
+    app.state.inbound_payment_service = inbound_payment_service
+    app.state.event_bus = event_bus
+
     app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
@@ -771,6 +786,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         settings=settings,
         canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
         compliance=compliance,
+        inbound_payment_service=inbound_payment_service,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
@@ -973,9 +989,39 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 try:
                     from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
+                    async def _stripe_policy_evaluator(
+                        _wallet_id: str,
+                        _amount,
+                        _mcc_code: str,
+                        _merchant_name: str,
+                    ) -> tuple[bool, str]:
+                        from decimal import Decimal as _Decimal
+                        _amount = _Decimal(str(_amount))
+                        if not policy_store or not wallet_repo:
+                            return True, "OK"
+                        _wallet = await wallet_repo.get(_wallet_id)
+                        if not _wallet:
+                            return True, "OK"
+                        _policy = await policy_store.fetch_policy(_wallet.agent_id)
+                        if not _policy:
+                            return True, "OK"
+                        _merchant_category = None
+                        if _mcc_code:
+                            from sardis_v2_core.mcc_service import get_mcc_info
+                            _mcc_info = get_mcc_info(_mcc_code)
+                            if _mcc_info:
+                                _merchant_category = _mcc_info.category
+                        return _policy.validate_payment(
+                            amount=_amount,
+                            fee=_Decimal("0"),
+                            mcc_code=_mcc_code,
+                            merchant_category=_merchant_category,
+                        )
+
                     provider = StripeIssuingProvider(
                         api_key=stripe_api_key,
                         webhook_secret=stripe_webhook_secret or None,
+                        policy_evaluator=_stripe_policy_evaluator,
                     )
                     provider_cache[provider_name] = provider
                     return provider
@@ -1358,9 +1404,39 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         try:
             from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
+            async def _stripe_webhooks_policy_evaluator(
+                _wallet_id: str,
+                _amount,
+                _mcc_code: str,
+                _merchant_name: str,
+            ) -> tuple[bool, str]:
+                from decimal import Decimal as _Decimal
+                _amount = _Decimal(str(_amount))
+                if not policy_store or not wallet_repo:
+                    return True, "OK"
+                _wallet = await wallet_repo.get(_wallet_id)
+                if not _wallet:
+                    return True, "OK"
+                _policy = await policy_store.fetch_policy(_wallet.agent_id)
+                if not _policy:
+                    return True, "OK"
+                _merchant_category = None
+                if _mcc_code:
+                    from sardis_v2_core.mcc_service import get_mcc_info
+                    _mcc_info = get_mcc_info(_mcc_code)
+                    if _mcc_info:
+                        _merchant_category = _mcc_info.category
+                return _policy.validate_payment(
+                    amount=_amount,
+                    fee=_Decimal("0"),
+                    mcc_code=_mcc_code,
+                    merchant_category=_merchant_category,
+                )
+
             issuing_provider = StripeIssuingProvider(
                 api_key=stripe_api_key,
                 webhook_secret=stripe_webhook_secret,
+                policy_evaluator=_stripe_webhooks_policy_evaluator,
             )
             app.dependency_overrides[stripe_webhooks_router.get_deps] = (
                 lambda: stripe_webhooks_router.StripeWebhookDeps(

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Awaitable, Optional
 import os
 
 from .base import CardProvider
@@ -34,6 +35,7 @@ class StripeIssuingProvider(CardProvider):
         self,
         api_key: Optional[str] = None,
         webhook_secret: Optional[str] = None,
+        policy_evaluator: Optional[Callable[[str, Decimal, str, str], Awaitable[tuple[bool, str]]]] = None,
     ) -> None:
         try:
             import stripe
@@ -48,6 +50,7 @@ class StripeIssuingProvider(CardProvider):
 
         self._webhook_secret = webhook_secret or os.environ.get("STRIPE_WEBHOOK_SECRET")
         self._is_test_mode = self._api_key.startswith("sk_test_")
+        self._policy_evaluator = policy_evaluator
 
         # Initialize Stripe client
         self._stripe = stripe
@@ -465,12 +468,31 @@ class StripeIssuingProvider(CardProvider):
             # Extract authorization details
             card_id = authorization.get("card")
             amount = Decimal(str(authorization.get("amount", 0) / 100))
-            merchant_id = authorization.get("merchant_data", {}).get("network_id", "")
+            merchant_data = authorization.get("merchant_data", {})
+            merchant_id = merchant_data.get("network_id", "")
+            mcc_code = merchant_data.get("category_code", "0000")
+            merchant_name = merchant_data.get("name", "")
 
             # Get card details
             card = await self.get_card(card_id)
             if not card:
                 return {"approved": False}
+
+            # Invoke SpendingPolicy engine if a policy_evaluator is wired in.
+            # This check happens BEFORE the basic card.can_authorize() so that
+            # policy denials are surfaced with a meaningful reason.
+            if self._policy_evaluator is not None:
+                policy_ok, policy_reason = await self._policy_evaluator(
+                    card.wallet_id, amount, mcc_code, merchant_name
+                )
+                if not policy_ok:
+                    return {
+                        "approved": False,
+                        "metadata": {
+                            "wallet_id": card.wallet_id,
+                            "reason": policy_reason,
+                        },
+                    }
 
             # Check authorization rules
             can_authorize, reason = card.can_authorize(amount, merchant_id)

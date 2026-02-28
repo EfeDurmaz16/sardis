@@ -931,6 +931,64 @@ CREATE INDEX IF NOT EXISTS idx_escrows_state ON escrows(state);
 CREATE INDEX IF NOT EXISTS idx_escrows_expires ON escrows(expires_at);
 CREATE INDEX IF NOT EXISTS idx_escrows_created ON escrows(created_at DESC);
 
+-- Inbound Deposits (on-chain deposits received by agent wallets)
+CREATE TABLE IF NOT EXISTS deposits (
+    deposit_id TEXT PRIMARY KEY,
+    tx_hash TEXT NOT NULL,
+    chain TEXT NOT NULL,
+    token TEXT NOT NULL,
+    from_address TEXT NOT NULL,
+    to_address TEXT NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    amount TEXT NOT NULL,
+    decimals INTEGER DEFAULT 6,
+    block_number BIGINT,
+    confirmations INTEGER DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'detected',
+    agent_id TEXT,
+    wallet_id TEXT,
+    payment_request_id TEXT,
+    ledger_entry_id TEXT,
+    aml_screening_result TEXT,
+    aml_screening_details JSONB DEFAULT '{}',
+    detected_at TIMESTAMPTZ DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ,
+    credited_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_deposits_agent ON deposits(agent_id);
+CREATE INDEX IF NOT EXISTS idx_deposits_wallet ON deposits(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
+CREATE INDEX IF NOT EXISTS idx_deposits_to_address ON deposits(to_address);
+CREATE INDEX IF NOT EXISTS idx_deposits_tx_hash ON deposits(tx_hash);
+
+-- Payment Requests (inbound payment requests for agent wallets)
+CREATE TABLE IF NOT EXISTS payment_requests (
+    request_id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USDC',
+    chain TEXT,
+    token TEXT NOT NULL DEFAULT 'USDC',
+    receive_address TEXT NOT NULL,
+    memo TEXT,
+    invoice_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    amount_received TEXT DEFAULT '0.00',
+    deposit_id TEXT,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_requests_wallet ON payment_requests(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_payment_requests_agent ON payment_requests(agent_id);
+CREATE INDEX IF NOT EXISTS idx_payment_requests_status ON payment_requests(status);
+CREATE INDEX IF NOT EXISTS idx_payment_requests_address ON payment_requests(receive_address);
+
 -- Agent-to-Agent Settlements
 CREATE TABLE IF NOT EXISTS settlements (
     id TEXT PRIMARY KEY,
@@ -951,6 +1009,40 @@ CREATE INDEX IF NOT EXISTS idx_settlements_payer ON settlements(payer_agent_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_payee ON settlements(payee_agent_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_type ON settlements(settlement_type);
 CREATE INDEX IF NOT EXISTS idx_settlements_settled ON settlements(settled_at DESC);
+
+-- x402 Settlements (HTTP 402 payment protocol settlements)
+CREATE TABLE IF NOT EXISTS x402_settlements (
+    payment_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'verified',
+    challenge JSONB,
+    payload JSONB,
+    tx_hash TEXT,
+    settled_at TIMESTAMPTZ,
+    error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_x402_settlements_status ON x402_settlements(status);
+
+-- Bridge Transfers (CCTP cross-chain USDC transfers)
+CREATE TABLE IF NOT EXISTS bridge_transfers (
+    transfer_id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    agent_id TEXT,
+    from_chain TEXT NOT NULL,
+    to_chain TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    token TEXT DEFAULT 'USDC',
+    message_hash TEXT,
+    source_tx_hash TEXT,
+    destination_tx_hash TEXT,
+    status TEXT DEFAULT 'initiated',
+    error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bridge_transfers_wallet ON bridge_transfers(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_bridge_transfers_status ON bridge_transfers(status);
 """
 
 

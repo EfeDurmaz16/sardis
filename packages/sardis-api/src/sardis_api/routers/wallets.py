@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
 from sardis_v2_core import AgentRepository, Wallet, WalletRepository
 from sardis_v2_core.tokens import TokenType, normalize_token_amount
+from sardis_v2_core.database import Database
 from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
 from sardis_api.authz import Principal, require_principal
 from sardis_v2_core.transactions import validate_wallet_not_frozen
@@ -161,6 +163,7 @@ class WalletDependencies:
         settings: any | None = None,
         canonical_repo: any | None = None,
         compliance: any | None = None,
+        inbound_payment_service: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -170,6 +173,7 @@ class WalletDependencies:
         self.canonical_repo = canonical_repo
         self.settings = settings
         self.compliance = compliance
+        self.inbound_payment_service = inbound_payment_service
 
 
 def get_deps() -> WalletDependencies:
@@ -278,6 +282,14 @@ async def create_wallet(
         paymaster_enabled=request.account_type == "erc4337_v2",
         bundler_profile="pimlico" if request.account_type == "erc4337_v2" else None,
     )
+
+    # Register new wallet with DepositMonitor for inbound payment detection
+    if deps.inbound_payment_service:
+        try:
+            await deps.inbound_payment_service.register_single_wallet(wallet)
+        except Exception as e:
+            logger.warning("Failed to register wallet %s with DepositMonitor: %s", wallet.wallet_id, e)
+
     return WalletResponse.from_wallet(wallet)
 
 
@@ -863,3 +875,701 @@ async def unfreeze_wallet(
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
     return WalletResponse.from_wallet(wallet)
+
+
+# ==========================================================================
+# Inbound Payment Models
+# ==========================================================================
+
+class ReceiveAddressInfo(BaseModel):
+    chain: str
+    address: str
+    eip681_uri: str
+    token: str = "USDC"
+
+
+class ReceiveInfoResponse(BaseModel):
+    wallet_id: str
+    addresses: List[ReceiveAddressInfo]
+
+
+class CreatePaymentRequestModel(BaseModel):
+    amount: str = Field(description="Amount to receive (e.g. '25.00')")
+    token: str = Field(default="USDC")
+    chain: Optional[str] = Field(default=None, description="Preferred chain (optional)")
+    memo: Optional[str] = Field(default=None, description="Payment memo/reference")
+
+
+class PaymentRequestResponse(BaseModel):
+    request_id: str
+    wallet_id: str
+    agent_id: str
+    amount: str
+    currency: str
+    token: str
+    chain: Optional[str]
+    receive_address: str
+    memo: Optional[str]
+    invoice_id: Optional[str]
+    status: str
+    amount_received: str
+    deposit_id: Optional[str]
+    expires_at: Optional[str]
+    created_at: str
+
+
+class DepositResponse(BaseModel):
+    deposit_id: str
+    tx_hash: str
+    chain: str
+    token: str
+    from_address: str
+    to_address: str
+    amount: str
+    status: str
+    confirmations: int
+    agent_id: Optional[str]
+    wallet_id: Optional[str]
+    payment_request_id: Optional[str]
+    ledger_entry_id: Optional[str]
+    aml_screening_result: Optional[str]
+    detected_at: Optional[str]
+    confirmed_at: Optional[str]
+    credited_at: Optional[str]
+
+
+class X402ChallengeRequest(BaseModel):
+    resource_uri: str = Field(description="URI of the resource being sold")
+    amount: str = Field(description="Amount in smallest unit")
+    currency: str = Field(default="USDC")
+    network: str = Field(default="base")
+    ttl_seconds: int = Field(default=300, ge=30, le=3600)
+
+
+class X402ChallengeResponse(BaseModel):
+    payment_id: str
+    resource_uri: str
+    amount: str
+    currency: str
+    payee_address: str
+    network: str
+    token_address: str
+    expires_at: int
+    nonce: str
+
+
+class X402VerifyRequest(BaseModel):
+    payment_id: str
+    payer_address: str
+    amount: str
+    nonce: str
+    signature: str
+    authorization: dict = Field(default_factory=dict)
+
+
+class X402VerifyResponse(BaseModel):
+    accepted: bool
+    reason: Optional[str] = None
+
+
+class X402SettleRequest(BaseModel):
+    payment_id: str
+
+
+class X402SettleResponse(BaseModel):
+    payment_id: str
+    status: str
+    tx_hash: Optional[str] = None
+    settled_at: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BridgeRequest(BaseModel):
+    to_chain: str = Field(description="Destination chain (e.g., 'ethereum', 'polygon')")
+    amount: Decimal = Field(gt=0, description="Amount in USDC")
+    recipient: Optional[str] = Field(default=None, description="Destination address (defaults to wallet's address on target chain)")
+
+
+class BridgeResponse(BaseModel):
+    transfer_id: str
+    wallet_id: str
+    from_chain: str
+    to_chain: str
+    amount: str
+    token: str = "USDC"
+    message_hash: Optional[str] = None
+    source_tx_hash: Optional[str] = None
+    destination_tx_hash: Optional[str] = None
+    status: str
+    estimated_time_seconds: Optional[int] = None
+    error: Optional[str] = None
+    created_at: str
+
+
+# In-memory x402 challenge store (short-lived, TTL 5 min)
+_x402_challenges: dict[str, tuple[object, float]] = {}
+
+
+def _cleanup_expired_challenges() -> None:
+    """Remove expired x402 challenges."""
+    import time
+    now = time.time()
+    expired = [k for k, (_, exp) in _x402_challenges.items() if exp < now]
+    for k in expired:
+        _x402_challenges.pop(k, None)
+
+
+# ==========================================================================
+# Inbound Payment Endpoints
+# ==========================================================================
+
+@router.get("/{wallet_id}/receive", response_model=ReceiveInfoResponse)
+async def get_receive_addresses(
+    wallet_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get all receive addresses with EIP-681 payment URIs for QR codes."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    addresses: List[ReceiveAddressInfo] = []
+    token_addresses = {
+        "base": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "base_sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "polygon": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+        "ethereum": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "arbitrum": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "optimism": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+    }
+
+    for chain, addr in wallet.addresses.items():
+        if not addr:
+            continue
+        token_addr = token_addresses.get(chain, "")
+        # EIP-681: ethereum:<token_addr>/transfer?address=<wallet>&uint256=<amount>
+        eip681 = f"ethereum:{token_addr}/transfer?address={addr}" if token_addr else f"ethereum:{addr}"
+        addresses.append(ReceiveAddressInfo(
+            chain=chain,
+            address=addr,
+            eip681_uri=eip681,
+            token="USDC",
+        ))
+
+    return ReceiveInfoResponse(wallet_id=wallet_id, addresses=addresses)
+
+
+@router.post(
+    "/{wallet_id}/payment-request",
+    response_model=PaymentRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_payment_request(
+    wallet_id: str,
+    request: CreatePaymentRequestModel,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Create a payment request (amount, token, chain, memo)."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    # Pick receive address: prefer requested chain, else first available
+    chain = request.chain
+    receive_address: str | None = None
+    if chain:
+        receive_address = wallet.get_address(chain)
+    if not receive_address:
+        for c, addr in wallet.addresses.items():
+            if addr:
+                chain = c
+                receive_address = addr
+                break
+    if not receive_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Wallet has no on-chain address",
+        )
+
+    request_id = f"preq_{uuid4().hex[:12]}"
+    invoice_id = f"inv_{uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=24)
+    org_id = principal.organization_id
+
+    # Create linked invoice
+    await Database.execute(
+        """
+        INSERT INTO invoices (
+            invoice_id, organization_id, amount, amount_paid, currency,
+            description, status, created_at
+        ) VALUES ($1, $2, $3, '0.00', $4, $5, 'pending', $6)
+        """,
+        invoice_id,
+        org_id,
+        request.amount,
+        request.token,
+        request.memo or f"Payment request {request_id}",
+        now,
+    )
+
+    # Create payment request
+    await Database.execute(
+        """
+        INSERT INTO payment_requests (
+            request_id, wallet_id, agent_id, organization_id, amount,
+            currency, chain, token, receive_address, memo, invoice_id,
+            status, amount_received, expires_at, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                  'pending', '0.00', $12, $13, $13)
+        """,
+        request_id,
+        wallet_id,
+        wallet.agent_id,
+        org_id,
+        request.amount,
+        request.token,
+        chain,
+        request.token,
+        receive_address,
+        request.memo,
+        invoice_id,
+        expires_at,
+        now,
+    )
+
+    return PaymentRequestResponse(
+        request_id=request_id,
+        wallet_id=wallet_id,
+        agent_id=wallet.agent_id,
+        amount=request.amount,
+        currency=request.token,
+        token=request.token,
+        chain=chain,
+        receive_address=receive_address,
+        memo=request.memo,
+        invoice_id=invoice_id,
+        status="pending",
+        amount_received="0.00",
+        deposit_id=None,
+        expires_at=expires_at.isoformat(),
+        created_at=now.isoformat(),
+    )
+
+
+@router.get("/{wallet_id}/payment-requests", response_model=List[PaymentRequestResponse])
+async def list_payment_requests(
+    wallet_id: str,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0, ge=0),
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """List payment requests with optional status filter."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    conditions = ["wallet_id = $1"]
+    args: list = [wallet_id]
+    idx = 2
+
+    if status_filter:
+        conditions.append(f"status = ${idx}")
+        args.append(status_filter)
+        idx += 1
+
+    where = " AND ".join(conditions)
+    args.extend([limit, offset])
+
+    rows = await Database.fetch(
+        f"""
+        SELECT * FROM payment_requests
+        WHERE {where}
+        ORDER BY created_at DESC
+        LIMIT ${idx} OFFSET ${idx + 1}
+        """,
+        *args,
+    )
+
+    return [
+        PaymentRequestResponse(
+            request_id=r["request_id"],
+            wallet_id=r["wallet_id"],
+            agent_id=r["agent_id"],
+            amount=r["amount"],
+            currency=r["currency"],
+            token=r["token"],
+            chain=r.get("chain"),
+            receive_address=r["receive_address"],
+            memo=r.get("memo"),
+            invoice_id=r.get("invoice_id"),
+            status=r["status"],
+            amount_received=r.get("amount_received", "0.00"),
+            deposit_id=r.get("deposit_id"),
+            expires_at=r["expires_at"].isoformat() if r.get("expires_at") else None,
+            created_at=r["created_at"].isoformat() if r.get("created_at") else "",
+        )
+        for r in rows
+    ]
+
+
+@router.get("/{wallet_id}/deposits", response_model=List[DepositResponse])
+async def list_deposits(
+    wallet_id: str,
+    chain: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0, ge=0),
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """List inbound deposits with filters."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    conditions = ["wallet_id = $1"]
+    args: list = [wallet_id]
+    idx = 2
+
+    if chain:
+        conditions.append(f"chain = ${idx}")
+        args.append(chain)
+        idx += 1
+    if token:
+        conditions.append(f"token = ${idx}")
+        args.append(token)
+        idx += 1
+    if status_filter:
+        conditions.append(f"status = ${idx}")
+        args.append(status_filter)
+        idx += 1
+
+    where = " AND ".join(conditions)
+    args.extend([limit, offset])
+
+    rows = await Database.fetch(
+        f"""
+        SELECT * FROM deposits
+        WHERE {where}
+        ORDER BY created_at DESC
+        LIMIT ${idx} OFFSET ${idx + 1}
+        """,
+        *args,
+    )
+
+    return [_deposit_row_to_response(r) for r in rows]
+
+
+@router.get("/{wallet_id}/deposits/{deposit_id}", response_model=DepositResponse)
+async def get_deposit(
+    wallet_id: str,
+    deposit_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get a single deposit detail."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    row = await Database.fetchrow(
+        "SELECT * FROM deposits WHERE deposit_id = $1 AND wallet_id = $2",
+        deposit_id,
+        wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deposit not found")
+    return _deposit_row_to_response(row)
+
+
+def _deposit_row_to_response(r) -> DepositResponse:
+    return DepositResponse(
+        deposit_id=r["deposit_id"],
+        tx_hash=r["tx_hash"],
+        chain=r["chain"],
+        token=r["token"],
+        from_address=r["from_address"],
+        to_address=r["to_address"],
+        amount=r["amount"],
+        status=r["status"],
+        confirmations=r.get("confirmations", 0),
+        agent_id=r.get("agent_id"),
+        wallet_id=r.get("wallet_id"),
+        payment_request_id=r.get("payment_request_id"),
+        ledger_entry_id=r.get("ledger_entry_id"),
+        aml_screening_result=r.get("aml_screening_result"),
+        detected_at=r["detected_at"].isoformat() if r.get("detected_at") else None,
+        confirmed_at=r["confirmed_at"].isoformat() if r.get("confirmed_at") else None,
+        credited_at=r["credited_at"].isoformat() if r.get("credited_at") else None,
+    )
+
+
+# ==========================================================================
+# x402 Payee Endpoints
+# ==========================================================================
+
+@router.post("/{wallet_id}/x402/challenge", response_model=X402ChallengeResponse)
+async def create_x402_challenge(
+    wallet_id: str,
+    request: X402ChallengeRequest,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Generate an x402 payment challenge (payee side)."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    payee_address = wallet.get_address(request.network)
+    if not payee_address:
+        for _, addr in wallet.addresses.items():
+            if addr:
+                payee_address = addr
+                break
+    if not payee_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Wallet has no on-chain address",
+        )
+
+    try:
+        from sardis_protocol.x402 import generate_challenge
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="x402 protocol module not available",
+        )
+
+    challenge = generate_challenge(
+        resource_uri=request.resource_uri,
+        amount=request.amount,
+        currency=request.currency,
+        payee_address=payee_address,
+        network=request.network,
+        ttl_seconds=request.ttl_seconds,
+    )
+
+    # Store challenge for verification
+    import time
+    _cleanup_expired_challenges()
+    _x402_challenges[challenge.payment_id] = (challenge, time.time() + request.ttl_seconds)
+
+    return X402ChallengeResponse(
+        payment_id=challenge.payment_id,
+        resource_uri=challenge.resource_uri,
+        amount=challenge.amount,
+        currency=challenge.currency,
+        payee_address=challenge.payee_address,
+        network=challenge.network,
+        token_address=challenge.token_address,
+        expires_at=challenge.expires_at,
+        nonce=challenge.nonce,
+    )
+
+
+@router.post("/{wallet_id}/x402/verify", response_model=X402VerifyResponse)
+async def verify_x402_payment(
+    wallet_id: str,
+    request: X402VerifyRequest,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Verify an incoming x402 payment payload."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    # Look up the stored challenge
+    _cleanup_expired_challenges()
+    entry = _x402_challenges.get(request.payment_id)
+    if not entry:
+        return X402VerifyResponse(accepted=False, reason="challenge_not_found_or_expired")
+
+    challenge, _ = entry
+
+    try:
+        from sardis_protocol.x402 import X402PaymentPayload, verify_payment_payload
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="x402 protocol module not available",
+        )
+
+    payload = X402PaymentPayload(
+        payment_id=request.payment_id,
+        payer_address=request.payer_address,
+        amount=request.amount,
+        nonce=request.nonce,
+        signature=request.signature,
+        authorization=request.authorization,
+    )
+
+    result = verify_payment_payload(payload=payload, challenge=challenge)
+
+    # Clean up used challenge on success
+    if result.accepted:
+        _x402_challenges.pop(request.payment_id, None)
+
+    return X402VerifyResponse(
+        accepted=result.accepted,
+        reason=result.reason,
+    )
+
+
+@router.post("/{wallet_id}/x402/settle", response_model=X402SettleResponse)
+async def settle_x402_payment(
+    wallet_id: str,
+    request: X402SettleRequest,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Trigger on-chain settlement for a verified x402 payment."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+    validate_wallet_not_frozen(wallet)
+
+    try:
+        from sardis_protocol.x402_settlement import (
+            X402Settler, DatabaseSettlementStore, X402SettlementStatus,
+        )
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="x402 settlement module not available",
+        )
+
+    store = DatabaseSettlementStore()
+    settlement = await store.get(request.payment_id)
+    if not settlement:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Settlement not found")
+
+    if settlement.status != X402SettlementStatus.VERIFIED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Settlement status is {settlement.status.value}, expected 'verified'",
+        )
+
+    chain_executor = ChainExecutor()
+    settler = X402Settler(store=store, chain_executor=chain_executor)
+    result = await settler.settle(settlement)
+
+    return X402SettleResponse(
+        payment_id=result.payment_id,
+        status=result.status.value,
+        tx_hash=result.tx_hash,
+        settled_at=result.settled_at.isoformat() if result.settled_at else None,
+        error=result.error,
+    )
+
+
+# ==========================================================================
+# Cross-Chain Bridge Endpoints (CCTP)
+# ==========================================================================
+
+@router.post("/{wallet_id}/bridge", response_model=BridgeResponse)
+async def initiate_bridge(
+    wallet_id: str,
+    request: BridgeRequest,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Initiate a cross-chain USDC bridge via Circle CCTP."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+    validate_wallet_not_frozen(wallet)
+
+    from_chain = wallet.chain or "base"
+    recipient = request.recipient
+    if not recipient:
+        recipient = wallet.get_address(request.to_chain)
+        if not recipient:
+            # Fallback to any available address
+            for _, addr in wallet.addresses.items():
+                if addr:
+                    recipient = addr
+                    break
+    if not recipient:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No recipient address available")
+
+    try:
+        from sardis_chain.cctp import CCTPBridgeService
+    except ImportError:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="CCTP bridge module not available")
+
+    bridge_service = CCTPBridgeService()
+    transfer = await bridge_service.bridge_usdc(
+        from_chain=from_chain,
+        to_chain=request.to_chain,
+        amount=request.amount,
+        recipient=recipient,
+        wallet_id=wallet_id,
+        agent_id=wallet.agent_id,
+    )
+
+    # Persist to database
+    await Database.execute(
+        """INSERT INTO bridge_transfers (transfer_id, wallet_id, agent_id, from_chain, to_chain, amount, token, message_hash, source_tx_hash, status, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+        transfer.transfer_id, transfer.wallet_id, transfer.agent_id,
+        transfer.from_chain, transfer.to_chain, str(transfer.amount),
+        transfer.token, transfer.message_hash, transfer.source_tx_hash,
+        transfer.status.value, transfer.created_at,
+    )
+
+    est_time = bridge_service.estimate_bridge_time(from_chain, request.to_chain)
+
+    return BridgeResponse(
+        transfer_id=transfer.transfer_id,
+        wallet_id=transfer.wallet_id,
+        from_chain=transfer.from_chain,
+        to_chain=transfer.to_chain,
+        amount=str(transfer.amount),
+        token=transfer.token,
+        message_hash=transfer.message_hash,
+        source_tx_hash=transfer.source_tx_hash,
+        status=transfer.status.value,
+        estimated_time_seconds=est_time,
+        created_at=transfer.created_at.isoformat(),
+    )
+
+
+@router.get("/{wallet_id}/bridge/{transfer_id}", response_model=BridgeResponse)
+async def get_bridge_status(
+    wallet_id: str,
+    transfer_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Check bridge transfer status."""
+    await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    row = await Database.fetchrow(
+        "SELECT * FROM bridge_transfers WHERE transfer_id = $1 AND wallet_id = $2",
+        transfer_id, wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bridge transfer not found")
+
+    # If still awaiting attestation, poll Circle
+    current_status = row["status"]
+    if current_status == "awaiting_attestation" and row.get("message_hash"):
+        try:
+            from sardis_chain.cctp import CCTPBridgeService
+            bridge_service = CCTPBridgeService()
+            attestation_status = await bridge_service.get_bridge_status(row["message_hash"])
+            if attestation_status.get("status") == "complete":
+                current_status = "attestation_received"
+                await Database.execute(
+                    "UPDATE bridge_transfers SET status = $1 WHERE transfer_id = $2",
+                    current_status, transfer_id,
+                )
+        except Exception:
+            pass  # Non-critical, return current DB status
+
+    return BridgeResponse(
+        transfer_id=row["transfer_id"],
+        wallet_id=row["wallet_id"],
+        from_chain=row["from_chain"],
+        to_chain=row["to_chain"],
+        amount=row["amount"],
+        token=row.get("token", "USDC"),
+        message_hash=row.get("message_hash"),
+        source_tx_hash=row.get("source_tx_hash"),
+        destination_tx_hash=row.get("destination_tx_hash"),
+        status=current_status,
+        error=row.get("error"),
+        created_at=row["created_at"].isoformat() if row.get("created_at") else "",
+    )

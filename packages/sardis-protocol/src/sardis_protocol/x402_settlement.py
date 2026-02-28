@@ -7,8 +7,9 @@ Implements:
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Protocol
 
@@ -143,15 +144,38 @@ class X402Settler:
                 X402SettlementStatus.SETTLING,
             )
 
-            # TODO: Invoke chain_executor to execute on-chain settlement
-            # For now, mark as settled immediately
-            tx_hash = f"0x{settlement.payment_id}"  # Placeholder
+            from sardis_v2_core.mandates import PaymentMandate, VCProof
+            import time
+
+            challenge = settlement.challenge
+            mandate = PaymentMandate(
+                mandate_id=f"x402_{settlement.payment_id}",
+                mandate_type="payment",
+                issuer="x402",
+                subject="x402",
+                expires_at=int(time.time()) + 300,
+                nonce=settlement.payment_id,
+                proof=VCProof(
+                    verification_method="x402",
+                    created=datetime.now(timezone.utc).isoformat(),
+                    proof_value="x402",
+                ),
+                domain="x402",
+                purpose="checkout",
+                chain=challenge.network,
+                token=challenge.currency,
+                amount_minor=int(challenge.amount),
+                destination=challenge.payee_address,
+                audit_hash=settlement.payment_id,
+            )
+            receipt = await self.chain_executor.dispatch_payment(mandate)
+            tx_hash = receipt.tx_hash
 
             await self.store.update_status(
                 settlement.payment_id,
                 X402SettlementStatus.SETTLED,
                 tx_hash=tx_hash,
-                settled_at=datetime.utcnow(),
+                settled_at=datetime.now(timezone.utc),
             )
 
             updated = await self.store.get(settlement.payment_id)
@@ -175,10 +199,98 @@ class X402Settler:
         return await self.store.get(payment_id)
 
 
+def _challenge_to_dict(c: X402Challenge) -> dict:
+    return {
+        "payment_id": c.payment_id,
+        "resource_uri": c.resource_uri,
+        "amount": c.amount,
+        "currency": c.currency,
+        "payee_address": c.payee_address,
+        "network": c.network,
+        "token_address": c.token_address,
+        "expires_at": c.expires_at,
+        "nonce": c.nonce,
+    }
+
+
+def _dict_to_challenge(d: dict) -> X402Challenge:
+    return X402Challenge(**d)
+
+
+def _payload_to_dict(p: X402PaymentPayload) -> dict:
+    return {
+        "payment_id": p.payment_id,
+        "payer_address": p.payer_address,
+        "amount": p.amount,
+        "nonce": p.nonce,
+        "signature": p.signature,
+        "authorization": p.authorization,
+    }
+
+
+def _dict_to_payload(d: dict) -> X402PaymentPayload:
+    return X402PaymentPayload(**d)
+
+
+class DatabaseSettlementStore:
+    """PostgreSQL implementation of X402SettlementStore."""
+
+    async def save(self, settlement: X402Settlement) -> None:
+        from sardis_v2_core.database import Database
+        await Database.execute(
+            """INSERT INTO x402_settlements (payment_id, status, challenge, payload, tx_hash, settled_at, error, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (payment_id) DO UPDATE SET status=$2, challenge=$3, payload=$4, tx_hash=$5, settled_at=$6, error=$7""",
+            settlement.payment_id,
+            settlement.status.value,
+            json.dumps(_challenge_to_dict(settlement.challenge)) if settlement.challenge else None,
+            json.dumps(_payload_to_dict(settlement.payload)) if settlement.payload else None,
+            settlement.tx_hash,
+            settlement.settled_at,
+            settlement.error,
+        )
+
+    async def get(self, payment_id: str) -> X402Settlement | None:
+        from sardis_v2_core.database import Database
+        row = await Database.fetchrow("SELECT * FROM x402_settlements WHERE payment_id = $1", payment_id)
+        if not row:
+            return None
+        return X402Settlement(
+            payment_id=row["payment_id"],
+            status=X402SettlementStatus(row["status"]),
+            challenge=_dict_to_challenge(json.loads(row["challenge"])) if row.get("challenge") else None,
+            payload=_dict_to_payload(json.loads(row["payload"])) if row.get("payload") else None,
+            tx_hash=row.get("tx_hash"),
+            settled_at=row.get("settled_at"),
+            error=row.get("error"),
+        )
+
+    async def update_status(
+        self,
+        payment_id: str,
+        status: X402SettlementStatus,
+        **kwargs,
+    ) -> None:
+        from sardis_v2_core.database import Database
+        sets = ["status = $2"]
+        args: list = [payment_id, status.value]
+        idx = 3
+        for key, value in kwargs.items():
+            if key in ("tx_hash", "settled_at", "error"):
+                sets.append(f"{key} = ${idx}")
+                args.append(value)
+                idx += 1
+        await Database.execute(
+            f"UPDATE x402_settlements SET {', '.join(sets)} WHERE payment_id = $1",
+            *args,
+        )
+
+
 __all__ = [
     "X402SettlementStatus",
     "X402Settlement",
     "X402SettlementStore",
     "InMemorySettlementStore",
+    "DatabaseSettlementStore",
     "X402Settler",
 ]
