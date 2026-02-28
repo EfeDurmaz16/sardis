@@ -187,3 +187,10 @@ site/
 
 # Local shell history artifacts
 .rustshell_history
+
+# Screenshots (local only)
+sardis-*.png
+t54-homepage.png
+
+# Internal team docs
+gv-team.md
