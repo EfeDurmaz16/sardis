@@ -53,6 +53,8 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "base": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
             "ethereum": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             "polygon": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+            "arbitrum": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "optimism": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
             "solana": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         },
     ),
@@ -64,6 +66,8 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
         contract_addresses={
             "ethereum": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
             "polygon": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+            "arbitrum": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+            "optimism": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
             "solana": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
         },
     ),
@@ -85,7 +89,9 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
         peg_currency="EUR",
         peg_ratio=Decimal("1.08"),
         contract_addresses={
-            "polygon": "0x18ec0A6E18E5bc3784fDd3a3634b31245ab704F6",
+            "base": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+            "ethereum": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
+            "polygon": "0x9912af6da4F87Fc2b0Ae0B77A124e9B1B7Ba2F70",
         },
     ),
 }
