@@ -1631,7 +1631,31 @@ async def _handle_payment_request(
 
 
 def _handle_credential_request(msg: A2AMessageRequest) -> A2AMessageResponse:
-    """Handle an inbound credential verification request (stub)."""
+    """Handle an inbound credential verification request."""
+    from sardis_v2_core.agent_card import verify_agent_card
+
+    payload = msg.payload or {}
+    agent_card = payload.get("agent_card")
+    verified_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    if not agent_card or not isinstance(agent_card, dict):
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="credential_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="completed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            payload={
+                "valid": False,
+                "reason": "No agent_card provided in credential request payload",
+                "verified_at": verified_at,
+            },
+        )
+
+    is_valid = verify_agent_card(agent_card)
+
     return A2AMessageResponse(
         message_id=str(uuid.uuid4()),
         message_type="credential_response",
@@ -1641,8 +1665,9 @@ def _handle_credential_request(msg: A2AMessageRequest) -> A2AMessageResponse:
         in_reply_to=msg.message_id,
         correlation_id=msg.correlation_id,
         payload={
-            "valid": True,
-            "verified_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "valid": is_valid,
+            "reason": "Agent card verified" if is_valid else "Agent card verification failed",
+            "verified_at": verified_at,
         },
     )
 
