@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -632,7 +633,11 @@ class SessionManager:
                 destination=destination or "",
             )
         else:
-            # Mock challenge for testing
+            if os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                raise RuntimeError(
+                    "Production environment requires an MFA provider; mock MFA is not allowed"
+                )
+            logger.warning("Using mock MFA challenge (non-prod)")
             challenge_data = secrets.token_hex(3).upper()  # 6 digit code
 
         challenge = MFAChallenge(

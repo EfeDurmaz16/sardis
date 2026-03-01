@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -750,7 +751,11 @@ class MultisigManager:
                     )
                     pending_tx.tx_hash = tx_hash
                 else:
-                    # Mock execution for testing
+                    if os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                        raise RuntimeError(
+                            "Production environment requires a chain executor for multisig execution"
+                        )
+                    logger.warning("Using mock tx_hash for multisig execution (non-prod)")
                     pending_tx.tx_hash = f"0x{secrets.token_hex(32)}"
 
                 pending_tx.executed_at = datetime.now(timezone.utc)

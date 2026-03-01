@@ -666,11 +666,12 @@ class PaymentOrchestrator:
             if self._should_dispatch_on_chain():
                 await self._dispatch_leg_on_chain(flow, leg)
             else:
-                if self._strict_live_mode:
-                    raise ValueError(
-                        "Strict live mode forbids simulated multi-agent execution; "
+                if self._strict_live_mode or os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                    raise RuntimeError(
+                        "Production environment forbids simulated multi-agent execution; "
                         "configure chain_executor and wallet_repo."
                     )
+                logger.warning("Using simulated tx_hash for multi-agent payment leg (non-prod)")
                 leg.tx_hash = self._simulated_tx_hash(flow.id, leg.id)
             leg.state = PaymentLegState.COMPLETED
             leg.completed_at = datetime.now(timezone.utc)

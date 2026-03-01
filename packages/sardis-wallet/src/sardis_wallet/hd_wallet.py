@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -551,7 +552,11 @@ class HDWalletManager:
             key_data = await self._provider.derive_key(master_key_ref, path)
             public_key = key_data.get("public_key")
         else:
-            # Mock derivation for testing
+            if os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                raise RuntimeError(
+                    "Production environment requires an HD wallet provider; mock derivation is not allowed"
+                )
+            logger.warning("Using mock HD wallet derivation (non-prod)")
             path_hash = hashlib.sha256(f"{master_key_ref}:{path}".encode()).hexdigest()
             address = f"0x{path_hash[:40]}"
             public_key = None
