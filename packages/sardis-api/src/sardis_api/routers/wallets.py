@@ -1700,3 +1700,88 @@ async def generate_onramp_url(
         destination_address=destination_address,
         destination_chain=chain,
     )
+
+
+# ── Coinbase Offramp (USDC → Fiat) ──────────────────────────────────────────
+
+
+class OfframpRequest(BaseModel):
+    """Request to generate a fiat off-ramp URL."""
+    source_chain: str = Field(default="base", description="Chain holding the USDC")
+    amount: Optional[str] = Field(default=None, description="USDC amount to cash out")
+
+
+class OfframpResponse(BaseModel):
+    """Coinbase Offramp URL response."""
+    offramp_url: str
+    wallet_id: str
+    source_address: str
+    source_chain: str
+    asset: str = "USDC"
+
+
+@router.post("/{wallet_id}/offramp", response_model=OfframpResponse)
+async def generate_offramp_url(
+    wallet_id: str,
+    request: OfframpRequest,
+    principal: Principal = Depends(require_principal),
+) -> OfframpResponse:
+    """Generate a Coinbase Offramp URL for cashing out USDC to fiat.
+
+    Coinbase Offramp allows agents to convert USDC earnings to fiat
+    via bank transfer. The user completes KYC and withdrawal through
+    Coinbase's hosted flow.
+
+    Reference: https://docs.cdp.coinbase.com/onramp/docs/offramp-overview
+    """
+    row = await Database.fetchrow(
+        "SELECT w.*, a.organization_id FROM wallets w JOIN agents a ON w.agent_id = a.id WHERE w.external_id = $1",
+        wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="wallet_not_found")
+
+    # Get wallet address for the source chain
+    addresses = row.get("addresses") or {}
+    chain = request.source_chain
+    source_address = addresses.get(chain) or row.get("chain_address")
+    if not source_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Wallet has no address on chain '{chain}'",
+        )
+
+    import urllib.parse
+
+    chain_to_network = {
+        "base": "base",
+        "ethereum": "ethereum",
+        "polygon": "polygon",
+        "arbitrum": "arbitrum",
+        "optimism": "optimism",
+    }
+    network = chain_to_network.get(chain, "base")
+
+    params = {
+        "appId": os.getenv("COINBASE_APP_ID", "sardis"),
+        "addresses": f'{{"0x{source_address[2:] if source_address.startswith("0x") else source_address}":[\"{network}\"]}}',
+        "assets": '["USDC"]',
+        "defaultAsset": "USDC",
+        "defaultNetwork": network,
+    }
+    if request.amount:
+        params["presetCryptoAmount"] = request.amount
+
+    offramp_url = f"https://pay.coinbase.com/sell/input?{urllib.parse.urlencode(params)}"
+
+    logger.info(
+        "Generated offramp URL: wallet=%s, chain=%s, address=%s",
+        wallet_id, chain, source_address[:10] + "...",
+    )
+
+    return OfframpResponse(
+        offramp_url=offramp_url,
+        wallet_id=wallet_id,
+        source_address=source_address,
+        source_chain=chain,
+    )
