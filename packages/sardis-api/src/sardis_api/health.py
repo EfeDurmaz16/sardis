@@ -296,7 +296,7 @@ def create_health_router(
                 record_failure(
                     "contracts",
                     "SARDIS.HEALTH.CONTRACTS_UNCONFIGURED",
-                    f"wallet_factory not configured for chain={target_chain}",
+                    f"policy_module not configured for chain={target_chain}",
                     critical=is_live_execution(),
                 )
                 if not is_live_execution():

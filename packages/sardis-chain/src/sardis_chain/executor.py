@@ -369,7 +369,7 @@ def get_sardis_contract_address(chain: str, contract_type: str) -> str:
         raise ValueError(f"Chain {chain} is not yet implemented")
 
     # Build environment variable name
-    # e.g., SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS
+    # e.g., SARDIS_BASE_POLICY_MODULE_ADDRESS, SARDIS_BASE_SEPOLIA_LEDGER_ANCHOR_ADDRESS
     env_key = f"SARDIS_{chain.upper()}_{contract_type.upper()}_ADDRESS"
 
     # Environment variable takes precedence

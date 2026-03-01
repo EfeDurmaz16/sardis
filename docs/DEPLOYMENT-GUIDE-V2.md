@@ -207,20 +207,23 @@ private key'e dokunmaz — Turnkey'in HSM'lerinde kalır.
 ### 2.6 Smart Contracts (Base Mainnet)
 
 **Ne yapıyor:**
-3 kontrat deploy edilecek (Phase 1 — audit gereksiz):
+3 kontrat deploy edilecek — Safe Smart Accounts migrasyonu sonrası:
 
-| Kontrat | Satır | Amacı |
+| Kontrat | Satır | Amacı | Audit |
+|---------|-------|-------|-------|
+| **SardisPolicyModule** | 230 | Safe module: spending policy enforcement | Gereksiz (non-custodial, devre dışı bırakılabilir) |
+| **SardisLedgerAnchor** | 41 | Merkle root'ları on-chain'e yazdırma (audit trail) | Gereksiz (41 satır, sadece owner yazabilir) |
+| **RefundProtocol** | ~600 | Circle'ın audited escrow kontratı (Apache 2.0) | Zaten audited (Circle) |
+
+**Pre-deployed altyapı (deploy gerekmez):**
+
+| Altyapı | Adres | Audit |
 |---------|-------|-------|
-| **SardisWalletFactory** | 471 | Agent wallet oluşturma, recovery, ownership timelock |
-| **SardisLedgerAnchor** | 41 | Merkle root'ları on-chain'e yazdırma (audit trail) |
-| **SardisAgentRegistry** | 356 | ERC-721 agent kimlik, reputation, attestation |
-
-**Neden Phase 1 (3 kontrat, audit yok):**
-- WalletFactory: Pausable, owner kontrolünde, conservative limitleri var ($10K/tx, $100K/gün)
-- LedgerAnchor: Sadece owner yazabiliyor, okuma herkese açık, 41 satır = audit gereksiz
-- AgentRegistry: ERC-721 standard, OpenZeppelin tabanlı, read-heavy
-
-**Phase 2 (audit sonrası):** SardisEscrow — para tutuyor, audit ZORUNLU
+| Safe ProxyFactory | `0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2` | OpenZeppelin, Ackee, G0 |
+| Safe Singleton | `0x41675C099F32341bf84BFc5382aF534df5C7461a` | OpenZeppelin, Ackee, G0 |
+| Safe 4337 Module | `0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226` | OpenZeppelin |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | Audited, $3M bug bounty |
+| EAS (Base) | `0x4200000000000000000000000000000000000021` | Audited, OP Stack predeploy |
 
 **Deploy:**
 ```bash
@@ -228,15 +231,17 @@ cd contracts
 
 # .env hazırla
 PRIVATE_KEY=<deployer-key-without-0x>
+SARDIS_ADDRESS=<sardis-platform-address>
+USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 BASE_RPC_URL=https://base-mainnet.g.alchemy.com/v2/<KEY>
 BASESCAN_API_KEY=<key>
 
 # Dry run (hiçbir şey deploy etmez, sadece simüle eder)
-forge script script/DeployMainnet.s.sol:DeployPhase1 \
+forge script script/DeploySafeModules.s.sol:DeploySafeModules \
   --rpc-url $BASE_RPC_URL -vvvv
 
 # Gerçek deployment
-forge script script/DeployMainnet.s.sol:DeployPhase1 \
+forge script script/DeploySafeModules.s.sol:DeploySafeModules \
   --rpc-url $BASE_RPC_URL \
   --broadcast --verify \
   --etherscan-api-key $BASESCAN_API_KEY
@@ -368,19 +373,20 @@ cp .env.example .env
 # PRIVATE_KEY, BASE_RPC_URL, BASESCAN_API_KEY doldur
 
 # 4. Test (dry run)
-forge script script/DeployMainnet.s.sol:DeployPhase1 \
+forge script script/DeploySafeModules.s.sol:DeploySafeModules \
   --rpc-url $BASE_RPC_URL -vvvv
 
 # 5. Gerçek deploy
-forge script script/DeployMainnet.s.sol:DeployPhase1 \
+forge script script/DeploySafeModules.s.sol:DeploySafeModules \
   --rpc-url $BASE_RPC_URL \
   --broadcast --verify \
   --etherscan-api-key $BASESCAN_API_KEY
 
 # 6. Adresleri kaydet! Çıktıda göreceksin:
-# WalletFactory: 0x...
-# LedgerAnchor: 0x...
-# AgentRegistry: 0x...
+# SardisPolicyModule: 0x...
+# SardisLedgerAnchor: 0x...
+# RefundProtocol: 0x...
+# (Safe, EAS, Permit2 zaten pre-deployed)
 ```
 
 ### Gün 2: Database Migration (15 dk)
@@ -466,9 +472,9 @@ TURNKEY_API_PRIVATE_KEY=<hex-private-key>
 TURNKEY_ORGANIZATION_ID=<uuid>
 
 # Smart Contract Adresleri (deploy sonrası doldur)
-SARDIS_BASE_WALLET_FACTORY_ADDRESS=0x...
-SARDIS_BASE_LEDGER_ANCHOR_ADDRESS=0x...
-SARDIS_BASE_AGENT_REGISTRY_ADDRESS=0x...
+SARDIS_POLICY_MODULE_BASE=0x...
+SARDIS_LEDGER_ANCHOR_BASE=0x...
+SARDIS_REFUND_PROTOCOL_BASE=0x...
 
 # ═══════════════════════════════════════════════════
 # ÖNEMLİ (production'da olması gereken)
