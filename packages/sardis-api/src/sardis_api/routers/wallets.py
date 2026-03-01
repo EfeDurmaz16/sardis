@@ -1703,21 +1703,51 @@ async def generate_onramp_url(
 
 
 # ── Coinbase Offramp (USDC → Fiat) ──────────────────────────────────────────
+# Flow: https://docs.cdp.coinbase.com/onramp-&-offramp/onramp-apis/onramp-overview
+#
+# 1. POST /{wallet_id}/offramp          → returns offramp_url + offramp_id
+# 2. User opens offramp_url             → completes KYC + selects bank in Coinbase widget
+# 3. GET /{wallet_id}/offramp/{id}/status → poll for to_address from Coinbase
+# 4. POST /{wallet_id}/offramp/{id}/execute → Sardis sends USDC to Coinbase's to_address
+# 5. Coinbase processes → fiat to user's bank
 
 
 class OfframpRequest(BaseModel):
     """Request to generate a fiat off-ramp URL."""
     source_chain: str = Field(default="base", description="Chain holding the USDC")
     amount: Optional[str] = Field(default=None, description="USDC amount to cash out")
+    redirect_url: Optional[str] = Field(default=None, description="URL to redirect after offramp")
 
 
 class OfframpResponse(BaseModel):
     """Coinbase Offramp URL response."""
     offramp_url: str
+    offramp_id: str
     wallet_id: str
     source_address: str
     source_chain: str
     asset: str = "USDC"
+    next_step: str = "User must open offramp_url, then call /offramp/{offramp_id}/status"
+
+
+class OfframpStatusResponse(BaseModel):
+    """Offramp transaction status from Coinbase."""
+    offramp_id: str
+    status: str  # initiated | pending_send | sending | completed | failed
+    to_address: Optional[str] = None
+    sell_amount: Optional[str] = None
+    asset: Optional[str] = None
+    network: Optional[str] = None
+    next_step: Optional[str] = None
+
+
+class OfframpExecuteResponse(BaseModel):
+    """Result of executing the on-chain send to Coinbase."""
+    offramp_id: str
+    tx_hash: str
+    amount: str
+    to_address: str
+    status: str = "sent"
 
 
 @router.post("/{wallet_id}/offramp", response_model=OfframpResponse)
@@ -1726,13 +1756,15 @@ async def generate_offramp_url(
     request: OfframpRequest,
     principal: Principal = Depends(require_principal),
 ) -> OfframpResponse:
-    """Generate a Coinbase Offramp URL for cashing out USDC to fiat.
+    """Step 1: Generate a Coinbase Offramp URL for cashing out USDC to fiat.
 
-    Coinbase Offramp allows agents to convert USDC earnings to fiat
-    via bank transfer. The user completes KYC and withdrawal through
-    Coinbase's hosted flow.
+    USDC offramp is ZERO FEE on Coinbase (0% for amounts under $5M/30 days).
+    After generating the URL, the user must open it to complete KYC and
+    select their bank account. Then call /offramp/{offramp_id}/status to
+    get the Coinbase deposit address, and /offramp/{offramp_id}/execute
+    to send USDC on-chain.
 
-    Reference: https://docs.cdp.coinbase.com/onramp/docs/offramp-overview
+    Reference: https://docs.cdp.coinbase.com/onramp-&-offramp/onramp-apis/onramp-overview
     """
     row = await Database.fetchrow(
         "SELECT w.*, a.organization_id FROM wallets w JOIN agents a ON w.agent_id = a.id WHERE w.external_id = $1",
@@ -1741,7 +1773,6 @@ async def generate_offramp_url(
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="wallet_not_found")
 
-    # Get wallet address for the source chain
     addresses = row.get("addresses") or {}
     chain = request.source_chain
     source_address = addresses.get(chain) or row.get("chain_address")
@@ -1762,8 +1793,18 @@ async def generate_offramp_url(
     }
     network = chain_to_network.get(chain, "base")
 
+    # Generate a unique offramp ID for tracking
+    offramp_id = f"ofr_{uuid.uuid4().hex[:16]}"
+    partner_user_ref = f"{principal.organization_id}:{wallet_id}"
+    redirect_url = request.redirect_url or os.getenv(
+        "SARDIS_API_BASE_URL", "https://sardis.sh"
+    )
+
+    # Coinbase Offramp v3 URL format
     params = {
         "appId": os.getenv("COINBASE_APP_ID", "sardis"),
+        "partnerUserRef": partner_user_ref,
+        "redirectUrl": redirect_url,
         "addresses": f'{{"0x{source_address[2:] if source_address.startswith("0x") else source_address}":[\"{network}\"]}}',
         "assets": '["USDC"]',
         "defaultAsset": "USDC",
@@ -1772,16 +1813,185 @@ async def generate_offramp_url(
     if request.amount:
         params["presetCryptoAmount"] = request.amount
 
-    offramp_url = f"https://pay.coinbase.com/sell/input?{urllib.parse.urlencode(params)}"
+    offramp_url = f"https://pay.coinbase.com/v3/sell/input?{urllib.parse.urlencode(params)}"
+
+    # Persist offramp record for tracking the multi-step flow
+    await Database.execute(
+        """INSERT INTO offramp_transactions
+           (offramp_id, wallet_id, organization_id, source_address, source_chain,
+            amount, status, partner_user_ref, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+           ON CONFLICT (offramp_id) DO NOTHING""",
+        offramp_id,
+        wallet_id,
+        principal.organization_id,
+        source_address,
+        chain,
+        request.amount or "0",
+        "initiated",
+        partner_user_ref,
+    )
 
     logger.info(
-        "Generated offramp URL: wallet=%s, chain=%s, address=%s",
-        wallet_id, chain, source_address[:10] + "...",
+        "Generated offramp URL: wallet=%s, chain=%s, offramp_id=%s",
+        wallet_id, chain, offramp_id,
     )
 
     return OfframpResponse(
         offramp_url=offramp_url,
+        offramp_id=offramp_id,
         wallet_id=wallet_id,
         source_address=source_address,
         source_chain=chain,
+    )
+
+
+@router.get("/{wallet_id}/offramp/{offramp_id}/status", response_model=OfframpStatusResponse)
+async def get_offramp_status(
+    wallet_id: str,
+    offramp_id: str,
+    principal: Principal = Depends(require_principal),
+) -> OfframpStatusResponse:
+    """Step 2: Check offramp status and get Coinbase's deposit address.
+
+    After the user completes the Coinbase widget, poll this endpoint to get
+    the `to_address` where USDC must be sent. Once `to_address` is available,
+    call POST /offramp/{offramp_id}/execute to send USDC on-chain.
+
+    Note: Offramp transactions time out 30 minutes after user clicks
+    'Cash out now' in the Coinbase widget.
+    """
+    row = await Database.fetchrow(
+        """SELECT * FROM offramp_transactions
+           WHERE offramp_id = $1 AND wallet_id = $2""",
+        offramp_id, wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="offramp_not_found")
+
+    current_status = row.get("status", "initiated")
+    to_address = row.get("coinbase_to_address")
+    sell_amount = row.get("sell_amount")
+
+    # If we already have the to_address, return it
+    if to_address:
+        next_step = "Call POST /offramp/{offramp_id}/execute to send USDC"
+        if current_status in ("sent", "completed"):
+            next_step = None
+    else:
+        next_step = "Waiting for user to complete Coinbase widget. Poll again."
+
+    # In production, poll Coinbase Transaction Status API here:
+    # GET https://api.developer.coinbase.com/onramp/v1/sell/user/{partnerUserRef}/transactions
+    # This returns the to_address, sell_amount, asset, and network
+    # For now, the to_address is populated via webhook or manual update
+
+    return OfframpStatusResponse(
+        offramp_id=offramp_id,
+        status=current_status,
+        to_address=to_address,
+        sell_amount=sell_amount,
+        asset=row.get("asset", "USDC"),
+        network=row.get("source_chain", "base"),
+        next_step=next_step,
+    )
+
+
+@router.post("/{wallet_id}/offramp/{offramp_id}/execute", response_model=OfframpExecuteResponse)
+async def execute_offramp_send(
+    wallet_id: str,
+    offramp_id: str,
+    principal: Principal = Depends(require_principal),
+) -> OfframpExecuteResponse:
+    """Step 3: Send USDC on-chain to Coinbase's deposit address.
+
+    This creates the actual blockchain transaction to send USDC from the
+    agent wallet to Coinbase's managed address. After this, Coinbase
+    validates the transaction and deposits fiat to the user's bank.
+
+    Prerequisites:
+    - User must have completed the Coinbase widget (status endpoint returns to_address)
+    - Wallet must have sufficient USDC balance
+    - Must execute within 30 minutes of user clicking 'Cash out now'
+    """
+    row = await Database.fetchrow(
+        """SELECT * FROM offramp_transactions
+           WHERE offramp_id = $1 AND wallet_id = $2""",
+        offramp_id, wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="offramp_not_found")
+
+    to_address = row.get("coinbase_to_address")
+    if not to_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="coinbase_to_address_not_ready. Poll /status until to_address is available.",
+        )
+
+    current_status = row.get("status", "initiated")
+    if current_status in ("sent", "completed"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Offramp already in status '{current_status}'",
+        )
+
+    sell_amount = row.get("sell_amount") or row.get("amount")
+    if not sell_amount or sell_amount == "0":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="sell_amount not set. User may not have completed the Coinbase widget.",
+        )
+
+    source_address = row.get("source_address")
+    chain = row.get("source_chain", "base")
+
+    # Execute on-chain USDC send via the wallet's MPC signer
+    # This uses the same execution path as normal payments
+    from sardis_api.dependencies import get_chain_executor
+
+    chain_exec = get_chain_executor()
+    if chain_exec is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="chain_executor_not_available",
+        )
+
+    try:
+        tx_result = await chain_exec.dispatch_payment(
+            from_address=source_address,
+            to_address=to_address,
+            amount_usdc=sell_amount,
+            chain=chain,
+            wallet_id=wallet_id,
+            memo=f"Coinbase Offramp {offramp_id}",
+        )
+        tx_hash = getattr(tx_result, "tx_hash", str(tx_result))
+    except Exception as e:
+        logger.error("Offramp on-chain send failed: offramp_id=%s error=%s", offramp_id, e)
+        await Database.execute(
+            "UPDATE offramp_transactions SET status = $1, error = $2 WHERE offramp_id = $3",
+            "failed", str(e), offramp_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"on_chain_send_failed: {e}",
+        )
+
+    # Update offramp record
+    await Database.execute(
+        "UPDATE offramp_transactions SET status = $1, tx_hash = $2, sent_at = NOW() WHERE offramp_id = $3",
+        "sent", tx_hash, offramp_id,
+    )
+
+    logger.info(
+        "Offramp USDC sent: offramp_id=%s tx_hash=%s amount=%s to=%s",
+        offramp_id, tx_hash, sell_amount, to_address[:10] + "...",
+    )
+
+    return OfframpExecuteResponse(
+        offramp_id=offramp_id,
+        tx_hash=tx_hash,
+        amount=sell_amount,
+        to_address=to_address,
     )

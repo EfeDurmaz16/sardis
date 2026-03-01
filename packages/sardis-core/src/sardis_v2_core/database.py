@@ -1044,6 +1044,27 @@ CREATE TABLE IF NOT EXISTS bridge_transfers (
 
 CREATE INDEX IF NOT EXISTS idx_bridge_transfers_wallet ON bridge_transfers(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_bridge_transfers_status ON bridge_transfers(status);
+
+CREATE TABLE IF NOT EXISTS offramp_transactions (
+    offramp_id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    source_address TEXT NOT NULL,
+    source_chain TEXT NOT NULL DEFAULT 'base',
+    amount TEXT DEFAULT '0',
+    sell_amount TEXT,
+    asset TEXT DEFAULT 'USDC',
+    status TEXT DEFAULT 'initiated',
+    partner_user_ref TEXT,
+    coinbase_to_address TEXT,
+    tx_hash TEXT,
+    error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    sent_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_offramp_wallet ON offramp_transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_offramp_status ON offramp_transactions(status);
 """
 
 
