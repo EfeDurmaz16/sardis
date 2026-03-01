@@ -152,14 +152,23 @@ class ConfidenceRouter:
         # routing = {"approval_type": "auto_approve", "required_approvers": [], "timeout": 0}
     """
 
-    def __init__(self, thresholds: Optional[ConfidenceThresholds] = None):
+    def __init__(
+        self,
+        thresholds: Optional[ConfidenceThresholds] = None,
+        manager_approvers: Optional[list[str]] = None,
+        multisig_approvers: Optional[list[str]] = None,
+    ):
         """
         Initialize confidence router.
 
         Args:
             thresholds: Custom confidence thresholds (uses defaults if None)
+            manager_approvers: Approver IDs for manager-level approval
+            multisig_approvers: Approver IDs for multi-sig approval
         """
         self.thresholds = thresholds or ConfidenceThresholds()
+        self._manager_approvers = manager_approvers or []
+        self._multisig_approvers = multisig_approvers or []
 
     @staticmethod
     def _build_history_stats(history: list[dict[str, Any]]) -> dict[str, Any]:
@@ -378,14 +387,14 @@ class ConfidenceRouter:
         elif confidence.level == ConfidenceLevel.MANAGER_APPROVAL:
             return {
                 "approval_type": confidence.level.value,
-                "required_approvers": ["manager_default"],  # Placeholder - caller should override
+                "required_approvers": self._manager_approvers,
                 "timeout": 3600,  # 1 hour
                 "quorum": 1,
             }
         elif confidence.level == ConfidenceLevel.MULTI_SIG:
             return {
                 "approval_type": confidence.level.value,
-                "required_approvers": ["approver_1", "approver_2"],  # Placeholder - caller should override
+                "required_approvers": self._multisig_approvers,
                 "timeout": 86400,  # 24 hours
                 "quorum": 2,
             }

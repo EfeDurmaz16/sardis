@@ -445,10 +445,19 @@ class FiatPaymentOrchestrator:
 
         try:
             # 1. Create off-ramp session
-            # In production, this would get bank account from Treasury
+            import os
+            bank_account_number = os.getenv("SARDIS_TREASURY_ACCOUNT_NUMBER", "")
+            bank_routing_number = os.getenv("SARDIS_TREASURY_ROUTING_NUMBER", "")
+            if not bank_account_number or not bank_routing_number:
+                if os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                    raise RuntimeError(
+                        "Production requires SARDIS_TREASURY_ACCOUNT_NUMBER and "
+                        "SARDIS_TREASURY_ROUTING_NUMBER environment variables"
+                    )
+                logger.warning("Using empty bank account details for off-ramp (non-prod)")
             bank_account = {
-                "account_number": "placeholder",
-                "routing_number": "placeholder",
+                "account_number": bank_account_number,
+                "routing_number": bank_routing_number,
             }
 
             ramp_session = await self._ramp_router.get_best_offramp(

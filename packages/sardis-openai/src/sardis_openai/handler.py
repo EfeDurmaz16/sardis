@@ -98,7 +98,7 @@ class SardisToolHandler:
             )
             return {
                 "status": "success",
-                "tx_hash": getattr(result, "tx_hash", "simulated"),
+                "tx_hash": getattr(result, "tx_hash", None),
                 "amount": args["amount"],
                 "token": args["token"],
                 "to": args["to"],
@@ -155,7 +155,7 @@ class SardisToolHandler:
             )
             return {
                 "status": "created",
-                "card_id": getattr(card, "card_id", "simulated"),
+                "card_id": getattr(card, "card_id", None),
                 "last_four": getattr(card, "last_four", "0000"),
                 "spending_limit": args["spending_limit"],
             }
