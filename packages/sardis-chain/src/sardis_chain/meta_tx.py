@@ -358,11 +358,6 @@ class MetaTransactionRelayer:
 
         # Encode call to forwarder.execute(ForwardRequest, signature)
         # Function selector: execute((address,address,uint256,uint256,uint256,bytes),bytes)
-        # This would normally use web3.py's contract encoding
-        # For now, we'll use a simplified version
-
-        # TODO: Replace with actual contract call encoding
-        # This requires the forwarder contract ABI
         call_data = self._encode_execute_call(request)
 
         # Build transaction
