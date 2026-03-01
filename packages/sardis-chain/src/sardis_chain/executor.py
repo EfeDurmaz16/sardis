@@ -166,9 +166,11 @@ CHAIN_CONFIGS = {
         "native_token": "ETH",
         "block_time": 2,
     },
-    # Solana (different architecture - requires separate handling)
-    # NOTE: Solana support is EXPERIMENTAL and NOT YET IMPLEMENTED
-    # Requires Anchor programs instead of Solidity contracts
+    # ── Solana ──────────────────────────────────────────────────────
+    # ROADMAP: Solana support planned for Q3 2026.
+    # Requires Anchor programs instead of Solidity contracts.
+    # These entries are kept for config completeness but all execution
+    # paths raise NotImplementedError until Solana support ships.
     "solana_devnet": {
         "chain_id": 0,  # Solana doesn't use chain IDs like EVM
         "rpc_url": "https://api.devnet.solana.com",
@@ -1779,8 +1781,12 @@ class ChainExecutor:
         if bundler_url:
             self._bundler = BundlerClient(BundlerConfig(url=bundler_url))
 
-        # Select paymaster provider: circle (USDC gas, no API key) or pimlico (sponsor model)
-        paymaster_provider = os.getenv("SARDIS_PAYMASTER_PROVIDER", "pimlico").strip().lower()
+        # Select paymaster provider via SARDIS_PAYMASTER_PROVIDER env var.
+        # "circle" (default): permissionless, users pay gas in USDC via Circle Paymaster v0.8.
+        #   Mainnet address (all chains): 0x0578cFB241215b77442a541325d6A4E6dFE700Ec
+        #   Testnet address (all chains): 0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966
+        # "custom": use existing Pimlico sponsor model paymaster (requires SARDIS_PIMLICO_PAYMASTER_URL).
+        paymaster_provider = os.getenv("SARDIS_PAYMASTER_PROVIDER", "circle").strip().lower()
 
         if paymaster_provider == "circle":
             # Circle Paymaster: permissionless, users pay gas in USDC
@@ -1794,9 +1800,9 @@ class ChainExecutor:
                     "Circle Paymaster selected but no bundler URL configured. "
                     "Set SARDIS_PIMLICO_BUNDLER_URL for bundler access."
                 )
-        elif paymaster_url:
+        elif paymaster_provider == "custom" and paymaster_url:
             self._paymaster = PaymasterClient(PaymasterConfig(url=paymaster_url))
-            logger.info("Pimlico Paymaster enabled (sponsor model)")
+            logger.info("Custom Paymaster enabled (Pimlico sponsor model)")
 
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""

@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT
+// DEPRECATED: This contract has been superseded by Circle Paymaster (permissionless, no deployment needed).
+// Circle Paymaster address (all chains): 0x0578cFB241215b77442a541325d6A4E6dFE700Ec
+// Kept for reference only — do NOT deploy to mainnet.
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";

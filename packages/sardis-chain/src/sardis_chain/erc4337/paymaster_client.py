@@ -35,20 +35,24 @@ class SponsoredUserOperation:
     paymaster_post_op_gas_limit: int = 0
 
 
-# Circle Paymaster contract addresses per chain (permissionless, no API key needed)
+# Circle Paymaster v0.8 mainnet addresses (all chains, permissionless, no API key needed)
+# Reference: https://developers.circle.com/paymaster
 CIRCLE_PAYMASTER_ADDRESSES: dict[str, str] = {
-    "base": "0x6C973eBe80dCD8660841D4356bf15c32460271C9",
-    "arbitrum": "0x6C973eBe80dCD8660841D4356bf15c32460271C9",
+    "base": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+    "arbitrum": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+    "ethereum": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+    "optimism": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+    "polygon": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+    "avalanche": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
 }
 
-# Circle Paymaster v0.8 addresses
+# Circle Paymaster v0.8 testnet addresses (all testnets)
 CIRCLE_PAYMASTER_V08_ADDRESSES: dict[str, str] = {
-    "base": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
-    "arbitrum": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
-    "ethereum": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
-    "optimism": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
-    "polygon": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
-    "avalanche": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
+    "base_sepolia": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
+    "arbitrum_sepolia": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
+    "ethereum_sepolia": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
+    "optimism_sepolia": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
+    "polygon_amoy": "0x3BA9A96eE3eFf3A69E2B18886AcF52027EFF8966",
 }
 
 # USDC addresses for paymaster approval
@@ -126,14 +130,22 @@ class CirclePaymasterClient:
         self._client = httpx.AsyncClient(timeout=timeout_seconds)
 
     def get_paymaster_address(self, chain: str) -> str:
-        """Get Circle Paymaster address for a given chain."""
-        if self._version == "v0.8":
-            addr = CIRCLE_PAYMASTER_V08_ADDRESSES.get(chain)
-        else:
-            addr = CIRCLE_PAYMASTER_ADDRESSES.get(chain)
+        """Get Circle Paymaster address for a given chain.
+
+        Testnet chains (base_sepolia, arbitrum_sepolia, etc.) use the testnet address.
+        All mainnet chains use the v0.8 mainnet address.
+        """
+        # Testnet chains are in the V08 testnet dict
+        addr = CIRCLE_PAYMASTER_V08_ADDRESSES.get(chain)
+        if addr:
+            return addr
+        # Mainnet chains
+        addr = CIRCLE_PAYMASTER_ADDRESSES.get(chain)
         if not addr:
             raise ValueError(
-                f"Circle Paymaster not available on '{chain}' for {self._version}"
+                f"Circle Paymaster not available on '{chain}'. "
+                f"Mainnet chains: {list(CIRCLE_PAYMASTER_ADDRESSES.keys())}. "
+                f"Testnet chains: {list(CIRCLE_PAYMASTER_V08_ADDRESSES.keys())}."
             )
         return addr
 
@@ -193,8 +205,8 @@ class CirclePaymasterClient:
             raise ValueError(f"USDC not configured for chain '{chain}'")
 
         paymaster = (
-            CIRCLE_PAYMASTER_ADDRESSES.get(chain)
-            or CIRCLE_PAYMASTER_V08_ADDRESSES.get(chain)
+            CIRCLE_PAYMASTER_V08_ADDRESSES.get(chain)
+            or CIRCLE_PAYMASTER_ADDRESSES.get(chain)
         )
         if not paymaster:
             raise ValueError(f"Circle Paymaster not available on '{chain}'")
