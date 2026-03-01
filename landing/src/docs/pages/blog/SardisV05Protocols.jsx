@@ -206,8 +206,9 @@ await agent.serve()`}
         <h2>What's Next</h2>
         <p>
           With v0.5, Sardis supports all major agent payment protocols. Our next focus
-          is expanding chain support (Solana and Cosmos coming in v0.6) and deepening
-          our compliance integrations for enterprise customers.
+          is deepening our compliance integrations for enterprise customers. Solana
+          support is planned for Q3 2026 (requires Anchor programs); Cosmos is on the
+          roadmap for a future release.
         </p>
         <p>
           We're also working on a visual policy builder that lets you design complex
