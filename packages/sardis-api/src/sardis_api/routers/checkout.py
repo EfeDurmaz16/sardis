@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json as _json
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -253,3 +254,24 @@ async def handle_psp_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Webhook processing failed: {str(e)}",
         )
+
+
+@router.get("/checkout/payment-methods")
+async def get_payment_methods(
+    principal: Principal = Depends(require_principal),
+):
+    """Return enabled payment methods for the checkout."""
+    configured = os.getenv(
+        "SARDIS_CHECKOUT_PAYMENT_METHODS", "card,apple_pay,google_pay,link"
+    ).split(",")
+
+    methods = []
+    for m in configured:
+        m = m.strip()
+        if m:
+            methods.append({
+                "id": m,
+                "enabled": True,
+                "requires_activation": m in ("klarna", "paypal"),
+            })
+    return {"payment_methods": methods}

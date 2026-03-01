@@ -962,4 +962,52 @@ def create_cards_router(
             fn=_process,
         )
 
+    class ProvisionWalletRequest(BaseModel):
+        """Request to provision a card for digital wallet."""
+        pass  # No additional fields needed
+
+    @r.post("/cards/{card_id}/provision/apple-pay", dependencies=auth_deps)
+    async def provision_apple_pay(
+        card_id: str,
+        principal: Principal = Depends(require_principal),
+    ):
+        """Provision a Sardis-issued card for Apple Pay.
+
+        Returns ephemeral key and provisioning data for the mobile SDK
+        to add the card to Apple Wallet.
+        """
+        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+
+        try:
+            provider = StripeIssuingProvider()
+            result = await provider.provision_apple_pay(card_id)
+            return result
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Apple Pay provisioning failed: {str(e)}",
+            )
+
+    @r.post("/cards/{card_id}/provision/google-pay", dependencies=auth_deps)
+    async def provision_google_pay(
+        card_id: str,
+        principal: Principal = Depends(require_principal),
+    ):
+        """Provision a Sardis-issued card for Google Pay.
+
+        Returns ephemeral key and provisioning data for the mobile SDK
+        to add the card to Google Wallet.
+        """
+        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+
+        try:
+            provider = StripeIssuingProvider()
+            result = await provider.provision_google_pay(card_id)
+            return result
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Google Pay provisioning failed: {str(e)}",
+            )
+
     return r
