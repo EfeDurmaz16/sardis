@@ -57,6 +57,7 @@ class BridgeTransfer:
     to_chain: str = ""
     amount: Decimal = Decimal("0")
     token: str = "USDC"
+    source_domain: Optional[int] = None
     message_hash: Optional[str] = None
     source_tx_hash: Optional[str] = None
     destination_tx_hash: Optional[str] = None
@@ -74,6 +75,7 @@ class BridgeTransfer:
             "amount": str(self.amount),
             "token": self.token,
             "message_hash": self.message_hash,
+            "source_domain": self.source_domain,
             "source_tx_hash": self.source_tx_hash,
             "destination_tx_hash": self.destination_tx_hash,
             "status": self.status.value,
@@ -144,10 +146,12 @@ class CCTPBridgeService:
         )
 
         try:
+            source_domain = get_cctp_domain(from_chain)
             dest_domain = get_cctp_domain(to_chain)
             token_messenger = TOKEN_MESSENGER_ADDRESSES[from_chain]
             usdc_address = USDC_ADDRESSES[from_chain]
             amount_minor = int(amount * Decimal("1000000"))  # USDC has 6 decimals
+            transfer.source_domain = source_domain
 
             if self._chain_executor is None:
                 # Simulated mode
@@ -206,12 +210,22 @@ class CCTPBridgeService:
             logger.error(f"Bridge {transfer.transfer_id} failed: {e}")
             return transfer
 
-    async def get_bridge_status(self, message_hash: str) -> dict:
+    async def get_bridge_status(
+        self,
+        message_hash: str,
+        *,
+        source_domain: int | None = None,
+        source_tx_hash: str | None = None,
+    ) -> dict:
         """
         Check attestation status for a bridge transfer.
 
+        CCTP V2 API format: GET /v2/messages/{sourceDomain}?transactionHash={txHash}
+
         Args:
-            message_hash: Message hash from depositForBurn transaction
+            message_hash: Message hash from depositForBurn transaction (legacy, used as fallback)
+            source_domain: CCTP domain ID of the source chain
+            source_tx_hash: Transaction hash on the source chain
 
         Returns:
             Dict with status and optional attestation data
@@ -219,17 +233,27 @@ class CCTPBridgeService:
         try:
             import aiohttp
             async with aiohttp.ClientSession() as session:
-                url = f"{self._attestation_url}/{message_hash}"
+                if source_domain is not None and source_tx_hash:
+                    # V2 API: query by source domain + transaction hash
+                    url = f"{self._attestation_url}/{source_domain}?transactionHash={source_tx_hash}"
+                else:
+                    # Fallback: use message hash directly
+                    url = f"{self._attestation_url}/0?transactionHash={message_hash}"
+
                 async with session.get(url) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        return {
-                            "status": data.get("status", "pending"),
-                            "attestation": data.get("attestation"),
-                        }
+                        messages = data.get("messages", [])
+                        if messages:
+                            msg = messages[0]
+                            return {
+                                "status": msg.get("status", "pending"),
+                                "attestation": msg.get("attestation"),
+                                "message": msg.get("message"),
+                            }
+                        return {"status": "pending", "attestation": None}
                     return {"status": "pending", "attestation": None}
         except ImportError:
-            # aiohttp not available, return pending
             logger.warning("aiohttp not available for attestation polling")
             return {"status": "pending", "attestation": None}
         except Exception as e:
