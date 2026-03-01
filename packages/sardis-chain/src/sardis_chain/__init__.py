@@ -55,10 +55,10 @@ from .executor import (
     FailoverMPCSigner,
     SimulatedMPCSigner,
     get_sardis_contract_address,
-    get_sardis_wallet_factory,
-    get_sardis_escrow,
+    get_sardis_policy_module,
     get_sardis_ledger_anchor,
     get_sardis_agent_registry,
+    SAFE_INFRASTRUCTURE,
 )
 from .deposit_monitor import (
     DepositMonitor,

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/SardisWalletFactory.sol";
-import "../src/SardisAgentWallet.sol";
-import "../src/SardisEscrow.sol";
+import "./SardisWalletFactory.sol";
+import "./SardisAgentWallet.sol";
+import "./SardisEscrow.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockUSDC is ERC20 {

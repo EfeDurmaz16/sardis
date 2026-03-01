@@ -67,7 +67,7 @@ class Wallet(BaseModel):
     wallet_id: str
     agent_id: str
     mpc_provider: str = Field(default="turnkey")  # "turnkey" | "fireblocks" | "local"
-    account_type: Literal["mpc_v1", "erc4337_v2"] = Field(default="mpc_v1")
+    account_type: Literal["mpc_v1", "erc4337_v2", "safe_v1"] = Field(default="mpc_v1")
     addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping
     currency: str = Field(default="USDC")  # Default currency for display
     token_limits: dict[str, TokenLimit] = Field(default_factory=dict)  # Token-specific limits
@@ -104,7 +104,7 @@ class Wallet(BaseModel):
         agent_id: str,
         *,
         mpc_provider: str = "turnkey",
-        account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1",
+        account_type: Literal["mpc_v1", "erc4337_v2", "safe_v1"] = "mpc_v1",
         currency: str = "USDC",
         wallet_id: str | None = None,
     ) -> "Wallet":

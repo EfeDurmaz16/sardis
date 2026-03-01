@@ -273,13 +273,13 @@ def create_health_router(
         # Smart contracts
         checks_total += 1
         try:
-            from sardis_chain.executor import get_sardis_wallet_factory
+            from sardis_chain.executor import get_sardis_policy_module
 
-            contract_addr = get_sardis_wallet_factory(target_chain)
+            contract_addr = get_sardis_policy_module(target_chain)
             if contract_addr and contract_addr.startswith("0x") and len(contract_addr) == 42:
                 components["contracts"] = {
                     "status": "configured",
-                    "wallet_factory": contract_addr[:10] + "...",
+                    "policy_module": contract_addr[:10] + "...",
                     "chain": target_chain,
                 }
                 checks_passed += 1

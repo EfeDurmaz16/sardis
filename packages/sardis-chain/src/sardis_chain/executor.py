@@ -247,97 +247,81 @@ STABLECOIN_ADDRESSES = {
     },
 }
 
+# Safe Smart Account infrastructure (canonical, same on all EVM chains)
+# These are deployed by Safe Global via CREATE2 — no deployment needed.
+SAFE_INFRASTRUCTURE = {
+    "proxy_factory": "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
+    "safe_singleton": "0x41675C099F32341bf84BFc5382aF534df5C7461a",  # v1.4.1
+    "safe_4337_module": "0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226",
+    "multi_send": "0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526",
+    "fallback_handler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+}
+
 # Sardis contract addresses by chain (populated after deployment)
 #
 # Environment variable overrides (format: SARDIS_{CHAIN}_{CONTRACT}_ADDRESS)
-# Example: SARDIS_BASE_WALLET_FACTORY_ADDRESS=0x...
+# Example: SARDIS_BASE_POLICY_MODULE_ADDRESS=0x...
 #
-# Deployment order (testnets first, then mainnets):
-#   1. Base Sepolia (primary testnet)  -- DEPLOYED
-#   2. Polygon Amoy, Ethereum Sepolia, Arbitrum Sepolia, Optimism Sepolia
-#   3. Base mainnet (first production chain)
-#   4. Polygon, Arbitrum, Optimism mainnets
-#   5. Ethereum mainnet (highest gas, last)
+# Only contracts WE deploy are listed here:
+#   - policy_module: SardisPolicyModule (Safe module for spending policies)
+#   - agent_registry: SardisAgentRegistry (agent identity)
+#   - ledger_anchor: SardisLedgerAnchor (audit trail anchoring)
 #
-# Mainnet deployment note:
-#   Contracts are non-custodial (no funds held in contracts themselves).
-#   The WalletFactory creates deterministic CREATE2 wallets and the Escrow
-#   holds funds only during active agent-to-agent trades (time-bounded).
-#   A formal audit is strongly recommended before mainnet deployment but
-#   is not strictly required for non-custodial factory/registry contracts.
+# Safe infrastructure (proxy factory, singleton, 4337 module) is already
+# deployed on all chains — see SAFE_INFRASTRUCTURE above.
 #   Set env var SARDIS_ALLOW_UNAUDITED_MAINNET=1 to deploy without audit.
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
-        "wallet_factory": "0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
-        "escrow": "0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "polygon_amoy": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "ethereum_sepolia": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "arbitrum_sepolia": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "optimism_sepolia": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     # Mainnets - set addresses after deployment via env vars or here
     "base": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "polygon": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "ethereum": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "arbitrum": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     "optimism": {
-        "wallet_factory": "",
-        "escrow": "",
+        "policy_module": "",
         "agent_registry": "",
         "ledger_anchor": "",
-        "smart_account_factory": "",
     },
     # Solana - uses Anchor programs instead of Solidity contracts
     # NOTE: Solana integration is EXPERIMENTAL
@@ -363,18 +347,13 @@ def get_sardis_contract_address(chain: str, contract_type: str) -> str:
 
     Args:
         chain: Chain name (e.g., "base_sepolia", "polygon_amoy")
-        contract_type: Contract type ("wallet_factory" or "escrow")
+        contract_type: Contract type ("policy_module", "agent_registry", "ledger_anchor")
 
     Returns:
         Contract address or empty string if not configured
 
     Raises:
         ValueError: If chain is Solana (not implemented)
-
-    Example:
-        >>> os.environ["SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS"] = "0x123..."
-        >>> get_sardis_contract_address("base_sepolia", "wallet_factory")
-        '0x123...'
     """
     chain_config = SARDIS_CONTRACTS.get(chain, {})
 
@@ -395,14 +374,9 @@ def get_sardis_contract_address(chain: str, contract_type: str) -> str:
     return chain_config.get(contract_type, "")
 
 
-def get_sardis_wallet_factory(chain: str) -> str:
-    """Get SardisWalletFactory address for a chain."""
-    return get_sardis_contract_address(chain, "wallet_factory")
-
-
-def get_sardis_escrow(chain: str) -> str:
-    """Get SardisEscrow address for a chain."""
-    return get_sardis_contract_address(chain, "escrow")
+def get_sardis_policy_module(chain: str) -> str:
+    """Get SardisPolicyModule address for a chain."""
+    return get_sardis_contract_address(chain, "policy_module")
 
 
 def get_sardis_ledger_anchor(chain: str) -> str:
@@ -419,9 +393,9 @@ def is_chain_configured(chain: str) -> bool:
     """
     Check if a chain has Sardis contracts configured.
 
-    Returns True if either:
-    - Environment variables are set for the chain, OR
-    - Hardcoded addresses are present in SARDIS_CONTRACTS
+    Returns True if:
+    - Chain exists in SARDIS_CONTRACTS (Safe infrastructure is always available on supported EVM chains)
+    - policy_module is deployed (via env var or hardcoded address)
     """
     if chain not in SARDIS_CONTRACTS:
         return False
@@ -432,9 +406,14 @@ def is_chain_configured(chain: str) -> bool:
     if chain_config.get("not_implemented"):
         return False
 
-    # Check for wallet_factory (required)
-    wallet_factory = get_sardis_wallet_factory(chain)
-    return bool(wallet_factory)
+    # Solana uses different infrastructure
+    if chain_config.get("experimental"):
+        return False
+
+    # Safe infrastructure is always available on supported EVM chains.
+    # We only need our policy_module deployed.
+    policy_module = get_sardis_policy_module(chain)
+    return bool(policy_module)
 
 
 class TransactionStatus(str, Enum):

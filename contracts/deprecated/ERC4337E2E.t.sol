@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/SardisSmartAccountFactory.sol";
-import "../src/SardisSmartAccount.sol";
+import "./SardisSmartAccountFactory.sol";
+import "./SardisSmartAccount.sol";
 import "../src/SardisVerifyingPaymaster.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/draft-IERC4337.sol";
