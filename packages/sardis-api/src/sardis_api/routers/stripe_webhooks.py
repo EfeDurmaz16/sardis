@@ -5,6 +5,8 @@ import hmac
 import hashlib
 import logging
 import os
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -189,6 +191,49 @@ async def handle_stripe_webhook(
                 response = await deps.issuing_provider.handle_authorization_webhook(
                     payload, stripe_signature
                 )
+
+                # Persist authorization decision for audit trail
+                try:
+                    authorization = event_data
+                    merchant_data = authorization.get("merchant_data", {})
+                    amount_cents = authorization.get("amount", 0)
+                    card_id = authorization.get("card", {})
+                    if isinstance(card_id, dict):
+                        card_id = card_id.get("id", "")
+                    approved = response.get("approved", False)
+                    reason = (response.get("metadata") or {}).get("reason", "")
+
+                    from sardis_v2_core.database import Database
+                    async with Database.connection() as conn:
+                        await conn.execute(
+                            """INSERT INTO card_transactions
+                               (transaction_id, card_id, provider_tx_id, amount, currency,
+                                merchant_name, merchant_category, merchant_id,
+                                status, decline_reason, created_at)
+                               SELECT $1, vc.id, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                               FROM virtual_cards vc
+                               WHERE vc.provider_card_id = $2
+                               LIMIT 1""",
+                            f"auth_{authorization.get('id', uuid.uuid4().hex[:16])}",
+                            str(card_id),
+                            authorization.get("id", ""),
+                            abs(amount_cents) / 100,
+                            authorization.get("currency", "usd").upper(),
+                            merchant_data.get("name", ""),
+                            merchant_data.get("category_code", ""),
+                            merchant_data.get("network_id", ""),
+                            "approved" if approved else "declined",
+                            reason if not approved else None,
+                            datetime.now(timezone.utc),
+                        )
+                    logger.info(
+                        "Authorization decision persisted: card=%s amount=%s approved=%s",
+                        card_id, amount_cents, approved,
+                    )
+                except Exception as persist_err:
+                    # Never fail the webhook response due to persistence error
+                    logger.error("Failed to persist authorization decision: %s", persist_err)
+
                 return response
             else:
                 # Other issuing events are informational
