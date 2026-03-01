@@ -237,9 +237,11 @@ class UCPMcpTransport:
             )
             return session.to_dict()
 
-        # TODO: Implement MCP tool call to {prefix}_create_checkout
         tool_name = self.get_tool_name("create_checkout")
-        raise NotImplementedError(f"MCP tool call not yet implemented: {tool_name}")
+        raise NotImplementedError(
+            f"MCP tool call requires an MCP client connection. "
+            f"Use the local capability constructor or configure an MCP client for: {tool_name}"
+        )
 
     async def update_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Update a checkout session via MCP tool call.
@@ -264,9 +266,11 @@ class UCPMcpTransport:
             )
             return session.to_dict()
 
-        # TODO: Implement MCP tool call to {prefix}_update_checkout
         tool_name = self.get_tool_name("update_checkout")
-        raise NotImplementedError(f"MCP tool call not yet implemented: {tool_name}")
+        raise NotImplementedError(
+            f"MCP tool call requires an MCP client connection. "
+            f"Use the local capability constructor or configure an MCP client for: {tool_name}"
+        )
 
     async def complete_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Complete a checkout via MCP tool call.
@@ -291,9 +295,11 @@ class UCPMcpTransport:
             )
             return result.to_dict()
 
-        # TODO: Implement MCP tool call to {prefix}_complete_checkout
         tool_name = self.get_tool_name("complete_checkout")
-        raise NotImplementedError(f"MCP tool call not yet implemented: {tool_name}")
+        raise NotImplementedError(
+            f"MCP tool call requires an MCP client connection. "
+            f"Use the local capability constructor or configure an MCP client for: {tool_name}"
+        )
 
     async def cancel_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Cancel a checkout via MCP tool call.
@@ -310,9 +316,11 @@ class UCPMcpTransport:
             session = self._capability.cancel_checkout(session_id=session_id)
             return session.to_dict()
 
-        # TODO: Implement MCP tool call to {prefix}_cancel_checkout
         tool_name = self.get_tool_name("cancel_checkout")
-        raise NotImplementedError(f"MCP tool call not yet implemented: {tool_name}")
+        raise NotImplementedError(
+            f"MCP tool call requires an MCP client connection. "
+            f"Use the local capability constructor or configure an MCP client for: {tool_name}"
+        )
 
     async def get_checkout(self, session_id: str) -> Dict[str, Any]:
         """Get a checkout session via MCP tool call.
@@ -328,9 +336,11 @@ class UCPMcpTransport:
             session = self._capability.get_checkout(session_id=session_id)
             return session.to_dict()
 
-        # TODO: Implement MCP tool call to {prefix}_get_checkout
         tool_name = self.get_tool_name("get_checkout")
-        raise NotImplementedError(f"MCP tool call not yet implemented: {tool_name}")
+        raise NotImplementedError(
+            f"MCP tool call requires an MCP client connection. "
+            f"Use the local capability constructor or configure an MCP client for: {tool_name}"
+        )
 
 
 __all__ = [

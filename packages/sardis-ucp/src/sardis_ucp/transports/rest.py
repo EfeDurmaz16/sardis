@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Protocol
 
+import httpx
+
 from ..capabilities.checkout import UCPCheckoutCapability
 
 
@@ -133,10 +135,12 @@ class UCPRestTransport:
             )
             return session.to_dict()
 
-        # TODO: Implement HTTP POST request to {base_url}/checkout
         method, path = self.ENDPOINT_CREATE
         url = f"{self._base_url}{path}"
-        raise NotImplementedError(f"HTTP transport not yet implemented: {method} {url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=kwargs, headers={}, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
     async def update_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Update a checkout session via PATCH /checkout/{id}.
@@ -161,11 +165,13 @@ class UCPRestTransport:
             )
             return session.to_dict()
 
-        # TODO: Implement HTTP PATCH request to {base_url}/checkout/{session_id}
         method, path_template = self.ENDPOINT_UPDATE
         path = path_template.format(session_id=session_id)
         url = f"{self._base_url}{path}"
-        raise NotImplementedError(f"HTTP transport not yet implemented: {method} {url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.patch(url, json=kwargs, headers={}, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
     async def complete_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Complete a checkout via POST /checkout/{id}/complete.
@@ -190,11 +196,13 @@ class UCPRestTransport:
             )
             return result.to_dict()
 
-        # TODO: Implement HTTP POST request to {base_url}/checkout/{session_id}/complete
         method, path_template = self.ENDPOINT_COMPLETE
         path = path_template.format(session_id=session_id)
         url = f"{self._base_url}{path}"
-        raise NotImplementedError(f"HTTP transport not yet implemented: {method} {url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=kwargs, headers={}, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
     async def cancel_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Cancel a checkout via DELETE /checkout/{id}.
@@ -211,11 +219,13 @@ class UCPRestTransport:
             session = self._capability.cancel_checkout(session_id=session_id)
             return session.to_dict()
 
-        # TODO: Implement HTTP DELETE request to {base_url}/checkout/{session_id}
         method, path_template = self.ENDPOINT_CANCEL
         path = path_template.format(session_id=session_id)
         url = f"{self._base_url}{path}"
-        raise NotImplementedError(f"HTTP transport not yet implemented: {method} {url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.delete(url, headers={}, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
     async def get_checkout(self, session_id: str) -> Dict[str, Any]:
         """Get a checkout session via GET /checkout/{id}.
@@ -231,11 +241,13 @@ class UCPRestTransport:
             session = self._capability.get_checkout(session_id=session_id)
             return session.to_dict()
 
-        # TODO: Implement HTTP GET request to {base_url}/checkout/{session_id}
         method, path_template = self.ENDPOINT_GET
         path = path_template.format(session_id=session_id)
         url = f"{self._base_url}{path}"
-        raise NotImplementedError(f"HTTP transport not yet implemented: {method} {url}")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers={}, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
 
 __all__ = [
