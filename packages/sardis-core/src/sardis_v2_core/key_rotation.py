@@ -118,6 +118,12 @@ class KeyRotationManager:
         policy: Optional[KeyRotationPolicy] = None,
     ):
         self._policy = policy or KeyRotationPolicy()
+        # NOTE: Redis migration limitation — key objects contain bytes (public_key) and
+        # mutable AgentKey instances that are mutated in-place during rotation/revocation.
+        # Full async Redis migration would require converting all methods to async and
+        # serializing/deserializing AgentKey objects on every access. For now, we keep
+        # in-memory dicts as the primary store, which is process-local. A future migration
+        # should use RedisStateStore(namespace="key_rotation") with full async conversion.
         self._keys: Dict[str, Dict[str, AgentKey]] = {}  # agent_id -> key_id -> key
         self._active_keys: Dict[str, str] = {}  # agent_id -> active_key_id
         self._rotation_events: List[RotationEvent] = []

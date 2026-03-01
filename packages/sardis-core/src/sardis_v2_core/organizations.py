@@ -160,6 +160,14 @@ class OrganizationManager:
         self._dsn = dsn
         self._use_postgres = dsn.startswith(("postgresql://", "postgres://"))
 
+        # NOTE: Redis migration — production uses PostgreSQL (self._use_postgres=True).
+        # The in-memory dicts below are only used in dev/test mode (memory:// DSN).
+        # A full Redis migration of the dev/test path would require serializing
+        # Organization, Team, and OrgMember dataclasses (which use slots=True).
+        # RedisStateStore(namespace="organizations", ttl=300) is available for future use.
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._org_cache = RedisStateStore(namespace="organizations")
+
         # In-memory storage for dev/test
         self._orgs: dict[str, Organization] = {}
         self._teams: dict[str, Team] = {}

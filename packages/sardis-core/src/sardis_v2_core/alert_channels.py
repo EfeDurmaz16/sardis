@@ -432,7 +432,8 @@ class AlertDispatcher:
         self.channel_configs: dict[str, ChannelConfig] = {}
         self._severity_channel_map: dict[AlertSeverity, list[str]] = {}
         self._channel_cooldowns_seconds: dict[str, int] = {}
-        self._last_sent_at: dict[str, float] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._last_sent_store = RedisStateStore(namespace="alert_throttle")
 
     def register_channel(self, name: str, channel: AlertChannel, enabled: bool = True) -> None:
         """Register an alert channel."""
@@ -494,20 +495,22 @@ class AlertDispatcher:
         agent = alert.agent_id or "_"
         return f"{channel_name}:{alert.severity.value}:{alert.alert_type.value}:{org}:{agent}"
 
-    def _within_cooldown(self, channel_name: str, alert: Alert) -> bool:
+    async def _within_cooldown(self, channel_name: str, alert: Alert) -> bool:
         cooldown = self._channel_cooldowns_seconds.get(channel_name, 0)
         if cooldown <= 0:
             return False
         key = self._cooldown_key(channel_name, alert)
-        now = time.monotonic()
-        previous = self._last_sent_at.get(key)
-        if previous is not None and (now - previous) < cooldown:
-            return True
+        now = time.time()
+        data = await self._last_sent_store.get(key)
+        if data is not None:
+            previous = data.get("sent_at")
+            if previous is not None and (now - float(previous)) < cooldown:
+                return True
         return False
 
-    def _mark_sent(self, channel_name: str, alert: Alert) -> None:
+    async def _mark_sent(self, channel_name: str, alert: Alert) -> None:
         key = self._cooldown_key(channel_name, alert)
-        self._last_sent_at[key] = time.monotonic()
+        await self._last_sent_store.set(key, {"sent_at": time.time()}, ttl=3600)
 
     async def dispatch(self, alert: Alert, channels: Optional[list[str]] = None) -> dict[str, bool]:
         """
@@ -534,7 +537,7 @@ class AlertDispatcher:
         dispatched_channels: list[str] = []
         for channel_name in enabled_channels:
             if channel_name in self.channels:
-                if self._within_cooldown(channel_name, alert):
+                if await self._within_cooldown(channel_name, alert):
                     logger.info(
                         "AlertDispatcher: cooldown skip channel=%s alert_type=%s severity=%s",
                         channel_name,
@@ -557,7 +560,7 @@ class AlertDispatcher:
                 else:
                     results[channel_name] = result
                     if result:
-                        self._mark_sent(channel_name, alert)
+                        await self._mark_sent(channel_name, alert)
 
         return results
 

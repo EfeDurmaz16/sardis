@@ -68,9 +68,10 @@ class AnomalyDetector:
 
     def __init__(self):
         """Initialize the anomaly detector."""
-        self._baselines: Dict[str, BaselineStats] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._baselines_store = RedisStateStore(namespace="anomaly_baselines")
 
-    def detect_spending_anomaly(
+    async def detect_spending_anomaly(
         self,
         agent_id: str,
         amount: float,
@@ -99,7 +100,7 @@ class AnomalyDetector:
             )
 
         # Calculate or get baseline stats
-        baseline = self.get_agent_baseline(agent_id, transaction_history)
+        baseline = await self.get_agent_baseline(agent_id, transaction_history)
 
         # Run multiple detection methods
         z_score = self._calculate_z_score(amount, baseline)
@@ -148,7 +149,7 @@ class AnomalyDetector:
             merchant_flags=merchant_flags,
         )
 
-    def get_agent_baseline(
+    async def get_agent_baseline(
         self,
         agent_id: str,
         transaction_history: List[Dict[str, Any]],
@@ -163,12 +164,26 @@ class AnomalyDetector:
         Returns:
             BaselineStats with statistical measures
         """
-        # Check cache first
-        if agent_id in self._baselines:
-            baseline = self._baselines[agent_id]
-            # Refresh if older than 1 hour
-            if datetime.now(timezone.utc) - baseline.last_updated < timedelta(hours=1):
-                return baseline
+        # Check Redis cache first (TTL=3600 handles the 1-hour refresh)
+        cached_data = await self._baselines_store.get(agent_id)
+        if cached_data is not None:
+            try:
+                return BaselineStats(
+                    agent_id=cached_data["agent_id"],
+                    mean_amount=cached_data["mean_amount"],
+                    median_amount=cached_data["median_amount"],
+                    std_dev=cached_data["std_dev"],
+                    percentile_75=cached_data["percentile_75"],
+                    percentile_90=cached_data["percentile_90"],
+                    percentile_95=cached_data["percentile_95"],
+                    transaction_count=cached_data["transaction_count"],
+                    total_volume=cached_data["total_volume"],
+                    avg_daily_transactions=cached_data["avg_daily_transactions"],
+                    common_merchants=cached_data["common_merchants"],
+                    last_updated=datetime.fromisoformat(cached_data["last_updated"]),
+                )
+            except Exception:
+                pass  # Fall through to recalculate
 
         # Extract amounts
         amounts = [float(tx.get("amount", 0)) for tx in transaction_history]
@@ -237,7 +252,20 @@ class AnomalyDetector:
         )
 
         # Cache the baseline
-        self._baselines[agent_id] = baseline
+        await self._baselines_store.set(agent_id, {
+            "agent_id": baseline.agent_id,
+            "mean_amount": baseline.mean_amount,
+            "median_amount": baseline.median_amount,
+            "std_dev": baseline.std_dev,
+            "percentile_75": baseline.percentile_75,
+            "percentile_90": baseline.percentile_90,
+            "percentile_95": baseline.percentile_95,
+            "transaction_count": baseline.transaction_count,
+            "total_volume": baseline.total_volume,
+            "avg_daily_transactions": baseline.avg_daily_transactions,
+            "common_merchants": baseline.common_merchants,
+            "last_updated": baseline.last_updated.isoformat(),
+        }, ttl=3600)
 
         return baseline
 
@@ -316,7 +344,7 @@ class AnomalyDetector:
 
         return d0 + d1
 
-    def clear_baseline_cache(self, agent_id: Optional[str] = None) -> None:
+    async def clear_baseline_cache(self, agent_id: Optional[str] = None) -> None:
         """
         Clear cached baseline statistics.
 
@@ -325,6 +353,8 @@ class AnomalyDetector:
                      If None, clear all baselines.
         """
         if agent_id:
-            self._baselines.pop(agent_id, None)
+            await self._baselines_store.delete(agent_id)
         else:
-            self._baselines.clear()
+            all_keys = await self._baselines_store.keys("*")
+            for key in all_keys:
+                await self._baselines_store.delete(key)

@@ -208,7 +208,8 @@ class TrustScorer:
     ):
         self._weights = weights or DEFAULT_WEIGHTS.copy()
         self._cache_ttl = cache_ttl_seconds
-        self._cache: Dict[str, TrustScore] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._cache_store = RedisStateStore(namespace="trust_score_cache")
 
         # Validate weights sum to ~1.0
         total = sum(self._weights.values())
@@ -240,10 +241,30 @@ class TrustScorer:
             TrustScore with overall score, tier, and signal breakdown
         """
         # Check cache
-        if use_cache and agent_id in self._cache:
-            cached = self._cache[agent_id]
-            if not cached.is_expired:
-                return cached
+        if use_cache:
+            cached_data = await self._cache_store.get(agent_id)
+            if cached_data is not None:
+                # Reconstruct TrustScore from cached dict
+                try:
+                    signals = [
+                        TrustSignal(
+                            name=s["name"],
+                            score=s["score"],
+                            weight=s["weight"],
+                            details=s.get("details", {}),
+                        )
+                        for s in cached_data.get("signals", [])
+                    ]
+                    return TrustScore(
+                        agent_id=cached_data["agent_id"],
+                        overall=cached_data["overall"],
+                        tier=TrustTier(cached_data["tier"]),
+                        max_per_tx=Decimal(cached_data["max_per_tx"]),
+                        max_per_day=Decimal(cached_data["max_per_day"]),
+                        signals=signals,
+                    )
+                except Exception:
+                    pass  # Fall through to recalculate
 
         signals: List[TrustSignal] = []
 
@@ -286,7 +307,7 @@ class TrustScorer:
         )
 
         # Cache the score
-        self._cache[agent_id] = score
+        await self._cache_store.set(agent_id, score.to_dict(), ttl=self._cache_ttl)
 
         logger.info(
             "Trust score calculated",
@@ -299,12 +320,15 @@ class TrustScorer:
 
         return score
 
-    def invalidate_cache(self, agent_id: Optional[str] = None) -> None:
+    async def invalidate_cache(self, agent_id: Optional[str] = None) -> None:
         """Invalidate cached trust scores."""
         if agent_id:
-            self._cache.pop(agent_id, None)
+            await self._cache_store.delete(agent_id)
         else:
-            self._cache.clear()
+            # Clear all keys in the namespace
+            all_keys = await self._cache_store.keys("*")
+            for key in all_keys:
+                await self._cache_store.delete(key)
 
     def _score_kya_level(self, level: KYALevel) -> TrustSignal:
         """Score based on KYA verification level."""

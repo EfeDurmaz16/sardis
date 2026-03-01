@@ -53,6 +53,11 @@ class ComplianceReportGenerator:
     """Generate compliance reports from ledger and transaction data."""
 
     def __init__(self):
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._reports_store = RedisStateStore(namespace="compliance_reports")
+        self._schedules_store = RedisStateStore(namespace="compliance_schedules")
+        # In-memory fallback for synchronous methods (get_report, list_reports, etc.)
+        # Redis is used for async generate/create_schedule paths.
         self._reports: dict[str, ReportResult] = {}
         self._schedules: dict[str, ReportSchedule] = {}
 
@@ -66,6 +71,14 @@ class ComplianceReportGenerator:
         }
         result = await generators[config.report_type](config)
         self._reports[result.id] = result
+        # Also persist to Redis for cross-process access
+        await self._reports_store.set(result.id, {
+            "id": result.id,
+            "report_type": result.report_type.value,
+            "generated_at": result.generated_at.isoformat(),
+            "data": result.data,
+            "summary": result.summary,
+        }, ttl=3600)
         return result
 
     async def _generate_monthly_spending(self, config: ReportConfig) -> ReportResult:
@@ -230,4 +243,22 @@ class ComplianceReportGenerator:
         return list(self._schedules.values())
 
     def delete_schedule(self, schedule_id: str) -> bool:
+        return self._schedules.pop(schedule_id, None) is not None
+
+    async def async_create_schedule(self, schedule: ReportSchedule) -> ReportSchedule:
+        """Async version of create_schedule that also persists to Redis."""
+        self._schedules[schedule.id] = schedule
+        await self._schedules_store.set(schedule.id, {
+            "id": schedule.id,
+            "report_type": schedule.report_type.value,
+            "frequency": schedule.frequency,
+            "email_to": schedule.email_to,
+            "enabled": schedule.enabled,
+            "created_at": schedule.created_at.isoformat(),
+        }, ttl=3600)
+        return schedule
+
+    async def async_delete_schedule(self, schedule_id: str) -> bool:
+        """Async version of delete_schedule that also removes from Redis."""
+        await self._schedules_store.delete(schedule_id)
         return self._schedules.pop(schedule_id, None) is not None

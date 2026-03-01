@@ -208,18 +208,31 @@ class GroupSpendingTracker(Protocol):
 
 
 class InMemoryGroupSpendingTracker:
-    """In-memory group spending tracker (swap for DB-backed in production)."""
+    """Redis-backed group spending tracker with in-memory fallback."""
 
     def __init__(self) -> None:
-        self._spending: dict[str, GroupSpending] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._store = RedisStateStore(namespace="group_spending")
 
     async def get_group_spending(self, group_id: str) -> GroupSpending:
-        return self._spending.get(group_id, GroupSpending())
+        data = await self._store.get(group_id)
+        if data is None:
+            return GroupSpending()
+        return GroupSpending(
+            daily=Decimal(str(data.get("daily", "0"))),
+            monthly=Decimal(str(data.get("monthly", "0"))),
+            total=Decimal(str(data.get("total", "0"))),
+        )
 
     async def record_spend(self, group_id: str, amount: Decimal) -> None:
-        if group_id not in self._spending:
-            self._spending[group_id] = GroupSpending()
-        s = self._spending[group_id]
-        s.daily += amount
-        s.monthly += amount
-        s.total += amount
+        existing = await self._store.get(group_id)
+        if existing is None:
+            existing = {"daily": "0", "monthly": "0", "total": "0"}
+        daily = Decimal(str(existing["daily"])) + amount
+        monthly = Decimal(str(existing["monthly"])) + amount
+        total = Decimal(str(existing["total"])) + amount
+        await self._store.set(group_id, {
+            "daily": str(daily),
+            "monthly": str(monthly),
+            "total": str(total),
+        }, ttl=86400)
