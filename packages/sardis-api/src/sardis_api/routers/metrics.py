@@ -290,6 +290,14 @@ def record_policy_check(allowed: bool, reason: Optional[str] = None) -> None:
         policy_denials_total.labels(reason=reason).inc()
 
 
+# Per-process burst detection — intentionally in-memory because Prometheus
+# scrapes each instance independently, so per-process counters are correct.
+# NOTE: Redis migration limitation — _POLICY_DENIAL_WINDOWS is kept in-memory because
+# record_policy_denial_spike is a synchronous hot-path function called on every policy
+# denial. A full Redis migration would require making this async and using
+# RedisStateStore(namespace="policy_denial_windows"), which would add I/O latency to
+# every policy check. For multi-process deployments, consider using Redis sorted sets
+# via a background async task instead.
 _POLICY_DENIAL_WINDOWS: dict[str, deque[float]] = {}
 
 
