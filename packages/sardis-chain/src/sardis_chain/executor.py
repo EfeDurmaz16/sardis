@@ -75,7 +75,7 @@ from .logging_utils import (
     setup_logging,
 )
 from .erc4337.bundler_client import BundlerClient, BundlerConfig
-from .erc4337.paymaster_client import PaymasterClient, PaymasterConfig
+from .erc4337.paymaster_client import PaymasterClient, PaymasterConfig, CirclePaymasterClient, PaymasterProvider
 from .erc4337.user_operation import UserOperation, zero_hex
 from .erc4337.entrypoint import get_entrypoint_v07
 from .erc4337.sponsor_caps import SponsorCapGuard
@@ -85,18 +85,23 @@ logger = logging.getLogger(__name__)
 
 
 # Chain configurations
+def _rpc(env_var: str, fallback: str) -> str:
+    """Return env-var-driven RPC URL or public fallback."""
+    return os.getenv(env_var, fallback)
+
+
 CHAIN_CONFIGS = {
     # Base
     "base_sepolia": {
         "chain_id": 84532,
-        "rpc_url": "https://sepolia.base.org",
+        "rpc_url": _rpc("SARDIS_BASE_SEPOLIA_RPC_URL", "https://sepolia.base.org"),
         "explorer": "https://sepolia.basescan.org",
         "native_token": "ETH",
         "block_time": 2,  # seconds
     },
     "base": {
         "chain_id": 8453,
-        "rpc_url": "https://mainnet.base.org",
+        "rpc_url": _rpc("SARDIS_BASE_RPC_URL", "https://mainnet.base.org"),
         "explorer": "https://basescan.org",
         "native_token": "ETH",
         "block_time": 2,
@@ -104,14 +109,14 @@ CHAIN_CONFIGS = {
     # Polygon
     "polygon_amoy": {
         "chain_id": 80002,
-        "rpc_url": "https://rpc-amoy.polygon.technology",
+        "rpc_url": _rpc("SARDIS_POLYGON_AMOY_RPC_URL", "https://rpc-amoy.polygon.technology"),
         "explorer": "https://amoy.polygonscan.com",
         "native_token": "MATIC",
         "block_time": 2,
     },
     "polygon": {
         "chain_id": 137,
-        "rpc_url": "https://polygon-rpc.com",
+        "rpc_url": _rpc("SARDIS_POLYGON_RPC_URL", "https://polygon-rpc.com"),
         "explorer": "https://polygonscan.com",
         "native_token": "MATIC",
         "block_time": 2,
@@ -119,14 +124,14 @@ CHAIN_CONFIGS = {
     # Ethereum
     "ethereum_sepolia": {
         "chain_id": 11155111,
-        "rpc_url": "https://rpc.sepolia.org",
+        "rpc_url": _rpc("SARDIS_ETHEREUM_SEPOLIA_RPC_URL", "https://rpc.sepolia.org"),
         "explorer": "https://sepolia.etherscan.io",
         "native_token": "ETH",
         "block_time": 12,
     },
     "ethereum": {
         "chain_id": 1,
-        "rpc_url": "https://eth.llamarpc.com",
+        "rpc_url": _rpc("SARDIS_ETHEREUM_RPC_URL", "https://eth.llamarpc.com"),
         "explorer": "https://etherscan.io",
         "native_token": "ETH",
         "block_time": 12,
@@ -134,14 +139,14 @@ CHAIN_CONFIGS = {
     # Arbitrum
     "arbitrum_sepolia": {
         "chain_id": 421614,
-        "rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "rpc_url": _rpc("SARDIS_ARBITRUM_SEPOLIA_RPC_URL", "https://sepolia-rollup.arbitrum.io/rpc"),
         "explorer": "https://sepolia.arbiscan.io",
         "native_token": "ETH",
         "block_time": 1,
     },
     "arbitrum": {
         "chain_id": 42161,
-        "rpc_url": "https://arb1.arbitrum.io/rpc",
+        "rpc_url": _rpc("SARDIS_ARBITRUM_RPC_URL", "https://arb1.arbitrum.io/rpc"),
         "explorer": "https://arbiscan.io",
         "native_token": "ETH",
         "block_time": 1,
@@ -149,14 +154,14 @@ CHAIN_CONFIGS = {
     # Optimism
     "optimism_sepolia": {
         "chain_id": 11155420,
-        "rpc_url": "https://sepolia.optimism.io",
+        "rpc_url": _rpc("SARDIS_OPTIMISM_SEPOLIA_RPC_URL", "https://sepolia.optimism.io"),
         "explorer": "https://sepolia-optimism.etherscan.io",
         "native_token": "ETH",
         "block_time": 2,
     },
     "optimism": {
         "chain_id": 10,
-        "rpc_url": "https://mainnet.optimism.io",
+        "rpc_url": _rpc("SARDIS_OPTIMISM_RPC_URL", "https://mainnet.optimism.io"),
         "explorer": "https://optimistic.etherscan.io",
         "native_token": "ETH",
         "block_time": 2,
@@ -268,30 +273,35 @@ SARDIS_CONTRACTS = {
         "wallet_factory": "0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7",
         "escrow": "0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "polygon_amoy": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "ethereum_sepolia": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "arbitrum_sepolia": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "optimism_sepolia": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     # Mainnets - set addresses after deployment via env vars or here
@@ -299,30 +309,35 @@ SARDIS_CONTRACTS = {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "polygon": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "ethereum": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "arbitrum": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     "optimism": {
         "wallet_factory": "",
         "escrow": "",
         "agent_registry": "",
+        "ledger_anchor": "",
         "smart_account_factory": "",
     },
     # Solana - requires different contract architecture (Anchor programs)
@@ -391,6 +406,16 @@ def get_sardis_wallet_factory(chain: str) -> str:
 def get_sardis_escrow(chain: str) -> str:
     """Get SardisEscrow address for a chain."""
     return get_sardis_contract_address(chain, "escrow")
+
+
+def get_sardis_ledger_anchor(chain: str) -> str:
+    """Get SardisLedgerAnchor address for a chain."""
+    return get_sardis_contract_address(chain, "ledger_anchor")
+
+
+def get_sardis_agent_registry(chain: str) -> str:
+    """Get SardisAgentRegistry address for a chain."""
+    return get_sardis_contract_address(chain, "agent_registry")
 
 
 def is_chain_configured(chain: str) -> bool:
@@ -1723,7 +1748,7 @@ class ChainExecutor:
         # Confirmation trackers per chain
         self._confirmation_trackers: Dict[str, ConfirmationTracker] = {}
         self._bundler: Optional[BundlerClient] = None
-        self._paymaster: Optional[PaymasterClient] = None
+        self._paymaster: Optional[PaymasterClient | CirclePaymasterClient] = None
         self._erc4337_sponsor_guard: Optional[SponsorCapGuard] = None
 
         if self._erc4337_enabled:
@@ -1753,8 +1778,25 @@ class ChainExecutor:
 
         if bundler_url:
             self._bundler = BundlerClient(BundlerConfig(url=bundler_url))
-        if paymaster_url:
+
+        # Select paymaster provider: circle (USDC gas, no API key) or pimlico (sponsor model)
+        paymaster_provider = os.getenv("SARDIS_PAYMASTER_PROVIDER", "pimlico").strip().lower()
+
+        if paymaster_provider == "circle":
+            # Circle Paymaster: permissionless, users pay gas in USDC
+            # Requires bundler URL for gas estimation but no paymaster API key
+            circle_bundler = bundler_url or paymaster_url
+            if circle_bundler:
+                self._paymaster = CirclePaymasterClient(bundler_url=circle_bundler)
+                logger.info("Circle Paymaster enabled (USDC gas, permissionless)")
+            else:
+                logger.warning(
+                    "Circle Paymaster selected but no bundler URL configured. "
+                    "Set SARDIS_PIMLICO_BUNDLER_URL for bundler access."
+                )
+        elif paymaster_url:
             self._paymaster = PaymasterClient(PaymasterConfig(url=paymaster_url))
+            logger.info("Pimlico Paymaster enabled (sponsor model)")
 
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""
@@ -2178,7 +2220,8 @@ class ChainExecutor:
         if self._paymaster is None:
             raise RuntimeError(
                 "ERC-4337 paymaster is not configured. "
-                "Set SARDIS_PIMLICO_PAYMASTER_URL or SARDIS_PIMLICO_API_KEY."
+                "Set SARDIS_PAYMASTER_PROVIDER=circle for USDC gas, "
+                "or set SARDIS_PIMLICO_PAYMASTER_URL for Pimlico sponsor model."
             )
 
     async def _sign_user_operation_hash(self, wallet_id: str, user_op_hash: str) -> str:
@@ -2257,16 +2300,23 @@ class ChainExecutor:
                 estimated_cost_wei,
             )
 
-        sponsored = await self._paymaster.sponsor_user_operation(
-            user_op=user_op,
-            entrypoint=entrypoint,
-            chain=chain,
-            sponsorship_policy_id=(
-                f"sardis-{chain}-{self._erc4337_sponsor_guard.stage}"
-                if self._erc4337_sponsor_guard is not None
-                else f"sardis-{chain}"
-            ),
-        )
+        if isinstance(self._paymaster, CirclePaymasterClient):
+            sponsored = await self._paymaster.sponsor_user_operation(
+                user_op=user_op,
+                entrypoint=entrypoint,
+                chain=chain,
+            )
+        else:
+            sponsored = await self._paymaster.sponsor_user_operation(
+                user_op=user_op,
+                entrypoint=entrypoint,
+                chain=chain,
+                sponsorship_policy_id=(
+                    f"sardis-{chain}-{self._erc4337_sponsor_guard.stage}"
+                    if self._erc4337_sponsor_guard is not None
+                    else f"sardis-{chain}"
+                ),
+            )
         user_op.paymaster_and_data = sponsored.paymaster_and_data
 
         user_op_hash = await self._bundler.get_user_operation_hash(user_op, entrypoint)
