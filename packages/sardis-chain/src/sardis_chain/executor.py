@@ -257,6 +257,23 @@ SAFE_INFRASTRUCTURE = {
     "fallback_handler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
 }
 
+# Permit2 (Uniswap) — canonical address, same on ALL EVM chains
+PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+
+# EAS (Ethereum Attestation Service) — replaces custom SardisAgentRegistry
+# Already deployed on all chains. See eas_registry.py for full address map.
+EAS_ADDRESSES = {
+    "base": "0x4200000000000000000000000000000000000021",
+    "optimism": "0x4200000000000000000000000000000000000021",
+    "ethereum": "0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587",
+    "polygon": "0x5E634ef5355f45A855d02D66eCD687b1502AF790",
+    "arbitrum": "0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458",
+    "base_sepolia": "0x4200000000000000000000000000000000000021",
+    "optimism_sepolia": "0x4200000000000000000000000000000000000021",
+    "ethereum_sepolia": "0xC2679fBD37d54388Ce493F1DB75320D236e1815e",
+    "arbitrum_sepolia": "0xaEF4103A04090071165F78D45D83A0C0782c2B2a",
+}
+
 # Sardis contract addresses by chain (populated after deployment)
 #
 # Environment variable overrides (format: SARDIS_{CHAIN}_{CONTRACT}_ADDRESS)
@@ -264,63 +281,53 @@ SAFE_INFRASTRUCTURE = {
 #
 # Only contracts WE deploy are listed here:
 #   - policy_module: SardisPolicyModule (Safe module for spending policies)
-#   - agent_registry: SardisAgentRegistry (agent identity)
 #   - ledger_anchor: SardisLedgerAnchor (audit trail anchoring)
 #
-# Safe infrastructure (proxy factory, singleton, 4337 module) is already
-# deployed on all chains — see SAFE_INFRASTRUCTURE above.
-#   Set env var SARDIS_ALLOW_UNAUDITED_MAINNET=1 to deploy without audit.
+# Pre-deployed infrastructure (zero cost, already on all chains):
+#   - Safe (proxy factory, singleton, 4337 module) — see SAFE_INFRASTRUCTURE
+#   - EAS (agent identity/attestation) — see EAS_ADDRESSES
+#   - Permit2 (token approvals) — see PERMIT2_ADDRESS
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "polygon_amoy": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "ethereum_sepolia": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "arbitrum_sepolia": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "optimism_sepolia": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     # Mainnets - set addresses after deployment via env vars or here
     "base": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "polygon": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "ethereum": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "arbitrum": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     "optimism": {
         "policy_module": "",
-        "agent_registry": "",
         "ledger_anchor": "",
     },
     # Solana - uses Anchor programs instead of Solidity contracts
@@ -384,9 +391,9 @@ def get_sardis_ledger_anchor(chain: str) -> str:
     return get_sardis_contract_address(chain, "ledger_anchor")
 
 
-def get_sardis_agent_registry(chain: str) -> str:
-    """Get SardisAgentRegistry address for a chain."""
-    return get_sardis_contract_address(chain, "agent_registry")
+def get_eas_address(chain: str) -> str:
+    """Get EAS (Ethereum Attestation Service) address for a chain."""
+    return EAS_ADDRESSES.get(chain, "")
 
 
 def is_chain_configured(chain: str) -> bool:

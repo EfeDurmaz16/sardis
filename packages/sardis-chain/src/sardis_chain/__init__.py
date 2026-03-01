@@ -57,8 +57,10 @@ from .executor import (
     get_sardis_contract_address,
     get_sardis_policy_module,
     get_sardis_ledger_anchor,
-    get_sardis_agent_registry,
+    get_eas_address,
     SAFE_INFRASTRUCTURE,
+    PERMIT2_ADDRESS,
+    EAS_ADDRESSES,
 )
 from .deposit_monitor import (
     DepositMonitor,
