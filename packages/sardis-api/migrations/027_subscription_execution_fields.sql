@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 023: Subscription Execution Fields
+-- Migration 027: Subscription Execution Fields
 -- =============================================================================
 -- Adds chain execution and autofund metadata to recurring subscriptions so the
 -- scheduler can execute deterministic on-chain recurring payments.
