@@ -1024,7 +1024,7 @@ CREATE TABLE IF NOT EXISTS x402_settlements (
 
 CREATE INDEX IF NOT EXISTS idx_x402_settlements_status ON x402_settlements(status);
 
--- Bridge Transfers (CCTP cross-chain USDC transfers)
+-- Bridge Transfers (CCTP V2 cross-chain USDC transfers)
 CREATE TABLE IF NOT EXISTS bridge_transfers (
     transfer_id TEXT PRIMARY KEY,
     wallet_id TEXT NOT NULL,
@@ -1033,6 +1033,7 @@ CREATE TABLE IF NOT EXISTS bridge_transfers (
     to_chain TEXT NOT NULL,
     amount TEXT NOT NULL,
     token TEXT DEFAULT 'USDC',
+    source_domain INTEGER,
     message_hash TEXT,
     source_tx_hash TEXT,
     destination_tx_hash TEXT,
