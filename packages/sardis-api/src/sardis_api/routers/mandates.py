@@ -296,7 +296,13 @@ async def validate_mandate(
     stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
-    
+
+    # SECURITY: Verify the caller owns the agent that created this mandate
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(stored.mandate.subject)
+        if not agent or agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     # Verify mandate structure
     verification = deps.verifier.verify(stored.mandate)
     if not verification.accepted:
@@ -348,7 +354,13 @@ async def execute_stored_mandate(
     stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
-    
+
+    # SECURITY: Verify the caller owns the agent that created this mandate
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(stored.mandate.subject)
+        if not agent or agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     if stored.status == "executed":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mandate already executed")
     
@@ -431,7 +443,13 @@ async def cancel_mandate(
     stored = await _get_mandate(mandate_id)
     if not stored:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mandate not found")
-    
+
+    # SECURITY: Verify the caller owns the agent that created this mandate
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(stored.mandate.subject)
+        if not agent or agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     if stored.status == "executed":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot cancel executed mandate")
     

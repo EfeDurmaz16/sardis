@@ -19,7 +19,7 @@ from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope
 from sardis_v2_core.tokens import TokenType
 from sardis_v2_core.database import Database
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import require_principal, Principal
 from sardis_api.webhook_replay import run_with_replay_protection
 
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -61,18 +61,19 @@ def get_deps() -> CheckoutDependencies:
     raise NotImplementedError("Dependency override required")
 
 
-async def _save_checkout(checkout: CheckoutResponse) -> None:
+async def _save_checkout(checkout: CheckoutResponse, organization_id: str) -> None:
     """Save checkout session to PostgreSQL."""
     now = datetime.now(timezone.utc)
     await Database.execute(
         """
-        INSERT INTO checkouts (checkout_id, status, amount, currency, metadata, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO checkouts (checkout_id, organization_id, status, amount, currency, metadata, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (checkout_id) DO UPDATE SET
             status = EXCLUDED.status,
             updated_at = EXCLUDED.updated_at
         """,
         checkout.checkout_id,
+        organization_id,
         checkout.status.value if hasattr(checkout.status, "value") else str(checkout.status),
         str(checkout.amount),
         checkout.currency,
@@ -85,10 +86,12 @@ async def _save_checkout(checkout: CheckoutResponse) -> None:
     )
 
 
-async def _get_checkout(checkout_id: str) -> Optional[dict]:
-    """Get checkout from PostgreSQL."""
+async def _get_checkout(checkout_id: str, organization_id: str) -> Optional[dict]:
+    """Get checkout from PostgreSQL, scoped to organization."""
     return await Database.fetchrow(
-        "SELECT * FROM checkouts WHERE checkout_id = $1", checkout_id
+        "SELECT * FROM checkouts WHERE checkout_id = $1 AND organization_id = $2",
+        checkout_id,
+        organization_id,
     )
 
 
@@ -96,6 +99,7 @@ async def _get_checkout(checkout_id: str) -> Optional[dict]:
 async def create_checkout(
     request: CreateCheckoutRequest,
     deps: CheckoutDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Create a checkout session for agent payment.
@@ -138,7 +142,7 @@ async def create_checkout(
     )
 
     # Store checkout session
-    await _save_checkout(checkout_resp)
+    await _save_checkout(checkout_resp, principal.organization_id)
 
     return checkout_resp
 
@@ -147,9 +151,10 @@ async def create_checkout(
 async def get_checkout_status(
     checkout_id: str,
     deps: CheckoutDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get checkout session status."""
-    row = await _get_checkout(checkout_id)
+    row = await _get_checkout(checkout_id, principal.organization_id)
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
