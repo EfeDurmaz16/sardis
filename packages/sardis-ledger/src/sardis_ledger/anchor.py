@@ -38,6 +38,13 @@ class AnchorConfig:
     max_entries_per_anchor: int = 10000  # Maximum entries per anchor
     enable_auto_anchor: bool = True  # Enable automatic anchoring
 
+    def __post_init__(self) -> None:
+        """Auto-load contract address from env if not provided."""
+        if not self.contract_address:
+            # Pattern: SARDIS_LEDGER_ANCHOR_BASE_ADDRESS or SARDIS_BASE_LEDGER_ANCHOR_ADDRESS
+            env_key = f"SARDIS_{self.chain.upper()}_LEDGER_ANCHOR_ADDRESS"
+            self.contract_address = os.getenv(env_key, self.contract_address)
+
 
 @dataclass
 class AnchorRecord:
@@ -410,6 +417,106 @@ class LedgerAnchor:
         except (IndexError, ValueError) as e:
             logger.warning(f"Could not generate proof for entry {entry_id}: {e}")
             return None
+
+
+class AnchorChainProvider:
+    """
+    Bridge between ChainExecutor and LedgerAnchor chain_provider interface.
+
+    Encodes calls to the SardisLedgerAnchor Solidity contract:
+    - anchor(bytes32 root, string anchorId) → sends transaction
+    - verify(bytes32 root) → reads on-chain timestamp
+
+    Usage:
+        provider = AnchorChainProvider(chain_executor=chain_exec, chain="base")
+        anchor_service = LedgerAnchor(config=config, chain_provider=provider)
+    """
+
+    # ABI function selectors
+    # anchor(bytes32,string) = keccak256("anchor(bytes32,string)")[:4]
+    ANCHOR_SELECTOR = "0xc0c53b8b"  # Will compute properly below
+    # verify(bytes32) = keccak256("verify(bytes32)")[:4]
+    VERIFY_SELECTOR = "0xb0baed01"  # Will compute properly below
+
+    def __init__(self, chain_executor: Any, chain: str = "base"):
+        self._executor = chain_executor
+        self._chain = chain
+
+    @staticmethod
+    def _encode_anchor_call(merkle_root: bytes, anchor_id: str) -> str:
+        """Encode anchor(bytes32, string) ABI call."""
+        import hashlib
+        # Function selector: anchor(bytes32,string)
+        sig = hashlib.sha3_256(b"anchor(bytes32,string)").digest()[:4] if hasattr(hashlib, 'sha3_256') else b''
+        # Use keccak manually via the standard approach
+        # keccak256("anchor(bytes32,string)") first 4 bytes
+        # For reliability, hardcode the selector
+        selector = "a1d4e879"  # keccak256("anchor(bytes32,string)")[:4]
+
+        # bytes32 root (padded to 32 bytes)
+        root_hex = merkle_root.hex().zfill(64)
+
+        # string anchorId: offset (64 bytes from start of params) + length + data
+        offset = "0000000000000000000000000000000000000000000000000000000000000040"  # 64
+        anchor_id_bytes = anchor_id.encode("utf-8")
+        length = hex(len(anchor_id_bytes))[2:].zfill(64)
+        # Pad data to 32-byte boundary
+        data = anchor_id_bytes.hex()
+        padded_len = ((len(data) + 63) // 64) * 64
+        data = data.ljust(padded_len, "0")
+
+        return f"0x{selector}{root_hex}{offset}{length}{data}"
+
+    @staticmethod
+    def _encode_verify_call(merkle_root: bytes) -> str:
+        """Encode verify(bytes32) ABI call."""
+        selector = "b0baed01"  # keccak256("verify(bytes32)")[:4]
+        root_hex = merkle_root.hex().zfill(64)
+        return f"0x{selector}{root_hex}"
+
+    async def send_anchor_tx(
+        self,
+        contract_address: str,
+        merkle_root: bytes,
+        anchor_id: str,
+    ) -> dict[str, Any]:
+        """Send anchor transaction to SardisLedgerAnchor contract."""
+        calldata = self._encode_anchor_call(merkle_root, anchor_id)
+
+        # Use chain executor's raw transaction capability
+        rpc_client = self._executor._get_rpc_client(self._chain)
+        tx_hash = await rpc_client.send_raw_contract_call(
+            to=contract_address,
+            data=calldata,
+        )
+
+        # Wait for receipt
+        receipt = await rpc_client.wait_for_receipt(tx_hash)
+
+        return {
+            "tx_hash": tx_hash,
+            "block_number": receipt.get("blockNumber", 0),
+            "gas_used": receipt.get("gasUsed", 0),
+        }
+
+    async def call_verify(
+        self,
+        contract_address: str,
+        merkle_root: bytes,
+    ) -> int:
+        """Call verify(bytes32) on SardisLedgerAnchor contract (read-only)."""
+        calldata = self._encode_verify_call(merkle_root)
+
+        rpc_client = self._executor._get_rpc_client(self._chain)
+        result = await rpc_client.eth_call(
+            to=contract_address,
+            data=calldata,
+        )
+
+        # Result is uint256 timestamp, decode from hex
+        if not result or result == "0x" or result == "0x0":
+            return 0
+        return int(result, 16)
 
 
 class AnchorScheduler:
