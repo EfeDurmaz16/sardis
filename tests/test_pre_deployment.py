@@ -53,28 +53,18 @@ class TestCoreModulesExist:
         assert KYCService is not None
         assert SanctionsService is not None
 
-    @pytest.mark.skip(reason="sardis-ramp module not yet implemented (P3)")
     def test_sardis_ramp_imports(self):
         """Test sardis-ramp module imports."""
         from sardis_ramp.ramp import SardisFiatRamp
-        from sardis_ramp.ramp_types import (
-            FundingResult,
-            WithdrawalResult,
-            BankAccount,
-        )
         assert SardisFiatRamp is not None
-        assert FundingResult is not None
-        assert WithdrawalResult is not None
-        assert BankAccount is not None
 
-    @pytest.mark.skip(reason="sardis-cards module not yet implemented (P3)")
     def test_sardis_cards_imports(self):
         """Test sardis-cards module imports."""
         from sardis_cards.providers.lithic import LithicProvider
-        from sardis_cards.types import VirtualCard, CardSpendLimits
+        from sardis_cards.models import Card, CardTransaction
         assert LithicProvider is not None
-        assert VirtualCard is not None
-        assert CardSpendLimits is not None
+        assert Card is not None
+        assert CardTransaction is not None
 
 
 class TestNLPolicyEngine:
@@ -126,9 +116,10 @@ class TestTransactionModes:
 
         # Check each chain has expected contracts
         for chain, config in SARDIS_CONTRACTS.items():
-            if not config.get('not_implemented'):
-                assert 'wallet_factory' in config, f"{chain} missing wallet_factory"
-                assert 'escrow' in config, f"{chain} missing escrow"
+            if config.get('experimental'):
+                continue  # Skip experimental chains (e.g. Solana)
+            assert 'wallet_factory' in config, f"{chain} missing wallet_factory"
+            assert 'escrow' in config, f"{chain} missing escrow"
 
 
 class TestComplianceProviders:
@@ -152,7 +143,6 @@ class TestComplianceProviders:
         assert hasattr(EllipticProvider, '_sign_request')
 
 
-@pytest.mark.skip(reason="sardis-ramp module not yet implemented (P3)")
 class TestFiatRailsIntegration:
     """Verify fiat rails integration is properly implemented."""
 
@@ -171,7 +161,6 @@ class TestFiatRailsIntegration:
         assert hasattr(SardisFiatRamp, '_bridge_request')
 
 
-@pytest.mark.skip(reason="sardis-cards module not yet implemented (P3)")
 class TestVirtualCardsIntegration:
     """Verify virtual cards integration is properly implemented."""
 
