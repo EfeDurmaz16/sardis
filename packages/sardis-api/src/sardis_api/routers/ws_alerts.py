@@ -21,6 +21,8 @@ class ConnectionManager:
     def __init__(self) -> None:
         # Map: organization_id -> set of websocket connections
         self.active_connections: dict[str, set[WebSocket]] = {}
+        # Map: websocket -> set of subscribed alert types (empty = all)
+        self._subscriptions: dict[WebSocket, set[str]] = {}
         self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket, organization_id: str) -> None:
@@ -44,11 +46,25 @@ class ConnectionManager:
                 self.active_connections[organization_id].discard(websocket)
                 if not self.active_connections[organization_id]:
                     del self.active_connections[organization_id]
+            self._subscriptions.pop(websocket, None)
 
         logger.info(
             f"WebSocket disconnected for org={organization_id}, "
             f"remaining={len(self.active_connections.get(organization_id, []))}"
         )
+
+    async def subscribe(self, websocket: WebSocket, alert_types: list[str]) -> None:
+        """Set subscription filter for a connection."""
+        async with self._lock:
+            self._subscriptions[websocket] = set(alert_types)
+
+    def _should_send(self, websocket: WebSocket, message: dict[str, Any]) -> bool:
+        """Check if a message should be sent to a connection based on subscriptions."""
+        subs = self._subscriptions.get(websocket)
+        if not subs:
+            return True  # No filter = receive all
+        msg_type = message.get("alert_type", message.get("type", ""))
+        return msg_type in subs
 
     async def send_personal_message(self, message: dict[str, Any], websocket: WebSocket) -> None:
         """Send a message to a specific client."""
@@ -70,9 +86,11 @@ class ConnectionManager:
         if "timestamp" not in message:
             message["timestamp"] = datetime.now(timezone.utc).isoformat()
 
-        # Send to all connections, removing dead ones
+        # Send to matching connections, removing dead ones
         dead_connections = set()
         for connection in connections:
+            if not self._should_send(connection, message):
+                continue
             try:
                 await connection.send_json(message)
             except Exception as e:
@@ -199,15 +217,25 @@ async def websocket_alerts(
                         # Client responded to ping
                         logger.debug(f"Received pong from org={organization_id}")
                     elif message_type == "subscribe":
-                        # Client wants to subscribe to specific alert types
-                        # TODO: Implement filtering
-                        await connection_manager.send_personal_message(
-                            {
-                                "type": "system",
-                                "message": "Subscription preferences updated",
-                            },
-                            websocket,
-                        )
+                        alert_types = message.get("alert_types", [])
+                        if isinstance(alert_types, list):
+                            await connection_manager.subscribe(websocket, alert_types)
+                            await connection_manager.send_personal_message(
+                                {
+                                    "type": "system",
+                                    "message": "Subscription preferences updated",
+                                    "subscribed_types": alert_types,
+                                },
+                                websocket,
+                            )
+                        else:
+                            await connection_manager.send_personal_message(
+                                {
+                                    "type": "error",
+                                    "message": "alert_types must be a list of strings",
+                                },
+                                websocket,
+                            )
                     else:
                         logger.debug(f"Received unknown message type: {message_type}")
 
