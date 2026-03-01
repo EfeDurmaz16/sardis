@@ -280,7 +280,11 @@ async def create_wallet(
         limit_total=request.limit_total,
         addresses=addresses,
         paymaster_enabled=request.account_type == "erc4337_v2",
-        bundler_profile="pimlico" if request.account_type == "erc4337_v2" else None,
+        bundler_profile=(
+            os.getenv("SARDIS_PAYMASTER_PROVIDER", "pimlico").strip().lower()
+            if request.account_type == "erc4337_v2"
+            else None
+        ),
     )
 
     # Register new wallet with DepositMonitor for inbound payment detection
@@ -289,6 +293,31 @@ async def create_wallet(
             await deps.inbound_payment_service.register_single_wallet(wallet)
         except Exception as e:
             logger.warning("Failed to register wallet %s with DepositMonitor: %s", wallet.wallet_id, e)
+
+    # Auto-approve USDC to Circle Paymaster for ERC-4337 wallets
+    if (
+        request.account_type == "erc4337_v2"
+        and os.getenv("SARDIS_PAYMASTER_PROVIDER", "").strip().lower() == "circle"
+    ):
+        try:
+            from sardis_chain.erc4337.paymaster_client import CirclePaymasterClient
+            default_chain = os.getenv("SARDIS_DEFAULT_CHAIN", "base")
+            usdc_addr, approve_calldata = CirclePaymasterClient.encode_usdc_approve(default_chain)
+            logger.info(
+                "Circle Paymaster: USDC approve prepared for wallet %s on %s (usdc=%s)",
+                wallet.wallet_id, default_chain, usdc_addr,
+            )
+            # Note: The actual approve TX will be submitted as the first UserOperation
+            # or via the wallet's initial setup batch. Store the approval info for later use.
+            wallet.metadata = wallet.metadata or {}
+            wallet.metadata["circle_paymaster_approve"] = {
+                "chain": default_chain,
+                "usdc_address": usdc_addr,
+                "calldata": approve_calldata,
+                "status": "pending",
+            }
+        except Exception as e:
+            logger.warning("Failed to prepare Circle Paymaster approve for wallet %s: %s", wallet.wallet_id, e)
 
     return WalletResponse.from_wallet(wallet)
 
@@ -1501,12 +1530,12 @@ async def initiate_bridge(
 
     # Persist to database
     await Database.execute(
-        """INSERT INTO bridge_transfers (transfer_id, wallet_id, agent_id, from_chain, to_chain, amount, token, message_hash, source_tx_hash, status, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+        """INSERT INTO bridge_transfers (transfer_id, wallet_id, agent_id, from_chain, to_chain, amount, token, source_domain, message_hash, source_tx_hash, status, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)""",
         transfer.transfer_id, transfer.wallet_id, transfer.agent_id,
         transfer.from_chain, transfer.to_chain, str(transfer.amount),
-        transfer.token, transfer.message_hash, transfer.source_tx_hash,
-        transfer.status.value, transfer.created_at,
+        transfer.token, transfer.source_domain, transfer.message_hash,
+        transfer.source_tx_hash, transfer.status.value, transfer.created_at,
     )
 
     est_time = bridge_service.estimate_bridge_time(from_chain, request.to_chain)
@@ -1543,13 +1572,24 @@ async def get_bridge_status(
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bridge transfer not found")
 
-    # If still awaiting attestation, poll Circle
+    # If still awaiting attestation, poll Circle V2 API
     current_status = row["status"]
     if current_status == "awaiting_attestation" and row.get("message_hash"):
         try:
             from sardis_chain.cctp import CCTPBridgeService
+            from sardis_chain.cctp_constants import get_cctp_domain
             bridge_service = CCTPBridgeService()
-            attestation_status = await bridge_service.get_bridge_status(row["message_hash"])
+            # V2 API uses source_domain + tx_hash for attestation lookup
+            source_domain = None
+            try:
+                source_domain = get_cctp_domain(row["from_chain"])
+            except ValueError:
+                pass
+            attestation_status = await bridge_service.get_bridge_status(
+                row["message_hash"],
+                source_domain=source_domain,
+                source_tx_hash=row.get("source_tx_hash"),
+            )
             if attestation_status.get("status") == "complete":
                 current_status = "attestation_received"
                 await Database.execute(
@@ -1572,4 +1612,91 @@ async def get_bridge_status(
         status=current_status,
         error=row.get("error"),
         created_at=row["created_at"].isoformat() if row.get("created_at") else "",
+    )
+
+
+# ── Coinbase Onramp (Fiat → USDC) ──────────────────────────────────────────
+
+
+class OnrampRequest(BaseModel):
+    """Request to generate a fiat on-ramp URL."""
+    destination_chain: str = Field(default="base", description="Target chain for USDC")
+    preset_amount: Optional[str] = Field(default=None, description="Pre-filled USD amount")
+
+
+class OnrampResponse(BaseModel):
+    """Coinbase Onramp URL response."""
+    onramp_url: str
+    wallet_id: str
+    destination_address: str
+    destination_chain: str
+    asset: str = "USDC"
+
+
+@router.post("/{wallet_id}/onramp", response_model=OnrampResponse)
+async def generate_onramp_url(
+    wallet_id: str,
+    request: OnrampRequest,
+    principal: Principal = Depends(require_principal),
+) -> OnrampResponse:
+    """Generate a Coinbase Onramp URL for funding a wallet with fiat.
+
+    Coinbase Onramp (hosted mode) allows users to purchase USDC with
+    fiat (credit card, bank transfer, Apple Pay) and send directly to
+    the agent wallet. Free for developers — Coinbase charges the buyer.
+
+    Reference: https://docs.cdp.coinbase.com/onramp/docs/overview
+    """
+    row = await Database.fetchrow(
+        "SELECT w.*, a.organization_id FROM wallets w JOIN agents a ON w.agent_id = a.id WHERE w.external_id = $1",
+        wallet_id,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="wallet_not_found")
+
+    # Get wallet address for the target chain
+    addresses = row.get("addresses") or {}
+    chain = request.destination_chain
+    destination_address = addresses.get(chain) or row.get("chain_address")
+    if not destination_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Wallet has no address on chain '{chain}'",
+        )
+
+    # Build Coinbase Onramp URL (hosted mode — no API key required)
+    # https://pay.coinbase.com/buy/select-asset?...
+    import urllib.parse
+
+    # Map chain names to Coinbase network identifiers
+    chain_to_network = {
+        "base": "base",
+        "ethereum": "ethereum",
+        "polygon": "polygon",
+        "arbitrum": "arbitrum",
+        "optimism": "optimism",
+    }
+    network = chain_to_network.get(chain, "base")
+
+    params = {
+        "appId": os.getenv("COINBASE_APP_ID", "sardis"),
+        "destinationWallets": f'[{{"address":"{destination_address}","assets":["USDC"],"supportedNetworks":["{network}"]}}]',
+        "defaultAsset": "USDC",
+        "defaultNetwork": network,
+    }
+    if request.preset_amount:
+        params["presetFiatAmount"] = request.preset_amount
+
+    onramp_url = f"https://pay.coinbase.com/buy/select-asset?{urllib.parse.urlencode(params)}"
+
+    logger.info(
+        "Generated onramp URL: wallet=%s, chain=%s, address=%s",
+        wallet_id, chain, destination_address[:10] + "...",
+    )
+
+    return OnrampResponse(
+        onramp_url=onramp_url,
+        wallet_id=wallet_id,
+        destination_address=destination_address,
+        destination_chain=chain,
     )
