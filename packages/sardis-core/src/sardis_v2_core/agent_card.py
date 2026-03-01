@@ -1,12 +1,16 @@
 """Agent Card generation for A2A/AP2 protocol compatibility."""
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from .erc8004 import AgentIdentity
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -147,9 +151,83 @@ def verify_agent_card(card: dict) -> bool:
     if not isinstance(protocols, list) or not protocols:
         return False
 
-    # TODO: Signature verification if public_key present
-    # For now, just structural validation
+    # Signature verification if public_key and signature present
+    public_key = card.get("public_key")
+    signature = card.get("signature")
+
+    if public_key and signature:
+        if not _verify_card_signature(card, public_key, signature):
+            return False
+
     return True
+
+
+def _canonical_card_json(card: dict) -> bytes:
+    """Build canonical JSON for signature verification (excludes signature field)."""
+    card_copy = {k: v for k, v in card.items() if k != "signature"}
+    return json.dumps(card_copy, sort_keys=True, separators=(",", ":")).encode()
+
+
+def _verify_card_signature(card: dict, public_key: str, signature: str) -> bool:
+    """
+    Verify agent card signature using Ed25519 or ECDSA-P256.
+
+    Supports public_key formats:
+      - "ed25519:<hex>" - Ed25519 public key (hex-encoded)
+      - "ecdsa-p256:<hex>" - ECDSA P-256 public key (hex-encoded, uncompressed)
+      - 64-char hex string - assumed Ed25519
+
+    Signature is base64-encoded.
+    """
+    try:
+        sig_bytes = base64.b64decode(signature)
+    except Exception:
+        logger.debug("Invalid base64 signature in agent card")
+        return False
+
+    message = _canonical_card_json(card)
+
+    # Determine algorithm and raw key bytes
+    if public_key.startswith("ed25519:"):
+        return _verify_ed25519(bytes.fromhex(public_key[8:]), message, sig_bytes)
+    elif public_key.startswith("ecdsa-p256:"):
+        return _verify_ecdsa_p256(bytes.fromhex(public_key[11:]), message, sig_bytes)
+    elif len(public_key) == 64:
+        # 64 hex chars = 32 bytes = Ed25519 public key
+        return _verify_ed25519(bytes.fromhex(public_key), message, sig_bytes)
+    else:
+        logger.debug("Unsupported public_key format in agent card: %s...", public_key[:20])
+        return False
+
+
+def _verify_ed25519(key_bytes: bytes, message: bytes, signature: bytes) -> bool:
+    """Verify Ed25519 signature."""
+    try:
+        from nacl.signing import VerifyKey
+        from nacl.exceptions import BadSignatureError
+
+        verify_key = VerifyKey(key_bytes)
+        verify_key.verify(message, signature)
+        return True
+    except (BadSignatureError, ValueError, Exception) as e:
+        logger.debug("Ed25519 verification failed: %s", e)
+        return False
+
+
+def _verify_ecdsa_p256(key_bytes: bytes, message: bytes, signature: bytes) -> bool:
+    """Verify ECDSA P-256 (ES256) signature."""
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import hashes
+
+        public_key = ec.EllipticCurvePublicKey.from_encoded_point(
+            ec.SECP256R1(), key_bytes,
+        )
+        public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        return True
+    except Exception as e:
+        logger.debug("ECDSA-P256 verification failed: %s", e)
+        return False
 
 
 def bind_ens_name(card: dict, ens_name: str) -> dict:
