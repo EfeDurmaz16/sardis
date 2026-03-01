@@ -89,4 +89,53 @@ def list_skills(category: Optional[str] = None) -> List[SkillDefinition]:
     return list(SKILLS)
 
 
-__all__ = ["SkillDefinition", "SKILLS", "get_skill", "list_skills"]
+from typing import Type
+
+from sardis_openclaw.base import OpenClawSkill, SkillContext, SkillResult
+from sardis_openclaw.skills import (
+    BalanceCheckSkill,
+    SendPaymentSkill,
+    ComplianceCheckSkill,
+    CreateInvoiceSkill,
+    BridgeTransferSkill,
+    SpendingReportSkill,
+    PolicyUpdateSkill,
+)
+
+SKILL_REGISTRY: dict[str, Type[OpenClawSkill]] = {
+    "balance_check": BalanceCheckSkill,
+    "send_payment": SendPaymentSkill,
+    "check_compliance": ComplianceCheckSkill,
+    "create_invoice": CreateInvoiceSkill,
+    "bridge_transfer": BridgeTransferSkill,
+    "spending_report": SpendingReportSkill,
+    "policy_update": PolicyUpdateSkill,
+}
+
+
+def get_executable_skill(name: str) -> OpenClawSkill:
+    """Get an executable skill instance by name."""
+    cls = SKILL_REGISTRY.get(name)
+    if cls is None:
+        raise KeyError(f"Unknown skill: {name}. Available: {list(SKILL_REGISTRY.keys())}")
+    return cls()
+
+
+__all__ = [
+    "SkillDefinition",
+    "SKILLS",
+    "get_skill",
+    "list_skills",
+    "OpenClawSkill",
+    "SkillContext",
+    "SkillResult",
+    "BalanceCheckSkill",
+    "SendPaymentSkill",
+    "ComplianceCheckSkill",
+    "CreateInvoiceSkill",
+    "BridgeTransferSkill",
+    "SpendingReportSkill",
+    "PolicyUpdateSkill",
+    "SKILL_REGISTRY",
+    "get_executable_skill",
+]

@@ -22,6 +22,8 @@ classifiers = [
 ]
 dependencies = [
     "sardis>=0.3.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.6",
 ]
 
 [project.urls]
