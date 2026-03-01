@@ -131,7 +131,7 @@ function App() {
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans selection:bg-primary/20">
       <SEO
         title="Sardis AI Agent Payments"
-        description="Sardis is AI agent payments infrastructure with policy-controlled wallets, virtual cards, and on-chain + fiat rails."
+        description="Sardis lets AI agents make real payments safely. Policy-controlled wallets for cards, crypto, and fiat. The agent never touches private keys."
         path="/"
         schemas={[
           createOrganizationSchema(),
@@ -216,41 +216,32 @@ function App() {
         <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-5xl mx-auto text-center">
             <p className="mb-5 inline-flex items-center border border-border bg-background/70 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-              Policy-First Agent Payments
+              Safe Payments for AI Agents
             </p>
 
-            <h1 className="mx-auto max-w-[15ch] text-[clamp(2.45rem,7.4vw,5.8rem)] font-sans font-semibold leading-[1.04] tracking-[-0.028em] mb-6">
-              <span className="block">AI agents that can pay,</span>
-              <span className="block">safely.</span>
+            <h1 className="mx-auto max-w-[18ch] text-[clamp(2.45rem,7.4vw,5.8rem)] font-sans font-semibold leading-[1.04] tracking-[-0.028em] mb-6">
+              <span className="block">AI agents can reason.</span>
+              <span className="block">Now they can pay.</span>
             </h1>
 
             <p className="text-[1.05rem] md:text-[1.35rem] text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-              Define spending rules in plain English. Sardis enforces them before execution.
+              Your agents hit a wall at checkout. 2FA, CAPTCHAs, OTPs. Sardis removes that wall with policy-controlled wallets and secure payment rails.
             </p>
 
             <p className="text-sm md:text-base text-muted-foreground mb-8 max-w-[58ch] mx-auto">
-              Cards, fiat rails, and on-chain payments under one deterministic control plane.
+              Define spending rules in plain English. Sardis enforces them before any money moves.
             </p>
 
             <div className="mb-8 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
-              <Link
-                to="/docs/runtime-guardrails#pan-lane-quorum"
-                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
-              >
-                PAN lane quorum
-              </Link>
-              <Link
-                to="/docs/runtime-guardrails#asa-fail-closed"
-                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
-              >
-                ASA fail-closed
-              </Link>
-              <Link
-                to="/docs/runtime-guardrails#wallet-aware-a2a-trust"
-                className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground hover:border-[var(--sardis-orange)] hover:text-[var(--sardis-orange)] transition-colors"
-              >
-                Wallet-aware A2A trust
-              </Link>
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">
+                You set the rules
+              </span>
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">
+                Cards + Crypto + Bank
+              </span>
+              <span className="border border-border bg-background/70 px-2.5 py-1 text-muted-foreground">
+                Works with any AI agent
+              </span>
             </div>
 
             <div className="max-w-3xl mx-auto">
@@ -265,10 +256,10 @@ function App() {
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { number: "9", label: "Framework SDKs" },
-              { number: "5", label: "Blockchains" },
-              { number: "4", label: "Payment Protocols" },
               { number: "0", label: "Private Keys Stored" },
+              { number: "<1s", label: "Policy Check to Settlement" },
+              { number: "5", label: "Chains Supported" },
+              { number: "52", label: "MCP Tools" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-3xl font-display font-bold text-[var(--sardis-orange)]">{stat.number}</div>
@@ -279,7 +270,7 @@ function App() {
         </div>
       </section>
 
-      {/* Separator — decorative */}
+      {/* Separator */}
       <div className="relative h-px w-full">
         <div className="absolute inset-0 bg-border" />
         <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-background px-4">
@@ -302,7 +293,7 @@ function App() {
                   <div className="w-3 h-3 bg-yellow-500" />
                   <div className="w-3 h-3 bg-emerald-500" />
                 </div>
-                <span className="text-xs font-mono text-muted-foreground">python — pip install sardis</span>
+                <span className="text-xs font-mono text-muted-foreground">python | pip install sardis</span>
               </div>
               <div className="p-6 font-mono text-sm bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] text-[var(--sardis-canvas)] overflow-x-auto">
                 <table className="border-collapse w-full">
@@ -338,18 +329,18 @@ function App() {
               <p className="text-lg font-mono text-destructive tracking-[0.08em] font-bold mb-4 uppercase">THE PROBLEM</p>
               <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6 leading-tight">What Happens Without Guardrails</h2>
               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                AI agents can reason, plan, and execute complex workflows — but they <strong className="text-foreground font-medium">fail at checkout</strong>.
+                AI agents can reason, plan, and execute complex workflows. But they <strong className="text-foreground font-medium">fail at checkout</strong>.
               </p>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                Current payment rails (2FA, OTPs, CAPTCHAs) were built to block non-human actors. That was the right design — until now.
+                Payment rails were built to block non-human actors. 2FA, OTPs, CAPTCHAs. That was the right design, until agents needed to pay.
               </p>
 
               <ul className="space-y-4">
                 {[
-                  { text: "Retry loops turn $10 into $1,000", icon: icons.autoRenew },
-                  { text: "Decimal errors: $100.00 sent instead of $1.00", icon: icons.trendingUp },
-                  { text: "Task drift: spending on unrelated things", icon: icons.policy },
-                  { text: "Zero visibility: no per-agent audit trail", icon: icons.searchInsights }
+                  { text: "An agent stuck in a retry loop made 47,000 API calls in 6 hours. $1,410 burned.", icon: icons.autoRenew },
+                  { text: "A McDonald's AI kept adding McNuggets to an order. 260 pieces before anyone noticed.", icon: icons.trendingUp },
+                  { text: "73% of teams have no real-time cost tracking for autonomous agents.", icon: icons.policy },
+                  { text: "Agent cost overruns average 340% above initial estimates.", icon: icons.searchInsights }
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-lg text-destructive">
                     <div className="w-10 h-10 border border-destructive/30 flex items-center justify-center">
@@ -412,50 +403,50 @@ function App() {
         </div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
-            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">What You Get</p>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Built for Agent Payments</h2>
+            <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">What We Enable</p>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Your Agent's Missing Financial Layer</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Wallets, virtual cards, and spending controls designed for AI agents.
+              Agents can book flights, pay invoices, and manage subscriptions. No human approval needed. No private keys exposed.
             </p>
           </div>
 
-          {/* Bento grid — hero card spans 2 cols */}
+          {/* Bento grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               {
                 icon: icons.autoRenew,
-                title: "Autonomous Execution",
-                description: "Bypass human-centric 2FA barriers with secure autonomous signing. Agents can finally pay.",
+                title: "No More 2FA Walls",
+                description: "Agents get stuck at checkout because payment rails were built to block non-humans. Sardis gives them a secure path through.",
                 span: false,
               },
               {
-                icon: icons.trendingUp,
-                title: "Instant Settlement",
-                description: "Policy-routed settlement across stablecoin, card, and fiat rails with provider-dependent settlement times.",
+                icon: icons.policy,
+                title: "Spending Rules in Plain English",
+                description: "\"Max $200/day, only SaaS vendors, no weekend transactions.\" Write policies like you'd brief a junior employee. Sardis enforces them deterministically.",
                 span: false,
               },
               {
                 icon: icons.creditCardGear,
-                title: "Virtual Cards",
-                description: "Instant Visa cards via Stripe Issuing or Lithic. PAN handling stays in a hardened lane with approval and real-time auth guardrails.",
-                span: false,
-              },
-              {
-                icon: icons.verifiedUser,
-                title: "ERC-8004 Agent Identity",
-                description: "On-chain identity registry with reputation scoring and agent cards. Verifiable credentials anchored to Base blockchain.",
-                span: false,
-              },
-              {
-                icon: icons.handshake,
-                title: "Escrow Payments",
-                description: "Trustless escrow between any buyer and seller. State machine flow: CREATED → FUNDED → DELIVERED → RELEASED. Built-in dispute resolution.",
+                title: "Cards, Crypto, and Bank Transfers",
+                description: "One API for every payment rail. Virtual Visa cards for web purchases, stablecoin for on-chain, and fiat for traditional vendors.",
                 span: false,
               },
               {
                 icon: icons.shieldLock,
-                title: "Guardrails & Circuit Breakers",
-                description: "Kill switches, rate limiters, and behavioral monitoring. Detect anomalous spending patterns and halt agents before damage is done.",
+                title: "You Stay in Control",
+                description: "Sardis never holds your funds or keys. Wallets are secured by distributed key management. No single entity, not even Sardis, can move your money.",
+                span: false,
+              },
+              {
+                icon: icons.searchInsights,
+                title: "Every Transaction Auditable",
+                description: "Append-only ledger with cryptographic proofs anchored on-chain. Know exactly what every agent spent, when, and why.",
+                span: false,
+              },
+              {
+                icon: icons.wallet,
+                title: "Kill Switch Built In",
+                description: "Pause any agent wallet instantly. Rate limiters and behavioral monitoring detect anomalies and halt spending before damage is done.",
                 span: false,
               },
             ].map((feature, i) => (
@@ -493,9 +484,9 @@ function App() {
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
             <p className="text-lg font-mono text-[var(--sardis-orange)] tracking-[0.08em] font-bold mb-4 uppercase">Why Sardis</p>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">The Policy Firewall</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">Trust Without Giving Up Control</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              The policy engine that checks every transaction before money moves.
+              AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.
             </p>
           </div>
 
@@ -510,7 +501,7 @@ function App() {
               {
                 icon: icons.shieldLock,
                 title: "Non-Custodial Security",
-                description: "Your keys, your funds. Turnkey MPC wallets — no single entity can move money without your approval.",
+                description: "Your keys, your funds. Secured by distributed key management so no single entity can move money without your approval.",
                 unique: false
               },
               {
@@ -568,7 +559,7 @@ function App() {
 
           {/* Replacement for competitor callout */}
           <div className="p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5">
-            <p className="text-muted-foreground">The only platform combining natural language policies, per-transaction risk scoring, drift detection, and cryptographic audit — all without holding your private keys.</p>
+            <p className="text-muted-foreground">The only platform combining natural language policies, per-transaction risk scoring, drift detection, and cryptographic audit. All without holding your private keys.</p>
           </div>
         </div>
       </section>
@@ -667,7 +658,7 @@ function App() {
             <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">WORKS EVERYWHERE</Badge>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-5">One Payment Layer. Every AI Platform.</h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Add financial capabilities to any AI agent — regardless of framework or model. Sardis speaks every protocol.
+              Add financial capabilities to any AI agent, regardless of framework or model. Sardis speaks every protocol.
             </p>
           </div>
 
@@ -690,7 +681,7 @@ function App() {
                   </div>
                 </div>
                 <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                  Sardis is available as an <strong className="text-foreground">OpenClaw skill</strong> — the fastest way to give any agent financial powers.
+                  Sardis is available as an <strong className="text-foreground">OpenClaw skill</strong>, the fastest way to give any agent financial powers.
                   Install once, and every OpenClaw-compatible agent instantly gets access to payments, virtual cards, balance checks, and policy management.
                 </p>
                 <div className="flex flex-wrap gap-2 mb-6">
@@ -800,7 +791,7 @@ function App() {
           {/* Bottom CTA */}
           <div className="mt-8 p-6 border border-[var(--sardis-orange)]/30 bg-[var(--sardis-orange)]/5 text-center">
             <p className="text-lg font-medium mb-2">
-              Your framework not listed? Sardis has a REST API — if it speaks HTTP, it works.
+              Your framework not listed? Sardis has a REST API. If it speaks HTTP, it works.
             </p>
             <p className="text-sm text-muted-foreground">
               <Link to="/docs/api-reference" className="text-[var(--sardis-orange)] hover:underline">View API Reference →</Link>
@@ -835,7 +826,7 @@ function App() {
                 {
                   step: "02",
                   title: "Policy Validation",
-                  desc: "Spending limits, merchant rules, time windows — all checked before any money moves."
+                  desc: "Spending limits, merchant rules, time windows. All checked before any money moves."
                 },
                 {
                   step: "03",
@@ -845,7 +836,7 @@ function App() {
                 {
                   step: "04",
                   title: "Settlement",
-                  desc: "Payment executes via the optimal rail — virtual card, bank transfer, or direct settlement."
+                  desc: "Payment executes via the optimal rail. Virtual card, bank transfer, or direct settlement."
                 }
               ].map((item, i) => (
                 <div
@@ -881,10 +872,10 @@ function App() {
       <section className="py-24 border-t border-border bg-muted/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 text-[var(--sardis-rose-strong)] dark:text-[#f4d0df] border-[var(--sardis-rose-strong)]/30 dark:border-[#f4d0df]/30 rounded-none font-mono">USE CASES</Badge>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">What Agents Can Do</h2>
+            <Badge variant="outline" className="mb-4 text-[var(--sardis-rose-strong)] dark:text-[#f4d0df] border-[var(--sardis-rose-strong)]/30 dark:border-[#f4d0df]/30 rounded-none font-mono">WHO IS THIS FOR</Badge>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">If Your Agent Needs to Spend Money</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              From simple purchases to complex multi-agent workflows, Sardis enables the full spectrum of agentic commerce.
+              Whether you're building a shopping assistant, an ops automation, or a multi-agent team. If it needs to pay, Sardis makes it safe.
             </p>
           </div>
 
@@ -905,7 +896,7 @@ function App() {
               {
                 icon: icons.rocketLaunch,
                 title: "Multi-Agent Workflows",
-                description: "Coordinate payments across agent teams. One agent discovers, another negotiates, a third executes payment — all with audit trails.",
+                description: "Coordinate payments across agent teams. One agent discovers, another negotiates, a third executes payment. Full audit trail at every step.",
                 examples: ["Supply chain automation", "Research orchestration", "Content pipelines", "Trading systems"]
               },
               {
@@ -951,9 +942,9 @@ function App() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <Badge variant="outline" className="mb-4 text-[var(--sardis-orange)] border-[var(--sardis-orange)]/30 rounded-none font-mono">OPEN SOURCE</Badge>
-            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Contributing to the Ecosystem</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Start Building in Minutes</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              We believe the agent economy needs open infrastructure. Our SDKs, tools, and reference implementations are free for everyone.
+              Open-source SDKs, MCP tools, and examples. No vendor lock-in. Integrate with your stack and ship.
             </p>
           </div>
 
@@ -1046,9 +1037,9 @@ function App() {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-8">
             <div>
-              <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Traction & Trust</h2>
+              <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Already in Use</h2>
               <p className="text-lg text-muted-foreground max-w-xl">
-                SDKs published. Infrastructure battle-tested. Looking for design partners to shape the product together.
+                Developers are building with Sardis today. We're looking for design partners to shape what comes next.
               </p>
             </div>
 
@@ -1070,8 +1061,8 @@ function App() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { label: "MARKET", value: "$30T by 2030", sub: <span>Machine Customer Economy — <a href="https://www.forbes.com/sites/torconstantino/2025/02/18/machine-customers-ai-buyers-to-control-30-trillion-in-purchases-by-2030/" target="_blank" rel="noreferrer" className="underline hover:text-[var(--sardis-orange)]">Gartner via Forbes</a></span> },
-              { label: "ADOPTION", value: "6,800+", sub: <span>monthly installs — <span className="text-foreground">2,190 npm</span> + <span className="text-foreground">4,600 PyPI</span> • 25 packages</span> },
+              { label: "MARKET", value: "$30T by 2030", sub: <span>Machine Customer Economy, <a href="https://www.forbes.com/sites/torconstantino/2025/02/18/machine-customers-ai-buyers-to-control-30-trillion-in-purchases-by-2030/" target="_blank" rel="noreferrer" className="underline hover:text-[var(--sardis-orange)]">Gartner via Forbes</a></span> },
+              { label: "ADOPTION", value: "25,000+", sub: <span>total installs across <span className="text-foreground">4 npm</span> + <span className="text-foreground">19 PyPI</span> packages</span> },
               { label: "STATUS", value: "Developer Preview", sub: "Private beta • accepting design partners" }
             ].map((stat, i) => (
               <div key={i} className="p-8 border border-border hover:border-[var(--sardis-orange)] transition-colors">
@@ -1130,9 +1121,9 @@ function App() {
       {/* CTA Section */}
       <section className="py-24 text-center border-t border-border">
         <div className="container mx-auto px-6">
-          <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6">Get Early Access</h2>
+          <h2 className="text-4xl md:text-5xl font-display font-semibold mb-6">Give Your Agents Financial Autonomy</h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            We're looking for teams building AI agents that need payment capabilities. Get early access, hands-on support, and shape the product with us.
+            Join teams already building with Sardis. Get early access, hands-on onboarding, and help shape the payment OS for the agent economy.
           </p>
           <WaitlistForm />
         </div>
@@ -1190,9 +1181,9 @@ function App() {
 
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-8 border-t border-border">
             <div className="flex gap-6 text-xs text-muted-foreground font-mono">
-              <span>Non-Custodial</span>
+              <span>You Own the Keys</span>
               <span>Policy-First</span>
-              <span>AP2 Compliant</span>
+              <span>Open Source</span>
             </div>
 
             <div className="text-xs text-muted-foreground font-mono">
