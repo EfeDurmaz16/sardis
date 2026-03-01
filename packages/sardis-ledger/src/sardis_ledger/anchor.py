@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -194,10 +195,14 @@ class LedgerAnchor:
                 anchor.block_number = tx_receipt.get("block_number")
                 anchor.gas_used = tx_receipt.get("gas_used")
             else:
-                # Simulated mode - generate fake tx_hash for dev/test
+                if os.getenv("SARDIS_ENVIRONMENT") == "prod":
+                    raise RuntimeError(
+                        "Production environment requires a chain provider for ledger anchoring"
+                    )
+                logger.warning("Using simulated anchor tx_hash (non-prod)")
                 anchor.transaction_hash = f"0x{uuid.uuid4().hex}{uuid.uuid4().hex[:32]}"
-                anchor.block_number = 1000000
-                anchor.gas_used = 50000
+                anchor.block_number = 0
+                anchor.gas_used = 0
 
             anchor.status = AnchorStatus.ANCHORED
             logger.info(
