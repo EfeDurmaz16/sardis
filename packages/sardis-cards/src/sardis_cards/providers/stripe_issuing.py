@@ -590,6 +590,58 @@ class StripeIssuingProvider(CardProvider):
         except Exception:
             return Decimal("0")
 
+    async def provision_apple_pay(self, provider_card_id: str) -> dict:
+        """Create Apple Pay provisioning data for a Sardis-issued card.
+
+        Returns an ephemeral key and provisioning payload that a mobile
+        SDK uses to add the card to Apple Wallet via push provisioning.
+        """
+        import stripe
+        stripe.api_key = self._api_key
+
+        # Create an ephemeral key scoped to the Issuing card
+        ephemeral_key = stripe.EphemeralKey.create(
+            issuing_card=provider_card_id,
+            stripe_version="2024-12-18.acacia",
+        )
+
+        return {
+            "provider": "stripe_issuing",
+            "card_id": provider_card_id,
+            "wallet_type": "apple_pay",
+            "ephemeral_key": ephemeral_key.to_dict(),
+            "provisioning_data": {
+                "card_id": provider_card_id,
+                "platform": "ios",
+            },
+        }
+
+    async def provision_google_pay(self, provider_card_id: str) -> dict:
+        """Create Google Pay provisioning data for a Sardis-issued card.
+
+        Returns a push provisioning object that a mobile SDK uses
+        to add the card to Google Wallet.
+        """
+        import stripe
+        stripe.api_key = self._api_key
+
+        # Create an ephemeral key scoped to the Issuing card
+        ephemeral_key = stripe.EphemeralKey.create(
+            issuing_card=provider_card_id,
+            stripe_version="2024-12-18.acacia",
+        )
+
+        return {
+            "provider": "stripe_issuing",
+            "card_id": provider_card_id,
+            "wallet_type": "google_pay",
+            "ephemeral_key": ephemeral_key.to_dict(),
+            "provisioning_data": {
+                "card_id": provider_card_id,
+                "platform": "android",
+            },
+        }
+
     async def reveal_card_details(
         self,
         provider_card_id: str,
