@@ -881,6 +881,13 @@ async def execute_ap2_payment(
         except PaymentExecutionError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+        # Record spend for policy tracking
+        if deps.wallet_manager:
+            try:
+                await deps.wallet_manager.async_record_spend(payment)
+            except Exception as rec_err:
+                logger.warning("Failed to record spend for %s: %s", payment.mandate_id, rec_err)
+
         logger.info(
             f"Payment executed: mandate={payment.mandate_id}, "
             f"amount={payment.amount_minor}, kyc={compliance.kyc_verified}, "
