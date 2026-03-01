@@ -43,6 +43,8 @@ dependencies = [
     "httpx>=0.25.0",
     "rlp>=3.0.0",
     "cryptography>=41.0.0",
+    "solana>=0.35.0",
+    "solders>=0.25.0",
 ]
 
 [project.optional-dependencies]

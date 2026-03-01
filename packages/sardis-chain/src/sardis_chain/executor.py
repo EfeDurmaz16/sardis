@@ -167,10 +167,9 @@ CHAIN_CONFIGS = {
         "block_time": 2,
     },
     # ── Solana ──────────────────────────────────────────────────────
-    # ROADMAP: Solana support planned for Q3 2026.
-    # Requires Anchor programs instead of Solidity contracts.
-    # These entries are kept for config completeness but all execution
-    # paths raise NotImplementedError until Solana support ships.
+    # EXPERIMENTAL: Solana support via SPL token transfers.
+    # Uses httpx JSON-RPC client + Kora gasless fee payer.
+    # Signing via Turnkey MPC (ed25519).
     "solana_devnet": {
         "chain_id": 0,  # Solana doesn't use chain IDs like EVM
         "rpc_url": "https://api.devnet.solana.com",
@@ -179,17 +178,15 @@ CHAIN_CONFIGS = {
         "block_time": 0.4,
         "is_solana": True,
         "experimental": True,
-        "not_implemented": True,
     },
     "solana": {
         "chain_id": 0,
-        "rpc_url": "https://api.mainnet-beta.solana.com",
+        "rpc_url": _rpc("SARDIS_SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"),
         "explorer": "https://explorer.solana.com",
         "native_token": "SOL",
         "block_time": 0.4,
         "is_solana": True,
         "experimental": True,
-        "not_implemented": True,
     },
 }
 
@@ -342,19 +339,17 @@ SARDIS_CONTRACTS = {
         "ledger_anchor": "",
         "smart_account_factory": "",
     },
-    # Solana - requires different contract architecture (Anchor programs)
-    # NOTE: Solana integration is EXPERIMENTAL and NOT IMPLEMENTED
+    # Solana - uses Anchor programs instead of Solidity contracts
+    # NOTE: Solana integration is EXPERIMENTAL
     "solana_devnet": {
         "wallet_program": "",
         "escrow_program": "",
         "experimental": True,
-        "not_implemented": True,
     },
     "solana": {
         "wallet_program": "",
         "escrow_program": "",
         "experimental": True,
-        "not_implemented": True,
     },
 }
 
@@ -1907,13 +1902,13 @@ class ChainExecutor:
             if not config:
                 raise ValueError(f"Unknown chain: {chain}")
 
-            # Block Solana chains - not yet implemented
-            if config.get("not_implemented") or config.get("is_solana"):
-                raise NotImplementedError(
-                    f"Chain '{chain}' is not yet supported. "
-                    f"Solana integration requires Anchor programs and is planned for a future release. "
-                    f"Supported chains: base, polygon, ethereum, arbitrum, optimism (and their testnets)."
-                )
+            # Solana chains use a separate client path
+            if config.get("is_solana"):
+                from sardis_chain.solana.client import SolanaClient, SolanaConfig
+                solana_config = SolanaConfig(rpc_url=config["rpc_url"])
+                self._solana_client = SolanaClient(solana_config)
+                logger.info("Initialized Solana client for chain: %s", chain)
+                return  # Solana doesn't use EVM RPC clients
 
             # Use production RPC client with chain ID validation
             try:
@@ -2889,7 +2884,7 @@ class ChainExecutor:
         query_params: list[tuple[str, str]] = []
         target_chains = chains or [
             c for c in STABLECOIN_ADDRESSES
-            if "_sepolia" not in c and c != "solana_devnet" and c != "solana"
+            if "_sepolia" not in c and c != "solana_devnet"
         ]
         for chain in target_chains:
             chain_tokens = STABLECOIN_ADDRESSES.get(chain, {})
