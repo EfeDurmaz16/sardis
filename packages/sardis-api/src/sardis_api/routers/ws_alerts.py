@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 from fastapi.responses import JSONResponse
