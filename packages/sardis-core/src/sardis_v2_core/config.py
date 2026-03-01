@@ -221,8 +221,8 @@ class SardisSettings(BaseSettings):
     # Database - PostgreSQL for production
     database_url: str = ""
     ledger_dsn: str = ""
-    mandate_archive_dsn: str = "sqlite:///./data/mandates.db"
-    replay_cache_dsn: str = "sqlite:///./data/replay_cache.db"
+    mandate_archive_dsn: str = ""
+    replay_cache_dsn: str = ""
     
     # Redis/Upstash for caching (optional)
     redis_url: str = ""
@@ -331,10 +331,9 @@ class SardisSettings(BaseSettings):
         # Warn if using SQLite in production
         env = _normalize_environment(os.getenv("SARDIS_ENVIRONMENT", "dev"))
         if env == "prod" and v.startswith("sqlite"):
-            warnings.warn(
-                "SQLite is not recommended for production. "
-                "Please use PostgreSQL by setting DATABASE_URL environment variable.",
-                RuntimeWarning,
+            raise ValueError(
+                "SQLite is not allowed in production. "
+                "Set DATABASE_URL to a PostgreSQL connection string."
             )
         
         return v
@@ -461,7 +460,8 @@ def load_settings(env_file: str | None = None) -> SardisSettings:
             # In strict mode, raise error for critical missing config
             critical_errors = [e for e in errors if any(k in e for k in
                 ["SECRET_KEY", "JWT_SECRET", "ADMIN_PASSWORD", "DATABASE_URL"])]
-            if critical_errors and os.getenv("SARDIS_STRICT_CONFIG", "false").lower() == "true":
+            strict_default = "true" if env == "prod" else "false"
+            if critical_errors and os.getenv("SARDIS_STRICT_CONFIG", strict_default).lower() == "true":
                 raise RuntimeError(
                     f"Critical configuration missing: {', '.join(critical_errors)}. "
                     "Set SARDIS_STRICT_CONFIG=false to bypass (not recommended)."
