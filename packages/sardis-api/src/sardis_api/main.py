@@ -826,16 +826,28 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Audit anchors - blockchain-anchored audit trail
     try:
-        from sardis_ledger.anchor import LedgerAnchor, AnchorConfig
-        anchor_config = AnchorConfig(chain="base")
-        anchor_service = LedgerAnchor(config=anchor_config)
+        from sardis_ledger.anchor import LedgerAnchor, AnchorConfig, AnchorChainProvider
+        anchor_chain = os.getenv("SARDIS_ANCHOR_CHAIN", "base")
+        anchor_config = AnchorConfig(chain=anchor_chain)
+        # Wire real chain provider if contract address is configured
+        chain_provider = None
+        if anchor_config.contract_address and chain_exec:
+            chain_provider = AnchorChainProvider(
+                chain_executor=chain_exec,
+                chain=anchor_chain,
+            )
+            logger.info(
+                "Audit anchor chain provider wired: chain=%s, contract=%s",
+                anchor_chain, anchor_config.contract_address,
+            )
+        anchor_service = LedgerAnchor(config=anchor_config, chain_provider=chain_provider)
         app.dependency_overrides[audit_anchors_router.get_anchor_deps] = (
             lambda: audit_anchors_router.AnchorDependencies(
                 anchor_service=anchor_service,
                 ledger_store=ledger_store,
             )
         )
-        logger.info("Audit anchor service initialized")
+        logger.info("Audit anchor service initialized (chain_provider=%s)", "real" if chain_provider else "simulated")
     except ImportError:
         logger.warning("sardis-ledger anchor module not available, audit anchoring disabled")
     app.include_router(audit_anchors_router.router)
