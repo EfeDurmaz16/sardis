@@ -35,6 +35,16 @@ class PaymentStatus(str, Enum):
     EXPIRED = "expired"
 
 
+class PaymentMethod(str, Enum):
+    """Supported payment methods."""
+    CARD = "card"
+    APPLE_PAY = "apple_pay"
+    GOOGLE_PAY = "google_pay"
+    KLARNA = "klarna"
+    LINK = "link"
+    PAYPAL = "paypal"
+
+
 class CheckoutEventType(str, Enum):
     """Checkout analytics event types."""
     SESSION_CREATED = "checkout.session.created"
@@ -105,6 +115,8 @@ class CheckoutRequest:
     # Multi-currency support
     accepted_currencies: List[str] = field(default_factory=lambda: ["USD"])
     auto_convert_currency: bool = False
+    # Payment method selection
+    payment_methods: List[str] = field(default_factory=lambda: ["card", "apple_pay", "google_pay", "link"])
     # Customization options
     customization: Optional["CheckoutCustomization"] = None
     # Customer session
@@ -168,6 +180,7 @@ class CheckoutSession:
     expires_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     psp_payment_id: Optional[str] = None  # PSP's payment ID
+    payment_methods: List[str] = field(default_factory=lambda: ["card"])
 
 
 @dataclass

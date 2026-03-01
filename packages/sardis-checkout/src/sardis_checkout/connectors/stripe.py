@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hmac
 import hashlib
+import os
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
@@ -34,6 +35,36 @@ class StripeConnector(PSPConnector):
     def psp_type(self) -> PSPType:
         return PSPType.STRIPE
     
+    def _resolve_payment_method_types(
+        self,
+        requested: list[str] | None = None,
+    ) -> list[str]:
+        """Resolve Stripe payment method types from request or config.
+
+        Apple Pay and Google Pay work through the 'card' type with wallet
+        detection in Stripe — no separate type needed.
+        """
+        configured = os.getenv(
+            "SARDIS_CHECKOUT_PAYMENT_METHODS", "card,apple_pay,google_pay,link"
+        ).split(",")
+        methods = requested or configured
+
+        # Map to Stripe payment_method_types
+        # Apple Pay and Google Pay are handled by 'card' with wallet detection
+        stripe_types: list[str] = []
+        for m in methods:
+            m = m.strip()
+            if m in ("card", "apple_pay", "google_pay"):
+                if "card" not in stripe_types:
+                    stripe_types.append("card")
+            elif m == "klarna":
+                stripe_types.append("klarna")
+            elif m == "link":
+                stripe_types.append("link")
+            elif m == "paypal":
+                stripe_types.append("paypal")
+        return stripe_types or ["card"]
+
     async def create_checkout_session(
         self,
         request: CheckoutRequest,
@@ -53,7 +84,14 @@ class StripeConnector(PSPConnector):
         # Create session
         payload = {
             "mode": "payment",
-            "payment_method_types": ["card"],
+            "payment_method_types": self._resolve_payment_method_types(
+                getattr(request, "payment_methods", None)
+            ),
+            "payment_method_options": {
+                "card": {
+                    "request_three_d_secure": "automatic",
+                },
+            },
             "line_items": [
                 {
                     "price_data": {
