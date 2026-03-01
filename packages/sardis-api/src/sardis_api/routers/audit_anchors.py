@@ -466,22 +466,21 @@ async def get_merkle_proof(
                 detail=f"Anchor {anchor_id} not found",
             )
 
-        # Get proof
-        proof = deps.anchor_service.get_proof_for_entry(entry_id)
-        if proof is None:
+        # Get proof and leaf hash
+        proof_result = deps.anchor_service.get_proof_for_entry(entry_id)
+        if proof_result is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Entry {entry_id} not found in anchor {anchor_id}",
             )
+
+        proof, leaf_hash = proof_result
 
         # Convert proof to response format
         proof_dicts = [
             {"hash": hash_val, "direction": direction}
             for hash_val, direction in proof
         ]
-
-        # Get leaf hash (would need actual entry data in production)
-        leaf_hash = "0x" + "0" * 64  # Placeholder
 
         logger.info(f"Generated Merkle proof for {entry_id} in {anchor_id}")
 

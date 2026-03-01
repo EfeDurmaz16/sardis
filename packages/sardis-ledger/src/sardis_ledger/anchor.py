@@ -356,15 +356,18 @@ class LedgerAnchor:
 
         return max(self._anchors.values(), key=lambda a: a.timestamp)
 
-    def get_proof_for_entry(self, entry_id: str) -> Optional[list[tuple[str, str]]]:
+    def get_proof_for_entry(
+        self, entry_id: str,
+    ) -> Optional[tuple[list[tuple[str, str]], str]]:
         """
-        Get Merkle proof for a specific entry.
+        Get Merkle proof and leaf hash for a specific entry.
 
         Args:
             entry_id: ID of the entry
 
         Returns:
-            Merkle proof as list of (hash, direction) tuples, or None if not found
+            Tuple of (proof, leaf_hash) where proof is list of (hash, direction)
+            tuples, or None if not found
         """
         anchor_id = self._entry_to_anchor.get(entry_id)
         if not anchor_id:
@@ -396,8 +399,9 @@ class LedgerAnchor:
 
         try:
             proof = tree.get_proof(entry_index)
+            leaf_hash = tree._leaves[entry_index].hash
             logger.info(f"Generated proof for entry {entry_id} in anchor {anchor_id} (index={entry_index})")
-            return proof
+            return proof, leaf_hash
         except (IndexError, ValueError) as e:
             logger.warning(f"Could not generate proof for entry {entry_id}: {e}")
             return None
