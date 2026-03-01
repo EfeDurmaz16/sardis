@@ -103,10 +103,8 @@ contract DeployPhase1 is Script {
         console.log(string.concat("SARDIS_AGENT_REGISTRY_", chainName, "="), address(registry));
 
         console.log("");
-        console.log("=== CIRCLE PAYMASTER (no deploy needed) ===");
-        if (block.chainid == 8453) {
-            console.log("CIRCLE_PAYMASTER_BASE=0x6C973eBe80dCD8660841D4356bf15c32460271C9");
-        }
+        console.log("=== CIRCLE PAYMASTER (no deploy needed, permissionless) ===");
+        console.log("CIRCLE_PAYMASTER=0x0578cFB241215b77442a541325d6A4E6dFE700Ec (all chains)");
 
         console.log("");
         console.log("=== NEXT STEPS ===");
@@ -129,13 +127,18 @@ contract DeployPhase1 is Script {
 
 /**
  * @title DeployPhase2
- * @notice Phase 2 deployment — audited contracts (Escrow, custom Paymaster)
- * @dev Run AFTER security audit is complete
+ * @notice Phase 2 deployment — Circle RefundProtocol (audited escrow replacement)
+ * @dev Replaces custom SardisEscrow with Circle's Apache 2.0 audited RefundProtocol.
+ *      Sardis deployer becomes the arbiter for dispute resolution.
+ *
+ * Usage:
+ *   forge script script/DeployMainnet.s.sol:DeployPhase2 \
+ *     --rpc-url $BASE_RPC_URL \
+ *     --broadcast --verify \
+ *     --etherscan-api-key $BASESCAN_API_KEY \
+ *     -vvvv
  */
 contract DeployPhase2 is Script {
-    uint256 constant ESCROW_FEE_BPS = 50;            // 0.5% fee
-    uint256 constant MIN_ESCROW_AMOUNT = 10 * 10**6;  // $10 USDC minimum
-    uint256 constant MAX_DEADLINE_DAYS = 30;           // 30 day max escrow
 
     function run() external {
         require(block.chainid != 31337, "Use Deploy.s.sol for local testing");
@@ -149,29 +152,22 @@ contract DeployPhase2 is Script {
         );
 
         console.log("=== PHASE 2 MAINNET DEPLOYMENT ===");
+        console.log("Circle RefundProtocol (audited escrow)");
         console.log("Chain ID:", block.chainid);
-        console.log("Deployer:", deployer);
+        console.log("Deployer / Arbiter:", deployer);
 
         uint256 balance = deployer.balance;
         require(balance > 0.01 ether, "Insufficient ETH for deployment");
 
-        vm.startBroadcast(deployerPrivateKey);
-
-        // Deploy Escrow (requires completed audit)
-        SardisEscrow escrow = new SardisEscrow(
-            deployer,
-            ESCROW_FEE_BPS,
-            MIN_ESCROW_AMOUNT,
-            MAX_DEADLINE_DAYS
-        );
-        console.log("SardisEscrow deployed:", address(escrow));
-
-        vm.stopBroadcast();
+        console.log("");
+        console.log("NOTE: Deploy Circle RefundProtocol from circlefin/refund-protocol repo.");
+        console.log("Sardis deployer address will be set as the _arbiter parameter.");
+        console.log("");
+        console.log("After deployment, update .env with:");
 
         string memory chainName = _getChainName(block.chainid);
-        console.log("");
-        console.log("=== UPDATE .env WITH ===");
-        console.log(string.concat("SARDIS_ESCROW_", chainName, "="), address(escrow));
+        console.log(string.concat("  SARDIS_REFUND_PROTOCOL_", chainName, "=<deployed_address>"));
+        console.log(string.concat("  SARDIS_ARBITER_", chainName, "="), deployer);
     }
 
     function _getChainName(uint256 chainId) internal pure returns (string memory) {
