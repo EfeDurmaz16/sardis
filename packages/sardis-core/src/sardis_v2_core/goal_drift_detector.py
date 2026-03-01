@@ -141,7 +141,8 @@ class GoalDriftDetector:
                         Lower values = stricter drift detection
         """
         self.sensitivity = sensitivity
-        self._profile_cache: dict[str, SpendingProfile] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._profile_cache_store = RedisStateStore(namespace="drift_profile_cache")
 
     async def build_profile(
         self,
@@ -273,7 +274,8 @@ class GoalDriftDetector:
         )
 
         # Cache for quick lookups
-        self._profile_cache[agent_id] = profile
+        import dataclasses
+        await self._profile_cache_store.set(agent_id, dataclasses.asdict(profile), ttl=3600)
 
         return profile
 
@@ -512,9 +514,6 @@ class GoalDriftDetector:
         # Degrees of freedom = number of categories - 1
         dof = max(1, len(all_keys) - 1)
 
-        # Approximate p-value using chi-squared distribution
-        # For simplicity, using rough approximation
-        # In production, use scipy.stats.chi2.sf(chi_squared, dof)
         p_value = self._chi_squared_p_value(chi_squared, dof)
 
         return chi_squared, p_value
@@ -556,10 +555,8 @@ class GoalDriftDetector:
             diff = abs(cdf1 - cdf2)
             max_diff = max(max_diff, diff)
 
-        # K-S statistic
         ks_statistic = max_diff
 
-        # Approximate p-value
         n = len(s1) * len(s2) / (len(s1) + len(s2))
         p_value = self._ks_p_value(ks_statistic, n)
 
@@ -743,49 +740,18 @@ class GoalDriftDetector:
         return d0 + d1
 
     def _chi_squared_p_value(self, chi2: float, dof: int) -> float:
-        """
-        Approximate p-value for chi-squared statistic.
-
-        Uses rough approximation - in production, use scipy.stats.chi2.sf()
-        """
-        # Very rough approximation using normal distribution
-        # For large dof, chi2 ~ Normal(dof, 2*dof)
+        """Compute p-value for chi-squared statistic using scipy."""
         if dof < 1:
             return 1.0
-
-        # Z-score approximation
-        z = (chi2 - dof) / math.sqrt(2 * dof)
-
-        # Approximate p-value from z-score
-        if z < -3:
-            return 0.999
-        elif z > 3:
-            return 0.001
-        else:
-            # Rough mapping
-            return max(0.001, min(0.999, 0.5 * (1 - z / 4)))
+        from scipy.stats import chi2 as chi2_dist
+        return float(chi2_dist.sf(chi2, dof))
 
     def _ks_p_value(self, ks_stat: float, n: float) -> float:
-        """
-        Approximate p-value for K-S statistic.
-
-        Uses rough approximation - in production, use scipy.stats.ks_2samp()
-        """
-        # Kolmogorov distribution approximation
-        # For large n, D ~ N(0, sqrt(2)/sqrt(n))
+        """Compute p-value for K-S statistic using scipy."""
         if n < 1:
             return 1.0
-
-        # Very rough approximation
-        lambda_val = (math.sqrt(n) + 0.12 + 0.11 / math.sqrt(n)) * ks_stat
-
-        if lambda_val < 0.5:
-            return 1.0
-        elif lambda_val > 3:
-            return 0.001
-        else:
-            # Linear interpolation
-            return max(0.001, 1.0 - (lambda_val / 4))
+        from scipy.stats import kstwo
+        return float(kstwo.sf(ks_stat, int(max(n, 1))))
 
 
 class VelocityGovernor:
@@ -826,8 +792,8 @@ class VelocityGovernor:
         self.max_per_hour = max_per_hour
         self.max_per_day = max_per_day
 
-        # In-memory tracking (in production, use Redis)
-        self._transaction_log: dict[str, list[datetime]] = {}
+        from sardis_v2_core.redis_state import RedisStateStore
+        self._tx_log_store = RedisStateStore(namespace="velocity_tx_log")
 
     async def check_velocity(self, agent_id: str) -> tuple[bool, str]:
         """
@@ -841,16 +807,21 @@ class VelocityGovernor:
         """
         now = datetime.now(timezone.utc)
 
-        # Get recent transactions
-        if agent_id not in self._transaction_log:
-            self._transaction_log[agent_id] = []
+        # Get recent transactions from Redis store (stored as ISO strings)
+        raw_txs = await self._tx_log_store.get_list(agent_id)
+        txs = []
+        for ts_str in raw_txs:
+            try:
+                ts = datetime.fromisoformat(ts_str)
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                txs.append(ts)
+            except (ValueError, TypeError):
+                continue
 
-        txs = self._transaction_log[agent_id]
-
-        # Clean up old entries
+        # Filter to last 24 hours only (for counting)
         one_day_ago = now - timedelta(days=1)
         txs = [ts for ts in txs if ts > one_day_ago]
-        self._transaction_log[agent_id] = txs
 
         # Count transactions in each window
         one_minute_ago = now - timedelta(minutes=1)
@@ -880,8 +851,4 @@ class VelocityGovernor:
             agent_id: Agent identifier
         """
         now = datetime.now(timezone.utc)
-
-        if agent_id not in self._transaction_log:
-            self._transaction_log[agent_id] = []
-
-        self._transaction_log[agent_id].append(now)
+        await self._tx_log_store.append_list(agent_id, now.isoformat(), max_len=1000, ttl=86400)
