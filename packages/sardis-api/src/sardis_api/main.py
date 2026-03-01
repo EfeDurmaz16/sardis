@@ -263,7 +263,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
 
     # 6. TAP verification middleware (before CORS, after rate limiting)
-    tap_enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", "disabled").lower()
+    tap_default = "enabled" if settings.environment == "prod" else "disabled"
+    tap_enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", tap_default).lower()
     if tap_enforcement == "enabled":
         jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
         jwks_provider = None
