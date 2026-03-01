@@ -172,15 +172,24 @@ class TurnkeyClient:
         wallet_id: str,
         unsigned_transaction: str,
         sign_with: str,
+        transaction_type: str = "TRANSACTION_TYPE_ETHEREUM",
     ) -> Dict[str, Any]:
-        """Sign a transaction with a wallet address."""
+        """Sign a transaction with a wallet address.
+
+        Args:
+            wallet_id: Turnkey wallet ID.
+            unsigned_transaction: Hex-encoded (EVM) or base64-encoded (Solana) unsigned tx.
+            sign_with: Address or public key to sign with.
+            transaction_type: Turnkey transaction type. Use TRANSACTION_TYPE_ETHEREUM
+                for EVM chains or TRANSACTION_TYPE_SOLANA for Solana.
+        """
         body = {
             "type": "ACTIVITY_TYPE_SIGN_TRANSACTION",
             "timestampMs": str(int(time.time() * 1000)),
             "organizationId": self._organization_id,
             "parameters": {
                 "signWith": sign_with,
-                "type": "TRANSACTION_TYPE_ETHEREUM",
+                "type": transaction_type,
                 "unsignedTransaction": unsigned_transaction,
             },
         }
@@ -188,6 +197,26 @@ class TurnkeyClient:
         result = await self.post("/public/v1/submit/sign_transaction", body)
         activity = result.get("activity", {})
         return activity.get("result", {}).get("signTransactionResult", {})
+
+    async def sign_solana_transaction(
+        self,
+        wallet_id: str,
+        unsigned_transaction: str,
+        sign_with: str,
+    ) -> Dict[str, Any]:
+        """Sign a Solana transaction (ed25519) with a wallet address.
+
+        Args:
+            wallet_id: Turnkey wallet ID.
+            unsigned_transaction: Base64-encoded unsigned Solana transaction.
+            sign_with: Solana public key to sign with.
+        """
+        return await self.sign_transaction(
+            wallet_id=wallet_id,
+            unsigned_transaction=unsigned_transaction,
+            sign_with=sign_with,
+            transaction_type="TRANSACTION_TYPE_SOLANA",
+        )
 
     async def get_wallet(self, wallet_id: str) -> Dict[str, Any]:
         """Get wallet details."""
