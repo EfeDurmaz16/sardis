@@ -7,7 +7,7 @@ from typing import Literal, Sequence
 
 from pydantic import BaseModel
 
-MandateType = Literal["intent", "cart", "payment"]
+MandateType = Literal["intent", "cart", "payment", "platform_fee"]
 
 
 class VCProof(BaseModel):

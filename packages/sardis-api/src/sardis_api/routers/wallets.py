@@ -89,6 +89,10 @@ class TransferResponse(BaseModel):
     amount: str
     token: str
     chain: str
+    fee_amount: Optional[str] = None
+    fee_bps: Optional[int] = None
+    net_amount: Optional[str] = None
+    fee_tx_hash: Optional[str] = None
     ledger_tx_id: Optional[str] = None
     audit_anchor: Optional[str] = None
     execution_path: Literal["legacy_tx", "erc4337_userop"] = "legacy_tx"
@@ -745,6 +749,22 @@ async def transfer_crypto(
                 detail=compliance_result.reason or "compliance_check_failed",
             )
 
+        # --- Platform fee calculation ---
+        from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
+
+        fee_calc = calculate_fee(
+            transfer_request.amount,
+            destination=transfer_request.destination,
+        )
+        fee_tx_hash: str | None = None
+
+        if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
+            # Adjust mandate to send net_amount to recipient
+            net_amount_minor = to_raw_token_amount(
+                TokenType(transfer_request.token.upper()), fee_calc.net_amount
+            )
+            mandate.amount_minor = net_amount_minor
+
         try:
             receipt = await deps.chain_executor.dispatch_payment(mandate)
         except Exception as e:
@@ -752,6 +772,48 @@ async def transfer_crypto(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Transfer failed: {str(e)}",
             )
+
+        # --- Collect fee to treasury (best-effort, non-blocking) ---
+        if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
+            treasury_addr = get_treasury_address()
+            if treasury_addr:
+                try:
+                    fee_amount_minor = to_raw_token_amount(
+                        TokenType(transfer_request.token.upper()), fee_calc.fee_amount
+                    )
+                    fee_mandate = PaymentMandate(
+                        mandate_id=f"fee_{digest[:16]}",
+                        mandate_type="platform_fee",
+                        issuer=f"wallet:{wallet_id}",
+                        subject=wallet.agent_id,
+                        expires_at=int(time.time()) + 300,
+                        nonce=f"fee_{digest}",
+                        proof=VCProof(
+                            verification_method=f"wallet:{wallet_id}#key-1",
+                            created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            proof_value="platform-fee",
+                        ),
+                        domain="sardis.sh",
+                        purpose="platform_fee",
+                        chain=transfer_request.chain,
+                        token=transfer_request.token,
+                        amount_minor=fee_amount_minor,
+                        destination=treasury_addr,
+                        audit_hash=hashlib.sha256(
+                            f"fee:{wallet_id}:{treasury_addr}:{fee_amount_minor}".encode()
+                        ).hexdigest(),
+                        wallet_id=wallet_id,
+                        account_type=wallet.account_type,
+                        smart_account_address=wallet.smart_account_address,
+                    )
+                    fee_receipt = await deps.chain_executor.dispatch_payment(fee_mandate)
+                    fee_tx_hash = fee_receipt.tx_hash if hasattr(fee_receipt, "tx_hash") else str(fee_receipt)
+                    logger.info(
+                        "Platform fee collected: %s %s → %s (tx: %s)",
+                        fee_calc.fee_amount, transfer_request.token, treasury_addr, fee_tx_hash,
+                    )
+                except Exception:
+                    logger.exception("Failed to collect platform fee for transfer %s", mandate.mandate_id)
 
         # Record spend state for policy enforcement
         # TODO: Migrate to PaymentOrchestrator gateway
@@ -846,6 +908,10 @@ async def transfer_crypto(
             amount=str(transfer_request.amount),
             token=transfer_request.token,
             chain=transfer_request.chain,
+            fee_amount=str(fee_calc.fee_amount) if not fee_calc.fee_exempt else None,
+            fee_bps=fee_calc.fee_bps if not fee_calc.fee_exempt else None,
+            net_amount=str(fee_calc.net_amount) if not fee_calc.fee_exempt else None,
+            fee_tx_hash=fee_tx_hash,
             ledger_tx_id=ledger_tx_id,
             audit_anchor=getattr(receipt, "audit_anchor", None),
             execution_path=execution_path,

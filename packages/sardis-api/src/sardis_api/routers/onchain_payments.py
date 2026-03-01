@@ -75,6 +75,10 @@ class OnChainPaymentResponse(BaseModel):
     policy_audit_anchor: Optional[str] = None
     policy_audit_id: Optional[str] = None
     compliance_audit_id: Optional[str] = None
+    fee_amount: Optional[str] = None
+    fee_bps: Optional[int] = None
+    net_amount: Optional[str] = None
+    fee_tx_hash: Optional[str] = None
 
 
 @dataclass
@@ -1031,6 +1035,19 @@ async def pay_onchain(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="chain_executor_not_configured",
         )
+
+    # --- Platform fee calculation ---
+    from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
+
+    fee_calc = calculate_fee(request.amount, destination=request.to)
+    fee_tx_hash: str | None = None
+
+    if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
+        net_amount_minor = to_raw_token_amount(
+            TokenType(request.token.upper()), fee_calc.net_amount
+        )
+        mandate.amount_minor = net_amount_minor
+
     try:
         receipt = await deps.chain_executor.dispatch_payment(mandate)
     except Exception as exc:
@@ -1038,6 +1055,48 @@ async def pay_onchain(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"onchain_payment_failed: {exc}",
         ) from exc
+
+    # --- Collect fee to treasury (best-effort) ---
+    if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
+        treasury_addr = get_treasury_address()
+        if treasury_addr:
+            try:
+                fee_amount_minor = to_raw_token_amount(
+                    TokenType(request.token.upper()), fee_calc.fee_amount
+                )
+                fee_mandate = PaymentMandate(
+                    mandate_id=f"fee_{nonce[:16]}",
+                    mandate_type="platform_fee",
+                    issuer=f"wallet:{wallet_id}",
+                    subject=wallet.agent_id,
+                    expires_at=int(time.time()) + 300,
+                    nonce=f"fee_{nonce}",
+                    proof=VCProof(
+                        verification_method=f"wallet:{wallet_id}#key-1",
+                        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        proof_value="platform-fee",
+                    ),
+                    domain="sardis.sh",
+                    purpose="platform_fee",
+                    chain=request.chain,
+                    token=request.token.upper(),
+                    amount_minor=fee_amount_minor,
+                    destination=treasury_addr,
+                    audit_hash=hashlib.sha256(
+                        f"fee:{wallet_id}:{treasury_addr}:{fee_amount_minor}".encode()
+                    ).hexdigest(),
+                    wallet_id=wallet_id,
+                    account_type=wallet.account_type,
+                    smart_account_address=wallet.smart_account_address,
+                )
+                fee_receipt = await deps.chain_executor.dispatch_payment(fee_mandate)
+                fee_tx_hash = fee_receipt.tx_hash if hasattr(fee_receipt, "tx_hash") else str(fee_receipt)
+                logger.info(
+                    "Platform fee collected: %s %s → %s (tx: %s)",
+                    fee_calc.fee_amount, request.token, treasury_addr, fee_tx_hash,
+                )
+            except Exception:
+                logger.exception("Failed to collect platform fee for onchain payment %s", mandate.mandate_id)
 
     if policy_receipt is not None:
         policy_receipt["decision"] = "allow"
@@ -1062,4 +1121,8 @@ async def pay_onchain(
         policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
         policy_audit_id=policy_audit_id,
         compliance_audit_id=compliance_audit_id,
+        fee_amount=str(fee_calc.fee_amount) if not fee_calc.fee_exempt else None,
+        fee_bps=fee_calc.fee_bps if not fee_calc.fee_exempt else None,
+        net_amount=str(fee_calc.net_amount) if not fee_calc.fee_exempt else None,
+        fee_tx_hash=fee_tx_hash,
     )
