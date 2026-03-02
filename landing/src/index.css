@@ -69,7 +69,7 @@
 :root {
   --font-size: 17px;
 
-  /* Color Palette — Ivory Mist + Ocean Breeze + Golden Nectar + Sunset Ember */
+  /* Color Palette: Ivory Mist + Ocean Breeze + Golden Nectar + Sunset Ember */
   /* ORIGINAL: --sardis-canvas: #f2f0e9; --sardis-ink: #0f0e0c; --sardis-orange: #ff4f00; */
   --sardis-canvas: #fff8f0;
   --sardis-ink: #1a1614;
@@ -109,6 +109,31 @@
   --input: #d6d3cd;
   --ring: #ff4f00;
   --radius: 0px;
+
+  /* Landing page theme tokens */
+  --landing-bg: #FAFAFA;
+  --landing-surface: #FFFFFF;
+  --landing-surface-elevated: #F5F5F5;
+  --landing-border: rgba(0, 0, 0, 0.08);
+  --landing-border-hover: rgba(0, 0, 0, 0.15);
+  --landing-text-primary: #1A1A1A;
+  --landing-text-secondary: #4A4A4A;
+  --landing-text-tertiary: #5A5A64;
+  --landing-text-muted: #7A7A84;
+  --landing-text-ghost: #A0A0A8;
+  --landing-accent: #FF4F00;
+  --landing-accent-hover: #ff6a2a;
+  --landing-blue: #3B7AE0;
+  --landing-green: #16A34A;
+  --landing-amber: #D97706;
+  --landing-red: #DC2626;
+  --landing-button-bg: #1A1A1A;
+  --landing-button-text: #FFFFFF;
+  --landing-button-hover: #333333;
+  --landing-code-bg: #F5F5F5;
+  --landing-mockup-bg: #FAFAFA;
+  --landing-mockup-surface: #FFFFFF;
+  --landing-marquee-text: #C8C8CC;
 }
 
 .dark {
@@ -131,6 +156,31 @@
   --border: #292524;
   --input: #292524;
   --ring: #ff4f00;
+
+  /* Landing specific dark */
+  --landing-bg: #08090A;
+  --landing-surface: #111318;
+  --landing-surface-elevated: #1A1B22;
+  --landing-border: rgba(255, 255, 255, 0.06);
+  --landing-border-hover: rgba(255, 255, 255, 0.12);
+  --landing-text-primary: #ECECEE;
+  --landing-text-secondary: #A0A0AA;
+  --landing-text-tertiary: #8A8A94;
+  --landing-text-muted: #5E6070;
+  --landing-text-ghost: #4A4A54;
+  --landing-accent: #FF4F00;
+  --landing-accent-hover: #ff6a2a;
+  --landing-blue: #5B8DEF;
+  --landing-green: #4ADE80;
+  --landing-amber: #E8A44A;
+  --landing-red: #E85D5D;
+  --landing-button-bg: #ECECEE;
+  --landing-button-text: #0C0D10;
+  --landing-button-hover: #D0D0D4;
+  --landing-code-bg: #111318;
+  --landing-mockup-bg: #111318;
+  --landing-mockup-surface: #08090A;
+  --landing-marquee-text: #3A3A4A;
 }
 
 @theme inline {
@@ -224,7 +274,7 @@
   }
 }
 
-/* Geist Pixel utility — display font for labels and decorative text */
+/* Geist Pixel utility: display font for labels and decorative text */
 .font-pixel {
   font-family: "Geist Pixel", monospace;
   letter-spacing: 0.08em;
@@ -310,6 +360,150 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
+}
+
+/* Docs content - prose styling that works in both light and dark mode */
+.docs-content {
+  color: var(--landing-text-secondary);
+  font-family: "Geist Sans", system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+.docs-content h1,
+.docs-content h2,
+.docs-content h3,
+.docs-content h4,
+.docs-content h5,
+.docs-content h6 {
+  font-family: "Geist Mono", "Fira Code", monospace;
+  font-weight: 600;
+  color: var(--landing-text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.docs-content h1 { font-size: 2rem; margin-top: 0; margin-bottom: 1rem; }
+.docs-content h2 { font-size: 1.4rem; margin-top: 2.5rem; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--landing-border); }
+.docs-content h3 { font-size: 1.15rem; margin-top: 2rem; margin-bottom: 0.5rem; }
+.docs-content h4 { font-size: 1rem; margin-top: 1.5rem; margin-bottom: 0.4rem; }
+
+.docs-content p {
+  color: var(--landing-text-secondary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: 1.75;
+}
+
+.docs-content a {
+  color: var(--landing-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.docs-content a:hover {
+  border-bottom-color: var(--landing-accent);
+}
+
+.docs-content strong {
+  color: var(--landing-text-primary);
+  font-weight: 600;
+}
+
+.docs-content em {
+  color: var(--landing-text-secondary);
+}
+
+.docs-content ul,
+.docs-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--landing-text-secondary);
+}
+
+.docs-content li {
+  margin-bottom: 0.35rem;
+  line-height: 1.7;
+}
+
+.docs-content li + li {
+  margin-top: 0.25rem;
+}
+
+.docs-content code {
+  font-family: "Geist Mono", "Fira Code", monospace;
+  font-size: 0.85em;
+  background: var(--landing-code-bg);
+  color: var(--landing-text-primary);
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--landing-border);
+}
+
+.docs-content pre {
+  font-family: "Geist Mono", "Fira Code", monospace;
+  font-size: 0.85rem;
+  background: var(--landing-code-bg);
+  color: var(--landing-text-primary);
+  border: 1px solid var(--landing-border);
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.docs-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.docs-content blockquote {
+  border-left: 3px solid var(--landing-accent);
+  padding-left: 1.25rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1rem;
+  color: var(--landing-text-tertiary);
+  font-style: italic;
+}
+
+.docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.docs-content th {
+  font-family: "Geist Mono", "Fira Code", monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--landing-text-muted);
+  border-bottom: 1px solid var(--landing-border);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  background: var(--landing-code-bg);
+}
+
+.docs-content td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--landing-border);
+  color: var(--landing-text-secondary);
+  vertical-align: top;
+}
+
+.docs-content tr:last-child td {
+  border-bottom: none;
+}
+
+.docs-content hr {
+  border: none;
+  border-top: 1px solid var(--landing-border);
+  margin: 2rem 0;
 }
 
 /* Reduced motion support */
