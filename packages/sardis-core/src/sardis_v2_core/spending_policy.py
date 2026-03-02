@@ -258,6 +258,7 @@ class SpendingPolicy:
         rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
         drift_score: Optional[Decimal] = None,
         policy_store: Optional[Any] = None,  # SpendingPolicyStore for DB-backed enforcement
+        kya_client: Optional[Any] = None,  # EASKYAClient for attestation verification
     ) -> tuple[bool, str]:
         """
         Evaluate a payment request against this policy.
@@ -277,6 +278,7 @@ class SpendingPolicy:
             8. Merchant rules (allowlist / blocklist / per-merchant caps)
             9. Goal drift (agent staying on task?)
            10. Approval threshold (OK but needs human sign-off)
+           11. KYA attestation (on-chain agent identity verified?)
 
         Args:
             wallet: The agent's non-custodial wallet.
@@ -400,6 +402,17 @@ class SpendingPolicy:
         # route this to a human for sign-off before executing on-chain.
         if self.approval_threshold is not None and amount > self.approval_threshold:
             return True, "requires_approval"
+
+        # ── Check 11: KYA attestation ────────────────────────────────
+        # If a KYA client is provided and the trust level requires an
+        # on-chain attestation, verify the agent's KYA attestation is
+        # valid and not revoked before allowing the transaction.
+        if kya_client and self.trust_level in (TrustLevel.MEDIUM, TrustLevel.HIGH):
+            kya_ok, kya_reason = await self._check_kya_attestation(
+                wallet, kya_client
+            )
+            if not kya_ok:
+                return False, kya_reason
 
         return True, "OK"
 
@@ -610,6 +623,43 @@ class SpendingPolicy:
         mcc_info = get_mcc_info(mcc_code)
         if mcc_info and mcc_info.default_blocked:
             return False, f"high_risk_merchant:{mcc_info.description}"
+
+        return True, "OK"
+
+    async def _check_kya_attestation(
+        self,
+        wallet: "Wallet",
+        kya_client: Any,
+    ) -> tuple[bool, str]:
+        """Check KYA attestation for the agent's wallet.
+
+        For MEDIUM and HIGH trust levels, the agent must have a valid,
+        non-revoked on-chain KYA attestation. LOW trust agents can
+        transact without attestation (within their lower limits).
+
+        Args:
+            wallet: Agent's wallet (must have kya_attestation_uid).
+            kya_client: EASKYAClient instance.
+
+        Returns:
+            (True, "OK") if attestation is valid, (False, reason) otherwise.
+        """
+        uid_hex = getattr(wallet, "kya_attestation_uid", None)
+        if not uid_hex:
+            return False, "kya_attestation_required"
+
+        try:
+            uid_bytes = bytes.fromhex(uid_hex.removeprefix("0x"))
+            attestation = await kya_client.verify_attestation(uid_bytes)
+        except Exception:
+            # Fail-closed: if we can't verify, deny
+            return False, "kya_verification_failed"
+
+        if attestation is None:
+            return False, "kya_attestation_not_found"
+
+        if attestation.revoked:
+            return False, "kya_attestation_revoked"
 
         return True, "OK"
 

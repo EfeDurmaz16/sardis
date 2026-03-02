@@ -81,6 +81,8 @@ class Wallet(BaseModel):
     cdp_wallet_address: Optional[str] = None
     cdp_funded_amount: Decimal = Field(default=Decimal("0"))
     x402_enabled: bool = False
+    circle_wallet_id: Optional[str] = None
+    kya_attestation_uid: Optional[str] = None
     virtual_card: Optional[VirtualCard] = None
     is_active: bool = True
 
