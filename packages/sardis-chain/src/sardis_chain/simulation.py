@@ -592,6 +592,239 @@ class SimulationAndEstimation:
         return self._estimator
 
 
+# ── Tenderly Simulation ──────────────────────────────────────────────────
+
+
+class TenderlySimulator:
+    """Pre-flight transaction simulation via Tenderly API.
+
+    Tenderly provides rich simulation output including gas estimates,
+    state changes, token transfers, and detailed revert reasons.
+
+    Requires a Tenderly account with API access.
+    See: https://docs.tenderly.co/simulations/simulation-api
+    """
+
+    TENDERLY_API_BASE = "https://api.tenderly.co/api/v1"
+
+    # Chain ID mapping for Tenderly
+    CHAIN_IDS: Dict[str, int] = {
+        "base": 8453,
+        "base_sepolia": 84532,
+        "ethereum": 1,
+        "ethereum_sepolia": 11155111,
+        "polygon": 137,
+        "polygon_amoy": 80002,
+        "arbitrum": 42161,
+        "arbitrum_sepolia": 421614,
+        "optimism": 10,
+        "optimism_sepolia": 11155420,
+    }
+
+    def __init__(
+        self,
+        account_slug: str,
+        project_slug: str,
+        api_key: str,
+        *,
+        timeout_seconds: float = 30.0,
+    ):
+        self._account_slug = account_slug
+        self._project_slug = project_slug
+        self._api_key = api_key
+        self._timeout = timeout_seconds
+
+    async def simulate(
+        self,
+        tx: Dict[str, Any],
+        chain_id: int,
+    ) -> SimulationOutput:
+        """Simulate a transaction via Tenderly API.
+
+        Args:
+            tx: Transaction parameters (from, to, data, value, gas).
+            chain_id: Target chain ID.
+
+        Returns:
+            SimulationOutput with Tenderly's analysis.
+        """
+        import httpx
+
+        url = (
+            f"{self.TENDERLY_API_BASE}/account/{self._account_slug}"
+            f"/project/{self._project_slug}/simulate"
+        )
+
+        payload = {
+            "network_id": str(chain_id),
+            "from": tx.get("from", "0x0000000000000000000000000000000000000000"),
+            "to": tx.get("to", ""),
+            "input": tx.get("data") or tx.get("input", "0x"),
+            "value": tx.get("value", "0"),
+            "save": False,
+            "save_if_fails": False,
+            "simulation_type": "quick",
+        }
+
+        if tx.get("gas"):
+            payload["gas"] = int(tx["gas"], 16) if isinstance(tx["gas"], str) else tx["gas"]
+
+        headers = {
+            "X-Access-Key": self._api_key,
+            "Content-Type": "application/json",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            return self._parse_response(data)
+
+        except httpx.TimeoutException:
+            logger.warning("Tenderly simulation timed out")
+            return SimulationOutput(
+                result=SimulationResult.TIMEOUT,
+                error_message="Tenderly simulation timed out",
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error("Tenderly API error: %s %s", e.response.status_code, e.response.text[:200])
+            return SimulationOutput(
+                result=SimulationResult.ERROR,
+                error_message=f"Tenderly API error: {e.response.status_code}",
+            )
+        except Exception as e:
+            logger.error("Tenderly simulation failed: %s", e)
+            return SimulationOutput(
+                result=SimulationResult.ERROR,
+                error_message=str(e),
+            )
+
+    def _parse_response(self, data: Dict[str, Any]) -> SimulationOutput:
+        """Parse Tenderly simulation response."""
+        transaction = data.get("transaction", {})
+        simulation = data.get("simulation", {})
+
+        status = transaction.get("status", False)
+        gas_used = transaction.get("gas_used", 0)
+        error_message = transaction.get("error_message")
+        error_info = transaction.get("error_info", {})
+
+        if status:
+            return SimulationOutput(
+                result=SimulationResult.SUCCESS,
+                gas_used=gas_used,
+                return_data=transaction.get("output"),
+                logs=transaction.get("logs", []),
+            )
+
+        # Failed simulation — extract revert reason
+        revert_reason = error_info.get("error_message") or error_message
+        if "out of gas" in (error_message or "").lower():
+            return SimulationOutput(
+                result=SimulationResult.OUT_OF_GAS,
+                gas_used=gas_used,
+                revert_reason=revert_reason,
+                error_message=error_message,
+            )
+
+        return SimulationOutput(
+            result=SimulationResult.REVERTED,
+            gas_used=gas_used,
+            revert_reason=revert_reason,
+            error_message=error_message,
+        )
+
+    @classmethod
+    def get_chain_id(cls, chain: str) -> int:
+        """Get Tenderly chain ID for a chain name."""
+        chain_id = cls.CHAIN_IDS.get(chain)
+        if chain_id is None:
+            raise ValueError(f"Unknown chain '{chain}' for Tenderly simulation")
+        return chain_id
+
+
+class SimulationRouter:
+    """Routes simulation to Tenderly (if configured) or local eth_call fallback.
+
+    Provides a unified simulation interface that prefers Tenderly's richer
+    analysis when available, falling back to the local TransactionSimulator.
+    """
+
+    def __init__(
+        self,
+        tenderly: Optional[TenderlySimulator] = None,
+        local: Optional[TransactionSimulator] = None,
+    ):
+        self._tenderly = tenderly
+        self._local = local or TransactionSimulator()
+
+    @classmethod
+    def from_settings(cls, settings: Any) -> "SimulationRouter":
+        """Create a SimulationRouter from SardisSettings."""
+        tenderly = None
+        api_key = getattr(settings, "tenderly_api_key", "")
+        account = getattr(settings, "tenderly_account_slug", "")
+        project = getattr(settings, "tenderly_project_slug", "")
+
+        if api_key and account and project:
+            tenderly = TenderlySimulator(
+                account_slug=account,
+                project_slug=project,
+                api_key=api_key,
+            )
+            logger.info("Tenderly simulation enabled")
+        else:
+            logger.info("Tenderly not configured, using local simulation only")
+
+        return cls(tenderly=tenderly)
+
+    async def simulate(
+        self,
+        tx: Dict[str, Any],
+        chain: str,
+        *,
+        rpc_client: Optional[Any] = None,
+    ) -> SimulationOutput:
+        """Simulate a transaction, preferring Tenderly when available.
+
+        Args:
+            tx: Transaction parameters.
+            chain: Chain name (e.g. "base", "polygon").
+            rpc_client: RPC client for local fallback (required if no Tenderly).
+
+        Returns:
+            SimulationOutput from whichever simulator was used.
+        """
+        if self._tenderly:
+            try:
+                chain_id = TenderlySimulator.get_chain_id(chain)
+                result = await self._tenderly.simulate(tx, chain_id)
+                if result.result != SimulationResult.ERROR:
+                    return result
+                logger.warning(
+                    "Tenderly simulation errored, falling back to local: %s",
+                    result.error_message,
+                )
+            except Exception as e:
+                logger.warning("Tenderly unavailable, falling back to local: %s", e)
+
+        # Fallback to local eth_call simulation
+        if rpc_client:
+            return await self._local.simulate(rpc_client, tx)
+
+        logger.error("No simulation backend available (Tenderly failed, no RPC client)")
+        return SimulationOutput(
+            result=SimulationResult.ERROR,
+            error_message="No simulation backend available",
+        )
+
+    @property
+    def has_tenderly(self) -> bool:
+        return self._tenderly is not None
+
+
 # Global instance
 _simulation_service: Optional[SimulationAndEstimation] = None
 
