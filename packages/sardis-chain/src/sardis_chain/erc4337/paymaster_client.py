@@ -129,6 +129,29 @@ class CirclePaymasterClient:
         self._version = erc4337_version
         self._client = httpx.AsyncClient(timeout=timeout_seconds)
 
+    def get_bundler_url(self, chain: str) -> str:
+        """Get chain-aware bundler URL.
+
+        Replaces testnet chain slugs (e.g. base-sepolia) with mainnet
+        equivalents when the target chain is a mainnet.
+        """
+        url = self._bundler_url
+        # Map of testnet slugs to mainnet slugs for Pimlico bundler URLs
+        testnet_to_mainnet = {
+            "base-sepolia": "base",
+            "arbitrum-sepolia": "arbitrum",
+            "optimism-sepolia": "optimism",
+            "ethereum-sepolia": "ethereum",
+            "polygon-amoy": "polygon",
+        }
+        mainnet_chains = {"base", "arbitrum", "optimism", "ethereum", "polygon"}
+        if chain in mainnet_chains:
+            for testnet_slug, mainnet_slug in testnet_to_mainnet.items():
+                if testnet_slug in url:
+                    url = url.replace(testnet_slug, mainnet_slug)
+                    break
+        return url
+
     def get_paymaster_address(self, chain: str) -> str:
         """Get Circle Paymaster address for a given chain.
 

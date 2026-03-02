@@ -91,6 +91,14 @@ def _rpc(env_var: str, fallback: str) -> str:
 
 
 CHAIN_CONFIGS = {
+    # Arc (Circle L1 — USDC-native gas, sub-second finality, no reorgs)
+    "arc_testnet": {
+        "chain_id": 5042002,
+        "rpc_url": _rpc("SARDIS_ARC_TESTNET_RPC_URL", "https://rpc.testnet.arc.network"),
+        "explorer": "https://testnet.arcscan.app",
+        "native_token": "USDC",  # Gas paid in USDC, not ETH
+        "block_time": 0.5,
+    },
     # Base
     "base_sepolia": {
         "chain_id": 84532,
@@ -192,6 +200,11 @@ CHAIN_CONFIGS = {
 
 # Stablecoin contract addresses by chain
 STABLECOIN_ADDRESSES = {
+    # Arc (Circle L1)
+    "arc_testnet": {
+        "USDC": "0x3600000000000000000000000000000000000000",
+        "EURC": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+    },
     # Base
     "base_sepolia": {
         "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -1754,10 +1767,12 @@ class ChainExecutor:
         paymaster_url = self._settings.pimlico_paymaster_url
         api_key = self._settings.pimlico_api_key
 
+        # Build chain-aware bundler URL: use mainnet slug for mainnet chains
+        chain_slug = self.chain_name.replace("_", "-")  # base_sepolia -> base-sepolia
         if not bundler_url and api_key:
-            bundler_url = f"https://api.pimlico.io/v2/base-sepolia/rpc?apikey={api_key}"
+            bundler_url = f"https://api.pimlico.io/v2/{chain_slug}/rpc?apikey={api_key}"
         if not paymaster_url and api_key:
-            paymaster_url = f"https://api.pimlico.io/v2/base-sepolia/rpc?apikey={api_key}"
+            paymaster_url = f"https://api.pimlico.io/v2/{chain_slug}/rpc?apikey={api_key}"
 
         if bundler_url:
             self._bundler = BundlerClient(BundlerConfig(url=bundler_url))
@@ -1864,6 +1879,31 @@ class ChainExecutor:
                     self._mpc_signer = primary_signer
             else:
                 self._mpc_signer = primary_signer
+        elif mpc_config.name == "circle":
+            try:
+                from sardis_wallet.circle_client import CircleWalletClient
+                from .circle_signer import CircleWalletSigner
+
+                circle_api_key = os.getenv("SARDIS_CIRCLE_WALLET_API_KEY", "")
+                circle_entity_secret = os.getenv("SARDIS_CIRCLE_ENTITY_SECRET", "")
+                if not circle_api_key:
+                    raise RuntimeError(
+                        "SARDIS_CIRCLE_WALLET_API_KEY required for Circle MPC provider"
+                    )
+                self._circle_client = CircleWalletClient(
+                    api_key=circle_api_key,
+                    entity_secret=circle_entity_secret,
+                )
+                # Default signer uses a placeholder — actual wallet ID is bound
+                # per-wallet in the orchestrator via CircleWalletSigner instances.
+                self._mpc_signer = SimulatedMPCSigner()
+                logger.info("Circle Programmable Wallets MPC provider initialized")
+            except ImportError:
+                logger.warning("sardis_wallet not available, falling back to simulated signer")
+                self._mpc_signer = SimulatedMPCSigner()
+            except Exception as e:
+                logger.error("Circle MPC init failed: %s, falling back to simulated", e)
+                self._mpc_signer = SimulatedMPCSigner()
         elif mpc_config.name == "lit":
             from .lit_signer import LitProtocolSigner
             self._mpc_signer = LitProtocolSigner()

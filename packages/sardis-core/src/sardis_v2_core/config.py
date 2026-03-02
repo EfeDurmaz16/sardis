@@ -47,8 +47,8 @@ class TurnkeyConfig(BaseSettings):
 
 
 class MPCProvider(BaseSettings):
-    """MPC provider configuration (Turnkey or Fireblocks)."""
-    name: Literal["turnkey", "fireblocks", "local", "simulated"] = "simulated"
+    """MPC provider configuration (Turnkey, Fireblocks, Circle, or simulated)."""
+    name: Literal["turnkey", "fireblocks", "circle", "local", "simulated"] = "simulated"
     api_base: str = ""
     credential_id: str = ""  # Organization ID for Turnkey
 
@@ -235,7 +235,14 @@ class SardisSettings(BaseSettings):
             chain_id=84532,
             stablecoins=["USDC"],
             settlement_vault="",
-        )
+        ),
+        ChainConfig(
+            name="base",
+            rpc_url="https://mainnet.base.org",
+            chain_id=8453,
+            stablecoins=["USDC", "EURC"],
+            settlement_vault="",
+        ),
     ])
     
     # MPC provider - simulated by default for demo
@@ -255,13 +262,25 @@ class SardisSettings(BaseSettings):
     chain_mode: Literal["simulated", "live"] = "simulated"
     # ERC-4337 gasless execution (v2 smart wallets)
     erc4337_enabled: bool = False
-    erc4337_chain_allowlist: str = "base_sepolia"
+    erc4337_chain_allowlist: str = "base_sepolia,base"
     pimlico_api_key: str = ""
     pimlico_bundler_url: str = ""
     pimlico_paymaster_url: str = ""
     erc4337_entrypoint_v07_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
     erc4337_rollout_stage: Literal["pilot", "beta", "ga"] = "pilot"
     erc4337_sponsor_stage_caps_json: str = ""
+
+    # Tenderly simulation (optional pre-flight tx simulation)
+    tenderly_api_key: str = ""
+    tenderly_account_slug: str = ""
+    tenderly_project_slug: str = ""
+
+    # Circle Programmable Wallets
+    circle_wallet_api_key: str = ""
+    circle_entity_secret: str = ""
+    circle_wallet_set_id: str = ""
+    circle_account_type: str = "SCA"  # SCA for Smart Contract Account
+
     # Agent payment endpoint limiter (sliding window)
     agent_payment_rate_limit_enabled: bool = True
     agent_payment_rate_limit_max_requests: int = 30
