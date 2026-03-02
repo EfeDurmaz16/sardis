@@ -7,7 +7,7 @@ export default function BuiltFor() {
           <div className="flex items-center gap-3">
             <span
               className="tracking-widest uppercase"
-              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: 'var(--landing-blue)' }}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--landing-blue)' }}
             >
               BUILT FOR
             </span>
@@ -30,8 +30,8 @@ export default function BuiltFor() {
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
               fontWeight: 600,
-              fontSize: 'clamp(28px, 4vw, 36px)',
-              lineHeight: 'clamp(34px, 4.8vw, 42px)',
+              fontSize: 'clamp(30px, 4.2vw, 40px)',
+              lineHeight: 'clamp(36px, 5vw, 46px)',
               color: 'var(--landing-text-primary)',
             }}
           >
@@ -84,7 +84,7 @@ export default function BuiltFor() {
                 { label: 'Sign', color: 'var(--landing-text-tertiary)' },
                 { label: 'Settle', color: '#22C55E' },
               ].map((step, i) => (
-                <div key={step.label} className="flex items-center gap-2">
+                <div key={step.label} className="contents">
                   <div className="flex flex-col items-center gap-1.5">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -98,9 +98,11 @@ export default function BuiltFor() {
                     <span style={{ color: step.color }}>{step.label}</span>
                   </div>
                   {i < 3 && (
-                    <svg width="16" height="8" viewBox="0 0 16 8" className="mb-5" style={{ color: 'var(--landing-border-hover)' }}>
-                      <path d="M0 4h12M10 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" />
-                    </svg>
+                    <div className="flex items-center self-center -mt-4">
+                      <svg width="20" height="8" viewBox="0 0 20 8" style={{ color: 'var(--landing-text-muted)' }}>
+                        <path d="M0 4h16M14 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
                   )}
                 </div>
               ))}
