@@ -13,9 +13,11 @@ The following components of Sardis are licensed under the **MIT License**:
 
 The following core infrastructure components remain **Proprietary** and are the exclusive property of Efe Baran Durmaz:
 - `packages/sardis-core/` (Internal Policy Engine logic, Database schemas)
-- `packages/sardis-chain/` (MPC Signing Node management, Key threshold logic)
-- `packages/sardis-compliance/` (Direct integration logic for Persona/Elliptic)
+- `packages/sardis-chain/` (MPC Signing Node management, Key threshold logic, Simulation)
+- `packages/sardis-compliance/` (Direct integration logic for KYC/AML/Verifications)
 - `packages/sardis-api/` (Centralized API routing and orchestration)
+- `packages/sardis-protocol/` (AP2/TAP verification, EAS attestations)
+- `packages/sardis-wallet/` (Wallet management, Circle/Turnkey MPC integration)
 
 ---
 
