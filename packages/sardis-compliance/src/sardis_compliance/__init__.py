@@ -162,6 +162,15 @@ from .kya import (
     required_kya_level,
     kya_level_sufficient,
 )
+from .circle_compliance import (
+    CircleComplianceClient,
+    CircleComplianceError,
+    CircleComplianceProvider,
+    CircleScreeningAction,
+    CircleScreeningResponse,
+    CircleRiskLevel,
+    create_circle_compliance_provider,
+)
 from .providers import IDenfyKYCProvider, ScorechainProvider
 from .retry import (
     CircuitState,
@@ -339,6 +348,14 @@ __all__ = [
     "create_kya_service",
     "required_kya_level",
     "kya_level_sufficient",
+    # Circle Compliance Engine
+    "CircleComplianceClient",
+    "CircleComplianceError",
+    "CircleComplianceProvider",
+    "CircleScreeningAction",
+    "CircleScreeningResponse",
+    "CircleRiskLevel",
+    "create_circle_compliance_provider",
     # Alternative Providers
     "IDenfyKYCProvider",
     "ScorechainProvider",

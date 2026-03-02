@@ -1697,3 +1697,25 @@ async def verify_persona_webhook_config(
             else "WARNING: PERSONA_WEBHOOK_SECRET not set - webhooks will be rejected"
         ),
     }
+
+
+# ============================================================================
+# Compliance Provider Info
+# ============================================================================
+
+
+@router.get("/compliance/provider")
+async def get_compliance_provider_info(
+    _: Principal = Depends(require_admin_principal),
+):
+    """Return which compliance screening provider is active."""
+    provider_name = os.getenv("SARDIS_COMPLIANCE_SCREENING_PROVIDER", "mock")
+    circle_key = os.getenv("CIRCLE_API_KEY", "")
+    elliptic_key = os.getenv("ELLIPTIC_API_KEY", "")
+
+    return {
+        "active_provider": provider_name,
+        "circle_configured": bool(circle_key),
+        "elliptic_configured": bool(elliptic_key),
+        "failover_enabled": bool(circle_key and elliptic_key),
+    }

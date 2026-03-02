@@ -281,6 +281,12 @@ class SardisSettings(BaseSettings):
     circle_wallet_set_id: str = ""
     circle_account_type: str = "SCA"  # SCA for Smart Contract Account
 
+    # Circle Compliance Engine (address/transaction screening)
+    circle_compliance_api_key: str = ""  # Falls back to CIRCLE_API_KEY if empty
+
+    # Compliance provider routing
+    compliance_screening_provider: Literal["circle", "elliptic", "mock"] = "mock"
+
     # Agent payment endpoint limiter (sliding window)
     agent_payment_rate_limit_enabled: bool = True
     agent_payment_rate_limit_max_requests: int = 30

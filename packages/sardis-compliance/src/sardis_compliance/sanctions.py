@@ -729,26 +729,83 @@ class SanctionsService:
 def create_sanctions_service(
     api_key: Optional[str] = None,
     api_secret: Optional[str] = None,
+    provider_name: Optional[str] = None,
+    circle_api_key: Optional[str] = None,
 ) -> SanctionsService:
     """
     Factory function to create sanctions service.
-    
-    Uses MockSanctionsProvider if no API key is provided.
-    """
-    if api_key and api_secret:
-        provider = EllipticProvider(
-            api_key=api_key,
-            api_secret=api_secret,
-        )
-    else:
-        import os
-        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-        if env in ("prod", "production"):
-            raise RuntimeError(
-                "Production requires Elliptic sanctions screening provider. "
-                "Set ELLIPTIC_API_KEY and ELLIPTIC_API_SECRET environment variables."
-            )
-        logger.warning("No Elliptic API key provided, using mock provider (dev/test only)")
-        provider = MockSanctionsProvider()
 
-    return SanctionsService(provider=provider)
+    Args:
+        api_key: Elliptic API key.
+        api_secret: Elliptic API secret.
+        provider_name: Provider to use: "circle", "elliptic", or "mock".
+            Falls back to env var SARDIS_COMPLIANCE_SCREENING_PROVIDER.
+        circle_api_key: Circle API key. Falls back to CIRCLE_API_KEY env var.
+
+    Returns:
+        SanctionsService with the configured provider.
+    """
+    import os
+
+    if provider_name is None:
+        provider_name = os.getenv("SARDIS_COMPLIANCE_SCREENING_PROVIDER", "").lower()
+
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+
+    # Circle Compliance Engine (preferred for Circle stack users)
+    if provider_name == "circle":
+        from sardis_compliance.circle_compliance import CircleComplianceProvider
+
+        key = circle_api_key or os.getenv("CIRCLE_API_KEY", "")
+        if not key:
+            if env in ("prod", "production"):
+                raise RuntimeError(
+                    "Production requires CIRCLE_API_KEY for Circle Compliance Engine."
+                )
+            logger.warning("Circle selected but no API key; falling back to mock provider")
+            return SanctionsService(provider=MockSanctionsProvider())
+
+        primary = CircleComplianceProvider(api_key=key)
+
+        # If Elliptic is also configured, use it as failover
+        if api_key and api_secret:
+            fallback = EllipticProvider(api_key=api_key, api_secret=api_secret)
+            provider = FailoverSanctionsProvider(primary=primary, fallback=fallback)
+        else:
+            provider = primary
+
+        return SanctionsService(provider=provider)
+
+    # Elliptic (legacy default)
+    if provider_name == "elliptic" or (api_key and api_secret):
+        if not (api_key and api_secret):
+            if env in ("prod", "production"):
+                raise RuntimeError(
+                    "Production requires Elliptic sanctions screening provider. "
+                    "Set ELLIPTIC_API_KEY and ELLIPTIC_API_SECRET environment variables."
+                )
+            logger.warning("Elliptic selected but no API key; falling back to mock provider")
+            return SanctionsService(provider=MockSanctionsProvider())
+
+        primary = EllipticProvider(api_key=api_key, api_secret=api_secret)
+
+        # If Circle is also configured, use it as failover
+        c_key = circle_api_key or os.getenv("CIRCLE_API_KEY", "")
+        if c_key:
+            from sardis_compliance.circle_compliance import CircleComplianceProvider
+            fallback = CircleComplianceProvider(api_key=c_key)
+            provider = FailoverSanctionsProvider(primary=primary, fallback=fallback)
+        else:
+            provider = primary
+
+        return SanctionsService(provider=provider)
+
+    # No provider configured
+    if env in ("prod", "production"):
+        raise RuntimeError(
+            "Production requires a sanctions screening provider. "
+            "Set SARDIS_COMPLIANCE_SCREENING_PROVIDER to 'circle' or 'elliptic' "
+            "and provide the corresponding API keys."
+        )
+    logger.warning("No sanctions provider configured, using mock provider (dev/test only)")
+    return SanctionsService(provider=MockSanctionsProvider())
