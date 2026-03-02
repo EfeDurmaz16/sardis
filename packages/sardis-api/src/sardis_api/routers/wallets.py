@@ -1988,10 +1988,52 @@ async def get_offramp_status(
     else:
         next_step = "Waiting for user to complete Coinbase widget. Poll again."
 
-    # In production, poll Coinbase Transaction Status API here:
-    # GET https://api.developer.coinbase.com/onramp/v1/sell/user/{partnerUserRef}/transactions
-    # This returns the to_address, sell_amount, asset, and network
-    # For now, the to_address is populated via webhook or manual update
+    # Poll Coinbase Transaction Status API if we don't have to_address yet
+    if not to_address and current_status in ("initiated", "pending_send"):
+        partner_user_ref = row.get("partner_user_ref", "")
+        if partner_user_ref:
+            try:
+                import httpx
+
+                coinbase_app_id = os.getenv("COINBASE_APP_ID", "")
+                coinbase_api_key = os.getenv("COINBASE_CDP_API_KEY_NAME", "")
+                if coinbase_app_id:
+                    async with httpx.AsyncClient(timeout=15) as http:
+                        cb_resp = await http.get(
+                            f"https://api.developer.coinbase.com/onramp/v1/sell/user/{partner_user_ref}/transactions",
+                            headers={
+                                "Authorization": f"Bearer {coinbase_api_key}" if coinbase_api_key else "",
+                                "Content-Type": "application/json",
+                            },
+                            params={"page_size": "5"},
+                        )
+                        if cb_resp.status_code == 200:
+                            cb_data = cb_resp.json()
+                            txns = cb_data.get("transactions", [])
+                            # Find the most recent pending transaction
+                            for txn in txns:
+                                txn_to_addr = txn.get("to_address")
+                                txn_status = txn.get("status", "")
+                                if txn_to_addr:
+                                    to_address = txn_to_addr
+                                    sell_amount = txn.get("sell_amount", sell_amount)
+                                    current_status = "pending_send"
+                                    # Persist the Coinbase data for future lookups
+                                    await Database.execute(
+                                        """UPDATE offramp_transactions
+                                           SET coinbase_to_address = $1,
+                                               sell_amount = $2,
+                                               status = $3,
+                                               coinbase_tx_status = $4
+                                           WHERE offramp_id = $5""",
+                                        to_address, sell_amount, "pending_send",
+                                        txn_status, offramp_id,
+                                    )
+                                    next_step = "Call POST /offramp/{offramp_id}/execute to send USDC"
+                                    break
+            except Exception as e:
+                logger.warning("Coinbase offramp status poll failed: %s", e)
+                # Non-fatal — fall through to return current DB state
 
     return OfframpStatusResponse(
         offramp_id=offramp_id,

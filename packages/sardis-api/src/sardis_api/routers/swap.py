@@ -190,6 +190,151 @@ async def get_bridge_quote(request: BridgeQuoteRequest):
         await client.close()
 
 
+# ── Cross-Currency Endpoints (USDC ↔ EURC) ──────────────────────────────
+
+
+class CrossCurrencyQuoteRequest(BaseModel):
+    from_currency: str = Field(description="Source currency (USDC, EURC, MXN, etc.)")
+    to_currency: str = Field(default="USDC", description="Destination currency")
+    amount: Decimal = Field(description="Amount to convert")
+    side: str = Field(default="from", description="Which side the amount is on: 'from' or 'to'")
+
+
+class CrossCurrencyQuoteResponse(BaseModel):
+    quote_id: str
+    from_currency: str
+    from_amount: str
+    to_currency: str
+    to_amount: str
+    rate: str
+    expires_at: Optional[str] = None
+
+
+class CrossCurrencyTradeRequest(BaseModel):
+    quote_id: str = Field(description="Quote ID from cross-currency quote")
+
+
+class CrossCurrencyTradeResponse(BaseModel):
+    trade_id: str
+    quote_id: str
+    from_currency: str
+    from_amount: str
+    to_currency: str
+    to_amount: str
+    status: str
+
+
+def _get_cross_currency_client():
+    """Get or create Circle Cross-Currency client."""
+    from sardis_chain.circle_cross_currency import CircleCrossCurrencyClient
+
+    api_key = os.getenv("CIRCLE_MINT_API_KEY", "")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Circle Cross-Currency not configured (CIRCLE_MINT_API_KEY missing)",
+        )
+    sandbox = os.getenv("SARDIS_ENVIRONMENT", "dev") != "prod"
+    return CircleCrossCurrencyClient(api_key=api_key, sandbox=sandbox)
+
+
+@router.post("/exchange/quote", response_model=CrossCurrencyQuoteResponse)
+async def get_cross_currency_quote(request: CrossCurrencyQuoteRequest):
+    """Get a cross-currency exchange quote (USDC ↔ EURC or fiat ↔ USDC).
+
+    Tradable quotes have a locked rate valid for 3 seconds.
+    """
+    client = _get_cross_currency_client()
+    try:
+        from_amount = request.amount if request.side == "from" else None
+        to_amount = request.amount if request.side == "to" else None
+
+        quote = await client.get_quote(
+            from_currency=request.from_currency,
+            from_amount=from_amount,
+            to_currency=request.to_currency,
+            to_amount=to_amount,
+        )
+        return CrossCurrencyQuoteResponse(
+            quote_id=quote.quote_id,
+            from_currency=quote.from_currency,
+            from_amount=str(quote.from_amount),
+            to_currency=quote.to_currency,
+            to_amount=str(quote.to_amount),
+            rate=str(quote.rate),
+            expires_at=quote.expires_at,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Cross-currency quote failed: {e}",
+        ) from e
+    finally:
+        await client.close()
+
+
+@router.post("/exchange/trade", response_model=CrossCurrencyTradeResponse)
+async def execute_cross_currency_trade(request: CrossCurrencyTradeRequest):
+    """Execute a cross-currency trade from a previously obtained quote.
+
+    Must be called within 3 seconds of quote creation.
+    USDC ↔ EURC trades settle instantly.
+    """
+    client = _get_cross_currency_client()
+    try:
+        trade = await client.execute_trade(quote_id=request.quote_id)
+        return CrossCurrencyTradeResponse(
+            trade_id=trade.trade_id,
+            quote_id=trade.quote_id,
+            from_currency=trade.from_currency,
+            from_amount=str(trade.from_amount),
+            to_currency=trade.to_currency,
+            to_amount=str(trade.to_amount),
+            status=trade.status.value,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Cross-currency trade failed: {e}",
+        ) from e
+    finally:
+        await client.close()
+
+
+@router.get("/exchange/settlements")
+async def get_settlements():
+    """Get settlement batches for pending and completed trades."""
+    client = _get_cross_currency_client()
+    try:
+        batches = await client.get_settlements()
+        return {
+            "settlements": [
+                {
+                    "batch_id": b.batch_id,
+                    "status": b.status.value,
+                    "details": [
+                        {
+                            "type": d.detail_type,
+                            "status": d.status,
+                            "currency": d.currency,
+                            "amount": str(d.amount),
+                        }
+                        for d in b.details
+                    ],
+                    "created_at": b.created_at,
+                }
+                for b in batches
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Settlement query failed: {e}",
+        ) from e
+    finally:
+        await client.close()
+
+
 # ── Verification Endpoints ───────────────────────────────────────────────
 
 
