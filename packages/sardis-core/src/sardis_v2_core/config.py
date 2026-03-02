@@ -84,6 +84,8 @@ class StripeConfig(BaseSettings):
     connected_account_id: str = ""
     connected_account_map_json: str = ""
     issuing_enabled: bool = True
+    stablecoin_issuing_enabled: bool = False
+    stablecoin_default_chain: str = "base"
 
     class Config:
         env_prefix = "STRIPE_"
