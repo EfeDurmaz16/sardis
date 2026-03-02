@@ -479,6 +479,131 @@ class EnhancedWalletManager:
         }
 
     # =========================================================================
+    # Circle Programmable Wallet Creation
+    # =========================================================================
+
+    async def create_circle_wallet(
+        self,
+        wallet_name: str,
+        agent_id: str,
+        chains: list[str] | None = None,
+    ) -> Dict[str, Any]:
+        """Create a non-custodial wallet via Circle Programmable Wallets.
+
+        Circle provides free developer-controlled wallets for <1,000 wallets
+        with native USDC support and Smart Contract Accounts (SCA).
+
+        Args:
+            wallet_name: Human-readable name for the wallet.
+            agent_id: Agent ID to associate with the wallet.
+            chains: Target chains (default: ["base"]).
+
+        Returns:
+            Dict with wallet_id, circle_wallet_id, addresses, and provider info.
+        """
+        from .circle_client import CircleWalletClient, CircleAPIError
+
+        api_key = self._settings.circle_wallet_api_key
+        entity_secret = self._settings.circle_entity_secret
+        wallet_set_id = self._settings.circle_wallet_set_id
+
+        if not api_key:
+            raise RuntimeError(
+                "Circle wallet not configured. Set SARDIS_CIRCLE_WALLET_API_KEY."
+            )
+
+        circle_client = CircleWalletClient(
+            api_key=api_key,
+            entity_secret=entity_secret,
+        )
+
+        try:
+            # Use existing wallet set or create one
+            if not wallet_set_id:
+                wallet_set_id = await circle_client.create_wallet_set(
+                    f"sardis-{agent_id}"
+                )
+
+            target_chains = chains or ["base"]
+            wallets = await circle_client.create_wallet(
+                wallet_set_id=wallet_set_id,
+                blockchains=target_chains,
+                account_type=self._settings.circle_account_type or "SCA",
+            )
+
+            if not wallets:
+                raise RuntimeError("Circle returned no wallets")
+
+            circle_wallet = wallets[0]
+
+            # Audit log
+            await self._audit.log(
+                wallet_id=circle_wallet.wallet_id,
+                category=AuditCategory.KEY_MANAGEMENT,
+                action=AuditAction.KEY_CREATED,
+                actor_id=agent_id,
+                resource_type="circle_wallet",
+                resource_id=circle_wallet.wallet_id,
+                details={
+                    "wallet_name": wallet_name,
+                    "blockchain": circle_wallet.blockchain,
+                    "account_type": circle_wallet.account_type,
+                    "chains": target_chains,
+                },
+            )
+
+            return {
+                "wallet_id": circle_wallet.wallet_id,
+                "circle_wallet_id": circle_wallet.wallet_id,
+                "address": circle_wallet.address,
+                "addresses": {chain: circle_wallet.address for chain in target_chains},
+                "provider": "circle",
+                "account_type": circle_wallet.account_type,
+            }
+
+        except CircleAPIError as e:
+            logger.error("Circle wallet creation failed: %s", e)
+            raise
+        finally:
+            await circle_client.close()
+
+    async def create_wallet(
+        self,
+        wallet_name: str,
+        agent_id: str,
+        provider: str | None = None,
+        chains: list[str] | None = None,
+    ) -> Dict[str, Any]:
+        """Create a wallet using the specified or default provider.
+
+        Default provider is Circle. Falls back to Turnkey on failure
+        if Turnkey is configured.
+
+        Args:
+            wallet_name: Name for the wallet.
+            agent_id: Agent ID.
+            provider: "circle" or "turnkey" (default: "circle").
+            chains: Target chains for Circle wallets.
+
+        Returns:
+            Dict with wallet creation results.
+        """
+        provider = provider or "circle"
+
+        if provider == "circle":
+            try:
+                return await self.create_circle_wallet(wallet_name, agent_id, chains)
+            except Exception as e:
+                if self._turnkey_client:
+                    logger.warning(
+                        "Circle wallet creation failed, falling back to Turnkey: %s", e
+                    )
+                    return await self.create_turnkey_wallet(wallet_name, agent_id)
+                raise
+
+        return await self.create_turnkey_wallet(wallet_name, agent_id)
+
+    # =========================================================================
     # Key Management
     # =========================================================================
 

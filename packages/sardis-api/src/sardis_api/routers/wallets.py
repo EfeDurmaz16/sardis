@@ -31,12 +31,13 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 # Request/Response Models
 class CreateWalletRequest(BaseModel):
     agent_id: str
-    mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    mpc_provider: str = "circle"  # "circle" | "turnkey" | "fireblocks" | "local"
     account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
     currency: str = "USDC"
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
-    wallet_name: Optional[str] = Field(default=None, description="Optional provider wallet name (Turnkey)")
+    wallet_name: Optional[str] = Field(default=None, description="Optional provider wallet name")
+    chains: Optional[list[str]] = Field(default=None, description="Target chains for Circle wallets")
 
 
 class UpdateWalletRequest(BaseModel):
@@ -237,8 +238,48 @@ async def create_wallet(
         raise
     wallet_id_override: str | None = None
     addresses: dict[str, str] | None = None
+    circle_wallet_id: str | None = None
 
-    if request.mpc_provider == "turnkey":
+    if request.mpc_provider == "circle":
+        if not deps.wallet_manager:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Wallet manager not configured",
+            )
+        wallet_name = request.wallet_name or f"agent_{request.agent_id}"
+        try:
+            provider = await deps.wallet_manager.create_wallet(
+                wallet_name=wallet_name,
+                agent_id=request.agent_id,
+                provider="circle",
+                chains=request.chains,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Wallet provider error: {e}",
+            ) from e
+
+        wallet_id_override = provider.get("wallet_id")
+        circle_wallet_id = provider.get("circle_wallet_id")
+        addr = provider.get("address")
+        addresses = provider.get("addresses")
+        if not addresses and addr:
+            addresses = {
+                "base_sepolia": addr, "base": addr,
+                "ethereum": addr, "polygon": addr,
+                "arbitrum": addr, "optimism": addr,
+            }
+
+        if wallet_id_override:
+            existing = await deps.wallet_repo.get(wallet_id_override)
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Wallet already exists",
+                )
+
+    elif request.mpc_provider == "turnkey":
         if not deps.wallet_manager:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
