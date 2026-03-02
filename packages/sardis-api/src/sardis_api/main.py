@@ -114,6 +114,7 @@ from .routers import dev as dev_router
 from .routers import a2a as a2a_router
 from .routers import groups as groups_router
 from .routers import alerts as alerts_router
+from .routers import swap as swap_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import analytics as analytics_router
 from .routers import metrics as metrics_router
@@ -1582,6 +1583,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Alert routes (REST API and WebSocket)
     app.include_router(alerts_router.router, prefix="/api/v2/alerts", tags=["alerts"])
+    app.include_router(swap_router.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
     app.include_router(ws_alerts_router.router, prefix="/api/v2")
 
     # Analytics routes
