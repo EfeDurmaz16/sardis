@@ -76,10 +76,10 @@ export default function Integrations() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {integrations.map((item) => (
+          {integrations.map((item, i) => (
             <div
               key={item.name}
-              className="flex flex-col gap-4 rounded-[14px] p-8"
+              className={`flex flex-col gap-4 rounded-[14px] p-8${i === integrations.length - 1 ? ' xl:col-span-3' : ''}`}
               style={{
                 backgroundColor: 'var(--landing-surface)',
                 border: '1px solid var(--landing-border)',
@@ -103,6 +103,7 @@ export default function Integrations() {
                           width={22}
                           height={22}
                           loading="lazy"
+                          className="dark:invert"
                         />
                       </div>
                     ))
