@@ -6,7 +6,7 @@ export default function DocsOverview() {
     <>
       <SEO
         title="Documentation Overview"
-        description="Sardis Payment OS documentation — MPC wallets, natural language spending policies, and payment infrastructure for AI agents. Supports Python, TypeScript, and MCP integrations."
+        description="Sardis Payment OS documentation. MPC wallets, natural language spending policies, and payment infrastructure for AI agents. Supports Python, TypeScript, and MCP integrations."
         path="/docs/overview"
         schemas={[
           createBreadcrumbSchema([
@@ -16,7 +16,7 @@ export default function DocsOverview() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
@@ -44,7 +44,7 @@ export default function DocsOverview() {
           errors by acting as a policy firewall, ensuring agents cannot overspend or transact outside defined limits.
         </p>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          Sardis supports multiple payment rails — bank transfers (ACH/wire), virtual cards (Lithic), and stablecoins (USDC, USDT)
+          Sardis supports multiple payment rails: bank transfers (ACH/wire), virtual cards (Lithic), and stablecoins (USDC, USDT)
           as an optional settlement alternative. Compliance integrations run in staged lanes (for example Persona and Elliptic onboarding paths).
           No crypto knowledge required;
           agents can fund entirely from bank accounts. It integrates with popular agent frameworks using SDKs in Python and TypeScript.
