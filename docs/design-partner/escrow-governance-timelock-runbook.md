@@ -5,15 +5,29 @@ Owner: Sardis Security + Smart Contract Engineering
 
 ## Scope
 
-This runbook defines the operational path for arbiter governance updates in `SardisEscrow.sol`.
+This runbook defines the governance control surfaces for escrow/refund settlement contracts.
+Current active source tree uses `RefundProtocol.sol`; legacy timelock flow remains documented for `SardisEscrow.sol`.
 
 Covered controls:
-1. Timelocked arbiter updates (`proposeArbiter` -> `executeArbiterUpdate`)
-2. Timelocked governance executor updates (`proposeGovernanceExecutor` -> `executeGovernanceExecutorUpdate`)
-3. One-way strict governance mode (`enableGovernanceStrictMode`)
-4. Timelocked ownership transfer (`transferOwnership` -> `executeOwnershipTransfer`)
-5. Pending update cancellation (`cancelArbiterUpdate`, `cancelGovernanceExecutorUpdate`, `cancelOwnershipTransfer`)
-6. Audit evidence for governance decisions
+1. Arbiter-only refund and lockup controls (`RefundProtocol.sol`)
+2. Early-withdrawal EIP-712 authorization + replay protection (`withdrawalHashes`)
+3. Recipient lockup ceiling enforcement (`MAX_LOCKUP_SECONDS`)
+4. Legacy timelocked arbiter/governance/ownership updates (`SardisEscrow.sol`)
+5. Audit evidence for governance decisions
+
+## Current Contract Surface (`RefundProtocol.sol`)
+
+The active contract includes:
+- `modifier onlyArbiter`
+- `setLockupSeconds(recipient, seconds)` guarded with `MAX_LOCKUP_SECONDS`
+- `refundByArbiter(paymentID)`
+- `earlyWithdrawByArbiter(...)` with EIP-712 hash + `withdrawalHashes` replay protection
+- `updateRefundTo(paymentID, newRefundTo)` controlled by current `refundTo` principal
+
+Operational expectation:
+- Arbiter key changes are managed at signer/ops layer (HSM/MPC), with dual approval.
+- Any lockup-policy or early-withdrawal operation is ticketed and evidenced.
+- Replay/hash expiry failures are treated as security events and investigated.
 
 ## Contract Guarantees
 

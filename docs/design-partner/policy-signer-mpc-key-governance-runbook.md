@@ -11,8 +11,9 @@ Bu runbook iki kritik alanı kapsar:
 
 ## 1) Policy Signer Rotation (On-chain)
 
-Contract capability:
-- `SardisSmartAccount.setPolicySigner(address)` owner-only çağrıdır.
+Contract capability (current + legacy):
+- Current: `SardisPolicyModule.transferSardis(address)` with `onlySardis` admin guard.
+- Legacy: `SardisSmartAccount.setPolicySigner(address)` owner-only çağrıdır.
 
 Operational flow:
 1. Yeni signer üret (HSM/MPC kontrollü).

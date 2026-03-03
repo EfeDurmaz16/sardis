@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 echo "[key-governance] validating policy signer + MPC governance artifacts"
 
 failures=0
+contract_file=""
 
 require_file() {
   local file="$1"
@@ -27,9 +28,26 @@ require_match() {
 }
 
 require_file "docs/design-partner/policy-signer-mpc-key-governance-runbook.md"
-require_match 'setPolicySigner' contracts/src/SardisSmartAccount.sol "smart account must support policy signer rotation"
+
+if [[ -f "contracts/src/SardisPolicyModule.sol" ]]; then
+  contract_file="contracts/src/SardisPolicyModule.sol"
+  require_match 'modifier onlySardis' "$contract_file" "policy module must guard admin operations"
+  require_match 'function transferSardis' "$contract_file" "policy module must support governance signer rotation"
+  require_match 'function checkCoSignedTransaction' "$contract_file" "policy module must support co-sign governance path"
+elif [[ -f "contracts/src/SardisSmartAccount.sol" ]]; then
+  contract_file="contracts/src/SardisSmartAccount.sol"
+  require_match 'setPolicySigner' "$contract_file" "smart account must support policy signer rotation"
+elif [[ -f "contracts/deprecated/SardisSmartAccount.sol" ]]; then
+  contract_file="contracts/deprecated/SardisSmartAccount.sol"
+  require_match 'setPolicySigner' "$contract_file" "smart account must support policy signer rotation"
+else
+  echo "[key-governance][fail] missing supported contract surface (SardisPolicyModule or SardisSmartAccount)"
+  failures=$((failures + 1))
+fi
+
 require_match 'TURNKEY_' packages/sardis-core/src/sardis_v2_core/config.py "config must include turnkey surface"
 require_match 'FIREBLOCKS_API_KEY' packages/sardis-core/src/sardis_v2_core/config.py "config validation must include fireblocks surface"
+require_match 'circle_wallet_api_key' packages/sardis-core/src/sardis_v2_core/config.py "config must include circle wallet surface"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "[key-governance] completed with $failures failure(s)"
