@@ -1155,6 +1155,13 @@ def _cleanup_expired_challenges() -> None:
         _x402_challenges.pop(k, None)
 
 
+def _resolve_x402_token_address(network: str, currency: str) -> str:
+    chain_tokens = STABLECOIN_ADDRESSES.get(network, {})
+    if not chain_tokens:
+        return ""
+    return chain_tokens.get(currency.upper(), "")
+
+
 # ==========================================================================
 # Inbound Payment Endpoints
 # ==========================================================================
@@ -1473,14 +1480,16 @@ async def create_x402_challenge(
             detail="x402 protocol module not available",
         )
 
-    challenge = generate_challenge(
+    challenge_response = generate_challenge(
         resource_uri=request.resource_uri,
         amount=request.amount,
         currency=request.currency,
         payee_address=payee_address,
         network=request.network,
+        token_address=_resolve_x402_token_address(request.network, request.currency),
         ttl_seconds=request.ttl_seconds,
     )
+    challenge = challenge_response.challenge
 
     # Store challenge for verification
     import time
@@ -1537,13 +1546,25 @@ async def verify_x402_payment(
 
     result = verify_payment_payload(payload=payload, challenge=challenge)
 
+    try:
+        from sardis_protocol.x402_settlement import X402Settler, DatabaseSettlementStore
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="x402 settlement module not available",
+        )
+
+    store = DatabaseSettlementStore()
+    settler = X402Settler(store=store, chain_executor=None)
+    settlement = await settler.verify(challenge=challenge, payload=payload)
+
     # Clean up used challenge on success
     if result.accepted:
         _x402_challenges.pop(request.payment_id, None)
 
     return X402VerifyResponse(
-        accepted=result.accepted,
-        reason=result.reason,
+        accepted=settlement.status.value == "verified",
+        reason=settlement.error if settlement.error else None,
     )
 
 
@@ -1556,7 +1577,12 @@ async def settle_x402_payment(
 ):
     """Trigger on-chain settlement for a verified x402 payment."""
     wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
-    validate_wallet_not_frozen(wallet)
+    freeze_ok, freeze_reason = validate_wallet_not_frozen(wallet)
+    if not freeze_ok:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=freeze_reason,
+        )
 
     try:
         from sardis_protocol.x402_settlement import (
@@ -1579,7 +1605,7 @@ async def settle_x402_payment(
             detail=f"Settlement status is {settlement.status.value}, expected 'verified'",
         )
 
-    chain_executor = ChainExecutor()
+    chain_executor = deps.chain_executor or ChainExecutor()
     settler = X402Settler(store=store, chain_executor=chain_executor)
     result = await settler.settle(settlement)
 

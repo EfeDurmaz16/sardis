@@ -902,9 +902,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         offramp_service = OfframpService(provider=bridge_provider)
         logger.info("OfframpService initialized with Bridge provider")
     else:
-        from sardis_cards.offramp import OfframpService, MockOfframpProvider
-        offramp_service = OfframpService(provider=MockOfframpProvider())
-        logger.info("OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)")
+        if settings.is_production:
+            logger.warning(
+                "OfframpService NOT initialized: BRIDGE_API_KEY missing in production. "
+                "Off-ramp endpoints will return 503 until BRIDGE_API_KEY is set."
+            )
+            offramp_service = None
+        else:
+            from sardis_cards.offramp import OfframpService, MockOfframpProvider
+            offramp_service = OfframpService(provider=MockOfframpProvider())
+            logger.info("OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)")
 
     # Ramp routes (fiat on-ramp / off-ramp)
     onramper_api_key = os.getenv("ONRAMPER_API_KEY", "")
