@@ -56,6 +56,7 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "arbitrum": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             "optimism": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
             "solana": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "arc_testnet": "0x3600000000000000000000000000000000000000",
         },
     ),
     TokenType.USDT: TokenMetadata(
@@ -92,6 +93,7 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "base": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
             "ethereum": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
             "polygon": "0x9912af6da4F87Fc2b0Ae0B77A124e9B1B7Ba2F70",
+            "arc_testnet": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
         },
     ),
 }

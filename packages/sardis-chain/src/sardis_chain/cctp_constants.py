@@ -21,6 +21,7 @@ CCTP_DOMAINS: dict[str, int] = {
     "linea": 11,
     "sonic": 13,
     "world_chain": 14,
+    "arc_testnet": 26,
 }
 
 # Reverse mapping: domain_id -> chain name
@@ -53,6 +54,7 @@ USDC_ADDRESSES: dict[str, str] = {
     "linea": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
     "sonic": "0x29219dd400f2Bf60E5a23d13Be72B486D4038894",
     "world_chain": "0x79A02482A880bCE3B13e5da8d5b4645eFf852cc8",
+    "arc_testnet": "0x3600000000000000000000000000000000000000",
 }
 
 # Circle Attestation API (V2 format)
@@ -66,6 +68,7 @@ ESTIMATED_BRIDGE_TIMES: dict[str, int] = {
     "arbitrum": 780,   # ~13 min
     "base": 780,       # ~13 min
     "polygon": 900,    # ~15 min
+    "arc_testnet": 60, # ~1 min (deterministic finality)
 }
 
 # ERC-20 approve function selector

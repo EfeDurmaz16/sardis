@@ -80,6 +80,7 @@ sardis/
 
 | Chain | Tokens |
 |-------|--------|
+| Arc (Circle L1) | USDC, EURC |
 | Base | USDC, EURC |
 | Polygon | USDC, USDT, EURC |
 | Ethereum | USDC, USDT, PYUSD, EURC |
