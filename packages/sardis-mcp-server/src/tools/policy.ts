@@ -375,6 +375,29 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
     const result = await checkPolicy(vendor, amount, category);
     const decision = buildPolicyDecision(result);
 
+    // Build user-friendly guidance for blocked payments
+    let guidance: string | undefined;
+    if (!result.allowed) {
+      const failedChecks = (result.checks || []).filter((c) => !c.passed);
+      const suggestions: string[] = [];
+      for (const check of failedChecks) {
+        if (check.name === 'per_transaction_limit') {
+          suggestions.push('Try a smaller amount, or ask the wallet owner to raise the per-transaction limit.');
+        } else if (check.name === 'vendor_allowlist' && check.reason?.includes('blocked')) {
+          suggestions.push(`"${vendor}" is on the blocked vendor list. The wallet owner can update this in their policy settings.`);
+        } else if (check.name === 'vendor_allowlist' && check.reason?.includes('approval')) {
+          suggestions.push(`"${vendor}" is not on the approved vendor list. Ask the wallet owner to add it, or use sardis_request_approval to request access.`);
+        } else if (check.name === 'category_check') {
+          suggestions.push(`The "${category}" category is restricted. The wallet owner controls which categories are allowed.`);
+        } else if (check.name === 'wallet_active') {
+          suggestions.push('This wallet is paused or inactive. The wallet owner needs to reactivate it.');
+        }
+      }
+      guidance = suggestions.length > 0
+        ? suggestions.join(' ')
+        : 'This payment was blocked by spending policy. Contact the wallet owner to adjust limits.';
+    }
+
     return {
       content: [
         {
@@ -386,6 +409,7 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
               category: category || 'unspecified',
               allowed: result.allowed,
               reason: result.reason,
+              ...(guidance ? { guidance } : {}),
               reason_code: decision.reason_code,
               risk_score: result.risk_score,
               checks: result.checks,

@@ -44,6 +44,7 @@ The Payment OS for the Agent Economy
 USAGE:
   npx @sardis/mcp-server start     Start the MCP server (stdio transport)
   npx @sardis/mcp-server init      Bootstrap local MCP config (.env.sardis)
+  npx @sardis/mcp-server doctor    Check configuration and connectivity
   npx @sardis/mcp-server --help    Show this help message
   npx @sardis/mcp-server --version Show version
 
@@ -313,25 +314,178 @@ async function runInit(argv: string[]) {
     SARDIS_PAYMENT_IDENTITY: options.paymentIdentity,
   });
 
+  console.log('');
   console.log('Sardis MCP initialization complete.');
-  console.log(`Config file: ${outputFile}`);
-  console.log(`Mode: ${options.mode}`);
-  console.log(`Agent ID: ${agentId}`);
-  console.log(`Wallet ID: ${walletId}`);
-  console.log(`Chain: ${chain}`);
+  console.log('');
+  console.log(`  Config file: ${outputFile}`);
+  console.log(`  Mode:        ${options.mode}`);
+  console.log(`  Agent ID:    ${agentId}`);
+  console.log(`  Wallet ID:   ${walletId}`);
+  console.log(`  Chain:       ${chain}`);
   if (cardId) {
-    console.log(`Card ID: ${cardId}`);
+    console.log(`  Card ID:     ${cardId}`);
   }
   if (!options.apiKey) {
-    console.log('Note: SARDIS_API_KEY is empty. Set it before live API usage.');
+    console.log('');
+    console.log('  Note: No API key set. Running in sandbox mode (simulated transactions).');
   }
   if (warnings.length > 0) {
     console.log('');
-    console.log('Warnings:');
+    console.log('  Warnings:');
     for (const warning of warnings) {
-      console.log(`- ${warning}`);
+      console.log(`  - ${warning}`);
     }
   }
+
+  // Next steps guidance
+  console.log('');
+  console.log('What to do next:');
+  console.log('');
+  if (options.mode === 'simulated') {
+    console.log('  1. Add Sardis to Claude Desktop:');
+    console.log('     Edit ~/Library/Application Support/Claude/claude_desktop_config.json');
+    console.log('');
+    console.log('     {');
+    console.log('       "mcpServers": {');
+    console.log('         "sardis": {');
+    console.log('           "command": "npx",');
+    console.log('           "args": ["@sardis/mcp-server", "start"]');
+    console.log('         }');
+    console.log('       }');
+    console.log('     }');
+    console.log('');
+    console.log('  2. Restart Claude Desktop');
+    console.log('');
+    console.log('  3. Try these in Claude:');
+    console.log('     "Check my Sardis wallet balance"');
+    console.log('     "Pay $29.99 to OpenAI for API credits"');
+    console.log('     "Issue a virtual card with $100 limit"');
+    console.log('');
+    console.log('  All transactions are simulated. Policy validation runs real logic.');
+    console.log('  Ask Claude to run sardis_sandbox_demo for a guided walkthrough.');
+  } else {
+    console.log('  1. Verify your setup:  npx @sardis/mcp-server doctor');
+    console.log('  2. Start the server:   npx @sardis/mcp-server start');
+    console.log('  3. Try a payment:      Ask Claude to "Pay $50 to OpenAI for API credits"');
+  }
+  console.log('');
+}
+
+async function runDoctor() {
+  const { getValidatedToolCount, validateToolRegistry } = await import('./tools/index.js');
+  console.log(`Sardis MCP Server v${MCP_SERVER_VERSION} - Health Check`);
+  console.log('');
+
+  const checks: { name: string; ok: boolean; detail: string }[] = [];
+
+  // Check env file
+  const envFile = path.resolve(process.cwd(), '.env.sardis');
+  try {
+    await fs.access(envFile);
+    checks.push({ name: 'Config file (.env.sardis)', ok: true, detail: envFile });
+  } catch {
+    checks.push({ name: 'Config file (.env.sardis)', ok: false, detail: 'Not found. Run: npx @sardis/mcp-server init' });
+  }
+
+  // Check API key
+  const apiKey = process.env.SARDIS_API_KEY || '';
+  if (apiKey && apiKey.startsWith('sk_')) {
+    checks.push({ name: 'API key (SARDIS_API_KEY)', ok: true, detail: `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` });
+  } else if (apiKey) {
+    checks.push({ name: 'API key (SARDIS_API_KEY)', ok: false, detail: 'Set but does not start with sk_' });
+  } else {
+    checks.push({ name: 'API key (SARDIS_API_KEY)', ok: false, detail: 'Not set. Sandbox mode only.' });
+  }
+
+  // Check mode
+  const mode = process.env.SARDIS_MODE || 'simulated';
+  checks.push({ name: 'Mode (SARDIS_MODE)', ok: true, detail: mode });
+
+  // Check wallet ID
+  const walletId = process.env.SARDIS_WALLET_ID || '';
+  checks.push({
+    name: 'Wallet ID (SARDIS_WALLET_ID)',
+    ok: !!walletId,
+    detail: walletId || 'Not set',
+  });
+
+  // Check agent ID
+  const agentId = process.env.SARDIS_AGENT_ID || '';
+  checks.push({
+    name: 'Agent ID (SARDIS_AGENT_ID)',
+    ok: !!agentId,
+    detail: agentId || 'Not set',
+  });
+
+  // Check tool registry
+  const registry = validateToolRegistry();
+  checks.push({
+    name: 'Tool registry',
+    ok: registry.isValid,
+    detail: `${registry.definitionCount} tools registered`,
+  });
+
+  // Check Claude Desktop config
+  const claudeConfigPath = path.join(
+    process.env.HOME || process.env.USERPROFILE || '',
+    'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'
+  );
+  try {
+    const claudeConfig = await fs.readFile(claudeConfigPath, 'utf8');
+    const hasSardis = claudeConfig.includes('sardis');
+    checks.push({
+      name: 'Claude Desktop config',
+      ok: hasSardis,
+      detail: hasSardis ? 'Sardis server configured' : 'Config exists but Sardis not found',
+    });
+  } catch {
+    checks.push({
+      name: 'Claude Desktop config',
+      ok: false,
+      detail: 'Not found at expected path',
+    });
+  }
+
+  // Check API connectivity (only if API key is set)
+  if (apiKey && mode === 'live') {
+    try {
+      const apiUrl = process.env.SARDIS_API_URL || 'https://api.sardis.sh';
+      const response = await fetch(`${apiUrl}/health`, {
+        method: 'GET',
+        headers: { 'User-Agent': `sardis-mcp-server/${MCP_SERVER_VERSION}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      checks.push({
+        name: 'API connectivity',
+        ok: response.ok,
+        detail: response.ok ? `${apiUrl} reachable` : `HTTP ${response.status}`,
+      });
+    } catch (error) {
+      checks.push({
+        name: 'API connectivity',
+        ok: false,
+        detail: error instanceof Error ? error.message : 'Connection failed',
+      });
+    }
+  }
+
+  // Print results
+  let allOk = true;
+  for (const check of checks) {
+    const icon = check.ok ? '\u2713' : '\u2717';
+    console.log(`  ${icon} ${check.name}: ${check.detail}`);
+    if (!check.ok) allOk = false;
+  }
+
+  console.log('');
+  if (allOk) {
+    console.log('All checks passed. Your Sardis MCP server is ready.');
+  } else if (!apiKey) {
+    console.log('Running in sandbox mode. Set SARDIS_API_KEY for live transactions.');
+  } else {
+    console.log('Some checks failed. Fix the issues above and run doctor again.');
+  }
+  console.log('');
 }
 
 async function main() {
@@ -347,6 +501,11 @@ async function main() {
 
   if (args[0] === 'init') {
     await runInit(args.slice(1));
+    process.exit(0);
+  }
+
+  if (args[0] === 'doctor') {
+    await runDoctor();
     process.exit(0);
   }
 
