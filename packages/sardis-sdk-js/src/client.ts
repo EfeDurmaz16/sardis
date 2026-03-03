@@ -525,9 +525,12 @@ export class SardisClient {
         // Handle rate limiting
         if (axiosError.response?.status === 429) {
           const retryAfter = this.parseRetryAfter(axiosError.response.headers);
-          const resetAt = axiosError.response.headers['x-ratelimit-reset']
-            ? new Date(parseInt(axiosError.response.headers['x-ratelimit-reset'] as string) * 1000)
-            : undefined;
+          const resetHeader = this.getHeaderIgnoreCase(axiosError.response.headers, 'x-ratelimit-reset');
+          const limitHeader = this.getHeaderIgnoreCase(axiosError.response.headers, 'x-ratelimit-limit');
+          const remainingHeader = this.getHeaderIgnoreCase(axiosError.response.headers, 'x-ratelimit-remaining');
+          const resetAt = resetHeader ? new Date(parseInt(resetHeader, 10) * 1000) : undefined;
+          const limit = limitHeader ? parseInt(limitHeader, 10) : undefined;
+          const remaining = remainingHeader ? parseInt(remainingHeader, 10) : undefined;
 
           if (retryCount < this.retryConfig.maxRetries) {
             const delay = retryAfter ? retryAfter * 1000 : this.calculateRetryDelay(retryCount);
@@ -541,8 +544,8 @@ export class SardisClient {
           throw new RateLimitError(
             'Rate limit exceeded',
             retryAfter,
-            parseInt(axiosError.response.headers['x-ratelimit-limit'] as string),
-            parseInt(axiosError.response.headers['x-ratelimit-remaining'] as string),
+            limit,
+            remaining,
             resetAt
           );
         }
@@ -599,12 +602,7 @@ export class SardisClient {
             });
           }
 
-          const headers: Record<string, string> = {};
-          Object.entries(axiosError.response.headers).forEach(([key, value]) => {
-            if (typeof value === 'string') {
-              headers[key] = value;
-            }
-          });
+          const headers = this.normalizeResponseHeaders(axiosError.response.headers);
 
           throw APIError.fromResponse(
             axiosError.response.status,
@@ -640,7 +638,7 @@ export class SardisClient {
    * @internal
    */
   private parseRetryAfter(headers: Record<string, unknown>): number | undefined {
-    const retryAfter = headers['retry-after'] as string | undefined;
+    const retryAfter = this.getHeaderIgnoreCase(headers, 'retry-after');
     if (!retryAfter) return undefined;
 
     // Check if it's a number (seconds)
@@ -656,6 +654,85 @@ export class SardisClient {
     }
 
     return undefined;
+  }
+
+  /**
+   * Gets a header value using case-insensitive lookup.
+   * @internal
+   */
+  private getHeaderIgnoreCase(
+    headers: Record<string, unknown>,
+    name: string
+  ): string | undefined {
+    const target = name.toLowerCase();
+    for (const [key, value] of Object.entries(headers)) {
+      if (key.toLowerCase() !== target) continue;
+      return this.extractStringHeaderValue(value);
+    }
+    return undefined;
+  }
+
+  /**
+   * Normalizes headers for APIError surfaces and x402 compatibility.
+   * @internal
+   */
+  private normalizeResponseHeaders(headers: Record<string, unknown>): Record<string, string> {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      const normalizedValue = this.extractStringHeaderValue(value);
+      if (normalizedValue === undefined) continue;
+      normalized[key] = normalizedValue;
+      normalized[key.toLowerCase()] = normalizedValue;
+    }
+
+    const paymentRequired = normalized['paymentrequired'] ?? normalized['x-payment-challenge'];
+    if (paymentRequired) {
+      normalized['PaymentRequired'] = paymentRequired;
+      normalized['paymentrequired'] = paymentRequired;
+      normalized['x-payment-challenge'] = paymentRequired;
+    }
+
+    const wwwAuthenticate = normalized['www-authenticate'];
+    if (wwwAuthenticate && !normalized['x-payment-challenge']) {
+      const parsed = this.parseX402WwwAuthenticate(wwwAuthenticate);
+      if (parsed) {
+        const challenge = JSON.stringify(parsed);
+        normalized['x-payment-challenge'] = challenge;
+        normalized['PaymentRequired'] = challenge;
+        normalized['paymentrequired'] = challenge;
+      }
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Converts axios header values into a string where possible.
+   * @internal
+   */
+  private extractStringHeaderValue(value: unknown): string | undefined {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return value.map((item) => String(item)).join(', ');
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return undefined;
+  }
+
+  /**
+   * Parses `WWW-Authenticate: x402 ...` into a challenge-like object.
+   * @internal
+   */
+  private parseX402WwwAuthenticate(headerValue: string): Record<string, string> | undefined {
+    if (!headerValue.toLowerCase().startsWith('x402')) return undefined;
+    const challenge: Record<string, string> = {};
+    const matcher = /([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"/g;
+    for (const match of headerValue.matchAll(matcher)) {
+      const key = match[1];
+      const value = match[2];
+      if (key && value !== undefined) {
+        challenge[key] = value;
+      }
+    }
+    return Object.keys(challenge).length > 0 ? challenge : undefined;
   }
 
   /**

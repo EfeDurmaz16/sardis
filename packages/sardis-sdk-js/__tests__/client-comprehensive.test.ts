@@ -490,6 +490,92 @@ describe('SardisClient Comprehensive Tests', () => {
         }, 10000);
     });
 
+    describe('x402 header normalization', () => {
+        it('should mirror PaymentRequired into x-payment-challenge', async () => {
+            const challengeValue = JSON.stringify({
+                challenge_id: 'ch_1',
+                required_amount: '1',
+                token: 'USDC',
+            });
+
+            server.use(
+                http.get('https://api.sardis.sh/x402/paymentrequired', () => {
+                    return HttpResponse.json(
+                        {
+                            error: {
+                                code: 'PAYMENT_REQUIRED',
+                                message: 'Payment required',
+                            },
+                        },
+                        {
+                            status: 402,
+                            headers: {
+                                PaymentRequired: challengeValue,
+                            },
+                        }
+                    );
+                })
+            );
+
+            const client = new SardisClient({
+                apiKey: 'test-key',
+                maxRetries: 0,
+            });
+
+            await expect(client.request('GET', '/x402/paymentrequired')).rejects.toThrow(APIError);
+
+            try {
+                await client.request('GET', '/x402/paymentrequired');
+                expect.fail('Expected APIError');
+            } catch (error) {
+                const apiError = error as APIError;
+                expect(apiError.headers?.PaymentRequired).toBe(challengeValue);
+                expect(apiError.headers?.['x-payment-challenge']).toBe(challengeValue);
+                expect(apiError.headers?.paymentrequired).toBe(challengeValue);
+            }
+        });
+
+        it('should derive challenge payload from WWW-Authenticate x402 header', async () => {
+            server.use(
+                http.get('https://api.sardis.sh/x402/www-authenticate', () => {
+                    return HttpResponse.json(
+                        {
+                            error: {
+                                code: 'PAYMENT_REQUIRED',
+                                message: 'Payment required',
+                            },
+                        },
+                        {
+                            status: 402,
+                            headers: {
+                                'WWW-Authenticate': 'x402 nonce="abc123", amount="100", currency="USDC", expires="300"',
+                            },
+                        }
+                    );
+                })
+            );
+
+            const client = new SardisClient({
+                apiKey: 'test-key',
+                maxRetries: 0,
+            });
+
+            await expect(client.request('GET', '/x402/www-authenticate')).rejects.toThrow(APIError);
+
+            try {
+                await client.request('GET', '/x402/www-authenticate');
+                expect.fail('Expected APIError');
+            } catch (error) {
+                const apiError = error as APIError;
+                const challenge = JSON.parse(apiError.headers?.['x-payment-challenge'] || '{}');
+                expect(challenge.nonce).toBe('abc123');
+                expect(challenge.amount).toBe('100');
+                expect(challenge.currency).toBe('USDC');
+                expect(challenge.expires).toBe('300');
+            }
+        });
+    });
+
     describe('abort and cancellation', () => {
         it('should abort request when signal is already aborted', async () => {
             const controller = new AbortController();
