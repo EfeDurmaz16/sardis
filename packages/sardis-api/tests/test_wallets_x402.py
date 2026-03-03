@@ -42,11 +42,18 @@ class _FailingChainExecutor:
 class _StubCircleNanopaymentsClient:
     def __init__(self) -> None:
         self.intent_payloads: list[dict[str, Any]] = []
+        self.attach_payloads: list[dict[str, Any]] = []
+        self.attach_calls: list[str] = []
         self.settle_calls: list[str] = []
 
     async def create_payment_intent(self, payload: dict[str, Any]) -> Any:
         self.intent_payloads.append(payload)
         return SimpleNamespace(payment_intent_id="pi_created_1", status="created")
+
+    async def attach_signature(self, payment_intent_id: str, payload: dict[str, Any]) -> Any:
+        self.attach_calls.append(payment_intent_id)
+        self.attach_payloads.append(payload)
+        return SimpleNamespace(payment_intent_id="pi_attached_1", status="authorized")
 
     async def settle_payment_intent(self, payment_intent_id: str) -> Any:
         self.settle_calls.append(payment_intent_id)
@@ -293,6 +300,13 @@ def test_x402_settle_uses_circle_gateway_when_enabled(monkeypatch: pytest.Monkey
     )
     assert verify_resp.status_code == 200
     assert verify_resp.json()["accepted"] is True
+    assert len(circle_client.intent_payloads) == 1
+    assert circle_client.intent_payloads[0]["paymentId"] == challenge["payment_id"]
+    assert circle_client.attach_calls == ["pi_created_1"]
+    assert len(circle_client.attach_payloads) == 1
+    assert circle_client.attach_payloads[0]["paymentId"] == challenge["payment_id"]
+    assert settlements[challenge["payment_id"]]["status"] == "verified"
+    assert settlements[challenge["payment_id"]]["tx_hash"] == "pi_attached_1"
 
     settle_resp = client.post(
         "/api/v2/wallets/wallet_1/x402/settle",
@@ -304,6 +318,5 @@ def test_x402_settle_uses_circle_gateway_when_enabled(monkeypatch: pytest.Monkey
     assert settled["tx_hash"] == "pi_settled_1"
 
     assert len(circle_client.intent_payloads) == 1
-    assert circle_client.intent_payloads[0]["paymentId"] == challenge["payment_id"]
-    assert circle_client.settle_calls == ["pi_created_1"]
+    assert circle_client.settle_calls == ["pi_attached_1"]
     assert settlements[challenge["payment_id"]]["status"] == "settled"

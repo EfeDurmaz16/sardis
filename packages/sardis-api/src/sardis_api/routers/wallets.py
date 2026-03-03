@@ -1252,6 +1252,22 @@ def _build_circle_payment_intent_payload(settlement: object) -> dict:
     }
 
 
+def _build_circle_signature_payload(settlement: object) -> dict:
+    payload = getattr(settlement, "payload", None)
+    challenge = getattr(settlement, "challenge", None)
+    if payload is None or challenge is None:
+        return {}
+    return {
+        "paymentId": getattr(settlement, "payment_id", ""),
+        "payerAddress": getattr(payload, "payer_address", ""),
+        "nonce": getattr(payload, "nonce", ""),
+        "signature": getattr(payload, "signature", ""),
+        "authorization": getattr(payload, "authorization", {}),
+        "amount": getattr(challenge, "amount", ""),
+        "currency": getattr(challenge, "currency", ""),
+    }
+
+
 # ==========================================================================
 # Inbound Payment Endpoints
 # ==========================================================================
@@ -1634,7 +1650,11 @@ async def verify_x402_payment(
     result = verify_payment_payload(payload=payload, challenge=challenge)
 
     try:
-        from sardis_protocol.x402_settlement import X402Settler, DatabaseSettlementStore
+        from sardis_protocol.x402_settlement import (
+            X402Settler,
+            DatabaseSettlementStore,
+            X402SettlementStatus,
+        )
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1644,6 +1664,44 @@ async def verify_x402_payment(
     store = DatabaseSettlementStore()
     settler = X402Settler(store=store, chain_executor=None)
     settlement = await settler.verify(challenge=challenge, payload=payload)
+
+    if _circle_gateway_x402_enabled(deps) and settlement.status == X402SettlementStatus.VERIFIED:
+        circle_client = deps.circle_nanopayments_client
+        if circle_client is None:
+            await store.update_status(
+                request.payment_id,
+                X402SettlementStatus.FAILED,
+                error="circle_gateway_not_configured",
+            )
+            return X402VerifyResponse(
+                accepted=False,
+                reason="circle_gateway_not_configured",
+            )
+        try:
+            intent_payload = _build_circle_payment_intent_payload(settlement)
+            created_intent = await circle_client.create_payment_intent(intent_payload)
+            signature_payload = _build_circle_signature_payload(settlement)
+            attached_intent = await circle_client.attach_signature(
+                created_intent.payment_intent_id,
+                signature_payload,
+            )
+            # Reuse tx_hash column to persist gateway payment_intent_id between verify and settle.
+            await store.update_status(
+                request.payment_id,
+                X402SettlementStatus.VERIFIED,
+                tx_hash=attached_intent.payment_intent_id,
+                error=None,
+            )
+        except Exception as exc:
+            await store.update_status(
+                request.payment_id,
+                X402SettlementStatus.FAILED,
+                error=f"circle_gateway:{exc}",
+            )
+            return X402VerifyResponse(
+                accepted=False,
+                reason=f"circle_gateway:{exc}",
+            )
 
     # Clean up used challenge on success
     if result.accepted:
@@ -1706,9 +1764,13 @@ async def settle_x402_payment(
             )
 
         try:
-            intent_payload = _build_circle_payment_intent_payload(settlement)
-            created_intent = await circle_client.create_payment_intent(intent_payload)
-            settled_intent = await circle_client.settle_payment_intent(created_intent.payment_intent_id)
+            payment_intent_id = settlement.tx_hash
+            if payment_intent_id:
+                settled_intent = await circle_client.settle_payment_intent(payment_intent_id)
+            else:
+                intent_payload = _build_circle_payment_intent_payload(settlement)
+                created_intent = await circle_client.create_payment_intent(intent_payload)
+                settled_intent = await circle_client.settle_payment_intent(created_intent.payment_intent_id)
             settled_at = datetime.now(timezone.utc)
             await store.update_status(
                 request.payment_id,
