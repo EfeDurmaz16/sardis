@@ -70,8 +70,8 @@ After deployment, update `/packages/sardis-chain/src/sardis_chain/executor.py` w
 
 ```bash
 # Option 1: Environment variables (recommended)
-export SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS=0x...
-export SARDIS_BASE_SEPOLIA_ESCROW_ADDRESS=0x...
+export SARDIS_BASE_POLICY_MODULE_ADDRESS=0x...
+export SARDIS_BASE_LEDGER_ANCHOR_ADDRESS=0x...
 
 # Option 2: Update executor.py directly
 # Edit the SARDIS_CONTRACTS dictionary
@@ -110,11 +110,10 @@ forge script script/DeployMultiChain.s.sol:DeployMultiChain \
 After deployment, verify:
 
 - [ ] Contract code is verified on block explorer
-- [ ] Owner is set correctly
-- [ ] Default limits are correct
-- [ ] Recovery address is set
-- [ ] Factory can create wallets
-- [ ] Escrow can handle funds
+- [ ] `SardisPolicyModule` admin (`sardis`) is correct multisig
+- [ ] `SardisPolicyModule` default policy limits are validated in staging
+- [ ] `SardisLedgerAnchor` owner is correct and anchor writes succeed
+- [ ] Runtime env/config points to deployed addresses
 
 ## Gas Estimates
 

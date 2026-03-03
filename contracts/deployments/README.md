@@ -6,8 +6,8 @@ This directory contains deployment records for Sardis smart contracts across all
 
 ### Testnets
 
-| Chain | Status | WalletFactory | Escrow |
-|-------|--------|---------------|--------|
+| Chain | Status | PolicyModule | LedgerAnchor |
+|-------|--------|--------------|--------------|
 | Base Sepolia | ⏳ Pending | - | - |
 | Polygon Amoy | ⏳ Pending | - | - |
 | Ethereum Sepolia | ⏳ Pending | - | - |
@@ -16,8 +16,8 @@ This directory contains deployment records for Sardis smart contracts across all
 
 ### Mainnets (Requires Audit)
 
-| Chain | Status | WalletFactory | Escrow |
-|-------|--------|---------------|--------|
+| Chain | Status | PolicyModule | LedgerAnchor |
+|-------|--------|--------------|--------------|
 | Base | 🔒 Pending Audit | - | - |
 | Polygon | 🔒 Pending Audit | - | - |
 | Ethereum | 🔒 Pending Audit | - | - |
@@ -94,8 +94,9 @@ Each deployment file contains:
   "chainId": 84532,
   "deployer": "0x...",
   "contracts": {
-    "walletFactory": "0x...",
-    "escrow": "0x..."
+    "policyModule": "0x...",
+    "ledgerAnchor": "0x...",
+    "refundProtocol": "0x..."
   },
   "blockNumber": 12345678,
   "timestamp": 1706140800
@@ -107,8 +108,8 @@ Each deployment file contains:
 1. Update contract addresses in `packages/sardis-chain/src/sardis_chain/executor.py`
 2. Or set environment variables:
    ```bash
-   export SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS="0x..."
-   export SARDIS_BASE_SEPOLIA_ESCROW_ADDRESS="0x..."
+   export SARDIS_BASE_POLICY_MODULE_ADDRESS="0x..."
+   export SARDIS_BASE_LEDGER_ANCHOR_ADDRESS="0x..."
    ```
 
 3. Verify contracts on block explorers if not done during deployment:

@@ -1,13 +1,16 @@
 {
   "chain": "base",
-  "chainId": null,
+  "chainId": 8453,
   "status": "pending",
   "deployer": null,
   "contracts": {
     "walletFactory": null,
-    "escrow": null
+    "escrow": null,
+    "policyModule": null,
+    "ledgerAnchor": null,
+    "refundProtocol": null
   },
   "blockNumber": null,
   "timestamp": null,
-  "notes": "Deploy with: forge script script/DeployMultiChain.s.sol:DeployMultiChain --rpc-url base --broadcast --verify"
+  "notes": "Set policyModule/ledgerAnchor addresses after deployment. Runtime override: SARDIS_BASE_POLICY_MODULE_ADDRESS and SARDIS_BASE_LEDGER_ANCHOR_ADDRESS."
 }

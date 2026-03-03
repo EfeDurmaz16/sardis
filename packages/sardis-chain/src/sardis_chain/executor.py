@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import secrets
@@ -22,6 +23,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from sardis_v2_core import SardisSettings
@@ -357,6 +360,45 @@ SARDIS_CONTRACTS = {
     },
 }
 
+_DEPLOYMENTS_DIR = Path(__file__).resolve().parents[4] / "contracts" / "deployments"
+
+
+def _contract_aliases(contract_type: str) -> tuple[str, ...]:
+    """Resolve contract key aliases across snake_case and camelCase schemas."""
+    aliases: list[str] = [contract_type]
+    if "_" in contract_type:
+        parts = contract_type.split("_")
+        aliases.append(parts[0] + "".join(p.title() for p in parts[1:]))
+    return tuple(dict.fromkeys(aliases))
+
+
+@lru_cache(maxsize=64)
+def _load_deployment_contracts(chain: str) -> dict[str, Any]:
+    """Load contract map from contracts/deployments/<chain>.json if present."""
+    manifest_path = _DEPLOYMENTS_DIR / f"{chain}.json"
+    if not manifest_path.is_file():
+        return {}
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    contracts = payload.get("contracts")
+    if isinstance(contracts, dict):
+        return contracts
+    return {}
+
+
+def _resolve_manifest_contract_address(chain: str, contract_type: str) -> str:
+    """Resolve contract address from deployment manifest using known key aliases."""
+    contracts = _load_deployment_contracts(chain)
+    if not contracts:
+        return ""
+    for key in _contract_aliases(contract_type):
+        value = contracts.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
 
 def get_sardis_contract_address(chain: str, contract_type: str) -> str:
     """
@@ -391,7 +433,12 @@ def get_sardis_contract_address(chain: str, contract_type: str) -> str:
         return env_address
 
     # Fall back to hardcoded address
-    return chain_config.get(contract_type, "")
+    hardcoded = chain_config.get(contract_type, "")
+    if hardcoded:
+        return hardcoded
+
+    # Final fallback: deployment manifest address
+    return _resolve_manifest_contract_address(chain, contract_type)
 
 
 def get_sardis_policy_module(chain: str) -> str:

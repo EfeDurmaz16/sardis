@@ -68,6 +68,11 @@ if ! bash scripts/release/deployment_config_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating base mainnet deployment readiness"
+if ! bash scripts/release/base_mainnet_readiness_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating ops readiness artifacts"
 if ! bash scripts/release/ops_readiness_check.sh; then
   failures=$((failures + 1))

@@ -4,27 +4,23 @@ Solidity smart contracts for the Sardis AI Agent Payment Network.
 
 ## Contracts
 
-### SardisAgentWallet.sol
-Programmable wallet for AI agents with on-chain spending controls:
-- Per-transaction and daily spending limits
+### SardisPolicyModule.sol
+Safe module that enforces agent spending controls:
+- Per-transaction and daily limits
+- Co-sign flow for elevated limits
 - Merchant allowlist/denylist
-- Pre-authorization holds (like credit cards)
-- Multi-sig with Sardis as co-signer
-- Emergency recovery mechanism
+- Token allowlist enforcement
 
-### SardisWalletFactory.sol
-Factory contract for deploying agent wallets:
-- Deploy new wallets with CREATE2 (deterministic addresses)
-- Track all deployed wallets
-- Configure default limits
-- Wallet verification
+### SardisLedgerAnchor.sol
+Minimal audit anchoring contract:
+- Stores Merkle roots on-chain
+- Immutable timestamped audit anchors
 
-### SardisEscrow.sol
-Escrow for trustless agent-to-agent payments:
-- Milestone-based payments
-- Dispute resolution with arbiter
-- Time-locked releases
-- Automatic refunds on expiry
+### RefundProtocol.sol
+Arbiter-governed refund and lockup protocol:
+- Locked USDC payment intents
+- Arbiter-led refunds and early withdrawal approvals
+- EIP-712 signatures and replay protection
 
 ## Development Setup
 
@@ -73,8 +69,8 @@ forge script script/Deploy.s.sol:DeployTestnet \
 
 ```bash
 # Add to your .env file
-SARDIS_WALLET_FACTORY=0x...
-SARDIS_ESCROW=0x...
+SARDIS_BASE_POLICY_MODULE_ADDRESS=0x...
+SARDIS_BASE_LEDGER_ANCHOR_ADDRESS=0x...
 ```
 
 ## Network Addresses
@@ -147,4 +143,3 @@ SARDIS_ESCROW=0x...
 ## License
 
 MIT
-
