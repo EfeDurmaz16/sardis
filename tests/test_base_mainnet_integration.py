@@ -102,12 +102,15 @@ class TestCirclePaymasterWiring:
         user_op = UserOperation(
             sender="0x" + "11" * 20,
             nonce="0x0",
+            init_code="0x",
             call_data="0x",
             call_gas_limit="0x5208",
             verification_gas_limit="0x5208",
             pre_verification_gas="0x5208",
             max_fee_per_gas="0x3b9aca00",
             max_priority_fee_per_gas="0x3b9aca00",
+            paymaster_and_data="0x",
+            signature="0x",
         )
 
         result = await client.sponsor_user_operation(
