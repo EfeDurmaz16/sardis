@@ -1894,14 +1894,51 @@ class ChainExecutor:
                     api_key=circle_api_key,
                     entity_secret=circle_entity_secret,
                 )
-                # Default signer uses a placeholder — actual wallet ID is bound
-                # per-wallet in the orchestrator via CircleWalletSigner instances.
-                self._mpc_signer = SimulatedMPCSigner()
-                logger.info("Circle Programmable Wallets MPC provider initialized")
-            except ImportError:
+                live_signer_enabled = os.getenv("SARDIS_CIRCLE_LIVE_SIGNER_ENABLED", "").strip().lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                }
+                default_wallet_id = os.getenv("SARDIS_CIRCLE_DEFAULT_WALLET_ID", "").strip()
+                default_address = os.getenv("SARDIS_CIRCLE_DEFAULT_ADDRESS", "").strip()
+
+                if self._settings.chain_mode == "live":
+                    if not live_signer_enabled:
+                        raise RuntimeError(
+                            "Circle live signer is disabled. Set SARDIS_CIRCLE_LIVE_SIGNER_ENABLED=true "
+                            "and configure SARDIS_CIRCLE_DEFAULT_WALLET_ID/SARDIS_CIRCLE_DEFAULT_ADDRESS."
+                        )
+                    if not default_wallet_id or not default_address:
+                        raise RuntimeError(
+                            "Circle live signer requires SARDIS_CIRCLE_DEFAULT_WALLET_ID and "
+                            "SARDIS_CIRCLE_DEFAULT_ADDRESS."
+                        )
+                    self._mpc_signer = CircleWalletSigner(
+                        self._circle_client,
+                        wallet_id=default_wallet_id,
+                        address=default_address,
+                    )
+                    logger.info(
+                        "Circle Programmable Wallets MPC provider initialized in live mode "
+                        "(default wallet signer binding enabled)"
+                    )
+                else:
+                    # Non-live mode keeps simulated signing unless an explicit live signer
+                    # binding is requested, to avoid accidental raw tx dispatch in dev.
+                    self._mpc_signer = SimulatedMPCSigner()
+                    logger.warning(
+                        "Circle MPC provider initialized in non-live mode with simulated signer. "
+                        "Enable SARDIS_CIRCLE_LIVE_SIGNER_ENABLED only for controlled live execution."
+                    )
+            except ImportError as exc:
+                if self._settings.chain_mode == "live":
+                    raise RuntimeError("sardis_wallet package is required for Circle live signer") from exc
                 logger.warning("sardis_wallet not available, falling back to simulated signer")
                 self._mpc_signer = SimulatedMPCSigner()
             except Exception as e:
+                if self._settings.chain_mode == "live":
+                    raise RuntimeError(f"Circle MPC init failed: {e}") from e
                 logger.error("Circle MPC init failed: %s, falling back to simulated", e)
                 self._mpc_signer = SimulatedMPCSigner()
         elif mpc_config.name == "lit":

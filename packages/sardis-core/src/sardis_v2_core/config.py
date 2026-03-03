@@ -451,6 +451,29 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
             elif mpc_name == "fireblocks":
                 if not os.getenv("FIREBLOCKS_API_KEY"):
                     errors.append("FIREBLOCKS_API_KEY: Fireblocks MPC provider not configured for live mode")
+            elif mpc_name == "circle":
+                if not (
+                    os.getenv("SARDIS_CIRCLE_WALLET_API_KEY")
+                    or settings.circle_wallet_api_key
+                ):
+                    errors.append(
+                        "SARDIS_CIRCLE_WALLET_API_KEY: Circle MPC provider not configured for live mode"
+                    )
+                live_signer_enabled = (
+                    os.getenv("SARDIS_CIRCLE_LIVE_SIGNER_ENABLED", "").strip().lower()
+                    in {"1", "true", "yes", "on"}
+                )
+                if not live_signer_enabled:
+                    errors.append(
+                        "SARDIS_CIRCLE_LIVE_SIGNER_ENABLED: Must be true for Circle live chain execution"
+                    )
+                default_wallet_id = os.getenv("SARDIS_CIRCLE_DEFAULT_WALLET_ID", "").strip()
+                default_address = os.getenv("SARDIS_CIRCLE_DEFAULT_ADDRESS", "").strip()
+                if live_signer_enabled and (not default_wallet_id or not default_address):
+                    errors.append(
+                        "SARDIS_CIRCLE_DEFAULT_WALLET_ID and SARDIS_CIRCLE_DEFAULT_ADDRESS: "
+                        "Required for Circle live signer binding"
+                    )
             elif mpc_name == "local":
                 errors.append(
                     "SARDIS_MPC__NAME: local signer is custodial and not allowed for production live execution"
