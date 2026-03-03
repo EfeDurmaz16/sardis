@@ -170,6 +170,7 @@ class WalletDependencies:
         canonical_repo: any | None = None,
         compliance: any | None = None,
         inbound_payment_service: any | None = None,
+        circle_nanopayments_client: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -180,6 +181,7 @@ class WalletDependencies:
         self.settings = settings
         self.compliance = compliance
         self.inbound_payment_service = inbound_payment_service
+        self.circle_nanopayments_client = circle_nanopayments_client
 
 
 def get_deps() -> WalletDependencies:
@@ -1223,6 +1225,33 @@ def _resolve_x402_token_address(network: str, currency: str) -> str:
     return chain_tokens.get(currency.upper(), "")
 
 
+def _circle_gateway_x402_enabled(deps: WalletDependencies) -> bool:
+    settings = getattr(deps, "settings", None)
+    if settings is None:
+        return False
+    circle_gateway = getattr(settings, "circle_gateway", None)
+    return bool(getattr(circle_gateway, "x402_enabled", False))
+
+
+def _build_circle_payment_intent_payload(settlement: object) -> dict:
+    challenge = getattr(settlement, "challenge", None)
+    payload = getattr(settlement, "payload", None)
+    if challenge is None or payload is None:
+        return {}
+    return {
+        "paymentId": getattr(settlement, "payment_id", ""),
+        "resourceUri": getattr(challenge, "resource_uri", ""),
+        "network": getattr(challenge, "network", ""),
+        "currency": getattr(challenge, "currency", ""),
+        "amount": getattr(challenge, "amount", ""),
+        "payeeAddress": getattr(challenge, "payee_address", ""),
+        "payerAddress": getattr(payload, "payer_address", ""),
+        "nonce": getattr(payload, "nonce", ""),
+        "signature": getattr(payload, "signature", ""),
+        "authorization": getattr(payload, "authorization", {}),
+    }
+
+
 # ==========================================================================
 # Inbound Payment Endpoints
 # ==========================================================================
@@ -1662,6 +1691,49 @@ async def settle_x402_payment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Settlement status is {settlement.status.value}, expected 'verified'",
         )
+
+    if _circle_gateway_x402_enabled(deps):
+        circle_client = deps.circle_nanopayments_client
+        if circle_client is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Circle Gateway x402 is enabled but provider is not configured",
+            )
+        if settlement.challenge is None or settlement.payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Settlement missing x402 challenge or payload context",
+            )
+
+        try:
+            intent_payload = _build_circle_payment_intent_payload(settlement)
+            created_intent = await circle_client.create_payment_intent(intent_payload)
+            settled_intent = await circle_client.settle_payment_intent(created_intent.payment_intent_id)
+            settled_at = datetime.now(timezone.utc)
+            await store.update_status(
+                request.payment_id,
+                X402SettlementStatus.SETTLED,
+                tx_hash=settled_intent.payment_intent_id,
+                settled_at=settled_at,
+                error=None,
+            )
+            return X402SettleResponse(
+                payment_id=request.payment_id,
+                status=X402SettlementStatus.SETTLED.value,
+                tx_hash=settled_intent.payment_intent_id,
+                settled_at=settled_at.isoformat(),
+                error=None,
+            )
+        except Exception as exc:
+            await store.update_status(
+                request.payment_id,
+                X402SettlementStatus.FAILED,
+                error=f"circle_gateway:{exc}",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Circle Gateway nanopayment settlement failed: {exc}",
+            ) from exc
 
     chain_executor = deps.chain_executor or ChainExecutor()
     settler = X402Settler(store=store, chain_executor=chain_executor)

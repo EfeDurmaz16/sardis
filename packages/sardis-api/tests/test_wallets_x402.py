@@ -34,7 +34,32 @@ class _StubChainExecutor:
         return SimpleNamespace(tx_hash="0xsettled")
 
 
-def _build_app(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+class _FailingChainExecutor:
+    async def dispatch_payment(self, _mandate: Any) -> Any:
+        raise AssertionError("chain executor should not be called when Circle Gateway x402 is enabled")
+
+
+class _StubCircleNanopaymentsClient:
+    def __init__(self) -> None:
+        self.intent_payloads: list[dict[str, Any]] = []
+        self.settle_calls: list[str] = []
+
+    async def create_payment_intent(self, payload: dict[str, Any]) -> Any:
+        self.intent_payloads.append(payload)
+        return SimpleNamespace(payment_intent_id="pi_created_1", status="created")
+
+    async def settle_payment_intent(self, payment_intent_id: str) -> Any:
+        self.settle_calls.append(payment_intent_id)
+        return SimpleNamespace(payment_intent_id="pi_settled_1", status="settled")
+
+
+def _build_app(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    circle_x402_enabled: bool = False,
+    chain_executor: Any | None = None,
+    circle_client: Any | None = None,
+) -> tuple[TestClient, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     wallet = Wallet(
         wallet_id="wallet_1",
         agent_id="agent_1",
@@ -46,7 +71,11 @@ def _build_app(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, dict[str, d
     deps = wallets.WalletDependencies(
         wallet_repo=_StubWalletRepo(wallet),
         agent_repo=_StubAgentRepo(),
-        chain_executor=_StubChainExecutor(),
+        chain_executor=chain_executor or _StubChainExecutor(),
+        settings=SimpleNamespace(
+            circle_gateway=SimpleNamespace(x402_enabled=circle_x402_enabled),
+        ),
+        circle_nanopayments_client=circle_client,
     )
 
     challenges: dict[str, dict[str, Any]] = {}
@@ -227,3 +256,54 @@ def test_x402_verify_amount_mismatch_records_failed_settlement(monkeypatch: pyte
     )
     assert settle_resp.status_code == 400
     assert "expected 'verified'" in settle_resp.json()["detail"]
+
+
+def test_x402_settle_uses_circle_gateway_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    circle_client = _StubCircleNanopaymentsClient()
+    client, _challenges, settlements = _build_app(
+        monkeypatch,
+        circle_x402_enabled=True,
+        chain_executor=_FailingChainExecutor(),
+        circle_client=circle_client,
+    )
+
+    challenge_resp = client.post(
+        "/api/v2/wallets/wallet_1/x402/challenge",
+        json={
+            "resource_uri": "https://api.vendor.dev/v1/data",
+            "amount": "100",
+            "currency": "USDC",
+            "network": "base",
+            "ttl_seconds": 300,
+        },
+    )
+    assert challenge_resp.status_code == 200
+    challenge = challenge_resp.json()
+
+    verify_resp = client.post(
+        "/api/v2/wallets/wallet_1/x402/verify",
+        json={
+            "payment_id": challenge["payment_id"],
+            "payer_address": "0x2222222222222222222222222222222222222222",
+            "amount": "100",
+            "nonce": challenge["nonce"],
+            "signature": "0xsig",
+            "authorization": {"kind": "erc3009"},
+        },
+    )
+    assert verify_resp.status_code == 200
+    assert verify_resp.json()["accepted"] is True
+
+    settle_resp = client.post(
+        "/api/v2/wallets/wallet_1/x402/settle",
+        json={"payment_id": challenge["payment_id"]},
+    )
+    assert settle_resp.status_code == 200
+    settled = settle_resp.json()
+    assert settled["status"] == "settled"
+    assert settled["tx_hash"] == "pi_settled_1"
+
+    assert len(circle_client.intent_payloads) == 1
+    assert circle_client.intent_payloads[0]["paymentId"] == challenge["payment_id"]
+    assert circle_client.settle_calls == ["pi_created_1"]
+    assert settlements[challenge["payment_id"]]["status"] == "settled"

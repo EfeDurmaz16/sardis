@@ -106,6 +106,18 @@ class CoinbaseConfig(BaseSettings):
         env_prefix = "COINBASE_CDP_"
 
 
+class CircleGatewayConfig(BaseSettings):
+    """Circle Gateway Nanopayments configuration."""
+
+    x402_enabled: bool = False
+    api_key: str = ""
+    base_url: str = "https://gateway-api.circle.com"
+    timeout_seconds: float = 20.0
+
+    class Config:
+        env_prefix = "CIRCLE_GATEWAY_"
+
+
 class RainConfig(BaseSettings):
     """Rain stablecoin card issuing configuration."""
 
@@ -255,6 +267,7 @@ class SardisSettings(BaseSettings):
     lithic: LithicConfig = Field(default_factory=LithicConfig)
     stripe: StripeConfig = Field(default_factory=StripeConfig)
     coinbase: CoinbaseConfig = Field(default_factory=CoinbaseConfig)
+    circle_gateway: CircleGatewayConfig = Field(default_factory=CircleGatewayConfig)
     rain: RainConfig = Field(default_factory=RainConfig)
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)

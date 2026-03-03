@@ -766,6 +766,35 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.coinbase_cdp_provider = coinbase_cdp_provider
     app.state.on_chain_provider = configured_on_chain_provider
 
+    circle_gateway_nanopayments_client = None
+    if bool(getattr(settings.circle_gateway, "x402_enabled", False)):
+        circle_gateway_api_key = (
+            settings.circle_gateway.api_key
+            or os.getenv("CIRCLE_GATEWAY_API_KEY", "")
+        )
+        if circle_gateway_api_key:
+            try:
+                from .providers.circle_gateway_nanopayments import (
+                    CircleGatewayNanopaymentsClient,
+                )
+
+                circle_gateway_nanopayments_client = CircleGatewayNanopaymentsClient(
+                    api_key=circle_gateway_api_key,
+                    base_url=(
+                        settings.circle_gateway.base_url
+                        or os.getenv("CIRCLE_GATEWAY_BASE_URL", "")
+                    ),
+                    timeout_seconds=float(settings.circle_gateway.timeout_seconds),
+                )
+                logger.info("Circle Gateway nanopayments provider initialized")
+            except Exception as exc:
+                logger.warning("Circle Gateway nanopayments initialization failed: %s", exc)
+        else:
+            logger.warning(
+                "Circle Gateway x402 is enabled but CIRCLE_GATEWAY_API_KEY is missing"
+            )
+    app.state.circle_gateway_nanopayments_client = circle_gateway_nanopayments_client
+
     # Inbound payment service (deposit monitoring + receive endpoints)
     from sardis_v2_core.event_bus import get_default_bus
     event_bus = get_default_bus()
@@ -790,6 +819,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
         compliance=compliance,
         inbound_payment_service=inbound_payment_service,
+        circle_nanopayments_client=circle_gateway_nanopayments_client,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
