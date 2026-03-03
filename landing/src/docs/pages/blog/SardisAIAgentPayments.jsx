@@ -27,7 +27,7 @@ export default function SardisAIAgentPayments() {
         ]}
       />
 
-      <article className="prose prose-invert max-w-none">
+      <article className="prose dark:prose-invert max-w-none">
         <div className="not-prose mb-8">
           <Link
             to="/docs/blog"
@@ -59,7 +59,7 @@ export default function SardisAIAgentPayments() {
           </div>
         </header>
 
-        <div className="prose prose-invert max-w-none">
+        <div className="prose dark:prose-invert max-w-none">
           <p className="lead text-xl text-muted-foreground">
             Sardis is AI agent payments infrastructure. It lets autonomous agents execute real transactions
             without giving them unconstrained access to money.

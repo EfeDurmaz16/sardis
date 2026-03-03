@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function MCP36Tools() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-10">
         <Link
@@ -38,7 +38,7 @@ export default function MCP36Tools() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none prose-p:leading-7 prose-li:leading-7">
+      <div className="prose dark:prose-invert max-w-none prose-p:leading-7 prose-li:leading-7">
         <p className="lead text-xl text-muted-foreground leading-8">
           Our MCP server has grown from 4 tools to 52. From treasury ACH rails to virtual cards,
           learn how to give Claude or Cursor complete payment capabilities without writing any code.
@@ -50,7 +50,7 @@ export default function MCP36Tools() {
           get balance, make payment, list transactions, and request approval.
         </p>
         <p>
-          Today, we're shipping 52 tools that cover the full payment lifecycle—including
+          Today, we're shipping 52 tools that cover the full payment lifecycle, including
           the USD-first treasury lane (v0.8.9) for ACH fund/withdraw and virtual cards via Lithic.
           Your AI agent can now manage wallets, fund from banks, issue virtual cards, and
           pay anywhere Visa is accepted.

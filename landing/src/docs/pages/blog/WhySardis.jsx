@@ -26,7 +26,7 @@ export default function WhySardis() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -60,7 +60,7 @@ export default function WhySardis() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           The AI agent payment infrastructure market is nascent but rapidly evolving.
           We've analyzed the landscape and built Sardis to fill a critical gap:
@@ -74,7 +74,7 @@ export default function WhySardis() {
           Mastercard are actively developing agent payment protocols (AP2, A2A, x402).
         </p>
         <p>
-          This isn't a question of <em>if</em> agents will transact autonomously—it's
+          This isn't a question of <em>if</em> agents will transact autonomously. It's
           a question of <em>how safely</em> they'll do it.
         </p>
 
@@ -213,7 +213,7 @@ export default function WhySardis() {
         <p>
           Unlike custodial solutions, Sardis never holds your private keys. We use
           Turnkey's MPC infrastructure to split keys across multiple parties. No single
-          entity—not even Sardis—can move funds unilaterally.
+          entity, not even Sardis, can move funds unilaterally.
         </p>
         <p>
           This has regulatory advantages too: non-custodial solutions face fewer
@@ -223,7 +223,7 @@ export default function WhySardis() {
         <h3>3. Virtual Cards via Lithic</h3>
         <p>
           We're the only agent payment platform offering instant virtual card issuance.
-          This bridges crypto wallets to traditional commerce—your agent can pay anywhere
+          This bridges crypto wallets to traditional commerce. Your agent can pay anywhere
           Visa is accepted.
         </p>
         <p>Use cases:</p>
@@ -269,7 +269,7 @@ export default function WhySardis() {
           <li><strong>x402:</strong> Coinbase's HTTP 402 micropayment protocol</li>
         </ul>
         <p>
-          Sardis works as a policy layer on top of any protocol. Don't pick winners—
+          Sardis works as a policy layer on top of any protocol. Don't pick winners,
           work with everyone. Become the must-have middleware regardless of which
           protocol wins.
         </p>

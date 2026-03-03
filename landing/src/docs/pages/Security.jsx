@@ -15,13 +15,13 @@ export default function DocsSecurity() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-red-500/10 border border-red-500/30 text-red-500">
             SECURITY
           </span>
-          <span>v2.1 — February 2026</span>
+          <span>v2.1, February 2026</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Security Whitepaper</h1>
         <p className="text-xl text-muted-foreground">
@@ -62,7 +62,7 @@ export default function DocsSecurity() {
 
         <h3 className="text-lg font-bold font-display mb-3">Financial Hallucination</h3>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          The primary threat Sardis addresses is "financial hallucination"—unintended financial transactions
+          The primary threat Sardis addresses is "financial hallucination": unintended financial transactions
           caused by agent logic errors, retry loops, or prompt injection attacks.
         </p>
 

@@ -87,7 +87,7 @@ const posts = [
   },
   {
     title: 'Fiat Rails: Bridging Traditional Banking to Agent Wallets',
-    excerpt: 'Most businesses run on dollars, not tokens. Today we announce Fiat Rails — a complete bank-to-wallet solution that lets agents fund from bank accounts and pay anywhere, with full policy enforcement.',
+    excerpt: 'Most businesses run on dollars, not tokens. Today we announce Fiat Rails, a complete bank-to-wallet solution that lets agents fund from bank accounts and pay anywhere, with full policy enforcement.',
     date: '2026-01-24',
     readTime: '8 min read',
     category: 'Feature',
@@ -179,11 +179,11 @@ const posts = [
 
 const categoryColors = {
   Announcement: 'bg-[var(--sardis-orange)]/10 border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]',
-  Security: 'bg-red-500/10 border-red-500/30 text-red-500',
-  Tutorial: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-  Technical: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
-  Release: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
-  Feature: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+  Security: 'bg-[var(--landing-red)]/10 border-[var(--landing-red)]/30 text-[var(--landing-red)]',
+  Tutorial: 'bg-[var(--landing-green)]/10 border-[var(--landing-green)]/30 text-[var(--landing-green)]',
+  Technical: 'bg-[var(--landing-blue)]/10 border-[var(--landing-blue)]/30 text-[var(--landing-blue)]',
+  Release: 'bg-[var(--sardis-orange)]/10 border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]',
+  Feature: 'bg-[var(--landing-green)]/10 border-[var(--landing-green)]/30 text-[var(--landing-green)]',
 };
 
 function BlogCard({ post, featured = false }) {
@@ -270,7 +270,7 @@ export default function DocsBlog() {
   const regularPosts = posts.filter(p => !p.featured);
 
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <SEO
         title="Sardis Blog"
         description="Product updates, release notes, and technical guides on Sardis AI agent payments infrastructure."

@@ -26,7 +26,7 @@ export default function FinancialHallucination() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -63,7 +63,7 @@ export default function FinancialHallucination() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           AI agents can hallucinate facts, and they can hallucinate financial
           transactions. We explore the risks of unconstrained AI spending and

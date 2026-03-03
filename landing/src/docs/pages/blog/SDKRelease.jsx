@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function SDKRelease() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -37,7 +37,7 @@ export default function SDKRelease() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Our latest SDK release adds native integrations for all major AI
           frameworks. Now you can add Sardis payments to any LangChain agent,

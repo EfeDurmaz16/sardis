@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function PolicyEngineDeepDive() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -38,7 +38,7 @@ export default function PolicyEngineDeepDive() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Explore the full capabilities of the Sardis policy engine. From simple
           spending limits to complex vendor allowlists and time-based rules,

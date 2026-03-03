@@ -5,7 +5,7 @@ export default function DocsWallets() {
     <>
       <SEO
         title="AI Agent Wallets - MPC Wallet Guide"
-        description="Create non-custodial MPC wallets for AI agents using Sardis. Private keys are never stored — signing happens across distributed nodes via Turnkey. Supports Base, Polygon, Ethereum, Arbitrum, and Optimism."
+        description="Create non-custodial MPC wallets for AI agents using Sardis. Private keys are never stored. Signing happens across distributed nodes via Turnkey. Supports Base, Polygon, Ethereum, Arbitrum, and Optimism."
         path="/docs/wallets"
         schemas={[
           createBreadcrumbSchema([
@@ -15,7 +15,7 @@ export default function DocsWallets() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">CORE FEATURES</span>

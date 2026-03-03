@@ -56,7 +56,7 @@ const TRANSACTIONS = [
 
 const POLICY_EVENTS = [
   { type: "blocked", message: "Research Agent exceeded $50/tx limit ($150 attempted)", time: "1 hour ago" },
-  { type: "approval", message: "Shopping Agent requesting $65.49 for Figma — awaiting human approval", time: "3 hours ago" },
+  { type: "approval", message: "Shopping Agent requesting $65.49 for Figma, awaiting human approval", time: "3 hours ago" },
   { type: "warning", message: "Infrastructure Agent at 76% of daily limit ($3,800/$5,000)", time: "4 hours ago" },
   { type: "info", message: "Shopping Agent policy updated: added 'design tools' to allowed categories", time: "6 hours ago" },
 ];
@@ -273,7 +273,7 @@ export default function Dashboard() {
                   <span className="text-sm font-semibold">Shopping Agent</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  $65.49 to <strong className="text-foreground">Figma</strong> — Design Tools subscription renewal
+                  $65.49 to <strong className="text-foreground">Figma</strong>, Design Tools subscription renewal
                 </p>
                 <code className="text-xs text-muted-foreground mt-1 block">tx_008 &middot; 3 hours ago</code>
               </div>

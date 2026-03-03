@@ -56,7 +56,7 @@ export default function TerminalView({ logs, state }) {
           <span className="block h-2.5 w-2.5 bg-[#28c840]" />
         </div>
         <span className="ml-2 font-mono text-xs text-[var(--sardis-canvas)] opacity-50">
-          sardis-core — agent session
+          sardis-core: agent session
         </span>
         {state !== 'IDLE' && state !== 'SUCCESS' && (
           <span className="ml-auto inline-block h-1.5 w-1.5 animate-pulse-orange bg-[var(--sardis-orange)]" />

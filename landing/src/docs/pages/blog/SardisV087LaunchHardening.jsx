@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock } from 'lucide-react';
 
 export default function SardisV087LaunchHardening() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <Link
           to="/docs/blog"
@@ -68,10 +68,10 @@ export default function SardisV087LaunchHardening() {
       </p>
 
       <ul>
-        <li><code>PostgresUnifiedBalanceService</code> — replaces in-memory USD balance tracking</li>
-        <li><code>PostgresAutoConversionService</code> — replaces in-memory USDC↔USD conversion records</li>
-        <li><code>PostgresOfframpService</code> — replaces in-memory offramp transaction tracking</li>
-        <li><code>PostgresLedgerEngine</code> — full-precision NUMERIC(38,18) entries with advisory locks</li>
+        <li><code>PostgresUnifiedBalanceService</code>: replaces in-memory USD balance tracking</li>
+        <li><code>PostgresAutoConversionService</code>: replaces in-memory USDC/USD conversion records</li>
+        <li><code>PostgresOfframpService</code>: replaces in-memory offramp transaction tracking</li>
+        <li><code>PostgresLedgerEngine</code>: full-precision NUMERIC(38,18) entries with advisory locks</li>
         <li>Alembic migration 015: 5 new tables with proper indexes</li>
       </ul>
 
@@ -82,9 +82,9 @@ export default function SardisV087LaunchHardening() {
       </p>
 
       <ul>
-        <li><strong>Time-Based Policies</strong> — timezone handling, DST, overnight windows, multiple schedules</li>
-        <li><strong>Merchant Categories (MCC)</strong> — 18 categories, allowlist vs blocklist modes, auto-detection</li>
-        <li><strong>Combined Limit Strategy</strong> — per-merchant overrides, Conservative/Standard/Enterprise profiles</li>
+        <li><strong>Time-Based Policies</strong>: timezone handling, DST, overnight windows, multiple schedules</li>
+        <li><strong>Merchant Categories (MCC)</strong>: 18 categories, allowlist vs blocklist modes, auto-detection</li>
+        <li><strong>Combined Limit Strategy</strong>: per-merchant overrides, Conservative/Standard/Enterprise profiles</li>
       </ul>
 
       <h2>Security: Timestamped Webhook Verification</h2>

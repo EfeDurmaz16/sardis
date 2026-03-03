@@ -26,7 +26,7 @@ export default function IntroducingSardis() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -63,7 +63,7 @@ export default function IntroducingSardis() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Today we announce Sardis, a stablecoin execution layer designed
           specifically for AI agents. Learn how MPC wallets and policy

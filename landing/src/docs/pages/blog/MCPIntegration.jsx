@@ -7,14 +7,14 @@ export default function MCPIntegration() {
     <>
       <SEO
         title="MCP Integration: Zero-Code AI Payments in Claude"
-        description="Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required — configure wallets, execute payments, and manage spending policies through natural conversation."
+        description="Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required. Configure wallets, execute payments, and manage spending policies through natural conversation."
         path="/docs/blog/mcp-integration"
         type="article"
         article={{ publishedDate: '2025-01-08' }}
         schemas={[
           createArticleSchema({
             title: 'MCP Integration: Zero-Code AI Payments in Claude',
-            description: 'Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required — configure wallets, execute payments, and manage spending policies through natural conversation.',
+            description: 'Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required. Configure wallets, execute payments, and manage spending policies through natural conversation.',
             path: '/docs/blog/mcp-integration',
             publishedDate: '2025-01-08',
           }),
@@ -26,7 +26,7 @@ export default function MCPIntegration() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -60,7 +60,7 @@ export default function MCPIntegration() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           With our new Model Context Protocol server, you can add payment
           capabilities to Claude Desktop without writing a single line of code.

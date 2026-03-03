@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function SardisV07ProductionHardening() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link

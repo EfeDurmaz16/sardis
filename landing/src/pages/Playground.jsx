@@ -239,7 +239,7 @@ wallet = client.wallets.create(
     policy="Max $200/day, only SaaS vendors"
 )
 
-# Execute payment — policy checked automatically
+# Execute payment (policy checked automatically)
 result = wallet.pay(
     to="openai.com",
     amount="45.00",

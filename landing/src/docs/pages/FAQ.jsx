@@ -278,7 +278,7 @@ export default function DocsFAQ() {
         path="/docs/faq"
         schemas={schemas}
       />
-      <article className="prose prose-invert max-w-none">
+      <article className="prose dark:prose-invert max-w-none">
         <div className="not-prose mb-10">
           <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
             <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">

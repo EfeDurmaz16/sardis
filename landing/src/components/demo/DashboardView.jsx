@@ -282,7 +282,7 @@ export default function DashboardView({
               <div className="border border-border p-2">
                 <div className="text-[10px] uppercase tracking-widest">Last Top-up</div>
                 <div className="mt-1 text-sm text-foreground">
-                  {fundingEvent ? `+$${fundingEvent.amount.toFixed(2)}` : '—'}
+                  {fundingEvent ? `+$${fundingEvent.amount.toFixed(2)}` : '-'}
                 </div>
               </div>
             </div>

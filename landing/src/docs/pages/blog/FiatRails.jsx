@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2, CheckCircle2, ArrowRight, DollarSig
 
 export default function FiatRails() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -40,7 +40,7 @@ export default function FiatRails() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Most businesses run on dollars, not tokens. Fiat Rails is the Sardis design-partner
           lane for bank funding, card spend, and payout orchestration with policy enforcement.
@@ -324,10 +324,10 @@ const payment = await ramp.payMerchantFiat({
           depends on partner onboarding milestones. On the roadmap:
         </p>
         <ul>
-          <li><strong>International wires</strong> — SWIFT and SEPA support</li>
-          <li><strong>Multi-currency</strong> — EUR, GBP, and more stablecoins</li>
-          <li><strong>Recurring funding</strong> — Automated wallet top-ups</li>
-          <li><strong>Instant settlements</strong> — RTP for US payouts</li>
+          <li><strong>International wires</strong>: SWIFT and SEPA support</li>
+          <li><strong>Multi-currency</strong>: EUR, GBP, and more stablecoins</li>
+          <li><strong>Recurring funding</strong>: Automated wallet top-ups</li>
+          <li><strong>Instant settlements</strong>: RTP for US payouts</li>
         </ul>
 
         <h2>Get Started</h2>

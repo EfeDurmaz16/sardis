@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function DocsACP() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 text-purple-500">PROTOCOLS</span>
@@ -19,7 +19,7 @@ export default function DocsACP() {
         <p className="text-muted-foreground leading-relaxed mb-4">
           ACP (Agentic Commerce Protocol) is an open standard developed by OpenAI in partnership with Stripe.
           It defines how AI agents discover products, initiate checkout sessions, and complete purchases
-          using delegated payment credentials — without ever handling raw card numbers or bank details.
+          using delegated payment credentials, without ever handling raw card numbers or bank details.
         </p>
         <p className="text-muted-foreground leading-relaxed">
           Sardis implements ACP as a first-class protocol alongside{' '}
@@ -118,7 +118,7 @@ async with SardisClient(api_key="sk_...") as client:
         session_id=session.id,
         payment_token=token.shared_token,
     )
-    print(f"Order: {order.order_id} — {order.status}")`}</pre>
+    print(f"Order: {order.order_id} - {order.status}")`}</pre>
           </div>
         </div>
       </section>
@@ -168,24 +168,24 @@ console.log('Order:', order.orderId, order.status);`}</pre>
         <p className="text-muted-foreground leading-relaxed mb-4">
           ACP uses <strong className="text-foreground">Stripe Shared Payment Tokens</strong> for delegated payments.
           Instead of sharing card numbers, Sardis generates a one-time token scoped to a specific checkout session and amount.
-          The merchant charges the token through Stripe — the agent never sees raw payment credentials.
+          The merchant charges the token through Stripe. The agent never sees raw payment credentials.
         </p>
         <div className="not-prose space-y-2 text-sm">
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="text-emerald-500">&#10003;</span>
-            <span className="text-muted-foreground">Token scoped to session — cannot be reused for other purchases</span>
+            <span className="text-muted-foreground">Token scoped to session: cannot be reused for other purchases</span>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="text-emerald-500">&#10003;</span>
-            <span className="text-muted-foreground">Amount-capped — token cannot exceed the authorized limit</span>
+            <span className="text-muted-foreground">Amount-capped: token cannot exceed the authorized limit</span>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="text-emerald-500">&#10003;</span>
-            <span className="text-muted-foreground">Policy-gated — Sardis spending policies enforced before token issuance</span>
+            <span className="text-muted-foreground">Policy-gated: Sardis spending policies enforced before token issuance</span>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="text-emerald-500">&#10003;</span>
-            <span className="text-muted-foreground">Audit trail — every token issuance logged in Sardis ledger</span>
+            <span className="text-muted-foreground">Audit trail: every token issuance logged in Sardis ledger</span>
           </div>
         </div>
       </section>

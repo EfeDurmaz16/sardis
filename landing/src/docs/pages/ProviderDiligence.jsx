@@ -38,7 +38,7 @@ export default function DocsProviderDiligence() {
           ]),
         ]}
       />
-      <article className="prose prose-invert max-w-none">
+      <article className="prose dark:prose-invert max-w-none">
         <div className="not-prose mb-8">
           <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
             <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500">DILIGENCE</span>

@@ -398,8 +398,8 @@ const releases = [
           'Published all 4 npm packages (@sardis/sdk, @sardis/mcp-server, @sardis/ai-sdk, @sardis/ramp)',
           'SDK installation section on landing page with early access messaging and package links',
           'Vercel SPA routing fix for /docs and all sub-routes',
-          'Human-in-the-Loop approval queue — payments above policy threshold pause for human sign-off before execution',
-          'Goal drift detection — intent scope vs. payment destination mismatch blocking with configurable drift score threshold',
+          'Human-in-the-Loop approval queue: payments above policy threshold pause for human sign-off before execution',
+          'Goal drift detection: intent scope vs. payment destination mismatch blocking with configurable drift score threshold',
           'Public staging API deployed to GCP Cloud Run with Neon Postgres + Upstash Redis',
           'Admin dashboard deployed to Vercel at app.sardis.sh with live API integration',
           'API key bootstrap script for staging environments',
@@ -805,27 +805,27 @@ const releases = [
 const changeTypeConfig = {
   added: {
     label: 'Added',
-    color: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+    color: 'bg-[var(--landing-green)]/10 border-[var(--landing-green)]/30 text-[var(--landing-green)]',
     icon: '+',
   },
   improved: {
     label: 'Improved',
-    color: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
+    color: 'bg-[var(--landing-blue)]/10 border-[var(--landing-blue)]/30 text-[var(--landing-blue)]',
     icon: '^',
   },
   fixed: {
     label: 'Fixed',
-    color: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+    color: 'bg-[var(--landing-amber)]/10 border-[var(--landing-amber)]/30 text-[var(--landing-amber)]',
     icon: '*',
   },
   deprecated: {
     label: 'Deprecated',
-    color: 'bg-red-500/10 border-red-500/30 text-red-500',
+    color: 'bg-[var(--landing-red)]/10 border-[var(--landing-red)]/30 text-[var(--landing-red)]',
     icon: '-',
   },
   security: {
     label: 'Security',
-    color: 'bg-purple-500/10 border-purple-500/30 text-purple-500',
+    color: 'bg-[var(--sardis-orange)]/10 border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]',
     icon: '!',
   },
 };
@@ -891,7 +891,7 @@ function ReleaseSection({ release }) {
 
 export default function DocsChangelog() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-10">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">

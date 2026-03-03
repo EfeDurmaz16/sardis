@@ -1,6 +1,6 @@
 export default function DocsBlockchainInfrastructure() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">
@@ -18,26 +18,26 @@ export default function DocsBlockchainInfrastructure() {
           <span className="text-[var(--sardis-orange)]">#</span> Why Blockchain?
         </h2>
         <p className="text-muted-foreground mb-4">
-          Sardis uses stablecoins (USDC) as a settlement rail — not as a product feature. Blockchain gives us three things that traditional payment rails can't:
+          Sardis uses stablecoins (USDC) as a settlement rail, not as a product feature. Blockchain gives us three things that traditional payment rails can't:
         </p>
         <ul className="space-y-3 text-muted-foreground mb-6">
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Non-custodial by design</strong> — funds live in smart contract wallets, not our bank account. No trust assumption needed.</div>
+            <div><strong className="text-foreground">Non-custodial by design</strong>: funds live in smart contract wallets, not our bank account. No trust assumption needed.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Programmable money</strong> — spending policies are enforced on-chain. Rules can't be bypassed, even by us.</div>
+            <div><strong className="text-foreground">Programmable money</strong>: spending policies are enforced on-chain. Rules can't be bypassed, even by us.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Real-time settlement</strong> — no T+2 delays. Payments settle in seconds, not days.</div>
+            <div><strong className="text-foreground">Real-time settlement</strong>: no T+2 delays. Payments settle in seconds, not days.</div>
           </li>
         </ul>
         <div className="not-prose p-4 border border-[var(--sardis-orange)]/20 bg-[var(--sardis-orange)]/5 mb-6">
           <p className="text-sm text-muted-foreground">
             <strong className="text-foreground">Note:</strong> End users never interact with blockchain directly.
-            Sardis abstracts all complexity — your agents pay in dollars, and we handle the infrastructure.
+            Sardis abstracts all complexity. Your agents pay in dollars, and we handle the infrastructure.
           </p>
         </div>
       </section>
@@ -47,7 +47,7 @@ export default function DocsBlockchainInfrastructure() {
           <span className="text-[var(--sardis-orange)]">#</span> Supported Chains
         </h2>
         <p className="text-muted-foreground mb-6">
-          Sardis supports multiple L1 and L2 networks for settlement. Chain selection is automatic — we route to the cheapest and fastest available rail.
+          Sardis supports multiple L1 and L2 networks for settlement. Chain selection is automatic: we route to the cheapest and fastest available rail.
         </p>
 
         <div className="not-prose">
@@ -114,15 +114,15 @@ export default function DocsBlockchainInfrastructure() {
         <ul className="space-y-3 text-muted-foreground mb-6">
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">No single point of failure</strong> — private keys are split across multiple parties. No single entity (including Sardis) can sign transactions alone.</div>
+            <div><strong className="text-foreground">No single point of failure</strong>: private keys are split across multiple parties. No single entity (including Sardis) can sign transactions alone.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Non-custodial</strong> — you retain full ownership. Sardis never has access to your funds.</div>
+            <div><strong className="text-foreground">Non-custodial</strong>: you retain full ownership. Sardis never has access to your funds.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Agent-compatible</strong> — MPC signing doesn't require 2FA, seed phrases, or hardware wallets. Agents can sign transactions programmatically while maintaining security.</div>
+            <div><strong className="text-foreground">Agent-compatible</strong>: MPC signing doesn't require 2FA, seed phrases, or hardware wallets. Agents can sign transactions programmatically while maintaining security.</div>
           </li>
         </ul>
       </section>
@@ -137,7 +137,7 @@ export default function DocsBlockchainInfrastructure() {
 
         <div className="not-prose mb-6">
           <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-6 font-mono text-xs overflow-x-auto">
-            <pre className="text-[var(--sardis-canvas)]">{`// SardisAgentWallet.sol — Key features
+            <pre className="text-[var(--sardis-canvas)]">{`// SardisAgentWallet.sol: Key features
 contract SardisAgentWallet {
     // Owner (you) retains full control
     address public owner;
@@ -194,15 +194,15 @@ contract SardisAgentWallet {
         <ul className="space-y-3 text-muted-foreground mb-6">
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">No gas tokens needed</strong> — agents don't need ETH/MATIC to pay for transaction fees. Sardis sponsors gas via a paymaster.</div>
+            <div><strong className="text-foreground">No gas tokens needed</strong>: agents don't need ETH/MATIC to pay for transaction fees. Sardis sponsors gas via a paymaster.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Bundled transactions</strong> — multiple operations can be batched into a single transaction for efficiency.</div>
+            <div><strong className="text-foreground">Bundled transactions</strong>: multiple operations can be batched into a single transaction for efficiency.</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Social recovery</strong> — wallet recovery without seed phrases, using guardian-based recovery mechanisms.</div>
+            <div><strong className="text-foreground">Social recovery</strong>: wallet recovery without seed phrases, using guardian-based recovery mechanisms.</div>
           </li>
         </ul>
         <div className="not-prose p-4 border border-yellow-500/20 bg-yellow-500/5">
@@ -253,19 +253,19 @@ contract SardisAgentWallet {
         <ul className="space-y-3 text-muted-foreground">
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Lock funds</strong> — when an agent initiates a payment, funds are locked in escrow</div>
+            <div><strong className="text-foreground">Lock funds</strong>: when an agent initiates a payment, funds are locked in escrow</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Verify delivery</strong> — the merchant confirms delivery or the service is rendered</div>
+            <div><strong className="text-foreground">Verify delivery</strong>: the merchant confirms delivery or the service is rendered</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Release or refund</strong> — funds are released to the merchant or refunded to the agent</div>
+            <div><strong className="text-foreground">Release or refund</strong>: funds are released to the merchant or refunded to the agent</div>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--sardis-orange)] mt-1">→</span>
-            <div><strong className="text-foreground">Dispute resolution</strong> — time-locked disputes with owner arbitration</div>
+            <div><strong className="text-foreground">Dispute resolution</strong>: time-locked disputes with owner arbitration</div>
           </li>
         </ul>
       </section>

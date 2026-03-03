@@ -23,7 +23,7 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Core]: Initializing payment session...`, delay: 0 },
     { text: `[Sardis-Wallet]: Connecting to Turnkey MPC signer`, delay: 400 },
     { text: `[Sardis-Chain]: RPC handshake with Base Sepolia (chainId: 84532)`, delay: 800 },
-    { text: `[Sardis-Chain]: ✓ Connected — latency 42ms`, delay: 1200 },
+    { text: `[Sardis-Chain]: ✓ Connected, latency 42ms`, delay: 1200 },
     { text: `[Sardis-Core]: Session ready. Agent: ${DEMO_AGENT_ID}`, delay: 1600 },
   ],
   PLANNING_APPROVED: [
@@ -34,7 +34,7 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Protocol]:   → Cart: 1 item, total $25.00`, delay: 1500 },
     { text: `[Sardis-Core]: Checking spending policy...`, delay: 1800 },
     { text: `[Sardis-Core]:   → Daily limit: $500.00 | Used: $120.00`, delay: 2100 },
-    { text: `[Sardis-Core]:   → Category: SaaS/API — ✓ Allowed`, delay: 2400 },
+    { text: `[Sardis-Core]:   → Category: SaaS/API, ✓ Allowed`, delay: 2400 },
     { text: `[Sardis-Core]: ✓ Policy check passed`, delay: 2700 },
   ],
   PLANNING_BLOCKED: [
@@ -72,7 +72,7 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Ledger]: Audit entry written (immutable)`, delay: 2400 },
   ],
   SUCCESS: [
-    { text: `[Sardis-Core]: ✓ Payment complete — $25.00 → DataCorp`, delay: 0 },
+    { text: `[Sardis-Core]: ✓ Payment complete: $25.00 → DataCorp`, delay: 0 },
     { text: `[Sardis-Core]: Agent ${DEMO_AGENT_ID} session closed`, delay: 400 },
   ],
   POLICY_BLOCKED: [
@@ -83,7 +83,7 @@ const LOG_SEQUENCES = {
   PENDING_APPROVAL: [
     { text: `[Sardis-Core]: Creating approval request...`, delay: 0 },
     { text: `[Sardis-Core]: approval_id=appr_7f3a2b1e9c4d`, delay: 400 },
-    { text: `[Sardis-Core]: ⏸ Transaction paused — awaiting human approval`, delay: 800 },
+    { text: `[Sardis-Core]: ⏸ Transaction paused, awaiting human approval`, delay: 800 },
   ],
 }
 
@@ -281,7 +281,7 @@ export function useSardisDemo() {
               vendor: 'DataCorp',
               amount: 2500,
               reasonCode: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
-              reason: 'Amount exceeds approval threshold ($500.00) — awaiting human approval',
+              reason: 'Amount exceeds approval threshold ($500.00), awaiting human approval',
               timestamp: new Date().toISOString(),
             })
             addLogs(LOG_SEQUENCES.PENDING_APPROVAL, () => {
@@ -442,7 +442,7 @@ export function useSardisDemo() {
         hash: result.blockedAttempt?.reasonCode || 'SARDIS.POLICY.DENIED',
         url: null,
       })
-      appendLog(`[Sardis-Live]: ✗ Blocked — ${result.policy?.reason || 'policy_denied'}`)
+      appendLog(`[Sardis-Live]: ✗ Blocked: ${result.policy?.reason || 'policy_denied'}`)
       emitEvent('run_blocked', { status: 'blocked', message: result.policy?.reason || 'policy_denied' })
       setLiveStatus({
         loading: false,
@@ -543,7 +543,7 @@ export function useSardisDemo() {
     if (!Number.isFinite(normalized) || normalized <= 0) return false
 
     if (walletBalance < normalized) {
-      appendLog('[Sardis-Funding]: ✗ Top-up failed — insufficient wallet funds')
+      appendLog('[Sardis-Funding]: ✗ Top-up failed: insufficient wallet funds')
       emitEvent('funding_failed', { status: 'error', message: 'insufficient_wallet_funds' })
       return false
     }

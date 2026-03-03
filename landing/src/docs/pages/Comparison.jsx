@@ -131,7 +131,7 @@ export default function Comparison() {
         path="/docs/comparison"
         schemas={schemas}
       />
-      <article className="prose prose-invert max-w-none">
+      <article className="prose dark:prose-invert max-w-none">
         <div className="not-prose mb-10">
           <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
             <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
@@ -207,7 +207,7 @@ export default function Comparison() {
               <span className="flex-shrink-0 w-8 h-8 bg-[var(--sardis-orange)] text-white font-bold flex items-center justify-center font-mono">1</span>
               <div>
                 <h3 className="font-bold mb-1">Create a Wallet</h3>
-                <p className="text-sm text-muted-foreground">Each agent gets its own non-custodial MPC wallet. Private keys are split via Turnkey — Sardis never has access to funds.</p>
+                <p className="text-sm text-muted-foreground">Each agent gets its own non-custodial MPC wallet. Private keys are split via Turnkey. Sardis never has access to funds.</p>
                 <code className="text-xs text-[var(--sardis-orange)] mt-1 block">pip install sardis && sardis init</code>
               </div>
             </div>

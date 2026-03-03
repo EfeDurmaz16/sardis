@@ -37,7 +37,7 @@ const RoadmapItem = ({ version, title, status, date, items }) => {
         <div className="flex items-center justify-between mb-5">
           <div>
             <span className="text-xs font-mono text-muted-foreground">{version}</span>
-            <h3 className="text-xl font-semibold" style={{ fontFamily: 'Geist, system-ui, sans-serif' }}>
+            <h3 className="text-xl font-semibold font-display">
               {title}
             </h3>
           </div>
@@ -133,7 +133,7 @@ export default function Roadmap() {
         { text: 'JWT authentication migrated to PyJWT', done: true },
         { text: 'SDK install section added to landing page with early access messaging', done: true },
         { text: 'Human-in-the-Loop approval queue for payments above policy threshold', done: true },
-        { text: 'Goal drift detection — intent vs. payment scope mismatch blocking', done: true },
+        { text: 'Goal drift detection: intent vs. payment scope mismatch blocking', done: true },
         { text: 'Public staging API deployment (Cloud Run / Vercel)', done: true },
         { text: 'Dashboard UI deployment for testnet', done: true },
         { text: 'API key self-service provisioning', done: true },
@@ -308,7 +308,7 @@ export default function Roadmap() {
       version: 'v0.9.3',
       title: 'Investor Readiness + Runtime Posture Visibility',
       status: 'completed',
-      date: 'Feb 2026 (Now)',
+      date: 'Feb 2026',
       items: [
         { text: 'Competitive positioning brief updated for deterministic policy + approval + audit-trail messaging', done: true },
         { text: 'Landing runtime posture highlights for PAN-lane quorum, ASA fail-closed, and wallet-aware A2A trust', done: true },
@@ -318,10 +318,38 @@ export default function Roadmap() {
       ],
     },
     {
+      version: 'v0.9.4',
+      title: 'SEO, Hardening Backlog & Release Readiness',
+      status: 'completed',
+      date: 'Feb 2026',
+      items: [
+        { text: 'New SEO-targeted blog guide for AI agent payments (/docs/blog/sardis-ai-agent-payments)', done: true },
+        { text: 'Page-level SEO metadata on homepage, enterprise, playground, demo, and docs blog index', done: true },
+        { text: 'P0/P1 hardening backlog document added (parser limits, rate limiting, gas optimization, DR runbook)', done: true },
+        { text: 'Canonical host normalized to https://www.sardis.sh across all SEO metadata and sitemap URLs', done: true },
+        { text: 'Prerender port discovery hardened against EADDRINUSE and port overflow', done: true },
+        { text: 'MCP tool count references aligned to verified baseline (52)', done: true },
+      ],
+    },
+    {
+      version: 'v0.9.5',
+      title: 'Strict Live-Mode Hardening & DR Evidence',
+      status: 'completed',
+      date: 'Feb 2026',
+      items: [
+        { text: 'Strict live-mode hardening lane documented across docs/roadmap/changelog with provider certification checklist', done: true },
+        { text: 'PagerDuty alert routing configuration and DR metrics evidence capture pipeline', done: true },
+        { text: 'Secure checkout runtime posture surfaced in dashboard demo flow (checkout, ASA, A2A trust policy preflight)', done: true },
+        { text: 'Release artifact docs expanded for idempotency/replay proof and compliance evidence manifests', done: true },
+        { text: 'Runtime security-policy endpoints and provider readiness route added to llms.txt/llms-full.txt', done: true },
+        { text: 'PAN lane control narrative aligned to fail-closed approvals and policy-bound execution', done: true },
+      ],
+    },
+    {
       version: 'v0.10.0',
       title: 'ERC-4337 Implementation & Enterprise Features',
-      status: 'completed',
-      date: 'Q1 2026',
+      status: 'current',
+      date: 'Q1 2026 (In Progress)',
       items: [
         { text: 'P0: Immutable hard-limit layer for NL policy parser + fuzz/property tests', done: true },
         { text: 'P1: Agent-level sliding window limiter on payment endpoints', done: true },
@@ -341,8 +369,8 @@ export default function Roadmap() {
     {
       version: 'v0.10.1',
       title: 'Strict Live Mode + Operations Hardening',
-      status: 'current',
-      date: 'Q1 2026 (In Progress)',
+      status: 'upcoming',
+      date: 'Q2 2026',
       items: [
         { text: 'Simulated-path hard-disable guards expanded on production money movement routes', done: true },
         { text: 'Webhook and payment idempotency/replay proof gate elevated to release requirement', done: true },
@@ -381,7 +409,7 @@ export default function Roadmap() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-3xl font-bold mb-3" style={{ fontFamily: 'Geist, system-ui, sans-serif' }}>
+      <h1 className="text-3xl font-bold mb-3 font-display">
         Roadmap
       </h1>
       <p className="text-muted-foreground mb-10 leading-relaxed">
@@ -392,9 +420,9 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 17, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 18, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
-          { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
+          { label: 'Upcoming', count: 2, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-card/50 rounded-lg shadow-sm p-5 text-center">
@@ -414,7 +442,7 @@ export default function Roadmap() {
 
       {/* Feature Requests */}
       <div className="mt-14 bg-card/50 rounded-lg shadow-sm p-7">
-        <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: 'Geist, system-ui, sans-serif' }}>
+        <h2 className="text-xl font-semibold mb-4 font-display">
           Request a Feature
         </h2>
         <p className="text-muted-foreground mb-5 leading-relaxed">

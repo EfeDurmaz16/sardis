@@ -26,7 +26,7 @@ export default function MPCWallets() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -61,7 +61,7 @@ export default function MPCWallets() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Multi-Party Computation wallets distribute key shares across parties,
           ensuring no single entity can move funds. Learn how this technology

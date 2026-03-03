@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function UnderstandingAP2() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -40,7 +40,7 @@ export default function UnderstandingAP2() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           AP2 (Agent Payment Protocol) is the Google, PayPal, Mastercard, and Visa consortium
           standard for AI agent transactions. Learn how the Intent → Cart → Payment mandate

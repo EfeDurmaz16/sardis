@@ -83,7 +83,7 @@ export default function APIReference() {
   };
 
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500">
@@ -183,7 +183,7 @@ export default function APIReference() {
               <div className="p-4 border-b border-border bg-muted/30">
                 <h3 className="text-lg font-bold font-display capitalize">{tag.replace(/-/g, ' ')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {TAG_DESCRIPTIONS[tag] || ''} — {endpoints.length} endpoint{endpoints.length !== 1 ? 's' : ''}
+                  {TAG_DESCRIPTIONS[tag] || ''} | {endpoints.length} endpoint{endpoints.length !== 1 ? 's' : ''}
                 </p>
               </div>
               <div className="divide-y divide-border">

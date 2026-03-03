@@ -1,12 +1,12 @@
 export default function DocsWhitepaper() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
             WHITEPAPER
           </span>
-          <span>v1.0 — January 2026</span>
+          <span>v1.0, January 2026</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Sardis Whitepaper</h1>
         <p className="text-xl text-muted-foreground">
@@ -28,7 +28,7 @@ export default function DocsWhitepaper() {
         <p className="text-muted-foreground leading-relaxed">
           Sardis introduces a novel financial infrastructure layer that provides AI agents with
           non-custodial MPC wallets, natural language spending policies, and a real-time policy engine
-          that prevents "financial hallucinations"—the accidental over-spending or mis-spending of
+          that prevents "financial hallucinations," the accidental over-spending or mis-spending of
           funds due to agent logic errors.
         </p>
       </section>
@@ -42,14 +42,14 @@ export default function DocsWhitepaper() {
         <p className="text-muted-foreground leading-relaxed mb-4">
           We are transitioning to an Agentic Economy where AI agents perform increasingly complex tasks
           on behalf of humans. Yet these agents remain fundamentally "read-only" when it comes to
-          financial transactions. They can browse, plan, and recommend—but they cannot pay.
+          financial transactions. They can browse, plan, and recommend, but they cannot pay.
         </p>
 
         <h3 className="text-lg font-bold font-display mb-3">Financial Hallucination Risk</h3>
         <p className="text-muted-foreground leading-relaxed mb-4">
           Most discourse around AI safety focuses on text hallucinations. We argue that "financial
-          hallucination"—an agent accidentally spending $10,000 instead of $100 due to a retry loop,
-          decimal error, or logic bug—represents a more immediate and quantifiable risk.
+          hallucination," an agent accidentally spending $10,000 instead of $100 due to a retry loop,
+          decimal error, or logic bug, represents a more immediate and quantifiable risk.
         </p>
 
         <div className="not-prose p-4 border border-destructive/30 bg-destructive/5 mb-4">

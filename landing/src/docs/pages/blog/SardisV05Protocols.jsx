@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 
 export default function SardisV05Protocols() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       {/* Back link */}
       <div className="not-prose mb-8">
         <Link
@@ -40,7 +40,7 @@ export default function SardisV05Protocols() {
       </header>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
+      <div className="prose dark:prose-invert max-w-none">
         <p className="lead text-xl text-muted-foreground">
           Today we release Sardis v0.5 with full support for UCP (Universal Commerce Protocol)
           and A2A (Agent-to-Agent) protocol. Now your agents can participate in the broader

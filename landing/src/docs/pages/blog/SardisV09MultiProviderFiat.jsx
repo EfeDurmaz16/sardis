@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock } from 'lucide-react';
 
 export default function SardisV09MultiProviderFiat() {
   return (
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <Link
           to="/docs/blog"
@@ -40,21 +40,21 @@ export default function SardisV09MultiProviderFiat() {
       <p className="text-lg text-muted-foreground leading-relaxed">
         v0.9.0 is the biggest infrastructure release yet: Stripe Treasury + Issuing for fiat operations,
         Coinbase Onramp for zero-fee USDC purchases, a sub-ledger system for per-agent fiat balances,
-        and integrations across every major AI framework — OpenAI, Gemini, Claude (MCP), and ChatGPT Actions.
+        and integrations across every major AI framework: OpenAI, Gemini, Claude (MCP), and ChatGPT Actions.
       </p>
 
       <h2>Multi-Provider Fiat Architecture</h2>
 
       <p>
         Sardis now supports multiple fiat providers behind a unified abstraction layer. The new <code>RampRouter</code> automatically
-        selects the best provider based on token type, direction, and fees — with automatic fallback when a provider fails.
+        selects the best provider based on token type, direction, and fees, with automatic fallback when a provider fails.
       </p>
 
       <h3>Stripe Treasury</h3>
       <p>
         The new <code>StripeTreasuryProvider</code> gives Sardis a complete fiat backbone: financial accounts with
         real IBAN/account numbers, balance queries, outbound payments, and Treasury-to-Issuing fund transfers. This replaces
-        the need for a separate banking partner — Stripe holds the money transmitter license, Sardis stays non-custodial.
+        the need for a separate banking partner. Stripe holds the money transmitter license, Sardis stays non-custodial.
       </p>
       <ul>
         <li>Financial account creation and management</li>
@@ -78,7 +78,7 @@ export default function SardisV09MultiProviderFiat() {
 
       <h3>Coinbase Onramp</h3>
       <p>
-        USDC purchases now route through Coinbase Onramp by default — <strong>0% fee</strong> for USDC on Base.
+        USDC purchases now route through Coinbase Onramp by default, <strong>0% fee</strong> for USDC on Base.
         The smart <code>RampRouter</code> automatically picks Coinbase for USDC and falls back to Bridge for other tokens.
       </p>
 
@@ -129,7 +129,7 @@ export default function SardisV09MultiProviderFiat() {
       <h3>Google Gemini (ADK)</h3>
       <p>
         <code>sardis-adk</code> now includes Gemini <code>FunctionDeclaration</code> adapters. Same payment tools,
-        native Google format — works with Gemini Pro, Ultra, and the Agent Development Kit.
+        native Google format. Works with Gemini Pro, Ultra, and the Agent Development Kit.
       </p>
 
       <h3>MCP Fiat Tools</h3>
@@ -142,14 +142,14 @@ export default function SardisV09MultiProviderFiat() {
       <h3>ChatGPT Actions</h3>
       <p>
         The new <code>/openapi-actions.yaml</code> spec exposes 8 API endpoints as ChatGPT Actions. Any custom GPT
-        can now query balances, send payments, manage cards, and check policies — no code required.
+        can now query balances, send payments, manage cards, and check policies. No code required.
       </p>
 
       <h2>What This Means</h2>
 
       <p>
         With v0.9.0, Sardis agents can operate in both crypto and fiat worlds simultaneously. An agent can hold USDC
-        in its MPC wallet, convert to fiat via Coinbase, fund a virtual card via Stripe, and pay for real-world services —
+        in its MPC wallet, convert to fiat via Coinbase, fund a virtual card via Stripe, and pay for real-world services,
         all governed by the same spending policy engine, KYA verification, and audit trail.
       </p>
 

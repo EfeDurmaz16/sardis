@@ -5,7 +5,7 @@ export default function DocsSDKPython() {
     <>
       <SEO
         title="Python SDK Reference"
-        description="Official Python SDK for Sardis — async and sync clients for wallets, payments, virtual cards, policies, treasury, and webhooks. Install with pip install sardis-sdk."
+        description="Official Python SDK for Sardis. Async and sync clients for wallets, payments, virtual cards, policies, treasury, and webhooks. Install with pip install sardis-sdk."
         path="/docs/sdk-python"
         schemas={[
           createBreadcrumbSchema([
@@ -15,7 +15,7 @@ export default function DocsSDKPython() {
           ]),
         ]}
       />
-    <article className="prose prose-invert max-w-none">
+    <article className="prose dark:prose-invert max-w-none">
       <div className="not-prose mb-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono mb-4">
           <span className="px-2 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-500">SDKS & TOOLS</span>
