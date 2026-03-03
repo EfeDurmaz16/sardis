@@ -10,14 +10,12 @@ def _read(path: str) -> str:
 def test_readme_python_quickstart_uses_supported_calls() -> None:
     readme = _read("README.md")
 
-    assert "agent = client.agents.create(" in readme
-    assert "wallet = client.wallets.create(" in readme
-    assert "tx = client.wallets.transfer(" in readme
+    # Python quickstart uses the simple Sardis facade
+    assert "from sardis import Sardis" in readme
+    assert "sardis.payments.create(" in readme
 
-    py_agents = _read("packages/sardis-sdk-python/src/sardis_sdk/resources/agents.py")
     py_wallets = _read("packages/sardis-sdk-python/src/sardis_sdk/resources/wallets.py")
 
-    assert "def create(" in py_agents
     assert "def create(" in py_wallets
     assert "def transfer(" in py_wallets
 

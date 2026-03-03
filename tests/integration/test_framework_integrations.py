@@ -4,8 +4,14 @@ Integration tests for framework integration packages.
 Tests that the LangChain, CrewAI, ADK, and Anthropic Agent SDK packages
 export correct interfaces and their tools/handlers work with mock data.
 These tests do NOT require API keys or external services.
+
+All test classes are skipped automatically if the corresponding package
+is not installed in the current environment.
 """
 from __future__ import annotations
+
+import importlib
+import importlib.util
 
 import pytest
 from decimal import Decimal
@@ -16,6 +22,10 @@ from unittest.mock import MagicMock, patch
 # sardis-langchain integration tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("sardis_langchain") is None,
+    reason="sardis_langchain not installed",
+)
 class TestLangChainIntegration:
     """Verify sardis-langchain package exports and tool structure."""
 
@@ -72,6 +82,10 @@ class TestLangChainIntegration:
 # sardis-crewai integration tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("sardis_crewai") is None,
+    reason="sardis_crewai not installed",
+)
 class TestCrewAIIntegration:
     """Verify sardis-crewai package exports and tool structure."""
 
@@ -129,6 +143,10 @@ class TestCrewAIIntegration:
 # sardis-adk integration tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("sardis_adk") is None,
+    reason="sardis_adk not installed",
+)
 class TestADKIntegration:
     """Verify sardis-adk package exports and tool functions."""
 
@@ -174,6 +192,10 @@ class TestADKIntegration:
 # sardis-agent-sdk integration tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("sardis_agent_sdk") is None,
+    reason="sardis_agent_sdk not installed",
+)
 class TestAgentSDKIntegration:
     """Verify sardis-agent-sdk package exports and tool definitions."""
 
@@ -319,18 +341,19 @@ class TestEventBusIntegration:
 
         # Policy events
         assert hasattr(EventType, "POLICY_CHECK_PASSED")
-        assert hasattr(EventType, "POLICY_VIOLATION")
+        assert hasattr(EventType, "POLICY_VIOLATED")
 
         # Spend events
-        assert hasattr(EventType, "SPEND_RECORDED")
         assert hasattr(EventType, "SPEND_THRESHOLD_WARNING")
+        assert hasattr(EventType, "SPEND_THRESHOLD_REACHED")
 
         # Approval events
         assert hasattr(EventType, "APPROVAL_REQUESTED")
 
-    def test_event_bus_subscribe_and_emit(self):
+    @pytest.mark.asyncio
+    async def test_event_bus_subscribe_and_emit(self):
         from sardis_v2_core.event_bus import EventBus
-        from sardis_v2_core.webhooks import EventType, WebhookEvent
+        from sardis_v2_core.webhooks import EventType
 
         bus = EventBus()
         received = []
@@ -339,24 +362,26 @@ class TestEventBusIntegration:
             received.append(event)
 
         bus.subscribe("policy.*", handler)
-        bus.emit(WebhookEvent(
-            event_type=EventType.POLICY_VIOLATION,
+        await bus.emit(
+            EventType.POLICY_VIOLATED,
             data={"agent_id": "test", "amount": 100},
-        ))
+            fire_and_forget=False,
+        )
 
         assert len(received) == 1
         assert received[0].data["agent_id"] == "test"
 
-    def test_event_bus_wildcard_all(self):
+    @pytest.mark.asyncio
+    async def test_event_bus_wildcard_all(self):
         from sardis_v2_core.event_bus import EventBus
-        from sardis_v2_core.webhooks import EventType, WebhookEvent
+        from sardis_v2_core.webhooks import EventType
 
         bus = EventBus()
         received = []
 
-        bus.subscribe("*", lambda e: received.append(e))
+        bus.subscribe("*", lambda e: received.append(e.event_type))
 
-        bus.emit(WebhookEvent(event_type=EventType.POLICY_VIOLATION, data={}))
-        bus.emit(WebhookEvent(event_type=EventType.SPEND_RECORDED, data={}))
+        await bus.emit(EventType.POLICY_VIOLATED, data={}, fire_and_forget=False)
+        await bus.emit(EventType.SPEND_THRESHOLD_WARNING, data={}, fire_and_forget=False)
 
         assert len(received) == 2
