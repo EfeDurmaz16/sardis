@@ -30,6 +30,9 @@ class ChainNetwork(str, Enum):
     ARBITRUM = "arbitrum"
     OPTIMISM = "optimism"
 
+    # Arc (Circle L1)
+    ARC_TESTNET = "arc_testnet"
+
     # Testnets
     ETHEREUM_SEPOLIA = "ethereum_sepolia"
     BASE_SEPOLIA = "base_sepolia"
@@ -363,6 +366,22 @@ def build_default_config() -> SardisChainConfig:
 
     chains = {}
 
+    # Arc Testnet (Circle L1 — USDC-native gas)
+    chains["arc_testnet"] = _build_chain_config(
+        chain_id=5042002,
+        name="arc_testnet",
+        display_name="Arc Testnet",
+        default_rpc="https://rpc.testnet.arc.network",
+        fallback_rpcs=[
+            "https://rpc.blockdaemon.testnet.arc.network",
+            "https://rpc.drpc.testnet.arc.network",
+        ],
+        block_time=0.5,
+        native_token="USDC",
+        explorer_url="https://testnet.arcscan.app",
+        is_testnet=True,
+    )
+
     # Base Sepolia (Primary Testnet)
     chains["base_sepolia"] = _build_chain_config(
         chain_id=84532,
@@ -543,6 +562,7 @@ CHAIN_ID_MAP: Dict[str, int] = {
     "polygon": 137,
     "arbitrum": 42161,
     "optimism": 10,
+    "arc_testnet": 5042002,
     "ethereum_sepolia": 11155111,
     "base_sepolia": 84532,
     "polygon_amoy": 80002,
