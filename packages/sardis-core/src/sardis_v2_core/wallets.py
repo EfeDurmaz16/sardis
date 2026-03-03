@@ -166,8 +166,6 @@ class Wallet(BaseModel):
         # Query ERC20 balance using RPC client
         # balanceOf(address) -> uint256
         # Function selector: 0x70a08231
-        from sardis_chain.executor import encode_erc20_transfer
-        # Actually, we need balanceOf, not transfer
         # balanceOf(address) selector: 0x70a08231
         selector = bytes.fromhex("70a08231")
         # Pad address to 32 bytes

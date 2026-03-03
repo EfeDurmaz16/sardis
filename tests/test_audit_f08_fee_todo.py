@@ -1,26 +1,25 @@
-"""Test F08: Verify TODO(audit-F08) comments exist on Decimal("0") fee params."""
-import ast
+"""Test F08: Verify gas fee estimates are defined in manager.py."""
 import pathlib
+from decimal import Decimal
 
 
-def test_fee_todo_documented():
-    """All Decimal("0") fee parameters in manager.py should have TODO comment."""
+def test_gas_fee_estimates_defined():
+    """Gas fee estimates should be defined for supported chains in manager.py."""
     manager_path = pathlib.Path(__file__).resolve().parents[1] / (
         "packages/sardis-wallet/src/sardis_wallet/manager.py"
     )
     source = manager_path.read_text()
-    lines = source.splitlines()
 
-    # Find all lines with Decimal("0")
-    decimal_zero_lines = [
-        (i + 1, line) for i, line in enumerate(lines) if 'Decimal("0")' in line
-    ]
-
-    assert len(decimal_zero_lines) >= 3, (
-        f"Expected at least 3 Decimal('0') occurrences, found {len(decimal_zero_lines)}"
+    # Verify the gas fee estimates dict exists
+    assert "_GAS_FEE_ESTIMATES_USD" in source, (
+        "manager.py must define _GAS_FEE_ESTIMATES_USD"
     )
 
-    for lineno, line in decimal_zero_lines:
-        assert "TODO(audit-F08)" in line, (
-            f"Line {lineno} has Decimal('0') without TODO(audit-F08) comment: {line.strip()}"
-        )
+    # Verify key chains are covered
+    assert '"base"' in source or "'base'" in source, "base chain must be in fee estimates"
+    assert '"ethereum"' in source or "'ethereum'" in source, "ethereum chain must be in fee estimates"
+
+    # Verify the default fee fallback exists
+    assert "_DEFAULT_GAS_FEE_USD" in source, (
+        "manager.py must define _DEFAULT_GAS_FEE_USD fallback"
+    )

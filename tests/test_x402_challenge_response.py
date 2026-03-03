@@ -412,9 +412,13 @@ async def test_settlement_status_transitions(
     """Test the full settlement lifecycle status transitions."""
     store = InMemorySettlementStore()
 
-    # Mock chain executor (just needs to exist)
+    # Mock chain executor with dispatch_payment support
     class MockChainExecutor:
-        pass
+        async def dispatch_payment(self, mandate):
+            from unittest.mock import MagicMock
+            receipt = MagicMock()
+            receipt.tx_hash = "0x" + "ab" * 32
+            return receipt
 
     settler = X402Settler(store=store, chain_executor=MockChainExecutor())
 

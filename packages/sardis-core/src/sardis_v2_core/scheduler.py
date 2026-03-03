@@ -16,7 +16,7 @@ try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
 
     _HAS_APSCHEDULER = True
-except ModuleNotFoundError:  # pragma: no cover (depends on environment)
+except ImportError:  # pragma: no cover (depends on environment)
     AsyncIOScheduler = None  # type: ignore[assignment]
     SQLAlchemyJobStore = None  # type: ignore[assignment]
     AsyncIOExecutor = None  # type: ignore[assignment]
