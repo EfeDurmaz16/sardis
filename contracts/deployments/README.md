@@ -26,6 +26,18 @@ This directory contains deployment records for Sardis smart contracts across all
 
 ## Deployment Process
 
+### External Policy Module Default
+
+Sardis defaults to an external Safe policy module (Zodiac Roles) instead of deploying a custom `SardisPolicyModule`:
+
+- `0x9646fDAD06d3e24444381f44362a3B0eB343D337`
+
+Override per environment with:
+
+```bash
+export SARDIS_BASE_POLICY_MODULE_ADDRESS="0x..."
+```
+
 ### Prerequisites
 
 1. Install Foundry: `curl -L https://foundry.paradigm.xyz | bash && foundryup`

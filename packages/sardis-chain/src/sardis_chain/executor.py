@@ -296,54 +296,58 @@ EAS_ADDRESSES = {
 # Example: SARDIS_BASE_POLICY_MODULE_ADDRESS=0x...
 #
 # Only contracts WE deploy are listed here:
-#   - policy_module: SardisPolicyModule (Safe module for spending policies)
+#   - policy_module: external Safe policy module (Zodiac Roles by default)
 #   - ledger_anchor: SardisLedgerAnchor (audit trail anchoring)
 #
 # Pre-deployed infrastructure (zero cost, already on all chains):
 #   - Safe (proxy factory, singleton, 4337 module) — see SAFE_INFRASTRUCTURE
 #   - EAS (agent identity/attestation) — see EAS_ADDRESSES
 #   - Permit2 (token approvals) — see PERMIT2_ADDRESS
+#
+# Default external policy module: Zodiac Roles (audited, Safe ecosystem)
+DEFAULT_EXTERNAL_POLICY_MODULE = "0x9646fDAD06d3e24444381f44362a3B0eB343D337"
+
 SARDIS_CONTRACTS = {
     # Testnets
     "base_sepolia": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "polygon_amoy": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "ethereum_sepolia": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "arbitrum_sepolia": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "optimism_sepolia": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
-    # Mainnets - set addresses after deployment via env vars or here
+    # Mainnets - policy module defaults to audited external module
     "base": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "polygon": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "ethereum": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "arbitrum": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     "optimism": {
-        "policy_module": "",
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
     # Solana - uses Anchor programs instead of Solidity contracts

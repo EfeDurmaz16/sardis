@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Sardis Smart Contract Deployment Script
-# Deploys SardisPolicyModule, SardisLedgerAnchor, RefundProtocol
+# Deploys SardisLedgerAnchor and RefundProtocol.
+# Policy module defaults to external Safe/Zodiac module.
 #
 # Usage:
 #   ./scripts/deploy-contracts.sh testnet    # Base Sepolia (dry run + broadcast)
@@ -37,6 +38,8 @@ declare -A USDC_ADDRESSES=(
     ["polygon"]="0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
     ["arbitrum"]="0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
 )
+
+DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS="0x9646fDAD06d3e24444381f44362a3B0eB343D337"
 
 # ===== Pre-flight checks =====
 
@@ -77,6 +80,7 @@ deploy_testnet() {
     }
 
     export USDC_ADDRESS="${USDC_ADDRESSES[base_sepolia]}"
+    export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
     local RPC_URL="${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}"
     local VERIFY_FLAGS=""
     if [[ -n "${BASESCAN_API_KEY:-}" ]]; then
@@ -91,6 +95,7 @@ deploy_testnet() {
 
     # Step 2: Dry run
     log "Running dry run (no broadcast)..."
+    log "Using external policy module: $EXTERNAL_POLICY_MODULE_ADDRESS"
     forge script script/DeploySafeModules.s.sol:DeploySafeModules \
         --rpc-url "$RPC_URL" \
         -vvvv
@@ -113,7 +118,7 @@ deploy_testnet() {
     log "Next steps:"
     log "  1. Copy deployed addresses from output above"
     log "  2. Set env vars:"
-    log "     SARDIS_BASE_SEPOLIA_POLICY_MODULE_ADDRESS=0x..."
+    log "     SARDIS_BASE_SEPOLIA_POLICY_MODULE_ADDRESS=$EXTERNAL_POLICY_MODULE_ADDRESS"
     log "     SARDIS_BASE_SEPOLIA_LEDGER_ANCHOR_ADDRESS=0x..."
     log "  3. Run smoke test: ./scripts/deploy-contracts.sh verify base_sepolia"
 }
@@ -137,6 +142,7 @@ deploy_mainnet() {
     }
 
     export USDC_ADDRESS="${USDC_ADDRESSES[base]}"
+    export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
 
     cd "$CONTRACTS_DIR"
 
@@ -151,6 +157,7 @@ deploy_mainnet() {
 
     # Step 3: Dry run
     log "Running dry run (no broadcast)..."
+    log "Using external policy module: $EXTERNAL_POLICY_MODULE_ADDRESS"
     forge script script/DeploySafeModules.s.sol:DeploySafeModules \
         --rpc-url "$BASE_RPC_URL" \
         -vvvv
@@ -181,11 +188,11 @@ deploy_mainnet() {
     log "MAINNET DEPLOYMENT COMPLETE!"
     log ""
     log "Deployed contracts:"
-    log "  SardisPolicyModule  - check Basescan for address"
     log "  SardisLedgerAnchor  - check Basescan for address"
     log "  RefundProtocol      - check Basescan for address"
     log ""
     log "Pre-deployed infrastructure (already live):"
+    log "  External Policy Module: $EXTERNAL_POLICY_MODULE_ADDRESS"
     log "  Safe ProxyFactory:  0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2"
     log "  Safe Singleton:     0x41675C099F32341bf84BFc5382aF534df5C7461a"
     log "  Safe 4337 Module:   0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226"
@@ -195,7 +202,7 @@ deploy_mainnet() {
     log "Next steps:"
     log "  1. Copy deployed addresses from broadcast output"
     log "  2. Set env vars in Vercel:"
-    log "     SARDIS_BASE_POLICY_MODULE_ADDRESS=0x..."
+    log "     SARDIS_BASE_POLICY_MODULE_ADDRESS=$EXTERNAL_POLICY_MODULE_ADDRESS"
     log "     SARDIS_BASE_LEDGER_ANCHOR_ADDRESS=0x..."
     log "  3. Verify on Basescan: https://basescan.org/address/0x..."
 }
@@ -216,6 +223,7 @@ deploy_dryrun() {
     }
 
     export USDC_ADDRESS="${USDC_ADDRESSES[base_sepolia]}"
+    export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
 
     cd "$CONTRACTS_DIR"
 
@@ -223,6 +231,7 @@ deploy_dryrun() {
     forge build --force
 
     log "Simulating deployment..."
+    log "Using external policy module: $EXTERNAL_POLICY_MODULE_ADDRESS"
     forge script script/DeploySafeModules.s.sol:DeploySafeModules \
         --rpc-url "${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}" \
         -vvvv
