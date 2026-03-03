@@ -299,6 +299,50 @@ class TestHTTP402X402Challenge:
 
         await client.close()
 
+    async def test_http_402_paymentrequired_header_fallback(self, httpx_mock):
+        """Parse PaymentRequired header JSON when body has no details."""
+        httpx_mock.add_response(
+            url="https://api.sardis.sh/api/v2/protected-resource-paymentrequired",
+            method="GET",
+            status_code=402,
+            headers={
+                "PaymentRequired": json.dumps(
+                    {
+                        "payment_id": "x402_test_1",
+                        "nonce": "nonce_123",
+                        "amount": "42",
+                        "currency": "USDC",
+                    }
+                ),
+                "Content-Type": "application/json",
+            },
+            json={
+                "error": {
+                    "message": "Payment required to access this resource",
+                    "code": "payment_required",
+                },
+            },
+        )
+
+        client = AsyncSardisClient(
+            api_key="test-key",
+            base_url="https://api.sardis.sh",
+            retry=RetryConfig(max_retries=0),
+        )
+
+        with pytest.raises(APIError) as exc_info:
+            await client._request("GET", "/api/v2/protected-resource-paymentrequired")
+
+        error = exc_info.value
+        assert error.status_code == 402
+        assert error.details is not None
+        assert error.details["payment_id"] == "x402_test_1"
+        assert error.details["nonce"] == "nonce_123"
+        assert error.details["amount"] == "42"
+        assert error.details["currency"] == "USDC"
+
+        await client.close()
+
 
 class TestNoRetryOnProtocolRejection:
     """Test that protocol rejections are not retried."""

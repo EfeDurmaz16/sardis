@@ -34,8 +34,10 @@ Example usage:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import random
+import re
 import time
 import uuid
 from contextlib import contextmanager
@@ -452,6 +454,27 @@ class BaseClient:
 
         return f"{self._base_url}{path}"
 
+    def _extract_x402_header_details(self, response: httpx.Response) -> Dict[str, Any]:
+        """Extract x402 challenge details from response headers."""
+        headers = {k.lower(): v for k, v in response.headers.items()}
+        out: Dict[str, Any] = {}
+
+        challenge_value = headers.get("x-payment-challenge") or headers.get("paymentrequired")
+        if challenge_value:
+            try:
+                parsed = json.loads(challenge_value)
+                if isinstance(parsed, dict):
+                    out.update(parsed)
+            except json.JSONDecodeError:
+                pass
+
+        www_authenticate = headers.get("www-authenticate", "")
+        if www_authenticate.lower().startswith("x402"):
+            for match in re.finditer(r'([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"', www_authenticate):
+                out.setdefault(match.group(1), match.group(2))
+
+        return out
+
     def _handle_error_response(
         self,
         response: httpx.Response,
@@ -485,6 +508,14 @@ class BaseClient:
             message = error_data.get("message", "Unknown error")
             code = error_data.get("code")
             details = error_data.get("details")
+
+        if status_code == 402:
+            header_details = self._extract_x402_header_details(response)
+            if header_details:
+                if not isinstance(details, dict):
+                    details = {}
+                for k, v in header_details.items():
+                    details.setdefault(k, v)
 
         # Map status codes to exceptions
         if status_code == 401:
