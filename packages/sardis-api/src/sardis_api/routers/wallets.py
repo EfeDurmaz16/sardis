@@ -1,6 +1,7 @@
 """Wallet API endpoints."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -1142,17 +1143,77 @@ class BridgeResponse(BaseModel):
     created_at: str
 
 
-# In-memory x402 challenge store (short-lived, TTL 5 min)
-_x402_challenges: dict[str, tuple[object, float]] = {}
+async def _cleanup_expired_x402_challenges() -> None:
+    """Delete expired x402 challenges from the database."""
+    await Database.execute(
+        "DELETE FROM x402_challenges WHERE expires_at < NOW()",
+    )
 
 
-def _cleanup_expired_challenges() -> None:
-    """Remove expired x402 challenges."""
-    import time
-    now = time.time()
-    expired = [k for k, (_, exp) in _x402_challenges.items() if exp < now]
-    for k in expired:
-        _x402_challenges.pop(k, None)
+async def _save_x402_challenge(wallet_id: str, challenge: object) -> None:
+    """Persist an x402 challenge for later verification."""
+    expires_at_ts = getattr(challenge, "expires_at")
+    expires_at = datetime.fromtimestamp(expires_at_ts, tz=timezone.utc)
+    payload = {
+        "payment_id": getattr(challenge, "payment_id"),
+        "resource_uri": getattr(challenge, "resource_uri"),
+        "amount": getattr(challenge, "amount"),
+        "currency": getattr(challenge, "currency"),
+        "payee_address": getattr(challenge, "payee_address"),
+        "network": getattr(challenge, "network"),
+        "token_address": getattr(challenge, "token_address"),
+        "expires_at": expires_at_ts,
+        "nonce": getattr(challenge, "nonce"),
+    }
+    await Database.execute(
+        """
+        INSERT INTO x402_challenges (payment_id, wallet_id, challenge, expires_at, created_at)
+        VALUES ($1, $2, $3::jsonb, $4, NOW())
+        ON CONFLICT (payment_id) DO UPDATE SET
+            wallet_id = EXCLUDED.wallet_id,
+            challenge = EXCLUDED.challenge,
+            expires_at = EXCLUDED.expires_at
+        """,
+        payload["payment_id"],
+        wallet_id,
+        json.dumps(payload, separators=(",", ":")),
+        expires_at,
+    )
+
+
+async def _get_x402_challenge(payment_id: str, wallet_id: str) -> object | None:
+    """Load an unexpired x402 challenge bound to a wallet."""
+    row = await Database.fetchrow(
+        """
+        SELECT challenge FROM x402_challenges
+        WHERE payment_id = $1
+          AND wallet_id = $2
+          AND expires_at >= NOW()
+        """,
+        payment_id,
+        wallet_id,
+    )
+    if not row:
+        return None
+    challenge_payload = row.get("challenge")
+    if challenge_payload is None:
+        return None
+    if isinstance(challenge_payload, str):
+        challenge_payload = json.loads(challenge_payload)
+
+    try:
+        from sardis_protocol.x402 import X402Challenge
+    except ImportError:
+        return None
+    return X402Challenge(**challenge_payload)
+
+
+async def _delete_x402_challenge(payment_id: str) -> None:
+    """Delete challenge after successful verification to prevent replay."""
+    await Database.execute(
+        "DELETE FROM x402_challenges WHERE payment_id = $1",
+        payment_id,
+    )
 
 
 def _resolve_x402_token_address(network: str, currency: str) -> str:
@@ -1492,9 +1553,8 @@ async def create_x402_challenge(
     challenge = challenge_response.challenge
 
     # Store challenge for verification
-    import time
-    _cleanup_expired_challenges()
-    _x402_challenges[challenge.payment_id] = (challenge, time.time() + request.ttl_seconds)
+    await _cleanup_expired_x402_challenges()
+    await _save_x402_challenge(wallet_id, challenge)
 
     return X402ChallengeResponse(
         payment_id=challenge.payment_id,
@@ -1520,12 +1580,10 @@ async def verify_x402_payment(
     await _require_wallet_access(wallet_id, principal=principal, deps=deps)
 
     # Look up the stored challenge
-    _cleanup_expired_challenges()
-    entry = _x402_challenges.get(request.payment_id)
-    if not entry:
+    await _cleanup_expired_x402_challenges()
+    challenge = await _get_x402_challenge(request.payment_id, wallet_id)
+    if challenge is None:
         return X402VerifyResponse(accepted=False, reason="challenge_not_found_or_expired")
-
-    challenge, _ = entry
 
     try:
         from sardis_protocol.x402 import X402PaymentPayload, verify_payment_payload
@@ -1560,7 +1618,7 @@ async def verify_x402_payment(
 
     # Clean up used challenge on success
     if result.accepted:
-        _x402_challenges.pop(request.payment_id, None)
+        await _delete_x402_challenge(request.payment_id)
 
     return X402VerifyResponse(
         accepted=settlement.status.value == "verified",

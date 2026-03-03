@@ -1011,6 +1011,17 @@ CREATE INDEX IF NOT EXISTS idx_settlements_type ON settlements(settlement_type);
 CREATE INDEX IF NOT EXISTS idx_settlements_settled ON settlements(settled_at DESC);
 
 -- x402 Settlements (HTTP 402 payment protocol settlements)
+CREATE TABLE IF NOT EXISTS x402_challenges (
+    payment_id TEXT PRIMARY KEY,
+    wallet_id TEXT NOT NULL,
+    challenge JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_x402_challenges_wallet ON x402_challenges(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_x402_challenges_expires ON x402_challenges(expires_at);
+
 CREATE TABLE IF NOT EXISTS x402_settlements (
     payment_id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'verified',
