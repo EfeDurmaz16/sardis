@@ -183,8 +183,8 @@ class FundingRoutingConfig(BaseSettings):
     """Funding routing strategy for issuer top-ups."""
 
     strategy: Literal["fiat_first", "stablecoin_first", "hybrid"] = "fiat_first"
-    primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"] = "stripe"
-    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"]] = None
+    primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"] = "circle_cpn"
+    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"]] = "bridge"
     stablecoin_prefund_enabled: bool = False
     require_connected_account: bool = False
 

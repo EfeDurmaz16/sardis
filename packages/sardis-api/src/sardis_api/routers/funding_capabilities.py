@@ -49,6 +49,19 @@ def _build_retry_order(
     return order
 
 
+def _normalize_funding_adapter_name(adapter_name: str) -> str:
+    normalized = str(adapter_name or "").strip().lower()
+    alias_map = {
+        "stripe": "stripe_issuing",
+        "bridge": "bridge_cards",
+        "coinbase_cdp": "coinbase_cdp",
+        "circle_cpn": "circle_cpn",
+        "rain": "rain",
+        "lithic": "lithic",
+    }
+    return alias_map.get(normalized, normalized)
+
+
 @router.get("/capabilities")
 async def get_funding_capability_matrix(
     deps: FundingCapabilitiesDeps = Depends(get_deps),
@@ -79,6 +92,9 @@ async def get_funding_capability_matrix(
             if row.configured and not stripe_financial_account_id:
                 missing_env.append("STRIPE_TREASURY_FINANCIAL_ACCOUNT_ID")
         elif provider_name == "lithic":
+            fiat_ready = row.configured
+        elif provider_name == "bridge_cards":
+            # Bridge acts as a practical fallback lane for funding routes.
             fiat_ready = row.configured
 
         providers.append(
@@ -181,7 +197,17 @@ async def get_funding_capability_matrix(
     primary_provider = getattr(settings.cards, "primary_provider", None)
     fallback_provider = getattr(settings.cards, "fallback_provider", None)
     on_chain_provider = getattr(settings.cards, "on_chain_provider", None)
-    preferred_fiat_order = [str(primary_provider or ""), str(fallback_provider or "")]
+    funding_config = getattr(settings, "funding", None)
+    funding_primary_adapter = _normalize_funding_adapter_name(
+        getattr(funding_config, "primary_adapter", "")
+    )
+    funding_fallback_adapter = _normalize_funding_adapter_name(
+        getattr(funding_config, "fallback_adapter", "")
+    )
+    preferred_fiat_order = [
+        funding_primary_adapter or str(primary_provider or ""),
+        funding_fallback_adapter or str(fallback_provider or ""),
+    ]
     preferred_stablecoin_order = [
         str(on_chain_provider or ""),
         str(primary_provider or ""),
@@ -193,6 +219,8 @@ async def get_funding_capability_matrix(
         "fallback_provider": fallback_provider,
         "on_chain_provider": on_chain_provider,
         "default_fiat_connected_account": stripe_connected_account or None,
+        "funding_primary_adapter": funding_primary_adapter or None,
+        "funding_fallback_adapter": funding_fallback_adapter or None,
         "providers": providers,
         "rails": {
             "fiat_ready_providers": fiat_ready_providers,

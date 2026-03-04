@@ -38,6 +38,10 @@ def _settings() -> SimpleNamespace:
             fallback_provider="lithic",
             on_chain_provider="coinbase_cdp",
         ),
+        funding=SimpleNamespace(
+            primary_adapter="circle_cpn",
+            fallback_adapter="bridge",
+        ),
         stripe=SimpleNamespace(
             treasury_financial_account_id="fa_test_123",
             connected_account_id="acct_test_123",
@@ -80,6 +84,8 @@ def test_capability_matrix_marks_stripe_fiat_ready(monkeypatch):
     assert providers["stripe_issuing"]["card_issuing_ready"] is True
     assert providers["coinbase_cdp"]["onchain_rail_ready"] is False
     assert payload["primary_provider"] == "stripe_issuing"
+    assert payload["funding_primary_adapter"] == "circle_cpn"
+    assert payload["funding_fallback_adapter"] == "bridge_cards"
     assert "stripe_issuing" in payload["rails"]["fiat_ready_providers"]
     assert payload["rails"]["fiat_retry_order"][0] == "stripe_issuing"
 
@@ -117,6 +123,21 @@ def test_capability_matrix_marks_circle_cpn_fiat_ready(monkeypatch):
     assert providers["circle_cpn"]["configured"] is True
     assert providers["circle_cpn"]["funding_fiat_ready"] is True
     assert "circle_cpn" in payload["rails"]["fiat_ready_providers"]
+
+
+def test_capability_matrix_prefers_cpn_then_bridge_when_both_ready(monkeypatch):
+    monkeypatch.setenv("SARDIS_CIRCLE_CPN__ENABLED", "true")
+    monkeypatch.setenv("SARDIS_CIRCLE_CPN__API_KEY", "cpn_key")
+    monkeypatch.setenv("BRIDGE_API_KEY", "bridge_key")
+
+    app = _build_app(_settings())
+    client = TestClient(app)
+
+    response = client.get("/api/v2/funding/capabilities")
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["rails"]["fiat_retry_order"][:2] == ["circle_cpn", "bridge_cards"]
 
 
 def test_capability_matrix_requires_admin(monkeypatch):
