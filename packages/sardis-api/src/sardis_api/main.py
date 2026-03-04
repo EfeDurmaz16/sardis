@@ -110,6 +110,7 @@ from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
 from .routers import treasury as treasury_router
 from .routers import treasury_ops as treasury_ops_router
+from .routers import cpn as cpn_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
 from .routers import groups as groups_router
@@ -1008,6 +1009,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         canonical_repo=canonical_ledger_repo,
     )
     app.include_router(treasury_ops_router.router, prefix="/api/v2/treasury/ops", tags=["treasury-ops"])
+    app.dependency_overrides[cpn_router.get_deps] = lambda: cpn_router.CPNDependencies(
+        treasury_repo=treasury_repo,
+        webhook_secret=(
+            settings.circle_cpn.webhook_secret
+            or os.getenv("SARDIS_CIRCLE_CPN__WEBHOOK_SECRET", "")
+            or os.getenv("CIRCLE_CPN_WEBHOOK_SECRET", "")
+        ),
+        environment=settings.environment,
+    )
+    app.include_router(cpn_router.router, prefix="/api/v2")
+    app.include_router(cpn_router.public_router, prefix="/api/v2")
 
     # Virtual Card routes (gated behind feature flag)
     card_repo = None
@@ -1324,23 +1336,36 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("Invalid STRIPE_CONNECTED_ACCOUNT_MAP_JSON; ignoring")
 
     treasury_provider = None
-    if stripe_api_key:
-        from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
+    circle_cpn_api_key = (
+        settings.circle_cpn.api_key
+        or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
+        or os.getenv("CIRCLE_CPN_API_KEY", "")
+    )
+    if stripe_api_key or circle_cpn_api_key:
+        if stripe_api_key:
+            from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
 
         try:
-            treasury_provider = StripeTreasuryProvider(
-                stripe_secret_key=stripe_api_key,
-                financial_account_id=stripe_financial_account_id or None,
-                environment="production" if settings.is_production else "sandbox",
-            )
+            if stripe_api_key:
+                treasury_provider = StripeTreasuryProvider(
+                    stripe_secret_key=stripe_api_key,
+                    financial_account_id=stripe_financial_account_id or None,
+                    environment="production" if settings.is_production else "sandbox",
+                )
 
             from sardis_v2_core.funding import HttpTopupFundingAdapter, StripeIssuingFundingAdapter
+            from sardis_v2_core.cpn_funding_adapter import CircleCPNFundingAdapter
 
             def _build_funding_adapter(adapter_name: str):
                 normalized = (adapter_name or "").strip().lower()
                 if not normalized:
                     return None
                 if normalized == "stripe":
+                    if treasury_provider is None:
+                        logger.warning(
+                            "Stripe treasury provider unavailable; cannot initialize Stripe funding adapter"
+                        )
+                        return None
                     return StripeIssuingFundingAdapter(treasury_provider)
                 if normalized == "rain":
                     rain_api_key = settings.rain.api_key or os.getenv("RAIN_API_KEY", "")
@@ -1388,6 +1413,23 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                         api_key=coinbase_topup_api_key,
                         topup_path=settings.coinbase.topup_path or "/v1/funding/topups",
                         auth_style="bearer",
+                    )
+                if normalized == "circle_cpn":
+                    if not circle_cpn_api_key:
+                        logger.warning("CIRCLE_CPN_API_KEY missing; cannot initialize Circle CPN funding adapter")
+                        return None
+                    return CircleCPNFundingAdapter(
+                        api_key=circle_cpn_api_key,
+                        base_url=settings.circle_cpn.base_url or "https://api.circle.com",
+                        payout_path=settings.circle_cpn.payout_path or "/v1/cpn/payments",
+                        status_path=settings.circle_cpn.status_path or "/v1/cpn/payments/{payment_id}",
+                        auth_style=settings.circle_cpn.auth_style or "bearer",
+                        timeout_seconds=float(settings.circle_cpn.timeout_seconds),
+                        program_id=(
+                            settings.circle_cpn.program_id
+                            or os.getenv("SARDIS_CIRCLE_CPN__PROGRAM_ID", "")
+                            or os.getenv("CIRCLE_CPN_PROGRAM_ID", "")
+                        ),
                     )
                 logger.warning(
                     "Funding adapter '%s' requested but not wired in this deployment",

@@ -96,6 +96,41 @@ async def get_funding_capability_matrix(
             }
         )
 
+    circle_cpn_settings = getattr(settings, "circle_cpn", None)
+    circle_cpn_api_key = (
+        getattr(circle_cpn_settings, "api_key", "")
+        or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
+        or os.getenv("CIRCLE_CPN_API_KEY", "")
+    ).strip()
+    circle_cpn_enabled = bool(
+        getattr(circle_cpn_settings, "enabled", False)
+        or os.getenv("SARDIS_CIRCLE_CPN__ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+        or os.getenv("CIRCLE_CPN_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+    )
+    circle_cpn_ready = bool(circle_cpn_api_key) and circle_cpn_enabled
+    circle_cpn_missing = []
+    if not circle_cpn_enabled:
+        circle_cpn_missing.append("SARDIS_CIRCLE_CPN__ENABLED")
+    if not circle_cpn_api_key:
+        circle_cpn_missing.append("SARDIS_CIRCLE_CPN__API_KEY")
+    providers.append(
+        {
+            "provider": "circle_cpn",
+            "configured": circle_cpn_ready,
+            "card_issuing_ready": False,
+            "funding_fiat_ready": circle_cpn_ready,
+            "funding_stablecoin_ready": False,
+            "onchain_rail_ready": False,
+            "stablecoin_native": False,
+            "required_env": [
+                "SARDIS_CIRCLE_CPN__ENABLED",
+                "SARDIS_CIRCLE_CPN__API_KEY",
+            ],
+            "missing_env": circle_cpn_missing,
+            "notes": "CPN payout/collection rail. Keep issuer cards sandbox-only until live approval.",
+        }
+    )
+
     coinbase_key_name = (
         getattr(settings.coinbase, "api_key_name", "")
         or os.getenv("COINBASE_CDP_API_KEY_NAME", "")
