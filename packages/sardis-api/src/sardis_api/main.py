@@ -1009,8 +1009,42 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         canonical_repo=canonical_ledger_repo,
     )
     app.include_router(treasury_ops_router.router, prefix="/api/v2/treasury/ops", tags=["treasury-ops"])
+    cpn_client = None
+    circle_cpn_api_key_for_router = (
+        settings.circle_cpn.api_key
+        or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
+        or os.getenv("CIRCLE_CPN_API_KEY", "")
+    )
+    circle_cpn_enabled_for_router = bool(
+        settings.circle_cpn.enabled
+        or os.getenv("SARDIS_CIRCLE_CPN__ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+        or os.getenv("CIRCLE_CPN_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+    )
+    if circle_cpn_enabled_for_router and circle_cpn_api_key_for_router:
+        try:
+            from .providers.circle_cpn import CircleCPNClient
+
+            cpn_client = CircleCPNClient(
+                api_key=circle_cpn_api_key_for_router,
+                base_url=settings.circle_cpn.base_url or "https://api.circle.com",
+                payout_path=settings.circle_cpn.payout_path or "/v1/cpn/payments",
+                collection_path=settings.circle_cpn.collection_path or "/v1/cpn/collections",
+                status_path=settings.circle_cpn.status_path or "/v1/cpn/payments/{payment_id}",
+                auth_style=settings.circle_cpn.auth_style or "bearer",
+                timeout_seconds=float(settings.circle_cpn.timeout_seconds),
+                program_id=(
+                    settings.circle_cpn.program_id
+                    or os.getenv("SARDIS_CIRCLE_CPN__PROGRAM_ID", "")
+                    or os.getenv("CIRCLE_CPN_PROGRAM_ID", "")
+                ),
+            )
+        except Exception as exc:
+            logger.warning("Circle CPN client init failed for router: %s", exc)
+            cpn_client = None
+
     app.dependency_overrides[cpn_router.get_deps] = lambda: cpn_router.CPNDependencies(
         treasury_repo=treasury_repo,
+        cpn_client=cpn_client,
         webhook_secret=(
             settings.circle_cpn.webhook_secret
             or os.getenv("SARDIS_CIRCLE_CPN__WEBHOOK_SECRET", "")

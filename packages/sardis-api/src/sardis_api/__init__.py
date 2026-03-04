@@ -9,9 +9,16 @@ This package provides the REST API for the Sardis payment infrastructure:
 Version: 0.3.1
 """
 
-from .main import create_app
+from typing import Any
 
 __version__ = "0.3.1"
+
+
+def create_app(*args: Any, **kwargs: Any):
+    """Lazy import wrapper to avoid importing heavy chain deps on package import."""
+    from .main import create_app as _create_app
+
+    return _create_app(*args, **kwargs)
 
 __all__ = [
     "__version__",

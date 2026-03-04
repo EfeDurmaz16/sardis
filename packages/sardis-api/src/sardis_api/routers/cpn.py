@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_admin_principal
 from sardis_api.webhook_replay import run_with_replay_protection
@@ -21,6 +22,7 @@ public_router = APIRouter(tags=["cpn-webhooks"])
 @dataclass
 class CPNDependencies:
     treasury_repo: Any
+    cpn_client: Any | None = None
     webhook_secret: str = ""
     environment: str = "dev"
 
@@ -46,6 +48,21 @@ def _verify_signature(secret: str, body: bytes, signature_header: str) -> bool:
     return hmac.compare_digest(provided, expected)
 
 
+class CPNPaymentRequest(BaseModel):
+    amount: str = Field(description="Payment amount as decimal string")
+    currency: str = Field(default="USD", description="ISO-4217 currency code")
+    description: str = Field(default="", description="Optional payment description")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    connected_account_id: str | None = Field(default=None)
+
+
+class CPNPaymentResponse(BaseModel):
+    payment_id: str
+    status: str
+    provider: str = "circle_cpn"
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
 @router.get("/security-policy")
 async def cpn_security_policy(
     deps: CPNDependencies = Depends(get_deps),
@@ -58,6 +75,90 @@ async def cpn_security_policy(
         "replay_protection_ttl_seconds": 7 * 24 * 60 * 60,
         "secret_configured": bool(deps.webhook_secret),
     }
+
+
+@router.post("/payouts", response_model=CPNPaymentResponse, status_code=status.HTTP_201_CREATED)
+async def create_cpn_payout(
+    payload: CPNPaymentRequest,
+    deps: CPNDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_admin_principal),
+):
+    if deps.cpn_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="circle_cpn_not_configured",
+        )
+
+    request_payload: dict[str, Any] = {
+        "amount": payload.amount,
+        "currency": payload.currency.upper(),
+        "description": payload.description,
+        "metadata": {
+            **payload.metadata,
+            "requested_by": principal.organization_id,
+        },
+    }
+    if payload.connected_account_id:
+        request_payload["connected_account_id"] = payload.connected_account_id
+
+    result = await deps.cpn_client.create_payout(request_payload)
+    return CPNPaymentResponse(
+        payment_id=result.payment_id,
+        status=result.status,
+        raw=result.raw,
+    )
+
+
+@router.post("/collections", response_model=CPNPaymentResponse, status_code=status.HTTP_201_CREATED)
+async def create_cpn_collection(
+    payload: CPNPaymentRequest,
+    deps: CPNDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_admin_principal),
+):
+    if deps.cpn_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="circle_cpn_not_configured",
+        )
+
+    request_payload: dict[str, Any] = {
+        "amount": payload.amount,
+        "currency": payload.currency.upper(),
+        "description": payload.description,
+        "metadata": {
+            **payload.metadata,
+            "requested_by": principal.organization_id,
+        },
+    }
+    if payload.connected_account_id:
+        request_payload["connected_account_id"] = payload.connected_account_id
+
+    result = await deps.cpn_client.create_collection(request_payload)
+    return CPNPaymentResponse(
+        payment_id=result.payment_id,
+        status=result.status,
+        raw=result.raw,
+    )
+
+
+@router.get("/payments/{payment_id}", response_model=CPNPaymentResponse)
+async def get_cpn_payment_status(
+    payment_id: str,
+    deps: CPNDependencies = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    if deps.cpn_client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="circle_cpn_not_configured",
+        )
+
+    result = await deps.cpn_client.get_payment_status(payment_id)
+    return CPNPaymentResponse(
+        payment_id=result.payment_id,
+        status=result.status,
+        raw=result.raw,
+    )
 
 
 @public_router.post("/webhooks/cpn", status_code=status.HTTP_200_OK)
