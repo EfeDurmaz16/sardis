@@ -49,6 +49,9 @@ echo "[release-readiness] Running Python SDK + protocol checks"
 echo "[release-readiness] Running ops readiness checks (SLO/alerts/pager/drill)"
 "$ROOT_DIR/scripts/release/ops_readiness_check.sh"
 
+echo "[release-readiness] Running issuer warm-integration compliance pack checks"
+"$ROOT_DIR/scripts/release/issuer_compliance_pack_check.sh"
+
 echo "[release-readiness] Running smart-contract formal audit gate"
 "$ROOT_DIR/scripts/release/smart_contract_audit_check.sh"
 
