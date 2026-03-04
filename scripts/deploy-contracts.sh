@@ -30,14 +30,21 @@ err() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 TARGET="${1:-dryrun}"
 CONFIRM="${2:-}"
 
-# USDC addresses per chain
-declare -A USDC_ADDRESSES=(
-    ["base"]="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-    ["base_sepolia"]="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-    ["ethereum"]="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-    ["polygon"]="0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
-    ["arbitrum"]="0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
-)
+# Bash 3.2 compatibility (macOS): use case lookup instead of associative arrays.
+usdc_address_for_chain() {
+    local chain="$1"
+    case "$chain" in
+        base) echo "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" ;;
+        base_sepolia) echo "0x036CbD53842c5426634e7929541eC2318f3dCF7e" ;;
+        ethereum) echo "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" ;;
+        polygon) echo "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359" ;;
+        arbitrum) echo "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" ;;
+        *)
+            err "Unsupported chain for USDC address lookup: $chain"
+            return 1
+            ;;
+    esac
+}
 
 DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS="0x9646fDAD06d3e24444381f44362a3B0eB343D337"
 
@@ -79,7 +86,7 @@ deploy_testnet() {
         exit 1
     }
 
-    export USDC_ADDRESS="${USDC_ADDRESSES[base_sepolia]}"
+    export USDC_ADDRESS="$(usdc_address_for_chain base_sepolia)"
     export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
     local RPC_URL="${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}"
     local VERIFY_FLAGS=""
@@ -141,7 +148,7 @@ deploy_mainnet() {
         exit 1
     }
 
-    export USDC_ADDRESS="${USDC_ADDRESSES[base]}"
+    export USDC_ADDRESS="$(usdc_address_for_chain base)"
     export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
 
     cd "$CONTRACTS_DIR"
@@ -222,7 +229,7 @@ deploy_dryrun() {
         exit 1
     }
 
-    export USDC_ADDRESS="${USDC_ADDRESSES[base_sepolia]}"
+    export USDC_ADDRESS="$(usdc_address_for_chain base_sepolia)"
     export EXTERNAL_POLICY_MODULE_ADDRESS="${EXTERNAL_POLICY_MODULE_ADDRESS:-$DEFAULT_EXTERNAL_POLICY_MODULE_ADDRESS}"
 
     cd "$CONTRACTS_DIR"
