@@ -118,6 +118,24 @@ class CircleGatewayConfig(BaseSettings):
         env_prefix = "CIRCLE_GATEWAY_"
 
 
+class CircleCPNConfig(BaseSettings):
+    """Circle Payments Network (CPN) funding/payout configuration."""
+
+    enabled: bool = False
+    api_key: str = ""
+    base_url: str = "https://api.circle.com"
+    payout_path: str = "/v1/cpn/payments"
+    collection_path: str = "/v1/cpn/collections"
+    status_path: str = "/v1/cpn/payments/{payment_id}"
+    webhook_secret: str = ""
+    program_id: str = ""
+    auth_style: Literal["bearer", "x_api_key"] = "bearer"
+    timeout_seconds: float = 20.0
+
+    class Config:
+        env_prefix = "CIRCLE_CPN_"
+
+
 class RainConfig(BaseSettings):
     """Rain stablecoin card issuing configuration."""
 
@@ -165,8 +183,8 @@ class FundingRoutingConfig(BaseSettings):
     """Funding routing strategy for issuer top-ups."""
 
     strategy: Literal["fiat_first", "stablecoin_first", "hybrid"] = "fiat_first"
-    primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge"] = "stripe"
-    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge"]] = None
+    primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"] = "stripe"
+    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"]] = None
     stablecoin_prefund_enabled: bool = False
     require_connected_account: bool = False
 
@@ -268,6 +286,7 @@ class SardisSettings(BaseSettings):
     stripe: StripeConfig = Field(default_factory=StripeConfig)
     coinbase: CoinbaseConfig = Field(default_factory=CoinbaseConfig)
     circle_gateway: CircleGatewayConfig = Field(default_factory=CircleGatewayConfig)
+    circle_cpn: CircleCPNConfig = Field(default_factory=CircleCPNConfig)
     rain: RainConfig = Field(default_factory=RainConfig)
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)

@@ -84,6 +84,7 @@ from .config import (
     LithicConfig,
     StripeConfig,
     CoinbaseConfig,
+    CircleCPNConfig,
     CardStackConfig,
 )
 from .identity import AgentIdentity
@@ -271,6 +272,7 @@ __all__ = [
     "LithicConfig",
     "StripeConfig",
     "CoinbaseConfig",
+    "CircleCPNConfig",
     "CardStackConfig",
     "AgentIdentity",
     "IntentMandate",
@@ -467,6 +469,9 @@ __all__ = [
     # Fiat orchestrator
     "FiatPaymentOrchestrator",
     "FiatPaymentResult",
+    # Funding ports/adapters
+    "CircleCPNFundingAdapter",
+    "FundingRailAdapter",
 ]
 
 # Stripe Treasury integration
@@ -491,5 +496,7 @@ from .fiat_orchestrator import (
     FiatPaymentOrchestrator,
     FiatPaymentResult,
 )
+from .cpn_funding_adapter import CircleCPNFundingAdapter
+from .funding_ports import FundingRailAdapter
 
 __version__ = "0.3.0"
