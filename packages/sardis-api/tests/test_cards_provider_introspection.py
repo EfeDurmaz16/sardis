@@ -93,6 +93,23 @@ def test_cards_provider_readiness_endpoint():
     assert "lithic" in issuer_names
 
 
+def test_cards_provider_contracts_endpoint_reports_warm_mode(monkeypatch):
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+    monkeypatch.delenv("SARDIS_ISSUING_LIVE_ENABLED", raising=False)
+
+    app = _build_app()
+    client = TestClient(app)
+
+    response = client.get("/api/v2/cards/providers/contracts")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["warm_mode"] is True
+    assert payload["issuing_live_enabled"] is False
+    assert payload["adapter_methods"]["create_cardholder"] is True
+    assert payload["adapter_methods"]["create_virtual_card"] is True
+    assert payload["adapter_methods"]["authorize"] is True
+
+
 def test_cards_provider_resolve_endpoint():
     app = _build_app()
     client = TestClient(app)

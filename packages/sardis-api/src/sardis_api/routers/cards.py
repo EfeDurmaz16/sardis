@@ -279,6 +279,26 @@ def create_cards_router(
         impl = getattr(card_provider, "_provider", card_provider)
         return str(getattr(impl, "name", "unknown"))
 
+    def _effective_environment() -> str:
+        return (environment or os.getenv("SARDIS_ENVIRONMENT", "dev")).strip().lower()
+
+    def _issuing_live_enabled() -> bool:
+        # Default behavior: non-production environments remain open for sandbox integration.
+        raw = os.getenv("SARDIS_ISSUING_LIVE_ENABLED")
+        if raw is None:
+            return _effective_environment() not in {"prod", "production"}
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+    def _enforce_issuing_live_gate(action: str) -> None:
+        if _effective_environment() not in {"prod", "production"}:
+            return
+        if _issuing_live_enabled():
+            return
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"issuing_warm_mode_enabled:{action}",
+        )
+
     @r.get("/providers/readiness", dependencies=auth_deps)
     async def get_provider_readiness():
         from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
@@ -286,6 +306,33 @@ def create_cards_router(
         return {
             "active_provider": _active_provider_name(),
             "issuers": [asdict(row) for row in evaluate_issuer_readiness()],
+        }
+
+    @r.get("/providers/contracts", dependencies=auth_deps)
+    async def get_provider_contracts():
+        from sardis_cards.providers.issuer_adapter import (
+            REQUIRED_ISSUER_METHODS,
+            build_issuer_adapter,
+        )
+
+        impl = getattr(card_provider, "_provider", card_provider)
+        issuer_adapter = build_issuer_adapter(impl)
+        adapter_methods = {
+            method: callable(getattr(issuer_adapter, method, None))
+            for method in REQUIRED_ISSUER_METHODS
+        }
+        native_methods = {
+            method: callable(getattr(impl, method, None))
+            for method in REQUIRED_ISSUER_METHODS
+        }
+        return {
+            "active_provider": _active_provider_name(),
+            "environment": _effective_environment(),
+            "issuing_live_enabled": _issuing_live_enabled(),
+            "warm_mode": not _issuing_live_enabled(),
+            "required_methods": list(REQUIRED_ISSUER_METHODS),
+            "adapter_methods": adapter_methods,
+            "provider_native_methods": native_methods,
         }
 
     @r.get("/providers/resolve", dependencies=auth_deps)
@@ -307,6 +354,7 @@ def create_cards_router(
     @r.post("", status_code=status.HTTP_201_CREATED, dependencies=auth_deps)
     async def issue_card(payload: IssueCardRequest, http_request: Request, principal: Principal = Depends(require_principal)):
         await _require_wallet_access(payload.wallet_id, principal)
+        _enforce_issuing_live_gate("issue_card")
 
         idem_key = get_idempotency_key(http_request)
         if not idem_key:
@@ -389,6 +437,7 @@ def create_cards_router(
         wallet_id = card.get("wallet_id")
         if wallet_id:
             await _require_wallet_access(str(wallet_id), principal)
+        _enforce_issuing_live_gate("fund_card")
 
         funding_source = _resolve_card_funding_source(payload.source)
         idem_key = get_idempotency_key(http_request) or f"{card_id}:{funding_source}:{payload.amount}"
@@ -976,6 +1025,7 @@ def create_cards_router(
         Returns ephemeral key and provisioning data for the mobile SDK
         to add the card to Apple Wallet.
         """
+        _enforce_issuing_live_gate("provision_apple_pay")
         from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
         try:
@@ -998,6 +1048,7 @@ def create_cards_router(
         Returns ephemeral key and provisioning data for the mobile SDK
         to add the card to Google Wallet.
         """
+        _enforce_issuing_live_gate("provision_google_pay")
         from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
 
         try:
