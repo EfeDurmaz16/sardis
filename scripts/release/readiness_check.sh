@@ -73,6 +73,11 @@ if ! bash scripts/release/base_mainnet_readiness_check.sh; then
   failures=$((failures + 1))
 fi
 
+echo "[readiness] validating CPN primary rail and warm issuing posture"
+if ! bash scripts/release/cpn_warm_issuing_check.sh; then
+  failures=$((failures + 1))
+fi
+
 echo "[readiness] validating ops readiness artifacts"
 if ! bash scripts/release/ops_readiness_check.sh; then
   failures=$((failures + 1))

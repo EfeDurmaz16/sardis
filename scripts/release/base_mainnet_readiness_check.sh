@@ -132,6 +132,19 @@ if [[ "$x402_enabled" == "1" || "$x402_enabled" == "true" || "$x402_enabled" == 
   fi
 fi
 
+cpn_enabled="$(echo "${SARDIS_CIRCLE_CPN__ENABLED:-${CIRCLE_CPN_ENABLED:-false}}" | tr '[:upper:]' '[:lower:]')"
+cpn_api_key="${SARDIS_CIRCLE_CPN__API_KEY:-${CIRCLE_CPN_API_KEY:-}}"
+if [[ "$cpn_enabled" != "1" && "$cpn_enabled" != "true" && "$cpn_enabled" != "yes" && "$cpn_enabled" != "on" ]]; then
+  warn_or_fail "Circle CPN is not enabled (set SARDIS_CIRCLE_CPN__ENABLED=true for B2B fiat rail)"
+elif [[ -z "$cpn_api_key" ]]; then
+  warn_or_fail "Circle CPN enabled but API key missing (set SARDIS_CIRCLE_CPN__API_KEY)"
+fi
+
+issuing_live="$(echo "${SARDIS_ISSUING_LIVE_ENABLED:-}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$strict_mode" == "1" && -n "$issuing_live" && "$issuing_live" != "0" && "$issuing_live" != "false" && "$issuing_live" != "no" && "$issuing_live" != "off" ]]; then
+  require_fail "Warm issuing posture violated: SARDIS_ISSUING_LIVE_ENABLED must be false in strict mode"
+fi
+
 if [[ "$failures" -gt 0 ]]; then
   echo "[base-mainnet] completed with $failures failure(s)"
   exit 1

@@ -78,13 +78,15 @@ Deliverables:
 Repo focus:
 
 1. `scripts/release/base_mainnet_readiness_check.sh`
-2. `scripts/check_release_readiness.sh`
-3. `docs/design-partner/mainnet-proof-and-rollback-runbook.md`
+2. `scripts/release/cpn_warm_issuing_check.sh`
+3. `scripts/check_release_readiness.sh`
+4. `docs/design-partner/mainnet-proof-and-rollback-runbook.md`
 
 Checks:
 
 1. `bash scripts/release/base_mainnet_readiness_check.sh`
-2. `bash scripts/check_release_readiness.sh`
+2. `bash scripts/release/cpn_warm_issuing_check.sh`
+3. `bash scripts/check_release_readiness.sh`
 
 ## Exit Criteria (Day 30)
 
@@ -92,4 +94,3 @@ Checks:
 2. Issuing integration warm-ready with no accidental live issuance risk.
 3. Compliance artifacts current and reviewable.
 4. Live issuing can be enabled only via explicit governance decision and env toggle.
-
