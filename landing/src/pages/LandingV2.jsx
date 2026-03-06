@@ -19,6 +19,7 @@ import DashboardMockup from '@/components/landing/DashboardMockup';
 import ProblemCards from '@/components/landing/ProblemCards';
 import HowItWorks from '@/components/landing/HowItWorks';
 import FeaturesGrid from '@/components/landing/FeaturesGrid';
+import PayWithSardis from '@/components/landing/PayWithSardis';
 import StatsSection from '@/components/landing/StatsSection';
 import DevExperience from '@/components/landing/DevExperience';
 import BuiltFor from '@/components/landing/BuiltFor';
@@ -76,6 +77,10 @@ export default function LandingV2() {
 
       <AnimatedSection>
         <HowItWorks />
+      </AnimatedSection>
+
+      <AnimatedSection>
+        <PayWithSardis />
       </AnimatedSection>
 
       <AnimatedSection>
