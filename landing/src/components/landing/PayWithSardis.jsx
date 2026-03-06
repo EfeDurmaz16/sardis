@@ -123,7 +123,7 @@ function CheckoutMockup() {
               className="px-6 pb-6 flex flex-col items-center"
             >
               <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#DCFCE7' }}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 10.5l3.5 3.5L15 7" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <svg width="24" height="24" viewBox="0 0 20 20" fill="none"><path d="M5 10.5l3.5 3.5L15 7" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#18181B', marginBottom: 2 }}>Payment Successful</span>
               <span style={{ fontSize: 12, color: '#A1A1AA', marginBottom: 10 }}>49.99 USDC sent</span>
@@ -172,7 +172,7 @@ const benefits = [
     title: '0% merchant fee',
     desc: 'USDC settlement is free. Fiat offramp via Bridge at ~1%. No card network fees.',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.2" />
         <path d="M10 6v8M7 10h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       </svg>
@@ -182,7 +182,7 @@ const benefits = [
     title: 'Fiat-to-USDC onramp',
     desc: 'Customers buy USDC with card or bank via Coinbase Onramp. Zero conversion fee.',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
         <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
         <path d="M2 8h16" stroke="currentColor" strokeWidth="1.2" />
       </svg>
@@ -192,7 +192,7 @@ const benefits = [
     title: '3 lines to integrate',
     desc: 'Drop in a script tag and a web component. Or use the JS SDK for full control.',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
         <path d="M7 7l-4 3 4 3M13 7l4 3-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
@@ -201,7 +201,7 @@ const benefits = [
     title: 'Instant settlement',
     desc: 'USDC arrives in your wallet on-chain. No 2-day hold. No chargebacks.',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
         <path d="M10 2v16M14 6l-4-4-4 4M6 14l4 4 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
@@ -233,8 +233,8 @@ export default function PayWithSardis() {
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 600,
-                fontSize: 'clamp(30px, 4.2vw, 40px)',
-                lineHeight: 'clamp(36px, 5vw, 46px)',
+                fontSize: 'clamp(34px, 4.8vw, 48px)',
+                lineHeight: 'clamp(40px, 5.4vw, 54px)',
                 color: 'var(--landing-text-primary)',
               }}
             >
@@ -300,7 +300,7 @@ export default function PayWithSardis() {
                 Embed in one line
               </span>
               <div
-                className="rounded-lg px-4 py-3 w-fit"
+                className="rounded-lg px-4 py-3 w-fit flex items-center gap-3"
                 style={{
                   backgroundColor: 'var(--landing-code-bg)',
                   border: '1px solid var(--landing-border)',
@@ -315,12 +315,23 @@ export default function PayWithSardis() {
                 >
                   {'<sardis-pay session-id="mcs_..." />'}
                 </span>
+                <button
+                  onClick={() => navigator.clipboard.writeText('<sardis-pay session-id="mcs_..." />')}
+                  className="flex-shrink-0 opacity-40 hover:opacity-80 transition-opacity"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  aria-label="Copy to clipboard"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="var(--landing-text-secondary)" strokeWidth="1.2" />
+                    <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="var(--landing-text-secondary)" strokeWidth="1.2" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
 
           {/* Right: checkout mockup */}
-          <div className="hidden lg:flex flex-shrink-0 justify-center items-center">
+          <div className="hidden lg:flex flex-shrink-0 justify-center items-start lg:pt-8">
             <motion.div
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}

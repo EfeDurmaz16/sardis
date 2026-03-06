@@ -11,23 +11,25 @@ export default function SardisLogo({ className = "", size = "default", color }) 
 
   return (
     <svg
-      viewBox="0 0 28 28"
+      viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn(sizeClasses[size], className)}
     >
       <path
-        d="M20 5H10a7 7 0 000 14h2"
+        d="M22 6H12a8 8 0 000 16h2"
         stroke={stroke}
-        strokeWidth="3"
+        strokeWidth="2.5"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
       />
       <path
-        d="M8 23h10a7 7 0 000-14h-2"
+        d="M10 26h10a8 8 0 000-16h-2"
         stroke={stroke}
-        strokeWidth="3"
+        strokeWidth="2.5"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
       />
     </svg>
