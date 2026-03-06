@@ -82,26 +82,42 @@ export default function FundAndPay({
     );
   }
 
+  const CDP_APP_ID = import.meta.env.VITE_COINBASE_APP_ID || "fad58dd4-baf9-48e5-90e5-68a87498872f";
+
+  const onrampParams = new URLSearchParams({
+    appId: CDP_APP_ID,
+    destinationWallets: JSON.stringify([
+      { address: walletId, assets: ["USDC"], supportedNetworks: ["base"] },
+    ]),
+    defaultAsset: "USDC",
+    defaultNetwork: "base",
+    presetFiatAmount: String(Math.ceil(parseFloat(amount))),
+  });
+
+  const onrampUrl = `https://pay.coinbase.com/buy/select-asset?${onrampParams.toString()}`;
+
   return (
     <div className="space-y-4">
-      {/* Coinbase Onramp placeholder */}
-      <div className="border-2 border-dashed border-[var(--checkout-border)] rounded-lg p-6 text-center">
+      {/* Coinbase Onramp */}
+      <div className="border border-[var(--checkout-border)] rounded-lg p-5 text-center">
         <div className="w-10 h-10 mx-auto mb-3 bg-[#0052FF] rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">CB</span>
+          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15.5c-3.03 0-5.5-2.47-5.5-5.5S8.97 6.5 12 6.5s5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5z"/>
+          </svg>
         </div>
         <p className="text-sm font-medium text-[var(--checkout-primary)] mb-1">
-          Coinbase Onramp
+          Buy USDC with Coinbase
         </p>
-        <p className="text-xs text-[var(--checkout-muted)]">
+        <p className="text-xs text-[var(--checkout-muted)] mb-3">
           Purchase USDC with card or bank transfer — 0% fee
         </p>
         <a
-          href={`https://pay.coinbase.com/buy?appId=sardis&addresses={"${walletId}":["base"]}&assets=["USDC"]&presetFiatAmount=${amount}`}
+          href={onrampUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-block px-4 py-2 text-sm font-medium text-white bg-[#0052FF] hover:bg-[#003ECB] rounded-lg transition-colors"
+          className="inline-block px-5 py-2.5 text-sm font-medium text-white bg-[#0052FF] hover:bg-[#003ECB] rounded-lg transition-colors"
         >
-          Buy USDC
+          Buy {amount} USDC
         </a>
       </div>
 
