@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --checkout-bg: #F8F8F6;
+  --checkout-surface: #FFFFFF;
+  --checkout-primary: #18181B;
+  --checkout-secondary: #71717A;
+  --checkout-muted: #A1A1AA;
+  --checkout-border: #E4E4E7;
+  --checkout-blue: #2563EB;
+  --checkout-blue-hover: #1D4ED8;
+  --checkout-success: #16A34A;
+  --checkout-error: #DC2626;
+  --checkout-usdc: #2775CA;
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@theme inline {
+  --color-checkout-bg: var(--checkout-bg);
+  --color-checkout-surface: var(--checkout-surface);
+  --color-checkout-primary: var(--checkout-primary);
+  --color-checkout-secondary: var(--checkout-secondary);
+  --color-checkout-muted: var(--checkout-muted);
+  --color-checkout-border: var(--checkout-border);
+  --color-checkout-blue: var(--checkout-blue);
+  --color-checkout-blue-hover: var(--checkout-blue-hover);
+  --color-checkout-success: var(--checkout-success);
+  --color-checkout-error: var(--checkout-error);
+  --color-checkout-usdc: var(--checkout-usdc);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--checkout-bg);
+    color: var(--checkout-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  code, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
