@@ -1,4 +1,4 @@
-import type { SessionDetails, BalanceInfo, PaymentResult } from "./types";
+import type { SessionDetails, ConnectResult, BalanceInfo, PaymentResult } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 
@@ -19,7 +19,7 @@ export function getSessionDetails(sessionId: string) {
 }
 
 export function connectWallet(sessionId: string, walletId: string) {
-  return request<{ status: string; session_id: string; wallet_id: string }>(
+  return request<ConnectResult>(
     `/sessions/${sessionId}/connect`,
     { method: "POST", body: JSON.stringify({ wallet_id: walletId }) },
   );
@@ -34,4 +34,11 @@ export function paySession(sessionId: string, walletId: string) {
 
 export function getBalance(sessionId: string) {
   return request<BalanceInfo>(`/sessions/${sessionId}/balance`);
+}
+
+export function getOnrampToken(sessionId: string, walletAddress: string) {
+  return request<{ session_token: string; onramp_url: string }>(
+    `/sessions/${sessionId}/onramp-token`,
+    { method: "POST", body: JSON.stringify({ wallet_address: walletAddress }) },
+  );
 }

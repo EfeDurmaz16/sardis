@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Optional
@@ -204,11 +205,26 @@ async def connect_wallet(
         await deps.merchant_repo.update_session(session_id, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
+    # Look up the wallet's on-chain address
+    wallet_address = ""
+    if deps.wallet_manager:
+        try:
+            wallet = await deps.wallet_manager.get_wallet(body.wallet_id)
+            if wallet:
+                wallet_address = wallet.get_address("base") or ""
+        except Exception:
+            logger.warning("Failed to get address for wallet %s", body.wallet_id)
+
     await deps.merchant_repo.update_session(
         session_id,
         payer_wallet_id=body.wallet_id,
     )
-    return {"status": "connected", "session_id": session_id, "wallet_id": body.wallet_id}
+    return {
+        "status": "connected",
+        "session_id": session_id,
+        "wallet_id": body.wallet_id,
+        "wallet_address": wallet_address,
+    }
 
 
 @public_router.post("/sessions/{session_id}/pay", response_model=PaymentResultResponse)
@@ -261,4 +277,127 @@ async def get_session_balance(
     return BalanceResponse(
         wallet_id=session.payer_wallet_id,
         balance=str(balance),
+    )
+
+
+# ── Coinbase Onramp Session Token ────────────────────────────────
+
+
+class OnrampTokenRequest(BaseModel):
+    wallet_address: str
+
+
+class OnrampTokenResponse(BaseModel):
+    session_token: str
+    onramp_url: str
+
+
+def _generate_cdp_jwt(request_method: str, request_path: str) -> str:
+    """Generate a JWT for CDP API authentication (Ed25519).
+
+    CDP expects the URI claim as "METHOD host/path",
+    e.g. "POST api.developer.coinbase.com/onramp/v1/token".
+    """
+    import base64
+    import time
+    import uuid
+
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    key_id = os.getenv("CDP_API_KEY_ID", "")
+    key_secret = os.getenv("CDP_API_KEY_SECRET", "")
+
+    if not key_id or not key_secret:
+        raise ValueError("CDP_API_KEY_ID and CDP_API_KEY_SECRET must be set")
+
+    raw_key = base64.b64decode(key_secret)
+    private_key = Ed25519PrivateKey.from_private_bytes(raw_key[:32])
+
+    uri = f"{request_method} api.developer.coinbase.com{request_path}"
+    now = int(time.time())
+
+    payload = {
+        "sub": key_id,
+        "iss": "coinbase-cloud",
+        "nbf": now,
+        "exp": now + 120,
+        "uris": [uri],
+    }
+    headers = {
+        "kid": key_id,
+        "nonce": uuid.uuid4().hex,
+        "typ": "JWT",
+    }
+
+    return jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
+
+
+@public_router.post(
+    "/sessions/{session_id}/onramp-token",
+    response_model=OnrampTokenResponse,
+)
+async def get_onramp_token(
+    session_id: str,
+    body: OnrampTokenRequest,
+    deps: MerchantCheckoutDependencies = Depends(get_deps),
+):
+    """Generate a Coinbase Onramp session token for the fund-and-pay flow.
+
+    Calls CDP API to create a session token scoped to the wallet address,
+    then returns the token + full onramp URL for the frontend to open.
+    """
+    session = await deps.merchant_repo.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    try:
+        token = _generate_cdp_jwt("POST", "/onramp/v1/token")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    import httpx
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            "https://api.developer.coinbase.com/onramp/v1/token",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "addresses": [
+                    {
+                        "address": body.wallet_address,
+                        "blockchains": ["base"],
+                    }
+                ],
+                "assets": ["USDC"],
+            },
+        )
+
+    if resp.status_code != 200:
+        logger.error("CDP onramp token error: %s %s", resp.status_code, resp.text)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Coinbase onramp token failed: {resp.text}",
+        )
+
+    data = resp.json()
+    session_token = data.get("token", "")
+
+    # Build the onramp URL with session token
+    from urllib.parse import urlencode
+
+    onramp_params = urlencode({
+        "sessionToken": session_token,
+        "defaultAsset": "USDC",
+        "defaultNetwork": "base",
+        "presetFiatAmount": str(int(float(str(session.amount)) + 1)),
+    })
+    onramp_url = f"https://pay.coinbase.com/buy/select-asset?{onramp_params}"
+
+    return OnrampTokenResponse(
+        session_token=session_token,
+        onramp_url=onramp_url,
     )

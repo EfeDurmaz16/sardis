@@ -9,8 +9,16 @@ export interface SessionDetails {
   expires_at: string | null;
 }
 
+export interface ConnectResult {
+  status: string;
+  session_id: string;
+  wallet_id: string;
+  wallet_address: string;
+}
+
 export interface BalanceInfo {
   wallet_id: string;
+  wallet_address: string;
   balance: string;
   currency: string;
   chain: string;

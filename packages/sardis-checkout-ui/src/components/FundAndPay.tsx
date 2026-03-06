@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { connectWallet, paySession } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { connectWallet, paySession, getOnrampToken } from "@/lib/api";
 import { useBalancePoll } from "@/hooks/useBalancePoll";
 import type { PaymentResult } from "@/lib/types";
 
@@ -12,6 +12,18 @@ interface FundAndPayProps {
   onProcessing: () => void;
 }
 
+function openOnrampPopup(url: string) {
+  const w = 460;
+  const h = 700;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top = window.screenY + (window.outerHeight - h) / 2;
+  window.open(
+    url,
+    "coinbase-onramp",
+    `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`,
+  );
+}
+
 export default function FundAndPay({
   sessionId,
   amount,
@@ -21,9 +33,12 @@ export default function FundAndPay({
   onProcessing,
 }: FundAndPayProps) {
   const [walletId, setWalletId] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [autoPaying, setAutoPaying] = useState(false);
+  const [onrampLoading, setOnrampLoading] = useState(false);
+  const [onrampOpened, setOnrampOpened] = useState(false);
 
   const { balance } = useBalancePoll(sessionId, connected, 5000);
   const hasEnough = parseFloat(balance) >= parseFloat(amount);
@@ -42,19 +57,35 @@ export default function FundAndPay({
     }
   }, [connected, hasEnough, autoPaying, sessionId, walletId, amount, onSuccess, onError, onProcessing]);
 
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     if (!walletId.trim()) return;
     setConnecting(true);
     try {
-      await connectWallet(sessionId, walletId);
+      const result = await connectWallet(sessionId, walletId);
+      setWalletAddress(result.wallet_address);
       setConnected(true);
     } catch (e) {
       onError(e instanceof Error ? e.message : "Failed to connect wallet");
     } finally {
       setConnecting(false);
     }
-  };
+  }, [sessionId, walletId, onError]);
 
+  const handleOpenOnramp = useCallback(async () => {
+    if (!walletAddress) return;
+    setOnrampLoading(true);
+    try {
+      const { onramp_url } = await getOnrampToken(sessionId, walletAddress);
+      openOnrampPopup(onramp_url);
+      setOnrampOpened(true);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Failed to start Coinbase Onramp");
+    } finally {
+      setOnrampLoading(false);
+    }
+  }, [sessionId, walletAddress, onError]);
+
+  // Step 1: Connect wallet
   if (!connected) {
     return (
       <div className="space-y-4">
@@ -82,62 +113,60 @@ export default function FundAndPay({
     );
   }
 
-  const CDP_APP_ID = import.meta.env.VITE_COINBASE_APP_ID || "fad58dd4-baf9-48e5-90e5-68a87498872f";
-
-  const onrampParams = new URLSearchParams({
-    appId: CDP_APP_ID,
-    destinationWallets: JSON.stringify([
-      { address: walletId, assets: ["USDC"], supportedNetworks: ["base"] },
-    ]),
-    defaultAsset: "USDC",
-    defaultNetwork: "base",
-    presetFiatAmount: String(Math.ceil(parseFloat(amount))),
-  });
-
-  const onrampUrl = `https://pay.coinbase.com/buy/select-asset?${onrampParams.toString()}`;
-
+  // Step 2: Buy USDC via Coinbase Onramp + poll balance
   return (
     <div className="space-y-4">
       {/* Coinbase Onramp */}
-      <div className="border border-[var(--checkout-border)] rounded-lg p-5 text-center">
-        <div className="w-10 h-10 mx-auto mb-3 bg-[#0052FF] rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15.5c-3.03 0-5.5-2.47-5.5-5.5S8.97 6.5 12 6.5s5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5z"/>
-          </svg>
+      <div className="rounded-lg border border-[var(--checkout-border)] overflow-hidden">
+        <div className="px-5 py-5 text-center">
+          <p className="text-sm font-semibold text-[var(--checkout-primary)] mb-1">
+            Buy USDC with Coinbase
+          </p>
+          <p className="text-xs text-[var(--checkout-muted)] mb-4">
+            Purchase with card or bank transfer
+          </p>
+          <button
+            onClick={handleOpenOnramp}
+            disabled={onrampLoading}
+            className="w-full py-3 px-4 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-70"
+            style={{ background: "#0052FF" }}
+            onMouseOver={(e) => !onrampLoading && (e.currentTarget.style.background = "#0040D6")}
+            onMouseOut={(e) => !onrampLoading && (e.currentTarget.style.background = "#0052FF")}
+          >
+            {onrampLoading ? "Opening Coinbase..." : `Buy ${amount} ${currency}`}
+          </button>
         </div>
-        <p className="text-sm font-medium text-[var(--checkout-primary)] mb-1">
-          Buy USDC with Coinbase
-        </p>
-        <p className="text-xs text-[var(--checkout-muted)] mb-3">
-          Purchase USDC with card or bank transfer — 0% fee
-        </p>
-        <a
-          href={onrampUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block px-5 py-2.5 text-sm font-medium text-white bg-[#0052FF] hover:bg-[#003ECB] rounded-lg transition-colors"
-        >
-          Buy {amount} USDC
-        </a>
       </div>
 
-      {/* Balance polling indicator */}
+      {/* Balance polling */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-[var(--checkout-bg)] rounded-lg">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[var(--checkout-blue)] animate-pulse-dot" />
+          <span
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{ background: onrampOpened ? "#22c55e" : "var(--checkout-blue)" }}
+          />
           <span className="text-xs text-[var(--checkout-secondary)]">
-            Watching for funds...
+            {onrampOpened ? "Waiting for USDC..." : "Watching for funds..."}
           </span>
         </div>
         <span className="text-sm font-medium" style={{ fontFamily: "var(--font-mono)" }}>
-          <span className="text-[var(--checkout-usdc)]">{parseFloat(balance).toFixed(2)}</span>{" "}
+          <span className="text-[var(--checkout-usdc)]">
+            {parseFloat(balance).toFixed(2)}
+          </span>{" "}
           <span className="text-[var(--checkout-muted)]">{currency}</span>
         </span>
       </div>
 
       <p className="text-xs text-center text-[var(--checkout-muted)]">
-        Payment will trigger automatically once {amount} {currency} arrives in your wallet
+        Payment triggers automatically once {amount} {currency} arrives in your wallet
       </p>
+
+      {/* Wallet info */}
+      <div className="text-center">
+        <p className="text-[10px] text-[var(--checkout-muted)] font-mono truncate">
+          {walletAddress}
+        </p>
+      </div>
     </div>
   );
 }
