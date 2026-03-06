@@ -1758,9 +1758,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
 
     sardis_native_connector = SardisNativeConnector(
-        chain_executor=chain_executor,
-        wallet_manager=wallet_manager,
-        compliance_engine=compliance_engine,
+        chain_executor=chain_exec,
+        wallet_manager=wallet_mgr,
+        compliance_engine=compliance,
         ledger_store=ledger_store,
         merchant_repo=merchant_repo,
         settlement_service=settlement_service,
@@ -1775,7 +1775,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.dependency_overrides[merchants_router.get_deps] = lambda: merchants_router.MerchantDependencies(
         merchant_repo=merchant_repo,
-        wallet_manager=wallet_manager,
+        wallet_manager=wallet_mgr,
         settlement_service=settlement_service,
     )
     app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
@@ -1784,7 +1784,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.dependency_overrides[merchant_checkout_router.get_deps] = lambda: merchant_checkout_router.MerchantCheckoutDependencies(
         merchant_repo=merchant_repo,
         sardis_connector=sardis_native_connector,
-        wallet_manager=wallet_manager,
+        wallet_manager=wallet_mgr,
         checkout_base_url=checkout_base_url,
     )
     app.include_router(merchant_checkout_router.router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])

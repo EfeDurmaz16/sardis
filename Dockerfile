@@ -28,15 +28,16 @@ RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-checkout \
     -e /app/packages/sardis-coinbase \
     -e /app/packages/sardis-ramp \
-    -e /app/packages/sardis-api
+    -e /app/packages/sardis-api \
+    "gunicorn>=25" "uvicorn[standard]"
 
 # Stage 2: Runtime
 FROM python:3.14-slim
 
 WORKDIR /app
 
-# Install runtime tools
-RUN pip install --no-cache-dir uv "uvicorn[standard]" gunicorn
+# Install uv for runtime
+RUN pip install --no-cache-dir uv
 
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -69,8 +70,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Run with gunicorn + uvicorn workers for production concurrency.
 # SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
 CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
-    gunicorn sardis_api.main:create_app \
-    --factory \
+    gunicorn "sardis_api.main:create_app()" \
     -w ${SARDIS_WORKERS:-4} \
     -k uvicorn.workers.UvicornWorker \
     -b 0.0.0.0:${PORT} \

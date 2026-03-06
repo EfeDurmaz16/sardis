@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { CheckoutStep, PaymentResult } from "@/lib/types";
 import MerchantHeader from "@/components/MerchantHeader";
 import TabSwitcher from "@/components/TabSwitcher";
 import SuccessView from "@/components/SuccessView";
+import FundAndPay from "@/components/FundAndPay";
 
 const MOCK_SESSION = {
   session_id: "mcs_demo_preview",
@@ -12,27 +13,10 @@ const MOCK_SESSION = {
   description: "Premium Plan — Monthly",
 };
 
-const DEMO_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68";
-const CDP_APP_ID = "fad58dd4-baf9-48e5-90e5-68a87498872f";
-
-function buildDemoOnrampUrl(): string {
-  const params = new URLSearchParams({
-    appId: CDP_APP_ID,
-    destinationWallets: JSON.stringify([
-      { address: DEMO_ADDRESS, assets: ["USDC"], supportedNetworks: ["base"] },
-    ]),
-    defaultAsset: "USDC",
-    defaultNetwork: "base",
-    presetFiatAmount: "50",
-  });
-  return `https://pay.coinbase.com/buy/select-asset?${params.toString()}`;
-}
-
 export default function DemoPage() {
   const [step, setStep] = useState<CheckoutStep>("pay");
   const [tab, setTab] = useState<"wallet" | "fund">("wallet");
   const [walletId, setWalletId] = useState("");
-  const [connected, setConnected] = useState(false);
   const [result, setResult] = useState<PaymentResult | null>(null);
 
   const handleDemoPay = () => {
@@ -52,23 +36,18 @@ export default function DemoPage() {
     }, 2000);
   };
 
-  const handleDemoConnect = () => {
-    if (!walletId.trim()) return;
-    setConnected(true);
-  };
+  const handleFundSuccess = useCallback((r: PaymentResult) => {
+    setResult(r);
+    setStep("success");
+  }, []);
 
-  const handleOpenOnramp = () => {
-    const url = buildDemoOnrampUrl();
-    const w = 460;
-    const h = 700;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    window.open(
-      url,
-      "coinbase-onramp",
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`,
-    );
-  };
+  const handleFundError = useCallback((msg: string) => {
+    console.error("Fund & Pay error:", msg);
+  }, []);
+
+  const handleFundProcessing = useCallback(() => {
+    setStep("processing");
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--checkout-bg)]">
@@ -120,94 +99,15 @@ export default function DemoPage() {
                 </button>
               </div>
             ) : (
-              <div className="mt-4 space-y-4">
-                {!connected ? (
-                  <>
-                    <div>
-                      <label className="block text-xs font-medium text-[var(--checkout-muted)] mb-1.5">
-                        Wallet ID
-                      </label>
-                      <input
-                        type="text"
-                        value={walletId}
-                        onChange={(e) => setWalletId(e.target.value)}
-                        placeholder="wal_..."
-                        className="w-full px-3 py-2.5 text-sm rounded-lg border border-[var(--checkout-border)] bg-[var(--checkout-bg)] outline-none focus:border-[var(--checkout-blue)] transition-colors"
-                      />
-                    </div>
-                    <button
-                      onClick={handleDemoConnect}
-                      disabled={!walletId.trim()}
-                      className="w-full py-3 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40 bg-[var(--checkout-blue)]"
-                    >
-                      Connect Wallet
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {/* Coinbase Onramp */}
-                    <div className="rounded-lg border border-[var(--checkout-border)] overflow-hidden">
-                      <div className="px-5 py-5 text-center">
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <rect width="20" height="20" rx="5" fill="#0052FF" />
-                            <path
-                              d="M10 4a6 6 0 100 12 6 6 0 000-12zm-1.4 3.6a2.4 2.4 0 013.8 1.9h-1.5a.9.9 0 10-.9-.9v-.02h-1.5a2.38 2.38 0 01.1-1z"
-                              fill="white"
-                            />
-                          </svg>
-                          <span className="text-sm font-semibold text-[var(--checkout-primary)]">
-                            Coinbase Onramp
-                          </span>
-                        </div>
-                        <p className="text-xs text-[var(--checkout-muted)] mb-4">
-                          Buy USDC with card or bank transfer
-                        </p>
-                        <button
-                          onClick={handleOpenOnramp}
-                          className="w-full py-3 px-4 text-sm font-semibold text-white rounded-lg transition-colors"
-                          style={{ background: "#0052FF" }}
-                          onMouseOver={(e) =>
-                            (e.currentTarget.style.background = "#0040D6")
-                          }
-                          onMouseOut={(e) =>
-                            (e.currentTarget.style.background = "#0052FF")
-                          }
-                        >
-                          Buy {MOCK_SESSION.amount} USDC
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Balance polling */}
-                    <div className="flex items-center justify-between px-3 py-2.5 bg-[var(--checkout-bg)] rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs text-[var(--checkout-secondary)]">
-                          Waiting for USDC...
-                        </span>
-                      </div>
-                      <span
-                        className="text-sm font-medium"
-                        style={{ fontFamily: "var(--font-mono, monospace)" }}
-                      >
-                        <span className="text-[var(--checkout-usdc)]">0.00</span>{" "}
-                        <span className="text-[var(--checkout-muted)]">USDC</span>
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-center text-[var(--checkout-muted)]">
-                      Payment triggers automatically once{" "}
-                      {MOCK_SESSION.amount} USDC arrives
-                    </p>
-
-                    <div className="text-center">
-                      <p className="text-[10px] text-[var(--checkout-muted)] font-mono truncate">
-                        {DEMO_ADDRESS}
-                      </p>
-                    </div>
-                  </>
-                )}
+              <div className="mt-4">
+                <FundAndPay
+                  sessionId={MOCK_SESSION.session_id}
+                  amount={MOCK_SESSION.amount}
+                  currency={MOCK_SESSION.currency}
+                  onSuccess={handleFundSuccess}
+                  onError={handleFundError}
+                  onProcessing={handleFundProcessing}
+                />
               </div>
             )}
           </>

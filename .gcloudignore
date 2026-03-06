@@ -18,5 +18,7 @@ examples
 !packages/**/README.md
 landing/dist
 dashboard/dist
+packages/sardis-checkout-ui/dist
+packages/sardis-checkout-ui/node_modules
 .env*
 deploy/gcp/staging/*.local.yaml
