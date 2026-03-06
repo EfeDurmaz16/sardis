@@ -21,6 +21,7 @@ class PSPType(str, Enum):
     PAYPAL = "paypal"
     COINBASE = "coinbase"
     CIRCLE = "circle"
+    SARDIS = "sardis"
 
 
 class PaymentStatus(str, Enum):
