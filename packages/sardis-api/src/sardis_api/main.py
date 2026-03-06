@@ -122,6 +122,8 @@ from .routers import metrics as metrics_router
 from .routers import sandbox as sandbox_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import audit_anchors as audit_anchors_router
+from .routers import merchants as merchants_router
+from .routers import merchant_checkout as merchant_checkout_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1375,7 +1377,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
         or os.getenv("CIRCLE_CPN_API_KEY", "")
     )
-    if stripe_api_key or circle_cpn_api_key:
+    if (
+        stripe_api_key
+        or circle_cpn_api_key
+        or settings.rain.api_key
+        or os.getenv("RAIN_API_KEY", "")
+        or settings.bridge_cards.api_key
+        or os.getenv("BRIDGE_API_KEY", "")
+        or settings.coinbase.topup_api_key
+        or os.getenv("COINBASE_CDP_TOPUP_API_KEY", "")
+        or settings.chain_mode == "live"
+    ):
         if stripe_api_key:
             from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
 
@@ -1727,6 +1739,56 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         logger.info("Sandbox/Playground routes enabled")
     else:
         logger.info("Sandbox/Playground routes disabled")
+
+    # -----------------------------------------------------------------------
+    # Merchant checkout ("Pay with Sardis")
+    # -----------------------------------------------------------------------
+    from sardis_v2_core.merchant import MerchantRepository
+    from sardis_checkout.connectors.sardis_native import SardisNativeConnector
+    from sardis_checkout.settlement import SettlementService
+    from sardis_checkout.merchant_webhooks import MerchantWebhookService
+
+    merchant_repo = MerchantRepository()
+    merchant_webhook_service = MerchantWebhookService()
+
+    settlement_service = SettlementService(
+        merchant_repo=merchant_repo,
+        offramp_service=None,  # Wire Bridge offramp when configured
+        merchant_webhook_service=merchant_webhook_service,
+    )
+
+    sardis_native_connector = SardisNativeConnector(
+        chain_executor=chain_executor,
+        wallet_manager=wallet_manager,
+        compliance_engine=compliance_engine,
+        ledger_store=ledger_store,
+        merchant_repo=merchant_repo,
+        settlement_service=settlement_service,
+        merchant_webhook_service=merchant_webhook_service,
+    )
+
+    checkout_orchestrator.register_connector("sardis", sardis_native_connector)
+
+    # Store settlement service on app.state for background jobs
+    app.state.settlement_service = settlement_service
+    app.state.merchant_webhook_service = merchant_webhook_service
+
+    app.dependency_overrides[merchants_router.get_deps] = lambda: merchants_router.MerchantDependencies(
+        merchant_repo=merchant_repo,
+        wallet_manager=wallet_manager,
+        settlement_service=settlement_service,
+    )
+    app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
+
+    checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
+    app.dependency_overrides[merchant_checkout_router.get_deps] = lambda: merchant_checkout_router.MerchantCheckoutDependencies(
+        merchant_repo=merchant_repo,
+        sardis_connector=sardis_native_connector,
+        wallet_manager=wallet_manager,
+        checkout_base_url=checkout_base_url,
+    )
+    app.include_router(merchant_checkout_router.router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
+    app.include_router(merchant_checkout_router.public_router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])

@@ -362,6 +362,67 @@ async def lifespan(app: FastAPI):
                 job_id="canonical_reconciliation_guard",
                 seconds=600,
             )
+
+            # ── Merchant settlement background jobs ──────────────────
+            async def _settlement_status_poller() -> None:
+                """Poll Bridge for processing settlement status updates (every 5 min)."""
+                from .routers.metrics import background_jobs_total
+
+                svc = getattr(app.state, "settlement_service", None)
+                if svc is None:
+                    return
+                try:
+                    updated = await svc.poll_settlement_status()
+                    background_jobs_total.labels(
+                        job_name="settlement_status_poll", status="success"
+                    ).inc()
+                    if updated:
+                        logger.info("Settlement poller: updated %d sessions", updated)
+                except Exception as e:
+                    background_jobs_total.labels(
+                        job_name="settlement_status_poll", status="error"
+                    ).inc()
+                    logger.exception("Settlement status poll failed: %s", e)
+
+            async def _settlement_retry_job() -> None:
+                """Retry failed per-tx settlements as batch (hourly)."""
+                from .routers.metrics import background_jobs_total
+
+                svc = getattr(app.state, "settlement_service", None)
+                if svc is None:
+                    return
+                try:
+                    from sardis_v2_core.merchant import MerchantRepository
+                    repo = getattr(app.state, "settlement_service", None)
+                    if repo and hasattr(repo, "_merchant_repo"):
+                        merchants = await repo._merchant_repo.list_merchants("default")
+                        retried = 0
+                        for m in merchants:
+                            if m.settlement_preference == "fiat":
+                                count = await svc.settle_merchant(m.merchant_id)
+                                retried += count
+                        if retried:
+                            logger.info("Settlement retry job: retried %d sessions", retried)
+                    background_jobs_total.labels(
+                        job_name="settlement_retry", status="success"
+                    ).inc()
+                except Exception as e:
+                    background_jobs_total.labels(
+                        job_name="settlement_retry", status="error"
+                    ).inc()
+                    logger.exception("Settlement retry job failed: %s", e)
+
+            scheduler.add_interval_job(
+                _settlement_status_poller,
+                job_id="settlement_status_poll",
+                seconds=300,
+            )
+            scheduler.add_interval_job(
+                _settlement_retry_job,
+                job_id="settlement_retry",
+                seconds=3600,
+            )
+
             await scheduler.start()
             app.state.scheduler = scheduler
             logger.info("Background scheduler started with jobs registered")
@@ -428,6 +489,12 @@ async def lifespan(app: FastAPI):
             await app.state.turnkey_client.close()
         except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error closing Turnkey client: {e}")
+
+    if hasattr(app.state, "merchant_webhook_service") and app.state.merchant_webhook_service:
+        try:
+            await app.state.merchant_webhook_service.close()
+        except (RuntimeError, OSError, ValueError, AttributeError) as e:
+            logger.warning(f"Error closing merchant webhook service: {e}")
 
     if hasattr(app.state, "cache_service"):
         try:
