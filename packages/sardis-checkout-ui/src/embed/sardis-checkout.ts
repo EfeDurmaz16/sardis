@@ -17,7 +17,7 @@
 
 const CHECKOUT_BASE =
   (typeof window !== "undefined" &&
-    (window as Record<string, unknown>).__SARDIS_CHECKOUT_URL__) ||
+    (window as unknown as Record<string, unknown>).__SARDIS_CHECKOUT_URL__) ||
   "https://checkout.sardis.sh";
 
 interface OpenOptions {
@@ -172,5 +172,5 @@ if (
 
 // Expose on window
 const SardisCheckout = { open, close };
-(window as Record<string, unknown>).SardisCheckout = SardisCheckout;
+(window as unknown as Record<string, unknown>).SardisCheckout = SardisCheckout;
 export default SardisCheckout;

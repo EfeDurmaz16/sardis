@@ -8,7 +8,7 @@ export function useBalancePoll(
 ) {
   const [balance, setBalance] = useState<string>("0");
   const [loading, setLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     if (!sessionId || !enabled) return;
