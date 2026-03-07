@@ -28,7 +28,11 @@ from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_api.authz import Principal, require_principal
+from sardis_api.payment_logger import log_payment_event
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
+from sardis_api.kill_switch_dep import require_kill_switch_clear
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.webhook_replay import run_with_replay_protection
 from sardis_compliance.checks import ComplianceAuditEntry
 
@@ -38,6 +42,21 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 
 # Public router for unauthenticated endpoints (agent card)
 public_router = APIRouter()
+
+
+async def _emit_a2a_webhook(request: Request, event_type: str, data: dict) -> None:
+    """Fire-and-forget webhook emission for A2A events."""
+    try:
+        from sardis_v2_core.webhooks import EventType, WebhookEvent
+
+        svc = getattr(request.app.state, "webhook_service", None)
+        if not svc:
+            return
+        event = WebhookEvent(event_type=EventType(event_type), data=data)
+        await svc.emit(event)
+    except Exception as exc:
+        logger.warning("A2A webhook emission failed: %s", exc)
+
 
 # Cross-org A2A should stay disabled unless explicitly opted in.
 def _allow_cross_org_a2a() -> bool:
@@ -649,6 +668,8 @@ async def a2a_pay(
     request: Request,
     deps: A2ADependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ):
     """
     Execute a direct agent-to-agent payment.
@@ -698,6 +719,12 @@ async def a2a_pay(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=trust_reason,
             )
+
+        # Rate limit check
+        await enforce_agent_payment_rate_limit(
+            agent_id=req.sender_agent_id,
+            operation="a2a.pay",
+        )
 
         # Look up sender wallet
         sender_wallet = await deps.wallet_repo.get_by_agent(req.sender_agent_id)
@@ -798,6 +825,19 @@ async def a2a_pay(
         try:
             receipt = await deps.chain_executor.dispatch_payment(mandate)
         except Exception as e:
+            log_payment_event("a2a.payment.failed",
+                org_id=str(principal.organization_id),
+                agent_id=req.sender_agent_id,
+                amount=str(req.amount), currency=req.token, chain=req.chain,
+                status="failed", error=str(e))
+            await _emit_a2a_webhook(request, "a2a.payment.failed", {
+                "sender_agent_id": req.sender_agent_id,
+                "recipient_agent_id": req.recipient_agent_id,
+                "amount": str(req.amount),
+                "token": req.token,
+                "chain": req.chain,
+                "error": str(e),
+            })
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"A2A transfer failed: {e}",
@@ -825,10 +865,23 @@ async def a2a_pay(
             except Exception:
                 pass
 
-        logger.info(
-            f"A2A payment: {req.sender_agent_id} -> {req.recipient_agent_id} | "
-            f"{req.amount} {req.token} on {req.chain} | tx={getattr(receipt, 'tx_hash', str(receipt))}"
-        )
+        log_payment_event("a2a.payment.completed",
+            org_id=str(principal.organization_id),
+            agent_id=req.sender_agent_id,
+            amount=str(req.amount), currency=req.token, chain=req.chain,
+            status="completed",
+            tx_hash=getattr(receipt, "tx_hash", str(receipt)))
+
+        # Emit webhook
+        await _emit_a2a_webhook(request, "a2a.payment.completed", {
+            "sender_agent_id": req.sender_agent_id,
+            "recipient_agent_id": req.recipient_agent_id,
+            "amount": str(req.amount),
+            "token": req.token,
+            "chain": req.chain,
+            "tx_hash": getattr(receipt, "tx_hash", str(receipt)),
+            "reference": req.reference,
+        })
 
         return 200, A2APayResponse(
             success=True,

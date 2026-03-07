@@ -44,11 +44,15 @@ Usage:
 """
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 from decimal import Decimal
-from typing import Optional, Literal, List
+from typing import Any, Optional, Literal, List
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from sardis_v2_core.a2a_escrow import EscrowManager, Escrow, EscrowState
@@ -61,6 +65,25 @@ from sardis_v2_core.exceptions import (
     SardisTransactionFailedError,
 )
 from sardis_api.authz import Principal, require_principal
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
+
+logger = logging.getLogger(__name__)
+
+
+async def _emit_escrow_webhook(request: Any, event_type: str, data: dict) -> None:
+    """Fire-and-forget webhook emission for escrow events."""
+    try:
+        from sardis_v2_core.webhooks import EventType, WebhookEvent
+
+        svc = getattr(request.app.state, "webhook_service", None) if hasattr(request, "app") else None
+        if not svc:
+            return
+        event = WebhookEvent(event_type=EventType(event_type), data=data)
+        await svc.emit(event)
+    except Exception as exc:
+        logger.warning("Escrow webhook emission failed: %s", exc)
+
 
 # Create router with authentication
 router = APIRouter(
@@ -287,7 +310,10 @@ async def get_escrow(
 async def fund_escrow(
     escrow_id: str,
     request: FundEscrowRequest,
+    http_request: Request = None,
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ) -> EscrowResponse:
     """
     Mark escrow as funded after on-chain deposit.
@@ -299,6 +325,10 @@ async def fund_escrow(
 
     try:
         escrow = await manager.fund_escrow(escrow_id, request.tx_hash)
+        await _emit_escrow_webhook(http_request, "a2a.escrow.funded", {
+            "escrow_id": escrow_id,
+            "tx_hash": request.tx_hash,
+        })
         return EscrowResponse.from_escrow(escrow)
 
     except SardisNotFoundError as e:
@@ -350,6 +380,8 @@ async def release_escrow(
     http_request: Request,
     request: ReleaseEscrowRequest = ReleaseEscrowRequest(),
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ) -> EscrowResponse:
     """
     Release escrowed funds to payee.
@@ -372,6 +404,10 @@ async def release_escrow(
             settlement_tx_hash = settlement.tx_hash
 
         escrow = await manager.release_escrow(escrow_id, settlement_tx_hash)
+        await _emit_escrow_webhook(http_request, "a2a.escrow.released", {
+            "escrow_id": escrow_id,
+            "tx_hash": settlement_tx_hash,
+        })
         return EscrowResponse.from_escrow(escrow)
 
     except SardisNotFoundError as e:
@@ -400,7 +436,10 @@ async def release_escrow(
 async def refund_escrow(
     escrow_id: str,
     request: RefundEscrowRequest,
+    http_request: Request = None,
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ) -> EscrowResponse:
     """
     Refund escrowed funds to payer.
@@ -412,6 +451,11 @@ async def refund_escrow(
 
     try:
         escrow = await manager.refund_escrow(escrow_id, request.reason, request.tx_hash)
+        await _emit_escrow_webhook(http_request, "a2a.escrow.refunded", {
+            "escrow_id": escrow_id,
+            "reason": request.reason,
+            "tx_hash": request.tx_hash,
+        })
         return EscrowResponse.from_escrow(escrow)
 
     except SardisNotFoundError as e:
@@ -544,3 +588,79 @@ async def get_settlement(
         )
 
     return SettlementResponse.from_settlement(settlement)
+
+
+# ============================================================================
+# SSE Streaming + Polling
+# ============================================================================
+
+@router.get("/escrows/{escrow_id}/stream")
+async def stream_escrow_updates(
+    escrow_id: str,
+    principal: Principal = Depends(require_principal),
+):
+    """Server-Sent Events stream for real-time escrow status updates."""
+    manager = EscrowManager()
+
+    escrow = await manager.get_escrow(escrow_id)
+    if not escrow:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escrow not found")
+
+    terminal_states = {EscrowState.RELEASED, EscrowState.REFUNDED, EscrowState.EXPIRED}
+
+    async def event_generator():
+        current = escrow
+        while True:
+            data = json.dumps({
+                "escrow_id": current.escrow_id,
+                "status": current.state.value,
+                "amount": str(current.amount),
+                "token": current.token.value if hasattr(current.token, "value") else str(current.token),
+                "payer_agent_id": current.payer_agent_id,
+                "payee_agent_id": current.payee_agent_id,
+                "tx_hash": current.funding_tx_hash,
+                "settlement_tx_hash": current.settlement_tx_hash,
+            })
+            yield f"data: {data}\n\n"
+
+            if current.state in terminal_states:
+                break
+
+            await asyncio.sleep(2)
+            current = await manager.get_escrow(escrow_id)
+            if not current:
+                break
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get("/escrows/{escrow_id}/status")
+async def get_escrow_status(
+    escrow_id: str,
+    principal: Principal = Depends(require_principal),
+):
+    """Polling endpoint for escrow status (lightweight alternative to SSE)."""
+    manager = EscrowManager()
+
+    escrow = await manager.get_escrow(escrow_id)
+    if not escrow:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escrow not found")
+
+    return {
+        "escrow_id": escrow.escrow_id,
+        "status": escrow.state.value,
+        "amount": str(escrow.amount),
+        "token": escrow.token.value if hasattr(escrow.token, "value") else str(escrow.token),
+        "payer_agent_id": escrow.payer_agent_id,
+        "payee_agent_id": escrow.payee_agent_id,
+        "tx_hash": escrow.funding_tx_hash,
+        "settlement_tx_hash": escrow.settlement_tx_hash,
+    }
