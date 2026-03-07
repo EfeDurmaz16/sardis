@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
 from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
+from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +293,24 @@ async def pay_session(
 ):
     """Execute payment from connected wallet."""
     session = await _get_session_by_secret(client_secret, deps)
+
+    # Enforce global transaction caps for checkout payments
+    if session.amount and session.amount > 0:
+        cap_engine = get_transaction_cap_engine()
+        cap_result = await cap_engine.check_and_record(
+            amount=session.amount,
+            org_id=session.merchant_id,
+        )
+        if not cap_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "transaction_cap_exceeded",
+                    "cap_type": cap_result.cap_type,
+                    "message": cap_result.message,
+                },
+            )
+
     try:
         result = await deps.sardis_connector.execute_payment(
             session_id=session.session_id,
@@ -405,6 +424,23 @@ async def confirm_external_payment(
 ):
     """Confirm an external wallet payment by tx hash."""
     session = await _get_session_by_secret(client_secret, deps)
+
+    # Enforce global transaction caps for external wallet payments
+    if session.amount and session.amount > 0:
+        cap_engine = get_transaction_cap_engine()
+        cap_result = await cap_engine.check_and_record(
+            amount=session.amount,
+            org_id=session.merchant_id,
+        )
+        if not cap_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "transaction_cap_exceeded",
+                    "cap_type": cap_result.cap_type,
+                    "message": cap_result.message,
+                },
+            )
 
     if session.payment_method != "external_wallet":
         raise HTTPException(
