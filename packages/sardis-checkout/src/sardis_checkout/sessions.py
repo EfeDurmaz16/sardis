@@ -84,6 +84,13 @@ class InMemorySessionStore(SessionStore):
     """
 
     def __init__(self):
+        import os
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in ("prod", "production"):
+            raise RuntimeError(
+                "CRITICAL: InMemorySessionStore cannot be used in production. "
+                "Configure a persistent session store (PostgreSQL or Redis)."
+            )
         self._sessions: Dict[str, CustomerSession] = {}
         self._customer_sessions: Dict[str, List[str]] = {}  # customer_id -> session_ids
 
