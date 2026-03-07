@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import time
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 CHECKOUT_BASE_URL = "https://checkout.sardis.sh"
 SESSION_TIMEOUT_MINUTES = 15
+DEFAULT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
 
 
 class SardisNativeConnector(PSPConnector):
@@ -151,7 +153,7 @@ class SardisNativeConnector(PSPConnector):
         if not merchant_wallet:
             raise ValueError("Merchant settlement wallet not found")
 
-        chain = "base"
+        chain = DEFAULT_CHAIN
         token = "USDC"
         destination = merchant_wallet.get_address(chain)
         if not destination:
