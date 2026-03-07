@@ -327,6 +327,13 @@ class SardisSettings(BaseSettings):
     # Compliance provider routing
     compliance_screening_provider: Literal["circle", "elliptic", "mock"] = "mock"
 
+    # OpenTelemetry
+    otel_enabled: bool = False
+    otel_service_name: str = "sardis-api"
+    otel_exporter: Literal["sentry", "otlp", "console", "none"] = "sentry"
+    otel_endpoint: str = ""  # OTLP endpoint (if exporter=otlp)
+    otel_sample_rate: float = 0.1
+
     # Agent payment endpoint limiter (sliding window)
     agent_payment_rate_limit_enabled: bool = True
     agent_payment_rate_limit_max_requests: int = 30

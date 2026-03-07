@@ -203,6 +203,21 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         except ImportError:
             logger.warning("SENTRY_DSN is set but sentry-sdk is not installed")
 
+    # Initialize OpenTelemetry distributed tracing (alongside Sentry)
+    if settings.otel_enabled:
+        try:
+            from .telemetry import init_telemetry, instrument_asyncpg
+
+            init_telemetry(
+                service_name=settings.otel_service_name,
+                exporter=settings.otel_exporter,
+                endpoint=settings.otel_endpoint,
+                sample_rate=settings.otel_sample_rate,
+            )
+            instrument_asyncpg()
+        except Exception as exc:
+            logger.warning("OpenTelemetry initialization failed: %s", exc)
+
     app = FastAPI(
         title="Sardis Stablecoin Execution API",
         version=API_VERSION,
@@ -217,6 +232,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Register RFC 7807 exception handlers
     register_exception_handlers(app)
+
+    # Instrument FastAPI with OpenTelemetry (after app creation)
+    if settings.otel_enabled:
+        try:
+            from .telemetry import instrument_fastapi
+
+            instrument_fastapi(app)
+        except Exception as exc:
+            logger.warning("OTEL FastAPI instrumentation failed: %s", exc)
 
     # Exclude paths for middleware
     health_paths = ["/", "/health", "/api/v2/health", "/ready", "/live"]
@@ -1749,7 +1773,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from sardis_checkout.merchant_webhooks import MerchantWebhookService
 
     merchant_repo = MerchantRepository()
-    merchant_webhook_service = MerchantWebhookService()
+    merchant_webhook_service = MerchantWebhookService(merchant_repo=merchant_repo)
 
     settlement_service = SettlementService(
         merchant_repo=merchant_repo,
@@ -1777,6 +1801,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         merchant_repo=merchant_repo,
         wallet_manager=wallet_mgr,
         settlement_service=settlement_service,
+        checkout_base_url=checkout_base_url,
     )
     app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
 

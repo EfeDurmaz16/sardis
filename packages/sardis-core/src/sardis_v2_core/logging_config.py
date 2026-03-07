@@ -24,16 +24,34 @@ wallet_id_var: ContextVar[Optional[str]] = ContextVar("wallet_id", default=None)
 user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
 
 
+def _otel_trace_context() -> tuple[Optional[str], Optional[str]]:
+    """Return (trace_id, span_id) from OpenTelemetry if available."""
+    try:
+        from opentelemetry import trace as _trace
+
+        span = _trace.get_current_span()
+        ctx = span.get_span_context()
+        if ctx and ctx.trace_id:
+            return format(ctx.trace_id, "032x"), format(ctx.span_id, "016x")
+    except Exception:
+        pass
+    return None, None
+
+
 class CorrelationIDFilter(logging.Filter):
-    """Logging filter that adds correlation ID and context to log records."""
+    """Logging filter that adds correlation ID, OTEL trace context, and context to log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Add correlation context to log record."""
+        """Add correlation context and OTEL trace IDs to log record."""
         record.correlation_id = correlation_id_var.get()
         record.request_id = request_id_var.get()
         record.agent_id = agent_id_var.get()
         record.wallet_id = wallet_id_var.get()
         record.user_id = user_id_var.get()
+        # Inject OTEL trace context for log/trace correlation
+        trace_id, span_id = _otel_trace_context()
+        record.otel_trace_id = trace_id  # type: ignore[attr-defined]
+        record.otel_span_id = span_id  # type: ignore[attr-defined]
         return True
 
 
@@ -67,6 +85,12 @@ class StructuredFormatter(logging.Formatter):
 
         if hasattr(record, "user_id") and record.user_id:
             log_data["user_id"] = record.user_id
+
+        # Add OTEL trace context for log/trace correlation
+        if hasattr(record, "otel_trace_id") and record.otel_trace_id:
+            log_data["trace_id"] = record.otel_trace_id
+        if hasattr(record, "otel_span_id") and record.otel_span_id:
+            log_data["span_id"] = record.otel_span_id
 
         # Add exception info if present
         if record.exc_info:
