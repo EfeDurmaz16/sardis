@@ -1,13 +1,20 @@
 """Emergency kill switch for stopping agent payments.
 
-Provides global, per-agent, and per-organization kill switches for immediate shutdown.
+Provides global, per-agent, and per-organization kill switches with
+Redis-backed storage for multi-instance Cloud Run deployments.
+Falls back to in-memory storage when Redis is unavailable.
 """
 
 import asyncio
+import json
+import logging
+import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class ActivationReason(str, Enum):
@@ -31,11 +38,168 @@ class KillSwitchActivation:
     notes: str | None = None
     auto_reactivate_at: float | None = None  # Optional automatic reactivation time
 
+    def to_json(self) -> str:
+        d = asdict(self)
+        d["reason"] = self.reason.value
+        return json.dumps(d)
+
+    @classmethod
+    def from_json(cls, data: str) -> "KillSwitchActivation":
+        d = json.loads(data)
+        d["reason"] = ActivationReason(d["reason"])
+        return cls(**d)
+
 
 class KillSwitchError(Exception):
     """Raised when kill switch is active and blocks execution."""
 
     pass
+
+
+class KillSwitchBackend:
+    """Abstract backend for kill switch state storage."""
+
+    async def set_activation(self, key: str, activation: KillSwitchActivation, ttl: float | None = None) -> None:
+        raise NotImplementedError
+
+    async def get_activation(self, key: str) -> KillSwitchActivation | None:
+        raise NotImplementedError
+
+    async def delete_activation(self, key: str) -> None:
+        raise NotImplementedError
+
+    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+        raise NotImplementedError
+
+
+class InMemoryBackend(KillSwitchBackend):
+    """In-memory backend (single-instance only)."""
+
+    def __init__(self) -> None:
+        self._store: Dict[str, KillSwitchActivation] = {}
+        self._lock = asyncio.Lock()
+
+    async def set_activation(self, key: str, activation: KillSwitchActivation, ttl: float | None = None) -> None:
+        async with self._lock:
+            self._store[key] = activation
+
+    async def get_activation(self, key: str) -> KillSwitchActivation | None:
+        async with self._lock:
+            activation = self._store.get(key)
+            if activation and activation.auto_reactivate_at and time.time() >= activation.auto_reactivate_at:
+                del self._store[key]
+                return None
+            return activation
+
+    async def delete_activation(self, key: str) -> None:
+        async with self._lock:
+            self._store.pop(key, None)
+
+    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+        async with self._lock:
+            now = time.time()
+            result = {}
+            expired = []
+            for k, v in self._store.items():
+                if k.startswith(prefix):
+                    if v.auto_reactivate_at and now >= v.auto_reactivate_at:
+                        expired.append(k)
+                    else:
+                        result[k] = v
+            for k in expired:
+                del self._store[k]
+            return result
+
+
+class RedisBackend(KillSwitchBackend):
+    """Redis-backed storage for multi-instance deployments."""
+
+    KEY_PREFIX = "sardis:killswitch:"
+
+    def __init__(self, redis_url: str) -> None:
+        self._redis_url = redis_url
+        self._redis: Any = None
+
+    def _get_redis(self) -> Any:
+        if self._redis is None:
+            import redis.asyncio as redis_lib
+            self._redis = redis_lib.from_url(self._redis_url, decode_responses=True)
+        return self._redis
+
+    async def set_activation(self, key: str, activation: KillSwitchActivation, ttl: float | None = None) -> None:
+        redis = self._get_redis()
+        full_key = f"{self.KEY_PREFIX}{key}"
+        value = activation.to_json()
+        if ttl and ttl > 0:
+            await redis.setex(full_key, int(ttl), value)
+        elif activation.auto_reactivate_at:
+            remaining = activation.auto_reactivate_at - time.time()
+            if remaining > 0:
+                await redis.setex(full_key, int(remaining) + 1, value)
+            else:
+                return  # Already expired
+        else:
+            await redis.set(full_key, value)
+
+    async def get_activation(self, key: str) -> KillSwitchActivation | None:
+        redis = self._get_redis()
+        full_key = f"{self.KEY_PREFIX}{key}"
+        data = await redis.get(full_key)
+        if not data:
+            return None
+        activation = KillSwitchActivation.from_json(data)
+        if activation.auto_reactivate_at and time.time() >= activation.auto_reactivate_at:
+            await redis.delete(full_key)
+            return None
+        return activation
+
+    async def delete_activation(self, key: str) -> None:
+        redis = self._get_redis()
+        await redis.delete(f"{self.KEY_PREFIX}{key}")
+
+    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+        redis = self._get_redis()
+        full_prefix = f"{self.KEY_PREFIX}{prefix}"
+        result = {}
+        now = time.time()
+        async for key in redis.scan_iter(match=f"{full_prefix}*"):
+            data = await redis.get(key)
+            if not data:
+                continue
+            activation = KillSwitchActivation.from_json(data)
+            if activation.auto_reactivate_at and now >= activation.auto_reactivate_at:
+                await redis.delete(key)
+                continue
+            short_key = key.removeprefix(self.KEY_PREFIX)
+            result[short_key] = activation
+        return result
+
+
+def _create_backend() -> KillSwitchBackend:
+    """Create appropriate backend based on environment."""
+    redis_url = (
+        os.getenv("SARDIS_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or os.getenv("UPSTASH_REDIS_URL")
+        or ""
+    )
+    if redis_url:
+        try:
+            backend = RedisBackend(redis_url)
+            backend._get_redis()  # validate connection
+            logger.info("Kill switch using Redis backend for multi-instance support")
+            return backend
+        except Exception as e:
+            logger.warning("Redis kill switch backend failed (%s), falling back to in-memory", e)
+
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    if env in ("prod", "production"):
+        raise RuntimeError(
+            "CRITICAL: Redis is required for production kill switch. "
+            "Set SARDIS_REDIS_URL, REDIS_URL, or UPSTASH_REDIS_URL."
+        )
+
+    return InMemoryBackend()
 
 
 class KillSwitch:
@@ -46,7 +210,8 @@ class KillSwitch:
     - Organization: Stop all agents in a specific organization
     - Agent: Stop a specific agent
 
-    Thread-safe and async-compatible.
+    Uses Redis for multi-instance Cloud Run deployments, falls back to
+    in-memory for development.
 
     Example:
         kill_switch = KillSwitch()
@@ -63,12 +228,9 @@ class KillSwitch:
         # Raises KillSwitchError if any kill switch is active
     """
 
-    def __init__(self) -> None:
+    def __init__(self, backend: KillSwitchBackend | None = None) -> None:
         """Initialize kill switch manager."""
-        self._global_activation: KillSwitchActivation | None = None
-        self._org_activations: Dict[str, KillSwitchActivation] = {}
-        self._agent_activations: Dict[str, KillSwitchActivation] = {}
-        self._lock = asyncio.Lock()
+        self._backend = backend or _create_backend()
 
     async def activate_global(
         self,
@@ -77,25 +239,18 @@ class KillSwitch:
         notes: str | None = None,
         auto_reactivate_after: float | None = None,
     ) -> None:
-        """Activate global kill switch - stops ALL agents.
+        """Activate global kill switch - stops ALL agents."""
+        auto_reactivate_at = None
+        if auto_reactivate_after is not None:
+            auto_reactivate_at = time.time() + auto_reactivate_after
 
-        Args:
-            reason: Reason for activation
-            activated_by: User ID or system component that activated
-            notes: Optional notes about the activation
-            auto_reactivate_after: Optional seconds until automatic reactivation
-        """
-        async with self._lock:
-            auto_reactivate_at = None
-            if auto_reactivate_after is not None:
-                auto_reactivate_at = time.time() + auto_reactivate_after
-
-            self._global_activation = KillSwitchActivation(
-                reason=reason,
-                activated_by=activated_by,
-                notes=notes,
-                auto_reactivate_at=auto_reactivate_at,
-            )
+        activation = KillSwitchActivation(
+            reason=reason,
+            activated_by=activated_by,
+            notes=notes,
+            auto_reactivate_at=auto_reactivate_at,
+        )
+        await self._backend.set_activation("global", activation)
 
     async def activate_organization(
         self,
@@ -105,26 +260,18 @@ class KillSwitch:
         notes: str | None = None,
         auto_reactivate_after: float | None = None,
     ) -> None:
-        """Activate kill switch for all agents in an organization.
+        """Activate kill switch for all agents in an organization."""
+        auto_reactivate_at = None
+        if auto_reactivate_after is not None:
+            auto_reactivate_at = time.time() + auto_reactivate_after
 
-        Args:
-            org_id: Organization identifier
-            reason: Reason for activation
-            activated_by: User ID or system component that activated
-            notes: Optional notes about the activation
-            auto_reactivate_after: Optional seconds until automatic reactivation
-        """
-        async with self._lock:
-            auto_reactivate_at = None
-            if auto_reactivate_after is not None:
-                auto_reactivate_at = time.time() + auto_reactivate_after
-
-            self._org_activations[org_id] = KillSwitchActivation(
-                reason=reason,
-                activated_by=activated_by,
-                notes=notes,
-                auto_reactivate_at=auto_reactivate_at,
-            )
+        activation = KillSwitchActivation(
+            reason=reason,
+            activated_by=activated_by,
+            notes=notes,
+            auto_reactivate_at=auto_reactivate_at,
+        )
+        await self._backend.set_activation(f"org:{org_id}", activation)
 
     async def activate_agent(
         self,
@@ -134,174 +281,89 @@ class KillSwitch:
         notes: str | None = None,
         auto_reactivate_after: float | None = None,
     ) -> None:
-        """Activate kill switch for a specific agent.
+        """Activate kill switch for a specific agent."""
+        auto_reactivate_at = None
+        if auto_reactivate_after is not None:
+            auto_reactivate_at = time.time() + auto_reactivate_after
 
-        Args:
-            agent_id: Agent identifier
-            reason: Reason for activation
-            activated_by: User ID or system component that activated
-            notes: Optional notes about the activation
-            auto_reactivate_after: Optional seconds until automatic reactivation
-        """
-        async with self._lock:
-            auto_reactivate_at = None
-            if auto_reactivate_after is not None:
-                auto_reactivate_at = time.time() + auto_reactivate_after
-
-            self._agent_activations[agent_id] = KillSwitchActivation(
-                reason=reason,
-                activated_by=activated_by,
-                notes=notes,
-                auto_reactivate_at=auto_reactivate_at,
-            )
+        activation = KillSwitchActivation(
+            reason=reason,
+            activated_by=activated_by,
+            notes=notes,
+            auto_reactivate_at=auto_reactivate_at,
+        )
+        await self._backend.set_activation(f"agent:{agent_id}", activation)
 
     async def deactivate_global(self) -> None:
         """Deactivate global kill switch."""
-        async with self._lock:
-            self._global_activation = None
+        await self._backend.delete_activation("global")
 
     async def deactivate_organization(self, org_id: str) -> None:
-        """Deactivate organization kill switch.
-
-        Args:
-            org_id: Organization identifier
-        """
-        async with self._lock:
-            self._org_activations.pop(org_id, None)
+        """Deactivate organization kill switch."""
+        await self._backend.delete_activation(f"org:{org_id}")
 
     async def deactivate_agent(self, agent_id: str) -> None:
-        """Deactivate agent kill switch.
-
-        Args:
-            agent_id: Agent identifier
-        """
-        async with self._lock:
-            self._agent_activations.pop(agent_id, None)
+        """Deactivate agent kill switch."""
+        await self._backend.delete_activation(f"agent:{agent_id}")
 
     async def check(self, agent_id: str, org_id: str) -> None:
         """Check if any kill switch blocks this agent.
 
-        Args:
-            agent_id: Agent identifier
-            org_id: Organization identifier
-
         Raises:
             KillSwitchError: If any kill switch is active for this agent
         """
-        async with self._lock:
-            # Check for auto-reactivation
-            await self._check_auto_reactivations()
+        # Check global kill switch
+        global_activation = await self._backend.get_activation("global")
+        if global_activation is not None:
+            raise KillSwitchError(
+                f"Global kill switch active. Reason: {global_activation.reason}. "
+                f"Activated at: {global_activation.activated_at}. "
+                f"Notes: {global_activation.notes or 'None'}"
+            )
 
-            # Check global kill switch
-            if self._global_activation is not None:
-                raise KillSwitchError(
-                    f"Global kill switch active. Reason: {self._global_activation.reason}. "
-                    f"Activated at: {self._global_activation.activated_at}. "
-                    f"Notes: {self._global_activation.notes or 'None'}"
-                )
+        # Check organization kill switch
+        org_activation = await self._backend.get_activation(f"org:{org_id}")
+        if org_activation is not None:
+            raise KillSwitchError(
+                f"Organization kill switch active for {org_id}. "
+                f"Reason: {org_activation.reason}. "
+                f"Activated at: {org_activation.activated_at}. "
+                f"Notes: {org_activation.notes or 'None'}"
+            )
 
-            # Check organization kill switch
-            if org_id in self._org_activations:
-                activation = self._org_activations[org_id]
-                raise KillSwitchError(
-                    f"Organization kill switch active for {org_id}. "
-                    f"Reason: {activation.reason}. "
-                    f"Activated at: {activation.activated_at}. "
-                    f"Notes: {activation.notes or 'None'}"
-                )
-
-            # Check agent kill switch
-            if agent_id in self._agent_activations:
-                activation = self._agent_activations[agent_id]
-                raise KillSwitchError(
-                    f"Agent kill switch active for {agent_id}. "
-                    f"Reason: {activation.reason}. "
-                    f"Activated at: {activation.activated_at}. "
-                    f"Notes: {activation.notes or 'None'}"
-                )
+        # Check agent kill switch
+        agent_activation = await self._backend.get_activation(f"agent:{agent_id}")
+        if agent_activation is not None:
+            raise KillSwitchError(
+                f"Agent kill switch active for {agent_id}. "
+                f"Reason: {agent_activation.reason}. "
+                f"Activated at: {agent_activation.activated_at}. "
+                f"Notes: {agent_activation.notes or 'None'}"
+            )
 
     async def is_active_global(self) -> bool:
-        """Check if global kill switch is active.
-
-        Returns:
-            True if global kill switch is active
-        """
-        async with self._lock:
-            await self._check_auto_reactivations()
-            return self._global_activation is not None
+        """Check if global kill switch is active."""
+        return await self._backend.get_activation("global") is not None
 
     async def is_active_organization(self, org_id: str) -> bool:
-        """Check if organization kill switch is active.
-
-        Args:
-            org_id: Organization identifier
-
-        Returns:
-            True if organization kill switch is active
-        """
-        async with self._lock:
-            await self._check_auto_reactivations()
-            return org_id in self._org_activations
+        """Check if organization kill switch is active."""
+        return await self._backend.get_activation(f"org:{org_id}") is not None
 
     async def is_active_agent(self, agent_id: str) -> bool:
-        """Check if agent kill switch is active.
-
-        Args:
-            agent_id: Agent identifier
-
-        Returns:
-            True if agent kill switch is active
-        """
-        async with self._lock:
-            await self._check_auto_reactivations()
-            return agent_id in self._agent_activations
+        """Check if agent kill switch is active."""
+        return await self._backend.get_activation(f"agent:{agent_id}") is not None
 
     async def get_active_switches(self) -> Dict[str, Any]:
-        """Get all currently active kill switches.
+        """Get all currently active kill switches."""
+        global_activation = await self._backend.get_activation("global")
+        org_activations = await self._backend.get_all_by_prefix("org:")
+        agent_activations = await self._backend.get_all_by_prefix("agent:")
 
-        Returns:
-            Dictionary with active switches by scope
-        """
-        async with self._lock:
-            await self._check_auto_reactivations()
-
-            return {
-                "global": self._global_activation,
-                "organizations": dict(self._org_activations),
-                "agents": dict(self._agent_activations),
-            }
-
-    async def _check_auto_reactivations(self) -> None:
-        """Check and perform automatic reactivations if timeouts have passed."""
-        current_time = time.time()
-
-        # Check global
-        if self._global_activation is not None:
-            if (
-                self._global_activation.auto_reactivate_at is not None
-                and current_time >= self._global_activation.auto_reactivate_at
-            ):
-                self._global_activation = None
-
-        # Check organizations
-        expired_orgs = [
-            org_id
-            for org_id, activation in self._org_activations.items()
-            if activation.auto_reactivate_at is not None
-            and current_time >= activation.auto_reactivate_at
-        ]
-        for org_id in expired_orgs:
-            del self._org_activations[org_id]
-
-        # Check agents
-        expired_agents = [
-            agent_id
-            for agent_id, activation in self._agent_activations.items()
-            if activation.auto_reactivate_at is not None
-            and current_time >= activation.auto_reactivate_at
-        ]
-        for agent_id in expired_agents:
-            del self._agent_activations[agent_id]
+        return {
+            "global": global_activation,
+            "organizations": {k.removeprefix("org:"): v for k, v in org_activations.items()},
+            "agents": {k.removeprefix("agent:"): v for k, v in agent_activations.items()},
+        }
 
 
 # Singleton instance for global access
@@ -309,11 +371,7 @@ _global_kill_switch: KillSwitch | None = None
 
 
 def get_kill_switch() -> KillSwitch:
-    """Get the global kill switch singleton instance.
-
-    Returns:
-        Global KillSwitch instance
-    """
+    """Get the global kill switch singleton instance."""
     global _global_kill_switch
     if _global_kill_switch is None:
         _global_kill_switch = KillSwitch()
