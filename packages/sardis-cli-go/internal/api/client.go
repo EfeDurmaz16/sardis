@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/config"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/config"
 )
 
 // Client is the Sardis API client.

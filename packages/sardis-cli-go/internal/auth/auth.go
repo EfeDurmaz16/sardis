@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/config"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/config"
 )
 
 // Credentials stores auth tokens on disk.

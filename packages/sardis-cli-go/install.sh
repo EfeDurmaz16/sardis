@@ -3,7 +3,7 @@
 # Usage: curl -sSL https://sardis.sh/install.sh | sh
 set -e
 
-REPO="sardis-sh/sardis"
+REPO="EfeDurmaz16/sardis"
 BINARY="sardis"
 INSTALL_DIR="/usr/local/bin"
 

@@ -458,7 +458,7 @@ gcloud run domain-mappings create \
 ### Install via Go
 
 ```bash
-go install github.com/sardis-sh/sardis/packages/sardis-cli-go@latest
+go install github.com/EfeDurmaz16/sardis/packages/sardis-cli-go@latest
 ```
 
 ### Install via Shell Script (macOS/Linux)
@@ -470,7 +470,7 @@ curl -sSL https://sardis.sh/install.sh | sh
 ### Install via Homebrew (macOS)
 
 ```bash
-brew tap sardis-sh/tap
+brew tap EfeDurmaz16/tap
 brew install sardis
 ```
 

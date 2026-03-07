@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/config"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/config"
 )
 
 var cfgFile string

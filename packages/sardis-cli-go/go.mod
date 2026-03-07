@@ -1,4 +1,4 @@
-module github.com/sardis-sh/sardis/packages/sardis-cli-go
+module github.com/EfeDurmaz16/sardis/packages/sardis-cli-go
 
 go 1.22
 

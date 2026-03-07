@@ -27,7 +27,7 @@ checksum:
 
 brews:
   - repository:
-      owner: sardis-sh
+      owner: EfeDurmaz16
       name: homebrew-tap
     homepage: "https://sardis.sh"
     description: "CLI for Sardis — Payment OS for the Agent Economy"
@@ -47,5 +47,5 @@ changelog:
 
 release:
   github:
-    owner: sardis-sh
+    owner: EfeDurmaz16
     name: sardis

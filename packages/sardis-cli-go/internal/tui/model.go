@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/api"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/api"
 )
 
 // Tab identifiers

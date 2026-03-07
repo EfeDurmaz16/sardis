@@ -1,6 +1,6 @@
 package main
 
-import "github.com/sardis-sh/sardis/packages/sardis-cli-go/cmd"
+import "github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/cmd"
 
 var version = "dev"
 

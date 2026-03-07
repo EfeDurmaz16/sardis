@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/api"
-	"github.com/sardis-sh/sardis/packages/sardis-cli-go/internal/tui"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/api"
+	"github.com/EfeDurmaz16/sardis/packages/sardis-cli-go/internal/tui"
 )
 
 var dashboardCmd = &cobra.Command{
