@@ -1,0 +1,27 @@
+{
+  "name": "@activepieces/piece-sardis",
+  "version": "0.1.0",
+  "description": "Sardis payment piece for Activepieces - policy-controlled payments for AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["activepieces", "sardis", "payments", "ai-agents"],
+  "author": "Sardis <sdk@sardis.sh>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sardis-pay/sardis.git",
+    "directory": "packages/sardis-activepieces"
+  },
+  "peerDependencies": {
+    "@activepieces/pieces-framework": ">=0.20.0"
+  },
+  "devDependencies": {
+    "@activepieces/pieces-framework": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}
