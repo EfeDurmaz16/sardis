@@ -6,6 +6,7 @@ import hmac
 import json
 import logging
 import time
+import uuid
 from typing import Any, Optional
 
 import httpx
@@ -20,12 +21,16 @@ class MerchantWebhookService:
     """
     Delivers webhook events to merchant endpoints.
 
-    Events: payment.completed, settlement.initiated, settlement.completed
+    Events: checkout.created, checkout.expired, payment.completed,
+            payment.failed, settlement.initiated, settlement.completed,
+            settlement.failed
     Signature: HMAC-SHA256 in X-Sardis-Signature header.
+    Dedup: event_id in payload + X-Sardis-Delivery-Id header.
     """
 
-    def __init__(self, timeout: float = 10.0):
+    def __init__(self, merchant_repo: Any = None, timeout: float = 10.0):
         self._client = httpx.AsyncClient(timeout=timeout)
+        self._merchant_repo = merchant_repo
 
     @staticmethod
     def sign_payload(payload_bytes: bytes, secret: str) -> str:
@@ -50,14 +55,17 @@ class MerchantWebhookService:
         payload: dict[str, Any],
     ) -> bool:
         """
-        Deliver webhook to merchant with retries.
+        Deliver webhook to merchant with retries and deduplication.
 
         Returns True if delivered successfully.
         """
         if not merchant.webhook_url:
             return False
 
+        event_id = f"evt_{uuid.uuid4().hex}"
+
         body = {
+            "event_id": event_id,
             "event": event_type,
             "timestamp": int(time.time()),
             "data": payload,
@@ -65,12 +73,26 @@ class MerchantWebhookService:
         body_bytes = json.dumps(body, default=str).encode()
         signature = self.sign_payload(body_bytes, merchant.webhook_secret)
 
+        # Record delivery for dedup tracking
+        if self._merchant_repo:
+            is_new = await self._merchant_repo.record_webhook_delivery(
+                event_id=event_id,
+                merchant_id=merchant.merchant_id,
+                event_type=event_type,
+                payload=body,
+            )
+            if not is_new:
+                logger.info("Duplicate webhook event %s, skipping", event_id)
+                return True
+
         headers = {
             "Content-Type": "application/json",
             "X-Sardis-Signature": signature,
             "X-Sardis-Event": event_type,
+            "X-Sardis-Delivery-Id": event_id,
         }
 
+        delivered = False
         for attempt in range(MAX_RETRIES):
             try:
                 response = await self._client.post(
@@ -83,7 +105,8 @@ class MerchantWebhookService:
                         "Webhook delivered: %s to %s (attempt %d)",
                         event_type, merchant.webhook_url, attempt + 1,
                     )
-                    return True
+                    delivered = True
+                    break
                 logger.warning(
                     "Webhook delivery returned %d for %s (attempt %d)",
                     response.status_code, merchant.webhook_url, attempt + 1,
@@ -99,11 +122,20 @@ class MerchantWebhookService:
                 import asyncio
                 await asyncio.sleep(RETRY_DELAYS[attempt])
 
-        logger.error(
-            "Webhook delivery exhausted retries for %s event=%s",
-            merchant.webhook_url, event_type,
-        )
-        return False
+        # Update delivery status
+        if self._merchant_repo:
+            await self._merchant_repo.update_webhook_delivery(
+                event_id=event_id,
+                status="delivered" if delivered else "failed",
+                attempts=MAX_RETRIES if not delivered else attempt + 1,
+            )
+
+        if not delivered:
+            logger.error(
+                "Webhook delivery exhausted retries for %s event=%s",
+                merchant.webhook_url, event_type,
+            )
+        return delivered
 
     async def close(self) -> None:
         await self._client.aclose()

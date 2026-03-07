@@ -5,14 +5,14 @@
  *   <script src="https://checkout.sardis.sh/sardis-checkout.js"></script>
  *   <script>
  *     SardisCheckout.open({
- *       sessionId: "mcs_...",
+ *       clientSecret: "abc123...",
  *       onSuccess: (data) => console.log("Paid!", data),
  *       onCancel: () => console.log("Cancelled"),
  *     });
  *   </script>
  *
  * Or as a web component:
- *   <sardis-pay session-id="mcs_..." />
+ *   <sardis-pay client-secret="abc123..." />
  */
 
 const CHECKOUT_BASE =
@@ -21,7 +21,10 @@ const CHECKOUT_BASE =
   "https://checkout.sardis.sh";
 
 interface OpenOptions {
-  sessionId: string;
+  /** Client secret for the checkout session (preferred) */
+  clientSecret?: string;
+  /** @deprecated Use clientSecret instead */
+  sessionId?: string;
   onSuccess?: (data: { session_id: string; tx_hash?: string }) => void;
   onCancel?: () => void;
 }
@@ -30,6 +33,19 @@ let overlay: HTMLDivElement | null = null;
 
 function open(opts: OpenOptions) {
   if (overlay) close();
+
+  const secret = opts.clientSecret || opts.sessionId;
+  if (!secret) {
+    console.error("SardisCheckout.open: clientSecret is required");
+    return;
+  }
+
+  // Use /s/ path for client_secret, fall back to /:id for legacy sessionId
+  const path = opts.clientSecret ? `/s/${secret}` : `/${secret}`;
+
+  // Pass the embedding page's origin so the checkout iframe restricts postMessage
+  const embedOrigin = encodeURIComponent(window.location.origin);
+  const iframeSrc = `${CHECKOUT_BASE}${path}?embed_origin=${embedOrigin}`;
 
   overlay = document.createElement("div");
   overlay.id = "sardis-checkout-overlay";
@@ -46,7 +62,7 @@ function open(opts: OpenOptions) {
 
   // Close button
   const closeBtn = document.createElement("button");
-  closeBtn.textContent = "\u00D7"; // multiplication sign (×)
+  closeBtn.textContent = "\u00D7"; // multiplication sign
   Object.assign(closeBtn.style, {
     position: "absolute",
     top: "16px",
@@ -71,7 +87,7 @@ function open(opts: OpenOptions) {
 
   // Iframe
   const iframe = document.createElement("iframe");
-  iframe.src = `${CHECKOUT_BASE}/${opts.sessionId}`;
+  iframe.src = iframeSrc;
   Object.assign(iframe.style, {
     width: "420px",
     maxWidth: "95vw",
@@ -127,11 +143,14 @@ function close() {
   }
 }
 
-// Web component: <sardis-pay session-id="mcs_..." />
+// Web component: <sardis-pay client-secret="abc123..." />
 class SardisPayElement extends HTMLElement {
   connectedCallback() {
+    const clientSecret = this.getAttribute("client-secret");
+    // Legacy support
     const sessionId = this.getAttribute("session-id");
-    if (!sessionId) return;
+    const secret = clientSecret || sessionId;
+    if (!secret) return;
 
     const btn = document.createElement("button");
     btn.textContent = "Pay with Sardis";
@@ -148,7 +167,8 @@ class SardisPayElement extends HTMLElement {
     } as CSSStyleDeclaration);
     btn.addEventListener("click", () => {
       open({
-        sessionId,
+        clientSecret: clientSecret || undefined,
+        sessionId: sessionId || undefined,
         onSuccess: (data) => {
           this.dispatchEvent(
             new CustomEvent("sardis-success", { detail: data }),

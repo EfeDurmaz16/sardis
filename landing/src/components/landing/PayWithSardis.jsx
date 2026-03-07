@@ -313,10 +313,10 @@ export default function PayWithSardis() {
                     color: 'var(--landing-text-secondary)',
                   }}
                 >
-                  {'<sardis-pay session-id="mcs_..." />'}
+                  {'<sardis-pay client-secret="cs_..." />'}
                 </span>
                 <button
-                  onClick={() => navigator.clipboard.writeText('<sardis-pay session-id="mcs_..." />')}
+                  onClick={() => navigator.clipboard.writeText('<sardis-pay client-secret="cs_..." />')}
                   className="flex-shrink-0 opacity-40 hover:opacity-80 transition-opacity"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   aria-label="Copy to clipboard"

@@ -28,8 +28,10 @@ import pytest
 from sardis_v2_core.merchant import (
     Merchant,
     MerchantCheckoutSession,
+    MerchantCheckoutLink,
     _generate_external_id,
     _generate_webhook_secret,
+    _generate_client_secret,
 )
 
 
@@ -61,10 +63,25 @@ class TestMerchantModel:
     def test_session_defaults(self):
         s = MerchantCheckoutSession(merchant_id="merch_abc", amount=Decimal("49.99"))
         assert s.session_id.startswith("mcs_")
+        assert s.client_secret  # should be non-empty
+        assert len(s.client_secret) > 20
         assert s.status == "pending"
         assert s.currency == "USDC"
         assert s.payment_method is None
         assert s.tx_hash is None
+        assert s.idempotency_key is None
+        assert s.platform_fee_amount == Decimal("0")
+        assert s.net_amount is None
+
+    def test_session_client_secret_uniqueness(self):
+        secrets = {MerchantCheckoutSession().client_secret for _ in range(100)}
+        assert len(secrets) == 100
+
+    def test_checkout_link_defaults(self):
+        link = MerchantCheckoutLink(merchant_id="merch_abc", amount=Decimal("5.00"), slug="coffee")
+        assert link.link_id.startswith("mcl_")
+        assert link.currency == "USDC"
+        assert link.is_active is True
 
     def test_external_id_uniqueness(self):
         ids = {_generate_external_id("merch") for _ in range(100)}
@@ -72,6 +89,10 @@ class TestMerchantModel:
 
     def test_webhook_secret_uniqueness(self):
         secrets = {_generate_webhook_secret() for _ in range(100)}
+        assert len(secrets) == 100
+
+    def test_client_secret_uniqueness(self):
+        secrets = {_generate_client_secret() for _ in range(100)}
         assert len(secrets) == 100
 
 
@@ -107,6 +128,8 @@ class MockMerchantRepo:
     def __init__(self):
         self.merchants: dict[str, Merchant] = {}
         self.sessions: dict[str, MerchantCheckoutSession] = {}
+        self.links: dict[str, MerchantCheckoutLink] = {}
+        self.webhook_deliveries: dict[str, dict] = {}
 
     async def create_merchant(self, merchant: Merchant) -> Merchant:
         self.merchants[merchant.merchant_id] = merchant
@@ -134,6 +157,15 @@ class MockMerchantRepo:
     async def get_session(self, session_id: str) -> Optional[MerchantCheckoutSession]:
         return self.sessions.get(session_id)
 
+    async def get_session_by_secret(self, client_secret: str) -> Optional[MerchantCheckoutSession]:
+        for s in self.sessions.values():
+            if s.client_secret == client_secret:
+                return s
+        return None
+
+    async def get_session_for_update(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+        return self.sessions.get(session_id)
+
     async def update_session(self, session_id: str, **kwargs) -> None:
         s = self.sessions.get(session_id)
         if s:
@@ -148,6 +180,35 @@ class MockMerchantRepo:
 
     async def get_processing_settlements(self):
         return [s for s in self.sessions.values() if s.settlement_status == "processing"]
+
+    async def create_checkout_link(self, link: MerchantCheckoutLink) -> MerchantCheckoutLink:
+        self.links[link.link_id] = link
+        return link
+
+    async def get_checkout_link(self, link_id: str) -> Optional[MerchantCheckoutLink]:
+        return self.links.get(link_id)
+
+    async def get_checkout_link_by_slug(self, slug: str) -> Optional[MerchantCheckoutLink]:
+        for l in self.links.values():
+            if l.slug == slug and l.is_active:
+                return l
+        return None
+
+    async def list_checkout_links(self, merchant_id: str) -> list[MerchantCheckoutLink]:
+        return [l for l in self.links.values() if l.merchant_id == merchant_id]
+
+    async def record_webhook_delivery(self, event_id, merchant_id, event_type, payload) -> bool:
+        if event_id in self.webhook_deliveries:
+            return False
+        self.webhook_deliveries[event_id] = {
+            "merchant_id": merchant_id, "event_type": event_type, "payload": payload
+        }
+        return True
+
+    async def update_webhook_delivery(self, event_id, status, attempts) -> None:
+        if event_id in self.webhook_deliveries:
+            self.webhook_deliveries[event_id]["status"] = status
+            self.webhook_deliveries[event_id]["attempts"] = attempts
 
 
 # ── Connector Tests ────────────────────────────────────────────────
@@ -191,8 +252,14 @@ class TestSardisNativeConnector:
         response = await connector.create_checkout_session(request)
 
         assert response.checkout_id.startswith("mcs_")
-        assert response.redirect_url.startswith("https://checkout.sardis.sh/")
+        assert "/s/" in response.redirect_url  # Uses client_secret URL
+        assert "client_secret" in response.metadata
         assert len(mock_repo.sessions) == 1
+
+        # Verify session has client_secret
+        session = list(mock_repo.sessions.values())[0]
+        assert session.client_secret
+        assert len(session.client_secret) > 20
 
     @pytest.mark.asyncio
     async def test_create_session_invalid_merchant(self, connector):
@@ -231,6 +298,19 @@ class TestSardisNativeConnector:
         from sardis_checkout.models import PSPType
         assert connector.psp_type == PSPType.SARDIS
 
+    @pytest.mark.asyncio
+    async def test_execute_payment_idempotent_on_already_paid(self, connector, mock_repo):
+        """Already paid session should return existing result (idempotent)."""
+        session = _make_session(status="paid", tx_hash="0xexisting")
+        mock_repo.sessions[session.session_id] = session
+
+        result = await connector.execute_payment(
+            session_id=session.session_id,
+            payer_wallet_id="wal_payer_001",
+        )
+        assert result["status"] == "paid"
+        assert result["tx_hash"] == "0xexisting"
+
 
 # ── Router Wiring Tests ───────────────────────────────────────────
 
@@ -243,6 +323,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/{merchant_id}" in paths
         assert "/{merchant_id}/bank-account" in paths
         assert "/{merchant_id}/settlements" in paths
+        assert "/{merchant_id}/links" in paths
 
     def test_checkout_router_has_endpoints(self):
         from sardis_api.routers.merchant_checkout import router, public_router
@@ -252,10 +333,14 @@ class TestMerchantCheckoutRouterWiring:
         assert "/sessions" in auth_paths
         assert "/sessions/{session_id}" in auth_paths
 
-        assert "/sessions/{session_id}/details" in public_paths
-        assert "/sessions/{session_id}/connect" in public_paths
-        assert "/sessions/{session_id}/pay" in public_paths
-        assert "/sessions/{session_id}/balance" in public_paths
+        # Public endpoints now use client_secret
+        assert "/sessions/client/{client_secret}/details" in public_paths
+        assert "/sessions/client/{client_secret}/connect" in public_paths
+        assert "/sessions/client/{client_secret}/pay" in public_paths
+        assert "/sessions/client/{client_secret}/balance" in public_paths
+        assert "/sessions/client/{client_secret}/stream" in public_paths
+        assert "/sessions/client/{client_secret}/onramp-token" in public_paths
+        assert "/links/{slug}" in public_paths
 
     def test_main_wires_merchant_routers(self):
         main_path = Path(__file__).parent.parent / "src" / "sardis_api" / "main.py"
@@ -287,13 +372,13 @@ class TestSessionLifecycle:
         session = _make_session()
         await repo.create_session(session)
 
-        # pending → paid
+        # pending -> paid
         await repo.update_session(session.session_id, status="paid", tx_hash="0xabc123")
         s = await repo.get_session(session.session_id)
         assert s.status == "paid"
         assert s.tx_hash == "0xabc123"
 
-        # paid → settled
+        # paid -> settled
         await repo.update_session(session.session_id, status="settled", settlement_status="completed")
         s = await repo.get_session(session.session_id)
         assert s.status == "settled"
@@ -333,6 +418,79 @@ class TestSessionLifecycle:
         assert len(processing) == 2
         assert {s.session_id for s in processing} == {"mcs_proc_1", "mcs_proc_3"}
 
+    @pytest.mark.asyncio
+    async def test_get_session_by_secret(self, repo):
+        session = _make_session()
+        await repo.create_session(session)
+
+        found = await repo.get_session_by_secret(session.client_secret)
+        assert found is not None
+        assert found.session_id == session.session_id
+
+        not_found = await repo.get_session_by_secret("nonexistent_secret")
+        assert not_found is None
+
+    @pytest.mark.asyncio
+    async def test_get_session_for_update(self, repo):
+        session = _make_session()
+        await repo.create_session(session)
+
+        locked = await repo.get_session_for_update(session.session_id)
+        assert locked is not None
+        assert locked.session_id == session.session_id
+
+
+# ── Checkout Links Tests ──────────────────────────────────────────
+
+
+class TestCheckoutLinks:
+    @pytest.fixture
+    def repo(self):
+        return MockMerchantRepo()
+
+    @pytest.mark.asyncio
+    async def test_create_and_get_link(self, repo):
+        link = MerchantCheckoutLink(
+            merchant_id="merch_test123",
+            amount=Decimal("5.00"),
+            slug="coffee-5usd",
+        )
+        await repo.create_checkout_link(link)
+
+        found = await repo.get_checkout_link(link.link_id)
+        assert found is not None
+        assert found.slug == "coffee-5usd"
+        assert found.amount == Decimal("5.00")
+
+    @pytest.mark.asyncio
+    async def test_get_link_by_slug(self, repo):
+        link = MerchantCheckoutLink(
+            merchant_id="merch_test123",
+            amount=Decimal("10.00"),
+            slug="donation-10",
+        )
+        await repo.create_checkout_link(link)
+
+        found = await repo.get_checkout_link_by_slug("donation-10")
+        assert found is not None
+        assert found.link_id == link.link_id
+
+        not_found = await repo.get_checkout_link_by_slug("nonexistent")
+        assert not_found is None
+
+    @pytest.mark.asyncio
+    async def test_inactive_link_not_found_by_slug(self, repo):
+        link = MerchantCheckoutLink(
+            merchant_id="merch_test123",
+            amount=Decimal("10.00"),
+            slug="disabled-link",
+            is_active=False,
+        )
+        await repo.create_checkout_link(link)
+
+        found = await repo.get_checkout_link_by_slug("disabled-link")
+        assert found is None
+
 
 # ── Pydantic Model Validation Tests ───────────────────────────────
 
@@ -348,6 +506,7 @@ class TestRequestValidation:
         req = CreateSessionRequest(merchant_id="merch_123", amount=Decimal("25.50"))
         assert req.currency == "USDC"
         assert req.metadata == {}
+        assert req.embed_origin is None
 
     def test_create_merchant_validates_settlement_preference(self):
         from sardis_api.routers.merchants import CreateMerchantRequest
@@ -364,6 +523,16 @@ class TestRequestValidation:
         req = CreateMerchantRequest(name="Test Shop", settlement_preference="fiat", platform_fee_bps=100)
         assert req.name == "Test Shop"
         assert req.settlement_preference == "fiat"
+
+    def test_create_checkout_link_slug_validation(self):
+        from sardis_api.routers.merchants import CreateCheckoutLinkRequest
+        # Valid slug
+        req = CreateCheckoutLinkRequest(amount=Decimal("5.00"), slug="coffee-5usd")
+        assert req.slug == "coffee-5usd"
+
+        # Invalid slug (starts with hyphen)
+        with pytest.raises(Exception):
+            CreateCheckoutLinkRequest(amount=Decimal("5.00"), slug="-bad-slug")
 
 
 # ── Settlement Service Tests ──────────────────────────────────────
@@ -460,3 +629,34 @@ class TestWebhookSignature:
         sig = MerchantWebhookService.sign_payload(payload, secret)
         assert MerchantWebhookService.verify_signature(payload, secret, sig) is True
         assert MerchantWebhookService.verify_signature(payload, "test_wrong", sig) is False
+
+
+# ── Webhook Delivery Tests ────────────────────────────────────────
+
+
+class TestWebhookDelivery:
+    @pytest.mark.asyncio
+    async def test_webhook_includes_event_id(self):
+        """Webhook payload should contain event_id for deduplication."""
+        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        import json
+
+        repo = MockMerchantRepo()
+        service = MerchantWebhookService(merchant_repo=repo)
+
+        merchant = _make_merchant(webhook_url="https://example.com/webhook")
+        repo.merchants[merchant.merchant_id] = merchant
+
+        # Delivery will fail (no real server), but we can check the delivery was recorded
+        await service.deliver(
+            merchant=merchant,
+            event_type="payment.completed",
+            payload={"session_id": "mcs_test", "amount": "10.00"},
+        )
+
+        # Check that a delivery was recorded
+        assert len(repo.webhook_deliveries) == 1
+        event_id = list(repo.webhook_deliveries.keys())[0]
+        assert event_id.startswith("evt_")
+
+        await service.close()

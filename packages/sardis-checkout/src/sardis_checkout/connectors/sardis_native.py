@@ -66,6 +66,8 @@ class SardisNativeConnector(PSPConnector):
         if not merchant.is_active:
             raise ValueError("Merchant is inactive")
 
+        embed_origin = request.metadata.get("embed_origin")
+
         session = MerchantCheckoutSession(
             merchant_id=merchant.merchant_id,
             amount=request.amount,
@@ -75,12 +77,28 @@ class SardisNativeConnector(PSPConnector):
             cancel_url=request.cancel_url,
             metadata=request.metadata,
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=SESSION_TIMEOUT_MINUTES),
+            embed_origin=embed_origin,
         )
         await self._merchant_repo.create_session(session)
 
+        # Fire checkout.created webhook
+        if self._webhooks and merchant.webhook_url:
+            asyncio.ensure_future(
+                self._webhooks.deliver(
+                    merchant=merchant,
+                    event_type="checkout.created",
+                    payload={
+                        "session_id": session.session_id,
+                        "amount": str(session.amount),
+                        "currency": session.currency,
+                        "status": "pending",
+                    },
+                )
+            )
+
         return CheckoutResponse(
             checkout_id=session.session_id,
-            redirect_url=f"{self._checkout_base_url}/{session.session_id}",
+            redirect_url=f"{self._checkout_base_url}/s/{session.client_secret}",
             status=PaymentStatus.PENDING,
             psp_name="sardis",
             amount=request.amount,
@@ -91,6 +109,7 @@ class SardisNativeConnector(PSPConnector):
                 "merchant_id": merchant.merchant_id,
                 "merchant_name": merchant.name,
                 "session_id": session.session_id,
+                "client_secret": session.client_secret,
             },
         )
 
@@ -103,40 +122,72 @@ class SardisNativeConnector(PSPConnector):
         Execute payment for a checkout session.
 
         Full pipeline:
-        1. Load payer wallet, validate active + not frozen
-        2. Load merchant, get settlement wallet address
-        3. Build PaymentMandate
-        4. SpendingPolicy.evaluate() (if payer is agent)
-        5. ComplianceEngine.preflight()
-        6. Platform fee calculation
-        7. ChainExecutor.dispatch_payment() (net amount to merchant wallet)
-        8. Fee dispatch (best-effort, to treasury wallet)
-        9. WalletManager.async_record_spend()
-        10. LedgerStore.append()
-        11. Update session status = 'paid'
-        12. Queue merchant webhook
-        13. Trigger settlement for fiat merchants (fire-and-forget)
+        1. Acquire row lock (FOR UPDATE NOWAIT) to prevent double-pay
+        2. Load payer wallet, validate active + not frozen
+        3. Load merchant, get settlement wallet address
+        4. Build PaymentMandate
+        5. SpendingPolicy.evaluate() (if payer is agent)
+        6. ComplianceEngine.preflight()
+        7. Platform fee calculation
+        8. Set idempotency key (DB unique constraint prevents duplicates)
+        9. ChainExecutor.dispatch_payment() (net amount to merchant wallet)
+        10. Fee dispatch (best-effort, to treasury wallet)
+        11. WalletManager.async_record_spend()
+        12. LedgerStore.append()
+        13. Update session status = 'paid'
+        14. Queue merchant webhook
+        15. Trigger settlement for fiat merchants (fire-and-forget)
         """
         import inspect
         from sardis_v2_core.mandates import PaymentMandate, VCProof
         from sardis_v2_core.tokens import TokenType, to_raw_token_amount
         from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
 
-        session = await self._merchant_repo.get_session(session_id)
+        # Step 1: Acquire row lock to prevent concurrent payment
+        try:
+            session = await self._merchant_repo.get_session_for_update(session_id)
+        except Exception as e:
+            err_name = type(e).__name__
+            if "LockNotAvailable" in err_name or "lock" in str(e).lower():
+                raise ValueError("Payment already in progress") from e
+            raise
+
         if not session:
             raise ValueError("Session not found")
         if session.status not in ("pending", "funded"):
+            if session.status == "paid" and session.tx_hash:
+                # Idempotent: return existing result
+                return {
+                    "session_id": session_id,
+                    "status": "paid",
+                    "tx_hash": session.tx_hash,
+                    "amount": str(session.amount),
+                    "currency": session.currency,
+                    "merchant_id": session.merchant_id,
+                    "platform_fee": str(session.platform_fee_amount),
+                    "net_amount": str(session.net_amount) if session.net_amount else str(session.amount),
+                }
             raise ValueError(f"Session status is '{session.status}', expected 'pending' or 'funded'")
         from datetime import datetime, timezone
         if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
             await self._merchant_repo.update_session(session_id, status="expired")
+            # Fire checkout.expired webhook
+            merchant_for_expiry = await self._merchant_repo.get_merchant(session.merchant_id)
+            if self._webhooks and merchant_for_expiry and merchant_for_expiry.webhook_url:
+                asyncio.ensure_future(
+                    self._webhooks.deliver(
+                        merchant=merchant_for_expiry,
+                        event_type="checkout.expired",
+                        payload={"session_id": session_id, "status": "expired"},
+                    )
+                )
             raise ValueError("Session has expired")
 
         merchant = await self._merchant_repo.get_merchant(session.merchant_id)
         if not merchant:
             raise ValueError("Merchant not found")
 
-        # Step 1: Load and validate payer wallet
+        # Step 2: Load and validate payer wallet
         wallet = await self._wallet_manager.get_wallet(payer_wallet_id)
         if not wallet:
             raise ValueError("Payer wallet not found")
@@ -145,7 +196,7 @@ class SardisNativeConnector(PSPConnector):
         if getattr(wallet, "frozen", False):
             raise ValueError("Payer wallet is frozen")
 
-        # Step 2: Get merchant settlement address
+        # Step 3: Get merchant settlement address
         if not merchant.settlement_wallet_id:
             raise ValueError("Merchant has no settlement wallet")
 
@@ -163,7 +214,7 @@ class SardisNativeConnector(PSPConnector):
         if not source_address:
             raise ValueError(f"Payer wallet has no address on {chain}")
 
-        # Step 3: Build PaymentMandate
+        # Step 4: Build PaymentMandate
         idem_key = f"mcs:{session_id}:{payer_wallet_id}"
         digest = hashlib.sha256(idem_key.encode()).hexdigest()
 
@@ -199,50 +250,105 @@ class SardisNativeConnector(PSPConnector):
             merchant_domain=merchant.name,
         )
 
-        # Step 4: Policy check
+        # Step 5: Policy check
         policy_result = await self._wallet_manager.async_validate_policies(mandate)
         if not getattr(policy_result, "allowed", False):
             reason = getattr(policy_result, "reason", None) or "policy_denied"
             await self._merchant_repo.update_session(session_id, status="failed")
+            if self._webhooks and merchant.webhook_url:
+                asyncio.ensure_future(
+                    self._webhooks.deliver(
+                        merchant=merchant,
+                        event_type="payment.failed",
+                        payload={"session_id": session_id, "reason": "policy_denied", "status": "failed"},
+                    )
+                )
             raise ValueError(f"Policy denied: {reason}")
 
-        # Step 5: Compliance preflight
+        # Step 6: Compliance preflight
         compliance_result = await self._compliance.preflight(mandate)
         if not compliance_result.allowed:
             await self._merchant_repo.update_session(session_id, status="failed")
+            if self._webhooks and merchant.webhook_url:
+                asyncio.ensure_future(
+                    self._webhooks.deliver(
+                        merchant=merchant,
+                        event_type="payment.failed",
+                        payload={"session_id": session_id, "reason": "compliance_failed", "status": "failed"},
+                    )
+                )
             raise ValueError(f"Compliance check failed: {compliance_result.reason}")
 
-        # Step 6: Platform fee calculation
+        # Step 7: Platform fee calculation
         fee_calc = calculate_fee(session.amount, destination=destination)
         fee_tx_hash: str | None = None
+        platform_fee_amount = Decimal("0")
+        net_amount = session.amount
 
         if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
+            platform_fee_amount = fee_calc.fee_amount
+            net_amount = fee_calc.net_amount
             net_amount_minor = to_raw_token_amount(TokenType(token), fee_calc.net_amount)
             mandate.amount_minor = net_amount_minor
 
-        # Step 7: Dispatch payment to merchant wallet
+        # Step 8: Set idempotency key (DB unique constraint prevents duplicates)
+        try:
+            await self._merchant_repo.update_session(
+                session_id,
+                idempotency_key=idem_key,
+                platform_fee_amount=platform_fee_amount,
+                net_amount=net_amount,
+            )
+        except Exception as e:
+            if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+                # Idempotent: another request already set this key
+                existing = await self._merchant_repo.get_session(session_id)
+                if existing and existing.status == "paid":
+                    return {
+                        "session_id": session_id,
+                        "status": "paid",
+                        "tx_hash": existing.tx_hash,
+                        "amount": str(existing.amount),
+                        "currency": existing.currency,
+                        "merchant_id": existing.merchant_id,
+                        "platform_fee": str(existing.platform_fee_amount),
+                        "net_amount": str(existing.net_amount) if existing.net_amount else str(existing.amount),
+                    }
+                raise ValueError("Payment already in progress") from e
+            raise
+
+        # Step 9: Dispatch payment to merchant wallet
         try:
             receipt = await self._chain_executor.dispatch_payment(mandate)
         except Exception as e:
             await self._merchant_repo.update_session(session_id, status="failed")
+            if self._webhooks and merchant.webhook_url:
+                asyncio.ensure_future(
+                    self._webhooks.deliver(
+                        merchant=merchant,
+                        event_type="payment.failed",
+                        payload={"session_id": session_id, "reason": str(e), "status": "failed"},
+                    )
+                )
             raise ValueError(f"Payment failed: {e}") from e
 
         tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
 
-        # Step 8: Fee collection (best-effort)
+        # Step 10: Fee collection (best-effort)
         if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
             treasury_addr = get_treasury_address()
             if treasury_addr:
                 try:
+                    from sardis_v2_core.mandates import PaymentMandate as PM, VCProof as VP
                     fee_amount_minor = to_raw_token_amount(TokenType(token), fee_calc.fee_amount)
-                    fee_mandate = PaymentMandate(
+                    fee_mandate = PM(
                         mandate_id=f"fee_{digest[:16]}",
                         mandate_type="platform_fee",
                         issuer=f"wallet:{payer_wallet_id}",
                         subject=wallet.agent_id,
                         expires_at=int(time.time()) + 300,
                         nonce=f"fee_{digest}",
-                        proof=VCProof(
+                        proof=VP(
                             verification_method=f"wallet:{payer_wallet_id}#key-1",
                             created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                             proof_value="platform-fee",
@@ -265,13 +371,13 @@ class SardisNativeConnector(PSPConnector):
                 except Exception:
                     logger.exception("Failed to collect platform fee for session %s", session_id)
 
-        # Step 9: Record spend
+        # Step 11: Record spend
         try:
             await self._wallet_manager.async_record_spend(mandate)
         except Exception:
             logger.warning("Failed to record spend for session %s", session_id)
 
-        # Step 10: Ledger append
+        # Step 12: Ledger append
         ledger_tx_id: str | None = None
         if self._ledger:
             try:
@@ -284,7 +390,7 @@ class SardisNativeConnector(PSPConnector):
             except Exception:
                 logger.warning("Failed to append ledger for session %s", session_id)
 
-        # Step 11: Update session
+        # Step 13: Update session
         await self._merchant_repo.update_session(
             session_id,
             status="paid",
@@ -293,7 +399,7 @@ class SardisNativeConnector(PSPConnector):
             payment_method="wallet",
         )
 
-        # Step 12: Queue merchant webhook (fire-and-forget)
+        # Step 14: Queue merchant webhook (fire-and-forget)
         if self._webhooks and merchant.webhook_url:
             asyncio.ensure_future(
                 self._webhooks.deliver(
@@ -305,12 +411,14 @@ class SardisNativeConnector(PSPConnector):
                         "currency": session.currency,
                         "tx_hash": tx_hash,
                         "payer_wallet_id": payer_wallet_id,
+                        "platform_fee": str(platform_fee_amount),
+                        "net_amount": str(net_amount),
                         "status": "paid",
                     },
                 )
             )
 
-        # Step 13: Trigger settlement for fiat merchants (fire-and-forget)
+        # Step 15: Trigger settlement for fiat merchants (fire-and-forget)
         if merchant.settlement_preference == "fiat" and self._settlement:
             asyncio.ensure_future(self._settlement.settle_session(session_id))
 
@@ -323,6 +431,8 @@ class SardisNativeConnector(PSPConnector):
             "amount": str(session.amount),
             "currency": session.currency,
             "merchant_id": merchant.merchant_id,
+            "platform_fee": str(platform_fee_amount),
+            "net_amount": str(net_amount),
         }
 
     async def get_payment_status(
@@ -349,14 +459,20 @@ class SardisNativeConnector(PSPConnector):
         payload: bytes,
         signature: str,
     ) -> bool:
-        """Verify Sardis webhook signature (HMAC-SHA256)."""
-        import hmac as hmac_mod
-        # Signature format: "sha256=<hex>"
-        if not signature.startswith("sha256="):
-            return False
-        expected = signature[7:]
-        # We don't have the secret here; this is verified at the merchant_webhooks layer
-        return True
+        """Verify Sardis webhook signature (HMAC-SHA256).
+
+        The native connector does not receive external PSP webhooks.
+        Merchant webhook verification is handled by
+        MerchantWebhookService.verify_signature() which has access to
+        the per-merchant webhook_secret.
+
+        This method satisfies the PSPConnector interface but should
+        never be called in practice for the native connector.
+        """
+        raise NotImplementedError(
+            "SardisNativeConnector.verify_webhook should not be called directly. "
+            "Use MerchantWebhookService.verify_signature() instead."
+        )
 
     async def handle_webhook(
         self,
