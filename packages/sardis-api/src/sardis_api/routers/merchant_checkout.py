@@ -16,6 +16,11 @@ router = APIRouter()
 public_router = APIRouter()
 
 
+def _fmt_amount(d: Decimal) -> str:
+    """Format Decimal to clean string (strip trailing zeros)."""
+    return f"{d:.2f}"
+
+
 # ── Request / Response Models ──────────────────────────────────────
 
 class CreateSessionRequest(BaseModel):
@@ -124,7 +129,7 @@ async def create_session(
     return SessionResponse(
         session_id=response.checkout_id,
         merchant_id=body.merchant_id,
-        amount=str(body.amount),
+        amount=_fmt_amount(body.amount),
         currency=body.currency,
         description=body.description,
         status="pending",
@@ -147,7 +152,7 @@ async def get_session(
     return SessionResponse(
         session_id=session.session_id,
         merchant_id=session.merchant_id,
-        amount=str(session.amount),
+        amount=_fmt_amount(session.amount),
         currency=session.currency,
         description=session.description,
         status=session.status,
@@ -179,7 +184,7 @@ async def get_session_details(
         session_id=session.session_id,
         merchant_name=merchant.name,
         merchant_logo_url=merchant.logo_url,
-        amount=str(session.amount),
+        amount=_fmt_amount(session.amount),
         currency=session.currency,
         description=session.description,
         status=session.status,
@@ -377,10 +382,12 @@ async def get_onramp_token(
         )
 
     if resp.status_code != 200:
-        logger.error("CDP onramp token error: %s %s", resp.status_code, resp.text)
+        # Truncate HTML error pages to avoid huge log lines
+        error_preview = resp.text[:500] if len(resp.text) > 500 else resp.text
+        logger.error("CDP onramp token error: status=%s body=%s", resp.status_code, error_preview)
         raise HTTPException(
             status_code=502,
-            detail=f"Coinbase onramp token failed: {resp.text}",
+            detail=f"Coinbase onramp API returned {resp.status_code}",
         )
 
     data = resp.json()
@@ -393,7 +400,7 @@ async def get_onramp_token(
         "sessionToken": session_token,
         "defaultAsset": "USDC",
         "defaultNetwork": "base",
-        "presetFiatAmount": str(int(float(str(session.amount)) + 1)),
+        "presetFiatAmount": str(int(float(_fmt_amount(session.amount)) + 1)),
     })
     onramp_url = f"https://pay.coinbase.com/buy/select-asset?{onramp_params}"
 

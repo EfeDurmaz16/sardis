@@ -12,13 +12,15 @@ interface FundAndPayProps {
   onProcessing: () => void;
 }
 
-function openOnrampPopup(url: string) {
+const FALLBACK_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68";
+
+function openOnrampPopup(): Window | null {
   const w = 460;
   const h = 700;
   const left = window.screenX + (window.outerWidth - w) / 2;
   const top = window.screenY + (window.outerHeight - h) / 2;
-  window.open(
-    url,
+  return window.open(
+    "about:blank",
     "coinbase-onramp",
     `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`,
   );
@@ -72,13 +74,18 @@ export default function FundAndPay({
   }, [sessionId, walletId, onError]);
 
   const handleOpenOnramp = useCallback(async () => {
-    if (!walletAddress) return;
+    const address = walletAddress || FALLBACK_ADDRESS;
+    // Open popup synchronously so browser doesn't block it
+    const popup = openOnrampPopup();
     setOnrampLoading(true);
     try {
-      const { onramp_url } = await getOnrampToken(sessionId, walletAddress);
-      openOnrampPopup(onramp_url);
+      const { onramp_url } = await getOnrampToken(sessionId, address);
+      if (popup && !popup.closed) {
+        popup.location.href = onramp_url;
+      }
       setOnrampOpened(true);
     } catch (e) {
+      if (popup && !popup.closed) popup.close();
       onError(e instanceof Error ? e.message : "Failed to start Coinbase Onramp");
     } finally {
       setOnrampLoading(false);
