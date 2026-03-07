@@ -5,7 +5,7 @@ export default function DocsRuntimeGuardrails() {
     <>
       <SEO
         title="Runtime Guardrails"
-        description="Operational runtime guardrails for Sardis payment execution: PAN lane quorum, Lithic ASA fail-closed controls, and wallet-aware A2A trust enforcement."
+        description="Operational runtime guardrails for Sardis payment execution: PAN lane quorum, card ASA fail-closed controls, and wallet-aware A2A trust enforcement."
         path="/docs/runtime-guardrails"
         schemas={[
           createBreadcrumbSchema([
@@ -43,7 +43,7 @@ export default function DocsRuntimeGuardrails() {
         <section id="asa-fail-closed" className="mb-12 scroll-mt-24">
           <h2 className="text-2xl font-bold font-display mb-3">ASA Fail-Closed</h2>
           <p className="text-muted-foreground mb-3">
-            Lithic ASA authorization checks default to deny whenever control-plane dependencies fail (lookup,
+            Card ASA authorization checks default to deny whenever control-plane dependencies fail (lookup,
             subscription matching, or policy context retrieval).
           </p>
           <ul className="list-disc pl-6 text-muted-foreground space-y-2">

@@ -2,9 +2,52 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.10.0',
+    date: '2026-03-07',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          '13 framework integrations: Browser Use, CrewAI, AutoGPT, OpenAI Agents SDK, Composio, Stagehand, n8n, Activepieces, OpenClaw, E2B sandbox, ChatGPT Actions — any AI agent can now transact with Sardis',
+          'Pay with Sardis: embeddable merchant checkout with USDC settlement and fiat offramp to bank accounts',
+          'Coinbase Onramp integration via CDP session tokens for zero-fee USDC funding',
+          'Merchant checkout system with webhook notifications, session management, and settlement service',
+          'Base mainnet contract deployment script',
+          'Cloud Run staging deployment with env templates',
+          'Multi-chain balance aggregation endpoint',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Stripe Issuing integration with cardholder KYC and Elements demo for card reveal',
+          'Consolidated 29 database connection pools into single shared pool',
+          'Batch-update time window limits to reduce lock contention',
+          'Composite and FK indexes for high-volume query paths',
+          'Webhook semaphore backpressure to prevent unbounded task creation',
+          'Landing page: OpenClaw integration card, 3x3 grid layout, updated social links',
+          'Dark mode contrast improvements for WCAG AA compliance',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Signed policy snapshots required for production policy execution',
+          'Strict release gates for on-chain lane with governance timelock',
+          'NL policy conversion audit trail with property fuzz tests',
+          'Pre-commit hook for secret detection',
+          'Column whitelists on merchant/session update queries',
+          'Auth added to merchant endpoints, CORS locked to checkout.sardis.sh',
+          'Smart contract audit gate and evidence plan',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.9.5',
     date: '2026-02-26',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',

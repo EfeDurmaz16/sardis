@@ -102,7 +102,7 @@ export default function Roadmap() {
       items: [
         { text: 'Fiat on-ramp via Onramper', done: true },
         { text: 'Fiat off-ramp via Bridge (sandbox/design-partner lane)', done: true },
-        { text: 'Virtual card issuance (Lithic sandbox lane)', done: true },
+        { text: 'Virtual card issuance (card issuing sandbox)', done: true },
         { text: 'Unified balance policy model with quote-based conversion (no fixed 1:1 claim)', done: true },
         { text: 'KYC integration (iDenfy production)', done: true },
         { text: 'AML screening (Elliptic integration)', done: true },
@@ -207,7 +207,7 @@ export default function Roadmap() {
       date: 'Feb 2026',
       items: [
         { text: 'Travel Rule (FATF R.16) compliance for cross-border transfers', done: true },
-        { text: 'Lithic ASA real-time card authorization handler', done: true },
+        { text: 'Card ASA real-time card authorization handler', done: true },
         { text: 'PostgreSQL persistence for spending policy, SAR, identity, and ledger', done: true },
         { text: 'Redis-backed velocity monitoring with atomic operations', done: true },
         { text: 'KYB verification via Persona for org onboarding', done: true },
@@ -245,7 +245,7 @@ export default function Roadmap() {
       items: [
         { text: 'Treasury API endpoints added: sync accounts, link bank, verify micro-deposits, fund, withdraw, balances', done: true },
         { text: 'USD-first card funding route with stablecoin fallback feature flag', done: true },
-        { text: 'Lithic ACH webhook ingestion + replay protection + return code handling state machine', done: true },
+        { text: 'Card issuer ACH webhook ingestion + replay protection + return code handling state machine', done: true },
         { text: 'Treasury reconciliation + retry orchestration jobs with limits and velocity caps', done: true },
         { text: 'Python SDK and TypeScript SDK treasury resources shipped', done: true },
         { text: 'MCP treasury tools aligned to /api/v2/treasury endpoints', done: true },
@@ -297,7 +297,7 @@ export default function Roadmap() {
         { text: 'Secure checkout approval quorum controls (min approvals + PAN-specific min approvals)', done: true },
         { text: 'Secure checkout distinct reviewer (4-eyes) enforcement for PAN lane approvals', done: true },
         { text: 'Secure checkout runtime security-policy endpoint expanded with approval quorum posture', done: true },
-        { text: 'Lithic ASA fail-closed defaults for card lookup/subscription matcher errors in production', done: true },
+        { text: 'Card ASA fail-closed defaults for card lookup/subscription matcher errors in production', done: true },
         { text: 'Cards ASA security-policy endpoint for admin runtime visibility', done: true },
         { text: 'A2A trust peers endpoint extended with wallet-aware directory visibility', done: true },
         { text: 'A2A trusted broadcast target list for orchestration fan-out', done: true },
@@ -377,7 +377,7 @@ export default function Roadmap() {
         { text: 'SLO dashboard + PagerDuty alert routing + runbook evidence automation', done: true },
         { text: 'DR incident drill evidence bundles with measured RTO/RPO snapshots', done: true },
         { text: 'PCI boundary pattern finalization (issuer-hosted reveal/iframe or enclave lane)', done: false },
-        { text: 'Provider live-lane certification matrix (Stripe/Lithic/Rain/Bridge) with auth timeout + webhook SLA checks', done: false },
+        { text: 'Provider live-lane certification matrix (Stripe/Rain/Bridge) with auth timeout + webhook SLA checks', done: false },
       ],
     },
     {
@@ -386,7 +386,7 @@ export default function Roadmap() {
       status: 'upcoming',
       date: 'Q2 2026',
       items: [
-        { text: 'Stripe/Lithic/Rain/Bridge commercial + technical certification sign-off', done: false },
+        { text: 'Stripe/Rain/Bridge commercial + technical certification sign-off', done: false },
         { text: 'Funding adapters wired to live credentials with failover behavior validation', done: false },
         { text: 'SOC2 evidence cadence automation + PCI scope boundary control testing', done: false },
         { text: 'API freeze/versioning policy with rollback proof pack for GA launch', done: false },

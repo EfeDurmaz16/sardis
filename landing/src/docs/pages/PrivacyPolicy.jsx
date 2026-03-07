@@ -43,7 +43,7 @@ const PrivacyPolicy = () => {
 
           <h3 className="text-lg font-medium mt-6 mb-3">2.3 Information from Third Parties</h3>
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
-            <li><strong>Identity Verification:</strong> Data from Persona (KYC provider)</li>
+            <li><strong>Identity Verification:</strong> Data from iDenfy (KYC provider)</li>
             <li><strong>Sanctions Screening:</strong> Results from Elliptic (AML provider)</li>
             <li><strong>Blockchain Data:</strong> Public transaction data from blockchain networks</li>
           </ul>
@@ -84,7 +84,7 @@ const PrivacyPolicy = () => {
           <h3 className="text-lg font-medium mt-6 mb-3">5.1 Service Providers</h3>
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li><strong>Turnkey:</strong> MPC wallet infrastructure (non-custodial)</li>
-            <li><strong>Persona:</strong> Identity verification (KYC)</li>
+            <li><strong>iDenfy:</strong> Identity verification (KYC)</li>
             <li><strong>Elliptic:</strong> Sanctions and AML screening</li>
             <li><strong>Cloud Providers:</strong> AWS, GCP for infrastructure</li>
           </ul>

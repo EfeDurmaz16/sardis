@@ -42,7 +42,7 @@ export default function DocsOverview() {
         </p>
         <p className="text-muted-foreground leading-relaxed mb-4">
           Sardis supports multiple payment rails: bank transfers (ACH/wire), virtual cards (Stripe Issuing), and stablecoins (USDC, USDT)
-          as an optional settlement alternative. Compliance integrations run in staged lanes (for example Persona and Elliptic onboarding paths).
+          as an optional settlement alternative. Compliance integrations run in staged lanes (for example iDenfy and Elliptic onboarding paths).
           No crypto knowledge required;
           agents can fund entirely from bank accounts. It integrates with popular agent frameworks using SDKs in Python and TypeScript.
         </p>
@@ -61,7 +61,7 @@ export default function DocsOverview() {
             { title: 'Live-MPC Non-Custodial Posture', desc: 'Applies on stablecoin rails when running in live MPC mode' },
             { title: 'Natural Language Policies', desc: 'Define spending rules in plain English' },
             { title: 'Financial Firewall', desc: 'Prevent hallucination errors in real-time' },
-            { title: 'Instant Virtual Cards', desc: 'Issue cards on-demand via Lithic' },
+            { title: 'Instant Virtual Cards', desc: 'Issue cards on-demand via card issuing partners' },
             { title: 'Multi-Rail Settlement', desc: 'Bank transfer, virtual card, or stablecoins' },
             { title: 'Bank-First Funding', desc: 'Fund from bank accounts, withdraw to USD' },
             { title: 'Compliance Lanes', desc: 'Provider-integrated KYC/AML onboarding paths for regulated rails' },

@@ -178,7 +178,7 @@ const RiskDisclosures = () => {
           <h3 className="text-lg font-medium mt-6 mb-3">6.2 Third-Party Risks</h3>
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li><strong>Turnkey:</strong> MPC wallet infrastructure provider</li>
-            <li><strong>Persona:</strong> Identity verification (KYC)</li>
+            <li><strong>iDenfy:</strong> Identity verification (KYC)</li>
             <li><strong>Elliptic:</strong> Sanctions and AML screening</li>
             <li><strong>Bridge:</strong> Fiat on/off ramp provider</li>
           </ul>

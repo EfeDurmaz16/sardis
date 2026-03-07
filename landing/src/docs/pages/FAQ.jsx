@@ -217,7 +217,7 @@ const faqs = [
       },
       {
         q: 'Is Sardis suitable for enterprise use?',
-        a: 'Yes. Sardis provides enterprise features including: custom spending limit configurations, multi-agent fleet management, role-based access control, compliance-grade audit trails with Merkle proofs, KYC/AML integration (Persona + Elliptic), SOC 2 compliant infrastructure, and dedicated support. Enterprise plans are available for high-volume deployments.'
+        a: 'Yes. Sardis provides enterprise features including: custom spending limit configurations, multi-agent fleet management, role-based access control, compliance-grade audit trails with Merkle proofs, KYC/AML integration (iDenfy + Elliptic), SOC 2 compliant infrastructure, and dedicated support. Enterprise plans are available for high-volume deployments.'
       },
     ]
   },

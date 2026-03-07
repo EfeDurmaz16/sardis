@@ -56,7 +56,7 @@ export default function DocsArchitecture() {
 ┌─────────▼───────┐ ┌─────▼─────┐ ┌───────▼───────┐
 │   BANK          │ │ STABLECOIN│ │   VIRTUAL     │
 │   TRANSFER      │ │   RAILS   │ │   CARDS       │
-│  (ACH/Wire)     │ │  (USDC)   │ │  (Lithic)     │
+│  (ACH/Wire)     │ │  (USDC)   │ │  (Virtual Cards)     │
 └─────────────────┘ └───────────┘ └───────────────┘`}</pre>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default function DocsArchitecture() {
             },
             {
               name: 'Virtual Card Service',
-              desc: 'On-demand virtual card issuance via Lithic. Cards are single-use or limited-use, locked to specific merchants and amounts.',
+              desc: 'On-demand virtual card issuance via card issuing partners. Cards are single-use or limited-use, locked to specific merchants and amounts.',
               color: 'purple'
             },
           ].map((comp) => (
@@ -179,7 +179,7 @@ export default function DocsArchitecture() {
           </li>
           <li className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-[var(--sardis-orange)]"></span>
-            Compliance: KYC/AML integration via Persona and Elliptic
+            Compliance: KYC/AML integration via iDenfy and Elliptic
           </li>
         </ul>
       </section>

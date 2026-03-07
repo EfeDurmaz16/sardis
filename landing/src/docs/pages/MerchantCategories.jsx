@@ -218,13 +218,13 @@ policy = await client.policies.create(
           <span className="text-[var(--sardis-orange)]">#</span> MCC Auto-Detection
         </h2>
         <p className="text-muted-foreground mb-4">
-          When a Lithic virtual card transaction occurs, the card network automatically provides the merchant's MCC.
+          When a virtual card transaction occurs, the card network automatically provides the merchant's MCC.
           Sardis uses this in two ways:
         </p>
         <div className="not-prose space-y-2 text-sm">
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="font-mono text-[var(--sardis-orange)]">1</span>
-            <span className="text-muted-foreground"><strong>Real-time ASA decisions:</strong> During authorization (Lithic ASA webhook), the MCC is checked against blocked MCCs before approving the transaction.</span>
+            <span className="text-muted-foreground"><strong>Real-time ASA decisions:</strong> During authorization (card authorization webhook), the MCC is checked against blocked MCCs before approving the transaction.</span>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border">
             <span className="font-mono text-[var(--sardis-orange)]">2</span>

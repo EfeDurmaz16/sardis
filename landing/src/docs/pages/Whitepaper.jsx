@@ -131,7 +131,7 @@ export default function DocsWhitepaper() {
           {[
             { num: '01', title: 'Policy Engine', desc: 'Real-time transaction validation with natural language rule parsing' },
             { num: '02', title: 'MPC Wallets', desc: 'Non-custodial key management via Turnkey infrastructure' },
-            { num: '03', title: 'Settlement Layer', desc: 'Multi-rail support: on-chain (Base, Polygon, ETH) and fiat (Lithic cards)' },
+            { num: '03', title: 'Settlement Layer', desc: 'Multi-rail support: on-chain (Base, Polygon, ETH) and fiat (virtual cards)' },
             { num: '04', title: 'Integration SDKs', desc: 'Native support for LangChain, Vercel AI, OpenAI, and MCP' },
           ].map((item) => (
             <div key={item.num} className="flex gap-4 p-4 border border-border">

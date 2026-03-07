@@ -5,7 +5,7 @@ export default function DocsSecurity() {
     <>
       <SEO
         title="Security Model"
-        description="Sardis security architecture: non-custodial MPC wallets via Turnkey, policy engine with cryptographic enforcement, KYC via Persona, AML via Elliptic, Travel Rule compliance, and virtual card ASA real-time screening."
+        description="Sardis security architecture: non-custodial MPC wallets via Turnkey, policy engine with cryptographic enforcement, KYC via iDenfy, AML via Elliptic, Travel Rule compliance, and virtual card ASA real-time screening."
         path="/docs/security"
         schemas={[
           createBreadcrumbSchema([
@@ -140,12 +140,12 @@ export default function DocsSecurity() {
           <div className="p-4 border border-border">
             <h4 className="font-bold font-display mb-2">KYC Verification</h4>
             <p className="text-sm text-muted-foreground mb-2">
-              Off-ramp operations require KYC verification via Persona (680+ lines of integration code with
+              Off-ramp operations require KYC verification via iDenfy (680+ lines of integration code with
               webhook support). Identity is verified before any fiat can leave the system. KYC status is
               checked on every withdrawal request.
             </p>
             <div className="flex gap-2 mt-2">
-              <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">PERSONA ✓</span>
+              <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">iDENFY ✓</span>
               <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">BRIDGE ✓</span>
             </div>
           </div>
@@ -314,7 +314,7 @@ export default function DocsSecurity() {
           <span className="px-2 py-0.5 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">NEW</span>
         </h2>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          Virtual card transactions are screened in real-time via Lithic's ASA (Authorization Stream Access)
+          Virtual card transactions are screened in real-time via real-time ASA (Authorization Stream Access)
           webhook before approval. This provides a critical safety net for agent-initiated card payments.
         </p>
 
@@ -354,7 +354,7 @@ export default function DocsSecurity() {
           <div className="p-4 border border-border">
             <h3 className="font-bold font-display mb-2">KYC/AML</h3>
             <p className="text-sm text-muted-foreground mb-2">
-              Identity verification via Persona, AML screening via Elliptic. Required for fiat off-ramp.
+              Identity verification via iDenfy, AML screening via Elliptic. Required for fiat off-ramp.
               Optional for crypto-only wallets.
             </p>
             <span className="px-2 py-1 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
@@ -382,7 +382,7 @@ export default function DocsSecurity() {
           <div className="p-4 border border-border">
             <h3 className="font-bold font-display mb-2">PCI DSS</h3>
             <p className="text-sm text-muted-foreground mb-2">
-              Payment card industry data security standard via Lithic partnership.
+              Payment card industry data security standard via card issuing partners.
             </p>
             <span className="px-2 py-1 text-xs font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
               VIA PARTNER
