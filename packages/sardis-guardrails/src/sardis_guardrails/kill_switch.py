@@ -294,6 +294,94 @@ class KillSwitch:
         )
         await self._backend.set_activation(f"agent:{agent_id}", activation)
 
+    async def activate_rail(
+        self,
+        rail: str,
+        reason: ActivationReason,
+        activated_by: str | None = None,
+        notes: str | None = None,
+        auto_reactivate_after: float | None = None,
+    ) -> None:
+        """Activate kill switch for a specific payment rail (e.g. 'a2a', 'checkout', 'ap2')."""
+        auto_reactivate_at = None
+        if auto_reactivate_after is not None:
+            auto_reactivate_at = time.time() + auto_reactivate_after
+
+        activation = KillSwitchActivation(
+            reason=reason,
+            activated_by=activated_by,
+            notes=notes,
+            auto_reactivate_at=auto_reactivate_at,
+        )
+        await self._backend.set_activation(f"rail:{rail}", activation)
+
+    async def activate_chain(
+        self,
+        chain: str,
+        reason: ActivationReason,
+        activated_by: str | None = None,
+        notes: str | None = None,
+        auto_reactivate_after: float | None = None,
+    ) -> None:
+        """Activate kill switch for a specific blockchain (e.g. 'base', 'ethereum')."""
+        auto_reactivate_at = None
+        if auto_reactivate_after is not None:
+            auto_reactivate_at = time.time() + auto_reactivate_after
+
+        activation = KillSwitchActivation(
+            reason=reason,
+            activated_by=activated_by,
+            notes=notes,
+            auto_reactivate_at=auto_reactivate_at,
+        )
+        await self._backend.set_activation(f"chain:{chain}", activation)
+
+    async def deactivate_rail(self, rail: str) -> None:
+        """Deactivate rail kill switch."""
+        await self._backend.delete_activation(f"rail:{rail}")
+
+    async def deactivate_chain(self, chain: str) -> None:
+        """Deactivate chain kill switch."""
+        await self._backend.delete_activation(f"chain:{chain}")
+
+    async def check_rail(self, rail: str) -> None:
+        """Check if a specific rail is blocked.
+
+        Raises:
+            KillSwitchError: If the rail kill switch is active
+        """
+        activation = await self._backend.get_activation(f"rail:{rail}")
+        if activation is not None:
+            raise KillSwitchError(
+                f"Rail kill switch active for '{rail}'. "
+                f"Reason: {activation.reason}. "
+                f"Activated at: {activation.activated_at}. "
+                f"Notes: {activation.notes or 'None'}"
+            )
+
+    async def check_chain(self, chain: str) -> None:
+        """Check if a specific chain is blocked.
+
+        Raises:
+            KillSwitchError: If the chain kill switch is active
+        """
+        activation = await self._backend.get_activation(f"chain:{chain}")
+        if activation is not None:
+            raise KillSwitchError(
+                f"Chain kill switch active for '{chain}'. "
+                f"Reason: {activation.reason}. "
+                f"Activated at: {activation.activated_at}. "
+                f"Notes: {activation.notes or 'None'}"
+            )
+
+    async def is_active_rail(self, rail: str) -> bool:
+        """Check if rail kill switch is active."""
+        return await self._backend.get_activation(f"rail:{rail}") is not None
+
+    async def is_active_chain(self, chain: str) -> bool:
+        """Check if chain kill switch is active."""
+        return await self._backend.get_activation(f"chain:{chain}") is not None
+
     async def deactivate_global(self) -> None:
         """Deactivate global kill switch."""
         await self._backend.delete_activation("global")
@@ -358,11 +446,15 @@ class KillSwitch:
         global_activation = await self._backend.get_activation("global")
         org_activations = await self._backend.get_all_by_prefix("org:")
         agent_activations = await self._backend.get_all_by_prefix("agent:")
+        rail_activations = await self._backend.get_all_by_prefix("rail:")
+        chain_activations = await self._backend.get_all_by_prefix("chain:")
 
         return {
             "global": global_activation,
             "organizations": {k.removeprefix("org:"): v for k, v in org_activations.items()},
             "agents": {k.removeprefix("agent:"): v for k, v in agent_activations.items()},
+            "rails": {k.removeprefix("rail:"): v for k, v in rail_activations.items()},
+            "chains": {k.removeprefix("chain:"): v for k, v in chain_activations.items()},
         }
 
 
