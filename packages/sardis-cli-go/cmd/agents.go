@@ -49,18 +49,14 @@ func init() {
 func runAgentsList(cmd *cobra.Command, args []string) error {
 	client := api.NewClient()
 
-	var result struct {
-		Agents []json.RawMessage `json:"agents"`
-	}
-	if err := client.Get("/api/v2/agents", &result); err != nil {
+	var agents []map[string]any
+	if err := client.Get("/api/v2/agents", &agents); err != nil {
 		return err
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tNAME\tTYPE\tSTATUS")
-	for _, raw := range result.Agents {
-		var a map[string]any
-		_ = json.Unmarshal(raw, &a)
+	for _, a := range agents {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			strOrDash(a, "agent_id"),
 			strOrDash(a, "name"),
