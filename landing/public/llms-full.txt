@@ -47,6 +47,16 @@ Sardis provides:
 - **Complete audit trail**: Full visibility into agent spending
 - **Multi-rail payments**: Crypto (stablecoins) + fiat (virtual cards, bank transfers)
 
+### Swarm of Agents and Multi-Agent Payments
+
+Sardis is built for both single-agent and multi-agent execution.
+
+- Coordinate role-specialized agents (planner, negotiator, approver, executor)
+- Enforce shared treasury policy across an agent fleet
+- Support agent-to-agent settlement with mandate verification
+- Require cross-agent approvals for higher-risk transactions
+- Prevent duplicate or replayed transactions during concurrent swarm execution
+
 ### Recent Hardening Updates (Q1 2026)
 
 - Immutable hard-limit layer for NL policy parsing with fuzz/property tests.

@@ -34,6 +34,9 @@ Sardis supports Base (USDC, EURC), Polygon (USDC, USDT, EURC), Ethereum (USDC, U
 ### Can agents pay other agents?
 Yes. Using the A2A (Agent-to-Agent) protocol and Sardis wallets, agents can discover each other's capabilities, negotiate service terms, and execute payments with full mandate chain verification.
 
+### What is a multi-agent payment swarm?
+A multi-agent payment swarm is a coordinated set of agents (for example planner, negotiator, approver, executor) that complete a shared commerce task. Sardis enforces fleet-level policy guardrails so each agent has scoped spend rights, approval thresholds, and replay-safe execution. This enables agent-to-agent settlement and multi-step autonomous checkout without giving one agent unlimited authority.
+
 ### Do I need crypto to use Sardis?
 No. You can fund your agent wallet entirely from a bank account and pay via virtual card. Stablecoins are an optional settlement rail useful for instant cross-border payments, but not required.
 
@@ -56,6 +59,12 @@ Yes. Enterprise features include custom spending limits, multi-agent fleet manag
 Sardis is infrastructure that allows AI agents (Claude, Cursor, LangChain, OpenAI, Vercel AI SDK) to autonomously handle payments while staying within human-defined guardrails. It solves the "AI agent money problem" - how to let agents spend money without giving them unlimited access.
 
 The core innovation is the **Policy Firewall** - a natural language policy engine that validates every transaction against human-defined rules before execution.
+
+Sardis also supports **swarm and multi-agent payment orchestration**:
+- Agent-to-agent settlement
+- Shared treasury controls for agent fleets
+- Role-based limits (planner, buyer, approver, executor)
+- Cross-agent approval flows for higher-risk payments
 
 ## Core Concepts
 

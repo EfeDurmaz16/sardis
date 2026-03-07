@@ -184,6 +184,20 @@ Persona for KYC/KYB, Elliptic for sanctions screening. Fail-closed in production
 ### Audit Trail
 Append-only ledger with Merkle tree anchoring for cryptographic proof of all transactions.
 
+### Multi-Agent Payments (Swarm of Agents)
+Sardis supports orchestrated money movement across multiple cooperating agents, not only single-agent spend.
+
+- Agent-to-agent (A2A) settlement with mandate verification
+- Shared treasury policies across agent fleets
+- Role-based limits per agent (planner, buyer, approver, executor)
+- Cross-agent approvals for high-value transactions (4-eyes pattern)
+- Deterministic replay protection for concurrent multi-agent execution
+
+Common multi-agent flows:
+- Swarm procurement: one agent discovers vendors, another negotiates, another executes payment
+- Multi-step checkout: planner agent prepares intent/cart, execution agent settles on approved rail
+- Service-to-service billing: autonomous API agents charge/pay each other with policy controls
+
 ### Secure Checkout Evidence
 For PAN-lane secure checkout flows, Sardis provides evidence export with digest/hash-chain integrity metadata:
 - `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
