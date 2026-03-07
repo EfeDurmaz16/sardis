@@ -1,0 +1,234 @@
+openapi: "3.0.3"
+info:
+  title: Sardis Payment API
+  description: Policy-controlled payments for AI agents via Sardis.
+  version: "2.0.0"
+  contact:
+    name: Sardis
+    url: https://sardis.sh
+servers:
+  - url: https://api.sardis.sh
+    description: Production
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    TransferRequest:
+      type: object
+      required:
+        - to
+        - amount
+      properties:
+        to:
+          type: string
+          description: Merchant address or identifier
+          example: "merchant.sardis.sh"
+        amount:
+          type: number
+          format: float
+          description: Payment amount in USDC
+          example: 49.99
+        purpose:
+          type: string
+          description: Human-readable reason for the payment
+          default: "Payment"
+          example: "SaaS subscription renewal"
+        token:
+          type: string
+          description: Token to pay with
+          default: "USDC"
+          enum: [USDC, EURC, USDT, PYUSD]
+
+    TransferResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [APPROVED, BLOCKED]
+        tx_id:
+          type: string
+          nullable: true
+        message:
+          type: string
+        amount:
+          type: number
+        merchant:
+          type: string
+
+    BalanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        balance:
+          type: number
+          description: Current wallet balance
+        remaining:
+          type: number
+          description: Remaining spend limit for the current period
+        token:
+          type: string
+
+    PolicyCheckRequest:
+      type: object
+      required:
+        - amount
+        - merchant
+      properties:
+        amount:
+          type: number
+          format: float
+          description: Proposed payment amount
+          example: 100.0
+        merchant:
+          type: string
+          description: Merchant address or identifier
+          example: "vendor.example.com"
+
+    PolicyCheckResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+        balance:
+          type: number
+        remaining:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+paths:
+  /v2/wallets/{wallet_id}/transfer:
+    post:
+      operationId: executePayment
+      summary: Execute a payment
+      description: Execute a policy-controlled payment from a Sardis agent wallet. The payment is validated against the wallet's spending policy before execution.
+      tags:
+        - Payments
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sardis wallet ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      responses:
+        "200":
+          description: Payment processed (check `success` field for approval/block status)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v2/wallets/{wallet_id}/balance:
+    get:
+      operationId: getBalance
+      summary: Check wallet balance
+      description: Retrieve the current balance and remaining spend limit for a Sardis wallet.
+      tags:
+        - Wallets
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sardis wallet ID
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+            default: USDC
+            enum: [USDC, EURC, USDT, PYUSD]
+          description: Token to query balance for
+      responses:
+        "200":
+          description: Wallet balance and limits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v2/payments/policy-check:
+    post:
+      operationId: checkPolicy
+      summary: Check spending policy
+      description: Dry-run a payment against the wallet's spending policy without executing it. Useful for pre-flight checks before committing to a payment.
+      tags:
+        - Payments
+      parameters:
+        - name: wallet_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Sardis wallet ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyCheckRequest"
+      responses:
+        "200":
+          description: Policy evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyCheckResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
