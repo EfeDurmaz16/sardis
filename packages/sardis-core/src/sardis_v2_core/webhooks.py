@@ -729,6 +729,182 @@ class WebhookService:
             self._http_client = None
 
 
+class WebhookOutbox:
+    """Transactional outbox for guaranteed webhook delivery.
+
+    Pattern: Write webhook event to an outbox table inside the same DB
+    transaction as the business operation. A background worker polls
+    the outbox and delivers pending events via WebhookService.
+
+    This guarantees delivery even if the process crashes between the
+    business operation and webhook emission.
+
+    Usage:
+        # In a transaction:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("INSERT INTO payments ...")
+                await outbox.enqueue(conn, event)
+
+        # Background worker (call periodically):
+        await outbox.flush()
+    """
+
+    BATCH_SIZE = 50
+    MAX_ATTEMPTS = 5
+    STALE_SECONDS = 300  # Re-attempt events stuck in "sending" for 5+ min
+
+    def __init__(self, webhook_service: WebhookService, repository: WebhookRepository):
+        self._service = webhook_service
+        self._repo = repository
+        self._use_postgres = repository._use_postgres
+        # In-memory fallback for tests
+        self._queue: List[dict] = []
+
+    async def enqueue(self, conn, event: WebhookEvent) -> str:
+        """Write a webhook event to the outbox table.
+
+        MUST be called within the same DB transaction as the business
+        operation to guarantee atomicity.
+
+        Args:
+            conn: asyncpg connection (within a transaction)
+            event: The webhook event to deliver
+
+        Returns:
+            The outbox entry ID
+        """
+        outbox_id = f"outbox_{uuid4().hex[:16]}"
+        payload = event.to_json()
+
+        if self._use_postgres:
+            await conn.execute(
+                """
+                INSERT INTO webhook_outbox (
+                    outbox_id, event_id, event_type, payload,
+                    status, attempts, created_at
+                ) VALUES ($1, $2, $3, $4, 'pending', 0, NOW())
+                """,
+                outbox_id,
+                event.event_id,
+                event.event_type.value,
+                payload,
+            )
+        else:
+            self._queue.append({
+                "outbox_id": outbox_id,
+                "event_id": event.event_id,
+                "event_type": event.event_type.value,
+                "payload": payload,
+                "status": "pending",
+                "attempts": 0,
+                "event": event,
+            })
+
+        logger.debug("Outbox: enqueued %s (%s)", event.event_id, event.event_type.value)
+        return outbox_id
+
+    async def flush(self) -> int:
+        """Process pending outbox entries. Call periodically from a background worker.
+
+        Returns:
+            Number of events successfully delivered
+        """
+        if not self._use_postgres:
+            return await self._flush_memory()
+
+        from sardis_v2_core.database import Database
+        pool = await Database.get_pool()
+        delivered = 0
+
+        async with pool.acquire() as conn:
+            # Claim a batch of pending entries (or stale "sending" ones)
+            rows = await conn.fetch(
+                """
+                UPDATE webhook_outbox SET status = 'sending', attempts = attempts + 1
+                WHERE outbox_id IN (
+                    SELECT outbox_id FROM webhook_outbox
+                    WHERE (status = 'pending')
+                       OR (status = 'sending' AND updated_at < NOW() - INTERVAL '%s seconds')
+                    ORDER BY created_at ASC
+                    LIMIT $1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING outbox_id, event_id, event_type, payload, attempts
+                """ % self.STALE_SECONDS,
+                self.BATCH_SIZE,
+            )
+
+            for row in rows:
+                outbox_id = row["outbox_id"]
+                attempts = row["attempts"]
+
+                try:
+                    event = WebhookEvent(
+                        event_id=row["event_id"],
+                        event_type=EventType(row["event_type"]),
+                        data=json.loads(row["payload"]).get("data", {}),
+                    )
+                    await self._service.emit_and_wait(event)
+
+                    await conn.execute(
+                        "UPDATE webhook_outbox SET status = 'delivered', updated_at = NOW() WHERE outbox_id = $1",
+                        outbox_id,
+                    )
+                    delivered += 1
+
+                except Exception as e:
+                    logger.error("Outbox delivery failed for %s: %s", outbox_id, e)
+                    if attempts >= self.MAX_ATTEMPTS:
+                        await conn.execute(
+                            "UPDATE webhook_outbox SET status = 'failed', error = $2, updated_at = NOW() WHERE outbox_id = $1",
+                            outbox_id,
+                            str(e)[:500],
+                        )
+                    else:
+                        await conn.execute(
+                            "UPDATE webhook_outbox SET status = 'pending', error = $2, updated_at = NOW() WHERE outbox_id = $1",
+                            outbox_id,
+                            str(e)[:500],
+                        )
+
+        if delivered:
+            logger.info("Outbox: delivered %d/%d events", delivered, len(rows))
+        return delivered
+
+    async def _flush_memory(self) -> int:
+        """Flush in-memory queue (for tests)."""
+        delivered = 0
+        remaining = []
+        for entry in self._queue:
+            if entry["status"] != "pending":
+                remaining.append(entry)
+                continue
+            try:
+                await self._service.emit_and_wait(entry["event"])
+                entry["status"] = "delivered"
+                delivered += 1
+            except Exception:
+                entry["attempts"] += 1
+                if entry["attempts"] >= self.MAX_ATTEMPTS:
+                    entry["status"] = "failed"
+                remaining.append(entry)
+        self._queue = remaining
+        return delivered
+
+    async def pending_count(self) -> int:
+        """Return number of pending outbox entries."""
+        if not self._use_postgres:
+            return sum(1 for e in self._queue if e["status"] == "pending")
+        from sardis_v2_core.database import Database
+        pool = await Database.get_pool()
+        async with pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM webhook_outbox WHERE status IN ('pending', 'sending')"
+            )
+            return count or 0
+
+
 # Event factory functions
 def create_payment_event(
     event_type: EventType,
