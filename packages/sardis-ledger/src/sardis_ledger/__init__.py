@@ -80,6 +80,14 @@ from .engine import (
 
 from .db_engine import PostgresLedgerEngine
 
+from .content_hash import (
+    canonical_serialize,
+    compute_entry_hash,
+    compute_audit_hash,
+    verify_entry_chain,
+    HashChainError,
+)
+
 from .reconciliation import (
     # Types
     DiscrepancyType,
@@ -189,6 +197,12 @@ __all__ = [
     "LedgerEngine",
     # DB Engine
     "PostgresLedgerEngine",
+    # Content-addressed hashing (agit pattern)
+    "canonical_serialize",
+    "compute_entry_hash",
+    "compute_audit_hash",
+    "verify_entry_chain",
+    "HashChainError",
     # Reconciliation types
     "DiscrepancyType",
     "ResolutionStrategy",

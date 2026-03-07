@@ -173,22 +173,25 @@ class LedgerEntry:
         """Get total amount including fees."""
         return self.amount + self.fee
 
-    def compute_hash(self) -> str:
-        """Compute deterministic hash of entry for audit trail."""
-        data = "|".join([
-            self.entry_id,
-            self.tx_id,
-            self.account_id,
-            self.entry_type.value,
-            str(self.amount),
-            str(self.fee),
-            self.currency,
-            self.chain or "",
-            self.chain_tx_hash or "",
-            str(self.block_number or 0),
-            self.created_at.isoformat(),
-        ])
-        return hashlib.sha256(data.encode()).hexdigest()
+    # Content-addressed hash chain fields
+    entry_hash: Optional[str] = None
+    previous_hash: Optional[str] = None
+
+    def compute_hash(self, previous_hash: Optional[str] = None) -> str:
+        """Compute content-addressed hash using agit-style canonical serialization.
+
+        When `previous_hash` is provided, it forms a hash chain for tamper evidence.
+        """
+        from .content_hash import compute_entry_hash
+
+        prev = previous_hash if previous_hash is not None else self.previous_hash
+        return compute_entry_hash(self.to_dict(), previous_hash=prev)
+
+    def seal(self, previous_hash: Optional[str] = None) -> str:
+        """Compute and store the content-addressed hash, linking to chain."""
+        self.previous_hash = previous_hash
+        self.entry_hash = self.compute_hash(previous_hash)
+        return self.entry_hash
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -210,6 +213,8 @@ class LedgerEntry:
             "created_at": self.created_at.isoformat(),
             "confirmed_at": self.confirmed_at.isoformat() if self.confirmed_at else None,
             "version": self.version,
+            "entry_hash": self.entry_hash,
+            "previous_hash": self.previous_hash,
         }
 
 
@@ -294,18 +299,10 @@ class AuditLog:
     entry_hash: Optional[str] = None
 
     def compute_hash(self) -> str:
-        """Compute hash including previous entry for chain."""
-        import json
-        data = json.dumps({
-            "audit_id": self.audit_id,
-            "action": self.action.value,
-            "entity_type": self.entity_type,
-            "entity_id": self.entity_id,
-            "actor_id": self.actor_id,
-            "created_at": self.created_at.isoformat(),
-            "previous_hash": self.previous_hash or "",
-        }, sort_keys=True)
-        return hashlib.sha256(data.encode()).hexdigest()
+        """Compute content-addressed hash using agit-style canonical serialization."""
+        from .content_hash import compute_audit_hash
+
+        return compute_audit_hash(self.to_dict(), previous_hash=self.previous_hash)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
