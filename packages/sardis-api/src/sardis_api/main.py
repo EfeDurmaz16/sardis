@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 import json
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -113,6 +114,7 @@ from .routers import treasury_ops as treasury_ops_router
 from .routers import cpn as cpn_router
 from .routers import dev as dev_router
 from .routers import a2a as a2a_router
+from .routers import a2a_payments as a2a_payments_router
 from .routers import groups as groups_router
 from .routers import alerts as alerts_router
 from .routers import swap as swap_router
@@ -298,20 +300,26 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         jwks_provider = None
         if jwks_url:
             import httpx
-            _jwks_cache: dict[str, dict] = {}
+            _jwks_cache: dict[str, tuple[dict, float]] = {}  # kid -> (jwks, fetched_at)
+            _jwks_ttl = float(os.getenv("SARDIS_TAP_JWKS_TTL_SECONDS", "3600"))  # 1 hour default
 
             def _jwks_provider(kid: str) -> dict | None:
-                if kid in _jwks_cache:
-                    return _jwks_cache[kid]
+                now = time.monotonic()
+                cached = _jwks_cache.get(kid)
+                if cached and (now - cached[1]) < _jwks_ttl:
+                    return cached[0]
                 try:
                     with httpx.Client(timeout=5.0) as client:
                         resp = client.get(jwks_url)
                         if resp.status_code == 200:
                             jwks = resp.json()
-                            _jwks_cache[kid] = jwks
+                            _jwks_cache[kid] = (jwks, now)
                             return jwks
                 except (httpx.HTTPError, ValueError, TypeError) as e:
                     logger.warning(f"Failed to fetch JWKS from {jwks_url}: {e}")
+                    # Return stale cache if available
+                    if cached:
+                        return cached[0]
                 return None
 
             jwks_provider = _jwks_provider
@@ -943,6 +951,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
+    app.include_router(a2a_payments_router.router, prefix="/api/v2", tags=["a2a-payments"])
 
     # OfframpService (used by ramp + cards)
     offramp_service = None
