@@ -9,6 +9,7 @@ See: https://github.com/circlefin/refund-protocol
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
@@ -16,11 +17,20 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-# Circle RefundProtocol contract addresses (deploy per-chain)
-REFUND_PROTOCOL_ADDRESSES = {
-    "base": "",  # To be filled after mainnet deployment
-    "base_sepolia": "",  # To be filled after testnet deployment
-}
+def _get_refund_protocol_addresses() -> dict[str, str]:
+    """Resolve RefundProtocol addresses with env-var overrides.
+
+    Env vars: SARDIS_BASE_REFUND_PROTOCOL_ADDRESS,
+              SARDIS_BASE_SEPOLIA_REFUND_PROTOCOL_ADDRESS
+    """
+    return {
+        "base": os.getenv("SARDIS_BASE_REFUND_PROTOCOL_ADDRESS", ""),
+        "base_sepolia": os.getenv("SARDIS_BASE_SEPOLIA_REFUND_PROTOCOL_ADDRESS", ""),
+    }
+
+
+# Resolved at import time; override via env vars before import or call _get_*()
+REFUND_PROTOCOL_ADDRESSES = _get_refund_protocol_addresses()
 
 
 @dataclass
@@ -50,7 +60,8 @@ class CircleEscrowAdapter:
     def __init__(self, chain: str, arbiter_address: str):
         self._chain = chain
         self._arbiter_address = arbiter_address
-        self._contract_address = REFUND_PROTOCOL_ADDRESSES.get(chain, "")
+        # Re-resolve at init time so env vars set after import still work
+        self._contract_address = _get_refund_protocol_addresses().get(chain, "")
 
     async def create_escrow(
         self,
