@@ -104,8 +104,8 @@ export default function Roadmap() {
         { text: 'Fiat off-ramp via Bridge (sandbox/design-partner lane)', done: true },
         { text: 'Virtual card issuance (Lithic sandbox lane)', done: true },
         { text: 'Unified balance policy model with quote-based conversion (no fixed 1:1 claim)', done: true },
-        { text: 'KYC integration (Persona production onboarding)', done: false },
-        { text: 'AML screening (Elliptic production onboarding)', done: false },
+        { text: 'KYC integration (iDenfy production)', done: true },
+        { text: 'AML screening (Elliptic integration)', done: true },
       ],
     },
     {
@@ -348,8 +348,8 @@ export default function Roadmap() {
     {
       version: 'v0.10.0',
       title: 'ERC-4337 Implementation & Enterprise Features',
-      status: 'current',
-      date: 'Q1 2026 (In Progress)',
+      status: 'completed',
+      date: 'Mar 2026',
       items: [
         { text: 'P0: Immutable hard-limit layer for NL policy parser + fuzz/property tests', done: true },
         { text: 'P1: Agent-level sliding window limiter on payment endpoints', done: true },
@@ -369,8 +369,8 @@ export default function Roadmap() {
     {
       version: 'v0.10.1',
       title: 'Strict Live Mode + Operations Hardening',
-      status: 'upcoming',
-      date: 'Q2 2026',
+      status: 'current',
+      date: 'Q1 2026 (In Progress)',
       items: [
         { text: 'Simulated-path hard-disable guards expanded on production money movement routes', done: true },
         { text: 'Webhook and payment idempotency/replay proof gate elevated to release requirement', done: true },
@@ -420,9 +420,9 @@ export default function Roadmap() {
       {/* Progress Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-14">
         {[
-          { label: 'Completed', count: 18, color: 'bg-emerald-500' },
+          { label: 'Completed', count: 19, color: 'bg-emerald-500' },
           { label: 'In Progress', count: 1, color: 'bg-[var(--sardis-orange)]' },
-          { label: 'Upcoming', count: 2, color: 'bg-blue-500' },
+          { label: 'Upcoming', count: 1, color: 'bg-blue-500' },
           { label: 'Planned', count: 1, color: 'bg-slate-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-card/50 rounded-lg shadow-sm p-5 text-center">

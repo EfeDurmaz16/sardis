@@ -22,10 +22,7 @@ export default function DocsOverview() {
           <span className="px-2 py-1 bg-[var(--sardis-orange)]/10 border border-[var(--sardis-orange)]/30 text-[var(--sardis-orange)]">
             DOCUMENTATION
           </span>
-          <span>Updated Feb 15, 2026</span>
-          <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
-            95% COMPLETE
-          </span>
+          <span>Updated March 2026</span>
         </div>
         <h1 className="text-4xl font-bold font-display mb-4">Sardis Payment OS Documentation</h1>
         <p className="text-xl text-muted-foreground">
@@ -44,7 +41,7 @@ export default function DocsOverview() {
           errors by acting as a policy firewall, ensuring agents cannot overspend or transact outside defined limits.
         </p>
         <p className="text-muted-foreground leading-relaxed mb-4">
-          Sardis supports multiple payment rails: bank transfers (ACH/wire), virtual cards (Lithic), and stablecoins (USDC, USDT)
+          Sardis supports multiple payment rails: bank transfers (ACH/wire), virtual cards (Stripe Issuing), and stablecoins (USDC, USDT)
           as an optional settlement alternative. Compliance integrations run in staged lanes (for example Persona and Elliptic onboarding paths).
           No crypto knowledge required;
           agents can fund entirely from bank accounts. It integrates with popular agent frameworks using SDKs in Python and TypeScript.

@@ -205,9 +205,9 @@ contract SardisAgentWallet {
             <div><strong className="text-foreground">Social recovery</strong>: wallet recovery without seed phrases, using guardian-based recovery mechanisms.</div>
           </li>
         </ul>
-        <div className="not-prose p-4 border border-yellow-500/20 bg-yellow-500/5">
+        <div className="not-prose p-4 border border-emerald-500/20 bg-emerald-500/5">
           <p className="text-sm text-muted-foreground">
-            <strong className="text-yellow-500">Coming Soon:</strong> ERC-4337 support is currently in design phase. See the <a href="/docs/roadmap" className="text-[var(--sardis-orange)] hover:underline">Roadmap</a> for timeline.
+            <strong className="text-emerald-500">Supported:</strong> ERC-4337 account abstraction is available on Base via Circle Paymaster for gasless USDC transactions. See the <a href="/docs/roadmap" className="text-[var(--sardis-orange)] hover:underline">Roadmap</a> for multi-chain rollout.
           </p>
         </div>
       </section>

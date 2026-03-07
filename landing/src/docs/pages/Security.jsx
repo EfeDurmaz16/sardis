@@ -409,18 +409,15 @@ export default function DocsSecurity() {
         </div>
       </section>
 
-      <section className="not-prose p-6 border border-red-500/30 bg-red-500/5">
-        <h3 className="font-bold font-display mb-2 text-red-500">Responsible Disclosure</h3>
+      <section className="not-prose p-6 border border-border bg-card/50">
+        <h3 className="font-bold font-display mb-2 text-foreground">Security Contact</h3>
         <p className="text-muted-foreground text-sm mb-4">
-          If you discover a security vulnerability, please report it responsibly:
+          If you discover a security concern, please reach out to us directly:
         </p>
         <div className="bg-[var(--sardis-ink)] dark:bg-[#1a1a1a] border border-border p-3 font-mono text-sm">
           <span className="text-muted-foreground">Email:</span>{' '}
           <a href="mailto:dev@sardis.sh" className="text-[var(--sardis-orange)]">dev@sardis.sh</a>
         </div>
-        <p className="text-muted-foreground text-sm mt-4">
-          We offer a bug bounty program for qualifying vulnerabilities. Rewards up to $10,000 for critical issues.
-        </p>
       </section>
     </article>
     </>

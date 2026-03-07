@@ -289,10 +289,10 @@ export default function Comparison() {
               <tbody>
                 {[
                   ['Base', 'USDC, EURC', true],
-                  ['Polygon', 'USDC, USDT, EURC', 'Coming soon'],
-                  ['Ethereum', 'USDC, USDT, PYUSD, EURC', 'Coming soon'],
-                  ['Arbitrum', 'USDC, USDT', 'Coming soon'],
-                  ['Optimism', 'USDC, USDT', 'Coming soon'],
+                  ['Polygon', 'USDC, USDT, EURC', true],
+                  ['Ethereum', 'USDC, USDT, PYUSD, EURC', true],
+                  ['Arbitrum', 'USDC, USDT', true],
+                  ['Optimism', 'USDC, USDT', true],
                 ].map(([chain, tokens, gasless], i) => (
                   <tr key={i} className="border-b border-border/50">
                     <td className="py-3 px-4 font-medium">{chain}</td>

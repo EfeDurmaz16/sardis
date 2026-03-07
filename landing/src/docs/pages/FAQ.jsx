@@ -46,11 +46,11 @@ const faqs = [
       },
       {
         q: 'Is Sardis custodial or non-custodial?',
-        a: 'For stablecoin wallets in live MPC mode (Turnkey/Fireblocks), Sardis operates in a non-custodial posture - Sardis never holds or has access to agent funds. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (Bridge, Lithic), so custody and settlement are partner-mediated for that portion of the flow.'
+        a: 'For stablecoin wallets in live MPC mode (Turnkey/Fireblocks), Sardis operates in a non-custodial posture - Sardis never holds or has access to agent funds. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (Bridge, Stripe Issuing), so custody and settlement are partner-mediated for that portion of the flow.'
       },
       {
         q: 'What is the Unified Wallet Architecture?',
-        a: 'The Unified Wallet Architecture combines three payment rails under one API: Bank Transfer (USD, EUR via ACH/wire), Virtual Cards (Lithic Visa/Mastercard), and Stablecoins (USDC, USDT as an optional settlement rail). All three are governed by the same Policy Engine, so "Max $100/day on AWS" applies whether you pay via bank transfer, card swipe, or stablecoin.'
+        a: 'The Unified Wallet Architecture combines three payment rails under one API: Bank Transfer (USD, EUR via ACH/wire), Virtual Cards (Stripe Issuing Visa/Mastercard), and Stablecoins (USDC, USDT as an optional settlement rail). All three are governed by the same Policy Engine, so "Max $100/day on AWS" applies whether you pay via bank transfer, card swipe, or stablecoin.'
       },
       {
         q: 'How is Sardis different from giving my agent a credit card?',
@@ -175,7 +175,7 @@ const faqs = [
       },
       {
         q: 'Does Sardis support KYC and AML compliance?',
-        a: 'Yes. Sardis integrates with Persona for KYC identity verification and Elliptic for AML/sanctions screening. All transactions are checked against sanctions lists before execution. The append-only audit trail provides regulatory-grade reporting for compliance requirements.'
+        a: 'Yes. Sardis integrates with iDenfy for KYC identity verification and Elliptic for AML/sanctions screening. All transactions are checked against sanctions lists before execution. The append-only audit trail provides regulatory-grade reporting for compliance requirements.'
       },
     ]
   },
@@ -184,11 +184,11 @@ const faqs = [
     questions: [
       {
         q: 'What payment methods do AI agents support with Sardis?',
-        a: 'Sardis supports three payment rails for AI agents: (1) Stablecoin payments - USDC, USDT, EURC, PYUSD on Base, Polygon, Ethereum, Arbitrum, and Optimism. (2) Virtual cards - instant Visa/Mastercard issuance via Lithic for paying any merchant online or in-store. (3) Bank transfers - ACH and wire transfers for USD funding and withdrawals. All three rails are governed by the same Policy Engine.'
+        a: 'Sardis supports three payment rails for AI agents: (1) Stablecoin payments - USDC, USDT, EURC, PYUSD on Base, Polygon, Ethereum, Arbitrum, and Optimism. (2) Virtual cards - instant Visa/Mastercard issuance via Stripe Issuing for paying any merchant online or in-store. (3) Bank transfers - ACH and wire transfers for USD funding and withdrawals. All three rails are governed by the same Policy Engine.'
       },
       {
         q: 'How do virtual cards work for AI agents?',
-        a: 'Sardis issues virtual Visa/Mastercard cards on-demand via Lithic integration. Each agent can get its own card with per-card spending limits and merchant restrictions. Cards work anywhere Visa/Mastercard is accepted - online and physical POS. Cards are backed by the agent wallet balance and governed by the same policy engine as stablecoin payments.'
+        a: 'Sardis issues virtual Visa/Mastercard cards on-demand via Stripe Issuing. Each agent can get its own card with per-card spending limits and merchant restrictions. Cards work anywhere Visa/Mastercard is accepted - online and physical POS. Cards are backed by the agent wallet balance and governed by the same policy engine as stablecoin payments.'
       },
       {
         q: 'What are the default spending limits?',
