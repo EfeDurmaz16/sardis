@@ -37,9 +37,6 @@ fi
 echo "Starting Sardis API Server..."
 echo "  - Environment: $SARDIS_ENVIRONMENT"
 echo "  - Cards enabled: $SARDIS_ENABLE_CARDS"
-echo "  - Admin password: $SARDIS_ADMIN_PASSWORD"
-echo ""
-echo "Dashboard login: admin / $SARDIS_ADMIN_PASSWORD"
 echo ""
 
 # Run with uv
