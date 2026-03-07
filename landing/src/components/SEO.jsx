@@ -119,7 +119,7 @@ export function createSoftwareAppSchema() {
     featureList: [
       'Non-custodial MPC wallets for AI agents',
       'Natural language spending policies',
-      'Multi-chain support (Base, Polygon, Ethereum, Arbitrum, Optimism)',
+      'Execution on Base, multi-chain funding via CCTP v2 (Ethereum, Polygon, Arbitrum, Optimism)',
       'Virtual Visa/Mastercard card issuance',
       'Fiat on/off-ramp (ACH, wire, card)',
       'AP2, TAP, UCP, A2A, x402 protocol support',

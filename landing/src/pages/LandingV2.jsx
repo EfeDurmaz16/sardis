@@ -53,7 +53,7 @@ export default function LandingV2() {
     <div className="min-h-screen [font-synthesis:none]" style={{ backgroundColor: 'var(--landing-bg)' }}>
       <SEO
         title="Sardis: The Payment OS for the Agent Economy"
-        description="AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, multi-chain payments."
+        description="AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Base with multi-chain funding."
       />
 
       <Navbar onOpenWaitlist={() => setWaitlistOpen(true)} />

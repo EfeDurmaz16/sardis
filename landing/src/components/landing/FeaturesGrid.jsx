@@ -37,8 +37,8 @@ const cards = [
   },
   {
     Icon: Layers,
-    title: 'Multi-Chain',
-    desc: 'Six chains, eight stablecoins. Seamless routing with CCTP cross-chain transfers built in.',
+    title: 'Multi-Chain Funding',
+    desc: 'Execute on Base. Fund from any chain via CCTP v2 cross-chain transfers. USDC arrives automatically.',
   },
   {
     Icon: UserCheck,

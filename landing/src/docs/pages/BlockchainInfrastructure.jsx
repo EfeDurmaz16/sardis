@@ -46,11 +46,19 @@ export default function DocsBlockchainInfrastructure() {
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Supported Chains
         </h2>
-        <p className="text-muted-foreground mb-6">
-          Sardis supports multiple L1 and L2 networks for settlement. Chain selection is automatic: we route to the cheapest and fastest available rail.
+        <p className="text-muted-foreground mb-4">
+          Sardis executes all transactions on <strong className="text-foreground">Base</strong> — the lowest-cost, highest-throughput L2 with native USDC support. Agents can fund wallets from any supported chain via CCTP v2 cross-chain transfers, which automatically consolidate USDC to Base.
         </p>
 
-        <div className="not-prose">
+        <div className="not-prose p-4 border border-[var(--sardis-orange)]/20 bg-[var(--sardis-orange)]/5 mb-6">
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">Execution vs Funding:</strong> All payment execution and smart contract interactions happen on Base.
+            Multi-chain support refers to <em>funding</em> — agents can receive USDC from Ethereum, Polygon, Arbitrum, or Optimism, and it arrives on Base automatically via Circle's CCTP v2.
+          </p>
+        </div>
+
+        <h3 className="text-lg font-bold font-display mb-3">Execution Chain</h3>
+        <div className="not-prose mb-6">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -70,33 +78,50 @@ export default function DocsBlockchainInfrastructure() {
                   <td className="py-3 px-4">~$0.001</td>
                   <td className="py-3 px-4">~2 seconds</td>
                 </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 px-4 font-mono text-[var(--sardis-orange)]">Polygon</td>
-                  <td className="py-3 px-4">L2 (PoS)</td>
-                  <td className="py-3 px-4">USDC, USDT, EURC</td>
-                  <td className="py-3 px-4">~$0.01</td>
-                  <td className="py-3 px-4">~2 seconds</td>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3 className="text-lg font-bold font-display mb-3">Funding Chains (via CCTP v2)</h3>
+        <p className="text-muted-foreground mb-4 text-sm">
+          Send USDC from any of these chains to fund your Sardis agent wallet. Funds are automatically bridged to Base.
+        </p>
+        <div className="not-prose">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-mono font-bold text-foreground">Chain</th>
+                  <th className="text-left py-3 px-4 font-mono font-bold text-foreground">Type</th>
+                  <th className="text-left py-3 px-4 font-mono font-bold text-foreground">Tokens</th>
+                  <th className="text-left py-3 px-4 font-mono font-bold text-foreground">Bridge Time</th>
                 </tr>
+              </thead>
+              <tbody className="text-muted-foreground">
                 <tr className="border-b border-border/50">
-                  <td className="py-3 px-4 font-mono text-[var(--sardis-orange)]">Arbitrum</td>
-                  <td className="py-3 px-4">L2 (Optimistic)</td>
-                  <td className="py-3 px-4">USDC, USDT</td>
-                  <td className="py-3 px-4">~$0.005</td>
-                  <td className="py-3 px-4">~1 second</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 px-4 font-mono text-[var(--sardis-orange)]">Optimism</td>
-                  <td className="py-3 px-4">L2 (Optimistic)</td>
-                  <td className="py-3 px-4">USDC, USDT</td>
-                  <td className="py-3 px-4">~$0.005</td>
-                  <td className="py-3 px-4">~2 seconds</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="py-3 px-4 font-mono text-[var(--sardis-orange)]">Ethereum</td>
+                  <td className="py-3 px-4 font-mono text-muted-foreground">Ethereum</td>
                   <td className="py-3 px-4">L1</td>
-                  <td className="py-3 px-4">USDC, USDT, PYUSD, EURC</td>
-                  <td className="py-3 px-4">~$2-5</td>
-                  <td className="py-3 px-4">~12 seconds</td>
+                  <td className="py-3 px-4">USDC</td>
+                  <td className="py-3 px-4">~15 minutes</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-3 px-4 font-mono text-muted-foreground">Polygon</td>
+                  <td className="py-3 px-4">L2 (PoS)</td>
+                  <td className="py-3 px-4">USDC</td>
+                  <td className="py-3 px-4">~15 minutes</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-3 px-4 font-mono text-muted-foreground">Arbitrum</td>
+                  <td className="py-3 px-4">L2 (Optimistic)</td>
+                  <td className="py-3 px-4">USDC</td>
+                  <td className="py-3 px-4">~15 minutes</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-3 px-4 font-mono text-muted-foreground">Optimism</td>
+                  <td className="py-3 px-4">L2 (Optimistic)</td>
+                  <td className="py-3 px-4">USDC</td>
+                  <td className="py-3 px-4">~15 minutes</td>
                 </tr>
               </tbody>
             </table>

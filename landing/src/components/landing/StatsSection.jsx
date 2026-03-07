@@ -1,5 +1,5 @@
 const stats = [
-  { number: '6', label: 'Supported Chains' },
+  { number: '5', label: 'Funding Chains' },
   { number: '52', label: 'MCP Tools' },
   { number: '8+', label: 'Stablecoins' },
   { number: 'BSL', label: 'Source Available' },

@@ -495,7 +495,7 @@ const SardisPlayground = () => {
 
             {/* Footer */}
             <div className="bg-muted px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground font-mono">
-                <span>Powered by MPC • Non-Custodial • Multi-Chain</span>
+                <span>Powered by MPC • Non-Custodial • Base + CCTP v2</span>
                 <span>Try the demo above</span>
             </div>
         </div>

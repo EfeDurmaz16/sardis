@@ -44,8 +44,8 @@ const comparisonData = [
     custodialWallet: false,
   },
   {
-    feature: 'Multi-chain support',
-    sardis: '5 chains',
+    feature: 'Multi-chain funding',
+    sardis: 'Base execution + 4 funding chains',
     creditCard: 'N/A',
     bankApi: 'N/A',
     custodialWallet: 'Varies',

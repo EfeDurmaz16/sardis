@@ -150,7 +150,7 @@ const faqs = [
       },
       {
         q: 'Which blockchains does Sardis support?',
-        a: 'Sardis supports five EVM chains: Base (USDC, EURC), Polygon (USDC, USDT, EURC), Ethereum (USDC, USDT, PYUSD, EURC), Arbitrum (USDC, USDT), and Optimism (USDC, USDT). Gas estimation, chain routing, and multi-chain wallet management are handled automatically.'
+        a: 'Sardis executes all payments on Base (USDC, EURC) for optimal cost and speed. Agents can fund wallets from Ethereum, Polygon, Arbitrum, and Optimism via Circle CCTP v2 — USDC bridged automatically to Base. Gas estimation and wallet management are handled automatically.'
       },
     ]
   },
