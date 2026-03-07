@@ -38,24 +38,66 @@ from .exceptions import create_error_response, get_request_id
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class NonceCache:
-    """In-memory nonce cache with TTL-based automatic cleanup."""
+    """Nonce cache with Redis backend for multi-instance deployments.
 
-    _nonces: Set[str] = field(default_factory=set)
-    _timestamps: dict[str, int] = field(default_factory=dict)
-    _lock: Lock = field(default_factory=Lock)
-    ttl_seconds: int = 600  # 10 minutes default
-    _last_cleanup: int = field(default_factory=lambda: int(time.time()))
+    Falls back to in-memory when Redis is unavailable.
+    Uses Redis SISMEMBER/SADD for O(1) replay detection with per-nonce TTL.
+    """
+
+    def __init__(self, ttl_seconds: int = 600) -> None:
+        self.ttl_seconds = ttl_seconds
+        self._redis = None
+        self._redis_available = False
+        self._init_redis()
+        # In-memory fallback
+        self._nonces: Set[str] = set()
+        self._timestamps: dict[str, int] = {}
+        self._lock = Lock()
+        self._last_cleanup: int = int(time.time())
+
+    def _init_redis(self) -> None:
+        redis_url = (
+            os.getenv("SARDIS_REDIS_URL")
+            or os.getenv("REDIS_URL")
+            or os.getenv("UPSTASH_REDIS_URL")
+            or ""
+        )
+        if redis_url:
+            try:
+                import redis as redis_sync
+                self._redis = redis_sync.from_url(redis_url, decode_responses=True)
+                self._redis.ping()
+                self._redis_available = True
+                logger.info("TAP nonce cache using Redis backend")
+            except Exception as e:
+                logger.warning("Redis TAP nonce cache failed (%s), using in-memory", e)
+                self._redis = None
+                self._redis_available = False
 
     def contains(self, nonce: str) -> bool:
         """Check if nonce exists in cache."""
+        if self._redis_available and self._redis:
+            try:
+                return bool(self._redis.sismember("sardis:tap:nonces", nonce))
+            except Exception:
+                pass
         with self._lock:
             self._cleanup_expired()
             return nonce in self._nonces
 
     def add(self, nonce: str) -> None:
-        """Add nonce to cache with current timestamp."""
+        """Add nonce to cache with TTL."""
+        if self._redis_available and self._redis:
+            try:
+                # Use a per-nonce key with TTL for automatic expiry
+                pipe = self._redis.pipeline()
+                pipe.sadd("sardis:tap:nonces", nonce)
+                pipe.set(f"sardis:tap:nonce:{nonce}", "1", ex=self.ttl_seconds)
+                pipe.execute()
+                return
+            except Exception:
+                pass
         with self._lock:
             self._cleanup_expired()
             now = int(time.time())
@@ -63,26 +105,19 @@ class NonceCache:
             self._timestamps[nonce] = now
 
     def _cleanup_expired(self) -> None:
-        """Remove expired nonces (called automatically on access)."""
+        """Remove expired nonces from in-memory fallback."""
         now = int(time.time())
-
-        # Only cleanup every 60 seconds to reduce overhead
         if now - self._last_cleanup < 60:
             return
-
         self._last_cleanup = now
         expired = {
             nonce
             for nonce, timestamp in self._timestamps.items()
             if now - timestamp > self.ttl_seconds
         }
-
         for nonce in expired:
             self._nonces.discard(nonce)
             self._timestamps.pop(nonce, None)
-
-        if expired:
-            logger.debug(f"Cleaned up {len(expired)} expired nonces from cache")
 
 
 @dataclass
