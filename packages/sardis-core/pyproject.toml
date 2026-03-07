@@ -55,6 +55,9 @@ nl-parser = [
 spending-tracker = [
     "redis>=5.0",
 ]
+temporal = [
+    "temporalio>=1.4",
+]
 dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.21",
