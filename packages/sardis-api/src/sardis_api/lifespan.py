@@ -399,8 +399,8 @@ async def lifespan(app: FastAPI):
                         retried = 0
                         for m in merchants:
                             if m.settlement_preference == "fiat":
-                                count = await svc.settle_merchant(m.merchant_id)
-                                retried += count
+                                result = await svc.settle_merchant(m.merchant_id)
+                                retried += result.get("settled", 0)
                         if retried:
                             logger.info("Settlement retry job: retried %d sessions", retried)
                     background_jobs_total.labels(
