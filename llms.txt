@@ -249,6 +249,39 @@ SARDIS_CHAIN=base               # Default chain
 - **Main focus**: deterministic policy enforcement, replay/idempotency proofs, and incident-evidence automation
 - **Live-track**: provider certification + PCI boundary finalization for PAN lane
 
+## Framework Integrations
+
+Sardis works with every major AI agent framework. One payment layer, every platform.
+
+### Python
+- **Browser Use**: `pip install sardis-browser-use` — register_sardis_actions(controller)
+- **CrewAI**: `pip install sardis-crewai` — BaseTool subclasses + create_sardis_toolkit()
+- **AutoGPT**: `pip install sardis-autogpt` — Block SDK with SardisPayBlock
+- **OpenAI Agents SDK**: `pip install sardis-openai-agents` — @function_tool decorated tools
+- **Composio**: `pip install sardis-composio` — Plain functions + OpenAPI spec
+- **LangChain**: `pip install sardis-langchain` — LangChain BaseTool integration
+- **LlamaIndex**: Built-in via sardis-sdk
+
+### TypeScript
+- **Vercel AI SDK**: `npm install @sardis/ai-sdk` — tool() definitions for generateText/streamText
+- **Stagehand/Browserbase**: `npm install @sardis/stagehand` — createSardisTools() with zod schemas
+- **n8n**: `npm install n8n-nodes-sardis` — Community node with 3 operations
+- **Activepieces**: `npm install @activepieces/piece-sardis` — Workflow piece
+
+### Platforms
+- **MCP**: `npx @sardis/mcp-server start` — 52 tools for Claude Desktop, Cursor, etc.
+- **ChatGPT**: Custom GPT with OpenAPI Actions (sardis-gpt package)
+- **E2B**: Docker template with Sardis pre-installed (sardis-e2b package)
+
+### Usage Pattern (all frameworks)
+```python
+from sardis import SardisClient
+client = SardisClient()  # simulation mode, no API key needed
+wallet = client.wallets.create(name="agent", policy="Max $100/day")
+tx = wallet.pay(to="vendor.com", amount=25.00)
+print(tx.success)  # True
+```
+
 ## Links
 
 - Website: https://sardis.sh

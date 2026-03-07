@@ -48,7 +48,18 @@ sardis/
 │   ├── sardis-sdk-python/  # Full Python SDK
 │   ├── sardis-sdk-js/      # TypeScript SDK
 │   ├── sardis-cli/         # Command-line tool
-│   └── sardis-checkout/    # Merchant checkout flows
+│   ├── sardis-checkout/    # Merchant checkout flows
+│   ├── sardis-browser-use/  # Browser Use integration (78k stars)
+│   ├── sardis-crewai/       # CrewAI multi-agent integration
+│   ├── sardis-autogpt/      # AutoGPT block integration (180k stars)
+│   ├── sardis-openai-agents/ # OpenAI Agents SDK integration
+│   ├── sardis-composio/     # Composio tool marketplace
+│   ├── sardis-stagehand/    # Stagehand/Browserbase integration
+│   ├── sardis-ai-sdk/       # Vercel AI SDK integration
+│   ├── n8n-nodes-sardis/    # n8n workflow automation node
+│   ├── sardis-activepieces/ # Activepieces workflow piece
+│   ├── sardis-e2b/          # E2B sandbox template
+│   └── sardis-gpt/          # ChatGPT Custom GPT Actions
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol

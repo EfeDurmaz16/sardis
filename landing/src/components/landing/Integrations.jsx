@@ -6,9 +6,9 @@ const integrations = [
     icons: ["/icons/integrations/claude.svg", "/icons/integrations/mcp.svg"],
   },
   {
-    name: "OpenAI / GPT",
-    tools: "Strict JSON",
-    desc: "Function calling with strict JSON schema validation. Drop-in for any GPT-based agent.",
+    name: "OpenAI / Agents SDK",
+    tools: "@function_tool",
+    desc: "Function calling with strict JSON schema. Native Agents SDK integration with get_sardis_tools().",
     icons: ["/icons/integrations/openai-2.svg"],
   },
   {
@@ -19,26 +19,58 @@ const integrations = [
   },
   {
     name: "LangChain / CrewAI",
-    tools: "Native tools",
-    desc: "Tool integrations for LangChain agents and CrewAI multi-agent orchestration workflows.",
+    tools: "BaseTool",
+    desc: "Tool integrations for LangChain agents and CrewAI multi-agent orchestration. create_sardis_toolkit() for instant setup.",
     icons: ["/icons/integrations/langchain.svg", "/icons/integrations/crewai.svg"],
   },
   {
     name: "Vercel AI SDK",
-    tools: "TypeScript-first",
-    desc: "TypeScript-first integration for the Vercel AI SDK. Streaming-compatible tool definitions.",
+    tools: "tool()",
+    desc: "TypeScript-first integration with streaming-compatible tool definitions. Works with generateText and streamText.",
     icons: ["/icons/integrations/vercel.svg"],
   },
   {
-    name: "OpenClaw",
-    tools: "Skill",
-    desc: "Available as an OpenClaw skill — the fastest way to give any agent financial powers. send_payment, create_card, set_policy.",
-    icons: ["/icons/integrations/openclaw.svg"],
+    name: "Browser Use",
+    tools: "3 actions",
+    desc: "Give browser automation agents payment capabilities. register_sardis_actions() on any controller.",
+    icons: null,
+    fallbackIcon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M3 9h18M9 3v6" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
   },
   {
-    name: "REST API",
-    tools: "8 endpoints",
-    desc: "OpenAPI 3.0 spec. If your framework speaks HTTP, it works with Sardis.",
+    name: "AutoGPT",
+    tools: "Block SDK",
+    desc: "Official payment blocks for AutoGPT. SardisPayBlock, SardisBalanceBlock with Pydantic I/O schemas.",
+    icons: null,
+    fallbackIcon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    name: "n8n / Activepieces",
+    tools: "Workflow nodes",
+    desc: "No-code workflow automation. Send payments, check balances, and enforce policies from visual workflows.",
+    icons: null,
+    fallbackIcon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="6" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="18" cy="6" r="3" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="18" cy="18" r="3" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M9 11l6-4M9 13l6 4" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+  {
+    name: "REST / ChatGPT",
+    tools: "OpenAPI 3.1",
+    desc: "OpenAPI spec for ChatGPT Actions, Composio, and any HTTP client. If your framework speaks HTTP, it works with Sardis.",
     icons: null,
     fallbackIcon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -70,7 +102,7 @@ export default function Integrations() {
               color: 'var(--landing-text-primary)',
             }}
           >
-            One payment layer. Every AI platform.
+            One payment layer. Every AI framework.
           </h2>
         </div>
 

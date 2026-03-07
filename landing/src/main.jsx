@@ -30,6 +30,7 @@ import DocsMCPServer from './docs/pages/MCPServer.jsx'
 import DocsSDK from './docs/pages/SDK.jsx'
 import APIReference from './docs/pages/APIReference.jsx'
 // Framework Integrations
+import DocsIntegrations from './docs/pages/Integrations.jsx'
 import DocsIntegrationLangChain from './docs/pages/IntegrationLangChain.jsx'
 import DocsIntegrationCrewAI from './docs/pages/IntegrationCrewAI.jsx'
 import DocsIntegrationADK from './docs/pages/IntegrationADK.jsx'
@@ -118,6 +119,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="sdk" element={<DocsSDK />} />
           <Route path="api-reference" element={<APIReference />} />
           {/* Framework Integrations */}
+          <Route path="integrations" element={<DocsIntegrations />} />
           <Route path="integration-langchain" element={<DocsIntegrationLangChain />} />
           <Route path="integration-crewai" element={<DocsIntegrationCrewAI />} />
           <Route path="integration-adk" element={<DocsIntegrationADK />} />

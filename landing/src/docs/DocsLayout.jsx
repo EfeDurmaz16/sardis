@@ -53,6 +53,7 @@ const navigation = [
   {
     title: 'Framework Integrations',
     items: [
+      { name: 'Overview', href: '/docs/integrations' },
       { name: 'LangChain', href: '/docs/integration-langchain' },
       { name: 'CrewAI', href: '/docs/integration-crewai' },
       { name: 'Google ADK', href: '/docs/integration-adk' },
