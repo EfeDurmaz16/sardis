@@ -83,6 +83,14 @@ class EventType(str, Enum):
     COMPLIANCE_CHECK_FAILED = "compliance.check.failed"
     COMPLIANCE_ALERT = "compliance.alert"
 
+    # A2A events
+    A2A_PAYMENT_INITIATED = "a2a.payment.initiated"
+    A2A_PAYMENT_COMPLETED = "a2a.payment.completed"
+    A2A_PAYMENT_FAILED = "a2a.payment.failed"
+    A2A_ESCROW_FUNDED = "a2a.escrow.funded"
+    A2A_ESCROW_RELEASED = "a2a.escrow.released"
+    A2A_ESCROW_REFUNDED = "a2a.escrow.refunded"
+
     # Group events
     GROUP_BUDGET_WARNING = "group.budget.warning"
     GROUP_BUDGET_EXCEEDED = "group.budget.exceeded"
