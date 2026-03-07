@@ -190,7 +190,17 @@ site/
 
 # Screenshots (local only)
 sardis-*.png
+landing-*.png
 t54-homepage.png
+
+# MCP config (local)
+.mcp.json
+
+# Session continuation files
+2026-*-this-session-*.txt
+
+# Temporary files
+tmp/
 
 # Internal team docs
 gv-team.md
