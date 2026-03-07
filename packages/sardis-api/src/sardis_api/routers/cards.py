@@ -15,6 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
@@ -430,6 +432,8 @@ def create_cards_router(
         payload: FundCardRequest,
         http_request: Request,
         principal: Principal = Depends(require_principal),
+        _ks: None = Depends(require_kill_switch_clear),
+        _cap: None = Depends(enforce_transaction_caps),
     ):
         card = await card_repo.get_by_card_id(card_id)
         if not card:

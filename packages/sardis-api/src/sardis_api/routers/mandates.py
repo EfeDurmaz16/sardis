@@ -14,6 +14,9 @@ import json
 
 from sardis_api.authz import require_principal
 from sardis_api.authz import Principal
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_v2_core import AgentRepository
 
 from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
@@ -349,6 +352,8 @@ async def execute_stored_mandate(
     mandate_id: str,
     deps: Dependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ):
     """Execute a previously created mandate."""
     stored = await _get_mandate(mandate_id)
@@ -366,6 +371,11 @@ async def execute_stored_mandate(
     
     if stored.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mandate was cancelled")
+
+    await enforce_agent_payment_rate_limit(
+        agent_id=stored.mandate.subject,
+        operation="mandates.execute_stored",
+    )
 
     # Resolve wallet + enforce freeze gate (CRITICAL: blocks all transactions)
     wallet = await deps.wallet_repository.get_by_agent(stored.mandate.subject)
@@ -467,6 +477,8 @@ async def execute_payment_mandate(
     request: Request,
     deps: Dependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ):
     """Execute a payment mandate directly (legacy endpoint)."""
     agent = await deps.agent_repo.get(payload.mandate.subject)
@@ -474,6 +486,11 @@ async def execute_payment_mandate(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    await enforce_agent_payment_rate_limit(
+        agent_id=payload.mandate.subject,
+        operation="mandates.execute",
+    )
 
     idem_key = get_idempotency_key(request) or payload.mandate.mandate_id
 

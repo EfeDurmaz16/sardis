@@ -21,6 +21,8 @@ from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_api.authz import require_principal
 from sardis_api.authz import Principal
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_v2_core import AgentRepository
 
@@ -213,6 +215,8 @@ async def execute_payment(
     payload: MandatePayload,
     deps: Dependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
+    _ks: None = Depends(require_kill_switch_clear),
+    _cap: None = Depends(enforce_transaction_caps),
 ):
     """
     Validate + execute a single-rail Base Sepolia USDC payment.

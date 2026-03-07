@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
+from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +288,7 @@ async def pay_session(
     client_secret: str,
     body: PayRequest,
     deps: MerchantCheckoutDependencies = Depends(get_deps),
+    _ks: None = Depends(require_kill_switch_clear_checkout),
 ):
     """Execute payment from connected wallet."""
     session = await _get_session_by_secret(client_secret, deps)

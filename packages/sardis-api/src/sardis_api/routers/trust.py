@@ -4,8 +4,10 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
 
 from sardis_v2_core.kya_trust_scoring import (
     TrustScorer,
@@ -244,7 +246,10 @@ async def create_cascade_payment(req: CascadePaymentRequest) -> Dict[str, Any]:
 
 
 @router.post("/payments/{flow_id}/execute")
-async def execute_payment_flow(flow_id: str) -> Dict[str, Any]:
+async def execute_payment_flow(
+    flow_id: str,
+    _ks: None = Depends(require_kill_switch_clear_checkout),
+) -> Dict[str, Any]:
     """Execute a payment flow."""
     try:
         flow = await _orchestrator.execute_flow(flow_id)
