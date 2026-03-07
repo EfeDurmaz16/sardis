@@ -36,6 +36,29 @@ class WebhookEvidenceResponse(BaseModel):
     deliveries: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class PolicyDecisionSummary(BaseModel):
+    """Summary of a policy decision for list endpoints."""
+    decision_id: str
+    agent_id: str
+    mandate_id: Optional[str] = None
+    verdict: str
+    evidence_hash: str
+    created_at: str
+
+
+class PolicyDecisionDetailResponse(BaseModel):
+    """Full policy decision evidence bundle."""
+    decision_id: str
+    agent_id: str
+    mandate_id: Optional[str] = None
+    policy_version_id: Optional[str] = None
+    verdict: str
+    steps: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_hash: str
+    group_hierarchy: Optional[list[str]] = None
+    created_at: str
+
+
 @router.get("/transactions/{tx_id}", response_model=TransactionEvidenceResponse)
 async def get_transaction_evidence(
     request: Request,
@@ -158,3 +181,126 @@ async def get_webhook_evidence(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Webhook evidence lookup failed: {e}",
         )
+
+
+# ============ Policy Decision Evidence ============
+
+
+@router.get("/decisions/{agent_id}", response_model=list[PolicyDecisionSummary])
+async def list_policy_decisions(
+    request: Request,
+    agent_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    principal: Principal = Depends(require_principal),
+):
+    """List policy decisions for an agent with pagination."""
+    try:
+        from sardis_v2_core.database import get_pool
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, agent_id, mandate_id, verdict, evidence_hash, created_at
+                FROM policy_decisions
+                WHERE agent_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2 OFFSET $3
+                """,
+                agent_id,
+                limit,
+                offset,
+            )
+        return [
+            PolicyDecisionSummary(
+                decision_id=r["id"],
+                agent_id=r["agent_id"],
+                mandate_id=r["mandate_id"],
+                verdict=r["verdict"],
+                evidence_hash=r["evidence_hash"],
+                created_at=r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    except Exception as e:
+        logger.exception("Policy decisions lookup failed for agent=%s: %s", agent_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Policy decisions lookup failed: {e}",
+        )
+
+
+@router.get("/decisions/{agent_id}/{decision_id}", response_model=PolicyDecisionDetailResponse)
+async def get_policy_decision(
+    request: Request,
+    agent_id: str,
+    decision_id: str,
+    principal: Principal = Depends(require_principal),
+):
+    """Retrieve full evidence bundle for a specific policy decision."""
+    try:
+        from sardis_v2_core.database import get_pool
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, agent_id, mandate_id, policy_version_id,
+                       verdict, steps_json, evidence_hash,
+                       group_hierarchy, created_at
+                FROM policy_decisions
+                WHERE id = $1 AND agent_id = $2
+                """,
+                decision_id,
+                agent_id,
+            )
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Decision not found")
+
+        steps = row["steps_json"]
+        if isinstance(steps, str):
+            steps = json.loads(steps)
+
+        return PolicyDecisionDetailResponse(
+            decision_id=row["id"],
+            agent_id=row["agent_id"],
+            mandate_id=row["mandate_id"],
+            policy_version_id=row["policy_version_id"],
+            verdict=row["verdict"],
+            steps=steps if isinstance(steps, list) else [],
+            evidence_hash=row["evidence_hash"],
+            group_hierarchy=list(row["group_hierarchy"]) if row["group_hierarchy"] else None,
+            created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else str(row["created_at"]),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Decision lookup failed for %s/%s: %s", agent_id, decision_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Decision lookup failed: {e}",
+        )
+
+
+@router.get("/decisions/{agent_id}/{decision_id}/export")
+async def export_policy_decision(
+    request: Request,
+    agent_id: str,
+    decision_id: str,
+    principal: Principal = Depends(require_principal),
+):
+    """Export policy decision as a downloadable JSON evidence bundle."""
+    from fastapi.responses import JSONResponse
+
+    detail_response = await get_policy_decision(request, agent_id, decision_id, principal)
+
+    return JSONResponse(
+        content=detail_response.model_dump(),
+        headers={
+            "Content-Disposition": f'attachment; filename="evidence_{decision_id}.json"',
+        },
+    )
