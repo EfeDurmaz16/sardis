@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import logging
+import os
 from decimal import Decimal
 from typing import Any, Optional
+
+_CHECKOUT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ class SettlementService:
             quote = await self._offramp.get_quote(
                 input_token="USDC",
                 input_amount_minor=amount_minor,
-                input_chain="base",
+                input_chain=_CHECKOUT_CHAIN,
                 output_currency="USD",
             )
 

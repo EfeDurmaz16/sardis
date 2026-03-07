@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+
+_CHECKOUT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -218,7 +220,7 @@ async def connect_wallet(
         try:
             wallet = await deps.wallet_manager.get_wallet(body.wallet_id)
             if wallet:
-                wallet_address = wallet.get_address("base") or ""
+                wallet_address = wallet.get_address(_CHECKOUT_CHAIN) or ""
         except Exception:
             logger.warning("Failed to get address for wallet %s", body.wallet_id)
 
@@ -277,7 +279,7 @@ async def get_session_balance(
             wallet = await deps.wallet_manager.get_wallet(session.payer_wallet_id)
             if wallet:
                 from sardis_v2_core.tokens import TokenType
-                balance = await wallet.get_balance("base", TokenType.USDC, rpc_client=None)
+                balance = await wallet.get_balance(_CHECKOUT_CHAIN, TokenType.USDC, rpc_client=None)
         except Exception:
             logger.warning("Failed to get balance for wallet %s", session.payer_wallet_id)
 
