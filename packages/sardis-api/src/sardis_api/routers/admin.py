@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_admin_principal
+from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
 
 logger = logging.getLogger(__name__)
 
@@ -545,4 +546,119 @@ async def create_audit_log_entry(
         "success": True,
         "action": action,
         "logged_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ============================================================================
+# Kill Switch Endpoints (rail / chain / global)
+# ============================================================================
+
+class KillSwitchActivateRequest(BaseModel):
+    """Request to activate a kill switch."""
+    reason: str = Field(default="manual", description="Activation reason")
+    notes: Optional[str] = Field(default=None, description="Optional notes")
+    auto_reactivate_after_seconds: Optional[float] = Field(
+        default=None, description="Auto-deactivate after N seconds"
+    )
+
+
+@router.post("/kill-switch/rail/{rail}")
+async def activate_rail_kill_switch(
+    request: Request,
+    rail: str,
+    body: KillSwitchActivateRequest,
+    _: None = Depends(require_admin_rate_limit(is_sensitive=True)),
+):
+    """Activate kill switch for a payment rail (a2a, checkout, ap2)."""
+    ks = get_kill_switch()
+    try:
+        reason = ActivationReason(body.reason)
+    except ValueError:
+        reason = ActivationReason.MANUAL
+
+    await ks.activate_rail(
+        rail=rail,
+        reason=reason,
+        activated_by=f"admin:{request.client.host if request.client else 'unknown'}",
+        notes=body.notes,
+        auto_reactivate_after=body.auto_reactivate_after_seconds,
+    )
+    logger.warning("ADMIN: Kill switch activated for rail=%s reason=%s", rail, reason.value)
+    return {"success": True, "scope": "rail", "rail": rail}
+
+
+@router.delete("/kill-switch/rail/{rail}")
+async def deactivate_rail_kill_switch(
+    request: Request,
+    rail: str,
+    _: None = Depends(require_admin_rate_limit(is_sensitive=True)),
+):
+    """Deactivate kill switch for a payment rail."""
+    ks = get_kill_switch()
+    await ks.deactivate_rail(rail)
+    logger.warning("ADMIN: Kill switch deactivated for rail=%s", rail)
+    return {"success": True, "scope": "rail", "rail": rail}
+
+
+@router.post("/kill-switch/chain/{chain}")
+async def activate_chain_kill_switch(
+    request: Request,
+    chain: str,
+    body: KillSwitchActivateRequest,
+    _: None = Depends(require_admin_rate_limit(is_sensitive=True)),
+):
+    """Activate kill switch for a blockchain (base, ethereum, polygon, etc.)."""
+    ks = get_kill_switch()
+    try:
+        reason = ActivationReason(body.reason)
+    except ValueError:
+        reason = ActivationReason.MANUAL
+
+    await ks.activate_chain(
+        chain=chain,
+        reason=reason,
+        activated_by=f"admin:{request.client.host if request.client else 'unknown'}",
+        notes=body.notes,
+        auto_reactivate_after=body.auto_reactivate_after_seconds,
+    )
+    logger.warning("ADMIN: Kill switch activated for chain=%s reason=%s", chain, reason.value)
+    return {"success": True, "scope": "chain", "chain": chain}
+
+
+@router.delete("/kill-switch/chain/{chain}")
+async def deactivate_chain_kill_switch(
+    request: Request,
+    chain: str,
+    _: None = Depends(require_admin_rate_limit(is_sensitive=True)),
+):
+    """Deactivate kill switch for a blockchain."""
+    ks = get_kill_switch()
+    await ks.deactivate_chain(chain)
+    logger.warning("ADMIN: Kill switch deactivated for chain=%s", chain)
+    return {"success": True, "scope": "chain", "chain": chain}
+
+
+@router.get("/kill-switch/status")
+async def get_kill_switch_status(
+    request: Request,
+    _: None = Depends(require_admin_rate_limit()),
+):
+    """Get all active kill switches across all scopes."""
+    ks = get_kill_switch()
+    active = await ks.get_active_switches()
+
+    def _serialize(activation):
+        if activation is None:
+            return None
+        if hasattr(activation, "to_json"):
+            import json
+            return json.loads(activation.to_json())
+        return str(activation)
+
+    return {
+        "global": _serialize(active.get("global")),
+        "organizations": {k: _serialize(v) for k, v in active.get("organizations", {}).items()},
+        "agents": {k: _serialize(v) for k, v in active.get("agents", {}).items()},
+        "rails": {k: _serialize(v) for k, v in active.get("rails", {}).items()},
+        "chains": {k: _serialize(v) for k, v in active.get("chains", {}).items()},
     }
