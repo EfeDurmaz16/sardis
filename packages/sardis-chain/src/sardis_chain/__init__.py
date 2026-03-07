@@ -108,6 +108,13 @@ from .gas_optimizer import (
     ChainRoute,
     get_gas_optimizer,
 )
+from .cctp_forwarding import (
+    CCTPForwardingService,
+    ForwardingAddress,
+    ForwardingDeposit,
+    ForwardingStatus,
+    FUNDING_SOURCE_CHAINS,
+)
 
 __version__ = "0.4.0"
 
@@ -194,4 +201,10 @@ __all__ = [
     "GasOptimizerEstimate",
     "ChainRoute",
     "get_gas_optimizer",
+    # CCTP Forwarding
+    "CCTPForwardingService",
+    "ForwardingAddress",
+    "ForwardingDeposit",
+    "ForwardingStatus",
+    "FUNDING_SOURCE_CHAINS",
 ]
