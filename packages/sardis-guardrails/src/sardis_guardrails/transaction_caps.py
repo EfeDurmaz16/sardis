@@ -70,8 +70,9 @@ class TransactionCapEngine:
         """
         amount = Decimal(str(amount))
 
-        # Check per-tx cap for agent
-        agent_tx_cap = await self._get_cap("agent", agent_id, "per_tx") if agent_id else None
+        # Check per-tx cap for agent (Redis override → env var default)
+        default_per_tx = Decimal(os.getenv("SARDIS_DEFAULT_AGENT_TX_CAP", str(DEFAULT_AGENT_TX_CAP)))
+        agent_tx_cap = (await self._get_cap("agent", agent_id, "per_tx") if agent_id else None) or default_per_tx
         if agent_tx_cap and amount > agent_tx_cap:
             return CapCheckResult(
                 allowed=False,
