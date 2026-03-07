@@ -132,7 +132,7 @@ export default function Footer() {
             {[
               { label: 'X', href: 'https://x.com/sardisHQ' },
               { label: 'GitHub', href: 'https://github.com/EfeDurmaz16/sardis' },
-              { label: 'Discord', href: 'https://discord.gg/sardis' },
+              { label: 'Discord', href: 'https://discord.gg/pUJTskfK' },
             ].map((social) => (
               <a
                 key={social.label}

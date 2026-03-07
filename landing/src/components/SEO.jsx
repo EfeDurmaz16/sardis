@@ -76,7 +76,7 @@ export function createOrganizationSchema() {
     sameAs: [
       'https://x.com/sardisHQ',
       'https://github.com/EfeDurmaz16/sardis',
-      'https://discord.gg/XMA9JwDJ',
+      'https://discord.gg/pUJTskfK',
     ],
     contactPoint: {
       '@type': 'ContactPoint',
