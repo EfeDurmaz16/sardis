@@ -13,7 +13,7 @@ const footerColumns = [
   {
     header: 'Developers',
     links: [
-      { label: 'GitHub', href: 'https://github.com/sardis-project', external: true },
+      { label: 'GitHub', href: 'https://github.com/EfeDurmaz16/sardis', external: true },
       { label: 'Python SDK', to: '/docs/sdk-python' },
       { label: 'TypeScript SDK', to: '/docs/sdk-typescript' },
       { label: 'Blog', to: '/docs/blog' },
@@ -130,8 +130,8 @@ export default function Footer() {
           </span>
           <div className="flex gap-6">
             {[
-              { label: 'X', href: 'https://x.com/sardis_project' },
-              { label: 'GitHub', href: 'https://github.com/sardis-project' },
+              { label: 'X', href: 'https://x.com/sardisHQ' },
+              { label: 'GitHub', href: 'https://github.com/EfeDurmaz16/sardis' },
               { label: 'Discord', href: 'https://discord.gg/sardis' },
             ].map((social) => (
               <a
