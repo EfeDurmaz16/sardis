@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { getSessionDetails } from "@/lib/api";
 import type { CheckoutStep, SessionDetails, PaymentResult } from "@/lib/types";
 import MerchantHeader from "@/components/MerchantHeader";
@@ -11,7 +11,9 @@ import SuccessView from "@/components/SuccessView";
 import ErrorView from "@/components/ErrorView";
 
 export default function CheckoutPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { clientSecret } = useParams<{ clientSecret: string }>();
+  const [searchParams] = useSearchParams();
+  const urlEmbedOrigin = useMemo(() => searchParams.get("embed_origin"), [searchParams]);
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [step, setStep] = useState<CheckoutStep>("loading");
   const [tab, setTab] = useState<"wallet" | "fund">("wallet");
@@ -19,8 +21,8 @@ export default function CheckoutPage() {
   const [result, setResult] = useState<PaymentResult | null>(null);
 
   useEffect(() => {
-    if (!sessionId) return;
-    getSessionDetails(sessionId)
+    if (!clientSecret) return;
+    getSessionDetails(clientSecret)
       .then((data) => {
         setSession(data);
         if (data.status === "paid" || data.status === "settled") {
@@ -35,12 +37,14 @@ export default function CheckoutPage() {
         setError(e instanceof Error ? e.message : "Failed to load session");
         setStep("error");
       });
-  }, [sessionId]);
+  }, [clientSecret]);
 
-  // Notify parent iframe of events
+  // Notify parent iframe of events (use embed_origin for security, fall back to "*")
   const postToParent = (event: string, data?: Record<string, unknown>) => {
     if (window.parent !== window) {
-      window.parent.postMessage({ source: "sardis-checkout", event, ...data }, "*");
+      // Prefer session-level embed_origin (set at session creation), then URL param (set by embed SDK)
+      const targetOrigin = session?.embed_origin || urlEmbedOrigin || "*";
+      window.parent.postMessage({ source: "sardis-checkout", event, ...data }, targetOrigin);
     }
   };
 
@@ -103,23 +107,25 @@ export default function CheckoutPage() {
         />
       )}
 
-      {step === "pay" && session && sessionId && (
+      {step === "pay" && session && clientSecret && (
         <>
           <TabSwitcher active={tab} onChange={setTab} />
           {tab === "wallet" ? (
             <PayFromWallet
-              sessionId={sessionId}
+              clientSecret={clientSecret}
               amount={session.amount}
               currency={session.currency}
+              settlementAddress={session.settlement_address}
               onSuccess={handleSuccess}
               onError={handleError}
               onProcessing={() => setStep("processing")}
             />
           ) : (
             <FundAndPay
-              sessionId={sessionId}
+              clientSecret={clientSecret}
               amount={session.amount}
               currency={session.currency}
+              settlementAddress={session.settlement_address}
               onSuccess={handleSuccess}
               onError={handleError}
               onProcessing={() => setStep("processing")}

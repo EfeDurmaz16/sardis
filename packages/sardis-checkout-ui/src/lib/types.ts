@@ -7,6 +7,8 @@ export interface SessionDetails {
   description: string | null;
   status: string;
   expires_at: string | null;
+  embed_origin: string | null;
+  settlement_address: string | null;
 }
 
 export interface ConnectResult {
@@ -31,6 +33,8 @@ export interface PaymentResult {
   amount: string;
   currency: string;
   merchant_id: string;
+  platform_fee: string | null;
+  net_amount: string | null;
 }
 
 export type CheckoutStep =

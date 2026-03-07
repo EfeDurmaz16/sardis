@@ -30,6 +30,8 @@ export default function DemoPage() {
         amount: MOCK_SESSION.amount,
         currency: MOCK_SESSION.currency,
         merchant_id: "merch_demo",
+        platform_fee: null,
+        net_amount: null,
       };
       setResult(r);
       setStep("success");
@@ -101,9 +103,10 @@ export default function DemoPage() {
             ) : (
               <div className="mt-4">
                 <FundAndPay
-                  sessionId={MOCK_SESSION.session_id}
+                  clientSecret="demo_preview"
                   amount={MOCK_SESSION.amount}
                   currency={MOCK_SESSION.currency}
+                  settlementAddress={null}
                   onSuccess={handleFundSuccess}
                   onError={handleFundError}
                   onProcessing={handleFundProcessing}
