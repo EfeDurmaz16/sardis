@@ -64,7 +64,7 @@ export default function SardisV084PackagesLive() {
         <li><code>sardis-sdk</code> - Full Python SDK</li>
         <li><code>sardis-core</code> - Domain models, config, database layer</li>
         <li><code>sardis-protocol</code> - AP2/TAP mandate verification pipeline</li>
-        <li><code>sardis-chain</code> - Multi-chain execution (Base, Polygon, Ethereum, Arbitrum, Optimism)</li>
+        <li><code>sardis-chain</code> - On-chain execution (Base) with multi-chain funding via CCTP v2</li>
         <li><code>sardis-api</code> - FastAPI REST endpoints</li>
         <li><code>sardis-wallet</code> - MPC wallet management (Turnkey, Fireblocks)</li>
         <li><code>sardis-ledger</code> - Append-only audit trail with Merkle anchoring</li>

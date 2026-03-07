@@ -12,6 +12,11 @@ import (
 
 var cfgFile string
 
+// SetVersion sets the CLI version (injected via ldflags).
+func SetVersion(v string) {
+	rootCmd.Version = v
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "sardis",
 	Short: "Sardis CLI — Payment OS for the Agent Economy",

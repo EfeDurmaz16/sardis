@@ -87,11 +87,12 @@ KYA_LEVEL_SCORES = {
 
 # Weight configuration for trust components
 DEFAULT_WEIGHTS = {
-    "kya_level": 0.30,
-    "transaction_history": 0.25,
+    "kya_level": 0.25,
+    "transaction_history": 0.20,
     "compliance_status": 0.20,
-    "reputation": 0.15,
+    "reputation": 0.10,
     "behavioral_consistency": 0.10,
+    "transitive_trust": 0.15,
 }
 
 
@@ -205,9 +206,13 @@ class TrustScorer:
         self,
         weights: Optional[Dict[str, float]] = None,
         cache_ttl_seconds: int = 300,
+        trust_graph: Optional["TrustGraphService"] = None,
+        platform_did: Optional[str] = None,
     ):
         self._weights = weights or DEFAULT_WEIGHTS.copy()
         self._cache_ttl = cache_ttl_seconds
+        self._trust_graph = trust_graph
+        self._platform_did = platform_did or "did:fides:sardis-platform"
         from sardis_v2_core.redis_state import RedisStateStore
         self._cache_store = RedisStateStore(namespace="trust_score_cache")
 
@@ -224,6 +229,7 @@ class TrustScorer:
         compliance: Optional[ComplianceRecord] = None,
         reputation: Optional[ReputationRecord] = None,
         behavioral: Optional[BehavioralRecord] = None,
+        agent_did: Optional[str] = None,
         use_cache: bool = True,
     ) -> TrustScore:
         """Calculate unified trust score for an agent.
@@ -235,6 +241,7 @@ class TrustScorer:
             compliance: Compliance status
             reputation: Counterparty reputation
             behavioral: Behavioral consistency metrics
+            agent_did: FIDES DID for transitive trust graph lookup
             use_cache: Whether to use cached scores
 
         Returns:
@@ -287,6 +294,10 @@ class TrustScorer:
         # 5. Behavioral Consistency Score
         behavioral_score = self._score_behavioral(behavioral or BehavioralRecord())
         signals.append(behavioral_score)
+
+        # 6. Transitive Trust Score (FIDES trust graph)
+        transitive_score = self._score_transitive_trust(agent_did)
+        signals.append(transitive_score)
 
         # Calculate weighted overall score
         overall = sum(s.score * s.weight for s in signals)
@@ -518,6 +529,36 @@ class TrustScorer:
                 "anomaly_count": behavioral.anomaly_count,
                 "circuit_breaker_trips": behavioral.circuit_breaker_trips,
                 "pattern_consistency": round(behavioral.spending_pattern_consistency, 4),
+            },
+        )
+
+    def _score_transitive_trust(self, agent_did: Optional[str]) -> TrustSignal:
+        """Score based on transitive trust path from platform to agent.
+
+        Uses FIDES trust graph BFS traversal with 0.85 decay per hop.
+        Falls back to neutral (0.5) when trust graph or agent DID is unavailable.
+        """
+        if self._trust_graph is None or not agent_did:
+            return TrustSignal(
+                name="transitive_trust",
+                score=0.5,
+                weight=self._weights.get("transitive_trust", 0.15),
+                details={"reason": "not_configured"},
+            )
+
+        cumulative = self._trust_graph.get_trust_score(self._platform_did, agent_did)
+        path_result = self._trust_graph.find_path(self._platform_did, agent_did)
+
+        return TrustSignal(
+            name="transitive_trust",
+            score=max(0.0, min(1.0, cumulative)),
+            weight=self._weights.get("transitive_trust", 0.15),
+            details={
+                "from_did": self._platform_did,
+                "to_did": agent_did,
+                "path_found": path_result.found,
+                "hops": path_result.hops,
+                "cumulative_trust": round(cumulative, 4),
             },
         )
 

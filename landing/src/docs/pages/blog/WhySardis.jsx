@@ -248,12 +248,12 @@ export default function WhySardis() {
           authentication, policy enforcement, and transaction execution automatically.
         </p>
 
-        <h3>5. Multi-Chain from Day One</h3>
+        <h3>5. Multi-Chain Funding from Day One</h3>
         <p>
-          While competitors focus on single chains (Locus: Base only, Skyfire: Polygon
-          primary), Sardis supports Base, Polygon, Ethereum, Arbitrum, and Optimism
-          from launch. Agents can optimize for speed, cost, or liquidity depending
-          on the transaction.
+          Sardis executes all payments on Base for optimal cost and speed, while
+          supporting funding from Ethereum, Polygon, Arbitrum, and Optimism via
+          Circle's CCTP v2. USDC sent on any supported chain automatically arrives
+          on Base — no manual bridging required.
         </p>
 
         <h2>Protocol Agnosticism</h2>
@@ -300,7 +300,7 @@ export default function WhySardis() {
 
         <h3>Hybrid Payments</h3>
         <p>
-          No competitor offers both instant virtual cards AND multi-chain crypto.
+          No competitor offers both instant virtual cards AND multi-chain funding with stablecoins.
           This hybrid approach enables:
         </p>
         <ul>
