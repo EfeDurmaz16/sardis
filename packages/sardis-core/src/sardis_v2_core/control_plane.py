@@ -70,8 +70,8 @@ class ControlPlane:
         )
 
         try:
-            # Step 1: Policy evaluation
-            if self._policy:
+            # Step 1: Policy evaluation (skip if already done upstream)
+            if self._policy and intent.policy_result is None:
                 intent.status = IntentStatus.POLICY_CHECKED
                 policy_result = await self._policy.evaluate(intent)
                 intent.policy_result = policy_result
@@ -85,8 +85,8 @@ class ControlPlane:
                         error=intent.error,
                     )
 
-            # Step 2: Compliance
-            if self._compliance:
+            # Step 2: Compliance (skip if already done upstream)
+            if self._compliance and intent.compliance_result is None:
                 intent.status = IntentStatus.COMPLIANCE_CHECKED
                 compliance_result = await self._compliance.check(intent)
                 intent.compliance_result = compliance_result

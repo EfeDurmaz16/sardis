@@ -24,15 +24,17 @@ class PolicyEngineAdapter:
             return {"allowed": True, "reason": "no_policy_engine"}
 
         try:
-            # Build a minimal mandate-like object for existing policy check
-            mandate = type("Mandate", (), {
-                "sender_wallet_id": intent.sender_wallet_id,
-                "amount": intent.amount,
-                "currency": intent.currency,
-                "chain": intent.chain,
-                "agent_id": intent.agent_id,
-                "organization_id": intent.org_id,
-            })()
+            # Use real mandate if available, otherwise build minimal object
+            mandate = intent.metadata.get("payment_mandate")
+            if mandate is None:
+                mandate = type("Mandate", (), {
+                    "sender_wallet_id": intent.sender_wallet_id,
+                    "amount": intent.amount,
+                    "currency": intent.currency,
+                    "chain": intent.chain,
+                    "agent_id": intent.agent_id,
+                    "organization_id": intent.org_id,
+                })()
 
             result = await self._wallet_manager.async_validate_policies(mandate)
             allowed = getattr(result, "allowed", True)

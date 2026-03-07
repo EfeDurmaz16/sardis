@@ -24,19 +24,21 @@ class ExecutionEngineAdapter:
             raise RuntimeError("Chain executor not configured")
 
         try:
-            # Build a minimal mandate-like object for existing executor
-            mandate = type("Mandate", (), {
-                "sender_wallet_id": intent.sender_wallet_id,
-                "sender_address": intent.sender_address,
-                "recipient_wallet_id": intent.recipient_wallet_id,
-                "recipient_address": intent.recipient_address,
-                "amount": intent.amount,
-                "currency": intent.currency,
-                "chain": intent.chain,
-                "mandate_id": intent.intent_id,
-                "agent_id": intent.agent_id,
-                "organization_id": intent.org_id,
-            })()
+            # Use real mandate if available, otherwise build minimal object
+            mandate = intent.metadata.get("payment_mandate")
+            if mandate is None:
+                mandate = type("Mandate", (), {
+                    "sender_wallet_id": intent.sender_wallet_id,
+                    "sender_address": intent.sender_address,
+                    "recipient_wallet_id": intent.recipient_wallet_id,
+                    "recipient_address": intent.recipient_address,
+                    "amount": intent.amount,
+                    "currency": intent.currency,
+                    "chain": intent.chain,
+                    "mandate_id": intent.intent_id,
+                    "agent_id": intent.agent_id,
+                    "organization_id": intent.org_id,
+                })()
 
             receipt = await self._executor.dispatch_payment(mandate)
             return {
