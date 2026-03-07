@@ -213,14 +213,38 @@ async def require_admin(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
+    request: Request,
     username: str = Form(...),
     password: str = Form(...),
 ):
     """
-    Login with username and password.
+    Login with username/email and password.
 
-    Returns a JWT access token on successful authentication.
+    Tries user auth (from users table) first, then falls back to
+    shared admin password for backward compatibility (with deprecation warning).
     """
+    # Try user-based auth first
+    database_url = getattr(getattr(request.app, "state", None), "database_url", None)
+    if database_url and username != "admin":
+        try:
+            from sardis_api.services.auth_service import AuthService
+            auth_svc = AuthService(dsn=database_url)
+            result = await auth_svc.login(email=username, password=password)
+            return TokenResponse(
+                access_token=result.access_token,
+                token_type="bearer",
+                expires_in=3600,
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except Exception:
+            pass  # Fall through to legacy auth
+
+    # Legacy shared admin password (deprecated)
     admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "")
     allow_insecure_default = os.getenv("SARDIS_ALLOW_INSECURE_DEFAULT_ADMIN_PASSWORD", "").lower() in (
         "1",
@@ -228,16 +252,8 @@ async def login(
         "yes",
     )
 
-    # SECURITY: Require explicit password in production
     if not admin_password:
         if allow_insecure_default and os.getenv("SARDIS_ENVIRONMENT", "dev") == "dev":
-            # Explicitly opt-in only (dev convenience). Never default silently.
-            import logging
-            logging.getLogger(__name__).warning(
-                "⚠️ SARDIS_ADMIN_PASSWORD not set - using insecure default 'change-me-immediately' "
-                "because SARDIS_ALLOW_INSECURE_DEFAULT_ADMIN_PASSWORD is enabled. "
-                "DO NOT use this outside local dev."
-            )
             admin_password = "change-me-immediately"
         else:
             raise HTTPException(
@@ -245,7 +261,6 @@ async def login(
                 detail="Authentication not configured. Set SARDIS_ADMIN_PASSWORD.",
             )
 
-    # Timing-safe comparison to prevent timing attacks
     valid_username = hmac.compare_digest(username, "admin")
     valid_password = hmac.compare_digest(password, admin_password)
 
@@ -255,6 +270,11 @@ async def login(
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    _logger.warning(
+        "Login via shared admin password is DEPRECATED. "
+        "Register a user account via POST /auth/register instead."
+    )
 
     now = datetime.now(timezone.utc)
     exp = now + timedelta(hours=JWT_EXPIRATION_HOURS)
@@ -559,3 +579,229 @@ async def signup(request: Request, body: SignupRequest):
         rate_limit=api_key.rate_limit,
         mode="test",
     )
+
+
+# ---------------------------------------------------------------------------
+# User-based authentication endpoints (Phase 2)
+# ---------------------------------------------------------------------------
+
+class RegisterRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+    display_name: Optional[str] = None
+
+
+class RegisterResponse(BaseModel):
+    user_id: str
+    email: str
+    org_id: str
+    access_token: str
+    api_key: str
+
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserLoginResponse(BaseModel):
+    user_id: str
+    email: str
+    org_id: str
+    access_token: str
+    refresh_token: str
+
+
+class APIKeyCreateRequest(BaseModel):
+    name: str = "default"
+    scopes: list[str] = Field(default_factory=lambda: ["*"])
+
+
+class APIKeyResponse(BaseModel):
+    key: Optional[str] = None  # Only in create response
+    key_id: str
+    key_prefix: str
+    org_id: str
+    name: str
+    scopes: list[str]
+
+
+class MFASetupResponse(BaseModel):
+    secret: str
+    uri: str
+
+
+class MFAVerifyRequest(BaseModel):
+    code: str
+
+
+def _get_auth_service(request: Request):
+    database_url = getattr(getattr(request.app, "state", None), "database_url", None)
+    if not database_url:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="User authentication requires a database. Set DATABASE_URL.",
+        )
+    from sardis_api.services.auth_service import AuthService
+    return AuthService(dsn=database_url)
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(request: Request, body: RegisterRequest):
+    """Register a new user account with email + password."""
+    auth_svc = _get_auth_service(request)
+    try:
+        result = await auth_svc.register(
+            email=body.email.strip().lower(),
+            password=body.password,
+            display_name=body.display_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    return RegisterResponse(
+        user_id=result.user_id,
+        email=result.email,
+        org_id=result.org_id,
+        access_token=result.access_token,
+        api_key=result.api_key,
+    )
+
+
+@router.get("/google")
+async def google_oauth_redirect():
+    """Initiate Google OAuth redirect."""
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth not configured. Set GOOGLE_CLIENT_ID.",
+        )
+    redirect_uri = os.getenv("SARDIS_GOOGLE_REDIRECT_URI", "https://api.sardis.sh/api/v2/auth/google/callback")
+    scope = "openid email profile"
+    url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={client_id}&redirect_uri={redirect_uri}"
+        f"&response_type=code&scope={scope}&access_type=offline"
+    )
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=url)
+
+
+@router.get("/google/callback")
+async def google_oauth_callback(request: Request, code: str):
+    """Handle Google OAuth callback."""
+    import httpx
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    redirect_uri = os.getenv("SARDIS_GOOGLE_REDIRECT_URI", "https://api.sardis.sh/api/v2/auth/google/callback")
+
+    if not client_id or not client_secret:
+        raise HTTPException(status_code=503, detail="Google OAuth not configured")
+
+    # Exchange code for tokens
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange OAuth code")
+
+        tokens = token_resp.json()
+        # Get user info
+        userinfo_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        if userinfo_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch user info")
+
+        userinfo = userinfo_resp.json()
+
+    auth_svc = _get_auth_service(request)
+    result = await auth_svc.google_oauth_callback(
+        google_id=userinfo["id"],
+        email=userinfo["email"],
+        name=userinfo.get("name"),
+    )
+
+    return UserLoginResponse(
+        user_id=result.user_id,
+        email=result.email,
+        org_id=result.org_id,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+    )
+
+
+@router.post("/mfa/setup", response_model=MFASetupResponse)
+async def setup_mfa(request: Request, user: UserInfo = Depends(require_auth)):
+    """Generate TOTP secret and provisioning URI for MFA setup."""
+    auth_svc = _get_auth_service(request)
+    result = await auth_svc.setup_mfa(user_id=user.username)
+    return MFASetupResponse(**result)
+
+
+@router.post("/mfa/verify")
+async def verify_mfa(request: Request, body: MFAVerifyRequest, user: UserInfo = Depends(require_auth)):
+    """Verify TOTP code to enable MFA."""
+    auth_svc = _get_auth_service(request)
+    valid = await auth_svc.verify_mfa(user_id=user.username, code=body.code)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Invalid MFA code")
+    return {"mfa_enabled": True}
+
+
+@router.post("/api-keys", response_model=APIKeyResponse, status_code=status.HTTP_201_CREATED)
+async def create_api_key(
+    request: Request,
+    body: APIKeyCreateRequest,
+    user: UserInfo = Depends(require_auth),
+):
+    """Generate a new API key for the authenticated user."""
+    auth_svc = _get_auth_service(request)
+    org_id = user.organization_id or "org_demo"
+    raw_key, key_id = await auth_svc.generate_api_key(
+        user_id=user.username,
+        org_id=org_id,
+        name=body.name,
+        scopes=body.scopes,
+    )
+    return APIKeyResponse(
+        key=raw_key,
+        key_id=key_id,
+        key_prefix=raw_key[:12],
+        org_id=org_id,
+        name=body.name,
+        scopes=body.scopes,
+    )
+
+
+@router.get("/api-keys")
+async def list_api_keys(request: Request, user: UserInfo = Depends(require_auth)):
+    """List API keys for the authenticated user (prefix only)."""
+    auth_svc = _get_auth_service(request)
+    keys = await auth_svc.list_api_keys(user_id=user.username)
+    return {"keys": keys}
+
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(
+    request: Request,
+    key_id: str,
+    user: UserInfo = Depends(require_auth),
+):
+    """Revoke an API key."""
+    auth_svc = _get_auth_service(request)
+    deleted = await auth_svc.revoke_api_key(key_id=key_id, user_id=user.username)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="API key not found")
+    return {"revoked": True}
