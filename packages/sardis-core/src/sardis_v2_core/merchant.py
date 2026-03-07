@@ -128,12 +128,20 @@ class MerchantRepository:
         )
         return [self._row_to_merchant(r) for r in rows]
 
+    _MERCHANT_UPDATABLE = frozenset({
+        "name", "logo_url", "webhook_url", "webhook_secret",
+        "settlement_preference", "settlement_wallet_id", "bank_account",
+        "mcc_code", "category", "platform_fee_bps", "is_active",
+    })
+
     async def update_merchant(self, merchant_id: str, **kwargs: Any) -> Optional[Merchant]:
         import json
         sets: list[str] = []
         args: list[Any] = []
         idx = 1
         for key, val in kwargs.items():
+            if key not in self._MERCHANT_UPDATABLE:
+                raise ValueError(f"Invalid merchant field: {key}")
             if key == "bank_account":
                 val = json.dumps(val)
                 sets.append(f"bank_account = ${idx}::jsonb")
@@ -199,12 +207,19 @@ class MerchantRepository:
             return None
         return self._row_to_session(row)
 
+    _SESSION_UPDATABLE = frozenset({
+        "payer_wallet_id", "status", "payment_method", "tx_hash",
+        "settlement_tx_hash", "settlement_status", "offramp_id", "metadata",
+    })
+
     async def update_session(self, session_id: str, **kwargs: Any) -> None:
         import json
         sets: list[str] = []
         args: list[Any] = []
         idx = 1
         for key, val in kwargs.items():
+            if key not in self._SESSION_UPDATABLE:
+                raise ValueError(f"Invalid session field: {key}")
             if key == "metadata":
                 val = json.dumps(val)
                 sets.append(f"metadata = ${idx}::jsonb")
