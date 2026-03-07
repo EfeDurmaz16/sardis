@@ -1765,6 +1765,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Simulation API
     app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
 
+    # SSO (SAML/OIDC) authentication
+    try:
+        from sardis_api.middleware.sso import router as sso_router
+        app.include_router(sso_router, prefix="/api/v2", tags=["sso"])
+    except ImportError:
+        pass
+
     # Dev/testnet utility routes - NOT available in production
     if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):
         app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
