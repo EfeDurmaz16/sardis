@@ -2195,10 +2195,14 @@ class ChainExecutor:
 
         Raises:
             GasPriceSpikeError: If gas price exceeds limits
+            RuntimeError: If domain risk check fails
         """
         chain = mandate.chain or "base_sepolia"
         audit_anchor = f"merkle::{mandate.audit_hash}"
         account_type = getattr(mandate, "account_type", "mpc_v1")
+
+        # Domain risk pre-flight check
+        domain = self._check_domain_risk(mandate, chain)
 
         if self._simulated:
             if self._settings.is_production:
@@ -2210,7 +2214,7 @@ class ChainExecutor:
             tx_hash = f"0x{secrets.token_hex(32)}"
             user_op_hash = f"0x{secrets.token_hex(32)}" if account_type == "erc4337_v2" else None
             logger.info(f"[SIMULATED] Payment {mandate.mandate_id} -> {tx_hash}")
-            return ChainReceipt(
+            receipt = ChainReceipt(
                 tx_hash=tx_hash,
                 chain=chain,
                 block_number=0,
@@ -2218,12 +2222,60 @@ class ChainExecutor:
                 execution_path="erc4337_userop" if account_type == "erc4337_v2" else "legacy_tx",
                 user_op_hash=user_op_hash,
             )
+            self._record_domain_tx(domain, mandate)
+            return receipt
 
-        if account_type == "erc4337_v2":
-            return await self._execute_erc4337_payment(mandate, chain, audit_anchor)
+        try:
+            if account_type == "erc4337_v2":
+                receipt = await self._execute_erc4337_payment(mandate, chain, audit_anchor)
+            else:
+                # Live mode - execute real transaction with gas protection
+                receipt = await self._execute_live_payment_with_gas_protection(mandate, chain, audit_anchor)
+            self._record_domain_tx(domain, mandate)
+            return receipt
+        except Exception:
+            self._record_domain_failure(domain, mandate)
+            raise
 
-        # Live mode - execute real transaction with gas protection
-        return await self._execute_live_payment_with_gas_protection(mandate, chain, audit_anchor)
+    def _check_domain_risk(self, mandate: PaymentMandate, chain: str):
+        """Pre-flight domain risk check. Returns the domain for post-tx recording."""
+        try:
+            from sardis_chain.domain import get_domain_registry
+            registry = get_domain_registry()
+            domain = registry.get_or_register(chain)
+
+            amount = Decimal(str(mandate.amount_minor)) / Decimal("100")
+            token = mandate.token or "USDC"
+            allowed, reason = domain.check_tx_allowed(amount, token)
+            if not allowed:
+                raise RuntimeError(f"Domain risk check failed for '{chain}': {reason}")
+            return domain
+        except ImportError:
+            return None
+        except RuntimeError:
+            raise
+        except Exception as e:
+            logger.warning("Domain risk check non-fatal error: %s", e)
+            return None
+
+    def _record_domain_tx(self, domain, mandate: PaymentMandate) -> None:
+        """Record a successful transaction in the domain."""
+        if domain is None:
+            return
+        try:
+            amount = Decimal(str(mandate.amount_minor)) / Decimal("100")
+            domain.record_tx(amount)
+        except Exception as e:
+            logger.warning("Domain tx recording failed: %s", e)
+
+    def _record_domain_failure(self, domain, mandate: PaymentMandate) -> None:
+        """Track domain failure for circuit breaker logic."""
+        if domain is None:
+            return
+        try:
+            domain.tx_completed()  # Release the pending slot
+        except Exception:
+            pass
 
     async def _execute_live_payment_with_gas_protection(
         self,
