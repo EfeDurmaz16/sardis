@@ -131,20 +131,32 @@ def create_health_router(
                 critical=True,
             )
 
-        # Cache
+        # Cache / Redis
         checks_total += 1
         try:
-            # Cache service is not directly available here; report based on config
             if redis_url:
-                components["cache"]["status"] = "configured"
-                components["cache"]["type"] = "redis"
+                import redis.asyncio as aioredis
+                r = aioredis.from_url(redis_url, decode_responses=True)
+                redis_start = time.time()
+                pong = await r.ping()
+                await r.aclose()
+                if pong:
+                    components["cache"]["status"] = "connected"
+                    components["cache"]["type"] = "redis"
+                    components["cache"]["latency_ms"] = int((time.time() - redis_start) * 1000)
+                    checks_passed += 1
+                else:
+                    components["cache"]["status"] = "ping_failed"
+                    components["cache"]["type"] = "redis"
+                    record_failure("cache", "SARDIS.HEALTH.REDIS_PING_FAILED", "PING returned falsy", critical=False)
             else:
                 components["cache"]["status"] = "in_memory"
                 components["cache"]["type"] = "in_memory"
-            checks_passed += 1
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.warning(f"Cache health check failed: {e}")
+                checks_passed += 1
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
+            logger.warning(f"Redis health check failed: {e}")
             components["cache"]["status"] = "error"
+            components["cache"]["type"] = "redis"
             components["cache"]["error"] = str(e)
             record_failure(
                 "cache",
@@ -152,6 +164,18 @@ def create_health_router(
                 str(e),
                 critical=False,
             )
+
+        # Kill switch
+        try:
+            from sardis_guardrails.kill_switch import get_kill_switch
+            ks = get_kill_switch()
+            global_active = await ks.is_active_global()
+            components["kill_switch"] = {
+                "status": "active" if global_active else "clear",
+                "global_active": global_active,
+            }
+        except Exception as e:
+            components["kill_switch"] = {"status": "error", "error": str(e)}
 
         # Stripe
         stripe_key = os.getenv("STRIPE_SECRET_KEY")
