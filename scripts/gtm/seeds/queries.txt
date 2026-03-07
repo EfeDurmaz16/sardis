@@ -1,0 +1,30 @@
+# ICP: Companies building AI agents that take real-world financial actions
+# Target: agent BUILDERS (not payment companies, not tutorials)
+
+# Agent frameworks with tool-use (devs giving agents financial actions)
+ai agent framework tool calling payments
+autonomous agent spending purchasing API
+multi-agent orchestration production workflow
+
+# Agents that buy things / manage money
+ai agent autonomous purchasing ordering
+browser agent e-commerce buying automation
+ai procurement agent vendor management
+ai accounts payable invoice automation
+
+# Agent infrastructure (where agent spending happens)
+agent runtime sandbox production deployment
+ai agent observability cost monitoring
+agentic workflow enterprise automation
+
+# Specific high-signal queries (funded companies building agents)
+YC AI agent startup launch
+a16z backed AI agent company
+AI agent Series A funding 2026
+agentic commerce infrastructure
+
+# Vertical agents with financial actions
+ai sales agent outbound autonomous
+ai customer service agent transactions
+ai operations agent workflow automation
+voice agent booking payment

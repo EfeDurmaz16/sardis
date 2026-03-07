@@ -1,0 +1,13 @@
+# GTM Daily Jobs (UTC examples)
+
+# 1) Collect + score + enrich + queue drafts + follow-ups every weekday at 08:00 UTC
+0 8 * * 1-5 cd /Users/efebarandurmaz/sardis && /usr/bin/env python3 scripts/gtm/run_daily.py --collect-limit 25 --min-overall 70 >> /tmp/sardis-gtm-daily.log 2>&1
+
+# 2) Send queued emails at 09:00 UTC (remove --send for dry-run only)
+0 9 * * 1-5 cd /Users/efebarandurmaz/sardis && /usr/bin/env python3 scripts/gtm/resend_queue.py --limit 40 --send >> /tmp/sardis-gtm-send.log 2>&1
+
+# 3) Sync to Attio CRM at 09:30 UTC (requires ATTIO_API_KEY)
+30 9 * * 1-5 cd /Users/efebarandurmaz/sardis && /usr/bin/env python3 scripts/gtm/attio_sync.py --min-score 65 --limit 100 >> /tmp/sardis-gtm-attio.log 2>&1
+
+# 4) Push new leads to Clay for enrichment at 10:00 UTC (requires CLAY_WEBHOOK_URL)
+0 10 * * 1-5 cd /Users/efebarandurmaz/sardis && /usr/bin/env python3 scripts/gtm/clay_sync.py push --min-score 50 --limit 100 >> /tmp/sardis-gtm-clay.log 2>&1
