@@ -12,61 +12,104 @@ from asyncpg import Pool
 logger = logging.getLogger(__name__)
 
 
-def _normalized_database_url() -> str:
-    """Return DATABASE_URL normalized for asyncpg."""
-    database_url = os.getenv("DATABASE_URL", "postgresql://localhost/sardis")
+def _normalized_database_url(env_var: str = "DATABASE_URL") -> str:
+    """Return a database URL normalized for asyncpg."""
+    database_url = os.getenv(env_var, "postgresql://localhost/sardis")
     if database_url.startswith("postgres://"):
         return database_url.replace("postgres://", "postgresql://", 1)
     return database_url
 
 
+def _pool_kwargs(database_url: str) -> dict:
+    """Build connection pool kwargs, auto-detecting Neon."""
+    min_size = int(os.getenv("SARDIS_DB_POOL_MIN", "5"))
+    max_size = int(os.getenv("SARDIS_DB_POOL_MAX", "30"))
+
+    pool_kwargs: dict = {
+        "min_size": min_size,
+        "max_size": max_size,
+        "command_timeout": 60,
+    }
+
+    if "neon" in database_url:
+        import ssl
+        ssl_ctx = ssl.create_default_context()
+        neon_min = int(os.getenv("SARDIS_DB_POOL_MIN_NEON", "2"))
+        neon_max = int(os.getenv("SARDIS_DB_POOL_MAX_NEON", "15"))
+        pool_kwargs.update({
+            "ssl": ssl_ctx,
+            "min_size": neon_min,
+            "max_size": neon_max,
+            "statement_cache_size": 0,  # Required for pgbouncer/Neon pooler
+        })
+
+    return pool_kwargs
+
+
 class Database:
-    """PostgreSQL database connection manager."""
-    
+    """PostgreSQL database connection manager with optional read replica."""
+
     _pool: Optional[Pool] = None
-    
+    _read_pool: Optional[Pool] = None
+
     @classmethod
     async def get_pool(cls) -> Pool:
-        """Get or create the connection pool."""
+        """Get or create the primary (read-write) connection pool."""
         if cls._pool is None:
             database_url = _normalized_database_url()
-            
-            # Neon serverless requires SSL and pgbouncer-compatible settings
-            # Single shared pool — replaces per-repository pool proliferation.
-            pool_kwargs: dict = {
-                "min_size": 2,
-                "max_size": 20,
-                "command_timeout": 60,
-            }
-
-            if "neon" in database_url:
-                import ssl
-                ssl_ctx = ssl.create_default_context()
-                pool_kwargs.update({
-                    "ssl": ssl_ctx,
-                    "min_size": 2,
-                    "max_size": 15,
-                    "statement_cache_size": 0,  # Required for pgbouncer/Neon pooler
-                })
-
-            cls._pool = await asyncpg.create_pool(database_url, **pool_kwargs)
+            cls._pool = await asyncpg.create_pool(
+                database_url, **_pool_kwargs(database_url)
+            )
         return cls._pool
-    
+
+    @classmethod
+    async def get_read_pool(cls) -> Pool:
+        """Get or create the read-replica pool.
+
+        Falls back to the primary pool when no replica URL is configured.
+        """
+        replica_url = os.getenv("SARDIS_DATABASE_REPLICA_URL", "")
+        if not replica_url:
+            return await cls.get_pool()
+
+        if cls._read_pool is None:
+            replica_url_norm = replica_url
+            if replica_url_norm.startswith("postgres://"):
+                replica_url_norm = replica_url_norm.replace(
+                    "postgres://", "postgresql://", 1
+                )
+            cls._read_pool = await asyncpg.create_pool(
+                replica_url_norm, **_pool_kwargs(replica_url_norm)
+            )
+            logger.info("Read-replica pool created")
+        return cls._read_pool
+
     @classmethod
     async def close(cls) -> None:
-        """Close the connection pool."""
+        """Close all connection pools."""
         if cls._pool:
             await cls._pool.close()
             cls._pool = None
-    
+        if cls._read_pool:
+            await cls._read_pool.close()
+            cls._read_pool = None
+
     @classmethod
     @asynccontextmanager
     async def connection(cls) -> AsyncGenerator[asyncpg.Connection, None]:
-        """Get a connection from the pool."""
+        """Get a connection from the primary pool."""
         pool = await cls.get_pool()
         async with pool.acquire() as conn:
             yield conn
-    
+
+    @classmethod
+    @asynccontextmanager
+    async def read_connection(cls) -> AsyncGenerator[asyncpg.Connection, None]:
+        """Get a connection from the read-replica pool."""
+        pool = await cls.get_read_pool()
+        async with pool.acquire() as conn:
+            yield conn
+
     @classmethod
     @asynccontextmanager
     async def transaction(cls) -> AsyncGenerator[asyncpg.Connection, None]:
@@ -74,30 +117,59 @@ class Database:
         async with cls.connection() as conn:
             async with conn.transaction():
                 yield conn
-    
+
     @classmethod
     async def execute(cls, query: str, *args) -> str:
         """Execute a query and return status."""
         async with cls.connection() as conn:
             return await conn.execute(query, *args)
-    
+
     @classmethod
     async def fetch(cls, query: str, *args) -> list:
         """Fetch all rows from a query."""
         async with cls.connection() as conn:
             return await conn.fetch(query, *args)
-    
+
     @classmethod
     async def fetchrow(cls, query: str, *args):
         """Fetch a single row from a query."""
         async with cls.connection() as conn:
             return await conn.fetchrow(query, *args)
-    
+
     @classmethod
     async def fetchval(cls, query: str, *args):
         """Fetch a single value from a query."""
         async with cls.connection() as conn:
             return await conn.fetchval(query, *args)
+
+    @classmethod
+    async def read_fetch(cls, query: str, *args) -> list:
+        """Fetch all rows via the read-replica pool."""
+        async with cls.read_connection() as conn:
+            return await conn.fetch(query, *args)
+
+    @classmethod
+    async def read_fetchrow(cls, query: str, *args):
+        """Fetch a single row via the read-replica pool."""
+        async with cls.read_connection() as conn:
+            return await conn.fetchrow(query, *args)
+
+    @classmethod
+    async def read_fetchval(cls, query: str, *args):
+        """Fetch a single value via the read-replica pool."""
+        async with cls.read_connection() as conn:
+            return await conn.fetchval(query, *args)
+
+    @classmethod
+    def pool_config(cls) -> dict:
+        """Return the resolved pool configuration (useful for diagnostics)."""
+        primary_url = _normalized_database_url()
+        replica_url = os.getenv("SARDIS_DATABASE_REPLICA_URL", "")
+        return {
+            "primary": _pool_kwargs(primary_url),
+            "replica_configured": bool(replica_url),
+            "replica": _pool_kwargs(replica_url) if replica_url else None,
+        }
 
 
 async def init_database() -> None:

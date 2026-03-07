@@ -253,10 +253,15 @@ class SardisSettings(BaseSettings):
     
     # Database - PostgreSQL for production
     database_url: str = ""
+    database_replica_url: str = ""  # Read replica (Neon branch or standby)
+    db_pool_min: int = 5
+    db_pool_max: int = 30
+    db_pool_min_neon: int = 2
+    db_pool_max_neon: int = 15
     ledger_dsn: str = ""
     mandate_archive_dsn: str = ""
     replay_cache_dsn: str = ""
-    
+
     # Redis/Upstash for caching (optional)
     redis_url: str = ""
     
