@@ -207,33 +207,63 @@ class APIKeyManager:
                     prefix,
                     key_hash,
                 )
-                
-                if not row:
-                    return None
-                
-                # Check expiration
-                if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
-                    return None
-                
-                # Update last used
-                await conn.execute(
-                    "UPDATE api_keys SET last_used_at = NOW() WHERE key_prefix = $1",
-                    prefix,
+
+                if row:
+                    # Check expiration
+                    if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
+                        return None
+
+                    # Update last used
+                    await conn.execute(
+                        "UPDATE api_keys SET last_used_at = NOW() WHERE key_prefix = $1",
+                        prefix,
+                    )
+
+                    return APIKey(
+                        key_id=str(row["id"]),
+                        key_prefix=row["key_prefix"],
+                        key_hash=row["key_hash"],
+                        organization_id=str(row["organization_external_id"]),
+                        name=row["name"],
+                        scopes=row["scopes"],
+                        rate_limit=row["rate_limit"],
+                        is_active=row["is_active"],
+                        expires_at=row["expires_at"],
+                        created_at=row["created_at"],
+                        last_used_at=row["last_used_at"],
+                    )
+
+                # Fallback: check user_api_keys table (Phase 2 user auth)
+                user_row = await conn.fetchrow(
+                    """
+                    SELECT id, user_id, org_id, key_prefix, key_hash, name, scopes, expires_at, created_at, last_used_at
+                    FROM user_api_keys
+                    WHERE key_hash = $1
+                    """,
+                    key_hash,
                 )
-                
-                return APIKey(
-                    key_id=str(row["id"]),
-                    key_prefix=row["key_prefix"],
-                    key_hash=row["key_hash"],
-                    organization_id=str(row["organization_external_id"]),
-                    name=row["name"],
-                    scopes=row["scopes"],
-                    rate_limit=row["rate_limit"],
-                    is_active=row["is_active"],
-                    expires_at=row["expires_at"],
-                    created_at=row["created_at"],
-                    last_used_at=row["last_used_at"],
-                )
+                if user_row:
+                    if user_row["expires_at"] and user_row["expires_at"] < datetime.now(timezone.utc):
+                        return None
+                    await conn.execute(
+                        "UPDATE user_api_keys SET last_used_at = NOW() WHERE id = $1",
+                        user_row["id"],
+                    )
+                    return APIKey(
+                        key_id=str(user_row["id"]),
+                        key_prefix=user_row["key_prefix"],
+                        key_hash=user_row["key_hash"],
+                        organization_id=str(user_row["org_id"]),
+                        name=user_row["name"] or "default",
+                        scopes=list(user_row["scopes"]) if user_row["scopes"] else ["*"],
+                        rate_limit=100,
+                        is_active=True,
+                        expires_at=user_row["expires_at"],
+                        created_at=user_row["created_at"],
+                        last_used_at=user_row["last_used_at"],
+                    )
+
+                return None
         else:
             # In-memory lookup
             key_id = self._key_to_id.get(prefix)
