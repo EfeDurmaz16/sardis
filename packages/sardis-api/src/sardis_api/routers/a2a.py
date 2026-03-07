@@ -536,6 +536,7 @@ class A2APayResponse(BaseModel):
     reference: Optional[str] = None
     ledger_tx_id: Optional[str] = None
     audit_anchor: Optional[str] = None
+    receipt_id: Optional[str] = None
 
 
 class A2AMessageRequest(BaseModel):
@@ -865,6 +866,24 @@ async def a2a_pay(
             except Exception:
                 pass
 
+        # Build execution receipt for audit trail
+        execution_receipt = None
+        try:
+            from sardis_v2_core.execution_receipt import build_receipt
+            execution_receipt = build_receipt(
+                intent={"sender": req.sender_agent_id, "recipient": req.recipient_agent_id,
+                        "amount": str(req.amount), "token": req.token, "chain": req.chain},
+                tx_hash=getattr(receipt, "tx_hash", str(receipt)),
+                chain=req.chain,
+                ledger_entry_id=ledger_tx_id or "",
+                org_id=str(principal.organization_id),
+                agent_id=req.sender_agent_id,
+                amount=str(req.amount),
+                currency=req.token,
+            )
+        except Exception:
+            pass
+
         log_payment_event("a2a.payment.completed",
             org_id=str(principal.organization_id),
             agent_id=req.sender_agent_id,
@@ -900,6 +919,7 @@ async def a2a_pay(
             reference=req.reference,
             ledger_tx_id=ledger_tx_id,
             audit_anchor=getattr(receipt, "audit_anchor", None),
+            receipt_id=execution_receipt.receipt_id if execution_receipt else None,
         )
 
     return await run_idempotent(
