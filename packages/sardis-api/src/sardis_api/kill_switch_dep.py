@@ -13,13 +13,37 @@ from .authz import Principal, require_principal
 logger = logging.getLogger("sardis.api.kill_switch")
 
 
+def _detect_rail(request: Request) -> Optional[str]:
+    """Detect payment rail from route prefix."""
+    path = request.url.path
+    if "/a2a" in path:
+        return "a2a"
+    if "/ap2" in path or "/mandates" in path:
+        return "ap2"
+    if "/checkout" in path or "/sessions" in path:
+        return "checkout"
+    return None
+
+
+def _detect_chain(request: Request) -> Optional[str]:
+    """Detect target chain from request body or path."""
+    # Check path params first
+    chain = request.path_params.get("chain")
+    if chain:
+        return chain
+    # Check request state (set by earlier middleware)
+    if hasattr(request.state, "chain"):
+        return request.state.chain
+    return None
+
+
 async def require_kill_switch_clear(
     request: Request,
     principal: Principal = Depends(require_principal),
 ) -> None:
     """FastAPI dependency that blocks payment if any kill switch is active.
 
-    Checks global, organization, and agent scopes.
+    Checks global, organization, agent, rail, and chain scopes.
     Raises HTTP 503 if payments are suspended.
     """
     org_id = principal.organization_id
@@ -41,12 +65,31 @@ async def require_kill_switch_clear(
             org_activation = await kill_switch._backend.get_activation(f"org:{org_id}")
             if org_activation is not None:
                 raise KillSwitchError(f"Organization kill switch active: {org_activation.reason}")
+
+        # Check rail-level kill switch
+        rail = _detect_rail(request)
+        if rail:
+            await kill_switch.check_rail(rail)
+
+        # Check chain-level kill switch
+        chain = _detect_chain(request)
+        if chain:
+            await kill_switch.check_chain(chain)
+
     except KillSwitchError as e:
-        scope = "global"
-        if "Organization" in str(e):
+        msg = str(e)
+        if "Global" in msg:
+            scope = "global"
+        elif "Organization" in msg:
             scope = "organization"
-        elif "Agent" in str(e):
+        elif "Agent" in msg:
             scope = "agent"
+        elif "Rail" in msg:
+            scope = "rail"
+        elif "Chain" in msg:
+            scope = "chain"
+        else:
+            scope = "unknown"
         logger.warning("Kill switch blocked payment: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -74,7 +117,7 @@ async def require_kill_switch_clear_checkout(
 ) -> None:
     """Kill switch check for public checkout endpoints (no principal required).
 
-    Only checks global scope since checkout doesn't have org/agent context at entry.
+    Checks global and checkout rail scopes.
     """
     kill_switch = get_kill_switch()
     if await kill_switch.is_active_global():
@@ -82,4 +125,10 @@ async def require_kill_switch_clear_checkout(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"detail": "payments_suspended", "scope": "global"},
+        )
+    if await kill_switch.is_active_rail("checkout"):
+        logger.warning("Kill switch blocked checkout payment (rail:checkout)")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"detail": "payments_suspended", "scope": "rail"},
         )
