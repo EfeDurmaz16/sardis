@@ -8,9 +8,11 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # ── Request / Response Models ──────────────────────────────────────
@@ -83,13 +85,6 @@ class MerchantDependencies:
 
 def get_deps() -> MerchantDependencies:
     raise RuntimeError("MerchantDependencies not configured")
-
-
-# ── Auth helper (reuse project pattern) ───────────────────────────
-
-def _require_principal():
-    from sardis_api.routers.auth import require_principal
-    return Depends(require_principal)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────

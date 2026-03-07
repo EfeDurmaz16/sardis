@@ -213,6 +213,7 @@ class SardisSettings(BaseSettings):
             "https://sardis.sh",
             "https://www.sardis.sh",
             "https://app.sardis.sh",
+            "https://checkout.sardis.sh",
         ]
 
         if not self.allowed_origins:
