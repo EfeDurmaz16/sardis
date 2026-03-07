@@ -124,8 +124,11 @@ from .event_bus import (
 )
 from .cache import CacheService, CacheBackend, InMemoryCache, RedisCache, create_cache_service
 from .agents import Agent, AgentPolicy, SpendingLimits, AgentRepository
-from .agent_groups import AgentGroup, AgentGroupRepository, GroupSpendingLimits, GroupMerchantPolicy
+from .agent_groups import AgentGroup, AgentGroupRepository, GroupSpendingLimits, GroupMerchantPolicy, AgentGroupHierarchy, merge_group_policies
 from .group_policy import GroupPolicyEvaluator, GroupPolicyResult, GroupPolicyPort, InMemoryGroupSpendingTracker
+from .policy_version_store import PolicyVersionStore, PolicyVersion, compute_policy_hash
+from .policy_evidence import PolicyStepResult, PolicyDecisionLog, evaluate_with_evidence, export_evidence_bundle, compute_evidence_hash
+from .drift_policy_integrator import DriftPolicyIntegrator, DriftAction, DriftPolicyConfig, DriftActionResult
 from .wallet_repository import WalletRepository
 from .agent_repository_postgres import PostgresAgentRepository
 from .wallet_repository_postgres import PostgresWalletRepository
@@ -352,6 +355,23 @@ __all__ = [
     "GroupPolicyResult",
     "GroupPolicyPort",
     "InMemoryGroupSpendingTracker",
+    "AgentGroupHierarchy",
+    "merge_group_policies",
+    # Policy Versioning
+    "PolicyVersionStore",
+    "PolicyVersion",
+    "compute_policy_hash",
+    # Policy Evidence
+    "PolicyStepResult",
+    "PolicyDecisionLog",
+    "evaluate_with_evidence",
+    "export_evidence_bundle",
+    "compute_evidence_hash",
+    # Drift Policy Integration
+    "DriftPolicyIntegrator",
+    "DriftAction",
+    "DriftPolicyConfig",
+    "DriftActionResult",
     "WalletRepository",
     # Utilities
     "TTLDict",
