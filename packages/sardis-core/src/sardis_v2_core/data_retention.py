@@ -37,6 +37,39 @@ class ClassifiedColumn:
     anonymize_on_expiry: bool
 
 
+_ALLOWED_RETENTION_TABLES = frozenset({
+    "agents",
+    "wallets",
+    "ledger_entries",
+    "transactions",
+    "holds",
+    "webhook_deliveries",
+    "webhook_subscriptions",
+    "policy_decisions",
+    "execution_intents",
+    "execution_side_effects",
+    "idempotency_records",
+    "access_audit_log",
+    "compliance_checks",
+    "invoices",
+    "checkouts",
+})
+
+_ALLOWED_TIMESTAMP_COLUMNS = frozenset({
+    "created_at",
+    "executed_at",
+    "timestamp",
+    "updated_at",
+})
+
+
+def _validate_identifier(name: str, allowed: frozenset[str], kind: str) -> str:
+    """Validate that a SQL identifier is in the allowlist."""
+    if name not in allowed:
+        raise ValueError(f"{kind} '{name}' is not in the allowed list")
+    return name
+
+
 class DataRetentionEngine:
     """Enforce data retention policies across all classified tables."""
 
@@ -86,15 +119,25 @@ class DataRetentionEngine:
         self, table_name: str, columns: list[ClassifiedColumn]
     ) -> RetentionResult:
         """Enforce retention for a single table."""
+        import re
         import time
 
         start = time.monotonic()
         result = RetentionResult(table_name=table_name)
 
         try:
+            # Validate table name against allowlist (I1 fix)
+            _validate_identifier(table_name, _ALLOWED_RETENTION_TABLES, "Table")
+
             # Find the minimum retention window for this table
             min_retention = min(c.retention_days for c in columns)
             result.retention_days = min_retention
+
+            # Validate column names: must be simple identifiers
+            _ident_re = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
+            for c in columns:
+                if not _ident_re.match(c.column_name):
+                    raise ValueError(f"Invalid column name: {c.column_name}")
 
             # Check which columns should be anonymized vs deleted
             anonymize_cols = [c for c in columns if c.anonymize_on_expiry]
@@ -148,8 +191,8 @@ class DataRetentionEngine:
         return result
 
     async def _find_timestamp_column(self, conn: Any, table_name: str) -> Optional[str]:
-        """Find the timestamp column for a table."""
-        for candidate in ("created_at", "executed_at", "timestamp"):
+        """Find the timestamp column for a table (validated against allowlist)."""
+        for candidate in _ALLOWED_TIMESTAMP_COLUMNS:
             exists = await conn.fetchval(
                 "SELECT EXISTS("
                 "SELECT 1 FROM information_schema.columns "

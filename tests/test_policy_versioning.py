@@ -63,6 +63,14 @@ class MockPool:
         return MockConnection(self)
 
 
+class _MockTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+
 class MockConnection:
     def __init__(self, pool: MockPool):
         self._pool = pool
@@ -73,9 +81,12 @@ class MockConnection:
     async def __aexit__(self, *args):
         pass
 
+    def transaction(self):
+        return _MockTransaction()
+
     async def fetchrow(self, query: str, *args):
         agent_id = args[0] if args else None
-        if "ORDER BY version DESC LIMIT 1" in query:
+        if "ORDER BY version DESC LIMIT 1" in query:  # matches both with and without FOR UPDATE
             # get_latest or create_version: find latest for agent
             matching = [r for r in self._pool._rows if r["agent_id"] == agent_id]
             if matching:

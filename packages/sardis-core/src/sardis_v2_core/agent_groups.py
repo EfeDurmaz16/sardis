@@ -134,7 +134,7 @@ class AgentGroupRepository:
             agent_ids=agent_ids or [],
             metadata=metadata or {},
         )
-        await self._store.set(group.group_id, self._serialize(group), ttl=300)
+        await self._store.set(group.group_id, self._serialize(group), ttl=0)
         return group
 
     async def get(self, group_id: str) -> Optional[AgentGroup]:
@@ -180,7 +180,7 @@ class AgentGroupRepository:
         if metadata is not None:
             group.metadata = metadata
         group.updated_at = datetime.now(timezone.utc)
-        await self._store.set(group_id, self._serialize(group), ttl=300)
+        await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def delete(self, group_id: str) -> bool:
@@ -198,7 +198,7 @@ class AgentGroupRepository:
         if agent_id not in group.agent_ids:
             group.agent_ids.append(agent_id)
             group.updated_at = datetime.now(timezone.utc)
-            await self._store.set(group_id, self._serialize(group), ttl=300)
+            await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def remove_agent(self, group_id: str, agent_id: str) -> Optional[AgentGroup]:
@@ -209,7 +209,7 @@ class AgentGroupRepository:
         if agent_id in group.agent_ids:
             group.agent_ids.remove(agent_id)
             group.updated_at = datetime.now(timezone.utc)
-            await self._store.set(group_id, self._serialize(group), ttl=300)
+            await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def get_groups_for_agent(self, agent_id: str) -> List[AgentGroup]:
@@ -261,7 +261,7 @@ class AgentGroupRepository:
 
         group.parent_group_id = parent_group_id
         group.updated_at = datetime.now(timezone.utc)
-        await self._store.set(group_id, self._serialize(group), ttl=300)
+        await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
 

@@ -63,14 +63,13 @@ def kill_switch():
 @settings(max_examples=100)
 def test_per_tx_cap_never_exceeded(amount, per_tx_cap):
     """A payment exceeding the per-tx cap must always be rejected."""
-    engine = TransactionCapEngine(redis_url="")
+    import sardis_guardrails.transaction_caps as tc_mod
 
     async def _check():
-        import os
-        old = os.environ.get("SARDIS_DEFAULT_AGENT_TX_CAP")
-        os.environ["SARDIS_DEFAULT_AGENT_TX_CAP"] = str(per_tx_cap)
+        # Monkeypatch the module-level constant (parsed once at import)
+        old_cap = tc_mod.DEFAULT_AGENT_TX_CAP
+        tc_mod.DEFAULT_AGENT_TX_CAP = per_tx_cap
         try:
-            # Force re-read of env var by creating new engine
             fresh = TransactionCapEngine(redis_url="")
             result = await fresh.check_and_record(
                 amount=amount,
@@ -82,10 +81,7 @@ def test_per_tx_cap_never_exceeded(amount, per_tx_cap):
                     f"Payment of {amount} should be rejected when per-tx cap is {per_tx_cap}"
                 )
         finally:
-            if old is not None:
-                os.environ["SARDIS_DEFAULT_AGENT_TX_CAP"] = old
-            elif "SARDIS_DEFAULT_AGENT_TX_CAP" in os.environ:
-                del os.environ["SARDIS_DEFAULT_AGENT_TX_CAP"]
+            tc_mod.DEFAULT_AGENT_TX_CAP = old_cap
 
     asyncio.get_event_loop().run_until_complete(_check())
 

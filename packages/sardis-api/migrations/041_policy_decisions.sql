@@ -13,5 +13,5 @@ CREATE TABLE IF NOT EXISTS policy_decisions (
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_policy_decisions_agent ON policy_decisions(agent_id, created_at DESC);
-CREATE INDEX idx_policy_decisions_mandate ON policy_decisions(mandate_id);
+CREATE INDEX IF NOT EXISTS idx_policy_decisions_agent ON policy_decisions(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_policy_decisions_mandate ON policy_decisions(mandate_id);

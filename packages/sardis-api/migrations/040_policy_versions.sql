@@ -14,4 +14,4 @@ CREATE TABLE IF NOT EXISTS policy_versions (
     UNIQUE(agent_id, version)
 );
 
-CREATE INDEX idx_policy_versions_agent ON policy_versions(agent_id, version DESC);
+CREATE INDEX IF NOT EXISTS idx_policy_versions_agent ON policy_versions(agent_id, version DESC);

@@ -22,6 +22,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/sso", tags=["sso"])
 
+# In-memory state store for OIDC CSRF protection.
+# In production, replace with Redis or DB-backed store.
+_SSO_STATE_STORE: dict[str, dict[str, Any]] = {}
+_SSO_STATE_TTL = 600  # 10 minutes
+
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -72,6 +77,79 @@ class SSOUserInfo(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Secret encryption helpers for OIDC client_secret (I5)
+# ---------------------------------------------------------------------------
+
+def _get_encryption_key() -> bytes:
+    """Get or derive the encryption key for SSO secrets."""
+    import base64
+    raw_key = os.getenv("SARDIS_SSO_ENCRYPTION_KEY", "")
+    if not raw_key:
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        if env in ("prod", "production", "staging"):
+            raise RuntimeError(
+                "SARDIS_SSO_ENCRYPTION_KEY must be set in production/staging. "
+                "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            )
+        # Dev fallback — deterministic key for local testing only
+        raw_key = base64.urlsafe_b64encode(b"sardis-dev-sso-key-00000000000000").decode()
+    return raw_key.encode()
+
+
+def _encrypt_secret(plaintext: str) -> str:
+    """Encrypt a secret using Fernet symmetric encryption."""
+    try:
+        from cryptography.fernet import Fernet
+        f = Fernet(_get_encryption_key())
+        return f.encrypt(plaintext.encode()).decode()
+    except ImportError:
+        logger.warning("cryptography package not installed; storing SSO secret in plaintext")
+        return plaintext
+
+
+def _decrypt_secret(ciphertext: str) -> str:
+    """Decrypt a Fernet-encrypted secret."""
+    try:
+        from cryptography.fernet import Fernet
+        f = Fernet(_get_encryption_key())
+        return f.decrypt(ciphertext.encode()).decode()
+    except ImportError:
+        return ciphertext
+    except Exception:
+        # If decryption fails, assume it's stored in plaintext (migration period)
+        return ciphertext
+
+
+# ---------------------------------------------------------------------------
+# SSO state management (C4 fix)
+# ---------------------------------------------------------------------------
+
+def _store_sso_state(state: str, org_id: str, provider_type: str) -> None:
+    """Store SSO state for CSRF validation."""
+    # Prune expired entries
+    now = time.time()
+    expired = [k for k, v in _SSO_STATE_STORE.items() if v["expires_at"] < now]
+    for k in expired:
+        del _SSO_STATE_STORE[k]
+
+    _SSO_STATE_STORE[state] = {
+        "org_id": org_id,
+        "provider_type": provider_type,
+        "expires_at": now + _SSO_STATE_TTL,
+    }
+
+
+def _validate_sso_state(state: str) -> Optional[dict[str, Any]]:
+    """Validate and consume a SSO state token. Returns state data or None."""
+    data = _SSO_STATE_STORE.pop(state, None)
+    if data is None:
+        return None
+    if data["expires_at"] < time.time():
+        return None
+    return data
+
+
+# ---------------------------------------------------------------------------
 # SSO configuration store
 # ---------------------------------------------------------------------------
 
@@ -90,6 +168,12 @@ class SSOConfigStore:
             )
             if not row:
                 return None
+
+            # Decrypt client_secret if present (I5)
+            oidc_client_secret = row.get("oidc_client_secret")
+            if oidc_client_secret:
+                oidc_client_secret = _decrypt_secret(oidc_client_secret)
+
             return SSOConfig(
                 id=row["id"],
                 org_id=row["org_id"],
@@ -98,7 +182,7 @@ class SSOConfigStore:
                 enabled=row["enabled"],
                 oidc_issuer_url=row.get("oidc_issuer_url"),
                 oidc_client_id=row.get("oidc_client_id"),
-                oidc_client_secret=row.get("oidc_client_secret"),
+                oidc_client_secret=oidc_client_secret,
                 oidc_scopes=row.get("oidc_scopes") or ["openid", "profile", "email"],
                 saml_entity_id=row.get("saml_entity_id"),
                 saml_sso_url=row.get("saml_sso_url"),
@@ -254,50 +338,16 @@ class SAMLHandler:
     async def validate_response(self, saml_response: str) -> SSOUserInfo:
         """Validate a SAML Response and extract user info.
 
-        In production, this would verify the XML signature against the IdP certificate.
+        SECURITY: SAML XML signature verification is NOT yet implemented.
+        This method raises NotImplementedError to prevent deployment without
+        proper signature verification, which would allow SAML response forgery.
         """
-        import base64
-        import xml.etree.ElementTree as ET
-
-        try:
-            decoded = base64.b64decode(saml_response)
-            root = ET.fromstring(decoded)
-
-            # Extract NameID (email)
-            ns = {
-                "saml": "urn:oasis:names:tc:SAML:2.0:assertion",
-                "samlp": "urn:oasis:names:tc:SAML:2.0:protocol",
-            }
-            name_id_elem = root.find(".//saml:NameID", ns)
-            if name_id_elem is None or not name_id_elem.text:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="No NameID in SAML response",
-                )
-
-            email = name_id_elem.text
-
-            # Validate email domain
-            if self._config.allowed_email_domains:
-                domain = email.split("@")[-1].lower()
-                if domain not in [d.lower() for d in self._config.allowed_email_domains]:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Email domain {domain} not allowed",
-                    )
-
-            return SSOUserInfo(
-                email=email,
-                name=None,
-                subject_id=email,
-                provider_id=self._config.id,
-            )
-
-        except ET.ParseError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid SAML response",
-            ) from e
+        raise NotImplementedError(
+            "SAML response signature verification is not yet implemented. "
+            "Integrate a library such as python3-saml or signxml to verify "
+            "the XML signature against the IdP certificate before enabling "
+            "SAML SSO in production."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +373,9 @@ async def sso_init(req: SSOInitRequest, request: Request):
     # Generate state token
     state = hashlib.sha256(f"{req.org_id}:{time.time()}:{os.urandom(16).hex()}".encode()).hexdigest()
 
+    # Store state → org mapping for CSRF validation (C4 fix)
+    _store_sso_state(state, req.org_id, config.provider_type)
+
     if config.provider_type == "oidc":
         handler = OIDCHandler(config)
         redirect_url = handler.get_authorization_url(state)
@@ -337,32 +390,35 @@ async def sso_init(req: SSOInitRequest, request: Request):
 
 @router.post("/oidc/callback")
 async def oidc_callback(req: OIDCCallbackRequest, request: Request):
-    """Handle OIDC callback with authorization code."""
+    """Handle OIDC callback with authorization code.
+
+    Validates the state token against the stored org_id to prevent CSRF
+    and ensure the code is exchanged with the correct org's IdP config.
+    """
     pool = getattr(request.app.state, "db_pool", None)
     if not pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    # In production, validate state against a session/cache
-    # For now, extract org_id from state (would be stored in session)
-    store = SSOConfigStore(pool)
-
-    # Find OIDC configs to try (in production, state maps to specific org)
-    async with pool.acquire() as conn:
-        configs = await conn.fetch(
-            "SELECT org_id FROM sso_configurations WHERE provider_type = 'oidc' AND enabled = TRUE"
+    # Validate state token (C4 fix — prevents CSRF and org mismatch)
+    state_data = _validate_sso_state(req.state)
+    if state_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired SSO state token",
         )
 
-    for row in configs:
-        config = await store.get_by_org(row["org_id"])
-        if config and config.provider_type == "oidc":
-            handler = OIDCHandler(config)
-            try:
-                user_info = await handler.exchange_code(req.code)
-                return await _provision_sso_user(pool, config, user_info)
-            except HTTPException:
-                continue
+    org_id = state_data["org_id"]
+    store = SSOConfigStore(pool)
+    config = await store.get_by_org(org_id)
+    if not config or config.provider_type != "oidc":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="OIDC not configured for this organization",
+        )
 
-    raise HTTPException(status_code=401, detail="OIDC authentication failed")
+    handler = OIDCHandler(config)
+    user_info = await handler.exchange_code(req.code)
+    return await _provision_sso_user(pool, config, user_info)
 
 
 async def _provision_sso_user(

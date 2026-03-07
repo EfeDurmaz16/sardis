@@ -53,7 +53,16 @@ class ExecutionReceipt:
 
     def compute_signature(self, secret: str | None = None) -> str:
         """Compute HMAC-SHA256 signature over receipt fields."""
-        key = (secret or os.getenv("SARDIS_RECEIPT_HMAC_KEY", "dev-receipt-key")).encode()
+        resolved = secret or os.getenv("SARDIS_RECEIPT_HMAC_KEY", "")
+        if not resolved:
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+            if env in ("prod", "production", "staging"):
+                raise RuntimeError(
+                    "SARDIS_RECEIPT_HMAC_KEY must be set in production/staging. "
+                    "Refusing to sign with a default key."
+                )
+            resolved = "dev-receipt-key"
+        key = resolved.encode()
         payload = "|".join([
             self.receipt_id,
             str(self.timestamp),

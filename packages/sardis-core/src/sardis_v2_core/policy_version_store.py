@@ -56,55 +56,70 @@ class PolicyVersionStore:
         policy_json: dict[str, Any],
         policy_text: Optional[str] = None,
         created_by: Optional[str] = None,
+        _max_retries: int = 3,
     ) -> PolicyVersion:
-        """Create a new policy version, auto-incrementing from the latest."""
+        """Create a new policy version, auto-incrementing from the latest.
+
+        Uses a transaction with SELECT ... FOR UPDATE to prevent race conditions
+        on concurrent version creation. Retries on unique constraint violation.
+        """
         version_id = _nanoid()
         policy_hash = compute_policy_hash(policy_json)
+        now = datetime.now(timezone.utc)
 
-        async with pool.acquire() as conn:
-            # Get latest version for this agent
-            row = await conn.fetchrow(
-                "SELECT id, version FROM policy_versions "
-                "WHERE agent_id = $1 ORDER BY version DESC LIMIT 1",
-                agent_id,
-            )
-            if row:
-                next_version = row["version"] + 1
-                parent_id = row["id"]
-            else:
-                next_version = 1
-                parent_id = None
+        for attempt in range(_max_retries):
+            try:
+                async with pool.acquire() as conn:
+                    async with conn.transaction():
+                        # Lock the latest version row to serialize concurrent writes
+                        row = await conn.fetchrow(
+                            "SELECT id, version FROM policy_versions "
+                            "WHERE agent_id = $1 ORDER BY version DESC LIMIT 1 "
+                            "FOR UPDATE",
+                            agent_id,
+                        )
+                        if row:
+                            next_version = row["version"] + 1
+                            parent_id = row["id"]
+                        else:
+                            next_version = 1
+                            parent_id = None
 
-            now = datetime.now(timezone.utc)
-            await conn.execute(
-                """
-                INSERT INTO policy_versions
-                    (id, agent_id, version, policy_json, policy_text,
-                     created_at, created_by, parent_version_id, hash)
-                VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
-                """,
-                version_id,
-                agent_id,
-                next_version,
-                json.dumps(policy_json),
-                policy_text,
-                now,
-                created_by,
-                parent_id,
-                policy_hash,
-            )
+                        await conn.execute(
+                            """
+                            INSERT INTO policy_versions
+                                (id, agent_id, version, policy_json, policy_text,
+                                 created_at, created_by, parent_version_id, hash)
+                            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
+                            """,
+                            version_id,
+                            agent_id,
+                            next_version,
+                            json.dumps(policy_json),
+                            policy_text,
+                            now,
+                            created_by,
+                            parent_id,
+                            policy_hash,
+                        )
 
-        return PolicyVersion(
-            id=version_id,
-            agent_id=agent_id,
-            version=next_version,
-            policy_json=policy_json,
-            policy_text=policy_text,
-            created_at=now,
-            created_by=created_by,
-            parent_version_id=parent_id,
-            hash=policy_hash,
-        )
+                return PolicyVersion(
+                    id=version_id,
+                    agent_id=agent_id,
+                    version=next_version,
+                    policy_json=policy_json,
+                    policy_text=policy_text,
+                    created_at=now,
+                    created_by=created_by,
+                    parent_version_id=parent_id,
+                    hash=policy_hash,
+                )
+            except Exception as e:
+                # Retry on unique constraint violation (concurrent write)
+                if "unique" in str(e).lower() and attempt < _max_retries - 1:
+                    version_id = _nanoid()  # new ID for retry
+                    continue
+                raise
 
     async def get_version(
         self,

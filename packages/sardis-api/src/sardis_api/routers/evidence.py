@@ -2,6 +2,9 @@
 
 Provides endpoints to fetch execution traces, compliance decisions,
 policy receipts, and webhook delivery audit trails.
+
+All queries are scoped to the caller's organization to prevent cross-tenant
+data exposure.
 """
 from __future__ import annotations
 
@@ -59,6 +62,22 @@ class PolicyDecisionDetailResponse(BaseModel):
     created_at: str
 
 
+def _serialize_datetimes(row_dict: dict) -> dict:
+    """Convert datetime values to ISO strings in place."""
+    for k, v in row_dict.items():
+        if hasattr(v, "isoformat"):
+            row_dict[k] = v.isoformat()
+    return row_dict
+
+
+async def _verify_agent_ownership(conn: Any, agent_id: str, org_id: str) -> bool:
+    """Verify that an agent belongs to the given organization."""
+    owner = await conn.fetchval(
+        "SELECT owner_id FROM agents WHERE id = $1", agent_id,
+    )
+    return owner == org_id
+
+
 @router.get("/transactions/{tx_id}", response_model=TransactionEvidenceResponse)
 async def get_transaction_evidence(
     request: Request,
@@ -69,31 +88,39 @@ async def get_transaction_evidence(
 
     Returns the execution receipt, ledger entries, compliance decision,
     policy evaluation, and side effect queue status.
+    All results scoped to the caller's organization.
     """
     try:
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
+        org_id = principal.organization_id
+
         async with pool.acquire() as conn:
-            # Ledger entries
+            # Ledger entries — scoped via wallet ownership
             ledger_rows = await conn.fetch(
                 """
-                SELECT entry_id, wallet_id, entry_type, amount, currency,
-                       chain, chain_tx_hash, status, created_at
-                FROM ledger_entries
-                WHERE chain_tx_hash = $1 OR entry_id = $1
-                ORDER BY created_at
+                SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                       le.currency, le.chain, le.chain_tx_hash, le.status,
+                       le.created_at
+                FROM ledger_entries le
+                JOIN wallets w ON le.wallet_id = w.wallet_id
+                WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
+                  AND w.organization_id = $2
+                ORDER BY le.created_at
                 """,
                 tx_id,
+                org_id,
             )
-            ledger_entries = [dict(r) for r in ledger_rows]
-            # Serialize datetimes
-            for entry in ledger_entries:
-                for k, v in entry.items():
-                    if hasattr(v, "isoformat"):
-                        entry[k] = v.isoformat()
+            ledger_entries = [_serialize_datetimes(dict(r)) for r in ledger_rows]
 
-            # Side effects
+            if not ledger_entries:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Transaction not found or not accessible",
+                )
+
+            # Side effects — scoped via tx_id already validated by ledger ownership
             side_effects_rows = await conn.fetch(
                 """
                 SELECT id, effect_type, status, attempt_count, last_error,
@@ -104,28 +131,20 @@ async def get_transaction_evidence(
                 """,
                 tx_id,
             )
-            side_effects = [dict(r) for r in side_effects_rows]
-            for se in side_effects:
-                for k, v in se.items():
-                    if hasattr(v, "isoformat"):
-                        se[k] = v.isoformat()
+            side_effects = [_serialize_datetimes(dict(r)) for r in side_effects_rows]
 
-            # Idempotency record
+            # Idempotency record — exact match only (no LIKE)
             idem_row = await conn.fetchrow(
                 """
                 SELECT idempotency_key, response_status, created_at, expires_at
                 FROM idempotency_records
-                WHERE idempotency_key LIKE '%' || $1 || '%'
-                LIMIT 1
+                WHERE idempotency_key = $1
                 """,
                 tx_id,
             )
             idem_record = None
             if idem_row:
-                idem_record = dict(idem_row)
-                for k, v in idem_record.items():
-                    if hasattr(v, "isoformat"):
-                        idem_record[k] = v.isoformat()
+                idem_record = _serialize_datetimes(dict(idem_row))
 
         return TransactionEvidenceResponse(
             tx_id=tx_id,
@@ -134,11 +153,13 @@ async def get_transaction_evidence(
             idempotency_record=idem_record,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Evidence lookup failed for tx=%s: %s", tx_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Evidence lookup failed: {e}",
+            detail="Evidence lookup failed",
         )
 
 
@@ -148,27 +169,34 @@ async def get_webhook_evidence(
     event_id: str,
     principal: Principal = Depends(require_principal),
 ):
-    """Retrieve webhook delivery audit trail for an event."""
+    """Retrieve webhook delivery audit trail for an event.
+
+    Scoped to the caller's organization via webhook subscription ownership.
+    """
     try:
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
+        org_id = principal.organization_id
+
         async with pool.acquire() as conn:
+            # Scope webhook deliveries through subscription ownership
             rows = await conn.fetch(
                 """
-                SELECT id, event_type, webhook_url, status_code,
-                       attempt_count, last_error, created_at, delivered_at
-                FROM webhook_deliveries
-                WHERE event_id = $1
-                ORDER BY created_at
+                SELECT wd.id, wd.event_type, wd.url AS webhook_url,
+                       wd.status_code, wd.attempt_number AS attempt_count,
+                       wd.error AS last_error, wd.created_at,
+                       wd.created_at AS delivered_at
+                FROM webhook_deliveries wd
+                JOIN webhook_subscriptions ws ON wd.subscription_id = ws.external_id
+                WHERE wd.event_id = $1
+                  AND ws.organization_id = $2
+                ORDER BY wd.created_at
                 """,
                 event_id,
+                org_id,
             )
-            deliveries = [dict(r) for r in rows]
-            for d in deliveries:
-                for k, v in d.items():
-                    if hasattr(v, "isoformat"):
-                        d[k] = v.isoformat()
+            deliveries = [_serialize_datetimes(dict(r)) for r in rows]
 
         return WebhookEvidenceResponse(
             event_id=event_id,
@@ -179,7 +207,7 @@ async def get_webhook_evidence(
         logger.exception("Webhook evidence lookup failed for event=%s: %s", event_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Webhook evidence lookup failed: {e}",
+            detail="Webhook evidence lookup failed",
         )
 
 
@@ -194,12 +222,20 @@ async def list_policy_decisions(
     offset: int = 0,
     principal: Principal = Depends(require_principal),
 ):
-    """List policy decisions for an agent with pagination."""
+    """List policy decisions for an agent with pagination.
+
+    Verifies agent belongs to the caller's organization.
+    """
     try:
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
+        org_id = principal.organization_id
+
         async with pool.acquire() as conn:
+            if not await _verify_agent_ownership(conn, agent_id, org_id):
+                raise HTTPException(status_code=404, detail="Agent not found")
+
             rows = await conn.fetch(
                 """
                 SELECT id, agent_id, mandate_id, verdict, evidence_hash, created_at
@@ -224,11 +260,13 @@ async def list_policy_decisions(
             for r in rows
         ]
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Policy decisions lookup failed for agent=%s: %s", agent_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Policy decisions lookup failed: {e}",
+            detail="Policy decisions lookup failed",
         )
 
 
@@ -239,12 +277,20 @@ async def get_policy_decision(
     decision_id: str,
     principal: Principal = Depends(require_principal),
 ):
-    """Retrieve full evidence bundle for a specific policy decision."""
+    """Retrieve full evidence bundle for a specific policy decision.
+
+    Verifies agent belongs to the caller's organization.
+    """
     try:
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
+        org_id = principal.organization_id
+
         async with pool.acquire() as conn:
+            if not await _verify_agent_ownership(conn, agent_id, org_id):
+                raise HTTPException(status_code=404, detail="Agent not found")
+
             row = await conn.fetchrow(
                 """
                 SELECT id, agent_id, mandate_id, policy_version_id,
@@ -282,7 +328,7 @@ async def get_policy_decision(
         logger.exception("Decision lookup failed for %s/%s: %s", agent_id, decision_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Decision lookup failed: {e}",
+            detail="Decision lookup failed",
         )
 
 
