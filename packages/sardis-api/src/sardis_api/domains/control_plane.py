@@ -21,8 +21,13 @@ def init_control_plane(
     compliance_checker=None,
     chain_executor=None,
     ledger_recorder=None,
+    execution_mode_router=None,
 ) -> ControlPlane:
-    """Initialize the control plane with the app's service instances."""
+    """Initialize the control plane with the app's service instances.
+
+    If execution_mode_router is provided and chain_executor supports
+    multi-modal execution, the router is used to select execution mode.
+    """
     global _instance
     _instance = ControlPlane(
         policy_evaluator=policy_evaluator,

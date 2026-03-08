@@ -20,6 +20,7 @@ class Rail(Enum):
     ACH = "ach"          # ACH bank transfers (future)
     WIRE = "wire"        # Wire transfers (future)
     CARD = "card"        # Virtual card payments
+    DELEGATED_CARD = "delegated_card"  # Tokenized delegated card execution
 
 
 @dataclass

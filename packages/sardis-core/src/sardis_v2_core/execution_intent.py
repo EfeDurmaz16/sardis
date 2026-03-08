@@ -20,6 +20,7 @@ class IntentSource(str, Enum):
     CHECKOUT = "checkout"
     MANDATE = "mandate"
     CARD = "card"
+    DELEGATED_CARD = "delegated_card"
 
 
 class IntentStatus(str, Enum):
@@ -59,6 +60,10 @@ class ExecutionIntent:
     recipient_wallet_id: str = ""
     recipient_address: str = ""
 
+    # Execution mode routing (delegated payment support)
+    execution_mode: str = ""  # native_crypto, offramp_settlement, delegated_card
+    credential_id: str = ""   # dcred_... for delegated card execution
+
     # Metadata
     memo: str = ""
     reference: str = ""
@@ -85,6 +90,8 @@ class ExecutionIntent:
             "chain": self.chain,
             "sender_wallet_id": self.sender_wallet_id,
             "recipient_wallet_id": self.recipient_wallet_id,
+            "execution_mode": self.execution_mode,
+            "credential_id": self.credential_id,
             "tx_hash": self.tx_hash,
             "receipt_id": self.receipt_id,
             "error": self.error,
