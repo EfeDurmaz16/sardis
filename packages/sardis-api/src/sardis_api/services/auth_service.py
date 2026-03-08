@@ -85,8 +85,8 @@ class AuthService:
         self._dsn = dsn
 
     async def _get_pool(self):
-        import asyncpg
-        return await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+        from sardis_v2_core.database import Database
+        return await Database.get_pool()
 
     async def register(self, email: str, password: str, display_name: str | None = None) -> AuthResult:
         """Register a new user with email + password."""
