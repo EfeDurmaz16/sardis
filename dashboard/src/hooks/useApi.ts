@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, exceptionsApi, anomalyApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -347,5 +347,100 @@ export function useCheckPolicy() {
   return useMutation({
     mutationFn: (data: { agent_id: string; amount: string; currency?: string; merchant_id?: string; mcc_code?: string }) =>
       policiesApi.check(data),
+  })
+}
+
+// Simulation
+export function useSimulate() {
+  return useMutation({
+    mutationFn: simulationApi.simulate,
+  })
+}
+
+// Exceptions
+export function useExceptions(params?: { agent_id?: string; status?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['exceptions', params?.agent_id, params?.status, params?.limit],
+    queryFn: () => exceptionsApi.list(params),
+  })
+}
+
+export function useException(exceptionId: string) {
+  return useQuery({
+    queryKey: ['exception', exceptionId],
+    queryFn: () => exceptionsApi.get(exceptionId),
+    enabled: !!exceptionId,
+  })
+}
+
+export function useResolveException() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      exceptionsApi.resolve(id, { resolution_notes: notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] })
+    },
+  })
+}
+
+export function useEscalateException() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      exceptionsApi.escalate(id, { notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] })
+    },
+  })
+}
+
+export function useRetryException() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => exceptionsApi.retry(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] })
+    },
+  })
+}
+
+// Anomaly
+export function useAnomalyEvents(params?: { agent_id?: string; min_score?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['anomaly-events', params?.agent_id, params?.min_score, params?.limit],
+    queryFn: () => anomalyApi.events(params),
+    refetchInterval: 15000,
+  })
+}
+
+export function useAnomalyConfig() {
+  return useQuery({
+    queryKey: ['anomaly-config'],
+    queryFn: anomalyApi.config,
+  })
+}
+
+export function useUpdateAnomalyConfig() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: anomalyApi.updateConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['anomaly-config'] })
+    },
+  })
+}
+
+export function useAssessRisk() {
+  return useMutation({
+    mutationFn: anomalyApi.assess,
+  })
+}
+
+// Transactions
+export function useTransactions(limit = 50) {
+  return useQuery({
+    queryKey: ['transactions', limit],
+    queryFn: () => paymentApi.getHistory(limit),
   })
 }

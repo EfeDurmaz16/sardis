@@ -760,6 +760,62 @@ export const evidenceApi = {
     requestV2<JsonObject>(`/evidence/policy-decisions/${decisionId}`),
 }
 
+// Simulation APIs (V2)
+export const simulationApi = {
+  simulate: (data: {
+    amount: string
+    currency?: string
+    chain?: string
+    agent_id: string
+    wallet_id?: string
+    merchant_id?: string
+    mcc_code?: string
+    source?: string
+  }) =>
+    requestV2<{
+      would_succeed: boolean
+      failure_reasons: string[]
+      policy_result: JsonObject | null
+      compliance_result: JsonObject | null
+      cap_check: JsonObject | null
+      kill_switch_status: JsonObject | null
+    }>('/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ currency: 'USDC', chain: 'base', source: 'ap2', ...data }),
+    }),
+}
+
+// Exceptions APIs (V2)
+export const exceptionsApi = {
+  list: (params?: { agent_id?: string; status?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.status) search.set('status', params.status)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/exceptions${q ? `?${q}` : ''}`)
+  },
+
+  get: (exceptionId: string) => requestV2<JsonObject>(`/exceptions/${exceptionId}`),
+
+  resolve: (exceptionId: string, data: { resolution_notes?: string }) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  escalate: (exceptionId: string, data?: { notes?: string }) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/escalate`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  retry: (exceptionId: string) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/retry`, {
+      method: 'POST',
+    }),
+}
+
 // Policies APIs (V2)
 export const policiesApi = {
   parse: (data: { natural_language: string }) =>
@@ -793,6 +849,27 @@ export const policiesApi = {
       method: 'POST',
       body: JSON.stringify({ currency: 'USD', ...data }),
     }),
+}
+
+// Anomaly APIs (V2)
+export const anomalyApi = {
+  assess: (data: { agent_id: string; amount: string; merchant_id?: string; mcc_code?: string }) =>
+    requestV2<JsonObject>('/anomaly/assess', { method: 'POST', body: JSON.stringify(data) }),
+
+  events: (params?: { agent_id?: string; min_score?: number; action?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.min_score) search.set('min_score', String(params.min_score))
+    if (params?.action) search.set('action', params.action)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/anomaly/events${q ? `?${q}` : ''}`)
+  },
+
+  config: () => requestV2<JsonObject>('/anomaly/config'),
+
+  updateConfig: (data: { thresholds?: Record<string, number>; signal_weights?: Record<string, number> }) =>
+    requestV2<JsonObject>('/anomaly/config', { method: 'PUT', body: JSON.stringify(data) }),
 }
 
 // Demo APIs (V2)
