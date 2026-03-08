@@ -1,10 +1,22 @@
 {
   "name": "n8n-nodes-sardis",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "n8n community node for Sardis payments - policy-controlled payments for AI agents",
   "keywords": ["n8n-community-node-package", "sardis", "payments", "ai-agents"],
   "license": "MIT",
-  "author": { "name": "Sardis", "email": "sdk@sardis.sh" },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/sardis-pay/sardis/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "author": { "name": "Sardis", "email": "efe@sardis.sh" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sardis-pay/sardis.git",
