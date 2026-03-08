@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT
+// DEPRECATED: This contract has been superseded by Zodiac Roles module (pre-deployed, audited).
+// Zodiac Roles address (all chains): 0x9646fDAD06d3e24444381f44362a3B0eB343D337
+// Kept for reference only — do NOT deploy to mainnet.
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -6,7 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title SardisPolicyModule
  * @notice Safe module that enforces spending policies for AI agent wallets
- * @dev Attached to a Safe proxy — called via checkTransaction() before every tx.
+ * @dev DEPRECATED — Replaced by Zodiac Roles module for MVP to avoid custom audit.
+ *      Attached to a Safe proxy — called via checkTransaction() before every tx.
  *
  * Replicates the policy logic from SardisAgentWallet but as a standalone module
  * that works with Safe Smart Accounts (audited, $100B+ TVL).

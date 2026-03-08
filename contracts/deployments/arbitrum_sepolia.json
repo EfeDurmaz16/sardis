@@ -1,13 +1,13 @@
 {
   "chain": "arbitrum_sepolia",
-  "chainId": null,
+  "chainId": 421614,
   "status": "pending",
   "deployer": null,
   "contracts": {
-    "walletFactory": { "address": null, "lifecycle": "pending_deploy" },
-    "escrow": { "address": null, "lifecycle": "pending_deploy" }
+    "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
+    "refundProtocol": { "address": null, "lifecycle": "pending_deploy", "source": "custom" }
   },
   "blockNumber": null,
   "timestamp": null,
-  "notes": "Deploy with: forge script script/DeployMultiChain.s.sol:DeployMultiChain --rpc-url arbitrum_sepolia --broadcast --verify"
+  "notes": "Deploy with DeploySafeModules.s.sol when testnet coverage is needed."
 }

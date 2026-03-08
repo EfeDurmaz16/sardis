@@ -1,13 +1,13 @@
 {
   "chain": "ethereum",
-  "chainId": null,
+  "chainId": 1,
   "status": "pending",
   "deployer": null,
   "contracts": {
-    "walletFactory": { "address": null, "lifecycle": "pending_deploy" },
-    "escrow": { "address": null, "lifecycle": "pending_deploy" }
+    "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
+    "refundProtocol": { "address": null, "lifecycle": "pending_deploy", "source": "custom" }
   },
   "blockNumber": null,
   "timestamp": null,
-  "notes": "Deploy with: forge script script/DeployMultiChain.s.sol:DeployMultiChain --rpc-url ethereum --broadcast --verify"
+  "notes": "Deploy after Base mainnet is stable. Use DeploySafeModules.s.sol."
 }

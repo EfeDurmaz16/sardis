@@ -4,13 +4,28 @@
   "status": "pending",
   "deployer": null,
   "contracts": {
-    "walletFactory": { "address": null, "lifecycle": "pending_deploy" },
-    "escrow": { "address": null, "lifecycle": "pending_deploy" },
-    "policyModule": { "address": "0x9646fDAD06d3e24444381f44362a3B0eB343D337", "lifecycle": "canonical_live" },
-    "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy" },
-    "refundProtocol": { "address": null, "lifecycle": "pending_deploy" }
+    "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
+    "refundProtocol": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
+    "policyModule": {
+      "address": "0x9646fDAD06d3e24444381f44362a3B0eB343D337",
+      "lifecycle": "canonical_live",
+      "source": "pre_deployed",
+      "provider": "Gnosis Guild (Zodiac Roles)"
+    },
+    "circlePaymaster": {
+      "address": "0x0578cFB241215b77442a541325d6A4E6dFE700Ec",
+      "lifecycle": "canonical_live",
+      "source": "pre_deployed",
+      "provider": "Circle"
+    },
+    "safeProxyFactory": {
+      "address": "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
+      "lifecycle": "canonical_live",
+      "source": "pre_deployed",
+      "provider": "Safe"
+    }
   },
   "blockNumber": null,
   "timestamp": null,
-  "notes": "policyModule points to external Zodiac Roles module. Set ledgerAnchor/refundProtocol after deployment. Runtime override: SARDIS_BASE_POLICY_MODULE_ADDRESS and SARDIS_BASE_LEDGER_ANCHOR_ADDRESS."
+  "notes": "Custom contracts (ledgerAnchor, refundProtocol) pending mainnet deployment. policyModule points to external Zodiac Roles module. Runtime override: SARDIS_BASE_POLICY_MODULE_ADDRESS and SARDIS_BASE_LEDGER_ANCHOR_ADDRESS."
 }
