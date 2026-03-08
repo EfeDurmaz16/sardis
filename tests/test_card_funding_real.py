@@ -127,7 +127,7 @@ class TestRealCardFunding:
         assert resp.status_code == 404
 
     def test_fund_card_fallback_no_offramp(self, mock_card_repo, mock_card_provider):
-        """Without offramp_service, falls back to simple provider funding."""
+        """Without offramp_service, stablecoin funding returns 503; fiat falls back to provider."""
         from sardis_api.routers.cards import create_cards_router
         app = FastAPI()
         router = create_cards_router(
@@ -136,9 +136,18 @@ class TestRealCardFunding:
         )
         app.include_router(router, prefix="/api/v2/cards")
         client = TestClient(app)
+
+        # Stablecoin without offramp should return 503
         resp = client.post("/api/v2/cards/card_1/fund", json={
             "amount": 50.0,
             "source": "stablecoin",
+        })
+        assert resp.status_code == 503
+
+        # Fiat path falls back to simple provider funding
+        resp = client.post("/api/v2/cards/card_1/fund", json={
+            "amount": 50.0,
+            "source": "fiat",
         })
         assert resp.status_code == 200
         mock_card_provider.fund_card.assert_called_once()

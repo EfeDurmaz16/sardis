@@ -42,20 +42,52 @@ def mock_agent_repo():
 @pytest.fixture
 def mock_chain_executor():
     executor = AsyncMock()
-    receipt = MagicMock()
+    receipt = MagicMock(spec=[
+        "tx_hash", "audit_anchor", "fee_tx_hash",
+        "execution_path", "user_op_hash",
+        "proof_artifact_path", "proof_artifact_sha256",
+    ])
     receipt.tx_hash = "0xtxhash123"
     receipt.audit_anchor = None
+    receipt.fee_tx_hash = None
+    receipt.execution_path = "legacy_tx"
+    receipt.user_op_hash = None
+    receipt.proof_artifact_path = None
+    receipt.proof_artifact_sha256 = None
     executor.dispatch_payment.return_value = receipt
     return executor
 
 
 @pytest.fixture
-def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor):
+def mock_wallet_manager():
+    manager = AsyncMock()
+    policy_result = MagicMock()
+    policy_result.allowed = True
+    policy_result.reason = None
+    manager.async_validate_policies.return_value = policy_result
+    manager.async_record_spend.return_value = None
+    return manager
+
+
+@pytest.fixture
+def mock_compliance():
+    compliance = AsyncMock()
+    result = MagicMock()
+    result.allowed = True
+    result.reason = None
+    compliance.preflight.return_value = result
+    return compliance
+
+
+@pytest.fixture
+def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor, mock_wallet_manager, mock_compliance):
     app = FastAPI()
     deps = WalletDependencies(
         wallet_repo=mock_wallet_repo,
         agent_repo=mock_agent_repo,
         chain_executor=mock_chain_executor,
+        wallet_manager=mock_wallet_manager,
+        compliance=mock_compliance,
     )
     app.dependency_overrides[get_deps] = lambda: deps
     app.include_router(wallets_router, prefix="/api/v2/wallets")
@@ -126,7 +158,7 @@ class TestWalletTransfer:
         })
         assert resp.status_code == 503
 
-    def test_transfer_chain_error(self, app_with_wallets, mock_chain_executor):
+    def test_transfer_chain_error(self, app_with_wallets, mock_chain_executor, mock_wallet_manager, mock_compliance):
         mock_chain_executor.dispatch_payment.side_effect = Exception("nonce too low")
         client = TestClient(app_with_wallets)
         resp = client.post("/api/v2/wallets/wallet_1/transfer", json={

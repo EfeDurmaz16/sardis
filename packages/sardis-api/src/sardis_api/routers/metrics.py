@@ -432,12 +432,13 @@ else:
         )
 
 
-@router.get("/health")
-async def health_check() -> dict:
+@router.get("/metrics/health")
+async def metrics_health_check() -> dict:
     """
-    Health check endpoint for monitoring.
+    Metrics-specific health check endpoint.
 
     Returns basic health status without exposing metrics.
+    The primary /health endpoint lives in health.py (deep component checks).
     """
     return {
         "status": "healthy",

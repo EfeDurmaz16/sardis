@@ -114,12 +114,12 @@ class TestTransactionModes:
         for chain in expected_testnets:
             assert chain in SARDIS_CONTRACTS, f"Missing testnet: {chain}"
 
-        # Check each chain has expected contracts
+        # Check each EVM chain has expected contracts (Safe + Zodiac Roles architecture)
         for chain, config in SARDIS_CONTRACTS.items():
             if config.get('experimental'):
                 continue  # Skip experimental chains (e.g. Solana)
-            assert 'wallet_factory' in config, f"{chain} missing wallet_factory"
-            assert 'escrow' in config, f"{chain} missing escrow"
+            assert 'policy_module' in config, f"{chain} missing policy_module"
+            assert 'ledger_anchor' in config, f"{chain} missing ledger_anchor"
 
 
 class TestComplianceProviders:
@@ -178,30 +178,27 @@ class TestSmartContractConfiguration:
     """Verify smart contract configuration."""
 
     def test_deployed_contract_addresses(self):
-        """Test that Base Sepolia contracts are deployed."""
+        """Test that Base Sepolia contracts are configured (Safe + Zodiac architecture)."""
         from sardis_chain.executor import SARDIS_CONTRACTS
 
         base_sepolia = SARDIS_CONTRACTS.get('base_sepolia', {})
 
-        # These should now have addresses after deployment
-        wallet_factory = base_sepolia.get('wallet_factory', '')
-        escrow = base_sepolia.get('escrow', '')
+        # Verify the policy module (Zodiac Roles) is configured
+        policy_module = base_sepolia.get('policy_module', '')
 
-        # Check if env vars are set (preferred method)
-        env_wallet = os.environ.get('SARDIS_BASE_SEPOLIA_WALLET_FACTORY_ADDRESS', '')
-        env_escrow = os.environ.get('SARDIS_BASE_SEPOLIA_ESCROW_ADDRESS', '')
+        # Check if env var override is set
+        env_policy = os.environ.get('SARDIS_BASE_SEPOLIA_POLICY_MODULE_ADDRESS', '')
 
-        # Either hardcoded or env var should have address
-        has_wallet = bool(wallet_factory) or bool(env_wallet)
-        has_escrow = bool(escrow) or bool(env_escrow)
+        # Either hardcoded or env var should have an address
+        has_policy = bool(policy_module) or bool(env_policy)
 
-        # Just verify the structure exists
-        assert 'wallet_factory' in base_sepolia
-        assert 'escrow' in base_sepolia
+        # Verify the structure has the expected keys
+        assert 'policy_module' in base_sepolia
+        assert 'ledger_anchor' in base_sepolia
 
 
 class TestContractSourceCode:
-    """Verify smart contract source code exists."""
+    """Verify smart contract source code exists (Safe + Zodiac architecture)."""
 
     @pytest.fixture
     def contracts_dir(self):
@@ -210,30 +207,29 @@ class TestContractSourceCode:
         contracts = current / "contracts" / "src"
         return contracts
 
-    def test_wallet_factory_exists(self, contracts_dir):
-        """Test SardisWalletFactory.sol exists."""
-        contract_file = contracts_dir / "SardisWalletFactory.sol"
-        assert contract_file.exists(), "SardisWalletFactory.sol not found"
+    def test_ledger_anchor_exists(self, contracts_dir):
+        """Test SardisLedgerAnchor.sol exists."""
+        contract_file = contracts_dir / "SardisLedgerAnchor.sol"
+        assert contract_file.exists(), "SardisLedgerAnchor.sol not found"
 
         content = contract_file.read_text()
-        assert "contract SardisWalletFactory" in content
-        assert "createWallet" in content
+        assert "SardisLedgerAnchor" in content
 
-    def test_agent_wallet_exists(self, contracts_dir):
-        """Test SardisAgentWallet.sol exists."""
-        contract_file = contracts_dir / "SardisAgentWallet.sol"
-        assert contract_file.exists(), "SardisAgentWallet.sol not found"
-
-        content = contract_file.read_text()
-        assert "contract SardisAgentWallet" in content
-
-    def test_escrow_exists(self, contracts_dir):
-        """Test SardisEscrow.sol exists."""
-        contract_file = contracts_dir / "SardisEscrow.sol"
-        assert contract_file.exists(), "SardisEscrow.sol not found"
+    def test_policy_module_exists(self, contracts_dir):
+        """Test SardisPolicyModule.sol exists."""
+        contract_file = contracts_dir / "SardisPolicyModule.sol"
+        assert contract_file.exists(), "SardisPolicyModule.sol not found"
 
         content = contract_file.read_text()
-        assert "contract SardisEscrow" in content
+        assert "SardisPolicyModule" in content
+
+    def test_refund_protocol_exists(self, contracts_dir):
+        """Test RefundProtocol.sol exists."""
+        contract_file = contracts_dir / "RefundProtocol.sol"
+        assert contract_file.exists(), "RefundProtocol.sol not found"
+
+        content = contract_file.read_text()
+        assert "RefundProtocol" in content
 
 
 class TestDeploymentScripts:
@@ -247,8 +243,8 @@ class TestDeploymentScripts:
 
     def test_foundry_deploy_script_exists(self, contracts_dir):
         """Test Foundry deployment script exists."""
-        script = contracts_dir / "script" / "DeployMultiChain.s.sol"
-        assert script.exists(), "DeployMultiChain.s.sol not found"
+        script = contracts_dir / "script" / "DeploySafeModules.s.sol"
+        assert script.exists(), "DeploySafeModules.s.sol not found"
 
     def test_deploy_shell_script_exists(self, contracts_dir):
         """Test deploy.sh exists."""
