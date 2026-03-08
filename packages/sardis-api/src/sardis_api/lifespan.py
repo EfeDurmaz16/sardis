@@ -490,31 +490,40 @@ async def lifespan(app: FastAPI):
 
     app.state.startup_time = time.time()
 
-    # Production guard: warn loudly if Redis is missing (caps, rate limiting,
-    # kill switch will silently fall back to in-memory stores).
-    # Warn-only for now to avoid hard startup failures during initial rollout;
-    # TODO: upgrade to hard failure once Redis is confirmed on all prod instances.
+    # Production guards: block startup if critical infrastructure is missing.
+    # In-memory fallbacks are acceptable in dev/test but not in production,
+    # where they silently degrade security guarantees (rate limits, caps,
+    # kill switch, TAP verification).
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
     if env in ("prod", "production", "sandbox"):
+        # Redis guard: transaction caps, rate limiting, and kill switch all
+        # require a shared Redis instance. In-memory fallbacks would let each
+        # replica track limits independently, effectively multiplying caps by
+        # the replica count -- unacceptable in production.
         redis_url = (
             os.getenv("SARDIS_REDIS_URL")
             or os.getenv("REDIS_URL")
             or os.getenv("UPSTASH_REDIS_URL")
         )
         if not redis_url:
-            logger.critical(
+            raise RuntimeError(
                 "PRODUCTION GUARD: No Redis URL configured. "
-                "Transaction caps, rate limiting, and kill switch will use "
-                "in-memory fallbacks. Set SARDIS_REDIS_URL."
+                "Transaction caps, rate limiting, and kill switch require "
+                "Redis in production. Set SARDIS_REDIS_URL, REDIS_URL, "
+                "or UPSTASH_REDIS_URL."
             )
 
-        # TAP JWKS guard: warn if TAP verification lacks a JWKS URL in prod
+        # TAP JWKS guard: without a JWKS URL the TAP middleware cannot fetch
+        # signing keys, so every request to a TAP-protected endpoint will be
+        # rejected with a 401. Starting the API in this state would make it
+        # appear healthy while refusing all authenticated traffic.
         tap_jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
         if not tap_jwks_url:
-            logger.critical(
+            raise RuntimeError(
                 "PRODUCTION GUARD: SARDIS_TAP_JWKS_URL not set. "
-                "TAP signature verification will reject all requests "
-                "on protected endpoints. Configure a JWKS endpoint."
+                "TAP signature verification cannot function without a JWKS "
+                "endpoint. Set SARDIS_TAP_JWKS_URL before starting in "
+                f"{env} mode."
             )
 
     app.state.ready = True
