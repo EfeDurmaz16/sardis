@@ -96,7 +96,11 @@ class PaymentResultResponse(BaseModel):
 class ConnectExternalWalletRequest(BaseModel):
     address: str
     signature: str
-    message: str
+    message: str = ""  # Legacy EIP-191 message (deprecated, use EIP-712 fields)
+    # EIP-712 fields (preferred)
+    session_id: Optional[str] = None
+    chain_id: Optional[int] = None
+    nonce: Optional[str] = None
 
 
 class ConfirmExternalPaymentRequest(BaseModel):
@@ -366,13 +370,23 @@ async def get_session_balance(
 # ── External Wallet Endpoints ─────────────────────────────────────
 
 
-@public_router.post("/sessions/client/{client_secret}/connect-external")
-async def connect_external_wallet(
+@public_router.get("/sessions/client/{client_secret}/connect-params")
+async def get_connect_params(
     client_secret: str,
-    body: ConnectExternalWalletRequest,
+    address: str,
     deps: MerchantCheckoutDependencies = Depends(get_deps),
 ):
-    """Connect an external wallet via EIP-191 signature verification."""
+    """Return the EIP-712 typed data structure the frontend should sign.
+
+    The frontend calls ``eth_signTypedData_v4`` with the returned ``typed_data``
+    and submits the signature to ``POST .../connect-external``.
+    """
+    from sardis_api.services.eip712_checkout import (
+        build_connect_typed_data,
+        get_checkout_chain_id,
+        generate_nonce,
+    )
+
     session = await _get_session_by_secret(client_secret, deps)
     if session.status != "pending":
         raise HTTPException(status_code=400, detail=f"Session status is '{session.status}'")
@@ -382,29 +396,124 @@ async def connect_external_wallet(
         await deps.merchant_repo.update_session(session.session_id, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
-    # Verify EIP-191 signature
-    try:
-        from eth_account.messages import encode_defunct
-        from eth_account import Account
+    chain_id = get_checkout_chain_id()
+    nonce = generate_nonce()
 
-        msg = encode_defunct(text=body.message)
-        recovered = Account.recover_message(msg, signature=body.signature)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    typed_data = build_connect_typed_data(
+        session_id=session.session_id,
+        wallet_address=address,
+        chain_id=chain_id,
+        nonce=nonce,
+    )
 
-    if recovered.lower() != body.address.lower():
-        raise HTTPException(
-            status_code=400,
-            detail="Signature does not match the provided address",
+    return {
+        "typed_data": typed_data,
+        "chain_id": chain_id,
+        "nonce": nonce,
+        "session_id": session.session_id,
+    }
+
+
+@public_router.post("/sessions/client/{client_secret}/connect-external")
+async def connect_external_wallet(
+    client_secret: str,
+    body: ConnectExternalWalletRequest,
+    deps: MerchantCheckoutDependencies = Depends(get_deps),
+):
+    """Connect an external wallet via EIP-712 signature verification.
+
+    Accepts EIP-712 typed data signatures (preferred) or falls back to
+    legacy EIP-191 freeform message signatures for backward compatibility.
+
+    EIP-712 mode (preferred):
+        Supply ``session_id``, ``chain_id``, and ``nonce`` alongside
+        ``address`` and ``signature``. The ``message`` field can be empty.
+
+    EIP-191 mode (deprecated):
+        Supply ``message`` and ``signature``. The ``session_id``,
+        ``chain_id``, and ``nonce`` fields can be omitted.
+    """
+    session = await _get_session_by_secret(client_secret, deps)
+    if session.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Session status is '{session.status}'")
+
+    from datetime import datetime, timezone
+    if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
+        await deps.merchant_repo.update_session(session.session_id, status="expired")
+        raise HTTPException(status_code=400, detail="Session has expired")
+
+    # Determine if this is an EIP-712 request (has session_id, chain_id, nonce)
+    use_eip712 = body.session_id is not None and body.chain_id is not None and body.nonce is not None
+
+    if use_eip712:
+        # ── EIP-712 verification ──────────────────────────────────
+        from sardis_api.services.eip712_checkout import (
+            get_checkout_chain_id,
+            verify_eip712_connect_signature,
         )
 
-    # Verify the message contains the session client_secret prefix (prevents replay)
-    cs_prefix = client_secret[:8]
-    if cs_prefix not in body.message:
-        raise HTTPException(
-            status_code=400,
-            detail="Signed message does not match this session",
+        # Validate session_id matches the actual session
+        if body.session_id != session.session_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Signed session ID does not match this session",
+            )
+
+        # Validate chain_id matches the checkout chain
+        expected_chain_id = get_checkout_chain_id()
+        if body.chain_id != expected_chain_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Signed chain ID {body.chain_id} does not match expected {expected_chain_id}",
+            )
+
+        is_valid, error = verify_eip712_connect_signature(
+            signature=body.signature,
+            session_id=body.session_id,
+            wallet_address=body.address,
+            chain_id=body.chain_id,
+            nonce=body.nonce,
         )
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error or "Invalid EIP-712 signature")
+
+    else:
+        # ── Legacy EIP-191 fallback (deprecated) ──────────────────
+        logger.warning(
+            "DEPRECATION: Session %s using legacy EIP-191 connect-external. "
+            "Upgrade to EIP-712 typed data signing.",
+            session.session_id,
+        )
+
+        if not body.message:
+            raise HTTPException(
+                status_code=400,
+                detail="Either provide EIP-712 fields (session_id, chain_id, nonce) "
+                       "or a legacy EIP-191 message",
+            )
+
+        try:
+            from eth_account.messages import encode_defunct
+            from eth_account import Account
+
+            msg = encode_defunct(text=body.message)
+            recovered = Account.recover_message(msg, signature=body.signature)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid signature")
+
+        if recovered.lower() != body.address.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Signature does not match the provided address",
+            )
+
+        # Verify the message contains the session client_secret prefix (prevents replay)
+        cs_prefix = client_secret[:8]
+        if cs_prefix not in body.message:
+            raise HTTPException(
+                status_code=400,
+                detail="Signed message does not match this session",
+            )
 
     await deps.merchant_repo.update_session(
         session.session_id,
