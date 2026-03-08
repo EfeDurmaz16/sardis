@@ -91,8 +91,8 @@ def _get_encryption_key() -> bytes:
                 "SARDIS_SSO_ENCRYPTION_KEY must be set in production/staging. "
                 "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
             )
-        # Dev fallback — deterministic key for local testing only
-        raw_key = base64.urlsafe_b64encode(b"sardis-dev-sso-key-00000000000000").decode()
+        # Dev fallback — deterministic key for local testing only (exactly 32 bytes)
+        raw_key = base64.urlsafe_b64encode(b"sardis-dev-sso-key-0000000000000").decode()
     return raw_key.encode()
 
 
@@ -191,6 +191,50 @@ class SSOConfigStore:
                 default_role=row.get("default_role", "member"),
                 enforce_sso_only=row.get("enforce_sso_only", False),
                 allowed_email_domains=row.get("allowed_email_domains") or [],
+            )
+
+    async def save_config(self, config: SSOConfig) -> None:
+        """Save or update an SSO configuration, encrypting the client_secret."""
+        async with self._pool.acquire() as conn:
+            # Encrypt client_secret before storage
+            encrypted_secret = None
+            if config.oidc_client_secret:
+                encrypted_secret = _encrypt_secret(config.oidc_client_secret)
+
+            await conn.execute(
+                """
+                INSERT INTO sso_configurations
+                    (id, org_id, provider_type, display_name, enabled,
+                     oidc_issuer_url, oidc_client_id, oidc_client_secret, oidc_scopes,
+                     saml_entity_id, saml_sso_url, saml_certificate,
+                     auto_provision_users, default_role, enforce_sso_only,
+                     allowed_email_domains, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
+                ON CONFLICT (org_id, provider_type) DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    enabled = EXCLUDED.enabled,
+                    oidc_issuer_url = EXCLUDED.oidc_issuer_url,
+                    oidc_client_id = EXCLUDED.oidc_client_id,
+                    oidc_client_secret = EXCLUDED.oidc_client_secret,
+                    oidc_scopes = EXCLUDED.oidc_scopes,
+                    saml_entity_id = EXCLUDED.saml_entity_id,
+                    saml_sso_url = EXCLUDED.saml_sso_url,
+                    saml_certificate = EXCLUDED.saml_certificate,
+                    auto_provision_users = EXCLUDED.auto_provision_users,
+                    default_role = EXCLUDED.default_role,
+                    enforce_sso_only = EXCLUDED.enforce_sso_only,
+                    allowed_email_domains = EXCLUDED.allowed_email_domains,
+                    updated_at = NOW()
+                """,
+                config.id, config.org_id, config.provider_type,
+                config.display_name, config.enabled,
+                config.oidc_issuer_url, config.oidc_client_id,
+                encrypted_secret,
+                config.oidc_scopes or ["openid", "profile", "email"],
+                config.saml_entity_id, config.saml_sso_url, config.saml_certificate,
+                config.auto_provision_users, config.default_role,
+                config.enforce_sso_only,
+                config.allowed_email_domains or [],
             )
 
     async def is_sso_enforced(self, org_id: str) -> bool:

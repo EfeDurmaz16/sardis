@@ -226,6 +226,8 @@ async def list_policy_decisions(
 
     Verifies agent belongs to the caller's organization.
     """
+    limit = min(limit, 100)
+    offset = max(offset, 0)
     try:
         from sardis_v2_core.database import get_pool
 
