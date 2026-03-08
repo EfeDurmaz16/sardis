@@ -134,11 +134,16 @@ def test_settings():
 @pytest.fixture
 async def test_client():
     """Create a test client for the API."""
+    import time as _time
     from httpx import AsyncClient, ASGITransport
     from sardis_api.main import create_app
-    
+
     app = create_app()
-    
+
+    # Simulate lifespan having completed so health/readiness probes work.
+    app.state.ready = True
+    app.state.startup_time = _time.time()
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",

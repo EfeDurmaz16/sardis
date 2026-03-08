@@ -251,7 +251,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("OTEL FastAPI instrumentation failed: %s", exc)
 
     # Exclude paths for middleware
-    health_paths = ["/", "/health", "/api/v2/health", "/ready", "/live"]
+    health_paths = ["/", "/health", "/health/live", "/api/v2/health", "/ready", "/live"]
     docs_paths = ["/api/v2/docs", "/api/v2/openapi.json", "/api/v2/redoc"]
     exclude_paths = health_paths + docs_paths
 

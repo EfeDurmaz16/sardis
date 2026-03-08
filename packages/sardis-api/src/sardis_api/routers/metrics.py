@@ -6,7 +6,7 @@ import time
 from collections import deque
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from prometheus_client import (
     Counter,
     Histogram,
@@ -433,15 +433,24 @@ else:
 
 
 @router.get("/metrics/health")
-async def metrics_health_check() -> dict:
+async def metrics_health_check(request: Request) -> dict:
     """
-    Metrics-specific health check endpoint.
+    Metrics-oriented health summary.
 
-    Returns basic health status without exposing metrics.
-    The primary /health endpoint lives in health.py (deep component checks).
+    Returns lightweight operational metrics (uptime, whether the
+    process considers itself ready). For deep dependency checks use
+    the primary ``/health`` endpoint instead.
     """
+    import time as _time
+
+    startup_time = getattr(request.app.state, "startup_time", None)
+    uptime_seconds = int(_time.time() - startup_time) if startup_time else 0
+    app_ready = getattr(request.app.state, "ready", False)
+
     return {
-        "status": "healthy",
+        "status": "healthy" if app_ready else "not_ready",
         "service": "sardis-api",
         "version": "2.0.0",
+        "uptime_seconds": uptime_seconds,
+        "ready": app_ready,
     }
