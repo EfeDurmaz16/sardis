@@ -39,8 +39,8 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
-"Bug Tracker" = "https://github.com/sardis-pay/sardis/issues"
+Repository = "https://github.com/EfeDurmaz16/sardis"
+"Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.metadata]
 allow-direct-references = true

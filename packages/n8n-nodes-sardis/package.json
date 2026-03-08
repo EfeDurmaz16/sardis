@@ -6,7 +6,7 @@
   "license": "MIT",
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/sardis-pay/sardis/issues"
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -19,7 +19,7 @@
   "author": { "name": "Sardis", "email": "efe@sardis.sh" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sardis-pay/sardis.git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
     "directory": "packages/n8n-nodes-sardis"
   },
   "main": "dist/nodes/Sardis/Sardis.node.js",

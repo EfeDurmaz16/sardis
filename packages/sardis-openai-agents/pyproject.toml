@@ -38,7 +38,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sardis_openai_agents"]

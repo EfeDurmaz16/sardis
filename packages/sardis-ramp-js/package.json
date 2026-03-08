@@ -50,12 +50,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sardis-pay/sardis.git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
     "directory": "packages/sardis-ramp-js"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/sardis-pay/sardis/issues"
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "dependencies": {},
   "devDependencies": {

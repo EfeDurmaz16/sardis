@@ -30,5 +30,5 @@ dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Repository = "https://github.com/sardis-pay/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 Documentation = "https://sardis.sh/docs/integrations/openai"
