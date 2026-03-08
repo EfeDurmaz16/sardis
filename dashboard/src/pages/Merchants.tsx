@@ -6,14 +6,16 @@ import {
   BarChart3,
   DollarSign,
   ChevronDown,
+  AlertCircle,
 } from 'lucide-react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
+import { useMerchants } from '../hooks/useApi'
 
 type TrustLevel = 'unknown' | 'low' | 'medium' | 'high' | 'verified'
 type TrustFilter = 'all' | TrustLevel
 
-interface Merchant {
+interface MerchantRow {
   id: string
   name: string
   category: string
@@ -25,96 +27,19 @@ interface Merchant {
   first_seen: string
 }
 
-const MOCK_MERCHANTS: Merchant[] = [
-  {
-    id: 'mrc_001',
-    name: 'OpenAI',
-    category: 'AI / API Services',
-    trust_level: 'verified',
-    trust_score: 98,
-    transaction_count: 1247,
-    volume: 84320.5,
-    dispute_rate: 0.001,
-    first_seen: '2025-06-12',
-  },
-  {
-    id: 'mrc_002',
-    name: 'Anthropic',
-    category: 'AI / API Services',
-    trust_level: 'verified',
-    trust_score: 97,
-    transaction_count: 893,
-    volume: 62150.0,
-    dispute_rate: 0.0,
-    first_seen: '2025-07-03',
-  },
-  {
-    id: 'mrc_003',
-    name: 'AWS',
-    category: 'Cloud Infrastructure',
-    trust_level: 'high',
-    trust_score: 91,
-    transaction_count: 534,
-    volume: 127840.25,
-    dispute_rate: 0.004,
-    first_seen: '2025-08-15',
-  },
-  {
-    id: 'mrc_004',
-    name: 'Hetzner',
-    category: 'Cloud Infrastructure',
-    trust_level: 'high',
-    trust_score: 85,
-    transaction_count: 312,
-    volume: 18490.0,
-    dispute_rate: 0.003,
-    first_seen: '2025-09-22',
-  },
-  {
-    id: 'mrc_005',
-    name: 'Vercel',
-    category: 'Cloud Infrastructure',
-    trust_level: 'high',
-    trust_score: 88,
-    transaction_count: 178,
-    volume: 9840.0,
-    dispute_rate: 0.0,
-    first_seen: '2025-10-01',
-  },
-  {
-    id: 'mrc_006',
-    name: 'Fiverr',
-    category: 'Freelance Services',
-    trust_level: 'medium',
-    trust_score: 62,
-    transaction_count: 89,
-    volume: 4320.75,
-    dispute_rate: 0.034,
-    first_seen: '2025-11-10',
-  },
-  {
-    id: 'mrc_007',
-    name: 'Unknown SaaS Co',
-    category: 'Software',
-    trust_level: 'low',
-    trust_score: 28,
-    transaction_count: 12,
-    volume: 890.0,
-    dispute_rate: 0.083,
-    first_seen: '2026-01-18',
-  },
-  {
-    id: 'mrc_008',
-    name: 'New Vendor LLC',
-    category: 'Uncategorized',
-    trust_level: 'unknown',
-    trust_score: 0,
-    transaction_count: 2,
-    volume: 150.0,
-    dispute_rate: 0.0,
-    first_seen: '2026-03-01',
-  },
-]
+function toMerchantRow(m: any): MerchantRow {
+  return {
+    id: m.id || m.merchant_id || '',
+    name: m.name || 'Unknown',
+    category: m.category || m.description || 'Uncategorized',
+    trust_level: m.trust_level || 'unknown',
+    trust_score: m.trust_score ?? 0,
+    transaction_count: m.transaction_count ?? 0,
+    volume: m.volume ?? m.total_volume ?? 0,
+    dispute_rate: m.dispute_rate ?? 0,
+    first_seen: m.first_seen || m.created_at || new Date().toISOString(),
+  }
+}
 
 const TRUST_LEVEL_CONFIG: Record<TrustLevel, { label: string; color: string; bg: string }> = {
   unknown: { label: 'Unknown', color: 'text-gray-400', bg: 'bg-gray-500/10' },
@@ -135,12 +60,28 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-dark-100">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <td key={i} className="px-6 py-4">
+          <div className="h-4 bg-dark-200 animate-pulse rounded w-3/4" />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
 export default function MerchantsPage() {
   const [search, setSearch] = useState('')
   const [trustFilter, setTrustFilter] = useState<TrustFilter>('all')
   const [filterOpen, setFilterOpen] = useState(false)
 
-  const merchants = MOCK_MERCHANTS
+  const { data: rawMerchants, isLoading, error } = useMerchants()
+
+  const merchants: MerchantRow[] = Array.isArray(rawMerchants)
+    ? rawMerchants.map(toMerchantRow)
+    : []
 
   const filtered = merchants.filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase())
@@ -169,32 +110,44 @@ export default function MerchantsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Merchants"
-          value={merchants.length}
+          value={isLoading ? '—' : merchants.length}
           icon={<Store className="w-5 h-5" />}
           change="+3 this month"
           changeType="positive"
         />
         <StatCard
           title="Verified Merchants"
-          value={verifiedCount}
+          value={isLoading ? '—' : verifiedCount}
           icon={<ShieldCheck className="w-5 h-5" />}
-          subtitle={`${Math.round((verifiedCount / merchants.length) * 100)}% of total`}
+          subtitle={
+            !isLoading && merchants.length > 0
+              ? `${Math.round((verifiedCount / merchants.length) * 100)}% of total`
+              : undefined
+          }
         />
         <StatCard
           title="Avg Trust Score"
-          value={avgTrustScore}
+          value={isLoading ? '—' : avgTrustScore}
           icon={<BarChart3 className="w-5 h-5" />}
           change="+4 vs last month"
           changeType="positive"
         />
         <StatCard
           title="Total Volume"
-          value={formatVolume(totalVolume)}
+          value={isLoading ? '—' : formatVolume(totalVolume)}
           icon={<DollarSign className="w-5 h-5" />}
           change="+12.3%"
           changeType="positive"
         />
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>Failed to load merchants. Please try refreshing the page.</span>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -278,95 +231,97 @@ export default function MerchantsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-dark-100">
-            {filtered.map((merchant) => {
-              const cfg = TRUST_LEVEL_CONFIG[merchant.trust_level]
-              return (
-                <tr key={merchant.id} className="hover:bg-dark-200/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-sardis-500/10 flex items-center justify-center">
-                        <Store className="w-4 h-4 text-sardis-400" />
-                      </div>
-                      <span className="text-sm font-medium text-white">{merchant.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-400">{merchant.category}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={clsx(
-                        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium',
-                        cfg.bg,
-                        cfg.color
-                      )}
-                    >
-                      <div
-                        className={clsx(
-                          'w-1.5 h-1.5 rounded-full',
-                          merchant.trust_level === 'verified' && 'bg-sardis-400',
-                          merchant.trust_level === 'high' && 'bg-green-400',
-                          merchant.trust_level === 'medium' && 'bg-yellow-400',
-                          merchant.trust_level === 'low' && 'bg-red-400',
-                          merchant.trust_level === 'unknown' && 'bg-gray-400'
-                        )}
-                      />
-                      {cfg.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-white mono-numbers w-8">
-                        {merchant.trust_score}
-                      </span>
-                      <div className="w-20 h-1.5 bg-dark-100 overflow-hidden">
-                        <div
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              : filtered.map((merchant) => {
+                  const cfg = TRUST_LEVEL_CONFIG[merchant.trust_level]
+                  return (
+                    <tr key={merchant.id} className="hover:bg-dark-200/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-sardis-500/10 flex items-center justify-center">
+                            <Store className="w-4 h-4 text-sardis-400" />
+                          </div>
+                          <span className="text-sm font-medium text-white">{merchant.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-400">{merchant.category}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
                           className={clsx(
-                            'h-full transition-all',
-                            merchant.trust_score >= 90 && 'bg-sardis-400',
-                            merchant.trust_score >= 70 && merchant.trust_score < 90 && 'bg-green-400',
-                            merchant.trust_score >= 40 && merchant.trust_score < 70 && 'bg-yellow-400',
-                            merchant.trust_score >= 1 && merchant.trust_score < 40 && 'bg-red-400',
-                            merchant.trust_score === 0 && 'bg-gray-500'
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium',
+                            cfg.bg,
+                            cfg.color
                           )}
-                          style={{ width: `${merchant.trust_score}%` }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-white mono-numbers">
-                      {merchant.transaction_count.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-white mono-numbers">
-                      {formatVolume(merchant.volume)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={clsx(
-                        'text-sm mono-numbers',
-                        merchant.dispute_rate === 0 && 'text-green-400',
-                        merchant.dispute_rate > 0 && merchant.dispute_rate <= 0.01 && 'text-gray-400',
-                        merchant.dispute_rate > 0.01 && merchant.dispute_rate <= 0.05 && 'text-yellow-400',
-                        merchant.dispute_rate > 0.05 && 'text-red-400'
-                      )}
-                    >
-                      {(merchant.dispute_rate * 100).toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-400">{formatDate(merchant.first_seen)}</span>
-                  </td>
-                </tr>
-              )
-            })}
+                        >
+                          <div
+                            className={clsx(
+                              'w-1.5 h-1.5 rounded-full',
+                              merchant.trust_level === 'verified' && 'bg-sardis-400',
+                              merchant.trust_level === 'high' && 'bg-green-400',
+                              merchant.trust_level === 'medium' && 'bg-yellow-400',
+                              merchant.trust_level === 'low' && 'bg-red-400',
+                              merchant.trust_level === 'unknown' && 'bg-gray-400'
+                            )}
+                          />
+                          {cfg.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-white mono-numbers w-8">
+                            {merchant.trust_score}
+                          </span>
+                          <div className="w-20 h-1.5 bg-dark-100 overflow-hidden">
+                            <div
+                              className={clsx(
+                                'h-full transition-all',
+                                merchant.trust_score >= 90 && 'bg-sardis-400',
+                                merchant.trust_score >= 70 && merchant.trust_score < 90 && 'bg-green-400',
+                                merchant.trust_score >= 40 && merchant.trust_score < 70 && 'bg-yellow-400',
+                                merchant.trust_score >= 1 && merchant.trust_score < 40 && 'bg-red-400',
+                                merchant.trust_score === 0 && 'bg-gray-500'
+                              )}
+                              style={{ width: `${merchant.trust_score}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-white mono-numbers">
+                          {merchant.transaction_count.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-white mono-numbers">
+                          {formatVolume(merchant.volume)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={clsx(
+                            'text-sm mono-numbers',
+                            merchant.dispute_rate === 0 && 'text-green-400',
+                            merchant.dispute_rate > 0 && merchant.dispute_rate <= 0.01 && 'text-gray-400',
+                            merchant.dispute_rate > 0.01 && merchant.dispute_rate <= 0.05 && 'text-yellow-400',
+                            merchant.dispute_rate > 0.05 && 'text-red-400'
+                          )}
+                        >
+                          {(merchant.dispute_rate * 100).toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-400">{formatDate(merchant.first_seen)}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <div className="p-12 text-center">
             <Store className="w-12 h-12 text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No merchants found</h3>
