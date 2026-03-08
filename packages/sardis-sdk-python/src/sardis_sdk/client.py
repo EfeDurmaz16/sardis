@@ -76,13 +76,18 @@ from .models.errors import (
 
 if TYPE_CHECKING:
     from .resources.agents import AgentsResource, AsyncAgentsResource
+    from .resources.approvals import ApprovalsResource, AsyncApprovalsResource
     from .resources.cards import AsyncCardsResource, CardsResource
+    from .resources.evidence import AsyncEvidenceResource, EvidenceResource
+    from .resources.exceptions import AsyncExceptionsResource, ExceptionsResource
     from .resources.groups import AsyncGroupsResource, GroupsResource
     from .resources.holds import AsyncHoldsResource, HoldsResource
+    from .resources.kill_switch import AsyncKillSwitchResource, KillSwitchResource
     from .resources.ledger import AsyncLedgerResource, LedgerResource
     from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
     from .resources.payments import AsyncPaymentsResource, PaymentsResource
     from .resources.policies import AsyncPoliciesResource, PoliciesResource
+    from .resources.simulation import AsyncSimulationResource, SimulationResource
     from .resources.transactions import AsyncTransactionsResource, TransactionsResource
     from .resources.treasury import AsyncTreasuryResource, TreasuryResource
     from .resources.wallets import AsyncWalletsResource, WalletsResource
@@ -619,6 +624,11 @@ class AsyncSardisClient(BaseClient):
         self._ledger: Optional["AsyncLedgerResource"] = None
         self._groups: Optional["AsyncGroupsResource"] = None
         self._treasury: Optional["AsyncTreasuryResource"] = None
+        self._approvals: Optional["AsyncApprovalsResource"] = None
+        self._kill_switch: Optional["AsyncKillSwitchResource"] = None
+        self._evidence: Optional["AsyncEvidenceResource"] = None
+        self._simulation: Optional["AsyncSimulationResource"] = None
+        self._exceptions: Optional["AsyncExceptionsResource"] = None
 
     @property
     def groups(self) -> "AsyncGroupsResource":
@@ -715,6 +725,46 @@ class AsyncSardisClient(BaseClient):
             from .resources.treasury import AsyncTreasuryResource
             self._treasury = AsyncTreasuryResource(self)
         return self._treasury
+
+    @property
+    def approvals(self) -> "AsyncApprovalsResource":
+        """Access the approvals resource."""
+        if self._approvals is None:
+            from .resources.approvals import AsyncApprovalsResource
+            self._approvals = AsyncApprovalsResource(self)
+        return self._approvals
+
+    @property
+    def kill_switch(self) -> "AsyncKillSwitchResource":
+        """Access the kill switch resource."""
+        if self._kill_switch is None:
+            from .resources.kill_switch import AsyncKillSwitchResource
+            self._kill_switch = AsyncKillSwitchResource(self)
+        return self._kill_switch
+
+    @property
+    def evidence(self) -> "AsyncEvidenceResource":
+        """Access the evidence resource."""
+        if self._evidence is None:
+            from .resources.evidence import AsyncEvidenceResource
+            self._evidence = AsyncEvidenceResource(self)
+        return self._evidence
+
+    @property
+    def simulation(self) -> "AsyncSimulationResource":
+        """Access the simulation resource."""
+        if self._simulation is None:
+            from .resources.simulation import AsyncSimulationResource
+            self._simulation = AsyncSimulationResource(self)
+        return self._simulation
+
+    @property
+    def exceptions(self) -> "AsyncExceptionsResource":
+        """Access the exceptions resource."""
+        if self._exceptions is None:
+            from .resources.exceptions import AsyncExceptionsResource
+            self._exceptions = AsyncExceptionsResource(self)
+        return self._exceptions
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
@@ -1018,6 +1068,11 @@ class SardisClient(BaseClient):
         self._ledger: Optional["LedgerResource"] = None
         self._groups: Optional["GroupsResource"] = None
         self._treasury: Optional["TreasuryResource"] = None
+        self._approvals: Optional["ApprovalsResource"] = None
+        self._kill_switch: Optional["KillSwitchResource"] = None
+        self._evidence: Optional["EvidenceResource"] = None
+        self._simulation: Optional["SimulationResource"] = None
+        self._exceptions: Optional["ExceptionsResource"] = None
 
     @property
     def groups(self) -> "GroupsResource":
@@ -1114,6 +1169,46 @@ class SardisClient(BaseClient):
             from .resources.treasury import TreasuryResource
             self._treasury = TreasuryResource(self)
         return self._treasury
+
+    @property
+    def approvals(self) -> "ApprovalsResource":
+        """Access the approvals resource."""
+        if self._approvals is None:
+            from .resources.approvals import ApprovalsResource
+            self._approvals = ApprovalsResource(self)
+        return self._approvals
+
+    @property
+    def kill_switch(self) -> "KillSwitchResource":
+        """Access the kill switch resource."""
+        if self._kill_switch is None:
+            from .resources.kill_switch import KillSwitchResource
+            self._kill_switch = KillSwitchResource(self)
+        return self._kill_switch
+
+    @property
+    def evidence(self) -> "EvidenceResource":
+        """Access the evidence resource."""
+        if self._evidence is None:
+            from .resources.evidence import EvidenceResource
+            self._evidence = EvidenceResource(self)
+        return self._evidence
+
+    @property
+    def simulation(self) -> "SimulationResource":
+        """Access the simulation resource."""
+        if self._simulation is None:
+            from .resources.simulation import SimulationResource
+            self._simulation = SimulationResource(self)
+        return self._simulation
+
+    @property
+    def exceptions(self) -> "ExceptionsResource":
+        """Access the exceptions resource."""
+        if self._exceptions is None:
+            from .resources.exceptions import ExceptionsResource
+            self._exceptions = ExceptionsResource(self)
+        return self._exceptions
 
     def _get_client(self) -> httpx.Client:
         """Get or create the HTTP client with connection pooling."""
