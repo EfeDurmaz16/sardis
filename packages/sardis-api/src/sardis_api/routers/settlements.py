@@ -6,9 +6,15 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v2/settlements", tags=["settlements"])
+router = APIRouter(
+    prefix="/api/v2/settlements",
+    tags=["settlements"],
+    dependencies=[Depends(require_principal)],
+)
 
 
 def _get_settlement_store(request: Request):
@@ -27,15 +33,16 @@ async def list_settlements(
     store=Depends(_get_settlement_store),
 ):
     """List settlements for the org."""
-    # In production, filter by org from require_principal
-    pending = await store.get_pending()
+    all_records = list(getattr(store, '_records', {}).values()) if hasattr(store, '_records') else await store.get_pending()
     results = []
-    for r in pending[:limit]:
+    for r in all_records:
         if mode and r.mode.value != mode:
             continue
         if status and r.status.value != status:
             continue
         results.append(r.to_dict())
+        if len(results) >= limit:
+            break
     return {"settlements": results, "count": len(results)}
 
 

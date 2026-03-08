@@ -29,6 +29,17 @@ def init_control_plane(
     multi-modal execution, the router is used to select execution mode.
     """
     global _instance
+
+    # If a mode router is provided and the executor supports multi-modal,
+    # wrap the chain executor with MultiModalExecutionAdapter.
+    if execution_mode_router is not None and chain_executor is not None:
+        from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
+        if not isinstance(chain_executor, MultiModalExecutionAdapter):
+            chain_executor = MultiModalExecutionAdapter(
+                crypto_executor=chain_executor,
+                mode_router=execution_mode_router,
+            )
+
     _instance = ControlPlane(
         policy_evaluator=policy_evaluator,
         compliance_checker=compliance_checker,

@@ -166,8 +166,13 @@ class InMemorySettlementStore:
             rec.failed_at = now
             rec.last_error = kwargs.get("error")
             rec.retry_count += 1
+        _ALLOWED_KWARGS = {
+            "error", "last_error", "capture_status", "authorization_status",
+            "dispute_status", "reversal_reference", "liability_party",
+            "expected_settlement_at",
+        }
         for k, v in kwargs.items():
-            if hasattr(rec, k) and k != "status":
+            if k in _ALLOWED_KWARGS and hasattr(rec, k):
                 setattr(rec, k, v)
 
     async def get_pending(self) -> list[SettlementRecord]:

@@ -22,7 +22,7 @@ class ConsentType(str, Enum):
 
 @dataclass
 class DelegationConsent:
-    """Immutable consent record for a delegated credential."""
+    """Consent record for a delegated credential."""
 
     consent_id: str = field(
         default_factory=lambda: f"dcns_{uuid.uuid4().hex[:16]}"
@@ -240,7 +240,7 @@ class PostgresConsentStore:
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 """UPDATE delegation_consents
-                   SET revoked_at = NOW(), revoke_reason = $2
+                   SET revoked_at = NOW(), revoke_reason = $2, updated_at = NOW()
                    WHERE consent_id = $1""",
                 consent_id, reason,
             )

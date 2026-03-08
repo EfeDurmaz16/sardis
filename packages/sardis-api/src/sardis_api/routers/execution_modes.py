@@ -8,9 +8,15 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from sardis_api.authz import require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v2/execution-modes", tags=["execution-modes"])
+router = APIRouter(
+    prefix="/api/v2/execution-modes",
+    tags=["execution-modes"],
+    dependencies=[Depends(require_principal)],
+)
 
 
 class SimulateRequest(BaseModel):

@@ -65,11 +65,17 @@ class CredentialEncryption:
         return f.decrypt(ciphertext)
 
     def encrypt_with_envelope(self, plaintext: bytes) -> bytes:
-        """Double encryption for REHYDRATABLE / SENSITIVE classes."""
+        """Placeholder for envelope encryption (DEK wrapped by KEK via KMS/HSM).
+
+        Currently double-encrypts with the same Fernet key as a structural
+        placeholder.  Production must replace with real envelope encryption
+        using a separate DEK per credential, wrapped by a KEK from KMS/HSM.
+        """
         inner = self.encrypt(plaintext)
         return self.encrypt(inner)
 
     def decrypt_with_envelope(self, ciphertext: bytes) -> bytes:
+        """Placeholder — see encrypt_with_envelope docstring."""
         outer = self.decrypt(ciphertext)
         return self.decrypt(outer)
 
@@ -286,7 +292,7 @@ class PostgresCredentialStore:
             token_encrypted=bytes(row["token_encrypted"]) if row.get("token_encrypted") else b"",
             scope=CredentialScope.from_dict(scope_data),
             provider_metadata=provider_meta,
-            consent_id=row.get("consent_id"),
+            consent_id=row.get("consent_id", ""),
             last_used_at=row.get("last_used_at"),
             created_at=row.get("created_at", datetime.now(timezone.utc)),
             expires_at=row.get("expires_at"),

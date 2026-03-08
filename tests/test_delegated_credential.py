@@ -471,10 +471,10 @@ class TestConsentCredentialIntegration:
 
     @pytest.mark.asyncio
     async def test_no_credential_without_consent(self):
-        """Credentials must have a consent_id."""
-        cred = _make_credential(consent_id=None)
-        assert cred.consent_id is None
-        # Business logic should enforce consent_id before storing — model allows None
+        """Credentials must have a consent_id — empty string is default."""
+        cred = _make_credential(consent_id="")
+        assert cred.consent_id == ""
+        # DB schema enforces NOT NULL; empty string will fail FK constraint
 
     @pytest.mark.asyncio
     async def test_consent_revocation_cascades(self):

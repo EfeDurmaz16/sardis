@@ -8,9 +8,15 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from sardis_api.authz import Principal, require_principal
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v2/credentials", tags=["credentials"])
+router = APIRouter(
+    prefix="/api/v2/credentials",
+    tags=["credentials"],
+    dependencies=[Depends(require_principal)],
+)
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +78,7 @@ def _get_consent_store(request: Request):
 async def provision_credential(
     body: ProvisionCredentialRequest,
     request: Request,
+    principal: Principal = Depends(require_principal),
     cred_store=Depends(_get_credential_store),
     consent_store=Depends(_get_consent_store),
 ):
@@ -82,6 +89,8 @@ async def provision_credential(
         CredentialStatus,
         DelegatedCredential,
     )
+
+    org_id = principal.org_id
 
     # Validate consent exists and is valid
     valid = await consent_store.is_consent_valid(body.consent_id)
@@ -105,14 +114,14 @@ async def provision_credential(
     if mock_adapter and hasattr(mock_adapter, "provision_credential"):
         encryption = getattr(request.app.state, "credential_encryption", None)
         cred = await mock_adapter.provision_credential(
-            org_id="org_default",  # In production: from require_principal
+            org_id=org_id,
             agent_id=body.agent_id,
             scope=scope,
             encryption=encryption,
         )
     else:
         cred = DelegatedCredential(
-            org_id="org_default",
+            org_id=org_id,
             agent_id=body.agent_id,
             network=network,
             status=CredentialStatus.ACTIVE,
@@ -130,14 +139,17 @@ async def provision_credential(
 @router.get("")
 async def list_credentials(
     request: Request,
+    principal: Principal = Depends(require_principal),
     agent_id: Optional[str] = None,
     cred_store=Depends(_get_credential_store),
 ):
     """List credentials for org/agent."""
     if agent_id:
         creds = await cred_store.get_for_agent(agent_id)
+        # Filter to org scope
+        creds = [c for c in creds if c.org_id == principal.org_id]
     else:
-        creds = []  # In production: list by org from require_principal
+        creds = []
     return {
         "credentials": [c.to_dict() for c in creds],
         "count": len(creds),
@@ -185,7 +197,7 @@ async def tighten_scope(
         raise HTTPException(400, "Scope can only be tightened, not expanded")
 
     # Apply via reprovision with same consent
-    await cred_store.reprovision(credential_id, new_scope, cred.consent_id or "")
+    await cred_store.reprovision(credential_id, new_scope, cred.consent_id)
     return {"status": "scope_tightened", "credential_id": credential_id}
 
 

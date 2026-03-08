@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS delegation_consents (
     source_surface           TEXT          NOT NULL,
     user_auth_context        JSONB         NOT NULL DEFAULT '{}',
     metadata                 JSONB         NOT NULL DEFAULT '{}',
-    created_at               TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    created_at               TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at               TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_consent_agent ON delegation_consents(agent_id);
 CREATE INDEX IF NOT EXISTS idx_consent_org ON delegation_consents(org_id);

@@ -167,8 +167,8 @@ class DelegatedCredential:
     # Network-specific metadata
     provider_metadata: dict[str, Any] = field(default_factory=dict)
 
-    # Consent linkage — REQUIRED
-    consent_id: Optional[str] = None
+    # Consent linkage — REQUIRED (DB enforces NOT NULL)
+    consent_id: str = ""
 
     # Timestamps
     last_used_at: Optional[datetime] = None
