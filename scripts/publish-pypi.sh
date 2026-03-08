@@ -42,6 +42,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Python packages in publish order (dependencies first)
 PYTHON_PACKAGES=(
+  # Core infrastructure (publish first)
   "sardis-core"
   "sardis-protocol"
   "sardis-chain"
@@ -51,15 +52,23 @@ PYTHON_PACKAGES=(
   "sardis-cards"
   "sardis-ramp"
   "sardis-checkout"
+  # Protocol layers
   "sardis-a2a"
   "sardis-ucp"
+  # Framework integrations (15+ frameworks)
   "sardis-langchain"
   "sardis-crewai"
+  "sardis-autogpt"
   "sardis-openai"
+  "sardis-openai-agents"
   "sardis-adk"
-  "sardis-agent-sdk"
+  "sardis-browser-use"
+  "sardis-composio"
+  "sardis-coinbase"
   "sardis-openclaw"
   "sardis-guardrails"
+  "sardis-agent-sdk"
+  # Top-level SDKs
   "sardis-sdk-python"
   "sardis-cli"
   "sardis-api"

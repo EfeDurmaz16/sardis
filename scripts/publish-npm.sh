@@ -42,8 +42,12 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NPM_PACKAGES=(
   "sardis-sdk-js"
   "sardis-ai-sdk"
+  "sardis-stagehand"
   "sardis-ramp-js"
+  "n8n-nodes-sardis"
+  "sardis-activepieces"
   "sardis-mcp-server"
+  "sardis-cli-js"
 )
 
 list_packages() {
