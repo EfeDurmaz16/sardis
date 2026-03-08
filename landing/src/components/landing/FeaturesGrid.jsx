@@ -1,54 +1,41 @@
-import { Shield, FileText, Layers, ScrollText, UserCheck, Terminal, Gauge, Activity, GitBranch } from 'lucide-react';
+import { Shield, FileText, UserCheck, Power, Gauge, Activity } from 'lucide-react';
 
 const cards = [
   {
     Icon: FileText,
     title: 'Natural Language Policies',
-    desc: 'Define complex spending rules in plain English. "Max $200/day, only SaaS vendors, no weekend transactions." 7 built-in templates.',
+    desc: '12-check enforcement pipeline. "Max $500/day, block gambling, require approval above $200." Parsed, validated, and enforced on every transaction.',
+    unique: true,
+  },
+  {
+    Icon: Power,
+    title: 'Kill Switch',
+    desc: '5 scopes: global, organization, agent, rail, chain. Instant freeze with optional auto-reactivation. Every activation logged with evidence.',
+    unique: true,
+  },
+  {
+    Icon: UserCheck,
+    title: 'Approval Workflows',
+    desc: 'Confidence-based routing. Transactions above configurable thresholds route to human approval with 4-eyes quorum. Auto-approve below threshold.',
     unique: true,
   },
   {
     Icon: Shield,
-    title: 'Non-Custodial Security',
-    desc: 'Your keys, your funds. Secured by distributed key management so no single entity — not even Sardis — can move money.',
-  },
-  {
-    Icon: Terminal,
-    title: 'Zero-Config MCP',
-    desc: 'One command to add 52 payment and treasury tools to Claude or Cursor. No setup required.',
-  },
-  {
-    Icon: Gauge,
-    title: 'Confidence Routing',
-    desc: 'Tiered approval workflows based on transaction confidence scores. 4-eyes quorum with distinct reviewers for high-risk mutations.',
+    title: 'Cryptographic Evidence',
+    desc: 'HMAC receipts, Merkle proofs, policy snapshots for every decision. Tamper-proof audit trail anchored to Base blockchain.',
     unique: true,
   },
   {
     Icon: Activity,
-    title: 'Goal Drift Guard',
-    desc: 'Chi-squared behavioral analysis detects when agents deviate from expected spending patterns. Automatic velocity governors.',
+    title: 'Simulation & Replay',
+    desc: 'Dry-run any payment against current policies. Replay blocked transactions with modified parameters. Batch simulate policy changes.',
     unique: true,
   },
   {
-    Icon: GitBranch,
-    title: 'Merkle Audit Trail',
-    desc: 'Tamper-proof audit logs anchored to Base blockchain via Merkle trees. Cryptographic proof for every transaction.',
+    Icon: Gauge,
+    title: 'Anomaly Detection',
+    desc: '6-signal risk scoring: amount anomaly, velocity, new merchant, time, category, behavioral alerts. Auto-freeze at configurable thresholds.',
     unique: true,
-  },
-  {
-    Icon: Layers,
-    title: 'Multi-Chain Funding',
-    desc: 'Execute on Base. Fund from any chain via CCTP v2 cross-chain transfers. USDC arrives automatically.',
-  },
-  {
-    Icon: UserCheck,
-    title: 'Compliance Built In',
-    desc: 'KYC verification and real-time AML screening. Every counterparty checked before funds move.',
-  },
-  {
-    Icon: ScrollText,
-    title: 'Cards + Crypto + Bank',
-    desc: 'One API for every payment rail. Virtual Visa cards, stablecoin for on-chain, and fiat for traditional vendors.',
   },
 ];
 
@@ -62,7 +49,7 @@ export default function FeaturesGrid() {
             className="tracking-widest uppercase"
             style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--landing-blue)' }}
           >
-            Why Sardis
+            THE CONTROL PLANE
           </span>
           <h2
             className="max-w-[560px]"
@@ -74,7 +61,7 @@ export default function FeaturesGrid() {
               color: 'var(--landing-text-primary)',
             }}
           >
-            Trust without giving up control.
+            Every check. Every decision. Every proof.
           </h2>
           <p
             className="max-w-[560px] font-light"
@@ -85,8 +72,8 @@ export default function FeaturesGrid() {
               color: 'var(--landing-text-tertiary)',
             }}
           >
-            The only platform combining natural language policies, per-transaction risk scoring,
-            drift detection, and cryptographic audit — all without holding your private keys.
+            The only platform combining natural language policies, kill switches, approval workflows,
+            cryptographic evidence, simulation, and anomaly detection — all without holding your private keys.
           </p>
         </div>
 

@@ -1,18 +1,18 @@
 const steps = [
   {
     num: '01',
-    title: 'Write a spending policy',
-    desc: 'Define what your agent can spend, where, and how much. Plain English or code. Sardis enforces it automatically.',
+    title: 'Define the Policy',
+    desc: 'Type spending rules in plain English. "Max $500/day, block gambling, require approval above $200." Sardis parses, validates, and enforces — 12 checks on every transaction.',
   },
   {
     num: '02',
-    title: 'Connect your agent',
-    desc: 'Five lines of Python or TypeScript. Your agent gets a wallet, a policy, and the ability to make real payments.',
+    title: 'Execute with Guardrails',
+    desc: 'Your agent makes payments. The control plane runs a 12-check pipeline, routes to approval when needed, and blocks anything the policy forbids. Kill switch available at all times.',
   },
   {
     num: '03',
-    title: 'Watch every transaction',
-    desc: 'Every payment is logged, verified, and auditable. You stay in control while your agents move fast.',
+    title: 'Audit Everything',
+    desc: 'Every decision is recorded with cryptographic evidence. HMAC receipts, Merkle proofs, policy snapshots. Replay any transaction, simulate policy changes, detect anomalies automatically.',
   },
 ];
 
@@ -38,7 +38,7 @@ export default function HowItWorks() {
               color: 'var(--landing-text-primary)',
             }}
           >
-            Set the rules. Let agents pay.
+            How the Control Plane Works
           </h2>
         </div>
 
