@@ -113,7 +113,6 @@ class RateLimiter:
             agent_id: Unique identifier for the agent
             burst_allowance: Multiplier for burst capacity (e.g., 1.5 = 50% burst)
         """
-        import logging
         import os
         env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
         if env in ("prod", "production"):

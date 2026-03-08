@@ -1,5 +1,6 @@
 """Unit tests for rate limiter."""
 
+import os
 import pytest
 import asyncio
 from decimal import Decimal
@@ -8,6 +9,12 @@ from sardis_guardrails.rate_limiter import (
     RateLimitError,
     TokenBucket,
 )
+
+
+@pytest.fixture(autouse=True)
+def _ensure_non_production_env(monkeypatch):
+    """Prevent SARDIS_ENVIRONMENT=production from breaking tests."""
+    monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
 
 
 class TestTokenBucket:
@@ -332,3 +339,22 @@ class TestRateLimiter:
             await limiter.check_and_record("amount_only", Decimal("200"))
 
         assert "Amount limit exceeded" in str(exc_info.value)
+
+
+class TestRateLimiterProductionGuard:
+    """Test that in-memory RateLimiter is blocked in production."""
+
+    def test_raises_in_production(self, monkeypatch):
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "production")
+        with pytest.raises(RuntimeError, match="cannot be used in production"):
+            RateLimiter(agent_id="agent-123")
+
+    def test_raises_in_prod_shorthand(self, monkeypatch):
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "prod")
+        with pytest.raises(RuntimeError, match="cannot be used in production"):
+            RateLimiter(agent_id="agent-456")
+
+    def test_allowed_in_dev(self, monkeypatch):
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
+        limiter = RateLimiter(agent_id="agent-789")
+        assert limiter.agent_id == "agent-789"

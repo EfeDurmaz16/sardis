@@ -29,6 +29,7 @@ from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
 from sardis_api.authz import Principal, require_principal
+from sardis_api.operational_alerts import alert_payment_failure
 from sardis_api.payment_logger import log_payment_event
 from sardis_api.transaction_cap_dep import enforce_transaction_caps
 from sardis_api.kill_switch_dep import require_kill_switch_clear
@@ -850,8 +851,7 @@ async def a2a_pay(
                 agent_id=req.sender_agent_id,
                 amount=str(req.amount), currency=req.token, chain=req.chain,
                 status="failed", error=result.error)
-            from sardis_api.operational_alerts import alert_payment_failure
-            asyncio.ensure_future(alert_payment_failure(
+            asyncio.create_task(alert_payment_failure(
                 error=result.error or "unknown",
                 org_id=str(principal.organization_id),
                 agent_id=req.sender_agent_id,

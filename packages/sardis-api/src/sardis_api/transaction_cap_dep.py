@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 from .authz import Principal, require_principal
+from .operational_alerts import alert_cap_exceeded
 
 logger = logging.getLogger("sardis.api.transaction_caps")
 
@@ -43,8 +44,7 @@ async def enforce_transaction_caps(
             "Transaction cap exceeded: %s (org=%s, agent=%s, amount=%s)",
             result.message, org_id, agent_id, amount,
         )
-        from sardis_api.operational_alerts import alert_cap_exceeded
-        asyncio.ensure_future(alert_cap_exceeded(
+        asyncio.create_task(alert_cap_exceeded(
             cap_type=result.cap_type,
             org_id=org_id,
             agent_id=agent_id,

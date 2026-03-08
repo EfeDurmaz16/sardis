@@ -489,8 +489,11 @@ async def lifespan(app: FastAPI):
         logger.warning("Operational alert init failed (non-fatal): %s", e)
 
     app.state.startup_time = time.time()
-    app.state.ready = True
 
+    # Production guard: warn loudly if Redis is missing (caps, rate limiting,
+    # kill switch will silently fall back to in-memory stores).
+    # Warn-only for now to avoid hard startup failures during initial rollout;
+    # TODO: upgrade to hard failure once Redis is confirmed on all prod instances.
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
     if env in ("prod", "production"):
         redis_url = (
@@ -505,6 +508,7 @@ async def lifespan(app: FastAPI):
                 "in-memory fallbacks. Set SARDIS_REDIS_URL."
             )
 
+    app.state.ready = True
     logger.info("Sardis API started successfully")
 
     yield
