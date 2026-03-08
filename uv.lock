@@ -7480,12 +7480,18 @@ wallet = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "fastapi" },
     { name = "hypothesis" },
     { name = "mypy" },
+    { name = "prometheus-client" },
+    { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "python-multipart" },
     { name = "ruff" },
+    { name = "starlette" },
+    { name = "web3" },
 ]
 
 [package.metadata]
@@ -7526,12 +7532,18 @@ provides-extras = ["chain", "compliance", "ledger", "wallet", "cards", "ramp", "
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "hypothesis", specifier = ">=6.112" },
     { name = "mypy", specifier = ">=1.8" },
+    { name = "prometheus-client", specifier = ">=0.20" },
+    { name = "pyjwt", specifier = ">=2.8" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pytest-cov", specifier = ">=4.1" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", specifier = ">=0.2" },
+    { name = "starlette", specifier = ">=0.41" },
+    { name = "web3", specifier = ">=6.0" },
 ]
 
 [[package]]

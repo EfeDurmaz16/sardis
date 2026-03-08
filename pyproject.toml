@@ -110,6 +110,13 @@ dev = [
     "hypothesis>=6.112",
     "mypy>=1.8",
     "ruff>=0.2",
+    # Required by root-level tests that import from sardis-api, sardis-chain, etc.
+    "fastapi>=0.115",
+    "starlette>=0.41",
+    "python-multipart>=0.0.9",
+    "web3>=6.0",
+    "prometheus-client>=0.20",
+    "PyJWT>=2.8",
 ]
 
 
