@@ -22,6 +22,9 @@ import KillSwitchPage from './pages/KillSwitch'
 import EvidencePage from './pages/Evidence'
 import PoliciesPage from './pages/Policies'
 import MerchantsPage from './pages/Merchants'
+import SimulationPage from './pages/Simulation'
+import AnomalyDashboardPage from './pages/AnomalyDashboard'
+import ExceptionsPage from './pages/Exceptions'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -62,6 +65,9 @@ function AppRoutes() {
                 <Route path="/evidence" element={<EvidencePage />} />
                 <Route path="/policy-management" element={<PoliciesPage />} />
                 <Route path="/merchants" element={<MerchantsPage />} />
+                <Route path="/simulation" element={<SimulationPage />} />
+                <Route path="/anomaly" element={<AnomalyDashboardPage />} />
+                <Route path="/exceptions" element={<ExceptionsPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
