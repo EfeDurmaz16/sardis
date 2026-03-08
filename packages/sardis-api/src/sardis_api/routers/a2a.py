@@ -7,6 +7,7 @@ Enables first-class agent-to-agent transfers:
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 from inspect import isawaitable
@@ -849,6 +850,13 @@ async def a2a_pay(
                 agent_id=req.sender_agent_id,
                 amount=str(req.amount), currency=req.token, chain=req.chain,
                 status="failed", error=result.error)
+            from sardis_api.operational_alerts import alert_payment_failure
+            asyncio.ensure_future(alert_payment_failure(
+                error=result.error or "unknown",
+                org_id=str(principal.organization_id),
+                agent_id=req.sender_agent_id,
+                tx_id=str(idem_key),
+            ))
             await _emit_a2a_webhook(request, "a2a.payment.failed", {
                 "sender_agent_id": req.sender_agent_id,
                 "recipient_agent_id": req.recipient_agent_id,

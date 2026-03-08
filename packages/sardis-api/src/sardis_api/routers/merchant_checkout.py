@@ -317,6 +317,12 @@ async def pay_session(
             payer_wallet_id=body.wallet_id,
         )
     except ValueError as e:
+        from sardis_api.operational_alerts import alert_payment_failure
+        asyncio.ensure_future(alert_payment_failure(
+            error=str(e),
+            org_id=session.merchant_id,
+            tx_id=session.session_id,
+        ))
         raise HTTPException(status_code=400, detail=str(e))
 
     return PaymentResultResponse(
