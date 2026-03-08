@@ -495,7 +495,7 @@ async def lifespan(app: FastAPI):
     # Warn-only for now to avoid hard startup failures during initial rollout;
     # TODO: upgrade to hard failure once Redis is confirmed on all prod instances.
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-    if env in ("prod", "production"):
+    if env in ("prod", "production", "sandbox"):
         redis_url = (
             os.getenv("SARDIS_REDIS_URL")
             or os.getenv("REDIS_URL")
@@ -567,5 +567,13 @@ async def lifespan(app: FastAPI):
             await app.state.cache_service.close()
         except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error closing cache service: {e}")
+
+    # Close database connection pool
+    try:
+        from sardis_v2_core.database import Database
+        await Database.close()
+        logger.info("Database pool closed")
+    except (RuntimeError, OSError, ValueError, AttributeError) as e:
+        logger.warning(f"Error closing database pool: {e}")
 
     logger.info("Sardis API shutdown complete")

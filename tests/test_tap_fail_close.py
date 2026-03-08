@@ -23,12 +23,13 @@ def _make_app(
     jwks_provider=None,
     enforcement_enabled: bool = True,
     fail_open_in_dev: bool = True,
+    protected_paths=None,
 ) -> FastAPI:
     """Create a minimal FastAPI app with TAP middleware for testing."""
     app = FastAPI()
 
     config = TapMiddlewareConfig(
-        protected_paths=["/v2/ap2/"],
+        protected_paths=protected_paths or ["/api/v2/ap2/", "/api/v2/a2a/"],
         enforcement_enabled=enforcement_enabled,
         fail_open_in_dev=fail_open_in_dev,
         jwks_provider=jwks_provider,
@@ -40,8 +41,12 @@ def _make_app(
         jwks_provider=jwks_provider,
     )
 
-    @app.get("/v2/ap2/test")
+    @app.get("/api/v2/ap2/test")
     async def protected_endpoint():
+        return {"ok": True}
+
+    @app.get("/api/v2/a2a/test")
+    async def a2a_endpoint():
         return {"ok": True}
 
     @app.get("/health")
@@ -67,7 +72,7 @@ class TestTapFailCloseProduction:
         """In production with no JWKS provider, TAP must return 401."""
         app = _make_app(jwks_provider=None, enforcement_enabled=True)
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.get("/v2/ap2/test", headers=_TAP_HEADERS)
+        resp = client.get("/api/v2/ap2/test", headers=_TAP_HEADERS)
         assert resp.status_code == 401
 
     @patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "production"})
@@ -75,8 +80,27 @@ class TestTapFailCloseProduction:
         """'production' alias also triggers fail-close."""
         app = _make_app(jwks_provider=None, enforcement_enabled=True)
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.get("/v2/ap2/test", headers=_TAP_HEADERS)
+        resp = client.get("/api/v2/ap2/test", headers=_TAP_HEADERS)
         assert resp.status_code == 401
+
+    @patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "sandbox"})
+    def test_sandbox_no_jwks_rejects(self):
+        """Sandbox is treated as prod-like and must also fail-close."""
+        app = _make_app(jwks_provider=None, enforcement_enabled=True)
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v2/ap2/test", headers=_TAP_HEADERS)
+        assert resp.status_code == 401
+
+
+class TestTapProtectedPaths:
+    """TAP protected paths must match actual router mount paths."""
+
+    def test_default_protected_paths_include_api_prefix(self):
+        """Default protected_paths must include /api/v2/ prefix."""
+        config = TapMiddlewareConfig()
+        assert "/api/v2/ap2/" in config.protected_paths
+        assert "/api/v2/a2a/" in config.protected_paths
+        assert "/api/v2/payments/" in config.protected_paths
 
 
 class TestTapFailOpenDev:
@@ -87,7 +111,7 @@ class TestTapFailOpenDev:
         """In dev with enforcement disabled, request passes."""
         app = _make_app(jwks_provider=None, enforcement_enabled=False, fail_open_in_dev=True)
         client = TestClient(app, raise_server_exceptions=False)
-        resp = client.get("/v2/ap2/test")
+        resp = client.get("/api/v2/ap2/test")
         assert resp.status_code == 200
 
     def test_dev_verify_fn_returns_true_without_jwks(self):

@@ -125,9 +125,11 @@ class TapMiddlewareConfig:
     """Configuration for TAP verification middleware."""
 
     # Paths requiring TAP verification (prefix match)
+    # Must match actual mount paths from main.py (e.g. /api/v2/ap2/, /api/v2/a2a/)
     protected_paths: List[str] = field(default_factory=lambda: [
-        "/v2/ap2/",
-        "/v2/payments/",
+        "/api/v2/ap2/",
+        "/api/v2/a2a/",
+        "/api/v2/payments/",
     ])
 
     # Enforcement bypass (disabled in dev/test environments)
@@ -233,7 +235,7 @@ class TapVerificationMiddleware(BaseHTTPMiddleware):
             if not self.jwks_provider:
                 # Fail-close in production: reject when no JWKS provider
                 env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-                is_prod = env in ("prod", "production")
+                is_prod = env in ("prod", "production", "sandbox")
 
                 if is_prod or not self.config.fail_open_in_dev:
                     logger.error(
