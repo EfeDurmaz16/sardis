@@ -217,7 +217,7 @@ class TestConfidenceRouter:
 
     def test_route_transaction_manager_approval(self):
         """Test routing decision for manager approval."""
-        router = ConfidenceRouter()
+        router = ConfidenceRouter(manager_approvers=["manager@org.example"])
         policy = SpendingPolicy(agent_id="agent-123", limit_total=Decimal("1000"))
 
         confidence = router.calculate_confidence(
@@ -237,7 +237,7 @@ class TestConfidenceRouter:
 
     def test_route_transaction_multi_sig(self):
         """Test routing decision for multi-sig."""
-        router = ConfidenceRouter()
+        router = ConfidenceRouter(multisig_approvers=["signer1@org.example", "signer2@org.example"])
         policy = SpendingPolicy(agent_id="agent-123", limit_total=Decimal("1000"))
 
         confidence = router.calculate_confidence(
