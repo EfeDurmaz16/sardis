@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
 from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
+from sardis_api.operational_alerts import alert_payment_failure
 from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 logger = logging.getLogger(__name__)
@@ -317,6 +318,11 @@ async def pay_session(
             payer_wallet_id=body.wallet_id,
         )
     except ValueError as e:
+        asyncio.create_task(alert_payment_failure(
+            error=str(e),
+            org_id=session.merchant_id,
+            tx_id=session.session_id,
+        ))
         raise HTTPException(status_code=400, detail=str(e))
 
     return PaymentResultResponse(

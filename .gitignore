@@ -157,6 +157,14 @@ PRODUCTION_DEPLOYMENT_GUIDE.md
 # Playwright MCP
 .playwright-mcp/
 
+# Claude Code local config
+.claude/plans/
+.claude/settings.local.json
+.claude/projects/
+
+# Hypothesis test artifacts
+.hypothesis/
+
 # Landing backup
 landing-2/
 

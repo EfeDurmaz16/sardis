@@ -113,14 +113,12 @@ class RateLimiter:
             agent_id: Unique identifier for the agent
             burst_allowance: Multiplier for burst capacity (e.g., 1.5 = 50% burst)
         """
-        import logging
         import os
         env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
         if env in ("prod", "production"):
-            logging.getLogger(__name__).warning(
-                "In-memory RateLimiter instantiated in production for agent=%s. "
-                "Use Redis-backed middleware for multi-instance deployments.",
-                agent_id,
+            raise RuntimeError(
+                "In-memory RateLimiter cannot be used in production for agent="
+                f"{agent_id}. Use Redis-backed rate limiting middleware."
             )
         self.agent_id = agent_id
         self.burst_allowance = burst_allowance

@@ -1,6 +1,7 @@
 """FastAPI dependency for transaction cap enforcement on payment endpoints."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from decimal import Decimal, InvalidOperation
 from typing import Optional
@@ -10,6 +11,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 from .authz import Principal, require_principal
+from .operational_alerts import alert_cap_exceeded
 
 logger = logging.getLogger("sardis.api.transaction_caps")
 
@@ -42,6 +44,13 @@ async def enforce_transaction_caps(
             "Transaction cap exceeded: %s (org=%s, agent=%s, amount=%s)",
             result.message, org_id, agent_id, amount,
         )
+        asyncio.create_task(alert_cap_exceeded(
+            cap_type=result.cap_type,
+            org_id=org_id,
+            agent_id=agent_id,
+            amount=str(amount),
+            daily_total=str(result.daily_total),
+        ))
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={

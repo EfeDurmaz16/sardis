@@ -1,0 +1,77 @@
+# Sardis Integration for Composio
+# Submit via Composio Dashboard at composio.dev
+
+name: sardis
+display_name: Sardis
+description: "Policy-controlled payments for AI agents. Execute stablecoin payments through non-custodial MPC wallets with spending guardrails."
+logo_url: "https://sardis.sh/logo.png"
+categories:
+  - finance
+  - payments
+  - crypto
+
+auth:
+  type: api_key
+  header: X-API-Key
+  description: "Your Sardis API key (starts with sk_)"
+
+base_url: "https://api.sardis.sh"
+docs_url: "https://sardis.sh/docs"
+openapi_spec_url: "https://api.sardis.sh/api/v2/openapi.json"
+
+actions:
+  - name: sardis_pay
+    display_name: Execute Payment
+    description: "Send a policy-controlled payment from a Sardis wallet"
+    method: POST
+    path: "/api/v2/wallets/{wallet_id}/transfer"
+    parameters:
+      - name: wallet_id
+        in: path
+        required: true
+        description: "Wallet ID"
+      - name: destination
+        in: body
+        required: true
+        description: "Recipient address or merchant ID"
+      - name: amount
+        in: body
+        required: true
+        description: "Payment amount"
+      - name: token
+        in: body
+        default: "USDC"
+        description: "Token to use"
+      - name: chain
+        in: body
+        default: "base"
+        description: "Blockchain to use"
+
+  - name: sardis_get_balance
+    display_name: Get Balance
+    description: "Check wallet balance"
+    method: GET
+    path: "/api/v2/wallets/{wallet_id}/balance"
+    parameters:
+      - name: wallet_id
+        in: path
+        required: true
+      - name: token
+        in: query
+        default: "USDC"
+
+  - name: sardis_check_policy
+    display_name: Check Policy
+    description: "Verify if a payment would be allowed by spending policy"
+    method: POST
+    path: "/api/v2/policies/check"
+    parameters:
+      - name: agent_id
+        in: body
+        required: true
+      - name: amount
+        in: body
+        required: true
+      - name: merchant_id
+        in: body
+        required: true

@@ -1,6 +1,7 @@
 """AP2 payment execution endpoints with compliance enforcement."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -26,6 +27,7 @@ from sardis_api.transaction_cap_dep import enforce_transaction_caps
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import run_idempotent
+from sardis_api.operational_alerts import alert_payment_failure
 
 if TYPE_CHECKING:
     from sardis_protocol.verifier import MandateVerifier
@@ -908,6 +910,12 @@ async def execute_ap2_payment(
         except PaymentExecutionError as exc:
             intent.status = IntentStatus.FAILED
             intent.error = str(exc)
+            asyncio.create_task(alert_payment_failure(
+                error=str(exc),
+                org_id=str(principal.organization_id),
+                agent_id=payment.agent_id if hasattr(payment, 'agent_id') else None,
+                tx_id=str(key),
+            ))
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # Record spend for policy tracking
