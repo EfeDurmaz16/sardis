@@ -18,7 +18,14 @@ import {
   Anchor,
   Award,
   AlertTriangle,
-  Headset
+  Headset,
+  Power,
+  FileSearch,
+  ScrollText,
+  Store,
+  Beaker,
+  Radar,
+  OctagonAlert,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -30,16 +37,25 @@ interface LayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Demo Wizard', href: '/demo', icon: Sparkles },
+  { name: 'Control Plane Demo', href: '/demo', icon: Sparkles },
+  // ── Control Plane ──
+  { name: 'Policies', href: '/policy-management', icon: ScrollText },
+  { name: 'Approvals', href: '/approvals', icon: CheckSquare },
+  { name: 'Kill Switch', href: '/kill-switch', icon: Power },
+  { name: 'Evidence', href: '/evidence', icon: FileSearch },
+  { name: 'Simulation', href: '/simulation', icon: Beaker },
+  { name: 'Anomaly Detection', href: '/anomaly', icon: Radar },
+  { name: 'Exceptions', href: '/exceptions', icon: OctagonAlert },
+  { name: 'Merchants', href: '/merchants', icon: Store },
+  // ── Operations ──
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },
   { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
-  { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
-  { name: 'Approvals', href: '/approvals', icon: CheckSquare },
   { name: 'Live Events', href: '/events', icon: Activity },
   { name: 'Guardrails', href: '/guardrails', icon: Shield },
+  { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
+  { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
   { name: 'Confidence Router', href: '/confidence-router', icon: Target },
   { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
   { name: 'Agent Identity', href: '/agent-identity', icon: Award },
@@ -70,7 +86,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold font-display text-gradient">Sardis</h1>
-              <p className="text-xs text-gray-500 tracking-wider uppercase">Payment OS</p>
+              <p className="text-xs text-gray-500 tracking-wider uppercase">Control Plane</p>
             </div>
           </Link>
         </div>

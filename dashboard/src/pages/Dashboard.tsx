@@ -1,23 +1,23 @@
-import { useState, useEffect } from 'react'
-import { 
-  Users, 
-  ArrowRightLeft, 
-  DollarSign, 
+import {
+  Users,
+  ArrowRightLeft,
+  DollarSign,
   Wallet,
   Activity,
   TrendingUp,
   Zap,
   Globe,
   Shield,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react'
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -27,26 +27,18 @@ import {
 } from 'recharts'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
-import { useAgents, useMerchants, useWebhooks } from '../hooks/useApi'
+import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus } from '../hooks/useApi'
+import type { Transaction } from '../types'
 
-// Mock data for charts
-const volumeData = [
-  { date: 'Mon', value: 1200, transactions: 45 },
-  { date: 'Tue', value: 1900, transactions: 72 },
-  { date: 'Wed', value: 1500, transactions: 58 },
-  { date: 'Thu', value: 2800, transactions: 105 },
-  { date: 'Fri', value: 2400, transactions: 89 },
-  { date: 'Sat', value: 1800, transactions: 67 },
-  { date: 'Sun', value: 2200, transactions: 82 },
-]
+// Static chart structure — populated with real data when available, empty-state otherwise
+const VOLUME_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 const transactionsByChain = [
-  { chain: 'Base', count: 450, color: '#0052FF' },
-  { chain: 'Polygon', count: 320, color: '#8247E5' },
-  { chain: 'Arbitrum', count: 280, color: '#28A0F0' },
-  { chain: 'Optimism', count: 210, color: '#FF0420' },
-  { chain: 'Ethereum', count: 180, color: '#627EEA' },
-  { chain: 'Solana', count: 150, color: '#14F195' },
+  { chain: 'Base', count: 0, color: '#0052FF' },
+  { chain: 'Polygon', count: 0, color: '#8247E5' },
+  { chain: 'Arbitrum', count: 0, color: '#28A0F0' },
+  { chain: 'Optimism', count: 0, color: '#FF0420' },
+  { chain: 'Ethereum', count: 0, color: '#627EEA' },
 ]
 
 const paymentTypes = [
@@ -56,49 +48,89 @@ const paymentTypes = [
   { name: 'Refunds', value: 10, color: '#ef4444' },
 ]
 
-// Simulated live transactions for demo
-const generateLiveTransaction = () => {
-  const agents = ['shopping_agent', 'data_buyer', 'compute_agent', 'research_ai', 'trading_bot', 'analytics_ai']
-  const merchants = ['GPU Cloud', 'Data API', 'Weather Service', 'Stock Feed', 'News API', 'Compute Hub']
-  const amounts = ['0.01', '0.05', '0.25', '1.00', '5.00', '10.00', '25.00', '50.00']
-  const statuses = ['completed', 'completed', 'completed', 'completed', 'pending'] as const
-  const chains = ['Base', 'Polygon', 'Arbitrum', 'Optimism', 'Ethereum', 'Solana']
-  
-  return {
-    id: `tx_${Math.random().toString(36).substring(7)}`,
-    agent: agents[Math.floor(Math.random() * agents.length)] + '_' + Math.random().toString(36).substring(7, 11),
-    merchant: merchants[Math.floor(Math.random() * merchants.length)],
-    amount: amounts[Math.floor(Math.random() * amounts.length)],
-    status: statuses[Math.floor(Math.random() * statuses.length)],
-    time: new Date().toLocaleTimeString(),
-    chain: chains[Math.floor(Math.random() * chains.length)],
+function formatAmount(amount: string): string {
+  const n = parseFloat(amount)
+  if (isNaN(n)) return amount
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function formatRelativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes === 1) return '1 min ago'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours === 1) return '1 hr ago'
+  if (hours < 24) return `${hours} hrs ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function compute24hVolume(transactions: Transaction[]): number {
+  const cutoff = Date.now() - 86400000
+  return transactions
+    .filter(tx => new Date(tx.created_at).getTime() > cutoff && tx.status === 'completed')
+    .reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0)
+}
+
+function buildVolumeChartData(transactions: Transaction[]) {
+  // Build last-7-days volume from real transactions
+  const now = new Date()
+  return VOLUME_DAYS.map((day, i) => {
+    const dayOffset = 6 - i
+    const start = new Date(now)
+    start.setDate(start.getDate() - dayOffset)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setHours(23, 59, 59, 999)
+
+    const dayTxs = transactions.filter(tx => {
+      const d = new Date(tx.created_at).getTime()
+      return d >= start.getTime() && d <= end.getTime() && tx.status === 'completed'
+    })
+
+    const value = dayTxs.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0)
+    return { date: day, value: Math.round(value * 100) / 100, transactions: dayTxs.length }
+  })
+}
+
+function deriveTransactionType(tx: Transaction): string {
+  if (tx.purpose) {
+    const p = tx.purpose.toLowerCase()
+    if (p.includes('refund')) return 'refund'
+    if (p.includes('hold')) return 'hold'
   }
+  return 'payment'
 }
 
 export default function DashboardPage() {
   const { data: agents = [] } = useAgents()
   const { data: merchants = [] } = useMerchants()
   const { data: webhooks = [] } = useWebhooks()
-  
-  // Live transaction feed state
-  const [liveTransactions, setLiveTransactions] = useState<ReturnType<typeof generateLiveTransaction>[]>([])
-  const [txPerSecond, setTxPerSecond] = useState(0)
-  const [totalVolume24h, setTotalVolume24h] = useState(12450)
-  
-  // Simulate live transactions
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newTx = generateLiveTransaction()
-      setLiveTransactions(prev => [newTx, ...prev.slice(0, 9)])
-      setTxPerSecond(prev => Math.max(0, prev + (Math.random() > 0.5 ? 1 : -1)))
-      setTotalVolume24h(prev => prev + parseFloat(newTx.amount))
-    }, 2000 + Math.random() * 3000)
-    
-    return () => clearInterval(interval)
-  }, [])
-  
+  const { data: health } = useHealth()
+  const { data: transactions = [], isLoading: txLoading } = useTransactions(50)
+  const { data: pendingApprovals = [] } = usePendingApprovals()
+  const { data: killSwitchStatus } = useKillSwitchStatus()
+
   const activeAgents = agents.filter((agent) => agent.is_active).length
-  
+
+  // Compute real stats from transactions
+  const volume24h = compute24hVolume(transactions)
+  const volumeChartData = buildVolumeChartData(transactions)
+
+  // Kill switch: check if global switch or any rail is active
+  const killSwitchActive = Boolean(
+    killSwitchStatus?.global ||
+    Object.values(killSwitchStatus?.rails ?? {}).some(Boolean) ||
+    Object.values(killSwitchStatus?.chains ?? {}).some(Boolean)
+  )
+
+  // Live feed: most recent 10 transactions
+  const feedTransactions = transactions.slice(0, 10)
+
+  // Recent activity table: first 5
+  const recentActivity = transactions.slice(0, 5)
+
   return (
     <div className="space-y-8">
       {/* Header with Live Indicator */}
@@ -111,12 +143,19 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
-            <div className="w-2 h-2 bg-sardis-500 rounded-full animate-pulse" />
-            <span className="text-sm text-gray-400">Live</span>
+            <div className={clsx(
+              "w-2 h-2 rounded-full",
+              health?.status === 'ok' ? "bg-sardis-500 animate-pulse" : "bg-yellow-500"
+            )} />
+            <span className="text-sm text-gray-400">
+              {health?.status === 'ok' ? 'Live' : health ? health.status : 'Connecting'}
+            </span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
             <Zap className="w-4 h-4 text-yellow-500" />
-            <span className="text-sm text-white mono-numbers">{txPerSecond.toFixed(1)} tx/s</span>
+            <span className="text-sm text-white mono-numbers">
+              {transactions.length > 0 ? `${transactions.length} tx` : '— tx'}
+            </span>
           </div>
         </div>
       </div>
@@ -124,14 +163,37 @@ export default function DashboardPage() {
       {/* Runtime security posture */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-4 border border-dark-100">
-          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Checkout Control</p>
-          <p className="text-sm text-white font-medium">PAN lane quorum active</p>
-          <p className="text-xs text-gray-400 mt-1">Distinct reviewer (4-eyes) required on high-risk approvals.</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Pending Approvals</p>
+          <p className={clsx(
+            "text-sm font-medium",
+            pendingApprovals.length > 0 ? "text-yellow-400" : "text-white"
+          )}>
+            {pendingApprovals.length > 0
+              ? `${pendingApprovals.length} pending approval${pendingApprovals.length !== 1 ? 's' : ''}`
+              : 'No pending approvals'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {pendingApprovals.length > 0
+              ? 'Distinct reviewer (4-eyes) required on high-risk approvals.'
+              : 'All approvals cleared. Distinct reviewer (4-eyes) on high-risk.'}
+          </p>
         </div>
         <div className="card p-4 border border-dark-100">
-          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Card Auth</p>
-          <p className="text-sm text-white font-medium">ASA fail-closed enabled</p>
-          <p className="text-xs text-gray-400 mt-1">Lookup or matcher failures default to decline in production.</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Kill Switch</p>
+          <div className="flex items-center gap-2">
+            {killSwitchActive && <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />}
+            <p className={clsx(
+              "text-sm font-medium",
+              killSwitchActive ? "text-red-400" : "text-white"
+            )}>
+              Kill switch {killSwitchActive ? 'active' : 'inactive'}
+            </p>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            {killSwitchActive
+              ? 'One or more rails or chains are currently halted.'
+              : 'All payment rails and chains operational.'}
+          </p>
         </div>
         <div className="card p-4 border border-dark-100">
           <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Multi-Agent Trust</p>
@@ -139,39 +201,41 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 mt-1">Trusted broadcast targets visible for orchestration fan-out.</p>
         </div>
       </div>
-      
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Active Agents"
-          value={agents.length || 12}
-          change={`${activeAgents || 8} online`}
+          value={agents.length || 0}
+          change={`${activeAgents} online`}
           changeType="positive"
           icon={<Users className="w-6 h-6" />}
         />
         <StatCard
           title="Volume (24h)"
-          value={`$${totalVolume24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          change="+12.5%"
-          changeType="positive"
+          value={volume24h > 0
+            ? `$${volume24h.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '—'}
+          change={volume24h > 0 ? 'last 24 hours' : 'no completed transactions'}
+          changeType={volume24h > 0 ? 'positive' : 'neutral'}
           icon={<DollarSign className="w-6 h-6" />}
         />
         <StatCard
           title="Transactions"
-          value="1,247"
-          change="+8.2% from yesterday"
-          changeType="positive"
+          value={transactions.length > 0 ? transactions.length : '—'}
+          change={transactions.length > 0 ? `${transactions.filter(t => t.status === 'completed').length} completed` : 'no data yet'}
+          changeType={transactions.length > 0 ? 'positive' : 'neutral'}
           icon={<ArrowRightLeft className="w-6 h-6" />}
         />
         <StatCard
           title="Merchants"
-          value={merchants.length || 24}
-          change={`${webhooks.length || 12} webhooks`}
+          value={merchants.length || 0}
+          change={`${webhooks.length} webhooks`}
           changeType="neutral"
           icon={<Wallet className="w-6 h-6" />}
         />
       </div>
-      
+
       {/* Live Transaction Feed + Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Live Feed */}
@@ -181,18 +245,24 @@ export default function DashboardPage() {
               <Activity className="w-5 h-5 text-sardis-400" />
               <h2 className="text-lg font-semibold text-white">Live Transaction Feed</h2>
             </div>
-            <span className="text-xs text-gray-500">Updates automatically</span>
+            <span className="text-xs text-gray-500">
+              {txLoading ? 'Loading...' : 'Most recent transactions'}
+            </span>
           </div>
-          
+
           <div className="space-y-2 max-h-[320px] overflow-y-auto custom-scrollbar">
-            {liveTransactions.length === 0 ? (
+            {txLoading ? (
               <div className="text-center py-8 text-gray-500">
-                Waiting for transactions...
+                Loading transactions...
+              </div>
+            ) : feedTransactions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No transactions yet
               </div>
             ) : (
-              liveTransactions.map((tx, i) => (
-                <div 
-                  key={tx.id}
+              feedTransactions.map((tx, i) => (
+                <div
+                  key={tx.tx_id}
                   className={clsx(
                     "flex items-center justify-between p-3 rounded-lg transition-all duration-500",
                     i === 0 ? "bg-sardis-500/10 border border-sardis-500/30" : "bg-dark-200/50"
@@ -201,20 +271,28 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div className={clsx(
                       "w-2 h-2 rounded-full",
-                      tx.status === 'completed' ? 'bg-sardis-500' : 'bg-yellow-500 animate-pulse'
+                      tx.status === 'completed' ? 'bg-sardis-500' :
+                      tx.status === 'pending' ? 'bg-yellow-500 animate-pulse' :
+                      'bg-red-500'
                     )} />
                     <div>
-                      <p className="text-sm font-medium text-white">{tx.agent}</p>
-                      <p className="text-xs text-gray-500">→ {tx.merchant}</p>
+                      <p className="text-sm font-medium text-white font-mono truncate max-w-[140px]">
+                        {tx.from_wallet}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate max-w-[140px]">
+                        {tx.purpose || `→ ${tx.to_wallet}`}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-xs px-2 py-0.5 bg-dark-300 text-gray-400 rounded">
-                      {tx.chain}
+                      {tx.currency}
                     </span>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-sardis-400 mono-numbers">${tx.amount}</p>
-                      <p className="text-xs text-gray-500">{tx.time}</p>
+                      <p className="text-sm font-medium text-sardis-400 mono-numbers">
+                        {formatAmount(tx.amount)}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatRelativeTime(tx.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -222,7 +300,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-        
+
         {/* Quick Stats */}
         <div className="space-y-6">
           {/* Payment Types Pie */}
@@ -264,39 +342,44 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-          
+
           {/* Network Health */}
           <div className="card p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-4">Network Health</h3>
             <div className="space-y-2.5 max-h-[200px] overflow-y-auto custom-scrollbar">
-              {[
-                { name: 'Base', status: 'healthy' },
-                { name: 'Polygon', status: 'healthy' },
-                { name: 'Arbitrum', status: 'healthy' },
-                { name: 'Optimism', status: 'healthy' },
-                { name: 'Ethereum', status: 'healthy' },
-                { name: 'Solana', status: 'healthy' },
-              ].map((chain) => (
-                <div key={chain.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-sardis-400" />
-                    <span className="text-sm text-gray-300">{chain.name}</span>
+              {transactionsByChain.map((chain) => {
+                const isHalted = Boolean(killSwitchStatus?.chains?.[chain.chain.toLowerCase()])
+                return (
+                  <div key={chain.chain} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-sardis-400" />
+                      <span className="text-sm text-gray-300">{chain.chain}</span>
+                    </div>
+                    {isHalted ? (
+                      <span className="badge badge-danger">Halted</span>
+                    ) : (
+                      <span className="badge badge-success">Healthy</span>
+                    )}
                   </div>
-                  <span className="badge badge-success">Healthy</span>
-                </div>
-              ))}
+                )
+              })}
               <div className="flex items-center justify-between pt-2 border-t border-dark-100">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-blue-500" />
                   <span className="text-sm text-gray-300">Risk Engine</span>
                 </div>
-                <span className="badge badge-info">Active</span>
+                <span className={clsx(
+                  "badge",
+                  health?.status === 'ok' ? "badge-info" : "badge-warning"
+                )}>
+                  {health?.status === 'ok' ? 'Active' : 'Checking'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Volume Chart */}
@@ -308,13 +391,15 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2 text-sardis-400">
               <TrendingUp className="w-5 h-5" />
-              <span className="text-sm font-medium">+24.5%</span>
+              <span className="text-sm font-medium">
+                {volumeChartData.some(d => d.value > 0) ? 'Live data' : 'No data yet'}
+              </span>
             </div>
           </div>
-          
+
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={volumeData}>
+              <AreaChart data={volumeChartData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ff4f00" stopOpacity={0.3}/>
@@ -354,7 +439,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
         </div>
-        
+
         {/* Transactions by Chain */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-6">
@@ -364,7 +449,7 @@ export default function DashboardPage() {
             </div>
             <Activity className="w-5 h-5 text-gray-400" />
           </div>
-          
+
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={transactionsByChain} layout="vertical">
@@ -396,69 +481,87 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-      
-      {/* Recent Activity with better styling */}
+
+      {/* Recent Activity */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
           <button className="text-sm text-sardis-400 hover:text-sardis-300">View all →</button>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase">
                 <th className="pb-3 font-medium">Status</th>
-                <th className="pb-3 font-medium">Agent</th>
+                <th className="pb-3 font-medium">Wallet</th>
                 <th className="pb-3 font-medium">Type</th>
                 <th className="pb-3 font-medium">Amount</th>
-                <th className="pb-3 font-medium">Chain</th>
+                <th className="pb-3 font-medium">Currency</th>
                 <th className="pb-3 font-medium">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-100">
-              {[
-                { status: 'completed', agent: 'shopping_agent_001', type: 'payment', amount: '$25.50', chain: 'Base', time: '2 min ago' },
-                { status: 'completed', agent: 'data_buyer_demo', type: 'hold', amount: '$100.00', chain: 'Polygon', time: '5 min ago' },
-                { status: 'completed', agent: 'automation_agent', type: 'payment', amount: '$8.00', chain: 'Base', time: '12 min ago' },
-                { status: 'pending', agent: 'budget_optimizer', type: 'payment', amount: '$45.00', chain: 'Ethereum', time: '18 min ago' },
-                { status: 'completed', agent: 'research_ai_003', type: 'refund', amount: '$12.00', chain: 'Base', time: '25 min ago' },
-              ].map((row, i) => (
-                <tr key={i} className="hover:bg-dark-200/50 transition-colors">
-                  <td className="py-3">
-                    <span className={clsx(
-                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
-                      row.status === 'completed' && "bg-sardis-500/10 text-sardis-400",
-                      row.status === 'pending' && "bg-yellow-500/10 text-yellow-500"
-                    )}>
-                      <div className={clsx(
-                        "w-1.5 h-1.5 rounded-full",
-                        row.status === 'completed' && "bg-sardis-500",
-                        row.status === 'pending' && "bg-yellow-500 animate-pulse"
-                      )} />
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <span className="text-sm text-white font-mono">{row.agent}</span>
-                  </td>
-                  <td className="py-3">
-                    <span className="text-sm text-gray-400 capitalize">{row.type}</span>
-                  </td>
-                  <td className="py-3">
-                    <span className="text-sm text-sardis-400 font-medium mono-numbers">{row.amount}</span>
-                  </td>
-                  <td className="py-3">
-                    <span className="text-xs px-2 py-0.5 bg-dark-200 text-gray-400 rounded">{row.chain}</span>
-                  </td>
-                  <td className="py-3">
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {row.time}
-                    </span>
+              {txLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500 text-sm">
+                    Loading transactions...
                   </td>
                 </tr>
-              ))}
+              ) : recentActivity.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500 text-sm">
+                    No transactions yet
+                  </td>
+                </tr>
+              ) : (
+                recentActivity.map((tx) => (
+                  <tr key={tx.tx_id} className="hover:bg-dark-200/50 transition-colors">
+                    <td className="py-3">
+                      <span className={clsx(
+                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
+                        tx.status === 'completed' && "bg-sardis-500/10 text-sardis-400",
+                        tx.status === 'pending' && "bg-yellow-500/10 text-yellow-500",
+                        tx.status === 'failed' && "bg-red-500/10 text-red-400"
+                      )}>
+                        <div className={clsx(
+                          "w-1.5 h-1.5 rounded-full",
+                          tx.status === 'completed' && "bg-sardis-500",
+                          tx.status === 'pending' && "bg-yellow-500 animate-pulse",
+                          tx.status === 'failed' && "bg-red-500"
+                        )} />
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="text-sm text-white font-mono truncate max-w-[140px] block">
+                        {tx.from_wallet}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="text-sm text-gray-400 capitalize">
+                        {deriveTransactionType(tx)}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="text-sm text-sardis-400 font-medium mono-numbers">
+                        {formatAmount(tx.amount)}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="text-xs px-2 py-0.5 bg-dark-200 text-gray-400 rounded">
+                        {tx.currency}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatRelativeTime(tx.created_at)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -4,23 +4,40 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-coinbase"
-version = "0.1.0"
+version = "1.0.0"
 description = "Coinbase CDP and x402 integrations for Sardis"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+authors = [{name = "Sardis", email = "efe@sardis.sh"}]
+keywords = ["sardis", "coinbase", "cdp", "x402", "payments", "ai-agents", "crypto"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
+    "sardis>=1.0.0",
     "httpx>=0.27.0",
-    "sardis-core>=0.2.3",
 ]
 
 [project.optional-dependencies]
 cdp = ["cdp-sdk>=0.15.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Repository = "https://github.com/sardis-pay/sardis"
+Documentation = "https://sardis.sh/docs"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_coinbase"]

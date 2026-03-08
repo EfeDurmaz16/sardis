@@ -318,7 +318,7 @@ export default function Hero({ onOpenWaitlist }) {
               color: 'var(--landing-text-primary)',
             }}
           >
-            Give your agents guardrails for every dollar.
+            AI agents can reason. They cannot be trusted with money.
           </h1>
 
           <p
@@ -330,9 +330,10 @@ export default function Hero({ onOpenWaitlist }) {
               color: 'var(--landing-text-secondary)',
             }}
           >
-            The payment layer for AI agents. Define spending policies in plain
-            English, connect any agent, and let them transact safely across
-            chains.
+            Sardis is the control plane for autonomous financial execution.
+            Natural language policies, kill switches, approval workflows, and
+            cryptographic evidence — so your agents can make real transactions
+            safely.
           </p>
 
           {/* CTA Row */}
@@ -347,7 +348,7 @@ export default function Hero({ onOpenWaitlist }) {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent)'}
             >
-              Start Building Free
+              See the Demo
             </button>
           </div>
 

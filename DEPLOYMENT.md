@@ -261,4 +261,4 @@ All platforms provide log aggregation:
 
 - Documentation: https://sardis.sh/docs
 - API Docs: https://your-domain.com/api/v2/docs
-- GitHub: https://github.com/sardis-pay/sardis
+- GitHub: https://github.com/EfeDurmaz16/sardis

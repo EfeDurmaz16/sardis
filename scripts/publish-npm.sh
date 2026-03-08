@@ -39,10 +39,15 @@ print_usage() {
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # npm packages in publish order (dependencies first)
+# Note: sardis-cli-js excluded — the canonical CLI is the Go binary
+# distributed via homebrew (packages/sardis-cli-go)
 NPM_PACKAGES=(
   "sardis-sdk-js"
   "sardis-ai-sdk"
+  "sardis-stagehand"
   "sardis-ramp-js"
+  "n8n-nodes-sardis"
+  "sardis-activepieces"
   "sardis-mcp-server"
 )
 

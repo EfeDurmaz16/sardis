@@ -1,6 +1,6 @@
 {
   "name": "@sardis/stagehand",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Sardis payment tools for Stagehand browser agents",
   "type": "module",
   "main": "dist/index.js",
@@ -11,26 +11,52 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist"
   },
-  "keywords": ["sardis", "stagehand", "browserbase", "ai-agents", "payments"],
-  "author": "Sardis <sdk@sardis.sh>",
+  "keywords": [
+    "sardis",
+    "stagehand",
+    "browserbase",
+    "ai-agents",
+    "payments"
+  ],
+  "author": "Sardis <efe@sardis.sh>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sardis-pay/sardis.git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
     "directory": "packages/sardis-stagehand"
   },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+  },
   "dependencies": {
-    "zod": "^3.22.0"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
     "@sardis/sdk": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "@sardis/sdk": { "optional": false }
+    "@sardis/sdk": {
+      "optional": false
+    }
   },
-  "engines": { "node": ">=18.0.0" }
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

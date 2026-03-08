@@ -6,8 +6,7 @@ build-backend = "hatchling.build"
 name = "sardis-crewai"
 version = "1.0.0"
 description = "CrewAI integration for Sardis - agent payment tools, pre-built agents, and task templates"
-authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -26,7 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis",
+    "sardis>=1.0.0",
     "crewai>=0.80",
     "pydantic>=2.6",
 ]
@@ -40,8 +40,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
-Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 "Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.metadata]

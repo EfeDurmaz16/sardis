@@ -70,4 +70,4 @@ Pre-flight check — returns whether a given amount/merchant combination would b
 
 - Website: https://sardis.sh
 - Docs: https://sardis.sh/docs
-- GitHub: https://github.com/sardis-pay/sardis
+- GitHub: https://github.com/EfeDurmaz16/sardis

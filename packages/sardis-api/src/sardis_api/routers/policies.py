@@ -176,6 +176,16 @@ class PolicyCheckResponse(BaseModel):
     policy_id: Optional[str] = None
 
 
+class PolicyRecommendationResponse(BaseModel):
+    agent_id: str
+    recommendation_type: str
+    description: str
+    natural_language: str
+    confidence: float
+    rationale: str
+    data: dict
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================
@@ -706,3 +716,28 @@ async def check_policy(
         mcc_code=request.mcc_code,
     )
     return PolicyCheckResponse(allowed=ok, reason=reason, policy_id=policy.policy_id)
+
+
+@router.get("/{agent_id}/recommendations", response_model=list[PolicyRecommendationResponse])
+async def get_policy_recommendations(
+    agent_id: str,
+    deps: PolicyDependencies = Depends(get_deps),
+):
+    """Get policy recommendations based on agent's transaction history."""
+    from sardis_v2_core.policy_recommendations import PolicyRecommendationEngine
+    from sardis_v2_core.database import Database
+
+    engine = PolicyRecommendationEngine(db=Database)
+    recommendations = await engine.get_recommendations(agent_id)
+    return [
+        PolicyRecommendationResponse(
+            agent_id=r.agent_id,
+            recommendation_type=r.recommendation_type,
+            description=r.description,
+            natural_language=r.natural_language,
+            confidence=r.confidence,
+            rationale=r.rationale,
+            data=r.data,
+        )
+        for r in recommendations
+    ]

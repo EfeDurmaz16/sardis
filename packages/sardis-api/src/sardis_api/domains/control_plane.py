@@ -21,9 +21,25 @@ def init_control_plane(
     compliance_checker=None,
     chain_executor=None,
     ledger_recorder=None,
+    execution_mode_router=None,
 ) -> ControlPlane:
-    """Initialize the control plane with the app's service instances."""
+    """Initialize the control plane with the app's service instances.
+
+    If execution_mode_router is provided and chain_executor supports
+    multi-modal execution, the router is used to select execution mode.
+    """
     global _instance
+
+    # If a mode router is provided and the executor supports multi-modal,
+    # wrap the chain executor with MultiModalExecutionAdapter.
+    if execution_mode_router is not None and chain_executor is not None:
+        from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
+        if not isinstance(chain_executor, MultiModalExecutionAdapter):
+            chain_executor = MultiModalExecutionAdapter(
+                crypto_executor=chain_executor,
+                mode_router=execution_mode_router,
+            )
+
     _instance = ControlPlane(
         policy_evaluator=policy_evaluator,
         compliance_checker=compliance_checker,

@@ -34,6 +34,9 @@ class PaymentMethod(str, Enum):
     # Legacy: Credit/debit card (via processor)
     CARD = "card"
 
+    # Delegated card execution (tokenized credentials via network)
+    DELEGATED_CARD = "delegated_card"
+
 
 class X402PaymentType(str, Enum):
     """x402 specific payment types."""
@@ -183,8 +186,12 @@ def parse_payment_method_from_mandate(mandate_payload: dict) -> PaymentMethod:
     if "x402" in mandate_payload or mandate_payload.get("protocol") == "x402":
         return PaymentMethod.X402
     
-    # Check for card-related fields
+    # Check for delegated card fields
     payment_details = mandate_payload.get("payment_details", {})
+    if "credential_id" in payment_details or "delegated_card" in payment_details:
+        return PaymentMethod.DELEGATED_CARD
+
+    # Check for card-related fields
     if "card_id" in payment_details or "virtual_card_id" in payment_details:
         return PaymentMethod.VIRTUAL_CARD
     

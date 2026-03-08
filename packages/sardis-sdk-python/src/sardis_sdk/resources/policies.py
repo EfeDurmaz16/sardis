@@ -96,6 +96,28 @@ class AsyncPoliciesResource(AsyncBaseResource):
             return [PolicyExample.model_validate(item) for item in data]
         return [PolicyExample.model_validate(item) for item in data.get("examples", [])]
 
+    async def create_from_nl(
+        self,
+        agent_id: str,
+        natural_language: str,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> ApplyPolicyFromNLResponse:
+        """Create and immediately apply a policy from natural language."""
+        data = await self._post(
+            "policies/apply",
+            {"natural_language": natural_language, "agent_id": agent_id, "confirm": True},
+            timeout=timeout,
+        )
+        return ApplyPolicyFromNLResponse.model_validate(data)
+
+    async def get_recommendations(
+        self,
+        agent_id: str,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Dict[str, Any]:
+        """Get policy recommendations for an agent based on its transaction history."""
+        return await self._get(f"policies/{agent_id}/recommendations", timeout=timeout)
+
 
 class PoliciesResource(SyncBaseResource):
     def parse(
@@ -173,4 +195,26 @@ class PoliciesResource(SyncBaseResource):
         if isinstance(data, list):
             return [PolicyExample.model_validate(item) for item in data]
         return [PolicyExample.model_validate(item) for item in data.get("examples", [])]
+
+    def create_from_nl(
+        self,
+        agent_id: str,
+        natural_language: str,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> ApplyPolicyFromNLResponse:
+        """Create and immediately apply a policy from natural language."""
+        data = self._post(
+            "policies/apply",
+            {"natural_language": natural_language, "agent_id": agent_id, "confirm": True},
+            timeout=timeout,
+        )
+        return ApplyPolicyFromNLResponse.model_validate(data)
+
+    def get_recommendations(
+        self,
+        agent_id: str,
+        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+    ) -> Dict[str, Any]:
+        """Get policy recommendations for an agent based on its transaction history."""
+        return self._get(f"policies/{agent_id}/recommendations", timeout=timeout)
 

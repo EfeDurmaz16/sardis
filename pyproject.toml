@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Payment OS for the Agent Economy — non-custodial MPC wallets with natural language spending policies for AI agents"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 authors = [
     { name = "Efe Baran Durmaz", email = "efe@sardis.dev" }
 ]
@@ -38,27 +38,36 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-sdk>=0.3.3",
-    "sardis-core>=0.2.3",
-    "sardis-cli>=0.1.3",
+    "sardis-sdk>=1.0.0",
+    "sardis-core>=1.0.0",
+    "sardis-cli>=1.0.0",
     "pydantic>=2.6",
     "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
-chain = ["sardis-chain>=0.3.2"]
-compliance = ["sardis-compliance>=0.3.2"]
-ledger = ["sardis-ledger>=0.4.2"]
-wallet = ["sardis-wallet>=0.2.2"]
-cards = ["sardis-cards>=0.2.2"]
-ramp = ["sardis-ramp>=0.1.2"]
-api = ["sardis-api>=0.2.2"]
+chain = ["sardis-chain>=1.0.0"]
+compliance = ["sardis-compliance>=1.0.0"]
+ledger = ["sardis-ledger>=1.0.0"]
+wallet = ["sardis-wallet>=1.0.0"]
+cards = ["sardis-cards>=1.0.0"]
+ramp = ["sardis-ramp>=1.0.0"]
+api = ["sardis-api>=1.0.0"]
 protocols = [
-    "sardis-protocol>=0.1.3",
-    "sardis-a2a>=0.1.3",
-    "sardis-ucp>=0.1.3",
+    "sardis-protocol>=1.0.0",
+    "sardis-a2a>=1.0.0",
+    "sardis-ucp>=1.0.0",
 ]
-checkout = ["sardis-checkout>=0.2.2"]
+checkout = ["sardis-checkout>=1.0.0"]
+# Framework integrations
+crewai = ["sardis-crewai>=1.0.0"]
+langchain = ["sardis-langchain>=1.0.0"]
+autogpt = ["sardis-autogpt>=1.0.0"]
+openai-agents = ["sardis-openai-agents>=1.0.0"]
+adk = ["sardis-adk>=1.0.0"]
+browser-use = ["sardis-browser-use>=1.0.0"]
+composio = ["sardis-composio>=1.0.0"]
+guardrails = ["sardis-guardrails>=1.0.0"]
 all = [
     "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout]",
 ]
@@ -74,7 +83,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 Changelog = "https://sardis.sh/docs/changelog"
 
 [tool.hatch.build.targets.wheel]

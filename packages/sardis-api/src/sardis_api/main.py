@@ -129,6 +129,9 @@ from .routers import enterprise_support as enterprise_support_router
 from .routers import audit_anchors as audit_anchors_router
 from .routers import merchants as merchants_router
 from .routers import merchant_checkout as merchant_checkout_router
+from .routers import credentials as credentials_router
+from .routers import execution_modes as execution_modes_router
+from .routers import settlements as settlements_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1844,6 +1847,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(merchant_checkout_router.router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
     app.include_router(merchant_checkout_router.public_router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
+
+    # --- Delegated payment rails routers ---
+    app.include_router(credentials_router.router)
+    app.include_router(execution_modes_router.router)
+    app.include_router(settlements_router.router)
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])

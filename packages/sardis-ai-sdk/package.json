@@ -23,12 +23,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sardis-pay/sardis.git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
     "directory": "packages/sardis-ai-sdk"
   },
   "homepage": "https://sardis.sh",
   "bugs": {
-    "url": "https://github.com/sardis-pay/sardis/issues"
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -68,7 +68,7 @@
     "prepublishOnly": "npm run build && npm run test"
   },
   "dependencies": {
-    "@sardis/sdk": "^0.3.4",
+    "@sardis/sdk": "^1.0.0",
     "zod": "^3.22.0"
   },
   "peerDependencies": {

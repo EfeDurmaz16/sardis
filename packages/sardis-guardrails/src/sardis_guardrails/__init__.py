@@ -41,6 +41,12 @@ from sardis_guardrails.rate_limiter import (
     TokenBucket,
     TransactionRecord,
 )
+from sardis_guardrails.anomaly_engine import (
+    AnomalyEngine,
+    RiskAction,
+    RiskAssessment,
+    RiskSignal,
+)
 
 __version__ = "0.1.0"
 
@@ -77,4 +83,9 @@ __all__ = [
     "SensitivityLevel",
     "SpendingPattern",
     "TransactionData",
+    # Anomaly Engine
+    "AnomalyEngine",
+    "RiskAction",
+    "RiskAssessment",
+    "RiskSignal",
 ]

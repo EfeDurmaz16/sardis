@@ -5,17 +5,22 @@ This module exports both sync and async resource classes for all API endpoints.
 """
 from .base import AsyncBaseResource, SyncBaseResource, BaseResource, Resource
 from .agents import AgentsResource, AsyncAgentsResource
-from .wallets import WalletsResource, AsyncWalletsResource
-from .payments import PaymentsResource, AsyncPaymentsResource
-from .holds import HoldsResource, AsyncHoldsResource
-from .webhooks import WebhooksResource, AsyncWebhooksResource
-from .marketplace import MarketplaceResource, AsyncMarketplaceResource
-from .transactions import TransactionsResource, AsyncTransactionsResource, GasEstimate, TransactionStatus, ChainInfo
-from .ledger import LedgerResource, AsyncLedgerResource, LedgerEntry
-from .policies import PoliciesResource, AsyncPoliciesResource
+from .approvals import ApprovalsResource, AsyncApprovalsResource
 from .cards import CardsResource, AsyncCardsResource
+from .evidence import EvidenceResource, AsyncEvidenceResource
+from .exceptions import ExceptionsResource, AsyncExceptionsResource
 from .groups import GroupsResource, AsyncGroupsResource
+from .holds import HoldsResource, AsyncHoldsResource
+from .kill_switch import KillSwitchResource, AsyncKillSwitchResource
+from .ledger import LedgerResource, AsyncLedgerResource, LedgerEntry
+from .marketplace import MarketplaceResource, AsyncMarketplaceResource
+from .payments import PaymentsResource, AsyncPaymentsResource
+from .policies import PoliciesResource, AsyncPoliciesResource
+from .simulation import SimulationResource, AsyncSimulationResource
+from .transactions import TransactionsResource, AsyncTransactionsResource, GasEstimate, TransactionStatus, ChainInfo
 from .treasury import TreasuryResource, AsyncTreasuryResource
+from .wallets import WalletsResource, AsyncWalletsResource
+from .webhooks import WebhooksResource, AsyncWebhooksResource
 
 __all__ = [
     # Base classes
@@ -26,41 +31,56 @@ __all__ = [
     # Agents
     "AgentsResource",
     "AsyncAgentsResource",
-    # Wallets
-    "WalletsResource",
-    "AsyncWalletsResource",
-    # Payments
-    "PaymentsResource",
-    "AsyncPaymentsResource",
+    # Approvals
+    "ApprovalsResource",
+    "AsyncApprovalsResource",
+    # Cards
+    "CardsResource",
+    "AsyncCardsResource",
+    # Evidence
+    "EvidenceResource",
+    "AsyncEvidenceResource",
+    # Exceptions
+    "ExceptionsResource",
+    "AsyncExceptionsResource",
+    # Groups
+    "GroupsResource",
+    "AsyncGroupsResource",
     # Holds
     "HoldsResource",
     "AsyncHoldsResource",
-    # Webhooks
-    "WebhooksResource",
-    "AsyncWebhooksResource",
+    # Kill Switch
+    "KillSwitchResource",
+    "AsyncKillSwitchResource",
+    # Ledger
+    "LedgerResource",
+    "AsyncLedgerResource",
+    "LedgerEntry",
     # Marketplace
     "MarketplaceResource",
     "AsyncMarketplaceResource",
+    # Payments
+    "PaymentsResource",
+    "AsyncPaymentsResource",
+    # Policies
+    "PoliciesResource",
+    "AsyncPoliciesResource",
+    # Simulation
+    "SimulationResource",
+    "AsyncSimulationResource",
     # Transactions
     "TransactionsResource",
     "AsyncTransactionsResource",
     "GasEstimate",
     "TransactionStatus",
     "ChainInfo",
-    # Ledger
-    "LedgerResource",
-    "AsyncLedgerResource",
-    "LedgerEntry",
-    # Policies
-    "PoliciesResource",
-    "AsyncPoliciesResource",
-    # Cards
-    "CardsResource",
-    "AsyncCardsResource",
-    # Groups
-    "GroupsResource",
-    "AsyncGroupsResource",
     # Treasury
     "TreasuryResource",
     "AsyncTreasuryResource",
+    # Wallets
+    "WalletsResource",
+    "AsyncWalletsResource",
+    # Webhooks
+    "WebhooksResource",
+    "AsyncWebhooksResource",
 ]

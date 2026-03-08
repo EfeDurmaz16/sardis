@@ -686,6 +686,192 @@ export const treasuryOpsApi = {
   },
 }
 
+// Kill Switch APIs (V2 - admin router)
+export const killSwitchApi = {
+  status: () => requestV2<{
+    global: Record<string, unknown> | null
+    organizations: Record<string, unknown>
+    agents: Record<string, unknown>
+    rails: Record<string, unknown>
+    chains: Record<string, unknown>
+  }>('/admin/kill-switch/status'),
+
+  activateRail: (rail: string, data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number }) =>
+    requestV2<JsonObject>(`/admin/kill-switch/rail/${rail}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateRail: (rail: string) =>
+    requestV2<JsonObject>(`/admin/kill-switch/rail/${rail}/deactivate`, { method: 'POST' }),
+
+  activateChain: (chain: string, data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number }) =>
+    requestV2<JsonObject>(`/admin/kill-switch/chain/${chain}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateChain: (chain: string) =>
+    requestV2<JsonObject>(`/admin/kill-switch/chain/${chain}/deactivate`, { method: 'POST' }),
+}
+
+// Approvals APIs (V2)
+export const approvalsApi = {
+  listPending: () => requestV2<JsonObject[]>('/approvals/pending'),
+
+  list: (params?: { status?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.status) search.set('status', params.status)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/approvals${q ? `?${q}` : ''}`)
+  },
+
+  get: (approvalId: string) => requestV2<JsonObject>(`/approvals/${approvalId}`),
+
+  approve: (approvalId: string, data?: { notes?: string }) =>
+    requestV2<JsonObject>(`/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  deny: (approvalId: string, data?: { reason?: string }) =>
+    requestV2<JsonObject>(`/approvals/${approvalId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+}
+
+// Evidence APIs (V2)
+export const evidenceApi = {
+  getTransactionEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}`),
+
+  verifyEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}/verify`),
+
+  listPolicyDecisions: (params?: { agent_id?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/evidence/policy-decisions${q ? `?${q}` : ''}`)
+  },
+
+  getPolicyDecisionDetail: (decisionId: string) =>
+    requestV2<JsonObject>(`/evidence/policy-decisions/${decisionId}`),
+}
+
+// Simulation APIs (V2)
+export const simulationApi = {
+  simulate: (data: {
+    amount: string
+    currency?: string
+    chain?: string
+    agent_id: string
+    wallet_id?: string
+    merchant_id?: string
+    mcc_code?: string
+    source?: string
+  }) =>
+    requestV2<{
+      would_succeed: boolean
+      failure_reasons: string[]
+      policy_result: JsonObject | null
+      compliance_result: JsonObject | null
+      cap_check: JsonObject | null
+      kill_switch_status: JsonObject | null
+    }>('/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ currency: 'USDC', chain: 'base', source: 'ap2', ...data }),
+    }),
+}
+
+// Exceptions APIs (V2)
+export const exceptionsApi = {
+  list: (params?: { agent_id?: string; status?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.status) search.set('status', params.status)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/exceptions${q ? `?${q}` : ''}`)
+  },
+
+  get: (exceptionId: string) => requestV2<JsonObject>(`/exceptions/${exceptionId}`),
+
+  resolve: (exceptionId: string, data: { resolution_notes?: string }) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  escalate: (exceptionId: string, data?: { notes?: string }) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/escalate`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  retry: (exceptionId: string) =>
+    requestV2<JsonObject>(`/exceptions/${exceptionId}/retry`, {
+      method: 'POST',
+    }),
+}
+
+// Policies APIs (V2)
+export const policiesApi = {
+  parse: (data: { natural_language: string }) =>
+    requestV2<JsonObject>('/policies/parse', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  preview: (data: { agent_id: string; natural_language: string }) =>
+    requestV2<JsonObject>('/policies/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  apply: (data: { agent_id: string; natural_language: string; confirm?: boolean }) =>
+    requestV2<JsonObject>('/policies/apply', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  get: (agentId: string) => requestV2<JsonObject>(`/policies/${agentId}`),
+
+  check: (data: {
+    agent_id: string
+    amount: string
+    currency?: string
+    merchant_id?: string
+    mcc_code?: string
+  }) =>
+    requestV2<{ allowed: boolean; reason: string; policy_id?: string }>('/policies/check', {
+      method: 'POST',
+      body: JSON.stringify({ currency: 'USD', ...data }),
+    }),
+}
+
+// Anomaly APIs (V2)
+export const anomalyApi = {
+  assess: (data: { agent_id: string; amount: string; merchant_id?: string; mcc_code?: string }) =>
+    requestV2<JsonObject>('/anomaly/assess', { method: 'POST', body: JSON.stringify(data) }),
+
+  events: (params?: { agent_id?: string; min_score?: number; action?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.min_score) search.set('min_score', String(params.min_score))
+    if (params?.action) search.set('action', params.action)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/anomaly/events${q ? `?${q}` : ''}`)
+  },
+
+  config: () => requestV2<JsonObject>('/anomaly/config'),
+
+  updateConfig: (data: { thresholds?: Record<string, number>; signal_weights?: Record<string, number> }) =>
+    requestV2<JsonObject>('/anomaly/config', { method: 'PUT', body: JSON.stringify(data) }),
+}
+
 // Demo APIs (V2)
 export const demoApi = {
   bootstrapApiKey: (data: {

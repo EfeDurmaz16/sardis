@@ -167,6 +167,18 @@ class BridgeCardsConfig(BaseSettings):
         env_prefix = "BRIDGE_"
 
 
+class DelegatedCredentialConfig(BaseSettings):
+    """Delegated payment credential configuration."""
+
+    encryption_key: str = ""  # Fernet key for credential token encryption
+    enabled_networks: str = ""  # Comma-separated: stripe_spt,visa_tap,mastercard_agent_pay
+    stripe_spt_enabled: bool = False
+    credential_ttl_days: int = 90
+
+    class Config:
+        env_prefix = "SARDIS_DELEGATED_"
+
+
 class CardStackConfig(BaseSettings):
     """Card stack provider routing configuration."""
 
@@ -296,6 +308,7 @@ class SardisSettings(BaseSettings):
     rain: RainConfig = Field(default_factory=RainConfig)
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
+    delegated: DelegatedCredentialConfig = Field(default_factory=DelegatedCredentialConfig)
     funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
     
     # Chain execution mode
@@ -526,6 +539,12 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
 
         if not os.getenv("ELLIPTIC_API_KEY"):
             errors.append("ELLIPTIC_API_KEY: Sanctions screening not configured (recommended)")
+
+        # Delegated credential encryption key (required when SPT enabled)
+        if settings.delegated.stripe_spt_enabled and not settings.delegated.encryption_key:
+            errors.append(
+                "SARDIS_DELEGATED_ENCRYPTION_KEY: Required when stripe_spt_enabled=True"
+            )
 
     return errors
 

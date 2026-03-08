@@ -6,8 +6,7 @@ build-backend = "hatchling.build"
 name = "sardis-adk"
 version = "1.0.0"
 description = "Google Agent Development Kit (ADK) integration for Sardis"
-authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -26,7 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=0.3",
+    "sardis>=1.0.0",
     "google-adk>=0.3",
 ]
 
@@ -39,7 +39,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 

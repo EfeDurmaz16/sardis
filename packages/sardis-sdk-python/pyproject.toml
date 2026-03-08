@@ -60,7 +60,7 @@ all = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-pay/sardis"
+Repository = "https://github.com/EfeDurmaz16/sardis"
 Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/packages/sardis-sdk-python/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]

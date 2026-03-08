@@ -134,6 +134,80 @@ const checkBalance = createAction({
   },
 });
 
+const checkPolicy = createAction({
+  name: 'check_policy',
+  displayName: 'Check Policy',
+  description: 'Simulate a transaction against spending policies without executing it',
+  auth: sardisAuth,
+  props: {
+    walletId: Property.ShortText({
+      displayName: 'Wallet ID',
+      description: 'The Sardis wallet ID',
+      required: true,
+    }),
+    amount: Property.Number({
+      displayName: 'Amount',
+      description: 'Transaction amount in USD',
+      required: true,
+    }),
+    merchant: Property.ShortText({
+      displayName: 'Merchant',
+      description: 'Recipient address or merchant identifier',
+      required: true,
+    }),
+    token: Property.StaticDropdown({
+      displayName: 'Token',
+      description: 'Stablecoin to use',
+      required: false,
+      defaultValue: 'USDC',
+      options: {
+        options: [
+          { label: 'USDC', value: 'USDC' },
+          { label: 'USDT', value: 'USDT' },
+          { label: 'PYUSD', value: 'PYUSD' },
+          { label: 'EURC', value: 'EURC' },
+        ],
+      },
+    }),
+    chain: Property.StaticDropdown({
+      displayName: 'Chain',
+      description: 'Blockchain network',
+      required: false,
+      defaultValue: 'base',
+      options: {
+        options: [
+          { label: 'Base', value: 'base' },
+          { label: 'Ethereum', value: 'ethereum' },
+          { label: 'Polygon', value: 'polygon' },
+          { label: 'Arbitrum', value: 'arbitrum' },
+          { label: 'Optimism', value: 'optimism' },
+        ],
+      },
+    }),
+  },
+  async run(context) {
+    const { auth, propsValue } = context;
+    const baseUrl = 'https://api.sardis.sh';
+
+    const response = await fetch(`${baseUrl}/api/v2/simulate`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': auth as string,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        wallet_id: propsValue.walletId,
+        amount: propsValue.amount!.toString(),
+        destination: propsValue.merchant,
+        token: propsValue.token || 'USDC',
+        chain: propsValue.chain || 'base',
+      }),
+    });
+
+    return await response.json();
+  },
+});
+
 export const sardis = createPiece({
   displayName: 'Sardis',
   description: 'Policy-controlled payments for AI agents',
@@ -141,6 +215,6 @@ export const sardis = createPiece({
   minimumSupportedRelease: '0.20.0',
   logoUrl: 'https://sardis.sh/logo.png',
   authors: ['sardis-pay'],
-  actions: [sendPayment, checkBalance],
+  actions: [sendPayment, checkBalance, checkPolicy],
   triggers: [],
 });

@@ -37,6 +37,10 @@ import { GroupsResource } from './resources/groups.js';
 import { UCPResource } from './resources/ucp.js';
 import { A2AResource } from './resources/a2a.js';
 import { TreasuryResource } from './resources/treasury.js';
+import { ApprovalsResource } from './resources/approvals.js';
+import { KillSwitchResource } from './resources/kill-switch.js';
+import { EvidenceResource } from './resources/evidence.js';
+import { SimulationResource } from './resources/simulation.js';
 import type {
   SardisClientOptions,
   RequestOptions,
@@ -252,6 +256,30 @@ export class SardisClient {
   public readonly treasury: TreasuryResource;
 
   /**
+   * Approval queue operations - list pending, approve, deny.
+   * @see {@link ApprovalsResource}
+   */
+  public readonly approvals: ApprovalsResource;
+
+  /**
+   * Kill switch operations - emergency halt by scope.
+   * @see {@link KillSwitchResource}
+   */
+  public readonly killSwitch: KillSwitchResource;
+
+  /**
+   * Evidence operations - tamper-evident receipts and audit proofs.
+   * @see {@link EvidenceResource}
+   */
+  public readonly evidence: EvidenceResource;
+
+  /**
+   * Simulation operations - dry-run payment execution.
+   * @see {@link SimulationResource}
+   */
+  public readonly simulation: SimulationResource;
+
+  /**
    * Creates a new SardisClient instance.
    *
    * @param options - Client configuration options
@@ -315,6 +343,10 @@ export class SardisClient {
     this.ucp = new UCPResource(this);
     this.a2a = new A2AResource(this);
     this.treasury = new TreasuryResource(this);
+    this.approvals = new ApprovalsResource(this);
+    this.killSwitch = new KillSwitchResource(this);
+    this.evidence = new EvidenceResource(this);
+    this.simulation = new SimulationResource(this);
   }
 
   /**
