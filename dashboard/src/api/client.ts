@@ -686,6 +686,115 @@ export const treasuryOpsApi = {
   },
 }
 
+// Kill Switch APIs (V2 - admin router)
+export const killSwitchApi = {
+  status: () => requestV2<{
+    global: Record<string, unknown> | null
+    organizations: Record<string, unknown>
+    agents: Record<string, unknown>
+    rails: Record<string, unknown>
+    chains: Record<string, unknown>
+  }>('/admin/kill-switch/status'),
+
+  activateRail: (rail: string, data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number }) =>
+    requestV2<JsonObject>(`/admin/kill-switch/rail/${rail}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateRail: (rail: string) =>
+    requestV2<JsonObject>(`/admin/kill-switch/rail/${rail}/deactivate`, { method: 'POST' }),
+
+  activateChain: (chain: string, data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number }) =>
+    requestV2<JsonObject>(`/admin/kill-switch/chain/${chain}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deactivateChain: (chain: string) =>
+    requestV2<JsonObject>(`/admin/kill-switch/chain/${chain}/deactivate`, { method: 'POST' }),
+}
+
+// Approvals APIs (V2)
+export const approvalsApi = {
+  listPending: () => requestV2<JsonObject[]>('/approvals/pending'),
+
+  list: (params?: { status?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.status) search.set('status', params.status)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/approvals${q ? `?${q}` : ''}`)
+  },
+
+  get: (approvalId: string) => requestV2<JsonObject>(`/approvals/${approvalId}`),
+
+  approve: (approvalId: string, data?: { notes?: string }) =>
+    requestV2<JsonObject>(`/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  deny: (approvalId: string, data?: { reason?: string }) =>
+    requestV2<JsonObject>(`/approvals/${approvalId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+}
+
+// Evidence APIs (V2)
+export const evidenceApi = {
+  getTransactionEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}`),
+
+  verifyEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}/verify`),
+
+  listPolicyDecisions: (params?: { agent_id?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.agent_id) search.set('agent_id', params.agent_id)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<JsonObject[]>(`/evidence/policy-decisions${q ? `?${q}` : ''}`)
+  },
+
+  getPolicyDecisionDetail: (decisionId: string) =>
+    requestV2<JsonObject>(`/evidence/policy-decisions/${decisionId}`),
+}
+
+// Policies APIs (V2)
+export const policiesApi = {
+  parse: (data: { natural_language: string }) =>
+    requestV2<JsonObject>('/policies/parse', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  preview: (data: { agent_id: string; natural_language: string }) =>
+    requestV2<JsonObject>('/policies/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  apply: (data: { agent_id: string; natural_language: string; confirm?: boolean }) =>
+    requestV2<JsonObject>('/policies/apply', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  get: (agentId: string) => requestV2<JsonObject>(`/policies/${agentId}`),
+
+  check: (data: {
+    agent_id: string
+    amount: string
+    currency?: string
+    merchant_id?: string
+    mcc_code?: string
+  }) =>
+    requestV2<{ allowed: boolean; reason: string; policy_id?: string }>('/policies/check', {
+      method: 'POST',
+      body: JSON.stringify({ currency: 'USD', ...data }),
+    }),
+}
+
 // Demo APIs (V2)
 export const demoApi = {
   bootstrapApiKey: (data: {

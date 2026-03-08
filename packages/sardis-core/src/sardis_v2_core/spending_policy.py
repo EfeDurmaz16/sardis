@@ -36,8 +36,12 @@ How policy enforcement works (high-level):
    │                           per-merchant caps          │
    │  9. Goal drift          — has the agent drifted too  │
    │                           far from its stated goal?  │
-   │ 10. Approval threshold  — amount OK but needs human  │
+   │ 10. Merchant trust      — first-seen / low-trust     │
+   │                           merchant scrutiny          │
+   │ 11. Approval threshold  — amount OK but needs human  │
    │                           sign-off?                  │
+   │ 12. KYA attestation     — on-chain agent identity    │
+   │                           verified?                  │
    └─────────────────────────────────────────────────────┘
 
 4. If all checks pass → (True, "OK").
@@ -259,6 +263,7 @@ class SpendingPolicy:
         drift_score: Optional[Decimal] = None,
         policy_store: Optional[Any] = None,  # SpendingPolicyStore for DB-backed enforcement
         kya_client: Optional[Any] = None,  # EASKYAClient for attestation verification
+        merchant_trust_service: Optional[Any] = None,  # MerchantTrustService for trust-based checks
     ) -> tuple[bool, str]:
         """
         Evaluate a payment request against this policy.
@@ -277,8 +282,9 @@ class SpendingPolicy:
             7. On-chain balance (wallet has enough funds?)
             8. Merchant rules (allowlist / blocklist / per-merchant caps)
             9. Goal drift (agent staying on task?)
-           10. Approval threshold (OK but needs human sign-off)
-           11. KYA attestation (on-chain agent identity verified?)
+           10. Merchant trust (first-seen/low-trust merchant scrutiny)
+           11. Approval threshold (OK but needs human sign-off)
+           12. KYA attestation (on-chain agent identity verified?)
 
         Args:
             wallet: The agent's non-custodial wallet.
@@ -396,14 +402,37 @@ class SpendingPolicy:
             if drift_score > self.max_drift_score:
                 return False, "goal_drift_exceeded"
 
-        # ── Check 10: Approval threshold ───────────────────────────────
+        # ── Check 10: Merchant trust ─────────────────────────────────────
+        # First-seen or low-trust merchants get tighter scrutiny.
+        # Unknown merchants above a reduced threshold trigger approval.
+        if merchant_id and merchant_trust_service is not None:
+            merchant_profile = await merchant_trust_service.get_or_create_profile(
+                merchant_id,
+                merchant_name=None,
+                category=merchant_category,
+                mcc_code=mcc_code,
+            )
+            if merchant_profile.is_first_seen and self.approval_threshold is not None:
+                # First-seen merchants: any payment above 50% of threshold needs approval
+                first_seen_threshold = self.approval_threshold * Decimal("0.5")
+                if amount > first_seen_threshold:
+                    return True, "requires_approval_first_seen_merchant"
+
+        # ── Check 11: Approval threshold ───────────────────────────────
         # All checks passed, but the amount exceeds the auto-approval cap.
         # Return approved=True with "requires_approval" so the caller can
         # route this to a human for sign-off before executing on-chain.
-        if self.approval_threshold is not None and amount > self.approval_threshold:
+        # When merchant trust is available, the threshold is adjusted based
+        # on the merchant's trust level (higher trust = higher threshold).
+        effective_approval_threshold = self.approval_threshold
+        if self.approval_threshold is not None and merchant_id and merchant_trust_service is not None:
+            effective_approval_threshold = await merchant_trust_service.get_approval_threshold_for_merchant(
+                merchant_id, self.approval_threshold
+            )
+        if effective_approval_threshold is not None and amount > effective_approval_threshold:
             return True, "requires_approval"
 
-        # ── Check 11: KYA attestation ────────────────────────────────
+        # ── Check 12: KYA attestation ────────────────────────────────
         # If a KYA client is provided and the trust level requires an
         # on-chain attestation, verify the agent's KYA attestation is
         # valid and not revoked before allowing the transaction.

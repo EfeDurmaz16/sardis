@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -199,5 +199,153 @@ export function useResolveSupportTicket() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
     },
+  })
+}
+
+// Kill Switch
+export function useKillSwitchStatus() {
+  return useQuery({
+    queryKey: ['kill-switch-status'],
+    queryFn: killSwitchApi.status,
+    refetchInterval: 10000,
+  })
+}
+
+export function useActivateKillSwitchRail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ rail, data }: { rail: string; data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number } }) =>
+      killSwitchApi.activateRail(rail, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kill-switch-status'] })
+    },
+  })
+}
+
+export function useDeactivateKillSwitchRail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (rail: string) => killSwitchApi.deactivateRail(rail),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kill-switch-status'] })
+    },
+  })
+}
+
+export function useActivateKillSwitchChain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ chain, data }: { chain: string; data: { reason: string; notes?: string; auto_reactivate_after_seconds?: number } }) =>
+      killSwitchApi.activateChain(chain, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kill-switch-status'] })
+    },
+  })
+}
+
+export function useDeactivateKillSwitchChain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (chain: string) => killSwitchApi.deactivateChain(chain),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kill-switch-status'] })
+    },
+  })
+}
+
+// Approvals
+export function usePendingApprovals() {
+  return useQuery({
+    queryKey: ['approvals-pending'],
+    queryFn: approvalsApi.listPending,
+    refetchInterval: 15000,
+  })
+}
+
+export function useApprovals(params?: { status?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['approvals', params?.status, params?.limit],
+    queryFn: () => approvalsApi.list(params),
+  })
+}
+
+export function useApproveApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      approvalsApi.approve(id, { notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals-pending'] })
+    },
+  })
+}
+
+export function useDenyApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      approvalsApi.deny(id, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['approvals'] })
+      queryClient.invalidateQueries({ queryKey: ['approvals-pending'] })
+    },
+  })
+}
+
+// Evidence
+export function useTransactionEvidence(txId: string) {
+  return useQuery({
+    queryKey: ['evidence', txId],
+    queryFn: () => evidenceApi.getTransactionEvidence(txId),
+    enabled: !!txId,
+  })
+}
+
+export function usePolicyDecisions(params?: { agent_id?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['policy-decisions', params?.agent_id, params?.limit],
+    queryFn: () => evidenceApi.listPolicyDecisions(params),
+  })
+}
+
+// Policies
+export function usePolicy(agentId: string) {
+  return useQuery({
+    queryKey: ['policy', agentId],
+    queryFn: () => policiesApi.get(agentId),
+    enabled: !!agentId,
+  })
+}
+
+export function useParsePolicy() {
+  return useMutation({
+    mutationFn: (naturalLanguage: string) =>
+      policiesApi.parse({ natural_language: naturalLanguage }),
+  })
+}
+
+export function usePreviewPolicy() {
+  return useMutation({
+    mutationFn: ({ agentId, naturalLanguage }: { agentId: string; naturalLanguage: string }) =>
+      policiesApi.preview({ agent_id: agentId, natural_language: naturalLanguage }),
+  })
+}
+
+export function useApplyPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ agentId, naturalLanguage }: { agentId: string; naturalLanguage: string }) =>
+      policiesApi.apply({ agent_id: agentId, natural_language: naturalLanguage, confirm: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['policy'] })
+    },
+  })
+}
+
+export function useCheckPolicy() {
+  return useMutation({
+    mutationFn: (data: { agent_id: string; amount: string; currency?: string; merchant_id?: string; mcc_code?: string }) =>
+      policiesApi.check(data),
   })
 }

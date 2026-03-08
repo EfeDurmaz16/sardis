@@ -1,12 +1,15 @@
 """Central control plane for payment execution.
 
-Orchestrates the full pipeline: policy → compliance → chain → ledger.
+Orchestrates the full pipeline: policy → anomaly → compliance → chain → ledger.
 All payment flows (A2A, AP2, checkout) submit ExecutionIntents here.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Protocol
+from typing import Any, Optional, Protocol, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sardis_guardrails.anomaly_engine import AnomalyEngine, RiskAssessment
 
 from .execution_intent import (
     ExecutionIntent,
@@ -56,11 +59,13 @@ class ControlPlane:
         compliance_checker: Optional[ComplianceChecker] = None,
         chain_executor: Optional[ChainExecutor] = None,
         ledger_recorder: Optional[LedgerRecorder] = None,
+        anomaly_engine: Optional["AnomalyEngine"] = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
         self._chain = chain_executor
         self._ledger = ledger_recorder
+        self._anomaly_engine = anomaly_engine
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
         """Execute an intent through the full pipeline."""
@@ -84,6 +89,82 @@ class ControlPlane:
                         status=IntentStatus.REJECTED,
                         error=intent.error,
                     )
+
+            # Step 1.5: Anomaly risk assessment (optional)
+            anomaly_flag: Optional[dict[str, Any]] = None
+            if self._anomaly_engine is not None:
+                from sardis_guardrails.anomaly_engine import RiskAction
+
+                assessment = self._anomaly_engine.assess_risk(
+                    agent_id=intent.agent_id,
+                    amount=intent.amount,
+                    merchant_id=intent.metadata.get("merchant_id"),
+                    merchant_category=intent.metadata.get("merchant_category"),
+                    behavioral_alerts=intent.metadata.get("behavioral_alerts"),
+                    baseline_mean=intent.metadata.get("baseline_mean"),
+                    baseline_std=intent.metadata.get("baseline_std"),
+                    recent_tx_count_1h=intent.metadata.get("recent_tx_count_1h", 0),
+                    is_new_merchant=intent.metadata.get("is_new_merchant", False),
+                    hour_of_day=intent.metadata.get("hour_of_day"),
+                    typical_hours=intent.metadata.get("typical_hours"),
+                )
+                logger.info(
+                    "ControlPlane: anomaly assessment intent=%s score=%.3f action=%s",
+                    intent.intent_id, assessment.overall_score, assessment.action.value,
+                )
+
+                if assessment.action == RiskAction.KILL_SWITCH:
+                    intent.status = IntentStatus.REJECTED
+                    intent.error = "kill_switch_activated_by_anomaly"
+                    return ExecutionResult(
+                        intent_id=intent.intent_id,
+                        success=False,
+                        status=IntentStatus.REJECTED,
+                        error="kill_switch_activated_by_anomaly",
+                        data={"anomaly_score": assessment.overall_score,
+                              "anomaly_action": assessment.action.value},
+                    )
+
+                if assessment.action == RiskAction.FREEZE_AGENT:
+                    intent.status = IntentStatus.REJECTED
+                    intent.error = "agent_frozen_by_anomaly"
+                    return ExecutionResult(
+                        intent_id=intent.intent_id,
+                        success=False,
+                        status=IntentStatus.REJECTED,
+                        error="agent_frozen_by_anomaly",
+                        data={"anomaly_score": assessment.overall_score,
+                              "anomaly_action": assessment.action.value},
+                    )
+
+                if assessment.action == RiskAction.REQUIRE_APPROVAL:
+                    intent.status = IntentStatus.REJECTED
+                    intent.error = "anomaly_requires_approval"
+                    return ExecutionResult(
+                        intent_id=intent.intent_id,
+                        success=False,
+                        status=IntentStatus.REJECTED,
+                        error="anomaly_requires_approval",
+                        data={"anomaly_score": assessment.overall_score,
+                              "anomaly_action": assessment.action.value},
+                    )
+
+                if assessment.action == RiskAction.FLAG:
+                    anomaly_flag = {
+                        "anomaly_flagged": True,
+                        "anomaly_score": assessment.overall_score,
+                        "anomaly_action": assessment.action.value,
+                        "anomaly_signals": [
+                            {"type": s.signal_type, "score": s.score, "description": s.description}
+                            for s in assessment.signals if s.score > 0
+                        ],
+                    }
+                    logger.warning(
+                        "ControlPlane: intent=%s flagged by anomaly engine (score=%.3f)",
+                        intent.intent_id, assessment.overall_score,
+                    )
+
+                # RiskAction.ALLOW → continue normally (anomaly_flag stays None)
 
             # Step 2: Compliance (skip if already done upstream)
             if self._compliance and intent.compliance_result is None:
@@ -134,6 +215,10 @@ class ControlPlane:
                 intent.intent_id, intent.tx_hash, receipt.receipt_id,
             )
 
+            result_data = dict(tx_result)
+            if anomaly_flag is not None:
+                result_data.update(anomaly_flag)
+
             return ExecutionResult(
                 intent_id=intent.intent_id,
                 success=True,
@@ -141,7 +226,7 @@ class ControlPlane:
                 tx_hash=intent.tx_hash,
                 receipt_id=receipt.receipt_id,
                 ledger_entry_id=intent.ledger_entry_id,
-                data=tx_result,
+                data=result_data,
             )
 
         except Exception as e:

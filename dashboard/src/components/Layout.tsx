@@ -18,7 +18,11 @@ import {
   Anchor,
   Award,
   AlertTriangle,
-  Headset
+  Headset,
+  Power,
+  FileSearch,
+  ScrollText,
+  Store
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -37,7 +41,11 @@ const navigation = [
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
+  { name: 'Policies', href: '/policy-management', icon: ScrollText },
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
+  { name: 'Kill Switch', href: '/kill-switch', icon: Power },
+  { name: 'Evidence', href: '/evidence', icon: FileSearch },
+  { name: 'Merchants', href: '/merchants', icon: Store },
   { name: 'Live Events', href: '/events', icon: Activity },
   { name: 'Guardrails', href: '/guardrails', icon: Shield },
   { name: 'Confidence Router', href: '/confidence-router', icon: Target },

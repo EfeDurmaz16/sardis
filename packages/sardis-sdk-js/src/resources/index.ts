@@ -17,3 +17,7 @@ export { UCPResource } from './ucp.js';
 export { A2AResource } from './a2a.js';
 export { TreasuryResource } from './treasury.js';
 export { CheckoutResource } from './checkout.js';
+export { ApprovalsResource } from './approvals.js';
+export { KillSwitchResource } from './kill-switch.js';
+export { EvidenceResource } from './evidence.js';
+export { SimulationResource } from './simulation.js';
