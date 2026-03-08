@@ -459,6 +459,42 @@ async def confirm_external_payment(
             detail="Address does not match the connected wallet",
         )
 
+    # On-chain verification: verify the tx actually transferred the correct
+    # amount to the merchant's settlement address before marking as paid
+    merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
+    settlement_address: Optional[str] = None
+    if merchant and merchant.settlement_wallet_id and deps.wallet_manager:
+        try:
+            wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
+            if wallet:
+                settlement_address = wallet.get_address(_CHECKOUT_CHAIN) or None
+        except Exception:
+            logger.warning("Failed to resolve settlement address for verification")
+
+    if settlement_address:
+        from sardis_api.services.onchain_verification import verify_usdc_transfer
+
+        verification = await verify_usdc_transfer(
+            tx_hash=body.tx_hash,
+            expected_recipient=settlement_address,
+            expected_amount=session.amount,
+            chain=_CHECKOUT_CHAIN,
+        )
+        if not verification.verified:
+            logger.warning(
+                "On-chain verification failed for session %s: %s",
+                session.session_id, verification.error,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"On-chain verification failed: {verification.error}",
+            )
+    else:
+        logger.warning(
+            "No settlement address for merchant %s — skipping on-chain verification",
+            session.merchant_id,
+        )
+
     await deps.merchant_repo.update_session(
         session.session_id,
         status="paid",

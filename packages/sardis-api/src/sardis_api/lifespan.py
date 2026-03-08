@@ -508,6 +508,15 @@ async def lifespan(app: FastAPI):
                 "in-memory fallbacks. Set SARDIS_REDIS_URL."
             )
 
+        # TAP JWKS guard: warn if TAP verification lacks a JWKS URL in prod
+        tap_jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
+        if not tap_jwks_url:
+            logger.critical(
+                "PRODUCTION GUARD: SARDIS_TAP_JWKS_URL not set. "
+                "TAP signature verification will reject all requests "
+                "on protected endpoints. Configure a JWKS endpoint."
+            )
+
     app.state.ready = True
     logger.info("Sardis API started successfully")
 

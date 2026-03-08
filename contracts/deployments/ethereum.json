@@ -4,8 +4,8 @@
   "status": "pending",
   "deployer": null,
   "contracts": {
-    "walletFactory": null,
-    "escrow": null
+    "walletFactory": { "address": null, "lifecycle": "pending_deploy" },
+    "escrow": { "address": null, "lifecycle": "pending_deploy" }
   },
   "blockNumber": null,
   "timestamp": null,

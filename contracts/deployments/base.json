@@ -4,11 +4,11 @@
   "status": "pending",
   "deployer": null,
   "contracts": {
-    "walletFactory": null,
-    "escrow": null,
-    "policyModule": "0x9646fDAD06d3e24444381f44362a3B0eB343D337",
-    "ledgerAnchor": null,
-    "refundProtocol": null
+    "walletFactory": { "address": null, "lifecycle": "pending_deploy" },
+    "escrow": { "address": null, "lifecycle": "pending_deploy" },
+    "policyModule": { "address": "0x9646fDAD06d3e24444381f44362a3B0eB343D337", "lifecycle": "canonical_live" },
+    "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy" },
+    "refundProtocol": { "address": null, "lifecycle": "pending_deploy" }
   },
   "blockNumber": null,
   "timestamp": null,

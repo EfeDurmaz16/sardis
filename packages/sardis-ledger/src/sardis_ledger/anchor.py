@@ -105,6 +105,7 @@ class LedgerAnchor:
         self._anchors: dict[str, AnchorRecord] = {}
         self._entry_to_anchor: dict[str, str] = {}  # Map entry_id -> anchor_id
         self._anchor_trees: dict[str, MerkleTree] = {}  # Store trees for proof generation
+        self._entry_to_leaf_index: dict[str, int] = {}  # Map entry_id -> leaf index
 
         logger.info(
             f"LedgerAnchor initialized: chain={config.chain}, "
@@ -155,11 +156,12 @@ class LedgerAnchor:
         self._anchors[anchor.anchor_id] = anchor
         self._anchor_trees[anchor.anchor_id] = tree
 
-        # Map entries to anchor
-        for entry in entries:
+        # Map entries to anchor and store leaf indices for proof generation
+        for i, entry in enumerate(entries):
             entry_id = entry.get("entry_id") or entry.get("audit_id") or ""
             if entry_id:
                 self._entry_to_anchor[entry_id] = anchor.anchor_id
+                self._entry_to_leaf_index[entry_id] = i
 
         logger.info(
             f"Created anchor {anchor.anchor_id}: "
@@ -278,14 +280,15 @@ class LedgerAnchor:
 
     async def verify_entry(self, entry: dict, anchor_id: str) -> bool:
         """
-        Verify that a single entry is included in an anchored tree.
+        Verify that a single entry is included in an anchored tree
+        using cryptographic Merkle proof verification.
 
         Args:
             entry: Ledger entry dictionary to verify
             anchor_id: ID of anchor containing the entry
 
         Returns:
-            True if entry is proven to be in the anchor, False otherwise
+            True if Merkle proof verifies inclusion, False otherwise
 
         Raises:
             ValueError: If anchor not found or tree not available
@@ -298,31 +301,49 @@ class LedgerAnchor:
         if not tree:
             raise ValueError(f"Merkle tree not available for anchor {anchor_id}")
 
-        # Compute entry hash
-        entry_hash_bytes = compute_entry_hash(entry)
-        entry_hash = tree._hash(entry_hash_bytes)
-
-        # Find entry index in tree
-        # In production, we'd need to store entry indices or search
-        # For now, we'll just check if the hash exists in leaves
         entry_id = entry.get("entry_id") or entry.get("audit_id") or ""
         stored_anchor_id = self._entry_to_anchor.get(entry_id)
 
         if stored_anchor_id != anchor_id:
             logger.warning(
-                f"Entry {entry_id} not mapped to anchor {anchor_id}, "
-                f"mapped to {stored_anchor_id}"
+                "Entry %s not mapped to anchor %s (mapped to %s)",
+                entry_id, anchor_id, stored_anchor_id,
             )
             return False
 
-        # Verify anchor on-chain first
+        # Look up stored leaf index
+        leaf_index = self._entry_to_leaf_index.get(entry_id)
+        if leaf_index is None:
+            logger.warning("No leaf index stored for entry %s", entry_id)
+            return False
+
+        # Compute entry hash and derive leaf hash (matching tree.build() logic)
+        entry_hash_bytes = compute_entry_hash(entry)
+        leaf_hash = tree._hash(entry_hash_bytes)
+
+        # Generate Merkle proof and verify against stored root
+        try:
+            proof = tree.get_proof(leaf_index)
+            verified = tree.verify_proof(leaf_hash, proof, anchor.merkle_root)
+        except (IndexError, ValueError) as e:
+            logger.warning("Merkle proof generation failed for entry %s: %s", entry_id, e)
+            return False
+
+        if not verified:
+            logger.warning(
+                "Merkle proof verification FAILED for entry %s in anchor %s",
+                entry_id, anchor_id,
+            )
+            return False
+
+        # Optionally verify anchor on-chain
         if anchor.status == AnchorStatus.ANCHORED:
             is_valid = await self.verify_anchor(anchor_id)
             if not is_valid:
-                logger.warning(f"Anchor {anchor_id} failed on-chain verification")
+                logger.warning("Anchor %s failed on-chain verification", anchor_id)
                 return False
 
-        logger.info(f"Verified entry {entry_id} in anchor {anchor_id}")
+        logger.info("Verified entry %s in anchor %s (Merkle proof valid)", entry_id, anchor_id)
         return True
 
     async def get_anchors(

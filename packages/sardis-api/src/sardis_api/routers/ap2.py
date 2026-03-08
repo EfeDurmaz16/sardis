@@ -881,8 +881,12 @@ async def execute_ap2_payment(
                         approval_id=approval.id,
                     )
 
-        # Step 3: Build execution intent for tracking, then execute
+        # Step 3: Submit through ControlPlane (anomaly + kill switch + unified receipts)
+        # Policy and compliance already checked upstream, so ControlPlane skips them.
         from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+        from sardis_v2_core.control_plane import ControlPlane
+        from sardis_api.domains.execution_engine import ExecutionEngineAdapter
+        from sardis_api.domains.ledger_core import LedgerCoreAdapter
 
         intent = ExecutionIntent(
             source=IntentSource.AP2,
@@ -892,7 +896,7 @@ async def execute_ap2_payment(
             currency=payment.token,
             chain=payment.chain,
             idempotency_key=str(key),
-            # Policy and compliance already checked upstream
+            # Policy and compliance already checked upstream — ControlPlane skips them
             policy_result={"allowed": True},
             compliance_result={
                 "allowed": True,
@@ -902,21 +906,21 @@ async def execute_ap2_payment(
             },
         )
 
-        try:
-            result = await deps.orchestrator.execute_chain(chain)
-            intent.status = IntentStatus.COMPLETED
-            intent.tx_hash = result.chain_tx_hash
-            intent.ledger_entry_id = result.ledger_tx_id
-        except PaymentExecutionError as exc:
-            intent.status = IntentStatus.FAILED
-            intent.error = str(exc)
+        cp = ControlPlane(
+            chain_executor=ExecutionEngineAdapter(deps.orchestrator),
+            ledger_recorder=LedgerCoreAdapter(None),
+        )
+
+        cp_result = await cp.submit(intent)
+
+        if not cp_result.success:
             asyncio.create_task(alert_payment_failure(
-                error=str(exc),
+                error=cp_result.error or "unknown",
                 org_id=str(principal.organization_id),
                 agent_id=payment.agent_id if hasattr(payment, 'agent_id') else None,
                 tx_id=str(key),
             ))
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=cp_result.error) from None
 
         # Record spend for policy tracking
         if deps.wallet_manager:
@@ -926,21 +930,21 @@ async def execute_ap2_payment(
                 logger.warning("Failed to record spend for %s: %s", payment.mandate_id, rec_err)
 
         logger.info(
-            "Payment executed: mandate=%s amount=%s kyc=%s sanctions_clear=%s intent=%s",
+            "Payment executed: mandate=%s amount=%s kyc=%s sanctions_clear=%s intent=%s receipt=%s",
             payment.mandate_id, payment.amount_minor,
             compliance.kyc_verified, compliance.sanctions_clear,
-            intent.intent_id,
+            intent.intent_id, cp_result.receipt_id,
         )
 
         return 200, AP2PaymentExecuteResponse(
-            mandate_id=result.mandate_id,
-            ledger_tx_id=result.ledger_tx_id,
-            chain_tx_hash=result.chain_tx_hash,
-            chain=result.chain,
-            audit_anchor=result.audit_anchor,
-            status=result.status,
-            compliance_provider=compliance.provider or result.compliance_provider,
-            compliance_rule=compliance.rule or result.compliance_rule,
+            mandate_id=payment.mandate_id,
+            ledger_tx_id=cp_result.ledger_entry_id,
+            chain_tx_hash=cp_result.tx_hash,
+            chain=payment.chain,
+            audit_anchor="",
+            status="executed",
+            compliance_provider=compliance.provider,
+            compliance_rule=compliance.rule,
         )
 
     # Use payment.mandate_id for dedupe; mandate chain verification ensures it's stable.

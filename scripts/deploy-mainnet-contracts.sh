@@ -72,8 +72,12 @@ echo "Check /tmp/sardis-mainnet-deploy.log for addresses"
 echo ""
 echo "Next steps:"
 echo "  1. Copy deployed addresses from the log above"
-echo "  2. Update contracts/deployments/base.json"
+echo "  2. Update contracts/deployments/base.json with per-contract lifecycle:"
+echo '     "ledgerAnchor": { "address": "<addr>", "lifecycle": "canonical_live" }'
+echo '     "refundProtocol": { "address": "<addr>", "lifecycle": "canonical_live" }'
 echo "  3. Update Cloud Run env vars:"
 echo "     gcloud run services update sardis-api-staging \\"
 echo "       --region us-central1 \\"
 echo "       --update-env-vars SARDIS_BASE_LEDGER_ANCHOR_ADDRESS=<addr>,SARDIS_BASE_REFUND_PROTOCOL_ADDRESS=<addr>"
+echo ""
+echo "  Valid lifecycle values: canonical_live, experimental, deprecated, pending_deploy"

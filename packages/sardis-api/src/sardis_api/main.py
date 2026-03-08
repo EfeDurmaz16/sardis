@@ -308,6 +308,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             import httpx
             _jwks_cache: dict[str, tuple[dict, float]] = {}  # kid -> (jwks, fetched_at)
             _jwks_ttl = float(os.getenv("SARDIS_TAP_JWKS_TTL_SECONDS", "3600"))  # 1 hour default
+            _jwks_max_stale = float(os.getenv("SARDIS_TAP_JWKS_MAX_STALE_SECONDS", "14400"))  # 4h default
 
             def _jwks_provider(kid: str) -> dict | None:
                 now = time.monotonic()
@@ -323,9 +324,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                             return jwks
                 except (httpx.HTTPError, ValueError, TypeError) as e:
                     logger.warning(f"Failed to fetch JWKS from {jwks_url}: {e}")
-                    # Return stale cache if available
+                    # Return stale cache only if within max_stale window
                     if cached:
-                        return cached[0]
+                        stale_age = now - cached[1]
+                        if stale_age <= _jwks_max_stale:
+                            logger.info("Using stale JWKS cache (age=%.0fs, max=%.0fs)", stale_age, _jwks_max_stale)
+                            return cached[0]
+                        else:
+                            logger.error(
+                                "JWKS cache expired beyond max_stale (age=%.0fs, max=%.0fs) — rejecting",
+                                stale_age, _jwks_max_stale,
+                            )
+                            return None
                 return None
 
             jwks_provider = _jwks_provider

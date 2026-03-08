@@ -38,4 +38,47 @@ contract SardisLedgerAnchor is Ownable {
     function verify(bytes32 root) external view returns (uint256 timestamp) {
         return anchors[root];
     }
+
+    /**
+     * @notice Verify a Merkle inclusion proof against an anchored root
+     * @param root The anchored Merkle root
+     * @param leaf The leaf hash to verify inclusion of
+     * @param proof Array of sibling hashes along the path
+     * @param isLeft Array indicating whether each sibling is on the left (true) or right (false)
+     * @return valid True if the proof is valid and the root is anchored
+     */
+    function verifyProof(
+        bytes32 root,
+        bytes32 leaf,
+        bytes32[] calldata proof,
+        bool[] calldata isLeft
+    ) external view returns (bool valid) {
+        // Root must be anchored
+        if (anchors[root] == 0) {
+            return false;
+        }
+        require(proof.length == isLeft.length, "SardisLedgerAnchor: proof/isLeft length mismatch");
+
+        bytes32 current = leaf;
+        for (uint256 i = 0; i < proof.length; i++) {
+            if (isLeft[i]) {
+                // Sibling is on the left: hash(sibling, current)
+                current = _hashPair(proof[i], current);
+            } else {
+                // Sibling is on the right: hash(current, sibling)
+                current = _hashPair(current, proof[i]);
+            }
+        }
+        return current == root;
+    }
+
+    /**
+     * @dev Hash a pair of nodes in sorted order for deterministic results
+     */
+    function _hashPair(bytes32 a, bytes32 b) internal pure returns (bytes32) {
+        if (a <= b) {
+            return keccak256(abi.encodePacked(a, b));
+        }
+        return keccak256(abi.encodePacked(b, a));
+    }
 }

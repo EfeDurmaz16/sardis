@@ -1584,8 +1584,8 @@ async def _handle_payment_request(
         merchant_domain="sardis.sh",
     )
 
-    # Policy + Compliance checks for message-based payments (CRITICAL - was previously unprotected)
-    # TODO: Migrate to PaymentOrchestrator gateway
+    # Submit through ControlPlane (policy → anomaly → compliance → chain → ledger → receipt)
+    # Unified execution path matching A2A /pay pattern (lines 803-841)
     if not deps.wallet_manager:
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
@@ -1598,8 +1598,43 @@ async def _handle_payment_request(
             error="wallet_manager_not_configured",
             error_code="configuration_error",
         )
-    policy = await deps.wallet_manager.async_validate_policies(mandate)
-    if not getattr(policy, "allowed", False):
+
+    from sardis_v2_core.control_plane import ControlPlane
+    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+    from sardis_api.domains.policy_engine import PolicyEngineAdapter
+    from sardis_api.domains.compliance import ComplianceAdapter
+    from sardis_api.domains.execution_engine import ExecutionEngineAdapter
+    from sardis_api.domains.ledger_core import LedgerCoreAdapter
+
+    cp = ControlPlane(
+        policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
+        compliance_checker=ComplianceAdapter(deps.compliance) if deps.compliance else None,
+        chain_executor=ExecutionEngineAdapter(deps.chain_executor) if deps.chain_executor else None,
+        ledger_recorder=LedgerCoreAdapter(deps.ledger) if deps.ledger else None,
+    )
+
+    intent = ExecutionIntent(
+        source=IntentSource.A2A,
+        org_id=str(principal.organization_id),
+        agent_id=sender_agent_id,
+        amount=Decimal(str(amount_minor)) / Decimal("100"),
+        currency=token,
+        chain=chain,
+        sender_wallet_id="",
+        sender_address="",
+        recipient_wallet_id=recipient_wallet.wallet_id,
+        recipient_address=destination,
+        memo=f"a2a_msg:{msg.message_id}",
+        idempotency_key=hashlib.sha256(
+            f"a2a_msg:{msg.message_id}:{amount_minor}:{destination}".encode()
+        ).hexdigest()[:32],
+        metadata={"payment_mandate": mandate},
+    )
+
+    cp_result = await cp.submit(intent)
+
+    if not cp_result.success:
+        error_code = "policy_denied" if cp_result.status == IntentStatus.REJECTED else "execution_failed"
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",
@@ -1608,88 +1643,34 @@ async def _handle_payment_request(
             status="failed",
             in_reply_to=msg.message_id,
             correlation_id=msg.correlation_id,
-            error=getattr(policy, "reason", None) or "Policy denied payment",
-            error_code="policy_denied",
+            error=cp_result.error or "payment_failed",
+            error_code=error_code,
         )
 
-    if not deps.compliance:
-        return A2AMessageResponse(
-            message_id=str(uuid.uuid4()),
-            message_type="payment_response",
-            sender_id=msg.recipient_id,
-            recipient_id=msg.sender_id,
-            status="failed",
-            in_reply_to=msg.message_id,
-            correlation_id=msg.correlation_id,
-            error="compliance_engine_not_configured",
-            error_code="configuration_error",
-        )
-    try:
-        compliance_result = await deps.compliance.preflight(mandate)
-        if not compliance_result.allowed:
-            return A2AMessageResponse(
-                message_id=str(uuid.uuid4()),
-                message_type="payment_response",
-                sender_id=msg.recipient_id,
-                recipient_id=msg.sender_id,
-                status="failed",
-                in_reply_to=msg.message_id,
-                correlation_id=msg.correlation_id,
-                error=compliance_result.reason or "compliance_check_failed",
-                error_code="compliance_failed",
-            )
-    except Exception as e:
-        logger.error(f"Compliance check failed for A2A message payment: {e}")
-        return A2AMessageResponse(
-            message_id=str(uuid.uuid4()),
-            message_type="payment_response",
-            sender_id=msg.recipient_id,
-            recipient_id=msg.sender_id,
-            status="failed",
-            in_reply_to=msg.message_id,
-            correlation_id=msg.correlation_id,
-            error="compliance_service_error",
-            error_code="compliance_error",
-        )
+    # Record spend state for policy enforcement
+    if deps.wallet_manager:
+        try:
+            await deps.wallet_manager.async_record_spend(mandate)
+        except Exception:
+            logger.warning("Failed to record spend for A2A message mandate %s", mandate.mandate_id)
 
-    try:
-        receipt = await deps.chain_executor.dispatch_payment(mandate)
-        # Record spend state for policy enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if deps.wallet_manager:
-            try:
-                await deps.wallet_manager.async_record_spend(mandate)
-            except Exception:
-                logger.warning(f"Failed to record spend for A2A message mandate {mandate.mandate_id}")
-        return A2AMessageResponse(
-            message_id=str(uuid.uuid4()),
-            message_type="payment_response",
-            sender_id=msg.recipient_id,
-            recipient_id=msg.sender_id,
-            status="completed",
-            in_reply_to=msg.message_id,
-            correlation_id=msg.correlation_id,
-            payload={
-                "success": True,
-                "tx_hash": getattr(receipt, "tx_hash", str(receipt)),
-                "chain": chain,
-                "amount_minor": amount_minor,
-                "token": token,
-            },
-        )
-    except Exception as e:
-        logger.error(f"A2A payment request failed: {e}")
-        return A2AMessageResponse(
-            message_id=str(uuid.uuid4()),
-            message_type="payment_response",
-            sender_id=msg.recipient_id,
-            recipient_id=msg.sender_id,
-            status="failed",
-            in_reply_to=msg.message_id,
-            correlation_id=msg.correlation_id,
-            error=str(e),
-            error_code="execution_failed",
-        )
+    return A2AMessageResponse(
+        message_id=str(uuid.uuid4()),
+        message_type="payment_response",
+        sender_id=msg.recipient_id,
+        recipient_id=msg.sender_id,
+        status="completed",
+        in_reply_to=msg.message_id,
+        correlation_id=msg.correlation_id,
+        payload={
+            "success": True,
+            "tx_hash": cp_result.tx_hash,
+            "chain": chain,
+            "amount_minor": amount_minor,
+            "token": token,
+            "receipt_id": cp_result.receipt_id,
+        },
+    )
 
 
 def _handle_credential_request(msg: A2AMessageRequest) -> A2AMessageResponse:

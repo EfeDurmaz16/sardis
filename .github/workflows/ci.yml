@@ -45,6 +45,7 @@ jobs:
             packages/sardis-core/tests/ \
             packages/sardis-guardrails/tests/ \
             packages/sardis-ledger/tests/ \
+            packages/sardis-api/tests/ \
             -v --tb=short
 
   idempotency-replay-e2e:

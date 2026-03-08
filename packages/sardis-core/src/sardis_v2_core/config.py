@@ -1,6 +1,7 @@
 """Canonical configuration surface for Sardis services."""
 from __future__ import annotations
 
+from enum import Enum
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -8,6 +9,15 @@ from typing import List, Literal, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+
+class ContractLifecycle(str, Enum):
+    """Per-contract lifecycle status in deployment manifests."""
+
+    CANONICAL_LIVE = "canonical_live"
+    EXPERIMENTAL = "experimental"
+    DEPRECATED = "deprecated"
+    PENDING_DEPLOY = "pending_deploy"
 
 
 def _normalize_environment(value: str) -> str:

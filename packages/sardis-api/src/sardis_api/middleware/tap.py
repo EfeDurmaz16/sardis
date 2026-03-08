@@ -144,6 +144,11 @@ class TapMiddlewareConfig:
     # Signature: jwks_provider(kid: str) -> dict | None
     jwks_provider: Optional[Callable[[str], dict]] = None
 
+    # When True (default), dev/test environments bypass signature verification
+    # when no JWKS provider is configured. In prod, verification always fails
+    # without a JWKS provider regardless of this setting.
+    fail_open_in_dev: bool = True
+
     @classmethod
     def from_environment(cls) -> "TapMiddlewareConfig":
         """Load TAP middleware configuration from environment."""
@@ -226,10 +231,22 @@ class TapVerificationMiddleware(BaseHTTPMiddleware):
             alg: str,
         ) -> bool:
             if not self.jwks_provider:
-                # No JWKS provider configured - skip cryptographic verification
-                # This allows structural validation only in test scenarios
+                # Fail-close in production: reject when no JWKS provider
+                env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+                is_prod = env in ("prod", "production")
+
+                if is_prod or not self.config.fail_open_in_dev:
+                    logger.error(
+                        "TAP signature verification REJECTED (no JWKS provider in %s)",
+                        env,
+                        extra={"request_id": request_id, "keyid": keyid},
+                    )
+                    return False
+
+                # Dev/test: bypass with warning (backward compat)
                 logger.warning(
-                    f"TAP signature verification skipped (no JWKS provider configured)",
+                    "TAP signature verification skipped (no JWKS provider in %s)",
+                    env,
                     extra={"request_id": request_id, "keyid": keyid},
                 )
                 return True
