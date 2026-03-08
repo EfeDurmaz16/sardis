@@ -907,11 +907,15 @@ async def execute_ap2_payment(
         )
 
         from sardis_guardrails.anomaly_engine import get_anomaly_engine
+        from sardis_guardrails.kill_switch import get_kill_switch
+        from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
         cp = ControlPlane(
             chain_executor=ExecutionEngineAdapter(deps.orchestrator),
             ledger_recorder=LedgerCoreAdapter(None),
             anomaly_engine=get_anomaly_engine(),
+            kill_switch=get_kill_switch(),
+            cap_engine=get_transaction_cap_engine(),
         )
 
         cp_result = await cp.submit(intent)

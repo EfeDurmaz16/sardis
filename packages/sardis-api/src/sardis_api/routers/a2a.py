@@ -815,6 +815,8 @@ async def a2a_pay(
             )
 
         from sardis_guardrails.anomaly_engine import get_anomaly_engine
+        from sardis_guardrails.kill_switch import get_kill_switch
+        from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
         cp = ControlPlane(
             policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
@@ -822,6 +824,8 @@ async def a2a_pay(
             chain_executor=ExecutionEngineAdapter(deps.chain_executor),
             ledger_recorder=LedgerCoreAdapter(deps.ledger),
             anomaly_engine=get_anomaly_engine(),
+            kill_switch=get_kill_switch(),
+            cap_engine=get_transaction_cap_engine(),
         )
 
         intent = ExecutionIntent(
@@ -1610,6 +1614,8 @@ async def _handle_payment_request(
     from sardis_api.domains.ledger_core import LedgerCoreAdapter
 
     from sardis_guardrails.anomaly_engine import get_anomaly_engine
+    from sardis_guardrails.kill_switch import get_kill_switch
+    from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
     cp = ControlPlane(
         policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
@@ -1617,6 +1623,8 @@ async def _handle_payment_request(
         chain_executor=ExecutionEngineAdapter(deps.chain_executor) if deps.chain_executor else None,
         ledger_recorder=LedgerCoreAdapter(deps.ledger) if deps.ledger else None,
         anomaly_engine=get_anomaly_engine(),
+        kill_switch=get_kill_switch(),
+        cap_engine=get_transaction_cap_engine(),
     )
 
     intent = ExecutionIntent(

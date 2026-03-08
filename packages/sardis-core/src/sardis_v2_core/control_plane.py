@@ -10,6 +10,8 @@ from typing import Any, Optional, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sardis_guardrails.anomaly_engine import AnomalyEngine, RiskAssessment
+    from sardis_guardrails.kill_switch import KillSwitch
+    from sardis_guardrails.transaction_caps import TransactionCapEngine
 
 from .execution_intent import (
     ExecutionIntent,
@@ -60,12 +62,16 @@ class ControlPlane:
         chain_executor: Optional[ChainExecutor] = None,
         ledger_recorder: Optional[LedgerRecorder] = None,
         anomaly_engine: Optional["AnomalyEngine"] = None,
+        kill_switch: Optional["KillSwitch"] = None,
+        cap_engine: Optional["TransactionCapEngine"] = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
         self._chain = chain_executor
         self._ledger = ledger_recorder
         self._anomaly_engine = anomaly_engine
+        self._kill_switch = kill_switch
+        self._cap_engine = cap_engine
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
         """Execute an intent through the full pipeline."""
@@ -75,6 +81,58 @@ class ControlPlane:
         )
 
         try:
+            # Step 0a: Kill switch check (defense-in-depth)
+            if self._kill_switch is not None:
+                from sardis_guardrails.kill_switch import KillSwitchError
+
+                try:
+                    # Check global, org, and agent scopes
+                    await self._kill_switch.check(
+                        agent_id=intent.agent_id, org_id=intent.org_id,
+                    )
+                    # Check chain-level kill switch
+                    if intent.chain:
+                        await self._kill_switch.check_chain(intent.chain)
+                except KillSwitchError as e:
+                    intent.status = IntentStatus.REJECTED
+                    intent.error = f"kill_switch_active: {e}"
+                    logger.warning(
+                        "ControlPlane: intent=%s blocked by kill switch: %s",
+                        intent.intent_id, e,
+                    )
+                    return ExecutionResult(
+                        intent_id=intent.intent_id,
+                        success=False,
+                        status=IntentStatus.REJECTED,
+                        error=f"kill_switch_active: {e}",
+                    )
+
+            # Step 0b: Transaction cap check (defense-in-depth)
+            if self._cap_engine is not None and intent.amount > 0:
+                cap_result = await self._cap_engine.check_and_record(
+                    amount=intent.amount,
+                    org_id=intent.org_id,
+                    agent_id=intent.agent_id or None,
+                )
+                if not cap_result.allowed:
+                    intent.status = IntentStatus.REJECTED
+                    intent.error = f"transaction_cap_exceeded: {cap_result.message}"
+                    logger.warning(
+                        "ControlPlane: intent=%s blocked by transaction cap: %s",
+                        intent.intent_id, cap_result.message,
+                    )
+                    return ExecutionResult(
+                        intent_id=intent.intent_id,
+                        success=False,
+                        status=IntentStatus.REJECTED,
+                        error=f"transaction_cap_exceeded: {cap_result.message}",
+                        data={
+                            "cap_type": cap_result.cap_type,
+                            "remaining": str(cap_result.remaining),
+                            "daily_total": str(cap_result.daily_total),
+                        },
+                    )
+
             # Step 1: Policy evaluation (skip if already done upstream)
             if self._policy and intent.policy_result is None:
                 intent.status = IntentStatus.POLICY_CHECKED
