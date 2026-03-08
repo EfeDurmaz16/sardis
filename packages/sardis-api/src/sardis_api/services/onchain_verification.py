@@ -6,6 +6,7 @@ a checkout session as paid.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -65,20 +66,23 @@ async def verify_usdc_transfer(
     expected_recipient: str,
     expected_amount: Decimal,
     chain: str = "base",
+    min_confirmations: int = 1,
 ) -> VerificationResult:
     """Verify an on-chain USDC transfer matches expected parameters.
 
     Steps:
     1. Fetch tx receipt via eth_getTransactionReceipt
     2. Verify tx succeeded (status == 0x1)
-    3. Parse Transfer event logs
-    4. Verify recipient, amount, and token contract match
+    3. Check confirmation count >= min_confirmations
+    4. Parse Transfer event logs
+    5. Verify recipient and exact amount match
 
     Args:
         tx_hash: Transaction hash to verify
         expected_recipient: Expected 'to' address (merchant settlement)
         expected_amount: Expected USDC amount (human-readable, 6 decimals)
         chain: Chain to verify on (default: base)
+        min_confirmations: Minimum block confirmations required (default: 1)
 
     Returns:
         VerificationResult with verification outcome
@@ -102,16 +106,29 @@ async def verify_usdc_transfer(
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "eth_getTransactionReceipt",
-                    "params": [tx_hash],
-                },
+            # Fetch receipt and latest block number in parallel
+            receipt_resp, block_resp = await asyncio.gather(
+                client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "eth_getTransactionReceipt",
+                        "params": [tx_hash],
+                    },
+                ),
+                client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "eth_blockNumber",
+                        "params": [],
+                    },
+                ),
             )
-            data = resp.json()
+            data = receipt_resp.json()
+            block_data = block_resp.json()
     except (httpx.HTTPError, ValueError) as e:
         logger.error("RPC call failed for tx %s: %s", tx_hash, e)
         return VerificationResult(verified=False, error=f"RPC error: {e}")
@@ -132,6 +149,17 @@ async def verify_usdc_transfer(
         return VerificationResult(verified=False, error="Transaction reverted")
 
     block_number = int(receipt.get("blockNumber", "0x0"), 16) if receipt.get("blockNumber") else None
+
+    # Check confirmation count
+    if min_confirmations > 0 and block_number is not None:
+        latest_block = int(block_data.get("result", "0x0"), 16) if block_data.get("result") else 0
+        confirmations = latest_block - block_number
+        if confirmations < min_confirmations:
+            return VerificationResult(
+                verified=False,
+                error=f"Insufficient confirmations: {confirmations} < {min_confirmations}",
+                block_number=block_number,
+            )
 
     # Parse Transfer event logs
     logs = receipt.get("logs", [])
@@ -162,10 +190,11 @@ async def verify_usdc_transfer(
         actual_amount_raw = int(log_data, 16)
         actual_amount = Decimal(actual_amount_raw) / Decimal("1000000")
 
-        if actual_amount_raw < expected_amount_raw:
+        # Exact amount match required (no overpayment acceptance)
+        if actual_amount_raw != expected_amount_raw:
             return VerificationResult(
                 verified=False,
-                error=f"Transfer amount {actual_amount} USDC is less than expected {expected_amount} USDC",
+                error=f"Transfer amount {actual_amount} USDC does not match expected {expected_amount} USDC",
                 block_number=block_number,
                 actual_amount=actual_amount,
             )

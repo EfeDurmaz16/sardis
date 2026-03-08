@@ -471,28 +471,32 @@ async def confirm_external_payment(
         except Exception:
             logger.warning("Failed to resolve settlement address for verification")
 
-    if settlement_address:
-        from sardis_api.services.onchain_verification import verify_usdc_transfer
-
-        verification = await verify_usdc_transfer(
-            tx_hash=body.tx_hash,
-            expected_recipient=settlement_address,
-            expected_amount=session.amount,
-            chain=_CHECKOUT_CHAIN,
-        )
-        if not verification.verified:
-            logger.warning(
-                "On-chain verification failed for session %s: %s",
-                session.session_id, verification.error,
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=f"On-chain verification failed: {verification.error}",
-            )
-    else:
-        logger.warning(
-            "No settlement address for merchant %s — skipping on-chain verification",
+    if not settlement_address:
+        logger.error(
+            "No settlement address for merchant %s — cannot verify on-chain payment",
             session.merchant_id,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Merchant settlement address unavailable — cannot verify payment",
+        )
+
+    from sardis_api.services.onchain_verification import verify_usdc_transfer
+
+    verification = await verify_usdc_transfer(
+        tx_hash=body.tx_hash,
+        expected_recipient=settlement_address,
+        expected_amount=session.amount,
+        chain=_CHECKOUT_CHAIN,
+    )
+    if not verification.verified:
+        logger.warning(
+            "On-chain verification failed for session %s: %s",
+            session.session_id, verification.error,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"On-chain verification failed: {verification.error}",
         )
 
     await deps.merchant_repo.update_session(
