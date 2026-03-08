@@ -1,5 +1,5 @@
 {
-  "name": "@activepieces/piece-sardis",
+  "name": "@sardis/activepieces",
   "version": "1.0.0",
   "description": "Sardis payment piece for Activepieces - policy-controlled payments for AI agents",
   "type": "module",
