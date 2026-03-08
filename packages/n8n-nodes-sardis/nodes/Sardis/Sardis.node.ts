@@ -3,7 +3,6 @@ import {
   INodeExecutionData,
   INodeType,
   INodeTypeDescription,
-  NodeConnectionType,
 } from 'n8n-workflow';
 
 export class Sardis implements INodeType {
@@ -18,8 +17,8 @@ export class Sardis implements INodeType {
     defaults: {
       name: 'Sardis',
     },
-    inputs: [NodeConnectionType.Main],
-    outputs: [NodeConnectionType.Main],
+    inputs: ['main'],
+    outputs: ['main'],
     credentials: [
       {
         name: 'sardisApi',

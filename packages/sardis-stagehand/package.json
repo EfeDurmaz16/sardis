@@ -20,7 +20,13 @@
     "build": "tsc",
     "clean": "rm -rf dist"
   },
-  "keywords": ["sardis", "stagehand", "browserbase", "ai-agents", "payments"],
+  "keywords": [
+    "sardis",
+    "stagehand",
+    "browserbase",
+    "ai-agents",
+    "payments"
+  ],
   "author": "Sardis <efe@sardis.sh>",
   "license": "MIT",
   "repository": {
@@ -33,15 +39,23 @@
     "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "dependencies": {
-    "zod": "^3.22.0"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
     "@sardis/sdk": ">=1.0.0"
   },
   "peerDependenciesMeta": {
-    "@sardis/sdk": { "optional": false }
+    "@sardis/sdk": {
+      "optional": false
+    }
   },
-  "engines": { "node": ">=18.0.0" },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "publishConfig": {
     "access": "public"
   }
