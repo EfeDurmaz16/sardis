@@ -49,18 +49,14 @@ func init() {
 func runWalletsList(cmd *cobra.Command, args []string) error {
 	client := api.NewClient()
 
-	var result struct {
-		Wallets []json.RawMessage `json:"wallets"`
-	}
-	if err := client.Get("/api/v2/wallets", &result); err != nil {
+	var wallets []map[string]any
+	if err := client.Get("/api/v2/wallets", &wallets); err != nil {
 		return err
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tAGENT\tCHAIN\tADDRESS\tSTATUS")
-	for _, raw := range result.Wallets {
-		var wl map[string]any
-		_ = json.Unmarshal(raw, &wl)
+	for _, wl := range wallets {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			strOrDash(wl, "wallet_id"),
 			strOrDash(wl, "agent_id"),

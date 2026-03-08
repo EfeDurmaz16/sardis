@@ -1,0 +1,10 @@
+[project]
+name = "sardis-zk-policy"
+version = "0.1.0"
+description = "ZK policy circuit scaffold for Sardis"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+importmode = "importlib"

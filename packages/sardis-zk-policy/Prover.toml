@@ -1,0 +1,19 @@
+# Prover inputs — populated at proof generation time.
+# Private inputs (witness):
+amount = ""
+daily_total = ""
+merchant_total = ""
+mcc_hash = ""
+hour = ""
+max_per_transaction = ""
+daily_limit = ""
+per_merchant_limit = ""
+window_start = ""
+window_end = ""
+
+# Blocked MCC hashes (up to 8 slots, zero-padded):
+blocked_mcc_hashes = ["0", "0", "0", "0", "0", "0", "0", "0"]
+
+# Public inputs:
+evidence_hash_high = ""
+evidence_hash_low = ""

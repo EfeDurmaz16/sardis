@@ -300,24 +300,20 @@ func fetchHealth(client *api.Client) tea.Cmd {
 
 func fetchAgents(client *api.Client) tea.Cmd {
 	return func() tea.Msg {
-		var result struct {
-			Agents []map[string]any `json:"agents"`
-		}
-		if err := client.Get("/api/v2/agents", &result); err != nil {
+		var agents []map[string]any
+		if err := client.Get("/api/v2/agents", &agents); err != nil {
 			return errMsg{err}
 		}
-		return agentsMsg{result.Agents}
+		return agentsMsg{agents}
 	}
 }
 
 func fetchWallets(client *api.Client) tea.Cmd {
 	return func() tea.Msg {
-		var result struct {
-			Wallets []map[string]any `json:"wallets"`
-		}
-		if err := client.Get("/api/v2/wallets", &result); err != nil {
+		var wallets []map[string]any
+		if err := client.Get("/api/v2/wallets", &wallets); err != nil {
 			return errMsg{err}
 		}
-		return walletsMsg{result.Wallets}
+		return walletsMsg{wallets}
 	}
 }

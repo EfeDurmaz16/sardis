@@ -459,6 +459,35 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("DepositMonitor startup failed: %s", e)
 
+    # Start side-effect processor worker (opt-in via SARDIS_ENABLE_SIDE_EFFECT_WORKER=1)
+    _side_effect_task: asyncio.Task | None = None
+    if os.getenv("SARDIS_ENABLE_SIDE_EFFECT_WORKER", "").lower() in ("1", "true", "yes", "on"):
+        try:
+            from sardis_api.workers.side_effect_processor import run_worker
+
+            _side_effect_task = asyncio.create_task(run_worker())
+            logger.info("Side-effect processor worker started")
+        except Exception as e:
+            logger.warning("Side-effect worker startup failed: %s", e)
+
+    # Initialize operational alert dispatcher
+    try:
+        from sardis_api.operational_alerts import (
+            alert_kill_switch_activated,
+            init_ops_dispatcher,
+        )
+        ops_dispatcher = init_ops_dispatcher()
+        if ops_dispatcher.channels:
+            # Wire kill switch activation alerts
+            from sardis_guardrails.kill_switch import get_kill_switch
+            ks = get_kill_switch()
+            ks.on_activate = alert_kill_switch_activated
+            logger.info("Operational alerts initialized with %d channels", len(ops_dispatcher.channels))
+        else:
+            logger.info("Operational alerts: no channels configured (set SARDIS_OPS_SLACK_WEBHOOK_URL)")
+    except Exception as e:
+        logger.warning("Operational alert init failed (non-fatal): %s", e)
+
     app.state.startup_time = time.time()
     app.state.ready = True
     logger.info("Sardis API started successfully")
@@ -469,6 +498,15 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Sardis API...")
     shutdown_state.start_shutdown()
     await shutdown_state.wait_for_requests()
+
+    # Stop side-effect worker
+    if _side_effect_task is not None and not _side_effect_task.done():
+        _side_effect_task.cancel()
+        try:
+            await _side_effect_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Side-effect worker stopped")
 
     # Stop deposit monitor
     if hasattr(app.state, "deposit_monitor") and app.state.deposit_monitor:

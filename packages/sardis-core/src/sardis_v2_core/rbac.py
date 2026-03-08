@@ -474,3 +474,233 @@ def is_role_elevated(current_role: str, target_role: str) -> bool:
     current_level = hierarchy.get(current_role, 0)
     target_level = hierarchy.get(target_role, 0)
     return target_level > current_level
+
+
+# ========== Advanced RBAC: Custom Roles & Resource Permissions ==========
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class CustomRole:
+    """User-defined role with explicit permissions."""
+    id: str
+    org_id: str
+    name: str
+    description: str = ""
+    permissions: Set[Permission] = field(default_factory=set)
+    inherits_from: Optional[str] = None  # built-in role to inherit from
+    created_at: Optional[str] = None
+
+    def effective_permissions(self) -> Set[Permission]:
+        """Get permissions including inherited ones."""
+        perms = set(self.permissions)
+        if self.inherits_from and self.inherits_from in ROLE_PERMISSIONS:
+            perms |= ROLE_PERMISSIONS[self.inherits_from]
+        return perms
+
+
+@dataclass
+class ResourcePermission:
+    """Permission scoped to a specific resource."""
+    user_id: str
+    permission: Permission
+    resource_type: str   # "agent", "wallet", "group"
+    resource_id: str     # specific resource ID
+    granted_by: str = ""
+
+
+class AdvancedRBACEngine(RBACEngine):
+    """Extended RBAC with custom roles and resource-level permissions.
+
+    Checks in order:
+    1. Resource-specific permissions (most specific)
+    2. Custom role permissions (org-defined)
+    3. Built-in role permissions (fallback)
+    """
+
+    def __init__(self, pool: Any = None) -> None:
+        self._pool = pool
+        self._custom_roles_cache: Dict[str, Dict[str, CustomRole]] = {}
+        self._resource_perms_cache: Dict[str, list[ResourcePermission]] = {}
+
+    async def load_custom_roles(self, org_id: str) -> Dict[str, CustomRole]:
+        """Load custom roles for an org from database."""
+        if self._pool is None:
+            return {}
+
+        try:
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM custom_roles WHERE org_id = $1", org_id,
+                )
+                roles = {}
+                for row in rows:
+                    perms = set()
+                    for p in (row.get("permissions") or []):
+                        try:
+                            perms.add(Permission(p))
+                        except ValueError:
+                            pass
+                    roles[row["id"]] = CustomRole(
+                        id=row["id"],
+                        org_id=org_id,
+                        name=row["name"],
+                        description=row.get("description", ""),
+                        permissions=perms,
+                        inherits_from=row.get("inherits_from"),
+                    )
+                self._custom_roles_cache[org_id] = roles
+                return roles
+        except Exception:
+            return {}
+
+    async def check_permission_advanced(
+        self,
+        user_id: str,
+        org_id: str,
+        member_role: str,
+        permission: Permission,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+    ) -> bool:
+        """Check permission with resource scope and custom roles.
+
+        Args:
+            user_id: The user performing the action
+            org_id: The organization context
+            member_role: The user's role (built-in or custom role ID)
+            permission: Permission to check
+            resource_type: Optional resource type for scoped check
+            resource_id: Optional specific resource ID
+
+        Returns:
+            True if the user has the permission
+        """
+        # 1. Check resource-specific permissions
+        if resource_type and resource_id:
+            if await self._has_resource_permission(
+                user_id, permission, resource_type, resource_id
+            ):
+                return True
+
+        # 2. Check custom role (if role ID starts with "role_")
+        if member_role.startswith("role_"):
+            custom_roles = self._custom_roles_cache.get(org_id)
+            if custom_roles is None:
+                custom_roles = await self.load_custom_roles(org_id)
+            custom_role = custom_roles.get(member_role)
+            if custom_role:
+                return permission in custom_role.effective_permissions()
+            return False
+
+        # 3. Fall back to built-in role
+        return self.check_permission(member_role, permission)
+
+    async def _has_resource_permission(
+        self,
+        user_id: str,
+        permission: Permission,
+        resource_type: str,
+        resource_id: str,
+    ) -> bool:
+        """Check if user has a specific resource-scoped permission."""
+        if self._pool is None:
+            return False
+
+        try:
+            async with self._pool.acquire() as conn:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS("
+                    "SELECT 1 FROM resource_permissions "
+                    "WHERE user_id = $1 AND permission = $2 "
+                    "AND resource_type = $3 AND resource_id = $4"
+                    ")",
+                    user_id, permission.value, resource_type, resource_id,
+                )
+                return bool(exists)
+        except Exception:
+            return False
+
+    async def grant_resource_permission(
+        self,
+        user_id: str,
+        permission: Permission,
+        resource_type: str,
+        resource_id: str,
+        granted_by: str,
+    ) -> None:
+        """Grant a resource-scoped permission to a user."""
+        if self._pool is None:
+            raise RuntimeError("Database not available")
+
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO resource_permissions "
+                "(user_id, permission, resource_type, resource_id, granted_by) "
+                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
+                user_id, permission.value, resource_type, resource_id, granted_by,
+            )
+
+    async def revoke_resource_permission(
+        self,
+        user_id: str,
+        permission: Permission,
+        resource_type: str,
+        resource_id: str,
+    ) -> None:
+        """Revoke a resource-scoped permission from a user."""
+        if self._pool is None:
+            raise RuntimeError("Database not available")
+
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM resource_permissions "
+                "WHERE user_id = $1 AND permission = $2 "
+                "AND resource_type = $3 AND resource_id = $4",
+                user_id, permission.value, resource_type, resource_id,
+            )
+
+    async def create_custom_role(
+        self, org_id: str, name: str, permissions: Set[Permission],
+        inherits_from: Optional[str] = None, description: str = "",
+    ) -> CustomRole:
+        """Create a custom role for an organization."""
+        if self._pool is None:
+            raise RuntimeError("Database not available")
+
+        import uuid
+
+        role_id = f"role_{uuid.uuid4().hex[:12]}"
+        perm_values = [p.value for p in permissions]
+
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO custom_roles "
+                "(id, org_id, name, description, permissions, inherits_from) "
+                "VALUES ($1, $2, $3, $4, $5, $6)",
+                role_id, org_id, name, description, perm_values, inherits_from,
+            )
+
+        role = CustomRole(
+            id=role_id, org_id=org_id, name=name,
+            description=description, permissions=permissions,
+            inherits_from=inherits_from,
+        )
+        # Invalidate cache
+        self._custom_roles_cache.pop(org_id, None)
+        return role
+
+    async def delete_custom_role(self, org_id: str, role_id: str) -> bool:
+        """Delete a custom role."""
+        if self._pool is None:
+            raise RuntimeError("Database not available")
+
+        async with self._pool.acquire() as conn:
+            tag = await conn.execute(
+                "DELETE FROM custom_roles WHERE id = $1 AND org_id = $2",
+                role_id, org_id,
+            )
+            self._custom_roles_cache.pop(org_id, None)
+            return tag == "DELETE 1"

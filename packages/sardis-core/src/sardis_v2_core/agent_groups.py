@@ -34,6 +34,8 @@ class AgentGroup(BaseModel):
     merchant_policy: GroupMerchantPolicy = Field(default_factory=GroupMerchantPolicy)
     agent_ids: List[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
+    parent_group_id: Optional[str] = None
+    hierarchy_path: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -81,6 +83,8 @@ class AgentGroupRepository:
             },
             "agent_ids": group.agent_ids,
             "metadata": group.metadata,
+            "parent_group_id": group.parent_group_id,
+            "hierarchy_path": group.hierarchy_path,
             "created_at": group.created_at.isoformat(),
             "updated_at": group.updated_at.isoformat(),
         }
@@ -107,6 +111,8 @@ class AgentGroupRepository:
             ),
             agent_ids=data.get("agent_ids", []),
             metadata=data.get("metadata", {}),
+            parent_group_id=data.get("parent_group_id"),
+            hierarchy_path=data.get("hierarchy_path", []),
             created_at=datetime.fromisoformat(data["created_at"]) if isinstance(data.get("created_at"), str) else datetime.now(timezone.utc),
             updated_at=datetime.fromisoformat(data["updated_at"]) if isinstance(data.get("updated_at"), str) else datetime.now(timezone.utc),
         )
@@ -128,7 +134,7 @@ class AgentGroupRepository:
             agent_ids=agent_ids or [],
             metadata=metadata or {},
         )
-        await self._store.set(group.group_id, self._serialize(group), ttl=300)
+        await self._store.set(group.group_id, self._serialize(group), ttl=0)
         return group
 
     async def get(self, group_id: str) -> Optional[AgentGroup]:
@@ -174,7 +180,7 @@ class AgentGroupRepository:
         if metadata is not None:
             group.metadata = metadata
         group.updated_at = datetime.now(timezone.utc)
-        await self._store.set(group_id, self._serialize(group), ttl=300)
+        await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def delete(self, group_id: str) -> bool:
@@ -192,7 +198,7 @@ class AgentGroupRepository:
         if agent_id not in group.agent_ids:
             group.agent_ids.append(agent_id)
             group.updated_at = datetime.now(timezone.utc)
-            await self._store.set(group_id, self._serialize(group), ttl=300)
+            await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def remove_agent(self, group_id: str, agent_id: str) -> Optional[AgentGroup]:
@@ -203,7 +209,7 @@ class AgentGroupRepository:
         if agent_id in group.agent_ids:
             group.agent_ids.remove(agent_id)
             group.updated_at = datetime.now(timezone.utc)
-            await self._store.set(group_id, self._serialize(group), ttl=300)
+            await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
     async def get_groups_for_agent(self, agent_id: str) -> List[AgentGroup]:
@@ -214,3 +220,184 @@ class AgentGroupRepository:
             if data is not None and agent_id in data.get("agent_ids", []):
                 result.append(self._deserialize(data))
         return result
+
+    async def set_parent(
+        self,
+        group_id: str,
+        parent_group_id: Optional[str],
+    ) -> Optional[AgentGroup]:
+        """Set parent group, validating no cycles. Updates hierarchy_path."""
+        data = await self._store.get(group_id)
+        if data is None:
+            return None
+        group = self._deserialize(data)
+
+        if parent_group_id is not None:
+            # Validate parent exists
+            parent_data = await self._store.get(parent_group_id)
+            if parent_data is None:
+                raise ValueError(f"Parent group {parent_group_id} not found")
+
+            # Cycle detection: walk up from parent to root
+            visited = {group_id}
+            current_id = parent_group_id
+            while current_id is not None:
+                if current_id in visited:
+                    raise ValueError(
+                        f"Cycle detected: setting {parent_group_id} as parent "
+                        f"of {group_id} would create a loop"
+                    )
+                visited.add(current_id)
+                cur_data = await self._store.get(current_id)
+                if cur_data is None:
+                    break
+                current_id = cur_data.get("parent_group_id")
+
+            # Build hierarchy_path from parent
+            parent = self._deserialize(parent_data)
+            group.hierarchy_path = parent.hierarchy_path + [parent_group_id]
+        else:
+            group.hierarchy_path = []
+
+        group.parent_group_id = parent_group_id
+        group.updated_at = datetime.now(timezone.utc)
+        await self._store.set(group_id, self._serialize(group), ttl=0)
+        return group
+
+
+def merge_group_policies(
+    child: AgentGroup,
+    parent: AgentGroup,
+) -> AgentGroup:
+    """Merge parent policy into child — most restrictive wins.
+
+    Rules:
+    - per_transaction, daily, monthly, total: min(child, parent)
+    - allowed_merchants: intersection if both set, parent if only parent set
+    - blocked_merchants/categories: union
+    - allowed_categories: intersection if both set, parent if only parent set
+    """
+    merged_budget = GroupSpendingLimits(
+        per_transaction=min(child.budget.per_transaction, parent.budget.per_transaction),
+        daily=min(child.budget.daily, parent.budget.daily),
+        monthly=min(child.budget.monthly, parent.budget.monthly),
+        total=min(child.budget.total, parent.budget.total),
+    )
+
+    child_mp = child.merchant_policy
+    parent_mp = parent.merchant_policy
+
+    # Allowed merchants: intersection
+    if child_mp.allowed_merchants is not None and parent_mp.allowed_merchants is not None:
+        allowed_set = set(m.lower() for m in child_mp.allowed_merchants) & set(
+            m.lower() for m in parent_mp.allowed_merchants
+        )
+        merged_allowed_merchants = sorted(allowed_set)
+    elif parent_mp.allowed_merchants is not None:
+        merged_allowed_merchants = list(parent_mp.allowed_merchants)
+    elif child_mp.allowed_merchants is not None:
+        merged_allowed_merchants = list(child_mp.allowed_merchants)
+    else:
+        merged_allowed_merchants = None
+
+    # Blocked merchants: union
+    blocked_set = set(m.lower() for m in child_mp.blocked_merchants) | set(
+        m.lower() for m in parent_mp.blocked_merchants
+    )
+
+    # Allowed categories: intersection
+    if child_mp.allowed_categories is not None and parent_mp.allowed_categories is not None:
+        allowed_cat_set = set(c.lower() for c in child_mp.allowed_categories) & set(
+            c.lower() for c in parent_mp.allowed_categories
+        )
+        merged_allowed_categories = sorted(allowed_cat_set)
+    elif parent_mp.allowed_categories is not None:
+        merged_allowed_categories = list(parent_mp.allowed_categories)
+    elif child_mp.allowed_categories is not None:
+        merged_allowed_categories = list(child_mp.allowed_categories)
+    else:
+        merged_allowed_categories = None
+
+    # Blocked categories: union
+    blocked_cat_set = set(c.lower() for c in child_mp.blocked_categories) | set(
+        c.lower() for c in parent_mp.blocked_categories
+    )
+
+    merged_mp = GroupMerchantPolicy(
+        allowed_merchants=merged_allowed_merchants,
+        blocked_merchants=sorted(blocked_set),
+        allowed_categories=merged_allowed_categories,
+        blocked_categories=sorted(blocked_cat_set),
+    )
+
+    return AgentGroup(
+        group_id=child.group_id,
+        name=child.name,
+        owner_id=child.owner_id,
+        budget=merged_budget,
+        merchant_policy=merged_mp,
+        agent_ids=child.agent_ids,
+        metadata=child.metadata,
+        parent_group_id=child.parent_group_id,
+        hierarchy_path=child.hierarchy_path,
+        created_at=child.created_at,
+        updated_at=child.updated_at,
+    )
+
+
+class AgentGroupHierarchy:
+    """Hierarchy resolution for group policy cascading."""
+
+    def __init__(self, repo: "AgentGroupRepository"):
+        self._repo = repo
+
+    async def get_ancestors(self, group_id: str) -> List[AgentGroup]:
+        """Return chain from group to root (exclusive of self)."""
+        ancestors: List[AgentGroup] = []
+        current = await self._repo.get(group_id)
+        if current is None:
+            return []
+
+        visited = {group_id}
+        parent_id = current.parent_group_id
+        while parent_id is not None:
+            if parent_id in visited:
+                break  # safety: stop on cycle
+            visited.add(parent_id)
+            parent = await self._repo.get(parent_id)
+            if parent is None:
+                break
+            ancestors.append(parent)
+            parent_id = parent.parent_group_id
+
+        return ancestors
+
+    async def resolve_effective_policy(
+        self,
+        agent_id: str,
+    ) -> Optional[AgentGroup]:
+        """Walk hierarchy from agent's group up to root, merging policies.
+
+        Returns a synthetic AgentGroup with the most restrictive effective
+        policy, or None if the agent has no group.
+        """
+        groups = await self._repo.get_groups_for_agent(agent_id)
+        if not groups:
+            return None
+
+        # For each group the agent belongs to, resolve up the hierarchy
+        # and take the most restrictive across all groups
+        effective: Optional[AgentGroup] = None
+        for group in groups:
+            # Walk up to root
+            resolved = group
+            ancestors = await self.get_ancestors(group.group_id)
+            for ancestor in ancestors:
+                resolved = merge_group_policies(resolved, ancestor)
+
+            if effective is None:
+                effective = resolved
+            else:
+                effective = merge_group_policies(effective, resolved)
+
+        return effective

@@ -16,10 +16,19 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Default caps (configurable via env vars)
-DEFAULT_GLOBAL_DAILY_CAP = Decimal(os.getenv("SARDIS_GLOBAL_DAILY_CAP", "1000000"))  # $1M
-DEFAULT_ORG_DAILY_CAP = Decimal(os.getenv("SARDIS_DEFAULT_ORG_DAILY_CAP", "100000"))  # $100K
-DEFAULT_AGENT_TX_CAP = Decimal(os.getenv("SARDIS_DEFAULT_AGENT_TX_CAP", "10000"))  # $10K
+def _safe_decimal_env(key: str, default: str) -> Decimal:
+    """Parse a Decimal from env var with safe fallback."""
+    try:
+        return Decimal(os.getenv(key, default))
+    except Exception:
+        logger.warning("Invalid value for %s, using default %s", key, default)
+        return Decimal(default)
+
+
+# Default caps (configurable via env vars, parsed once at import)
+DEFAULT_GLOBAL_DAILY_CAP = _safe_decimal_env("SARDIS_GLOBAL_DAILY_CAP", "1000000")  # $1M
+DEFAULT_ORG_DAILY_CAP = _safe_decimal_env("SARDIS_DEFAULT_ORG_DAILY_CAP", "100000")  # $100K
+DEFAULT_AGENT_TX_CAP = _safe_decimal_env("SARDIS_DEFAULT_AGENT_TX_CAP", "10000")  # $10K
 
 
 @dataclass
@@ -70,16 +79,17 @@ class TransactionCapEngine:
         """
         amount = Decimal(str(amount))
 
-        # Check per-tx cap for agent
-        agent_tx_cap = await self._get_cap("agent", agent_id, "per_tx") if agent_id else None
-        if agent_tx_cap and amount > agent_tx_cap:
-            return CapCheckResult(
-                allowed=False,
-                remaining=Decimal("0"),
-                daily_total=Decimal("0"),
-                cap_type="per_tx",
-                message=f"Transaction amount ${amount} exceeds per-tx cap ${agent_tx_cap}",
-            )
+        # Check per-tx cap for agent (only when agent_id is provided)
+        if agent_id:
+            agent_tx_cap = await self._get_cap("agent", agent_id, "per_tx") or DEFAULT_AGENT_TX_CAP
+            if amount > agent_tx_cap:
+                return CapCheckResult(
+                    allowed=False,
+                    remaining=Decimal("0"),
+                    daily_total=Decimal("0"),
+                    cap_type="per_tx",
+                    message=f"Transaction amount ${amount} exceeds per-tx cap ${agent_tx_cap}",
+                )
 
         # Check daily caps: global, org, agent
         checks = [

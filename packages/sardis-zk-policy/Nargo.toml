@@ -1,0 +1,7 @@
+[package]
+name = "sardis_policy"
+type = "bin"
+authors = ["sardis"]
+compiler_version = ">=1.0.0"
+
+[dependencies]

@@ -24,12 +24,14 @@ from typing import Any, Callable, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from sardis_api.audit_log import log_admin_action
 from sardis_api.authz import require_admin_principal
+from sardis_api.middleware.mfa import require_mfa_if_enabled
 from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_admin_principal)])
+router = APIRouter(dependencies=[Depends(require_mfa_if_enabled)])
 
 
 # ============================================================================
@@ -584,6 +586,7 @@ async def activate_rail_kill_switch(
         auto_reactivate_after=body.auto_reactivate_after_seconds,
     )
     logger.warning("ADMIN: Kill switch activated for rail=%s reason=%s", rail, reason.value)
+    await log_admin_action(request, "admin", "", "kill_switch_activate_rail", {"rail": rail, "reason": reason.value})
     return {"success": True, "scope": "rail", "rail": rail}
 
 
@@ -622,6 +625,7 @@ async def activate_chain_kill_switch(
         auto_reactivate_after=body.auto_reactivate_after_seconds,
     )
     logger.warning("ADMIN: Kill switch activated for chain=%s reason=%s", chain, reason.value)
+    await log_admin_action(request, "admin", "", "kill_switch_activate_chain", {"chain": chain, "reason": reason.value})
     return {"success": True, "scope": "chain", "chain": chain}
 
 

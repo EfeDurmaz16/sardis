@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pkg/browser"
@@ -60,6 +61,7 @@ func loginWithPassword(email, password string) error {
 		baseURL = config.DefaultAPIURL
 	}
 
+	// Step 1: Get JWT token
 	resp, err := http.PostForm(baseURL+"/api/v2/auth/login", url.Values{
 		"username": {email},
 		"password": {password},
@@ -74,18 +76,34 @@ func loginWithPassword(email, password string) error {
 		return fmt.Errorf("login failed (%d): %s", resp.StatusCode, string(body))
 	}
 
-	var result struct {
+	var loginResult struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(body, &loginResult); err != nil {
 		return fmt.Errorf("parse response: %w", err)
 	}
 
+	// Step 2: Use JWT to bootstrap a persistent API key
+	apiKey, err := bootstrapAPIKey(baseURL, loginResult.AccessToken)
+	if err != nil {
+		// Fall back to JWT-only auth if bootstrap fails
+		creds := &auth.Credentials{
+			AccessToken: loginResult.AccessToken,
+			Email:       email,
+			ExpiresAt:   time.Now().Add(time.Duration(loginResult.ExpiresIn) * time.Second).Unix(),
+		}
+		if saveErr := auth.Save(creds); saveErr != nil {
+			return fmt.Errorf("save credentials: %w", saveErr)
+		}
+		fmt.Printf("Logged in as %s (JWT only, API key bootstrap failed: %v)\n", email, err)
+		return nil
+	}
+
 	creds := &auth.Credentials{
-		AccessToken: result.AccessToken,
-		Email:       email,
-		ExpiresAt:   time.Now().Add(time.Duration(result.ExpiresIn) * time.Second).Unix(),
+		APIKey:    apiKey,
+		Email:     email,
+		ExpiresAt: time.Now().Add(365 * 24 * time.Hour).Unix(),
 	}
 	if err := auth.Save(creds); err != nil {
 		return fmt.Errorf("save credentials: %w", err)
@@ -93,6 +111,35 @@ func loginWithPassword(email, password string) error {
 
 	fmt.Printf("Logged in as %s\n", email)
 	return nil
+}
+
+func bootstrapAPIKey(baseURL, jwt string) (string, error) {
+	payload := `{"name":"sardis-cli","scopes":["admin","*"]}`
+	req, err := http.NewRequest("POST", baseURL+"/api/v2/auth/bootstrap-api-key", strings.NewReader(payload))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+jwt)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("bootstrap failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Key string `json:"key"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+	return result.Key, nil
 }
 
 func loginWithBrowser() error {

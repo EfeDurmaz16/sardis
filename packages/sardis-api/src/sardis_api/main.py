@@ -107,6 +107,9 @@ from .routers import secure_checkout as secure_checkout_router
 from .routers import policies as policies_router
 from .routers import compliance as compliance_router
 from .routers import admin as admin_router
+from .routers import admin_reconciliation as admin_reconciliation_router
+from .routers import evidence as evidence_router
+from .routers import simulation as simulation_router
 from .routers import invoices as invoices_router
 from .routers import ramp as ramp_router
 from .routers import treasury as treasury_router
@@ -1750,6 +1753,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
     app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])
+    app.include_router(
+        admin_reconciliation_router.router,
+        prefix="/api/v2/admin/reconciliation",
+        tags=["admin", "reconciliation"],
+    )
+
+    # Evidence/audit trail API
+    app.include_router(evidence_router.router, prefix="/api/v2/evidence", tags=["evidence"])
+
+    # Simulation API
+    app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
+
+    # SSO (SAML/OIDC) authentication
+    try:
+        from sardis_api.middleware.sso import router as sso_router
+        app.include_router(sso_router, prefix="/api/v2", tags=["sso"])
+    except ImportError:
+        pass
 
     # Dev/testnet utility routes - NOT available in production
     if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):

@@ -47,7 +47,14 @@ class PostgresPolicyStore(AsyncPolicyStore):
                 return None
             return spending_policy_from_json(data)
 
-    async def set_policy(self, agent_id: str, policy: SpendingPolicy) -> None:
+    async def set_policy(
+        self,
+        agent_id: str,
+        policy: SpendingPolicy,
+        *,
+        created_by: Optional[str] = None,
+        policy_text: Optional[str] = None,
+    ) -> None:
         import json as _json
         pool = await self._get_pool()
         payload = spending_policy_to_json(policy)
@@ -66,6 +73,19 @@ class PostgresPolicyStore(AsyncPolicyStore):
                 agent_id,
                 _json.dumps(payload),
             )
+
+        # Persist immutable version record for audit trail
+        try:
+            from .policy_version_store import PolicyVersionStore
+            version_store = PolicyVersionStore()
+            await version_store.create_version(
+                pool, agent_id, payload,
+                policy_text=policy_text,
+                created_by=created_by,
+            )
+        except Exception:
+            # Version tracking is best-effort; don't fail the primary write
+            pass
 
     async def delete_policy(self, agent_id: str) -> bool:
         pool = await self._get_pool()

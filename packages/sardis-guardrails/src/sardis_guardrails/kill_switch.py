@@ -12,7 +12,7 @@ import os
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -228,9 +228,20 @@ class KillSwitch:
         # Raises KillSwitchError if any kill switch is active
     """
 
+    # Optional async callback fired on every activation: (scope, target, reason, activated_by)
+    on_activate: Callable[..., Coroutine] | None = None
+
     def __init__(self, backend: KillSwitchBackend | None = None) -> None:
         """Initialize kill switch manager."""
         self._backend = backend or _create_backend()
+
+    async def _fire_on_activate(self, scope: str, target: str, reason: str, activated_by: str | None) -> None:
+        """Fire the on_activate callback if registered."""
+        if self.on_activate is not None:
+            try:
+                await self.on_activate(scope, target, reason, activated_by)
+            except Exception as e:
+                logger.warning("on_activate callback failed: %s", e)
 
     async def activate_global(
         self,
@@ -251,6 +262,7 @@ class KillSwitch:
             auto_reactivate_at=auto_reactivate_at,
         )
         await self._backend.set_activation("global", activation)
+        await self._fire_on_activate("global", "all", reason.value, activated_by)
 
     async def activate_organization(
         self,
@@ -272,6 +284,7 @@ class KillSwitch:
             auto_reactivate_at=auto_reactivate_at,
         )
         await self._backend.set_activation(f"org:{org_id}", activation)
+        await self._fire_on_activate("organization", org_id, reason.value, activated_by)
 
     async def activate_agent(
         self,
@@ -293,6 +306,7 @@ class KillSwitch:
             auto_reactivate_at=auto_reactivate_at,
         )
         await self._backend.set_activation(f"agent:{agent_id}", activation)
+        await self._fire_on_activate("agent", agent_id, reason.value, activated_by)
 
     async def activate_rail(
         self,
@@ -314,6 +328,7 @@ class KillSwitch:
             auto_reactivate_at=auto_reactivate_at,
         )
         await self._backend.set_activation(f"rail:{rail}", activation)
+        await self._fire_on_activate("rail", rail, reason.value, activated_by)
 
     async def activate_chain(
         self,
@@ -335,6 +350,7 @@ class KillSwitch:
             auto_reactivate_at=auto_reactivate_at,
         )
         await self._backend.set_activation(f"chain:{chain}", activation)
+        await self._fire_on_activate("chain", chain, reason.value, activated_by)
 
     async def deactivate_rail(self, rail: str) -> None:
         """Deactivate rail kill switch."""

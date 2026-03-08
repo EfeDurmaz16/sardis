@@ -536,6 +536,7 @@ class A2APayResponse(BaseModel):
     reference: Optional[str] = None
     ledger_tx_id: Optional[str] = None
     audit_anchor: Optional[str] = None
+    receipt_id: Optional[str] = None
 
 
 class A2AMessageRequest(BaseModel):
@@ -797,95 +798,94 @@ async def a2a_pay(
             merchant_domain="sardis.sh",
         )
 
-        # Policy check on sender wallet (MANDATORY - no silent bypass)
-        # TODO: Migrate to PaymentOrchestrator gateway
+        # Submit to ControlPlane (policy → compliance → chain → ledger → receipt)
+        from sardis_v2_core.control_plane import ControlPlane
+        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+        from sardis_api.domains.policy_engine import PolicyEngineAdapter
+        from sardis_api.domains.compliance import ComplianceAdapter
+        from sardis_api.domains.execution_engine import ExecutionEngineAdapter
+        from sardis_api.domains.ledger_core import LedgerCoreAdapter
+
         if not deps.wallet_manager:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="wallet_manager_not_configured",
             )
-        policy = await deps.wallet_manager.async_validate_policies(mandate)
-        if not getattr(policy, "allowed", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=getattr(policy, "reason", None) or "Policy denied A2A transfer",
+
+        cp = ControlPlane(
+            policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
+            compliance_checker=ComplianceAdapter(deps.compliance),
+            chain_executor=ExecutionEngineAdapter(deps.chain_executor),
+            ledger_recorder=LedgerCoreAdapter(deps.ledger),
+        )
+
+        intent = ExecutionIntent(
+            source=IntentSource.A2A,
+            org_id=str(principal.organization_id),
+            agent_id=req.sender_agent_id,
+            amount=Decimal(str(req.amount)),
+            currency=req.token,
+            chain=req.chain,
+            sender_wallet_id=sender_wallet.wallet_id,
+            sender_address=sender_address,
+            recipient_wallet_id=recipient_wallet.wallet_id,
+            recipient_address=recipient_address,
+            memo=req.memo or "",
+            reference=req.reference or "",
+            idempotency_key=str(idem_key),
+            metadata={"payment_mandate": mandate},
+        )
+
+        result = await cp.submit(intent)
+
+        if not result.success:
+            error_status = (
+                status.HTTP_403_FORBIDDEN
+                if result.status == IntentStatus.REJECTED
+                else status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-        # Compliance (KYC/AML) enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if deps.compliance:
-            compliance_result = await deps.compliance.preflight(mandate)
-            if not compliance_result.allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=compliance_result.reason or "compliance_check_failed",
-                )
-
-        # Execute transfer
-        try:
-            receipt = await deps.chain_executor.dispatch_payment(mandate)
-        except Exception as e:
             log_payment_event("a2a.payment.failed",
                 org_id=str(principal.organization_id),
                 agent_id=req.sender_agent_id,
                 amount=str(req.amount), currency=req.token, chain=req.chain,
-                status="failed", error=str(e))
+                status="failed", error=result.error)
             await _emit_a2a_webhook(request, "a2a.payment.failed", {
                 "sender_agent_id": req.sender_agent_id,
                 "recipient_agent_id": req.recipient_agent_id,
                 "amount": str(req.amount),
                 "token": req.token,
                 "chain": req.chain,
-                "error": str(e),
+                "error": result.error,
             })
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"A2A transfer failed: {e}",
-            ) from e
+            raise HTTPException(status_code=error_status, detail=result.error)
 
-        # Record spend state for policy enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
+        # Post-execution: record spend (best-effort)
         if deps.wallet_manager:
             try:
                 await deps.wallet_manager.async_record_spend(mandate)
             except Exception as e:
-                logger.warning(f"Failed to record spend for A2A pay mandate {mandate.mandate_id}: {e}")
-
-        # Record in ledger
-        ledger_tx_id: str | None = None
-        if deps.ledger:
-            try:
-                import inspect
-                if hasattr(deps.ledger, "append_async"):
-                    maybe_tx = deps.ledger.append_async(payment_mandate=mandate, chain_receipt=receipt)
-                else:
-                    maybe_tx = deps.ledger.append(payment_mandate=mandate, chain_receipt=receipt)
-                tx = await maybe_tx if inspect.isawaitable(maybe_tx) else maybe_tx
-                ledger_tx_id = getattr(tx, "tx_id", None)
-            except Exception:
-                pass
+                logger.warning("Failed to record spend for A2A mandate %s: %s", mandate.mandate_id, e)
 
         log_payment_event("a2a.payment.completed",
             org_id=str(principal.organization_id),
             agent_id=req.sender_agent_id,
             amount=str(req.amount), currency=req.token, chain=req.chain,
             status="completed",
-            tx_hash=getattr(receipt, "tx_hash", str(receipt)))
+            tx_hash=result.tx_hash)
 
-        # Emit webhook
         await _emit_a2a_webhook(request, "a2a.payment.completed", {
             "sender_agent_id": req.sender_agent_id,
             "recipient_agent_id": req.recipient_agent_id,
             "amount": str(req.amount),
             "token": req.token,
             "chain": req.chain,
-            "tx_hash": getattr(receipt, "tx_hash", str(receipt)),
+            "tx_hash": result.tx_hash,
             "reference": req.reference,
         })
 
         return 200, A2APayResponse(
             success=True,
-            tx_hash=getattr(receipt, "tx_hash", str(receipt)),
+            tx_hash=result.tx_hash,
             status="submitted",
             sender_agent_id=req.sender_agent_id,
             recipient_agent_id=req.recipient_agent_id,
@@ -898,8 +898,9 @@ async def a2a_pay(
             chain=req.chain,
             memo=req.memo,
             reference=req.reference,
-            ledger_tx_id=ledger_tx_id,
-            audit_anchor=getattr(receipt, "audit_anchor", None),
+            ledger_tx_id=result.ledger_entry_id or None,
+            audit_anchor=result.data.get("audit_anchor"),
+            receipt_id=result.receipt_id or None,
         )
 
     return await run_idempotent(

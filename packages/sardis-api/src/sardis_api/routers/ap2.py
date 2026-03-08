@@ -879,10 +879,35 @@ async def execute_ap2_payment(
                         approval_id=approval.id,
                     )
 
-        # Step 3: Execute payment
+        # Step 3: Build execution intent for tracking, then execute
+        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+
+        intent = ExecutionIntent(
+            source=IntentSource.AP2,
+            org_id=str(principal.organization_id),
+            agent_id=payment.subject,
+            amount=Decimal(str(payment.amount_minor)) / Decimal("100"),
+            currency=payment.token,
+            chain=payment.chain,
+            idempotency_key=str(key),
+            # Policy and compliance already checked upstream
+            policy_result={"allowed": True},
+            compliance_result={
+                "allowed": True,
+                "provider": compliance.provider,
+                "kyc_verified": compliance.kyc_verified,
+                "sanctions_clear": compliance.sanctions_clear,
+            },
+        )
+
         try:
             result = await deps.orchestrator.execute_chain(chain)
+            intent.status = IntentStatus.COMPLETED
+            intent.tx_hash = result.chain_tx_hash
+            intent.ledger_entry_id = result.ledger_tx_id
         except PaymentExecutionError as exc:
+            intent.status = IntentStatus.FAILED
+            intent.error = str(exc)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # Record spend for policy tracking
@@ -893,9 +918,10 @@ async def execute_ap2_payment(
                 logger.warning("Failed to record spend for %s: %s", payment.mandate_id, rec_err)
 
         logger.info(
-            f"Payment executed: mandate={payment.mandate_id}, "
-            f"amount={payment.amount_minor}, kyc={compliance.kyc_verified}, "
-            f"sanctions_clear={compliance.sanctions_clear}"
+            "Payment executed: mandate=%s amount=%s kyc=%s sanctions_clear=%s intent=%s",
+            payment.mandate_id, payment.amount_minor,
+            compliance.kyc_verified, compliance.sanctions_clear,
+            intent.intent_id,
         )
 
         return 200, AP2PaymentExecuteResponse(
