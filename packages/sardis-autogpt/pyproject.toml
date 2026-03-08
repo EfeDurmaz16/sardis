@@ -4,19 +4,22 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-autogpt"
-version = "0.1.0"
+version = "1.0.0"
 description = "Sardis payment blocks for AutoGPT - policy-controlled AI agent payments"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Sardis", email = "dev@sardis.sh" }]
+authors = [{ name = "Sardis", email = "efe@sardis.sh" }]
 keywords = ["sardis", "autogpt", "payments", "ai-agents", "blockchain", "usdc"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
@@ -33,7 +36,7 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/sardis-sh/sardis"
+Repository = "https://github.com/sardis-pay/sardis"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sardis_autogpt"]

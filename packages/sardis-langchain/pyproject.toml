@@ -7,7 +7,7 @@ name = "sardis-langchain"
 version = "1.0.0"
 description = "LangChain integration for Sardis - Payment OS for the Agent Economy"
 readme = "README.md"
-authors = [{name = "Sardis", email = "hello@sardis.sh"}]
+authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 requires-python = ">=3.10"
 classifiers = [
@@ -15,6 +15,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -30,7 +31,7 @@ keywords = [
     "mpc-wallet",
 ]
 dependencies = [
-    "sardis>=0.3",
+    "sardis>=1.0.0",
     "langchain-core>=0.3",
 ]
 
@@ -49,7 +50,7 @@ all = [
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
 Repository = "https://github.com/sardis-pay/sardis"
-Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/packages/sardis-langchain/CHANGELOG.md"
+Changelog = "https://github.com/sardis-pay/sardis/blob/main/packages/sardis-langchain/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_langchain"]

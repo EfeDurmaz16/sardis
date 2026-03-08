@@ -4,13 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-guardrails"
-version = "0.1.0"
+version = "1.0.0"
 description = "Runtime safety guardrails for Sardis agent payments: circuit breakers, kill switches, rate limiting, and behavioral monitoring"
-authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
-maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
+authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 keywords = [
     "guardrails",
     "circuit-breaker",
@@ -27,6 +26,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -35,7 +35,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-core>=0.3.0",
+    "sardis>=1.0.0",
     "pydantic>=2.6",
 ]
 
@@ -51,9 +51,8 @@ dev = [
 [project.urls]
 Homepage = "https://sardis.sh"
 Documentation = "https://sardis.sh/docs"
-Repository = "https://github.com/EfeDurmaz16/sardis"
-Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
+Repository = "https://github.com/sardis-pay/sardis"
+"Bug Tracker" = "https://github.com/sardis-pay/sardis/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis_guardrails"]
@@ -93,6 +92,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
-
-[tool.uv.sources]
-sardis-core = { path = "../sardis-core/dist/sardis_core-0.3.0-py3-none-any.whl" }
