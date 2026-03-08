@@ -906,9 +906,12 @@ async def execute_ap2_payment(
             },
         )
 
+        from sardis_guardrails.anomaly_engine import get_anomaly_engine
+
         cp = ControlPlane(
             chain_executor=ExecutionEngineAdapter(deps.orchestrator),
             ledger_recorder=LedgerCoreAdapter(None),
+            anomaly_engine=get_anomaly_engine(),
         )
 
         cp_result = await cp.submit(intent)

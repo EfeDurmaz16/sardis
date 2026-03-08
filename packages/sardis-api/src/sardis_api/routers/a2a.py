@@ -814,11 +814,14 @@ async def a2a_pay(
                 detail="wallet_manager_not_configured",
             )
 
+        from sardis_guardrails.anomaly_engine import get_anomaly_engine
+
         cp = ControlPlane(
             policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
             compliance_checker=ComplianceAdapter(deps.compliance),
             chain_executor=ExecutionEngineAdapter(deps.chain_executor),
             ledger_recorder=LedgerCoreAdapter(deps.ledger),
+            anomaly_engine=get_anomaly_engine(),
         )
 
         intent = ExecutionIntent(
@@ -1606,11 +1609,14 @@ async def _handle_payment_request(
     from sardis_api.domains.execution_engine import ExecutionEngineAdapter
     from sardis_api.domains.ledger_core import LedgerCoreAdapter
 
+    from sardis_guardrails.anomaly_engine import get_anomaly_engine
+
     cp = ControlPlane(
         policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
         compliance_checker=ComplianceAdapter(deps.compliance) if deps.compliance else None,
         chain_executor=ExecutionEngineAdapter(deps.chain_executor) if deps.chain_executor else None,
         ledger_recorder=LedgerCoreAdapter(deps.ledger) if deps.ledger else None,
+        anomaly_engine=get_anomaly_engine(),
     )
 
     intent = ExecutionIntent(

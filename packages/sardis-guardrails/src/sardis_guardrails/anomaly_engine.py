@@ -369,3 +369,15 @@ class AnomalyEngine:
         if score < 0.95:
             return RiskAction.FREEZE_AGENT
         return RiskAction.KILL_SWITCH
+
+
+# Singleton instance for global access (mirrors kill_switch pattern)
+_global_anomaly_engine: AnomalyEngine | None = None
+
+
+def get_anomaly_engine() -> AnomalyEngine:
+    """Get the global AnomalyEngine singleton instance."""
+    global _global_anomaly_engine
+    if _global_anomaly_engine is None:
+        _global_anomaly_engine = AnomalyEngine()
+    return _global_anomaly_engine
