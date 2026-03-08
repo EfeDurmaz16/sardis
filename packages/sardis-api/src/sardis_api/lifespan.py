@@ -490,6 +490,21 @@ async def lifespan(app: FastAPI):
 
     app.state.startup_time = time.time()
     app.state.ready = True
+
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    if env in ("prod", "production"):
+        redis_url = (
+            os.getenv("SARDIS_REDIS_URL")
+            or os.getenv("REDIS_URL")
+            or os.getenv("UPSTASH_REDIS_URL")
+        )
+        if not redis_url:
+            logger.critical(
+                "PRODUCTION GUARD: No Redis URL configured. "
+                "Transaction caps, rate limiting, and kill switch will use "
+                "in-memory fallbacks. Set SARDIS_REDIS_URL."
+            )
+
     logger.info("Sardis API started successfully")
 
     yield
