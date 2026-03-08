@@ -132,6 +132,10 @@ from .routers import merchant_checkout as merchant_checkout_router
 from .routers import credentials as credentials_router
 from .routers import execution_modes as execution_modes_router
 from .routers import settlements as settlements_router
+from .routers import policy_simulation as policy_simulation_router
+from .routers import receipts as receipts_router
+from .routers import outcomes as outcomes_router
+from .routers import reliability as reliability_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1862,6 +1866,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(credentials_router.router)
     app.include_router(execution_modes_router.router)
     app.include_router(settlements_router.router)
+
+    # --- Trust & Evidence Platform routers ---
+    app.include_router(policy_simulation_router.router, prefix="/api/v2/policies", tags=["policy-dsl"])
+    app.include_router(receipts_router.router, prefix="/api/v2/receipts", tags=["receipts"])
+    app.include_router(outcomes_router.router, prefix="/api/v2", tags=["outcomes"])
+    app.include_router(reliability_router.router, prefix="/api/v2/reliability", tags=["reliability"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])

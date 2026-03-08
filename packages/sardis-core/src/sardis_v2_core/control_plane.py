@@ -64,6 +64,8 @@ class ControlPlane:
         anomaly_engine: Optional["AnomalyEngine"] = None,
         kill_switch: Optional["KillSwitch"] = None,
         cap_engine: Optional["TransactionCapEngine"] = None,
+        receipt_store: Optional[Any] = None,
+        outcome_tracker: Optional[Any] = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
@@ -72,6 +74,8 @@ class ControlPlane:
         self._anomaly_engine = anomaly_engine
         self._kill_switch = kill_switch
         self._cap_engine = cap_engine
+        self._receipt_store = receipt_store
+        self._outcome_tracker = outcome_tracker
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
         """Execute an intent through the full pipeline."""
@@ -267,6 +271,32 @@ class ControlPlane:
             )
             intent.receipt_id = receipt.receipt_id
             intent.status = IntentStatus.COMPLETED
+
+            # Persist receipt if store available
+            if self._receipt_store is not None:
+                try:
+                    await self._receipt_store.save(receipt)
+                except Exception as e:
+                    logger.warning("Failed to persist receipt %s: %s", receipt.receipt_id, e)
+
+            # Record decision outcome for learning loops
+            if self._outcome_tracker is not None:
+                try:
+                    await self._outcome_tracker.record_decision(
+                        receipt_id=receipt.receipt_id,
+                        intent_id=intent.intent_id,
+                        decision="approved",
+                        reason="pipeline_passed",
+                        agent_id=intent.agent_id,
+                        org_id=intent.org_id,
+                        merchant_id=intent.metadata.get("merchant_id", ""),
+                        amount=intent.amount,
+                        currency=intent.currency,
+                        anomaly_score=anomaly_flag.get("anomaly_score", 0.0) if anomaly_flag else 0.0,
+                        confidence_score=intent.metadata.get("confidence_score", 0.0),
+                    )
+                except Exception as e:
+                    logger.warning("Failed to record outcome decision: %s", e)
 
             logger.info(
                 "ControlPlane: intent=%s completed tx=%s receipt=%s",
