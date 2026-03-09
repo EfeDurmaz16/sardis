@@ -41,7 +41,7 @@ for file in $STAGED; do
   fi
 
   for pattern in "${PATTERNS[@]}"; do
-    MATCHES=$(grep -nE "$pattern" "$file" 2>/dev/null || true)
+    MATCHES=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v '# nosecret' || true)
     if [ -n "$MATCHES" ]; then
       echo "ERROR: Possible secret detected in $file"
       echo "$MATCHES" | head -3

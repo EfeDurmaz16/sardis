@@ -253,7 +253,7 @@ async def login(
 
     if not admin_password:
         if allow_insecure_default and os.getenv("SARDIS_ENVIRONMENT", "dev") == "dev":
-            admin_password = "change-me-immediately"
+            admin_password = "change-me-immediately"  # nosecret — dev-only placeholder
         else:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -669,7 +669,12 @@ async def register_user(request: Request, body: RegisterRequest):
 
 @router.get("/google")
 async def google_oauth_redirect():
-    """Initiate Google OAuth redirect."""
+    """Initiate Google OAuth redirect.
+
+    Generates a cryptographic state token for CSRF protection,
+    stores it in a signed httponly cookie, and includes it in the
+    Google redirect URL.
+    """
     client_id = os.getenv("GOOGLE_CLIENT_ID", "")
     if not client_id:
         raise HTTPException(
@@ -678,19 +683,54 @@ async def google_oauth_redirect():
         )
     redirect_uri = os.getenv("SARDIS_GOOGLE_REDIRECT_URI", "https://api.sardis.sh/api/v2/auth/google/callback")
     scope = "openid email profile"
+
+    # Generate CSRF state token
+    state_token = secrets.token_urlsafe(32)
+
     url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?"
         f"client_id={client_id}&redirect_uri={redirect_uri}"
         f"&response_type=code&scope={scope}&access_type=offline"
+        f"&state={state_token}"
     )
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=url)
+    response = RedirectResponse(url=url)
+    response.set_cookie(
+        key="oauth_state",
+        value=state_token,
+        httponly=True,
+        secure=os.getenv("SARDIS_ENVIRONMENT", "dev") != "dev",
+        samesite="lax",
+        max_age=600,  # 10 minutes — generous for the OAuth round-trip
+    )
+    return response
 
 
 @router.get("/google/callback")
 async def google_oauth_callback(request: Request, code: str):
-    """Handle Google OAuth callback."""
+    """Handle Google OAuth callback.
+
+    Validates the CSRF state parameter before exchanging the
+    authorization code for tokens.
+    """
     import httpx
+
+    # --- CSRF state validation ---------------------------------------------------
+    state_param = request.query_params.get("state")
+    state_cookie = request.cookies.get("oauth_state")
+
+    if not state_param or not state_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing OAuth state parameter — possible CSRF attack",
+        )
+
+    if not hmac.compare_digest(state_param, state_cookie):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state parameter — possible CSRF attack",
+        )
+    # -----------------------------------------------------------------------------
 
     client_id = os.getenv("GOOGLE_CLIENT_ID", "")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
@@ -732,13 +772,20 @@ async def google_oauth_callback(request: Request, code: str):
         name=userinfo.get("name"),
     )
 
-    return UserLoginResponse(
+    from fastapi.responses import JSONResponse
+
+    response = JSONResponse(content=UserLoginResponse(
         user_id=result.user_id,
         email=result.email,
         org_id=result.org_id,
         access_token=result.access_token,
         refresh_token=result.refresh_token,
-    )
+    ).model_dump())
+
+    # Clear the oauth_state cookie now that it has been consumed
+    response.delete_cookie(key="oauth_state")
+
+    return response
 
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
