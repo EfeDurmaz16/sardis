@@ -172,6 +172,7 @@ class WalletDependencies:
         compliance: any | None = None,
         inbound_payment_service: any | None = None,
         circle_nanopayments_client: any | None = None,
+        payment_orchestrator: any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -183,6 +184,7 @@ class WalletDependencies:
         self.compliance = compliance
         self.inbound_payment_service = inbound_payment_service
         self.circle_nanopayments_client = circle_nanopayments_client
+        self.payment_orchestrator = payment_orchestrator
 
 
 def get_deps() -> WalletDependencies:
@@ -764,34 +766,6 @@ async def transfer_crypto(
             merchant_domain=transfer_request.domain,
         )
 
-        # Policy check (MANDATORY - no silent bypass)
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if not deps.wallet_manager:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="wallet_manager_not_configured",
-            )
-        policy = await deps.wallet_manager.async_validate_policies(mandate)  # type: ignore[call-arg]
-        if not getattr(policy, "allowed", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=getattr(policy, "reason", None) or "policy_denied",
-            )
-
-        # Compliance (KYC/AML) enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if not deps.compliance:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="compliance_engine_not_configured",
-            )
-        compliance_result = await deps.compliance.preflight(mandate)
-        if not compliance_result.allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=compliance_result.reason or "compliance_check_failed",
-            )
-
         # --- Platform fee calculation ---
         from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
 
@@ -808,13 +782,78 @@ async def transfer_crypto(
             )
             mandate.amount_minor = net_amount_minor
 
+        # Execute through PaymentOrchestrator (policy → compliance → chain → ledger)
+        from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain
+        from sardis_v2_core.orchestrator import (
+            ChainExecutionError,
+            ComplianceViolationError,
+            PolicyViolationError,
+        )
+
+        if not deps.payment_orchestrator:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="payment_orchestrator_not_configured",
+            )
+
+        # Build a synthetic MandateChain for the orchestrator
+        _now_ts = int(time.time())
+        _stub_proof = VCProof(
+            verification_method=f"wallet:{wallet_id}#key-1",
+            created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            proof_value="internal-transfer-stub",
+        )
+        _chain = MandateChain(
+            intent=IntentMandate(
+                mandate_id=f"intent_{digest[:16]}",
+                mandate_type="intent",
+                issuer=mandate.issuer,
+                subject=mandate.subject,
+                expires_at=_now_ts + 300,
+                nonce=f"intent_{digest}",
+                proof=_stub_proof,
+                domain=mandate.domain,
+                purpose="intent",
+                requested_amount=mandate.amount_minor,
+            ),
+            cart=CartMandate(
+                mandate_id=f"cart_{digest[:16]}",
+                mandate_type="cart",
+                issuer=mandate.issuer,
+                subject=mandate.subject,
+                expires_at=_now_ts + 300,
+                nonce=f"cart_{digest}",
+                proof=_stub_proof,
+                domain=mandate.domain,
+                purpose="cart",
+                line_items=[{"description": "transfer", "amount_minor": mandate.amount_minor}],
+                merchant_domain=transfer_request.domain or "sardis.sh",
+                currency=transfer_request.token,
+                subtotal_minor=mandate.amount_minor,
+                taxes_minor=0,
+            ),
+            payment=mandate,
+        )
+
         try:
-            receipt = await deps.chain_executor.dispatch_payment(mandate)
-        except Exception as e:
+            orch_result = await deps.payment_orchestrator.execute_chain(_chain)
+        except PolicyViolationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except ComplianceViolationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except ChainExecutionError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Transfer failed: {str(e)}",
             )
+
+        receipt = orch_result  # PaymentResult from orchestrator
 
         # --- Collect fee to treasury (best-effort, non-blocking) ---
         if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
@@ -858,34 +897,14 @@ async def transfer_crypto(
                 except Exception:
                     logger.exception("Failed to collect platform fee for transfer %s", mandate.mandate_id)
 
-        # Record spend state for policy enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if deps.wallet_manager:
-            try:
-                await deps.wallet_manager.async_record_spend(mandate)
-            except Exception as e:
-                logger.warning(f"Failed to record spend for transfer mandate {mandate.mandate_id}: {e}")
+        # Ledger append is handled by the orchestrator; extract ledger_tx_id from result
+        ledger_tx_id: str | None = getattr(orch_result, "ledger_tx_id", None)
 
-        ledger_tx_id: str | None = None
-        if deps.ledger:
-            try:
-                import inspect
-
-                if hasattr(deps.ledger, "append_async"):
-                    maybe_tx = deps.ledger.append_async(payment_mandate=mandate, chain_receipt=receipt)
-                else:
-                    maybe_tx = deps.ledger.append(payment_mandate=mandate, chain_receipt=receipt)
-
-                tx = await maybe_tx if inspect.isawaitable(maybe_tx) else maybe_tx
-                ledger_tx_id = getattr(tx, "tx_id", None)
-            except Exception:
-                pass
-
-        execution_path = getattr(receipt, "execution_path", "legacy_tx")
-        user_op_hash = getattr(receipt, "user_op_hash", None)
-        proof_artifact_path = getattr(receipt, "proof_artifact_path", None)
-        proof_artifact_sha256 = getattr(receipt, "proof_artifact_sha256", None)
-        tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
+        execution_path = getattr(orch_result, "execution_path", "legacy_tx")
+        user_op_hash = getattr(orch_result, "user_op_hash", None)
+        proof_artifact_path = getattr(orch_result, "proof_artifact_path", None)
+        proof_artifact_sha256 = getattr(orch_result, "proof_artifact_sha256", None)
+        tx_hash = orch_result.chain_tx_hash if hasattr(orch_result, "chain_tx_hash") else str(orch_result)
         if deps.canonical_repo is not None:
             if execution_path == "erc4337_userop":
                 reference = str(user_op_hash or tx_hash)
@@ -956,7 +975,7 @@ async def transfer_crypto(
             net_amount=str(fee_calc.net_amount) if not fee_calc.fee_exempt else None,
             fee_tx_hash=fee_tx_hash,
             ledger_tx_id=ledger_tx_id,
-            audit_anchor=getattr(receipt, "audit_anchor", None),
+            audit_anchor=getattr(orch_result, "audit_anchor", None),
             execution_path=execution_path,
             user_op_hash=user_op_hash,
             proof_artifact_path=proof_artifact_path,
