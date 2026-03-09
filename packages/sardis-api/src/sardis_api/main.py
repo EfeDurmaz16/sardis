@@ -140,6 +140,7 @@ from .routers import treasury_ops as treasury_ops_router
 from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
 from .routers import ws_alerts as ws_alerts_router
+from .routers import x402 as x402_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -360,6 +361,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("TAP verification middleware disabled (set SARDIS_TAP_ENFORCEMENT=enabled to enable)")
 
+    # 6b. x402 payment middleware (feature-flag gated)
+    if settings.x402.server_enabled:
+        from .middleware.x402 import X402MiddlewareConfig, X402PaymentMiddleware
+        x402_config = X402MiddlewareConfig.from_environment()
+        app.add_middleware(X402PaymentMiddleware, config=x402_config)
+        logger.info("x402 payment middleware enabled")
+    else:
+        logger.info("x402 payment middleware disabled (set SARDIS_X402_SERVER_ENABLED=true to enable)")
+
     # 7. CORS middleware with settings-based origins
     app.add_middleware(
         CORSMiddleware,
@@ -376,6 +386,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             "Signature-Input",
             "Signature",
             "TAP-Version",
+            "PAYMENT-SIGNATURE",
         ],
         expose_headers=[
             "X-Request-ID",
@@ -385,6 +396,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             "X-RateLimit-Remaining",
             "X-RateLimit-Reset",
             "Retry-After",
+            "PaymentRequired",
+            "PAYMENT-RESPONSE",
         ],
     )
 
@@ -882,6 +895,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         circle_nanopayments_client=circle_gateway_nanopayments_client,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+    # x402 facilitator router (feature-flag gated)
+    if settings.x402.facilitator_enabled:
+        app.include_router(x402_router.router, prefix="/api/v2/x402", tags=["x402"])
+        logger.info("x402 facilitator router registered at /api/v2/x402")
+    else:
+        logger.info("x402 facilitator router disabled (set SARDIS_X402_FACILITATOR_ENABLED=true to enable)")
 
     subscription_repo = SubscriptionRepository(dsn=database_url if use_postgres else None)
     recurring_billing_service = RecurringBillingService(

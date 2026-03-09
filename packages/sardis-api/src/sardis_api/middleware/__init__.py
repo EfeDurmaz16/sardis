@@ -56,6 +56,12 @@ from .tap import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
 )
+from .x402 import (
+    X402MiddlewareConfig,
+    X402PaymentMiddleware,
+    X402PricingRegistry,
+    X402PricingRule,
+)
 
 __all__ = [
     # Rate limiting
@@ -101,4 +107,9 @@ __all__ = [
     "TapVerificationMiddleware",
     "TapMiddlewareConfig",
     "NonceCache",
+    # x402 Payment Required
+    "X402PaymentMiddleware",
+    "X402MiddlewareConfig",
+    "X402PricingRegistry",
+    "X402PricingRule",
 ]

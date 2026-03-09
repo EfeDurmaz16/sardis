@@ -1637,6 +1637,32 @@ async def verify_x402_payment(
             detail="x402 protocol module not available",
         )
 
+    # Run through control plane policy check before verification
+    try:
+        from sardis_v2_core.control_plane import ControlPlane
+        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+        from decimal import Decimal
+
+        cp = getattr(deps, "control_plane", None)
+        if cp is not None:
+            intent = ExecutionIntent(
+                source=IntentSource.X402,
+                amount=Decimal(challenge.amount) / Decimal("1000000"),
+                currency=challenge.currency,
+                chain=challenge.network,
+                org_id=principal.org_id if hasattr(principal, "org_id") else "",
+                agent_id=principal.agent_id if hasattr(principal, "agent_id") else "",
+                sender_wallet_id=wallet_id,
+                recipient_address=challenge.payee_address,
+                metadata={"resource_uri": challenge.resource_uri, "x402_payment_id": challenge.payment_id},
+            )
+            sim_result = await cp.simulate(intent)
+            if not sim_result.would_succeed:
+                reasons = "; ".join(sim_result.failure_reasons) if sim_result.failure_reasons else "policy_denied"
+                return X402VerifyResponse(accepted=False, reason=f"control_plane_rejected: {reasons}")
+    except Exception as e:
+        logger.warning("x402 control plane check failed (non-blocking): %s", e)
+
     payload = X402PaymentPayload(
         payment_id=request.payment_id,
         payer_address=request.payer_address,
