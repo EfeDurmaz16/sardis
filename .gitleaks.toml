@@ -1,0 +1,22 @@
+title = "Sardis Gitleaks Configuration"
+
+[allowlist]
+  paths = [
+    '''\.lock$''',
+    '''node_modules''',
+    '''\.git''',
+    '''contracts/lib''',
+    '''docs/plans''',
+  ]
+
+[[rules]]
+  id = "sardis-api-key"
+  description = "Sardis API Key"
+  regex = '''sk_(?:live|test|sandbox)_[A-Za-z0-9]{32,}'''
+  tags = ["sardis", "api-key"]
+
+[[rules]]
+  id = "turnkey-private-key"
+  description = "Turnkey MPC Private Key (PEM header)"
+  regex = '''PRIVATE\.KEY'''
+  tags = ["turnkey", "private-key"]
