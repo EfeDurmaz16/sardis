@@ -19,9 +19,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from web3 import Web3
 from eth_abi import encode
-
+from web3 import Web3
 
 # Canonical Permit2 address — same on ALL EVM chains (CREATE2)
 PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3"

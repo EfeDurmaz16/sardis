@@ -10,9 +10,10 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable, Coroutine
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class KillSwitchBackend:
     async def delete_activation(self, key: str) -> None:
         raise NotImplementedError
 
-    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+    async def get_all_by_prefix(self, prefix: str) -> dict[str, KillSwitchActivation]:
         raise NotImplementedError
 
 
@@ -76,7 +77,7 @@ class InMemoryBackend(KillSwitchBackend):
     """In-memory backend (single-instance only)."""
 
     def __init__(self) -> None:
-        self._store: Dict[str, KillSwitchActivation] = {}
+        self._store: dict[str, KillSwitchActivation] = {}
         self._lock = asyncio.Lock()
 
     async def set_activation(self, key: str, activation: KillSwitchActivation, ttl: float | None = None) -> None:
@@ -95,7 +96,7 @@ class InMemoryBackend(KillSwitchBackend):
         async with self._lock:
             self._store.pop(key, None)
 
-    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+    async def get_all_by_prefix(self, prefix: str) -> dict[str, KillSwitchActivation]:
         async with self._lock:
             now = time.time()
             result = {}
@@ -157,7 +158,7 @@ class RedisBackend(KillSwitchBackend):
         redis = self._get_redis()
         await redis.delete(f"{self.KEY_PREFIX}{key}")
 
-    async def get_all_by_prefix(self, prefix: str) -> Dict[str, KillSwitchActivation]:
+    async def get_all_by_prefix(self, prefix: str) -> dict[str, KillSwitchActivation]:
         redis = self._get_redis()
         full_prefix = f"{self.KEY_PREFIX}{prefix}"
         result = {}
@@ -457,7 +458,7 @@ class KillSwitch:
         """Check if agent kill switch is active."""
         return await self._backend.get_activation(f"agent:{agent_id}") is not None
 
-    async def get_active_switches(self) -> Dict[str, Any]:
+    async def get_active_switches(self) -> dict[str, Any]:
         """Get all currently active kill switches."""
         global_activation = await self._backend.get_activation("global")
         org_activations = await self._backend.get_all_by_prefix("org:")

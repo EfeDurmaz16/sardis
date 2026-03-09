@@ -9,7 +9,6 @@ import hashlib
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(slots=True)

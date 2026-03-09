@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 import asyncpg
 from asyncpg import Pool
@@ -49,8 +49,8 @@ def _pool_kwargs(database_url: str) -> dict:
 class Database:
     """PostgreSQL database connection manager with optional read replica."""
 
-    _pool: Optional[Pool] = None
-    _read_pool: Optional[Pool] = None
+    _pool: Pool | None = None
+    _read_pool: Pool | None = None
 
     @classmethod
     async def get_pool(cls) -> Pool:
@@ -114,9 +114,8 @@ class Database:
     @asynccontextmanager
     async def transaction(cls) -> AsyncGenerator[asyncpg.Connection, None]:
         """Get a connection with an active transaction."""
-        async with cls.connection() as conn:
-            async with conn.transaction():
-                yield conn
+        async with cls.connection() as conn, conn.transaction():
+            yield conn
 
     @classmethod
     async def execute(cls, query: str, *args) -> str:
@@ -1163,7 +1162,7 @@ class _DatabaseHandle:
         self.dsn = dsn
 
     @property
-    def pool(self) -> Optional[Pool]:
+    def pool(self) -> Pool | None:
         return Database._pool
 
     async def get_pool(self) -> Pool:

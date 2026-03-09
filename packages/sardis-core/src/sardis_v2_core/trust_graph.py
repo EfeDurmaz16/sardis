@@ -11,10 +11,8 @@ Algorithm:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum
-from typing import Optional
-
 
 DEFAULT_TRUST_DECAY = 0.85
 MAX_TRUST_DEPTH = 6
@@ -33,8 +31,8 @@ class TrustEdge:
     source_did: str
     target_did: str
     trust_level: int  # 0-100
-    revoked_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
+    revoked_at: datetime | None = None
+    expires_at: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -55,7 +53,7 @@ class TrustPathResult:
 
 def _is_edge_valid(edge: TrustEdge) -> bool:
     """Check if an edge is active (not revoked, not expired)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if edge.revoked_at is not None:
         return False
     if edge.expires_at is not None and edge.expires_at < now:
@@ -84,7 +82,7 @@ def find_trust_path(
 
     # Pre-compute decay powers
     decay_powers = [1.0]
-    for i in range(1, max_depth + 1):
+    for _i in range(1, max_depth + 1):
         decay_powers.append(decay_powers[-1] * DEFAULT_TRUST_DECAY)
 
     # BFS with parent pointers
@@ -159,7 +157,7 @@ class TrustGraphService:
         source_did: str,
         target_did: str,
         trust_level: int = TrustLevel.MEDIUM,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
     ) -> TrustEdge:
         """Record a trust attestation from source to target."""
         edge = TrustEdge(
@@ -175,7 +173,7 @@ class TrustGraphService:
         """Revoke trust from source to target."""
         for edge in self._edges:
             if edge.source_did == source_did and edge.target_did == target_did and edge.revoked_at is None:
-                edge.revoked_at = datetime.now(timezone.utc)
+                edge.revoked_at = datetime.now(UTC)
                 return True
         return False
 

@@ -1,15 +1,14 @@
 """Test F14: fail-closed behavior when identity registry is not configured."""
+import base64
 import os
 import time
-import base64
-import pytest
 from unittest.mock import Mock
 
+import pytest
 from nacl.signing import SigningKey
-
+from sardis_protocol.verifier import MandateVerifier, VerificationError
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_protocol.verifier import MandateVerifier, VerificationError
 
 
 def _create_mandate():

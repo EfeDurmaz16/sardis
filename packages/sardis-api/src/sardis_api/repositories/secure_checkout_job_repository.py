@@ -1,10 +1,10 @@
 """Persistent secure checkout job repository (metadata only, no PAN/CVV)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Any, Optional
 import os
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 
 class SecureCheckoutJobRepository:
@@ -85,7 +85,7 @@ class SecureCheckoutJobRepository:
             existing_id = self._jobs_by_intent_id.get(job["intent_id"])
             if existing_id:
                 return dict(self._jobs[existing_id])
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             item = dict(job)
             item.setdefault("created_at", now)
             item.setdefault("updated_at", now)
@@ -144,7 +144,7 @@ class SecureCheckoutJobRepository:
                 raise RuntimeError("secure_checkout_job_upsert_failed")
             return self._normalize_job(dict(existing))
 
-    async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
+    async def get_job(self, job_id: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             item = self._jobs.get(job_id)
             return dict(item) if item else None
@@ -158,7 +158,7 @@ class SecureCheckoutJobRepository:
             )
             return self._normalize_job(dict(row)) if row else None
 
-    async def update_job(self, job_id: str, **fields: Any) -> Optional[dict[str, Any]]:
+    async def update_job(self, job_id: str, **fields: Any) -> dict[str, Any] | None:
         if not fields:
             return await self.get_job(job_id)
         if not self._use_postgres():
@@ -167,7 +167,7 @@ class SecureCheckoutJobRepository:
                 return None
             updated = dict(existing)
             updated.update(fields)
-            updated["updated_at"] = datetime.now(timezone.utc)
+            updated["updated_at"] = datetime.now(UTC)
             self._jobs[job_id] = updated
             return dict(updated)
 

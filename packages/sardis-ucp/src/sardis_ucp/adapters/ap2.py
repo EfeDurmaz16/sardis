@@ -16,20 +16,16 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from ..models.mandates import (
     UCPCartMandate,
     UCPCheckoutMandate,
-    UCPPaymentMandate,
-    UCPLineItem,
-    UCPDiscount,
     UCPCurrency,
+    UCPLineItem,
+    UCPPaymentMandate,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,8 +59,8 @@ class AP2IntentMandate:
     proof: AP2VCProof = field(default_factory=AP2VCProof)
     domain: str = ""
     purpose: str = "intent"
-    scope: List[str] = field(default_factory=list)
-    requested_amount: Optional[int] = None
+    scope: list[str] = field(default_factory=list)
+    requested_amount: int | None = None
 
 
 @dataclass(slots=True)
@@ -80,7 +76,7 @@ class AP2CartMandate:
     proof: AP2VCProof = field(default_factory=AP2VCProof)
     domain: str = ""
     purpose: str = "cart"
-    line_items: List[Dict[str, Any]] = field(default_factory=list)
+    line_items: list[dict[str, Any]] = field(default_factory=list)
     merchant_domain: str = ""
     currency: str = "USD"
     subtotal_minor: int = 0
@@ -129,17 +125,17 @@ class AdapterResult:
     """Result of an adapter operation."""
 
     success: bool
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
 
 @dataclass(slots=True)
 class AP2ToUCPResult(AdapterResult):
     """Result of converting AP2 to UCP mandates."""
 
-    cart_mandate: Optional[UCPCartMandate] = None
-    checkout_mandate: Optional[UCPCheckoutMandate] = None
-    payment_mandate: Optional[UCPPaymentMandate] = None
+    cart_mandate: UCPCartMandate | None = None
+    checkout_mandate: UCPCheckoutMandate | None = None
+    payment_mandate: UCPPaymentMandate | None = None
     security_locked: bool = False
 
 
@@ -147,9 +143,9 @@ class AP2ToUCPResult(AdapterResult):
 class UCPToAP2Result(AdapterResult):
     """Result of converting UCP to AP2 mandates."""
 
-    intent_mandate: Optional[AP2IntentMandate] = None
-    cart_mandate: Optional[AP2CartMandate] = None
-    payment_mandate: Optional[AP2PaymentMandate] = None
+    intent_mandate: AP2IntentMandate | None = None
+    cart_mandate: AP2CartMandate | None = None
+    payment_mandate: AP2PaymentMandate | None = None
     security_locked: bool = False
 
 

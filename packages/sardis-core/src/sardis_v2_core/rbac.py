@@ -11,8 +11,8 @@ Key concepts:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import Enum
-from typing import Dict, Set, Optional, Callable
 from functools import wraps
 
 from fastapi import HTTPException, status
@@ -67,7 +67,7 @@ class Permission(str, Enum):
 
 # Role → Permissions mapping
 # Each role is assigned a set of permissions it can exercise
-ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
+ROLE_PERMISSIONS: dict[str, set[Permission]] = {
     "org_admin": {
         # Full access to everything
         Permission.CREATE_AGENT,
@@ -164,7 +164,7 @@ class RBACEngine:
     """
 
     @staticmethod
-    def get_permissions(role: str) -> Set[Permission]:
+    def get_permissions(role: str) -> set[Permission]:
         """
         Get all permissions granted to a role.
 
@@ -221,7 +221,7 @@ class RBACEngine:
             async def wrapper(*args, **kwargs):
                 # Extract request from kwargs (FastAPI dependency injection)
                 from fastapi import Request
-                request: Optional[Request] = kwargs.get("request")
+                request: Request | None = kwargs.get("request")
 
                 if not request:
                     # Try to find Request in args
@@ -258,7 +258,7 @@ class RBACEngine:
         return decorator
 
     @staticmethod
-    def has_any_permission(member_role: str, permissions: Set[Permission]) -> bool:
+    def has_any_permission(member_role: str, permissions: set[Permission]) -> bool:
         """
         Check if a member has any of the specified permissions.
 
@@ -276,7 +276,7 @@ class RBACEngine:
             return False
 
     @staticmethod
-    def has_all_permissions(member_role: str, permissions: Set[Permission]) -> bool:
+    def has_all_permissions(member_role: str, permissions: set[Permission]) -> bool:
         """
         Check if a member has all of the specified permissions.
 
@@ -321,7 +321,7 @@ class RBACEngine:
         return False
 
     @staticmethod
-    def get_manageable_roles(actor_role: str) -> Set[str]:
+    def get_manageable_roles(actor_role: str) -> set[str]:
         """
         Get the set of roles that an actor can assign to others.
 
@@ -360,7 +360,7 @@ def require_role(required_role: str):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             from fastapi import Request
-            request: Optional[Request] = kwargs.get("request")
+            request: Request | None = kwargs.get("request")
 
             if not request:
                 for arg in args:
@@ -436,12 +436,12 @@ def validate_role(role: str) -> bool:
     return role in ROLE_PERMISSIONS
 
 
-def get_all_roles() -> Set[str]:
+def get_all_roles() -> set[str]:
     """Get all defined role names."""
     return set(ROLE_PERMISSIONS.keys())
 
 
-def get_role_hierarchy() -> Dict[str, int]:
+def get_role_hierarchy() -> dict[str, int]:
     """
     Get role hierarchy levels (higher number = more privileges).
 
@@ -478,6 +478,7 @@ def is_role_elevated(current_role: str, target_role: str) -> bool:
 
 # ========== Advanced RBAC: Custom Roles & Resource Permissions ==========
 
+import contextlib
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -489,11 +490,11 @@ class CustomRole:
     org_id: str
     name: str
     description: str = ""
-    permissions: Set[Permission] = field(default_factory=set)
-    inherits_from: Optional[str] = None  # built-in role to inherit from
-    created_at: Optional[str] = None
+    permissions: set[Permission] = field(default_factory=set)
+    inherits_from: str | None = None  # built-in role to inherit from
+    created_at: str | None = None
 
-    def effective_permissions(self) -> Set[Permission]:
+    def effective_permissions(self) -> set[Permission]:
         """Get permissions including inherited ones."""
         perms = set(self.permissions)
         if self.inherits_from and self.inherits_from in ROLE_PERMISSIONS:
@@ -522,10 +523,10 @@ class AdvancedRBACEngine(RBACEngine):
 
     def __init__(self, pool: Any = None) -> None:
         self._pool = pool
-        self._custom_roles_cache: Dict[str, Dict[str, CustomRole]] = {}
-        self._resource_perms_cache: Dict[str, list[ResourcePermission]] = {}
+        self._custom_roles_cache: dict[str, dict[str, CustomRole]] = {}
+        self._resource_perms_cache: dict[str, list[ResourcePermission]] = {}
 
-    async def load_custom_roles(self, org_id: str) -> Dict[str, CustomRole]:
+    async def load_custom_roles(self, org_id: str) -> dict[str, CustomRole]:
         """Load custom roles for an org from database."""
         if self._pool is None:
             return {}
@@ -539,10 +540,8 @@ class AdvancedRBACEngine(RBACEngine):
                 for row in rows:
                     perms = set()
                     for p in (row.get("permissions") or []):
-                        try:
+                        with contextlib.suppress(ValueError):
                             perms.add(Permission(p))
-                        except ValueError:
-                            pass
                     roles[row["id"]] = CustomRole(
                         id=row["id"],
                         org_id=org_id,
@@ -562,8 +561,8 @@ class AdvancedRBACEngine(RBACEngine):
         org_id: str,
         member_role: str,
         permission: Permission,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
     ) -> bool:
         """Check permission with resource scope and custom roles.
 
@@ -579,11 +578,10 @@ class AdvancedRBACEngine(RBACEngine):
             True if the user has the permission
         """
         # 1. Check resource-specific permissions
-        if resource_type and resource_id:
-            if await self._has_resource_permission(
-                user_id, permission, resource_type, resource_id
-            ):
-                return True
+        if resource_type and resource_id and await self._has_resource_permission(
+            user_id, permission, resource_type, resource_id
+        ):
+            return True
 
         # 2. Check custom role (if role ID starts with "role_")
         if member_role.startswith("role_"):
@@ -663,8 +661,8 @@ class AdvancedRBACEngine(RBACEngine):
             )
 
     async def create_custom_role(
-        self, org_id: str, name: str, permissions: Set[Permission],
-        inherits_from: Optional[str] = None, description: str = "",
+        self, org_id: str, name: str, permissions: set[Permission],
+        inherits_from: str | None = None, description: str = "",
     ) -> CustomRole:
         """Create a custom role for an organization."""
         if self._pool is None:

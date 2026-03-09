@@ -26,17 +26,11 @@ import functools
 import logging
 import random
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Optional,
-    Sequence,
-    Type,
-    TypeVar,
-    Union,
     ParamSpec,
+    TypeVar,
     overload,
 )
 
@@ -69,10 +63,10 @@ class RetryConfig:
     max_delay: float = RetryDefaults.DEFAULT_MAX_DELAY
     exponential_base: float = RetryDefaults.DEFAULT_EXPONENTIAL_BASE
     jitter: float = RetryDefaults.DEFAULT_JITTER
-    retryable_exceptions: tuple[Type[BaseException], ...] = (Exception,)
-    non_retryable_exceptions: tuple[Type[BaseException], ...] = ()
-    on_retry: Optional[Callable[[int, BaseException, float], None]] = None
-    retry_condition: Optional[Callable[[BaseException], bool]] = None
+    retryable_exceptions: tuple[type[BaseException], ...] = (Exception,)
+    non_retryable_exceptions: tuple[type[BaseException], ...] = ()
+    on_retry: Callable[[int, BaseException, float], None] | None = None
+    retry_condition: Callable[[BaseException], bool] | None = None
 
     def calculate_delay(self, attempt: int) -> float:
         """Calculate delay for the given attempt number.
@@ -163,7 +157,7 @@ class RetryStats:
     attempts: int = 0
     total_delay: float = 0.0
     success: bool = False
-    last_exception: Optional[BaseException] = None
+    last_exception: BaseException | None = None
 
 
 class RetryExhausted(Exception):
@@ -188,7 +182,7 @@ class RetryExhausted(Exception):
 async def retry_async(
     func: Callable[P, Awaitable[T]],
     *args: P.args,
-    config: Optional[RetryConfig] = None,
+    config: RetryConfig | None = None,
     **kwargs: P.kwargs,
 ) -> T:
     """Execute an async function with retry logic.
@@ -209,7 +203,7 @@ async def retry_async(
         config = RetryConfig()
 
     stats = RetryStats()
-    last_exception: Optional[BaseException] = None
+    last_exception: BaseException | None = None
 
     for attempt in range(config.max_retries + 1):
         stats.attempts = attempt + 1
@@ -263,7 +257,7 @@ async def retry_async(
 def retry_sync(
     func: Callable[P, T],
     *args: P.args,
-    config: Optional[RetryConfig] = None,
+    config: RetryConfig | None = None,
     **kwargs: P.kwargs,
 ) -> T:
     """Execute a synchronous function with retry logic.
@@ -284,7 +278,7 @@ def retry_sync(
         config = RetryConfig()
 
     stats = RetryStats()
-    last_exception: Optional[BaseException] = None
+    last_exception: BaseException | None = None
 
     for attempt in range(config.max_retries + 1):
         stats.attempts = attempt + 1
@@ -353,16 +347,16 @@ def retry(
     max_delay: float = ...,
     exponential_base: float = ...,
     jitter: float = ...,
-    retryable_exceptions: tuple[Type[BaseException], ...] = ...,
-    non_retryable_exceptions: tuple[Type[BaseException], ...] = ...,
-    on_retry: Optional[Callable[[int, BaseException, float], None]] = ...,
-    config: Optional[RetryConfig] = ...,
+    retryable_exceptions: tuple[type[BaseException], ...] = ...,
+    non_retryable_exceptions: tuple[type[BaseException], ...] = ...,
+    on_retry: Callable[[int, BaseException, float], None] | None = ...,
+    config: RetryConfig | None = ...,
 ) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     ...
 
 
 def retry(
-    func: Optional[Callable[P, Awaitable[T]]] = None,
+    func: Callable[P, Awaitable[T]] | None = None,
     /,
     *,
     max_retries: int = RetryDefaults.DEFAULT_MAX_RETRIES,
@@ -370,14 +364,11 @@ def retry(
     max_delay: float = RetryDefaults.DEFAULT_MAX_DELAY,
     exponential_base: float = RetryDefaults.DEFAULT_EXPONENTIAL_BASE,
     jitter: float = RetryDefaults.DEFAULT_JITTER,
-    retryable_exceptions: tuple[Type[BaseException], ...] = (Exception,),
-    non_retryable_exceptions: tuple[Type[BaseException], ...] = (),
-    on_retry: Optional[Callable[[int, BaseException, float], None]] = None,
-    config: Optional[RetryConfig] = None,
-) -> Union[
-    Callable[P, Awaitable[T]],
-    Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]],
-]:
+    retryable_exceptions: tuple[type[BaseException], ...] = (Exception,),
+    non_retryable_exceptions: tuple[type[BaseException], ...] = (),
+    on_retry: Callable[[int, BaseException, float], None] | None = None,
+    config: RetryConfig | None = None,
+) -> Callable[P, Awaitable[T]] | Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     """Decorator to add retry logic to async functions.
 
     Can be used with or without arguments:
@@ -433,7 +424,7 @@ def retry(
 
 
 def retry_sync_decorator(
-    func: Optional[Callable[P, T]] = None,
+    func: Callable[P, T] | None = None,
     /,
     *,
     max_retries: int = RetryDefaults.DEFAULT_MAX_RETRIES,
@@ -441,14 +432,11 @@ def retry_sync_decorator(
     max_delay: float = RetryDefaults.DEFAULT_MAX_DELAY,
     exponential_base: float = RetryDefaults.DEFAULT_EXPONENTIAL_BASE,
     jitter: float = RetryDefaults.DEFAULT_JITTER,
-    retryable_exceptions: tuple[Type[BaseException], ...] = (Exception,),
-    non_retryable_exceptions: tuple[Type[BaseException], ...] = (),
-    on_retry: Optional[Callable[[int, BaseException, float], None]] = None,
-    config: Optional[RetryConfig] = None,
-) -> Union[
-    Callable[P, T],
-    Callable[[Callable[P, T]], Callable[P, T]],
-]:
+    retryable_exceptions: tuple[type[BaseException], ...] = (Exception,),
+    non_retryable_exceptions: tuple[type[BaseException], ...] = (),
+    on_retry: Callable[[int, BaseException, float], None] | None = None,
+    config: RetryConfig | None = None,
+) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to add retry logic to synchronous functions.
 
     Works the same as @retry but for sync functions.
@@ -493,7 +481,7 @@ class RetryContext:
                     await ctx.handle_exception(e)
     """
 
-    def __init__(self, config: Optional[RetryConfig] = None) -> None:
+    def __init__(self, config: RetryConfig | None = None) -> None:
         """Initialize retry context.
 
         Args:
@@ -502,7 +490,7 @@ class RetryContext:
         self.config = config or RetryConfig()
         self.stats = RetryStats()
         self._attempt = 0
-        self._last_exception: Optional[BaseException] = None
+        self._last_exception: BaseException | None = None
 
     def should_continue(self) -> bool:
         """Check if another attempt should be made.
@@ -576,7 +564,7 @@ class RetryContext:
         self._attempt += 1
         self.stats.attempts = self._attempt + 1
 
-    async def __aenter__(self) -> "RetryContext":
+    async def __aenter__(self) -> RetryContext:
         """Enter async context."""
         return self
 
@@ -584,7 +572,7 @@ class RetryContext:
         """Exit async context."""
         return False
 
-    def __enter__(self) -> "RetryContext":
+    def __enter__(self) -> RetryContext:
         """Enter sync context."""
         return self
 

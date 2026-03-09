@@ -15,7 +15,7 @@ import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import GasEstimationConfig, TransactionSimulationConfig, get_config
 
@@ -37,11 +37,11 @@ class SimulationResult(str, Enum):
 class SimulationOutput:
     """Output from transaction simulation."""
     result: SimulationResult
-    return_data: Optional[str] = None  # Hex return data
-    gas_used: Optional[int] = None
-    revert_reason: Optional[str] = None
-    error_message: Optional[str] = None
-    logs: List[Dict[str, Any]] = field(default_factory=list)
+    return_data: str | None = None  # Hex return data
+    gas_used: int | None = None
+    revert_reason: str | None = None
+    error_message: str | None = None
+    logs: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_successful(self) -> bool:
@@ -63,7 +63,7 @@ class GasEstimation:
     max_fee_gwei: Decimal
     estimated_cost_wei: int
     estimated_cost_eth: Decimal
-    estimated_cost_usd: Optional[Decimal] = None
+    estimated_cost_usd: Decimal | None = None
 
     # Raw values in wei
     base_fee_wei: int = 0
@@ -75,11 +75,11 @@ class GasEstimation:
     base_fee_buffer_percent: int = 25
 
     # Price context
-    eth_price_usd: Optional[Decimal] = None
+    eth_price_usd: Decimal | None = None
     is_gas_price_capped: bool = False
-    original_max_fee_gwei: Optional[Decimal] = None
+    original_max_fee_gwei: Decimal | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "gas_limit": self.gas_limit,
@@ -99,7 +99,7 @@ class SimulationError(Exception):
     def __init__(
         self,
         message: str,
-        simulation_output: Optional[SimulationOutput] = None,
+        simulation_output: SimulationOutput | None = None,
     ):
         self.simulation_output = simulation_output
         super().__init__(message)
@@ -108,7 +108,7 @@ class SimulationError(Exception):
 class GasEstimationError(Exception):
     """Error during gas estimation."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         self.details = details or {}
         super().__init__(message)
 
@@ -128,14 +128,14 @@ class TransactionSimulator:
 
     def __init__(
         self,
-        config: Optional[TransactionSimulationConfig] = None,
+        config: TransactionSimulationConfig | None = None,
     ):
         self._config = config or get_config().simulation
 
     async def simulate(
         self,
         rpc_client: Any,  # ProductionRPCClient
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
         block: str = "latest",
     ) -> SimulationOutput:
         """
@@ -158,7 +158,7 @@ class TransactionSimulator:
             async with asyncio.timeout(self._config.timeout_seconds):
                 return await self._execute_simulation(rpc_client, tx_params, block)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"Simulation timed out after {self._config.timeout_seconds}s")
             if self._config.allow_simulation_timeout:
                 return SimulationOutput(
@@ -173,7 +173,7 @@ class TransactionSimulator:
     async def _execute_simulation(
         self,
         rpc_client: Any,
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
         block: str,
     ) -> SimulationOutput:
         """Execute the actual simulation."""
@@ -240,7 +240,7 @@ class TransactionSimulator:
             error_message=str(error),
         )
 
-    def _extract_revert_reason(self, error_message: str) -> Optional[str]:
+    def _extract_revert_reason(self, error_message: str) -> str | None:
         """Extract human-readable revert reason from error message."""
         # Common patterns for revert reasons
 
@@ -291,7 +291,7 @@ class TransactionSimulator:
     async def simulate_and_validate(
         self,
         rpc_client: Any,
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
         block: str = "latest",
     ) -> SimulationOutput:
         """
@@ -333,7 +333,7 @@ class GasEstimator:
 
     def __init__(
         self,
-        config: Optional[GasEstimationConfig] = None,
+        config: GasEstimationConfig | None = None,
     ):
         self._config = config or get_config().gas_estimation
         from .price_oracle import get_price_oracle
@@ -342,7 +342,7 @@ class GasEstimator:
     async def estimate(
         self,
         rpc_client: Any,  # ProductionRPCClient
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
         chain: str,
         apply_safety_margins: bool = True,
     ) -> GasEstimation:
@@ -410,7 +410,7 @@ class GasEstimator:
     async def _estimate_gas_limit(
         self,
         rpc_client: Any,
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
     ) -> int:
         """Estimate gas limit for transaction."""
         try:
@@ -460,7 +460,7 @@ class GasEstimator:
 
         return base_fee_wei, priority_fee_wei
 
-    async def _get_eth_price(self) -> Optional[Decimal]:
+    async def _get_eth_price(self) -> Decimal | None:
         """Get ETH price in USD via centralized price oracle."""
         return await self._oracle.get_price_usd("ETH")
 
@@ -535,8 +535,8 @@ class SimulationAndEstimation:
 
     def __init__(
         self,
-        simulation_config: Optional[TransactionSimulationConfig] = None,
-        gas_config: Optional[GasEstimationConfig] = None,
+        simulation_config: TransactionSimulationConfig | None = None,
+        gas_config: GasEstimationConfig | None = None,
     ):
         self._simulator = TransactionSimulator(simulation_config)
         self._estimator = GasEstimator(gas_config)
@@ -544,7 +544,7 @@ class SimulationAndEstimation:
     async def prepare_transaction(
         self,
         rpc_client: Any,
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
         chain: str,
         validate: bool = True,
     ) -> tuple[SimulationOutput, GasEstimation]:
@@ -608,7 +608,7 @@ class TenderlySimulator:
     TENDERLY_API_BASE = "https://api.tenderly.co/api/v1"
 
     # Chain ID mapping for Tenderly
-    CHAIN_IDS: Dict[str, int] = {
+    CHAIN_IDS: dict[str, int] = {
         "base": 8453,
         "base_sepolia": 84532,
         "ethereum": 1,
@@ -636,7 +636,7 @@ class TenderlySimulator:
 
     async def simulate(
         self,
-        tx: Dict[str, Any],
+        tx: dict[str, Any],
         chain_id: int,
     ) -> SimulationOutput:
         """Simulate a transaction via Tenderly API.
@@ -701,10 +701,10 @@ class TenderlySimulator:
                 error_message=str(e),
             )
 
-    def _parse_response(self, data: Dict[str, Any]) -> SimulationOutput:
+    def _parse_response(self, data: dict[str, Any]) -> SimulationOutput:
         """Parse Tenderly simulation response."""
         transaction = data.get("transaction", {})
-        simulation = data.get("simulation", {})
+        data.get("simulation", {})
 
         status = transaction.get("status", False)
         gas_used = transaction.get("gas_used", 0)
@@ -754,14 +754,14 @@ class SimulationRouter:
 
     def __init__(
         self,
-        tenderly: Optional[TenderlySimulator] = None,
-        local: Optional[TransactionSimulator] = None,
+        tenderly: TenderlySimulator | None = None,
+        local: TransactionSimulator | None = None,
     ):
         self._tenderly = tenderly
         self._local = local or TransactionSimulator()
 
     @classmethod
-    def from_settings(cls, settings: Any) -> "SimulationRouter":
+    def from_settings(cls, settings: Any) -> SimulationRouter:
         """Create a SimulationRouter from SardisSettings."""
         tenderly = None
         api_key = getattr(settings, "tenderly_api_key", "")
@@ -782,10 +782,10 @@ class SimulationRouter:
 
     async def simulate(
         self,
-        tx: Dict[str, Any],
+        tx: dict[str, Any],
         chain: str,
         *,
-        rpc_client: Optional[Any] = None,
+        rpc_client: Any | None = None,
     ) -> SimulationOutput:
         """Simulate a transaction, preferring Tenderly when available.
 
@@ -826,12 +826,12 @@ class SimulationRouter:
 
 
 # Global instance
-_simulation_service: Optional[SimulationAndEstimation] = None
+_simulation_service: SimulationAndEstimation | None = None
 
 
 def get_simulation_service(
-    simulation_config: Optional[TransactionSimulationConfig] = None,
-    gas_config: Optional[GasEstimationConfig] = None,
+    simulation_config: TransactionSimulationConfig | None = None,
+    gas_config: GasEstimationConfig | None = None,
 ) -> SimulationAndEstimation:
     """Get the global simulation and estimation service."""
     global _simulation_service

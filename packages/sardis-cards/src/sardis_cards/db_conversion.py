@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Callable, List, Optional
 
 from .auto_conversion import (
     ConversionDirection,
@@ -19,7 +19,6 @@ from .auto_conversion import (
     ConversionStatus,
     OfframpProvider,
     OnrampProvider,
-    UnifiedBalance,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,9 +36,9 @@ class PostgresAutoConversionService:
         self,
         balance_service,  # UnifiedBalanceService or PostgresUnifiedBalanceService
         dsn: str,
-        offramp_provider: Optional[OfframpProvider] = None,
-        onramp_provider: Optional[OnrampProvider] = None,
-        on_conversion_complete: Optional[Callable[[ConversionRecord], None]] = None,
+        offramp_provider: OfframpProvider | None = None,
+        onramp_provider: OnrampProvider | None = None,
+        on_conversion_complete: Callable[[ConversionRecord], None] | None = None,
     ) -> None:
         self._balance_service = balance_service
         self._dsn = dsn
@@ -76,7 +75,7 @@ class PostgresAutoConversionService:
         self,
         wallet_id: str,
         amount_cents: int,
-        card_transaction_id: Optional[str] = None,
+        card_transaction_id: str | None = None,
         chain: str = "base",
     ) -> ConversionRecord:
         """Convert USDC to USD for a card payment (DB-persisted)."""
@@ -129,7 +128,7 @@ class PostgresAutoConversionService:
                 record.provider_tx_id = f"mock_{conversion_id}"
 
             record.status = ConversionStatus.COMPLETED
-            record.completed_at = datetime.now(timezone.utc)
+            record.completed_at = datetime.now(UTC)
 
             # Use async add if available (DB-backed service), sync otherwise
             if hasattr(self._balance_service, "add_usd_balance"):
@@ -213,7 +212,7 @@ class PostgresAutoConversionService:
                 record.provider_tx_id = f"mock_{conversion_id}"
 
             record.status = ConversionStatus.COMPLETED
-            record.completed_at = datetime.now(timezone.utc)
+            record.completed_at = datetime.now(UTC)
             await self._persist_record(record)
 
             if self._on_conversion_complete:
@@ -227,7 +226,7 @@ class PostgresAutoConversionService:
 
         return record
 
-    async def get_conversion(self, conversion_id: str) -> Optional[ConversionRecord]:
+    async def get_conversion(self, conversion_id: str) -> ConversionRecord | None:
         """Get conversion record by ID from DB."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -249,10 +248,10 @@ class PostgresAutoConversionService:
 
     async def list_conversions(
         self,
-        wallet_id: Optional[str] = None,
-        status: Optional[ConversionStatus] = None,
+        wallet_id: str | None = None,
+        status: ConversionStatus | None = None,
         limit: int = 50,
-    ) -> List[ConversionRecord]:
+    ) -> list[ConversionRecord]:
         """List conversion records from DB."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:

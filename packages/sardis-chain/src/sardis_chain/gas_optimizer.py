@@ -11,10 +11,9 @@ import logging
 import time
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Dict, List, Optional
 
-from .config import get_config, ChainConfig
-from .price_oracle import get_price_oracle, CHAIN_NATIVE_TOKEN
+from .config import get_config
+from .price_oracle import get_price_oracle
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class GasEstimate:
 class ChainRoute:
     """Routing option for cross-chain or same-chain transfer."""
     source_chain: str
-    destination_chain: Optional[str]  # None = same chain
+    destination_chain: str | None  # None = same chain
     token: str
     estimated_gas_cost_usd: Decimal
     estimated_total_cost_usd: Decimal  # gas + bridge fees if cross-chain
@@ -89,7 +88,7 @@ class GasOptimizer:
     BRIDGE_FLAT_FEE_USD = Decimal("0.50")
     BRIDGE_TIME_SECONDS = 300  # 5 minutes average
 
-    def __init__(self, rpc_urls: Optional[Dict[str, str]] = None, cache_ttl_seconds: int = 30):
+    def __init__(self, rpc_urls: dict[str, str] | None = None, cache_ttl_seconds: int = 30):
         """
         Initialize gas optimizer.
 
@@ -99,7 +98,7 @@ class GasOptimizer:
         """
         self.rpc_urls = rpc_urls or {}
         self.cache_ttl = cache_ttl_seconds
-        self._gas_cache: Dict[str, tuple[Decimal, float]] = {}
+        self._gas_cache: dict[str, tuple[Decimal, float]] = {}
         self._price_oracle = get_price_oracle()
         self._lock = asyncio.Lock()
 
@@ -159,8 +158,8 @@ class GasOptimizer:
         token: str,
         amount: Decimal,
         destination: str,
-        source_chains: Optional[List[str]] = None,
-    ) -> List[ChainRoute]:
+        source_chains: list[str] | None = None,
+    ) -> list[ChainRoute]:
         """
         Find and rank all possible routes for a transfer.
 
@@ -178,7 +177,7 @@ class GasOptimizer:
             config = get_config()
             source_chains = list(config.chains.keys())
 
-        routes: List[ChainRoute] = []
+        routes: list[ChainRoute] = []
 
         # Gather estimates in parallel
         estimate_tasks = []
@@ -211,7 +210,7 @@ class GasOptimizer:
 
         return routes
 
-    async def get_gas_prices(self) -> Dict[str, GasEstimate]:
+    async def get_gas_prices(self) -> dict[str, GasEstimate]:
         """
         Get current gas estimates for all supported chains.
 
@@ -231,7 +230,7 @@ class GasOptimizer:
 
         gathered = await asyncio.gather(*estimate_tasks.values(), return_exceptions=True)
 
-        for chain, result in zip(estimate_tasks.keys(), gathered):
+        for chain, result in zip(estimate_tasks.keys(), gathered, strict=False):
             if not isinstance(result, Exception):
                 results[chain] = result
             else:
@@ -245,7 +244,7 @@ class GasOptimizer:
         token: str,
         amount: Decimal,
         destination: str,
-    ) -> Optional[ChainRoute]:
+    ) -> ChainRoute | None:
         """Estimate a single route option."""
         try:
             # Get gas estimate for this chain
@@ -322,7 +321,7 @@ class GasOptimizer:
 
             return gas_price
 
-    def _get_cached_gas_price(self, chain: str) -> Optional[Decimal]:
+    def _get_cached_gas_price(self, chain: str) -> Decimal | None:
         """
         Get cached gas price if not expired.
 
@@ -377,7 +376,7 @@ class GasOptimizer:
 
 
 # Global singleton
-_optimizer: Optional[GasOptimizer] = None
+_optimizer: GasOptimizer | None = None
 
 
 def get_gas_optimizer(cache_ttl_seconds: int = 30) -> GasOptimizer:

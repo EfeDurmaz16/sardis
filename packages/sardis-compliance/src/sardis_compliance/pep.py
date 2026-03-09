@@ -18,9 +18,9 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +62,9 @@ class PEPMatch:
     confidence_score: float  # 0.0 to 1.0
     risk_level: PEPRiskLevel
     source: str
-    last_updated: Optional[datetime] = None
-    related_entities: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    last_updated: datetime | None = None
+    related_entities: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_high_risk(self) -> bool:
@@ -78,12 +78,12 @@ class PEPScreeningResult:
     is_pep: bool
     subject_id: str
     subject_name: str
-    screened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    matches: List[PEPMatch] = field(default_factory=list)
+    screened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    matches: list[PEPMatch] = field(default_factory=list)
     highest_risk: PEPRiskLevel = PEPRiskLevel.LOW
     provider: str = "mock"
     requires_enhanced_due_diligence: bool = False
-    reason: Optional[str] = None
+    reason: str | None = None
 
     @property
     def match_count(self) -> int:
@@ -106,11 +106,11 @@ class PEPScreeningRequest:
     """Request for PEP screening."""
     subject_id: str  # Internal reference ID
     name: str
-    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
-    country: Optional[str] = None  # ISO 3166-1 alpha-2
-    nationality: Optional[str] = None
-    aliases: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    date_of_birth: str | None = None  # YYYY-MM-DD format
+    country: str | None = None  # ISO 3166-1 alpha-2
+    nationality: str | None = None
+    aliases: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class PEPProvider(ABC):
@@ -127,8 +127,8 @@ class PEPProvider(ABC):
     @abstractmethod
     async def screen_batch(
         self,
-        requests: List[PEPScreeningRequest],
-    ) -> List[PEPScreeningResult]:
+        requests: list[PEPScreeningRequest],
+    ) -> list[PEPScreeningResult]:
         """Screen multiple individuals for PEP status."""
         pass
 
@@ -136,7 +136,7 @@ class PEPProvider(ABC):
     async def get_match_details(
         self,
         match_id: str,
-    ) -> Optional[PEPMatch]:
+    ) -> PEPMatch | None:
         """Get detailed information about a specific match."""
         pass
 
@@ -250,8 +250,8 @@ class ComplyAdvantagePEPProvider(PEPProvider):
 
     async def screen_batch(
         self,
-        requests: List[PEPScreeningRequest],
-    ) -> List[PEPScreeningResult]:
+        requests: list[PEPScreeningRequest],
+    ) -> list[PEPScreeningResult]:
         """Screen multiple individuals."""
         results = []
         for request in requests:
@@ -262,7 +262,7 @@ class ComplyAdvantagePEPProvider(PEPProvider):
     async def get_match_details(
         self,
         match_id: str,
-    ) -> Optional[PEPMatch]:
+    ) -> PEPMatch | None:
         """Get detailed match information."""
         client = await self._get_client()
 
@@ -278,9 +278,9 @@ class ComplyAdvantagePEPProvider(PEPProvider):
             logger.error(f"Failed to get match details: {e}")
             return None
 
-    def _parse_match(self, doc: Dict[str, Any]) -> PEPMatch:
+    def _parse_match(self, doc: dict[str, Any]) -> PEPMatch:
         """Parse ComplyAdvantage match document."""
-        entity_type = doc.get("entity_type", "unknown")
+        doc.get("entity_type", "unknown")
 
         # Determine PEP category
         types = doc.get("types", [])
@@ -358,7 +358,7 @@ class MockPEPProvider(PEPProvider):
     }
 
     def __init__(self):
-        self._custom_results: Dict[str, PEPScreeningResult] = {}
+        self._custom_results: dict[str, PEPScreeningResult] = {}
 
     async def screen_individual(
         self,
@@ -399,8 +399,8 @@ class MockPEPProvider(PEPProvider):
 
     async def screen_batch(
         self,
-        requests: List[PEPScreeningRequest],
-    ) -> List[PEPScreeningResult]:
+        requests: list[PEPScreeningRequest],
+    ) -> list[PEPScreeningResult]:
         """Screen multiple individuals."""
         results = []
         for request in requests:
@@ -411,7 +411,7 @@ class MockPEPProvider(PEPProvider):
     async def get_match_details(
         self,
         match_id: str,
-    ) -> Optional[PEPMatch]:
+    ) -> PEPMatch | None:
         """Get match details from mock data."""
         for match in self.KNOWN_PEPS.values():
             if match.match_id == match_id:
@@ -436,7 +436,7 @@ class PEPService:
 
     def __init__(
         self,
-        provider: Optional[PEPProvider] = None,
+        provider: PEPProvider | None = None,
         cache_ttl_seconds: int = 86400,  # 24 hours
         require_edd_for_pep: bool = True,
     ):
@@ -451,14 +451,14 @@ class PEPService:
         self._provider = provider or MockPEPProvider()
         self._cache_ttl = cache_ttl_seconds
         self._require_edd_for_pep = require_edd_for_pep
-        self._cache: Dict[str, tuple[PEPScreeningResult, datetime]] = {}
+        self._cache: dict[str, tuple[PEPScreeningResult, datetime]] = {}
 
     async def screen_individual(
         self,
         subject_id: str,
         name: str,
-        date_of_birth: Optional[str] = None,
-        country: Optional[str] = None,
+        date_of_birth: str | None = None,
+        country: str | None = None,
         force_refresh: bool = False,
     ) -> PEPScreeningResult:
         """
@@ -471,7 +471,7 @@ class PEPService:
         # Check cache
         if not force_refresh and cache_key in self._cache:
             result, cached_at = self._cache[cache_key]
-            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            age = (datetime.now(UTC) - cached_at).total_seconds()
             if age < self._cache_ttl:
                 logger.debug(f"PEP screening cache hit for {subject_id}")
                 return result
@@ -491,7 +491,7 @@ class PEPService:
             result.requires_enhanced_due_diligence = True
 
         # Cache result
-        self._cache[cache_key] = (result, datetime.now(timezone.utc))
+        self._cache[cache_key] = (result, datetime.now(UTC))
 
         logger.info(
             f"PEP screening completed: subject={subject_id}, "
@@ -502,8 +502,8 @@ class PEPService:
 
     async def screen_batch(
         self,
-        subjects: List[Dict[str, Any]],
-    ) -> List[PEPScreeningResult]:
+        subjects: list[dict[str, Any]],
+    ) -> list[PEPScreeningResult]:
         """
         Screen multiple individuals for PEP status.
 
@@ -530,7 +530,7 @@ class PEPService:
                 result.requires_enhanced_due_diligence = True
 
             cache_key = f"{result.subject_id}:{result.subject_name.lower()}"
-            self._cache[cache_key] = (result, datetime.now(timezone.utc))
+            self._cache[cache_key] = (result, datetime.now(UTC))
 
         logger.info(f"Batch PEP screening completed: {len(results)} subjects")
 
@@ -560,7 +560,7 @@ class PEPService:
 
 
 def create_pep_service(
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     provider_name: str = "complyadvantage",
 ) -> PEPService:
     """

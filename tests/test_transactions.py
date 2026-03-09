@@ -8,12 +8,12 @@ import pytest
 async def test_list_chains(test_client):
     """Test listing supported chains."""
     response = await test_client.get("/api/v2/transactions/chains")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "chains" in data
     assert len(data["chains"]) > 0
-    
+
     # Check chain structure
     chain = data["chains"][0]
     assert "name" in chain
@@ -25,7 +25,7 @@ async def test_list_chains(test_client):
 async def test_list_tokens(test_client):
     """Test listing tokens for a chain."""
     response = await test_client.get("/api/v2/transactions/tokens/base_sepolia")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["chain"] == "base_sepolia"
@@ -37,7 +37,7 @@ async def test_list_tokens(test_client):
 async def test_list_tokens_invalid_chain(test_client):
     """Test listing tokens for an invalid chain."""
     response = await test_client.get("/api/v2/transactions/tokens/invalid_chain")
-    
+
     assert response.status_code == 400
 
 
@@ -77,7 +77,7 @@ async def test_estimate_gas_invalid_chain(test_client):
             "destination": "0x1234567890123456789012345678901234567890",
         },
     )
-    
+
     assert response.status_code == 400
 
 
@@ -89,6 +89,6 @@ async def test_transaction_status(test_client):
         "/api/v2/transactions/status/0x1234567890123456789012345678901234567890123456789012345678901234",
         params={"chain": "base_sepolia"},
     )
-    
+
     # In simulated mode, this should work
     assert response.status_code in [200, 500]  # 500 if RPC fails

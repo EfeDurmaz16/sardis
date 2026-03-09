@@ -2,29 +2,23 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-
-from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
-
 from sardis_v2_core.kya_trust_scoring import (
-    TrustScorer,
     KYALevel,
-    TransactionRecord,
-    ComplianceRecord,
-    ReputationRecord,
-    BehavioralRecord,
-)
-from sardis_v2_core.trust_infrastructure import (
-    TrustFramework,
-    AttestationType,
 )
 from sardis_v2_core.multi_agent_payments import (
-    PaymentOrchestrator,
     PaymentFlowType,
+    PaymentOrchestrator,
 )
+from sardis_v2_core.trust_infrastructure import (
+    AttestationType,
+    TrustFramework,
+)
+
+from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
 
 router = APIRouter(prefix="/v2/trust", tags=["trust"])
 
@@ -40,7 +34,7 @@ class RegisterAgentRequest(BaseModel):
     agent_id: str
     owner_id: str
     kya_level: str = "none"
-    capabilities: List[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
 
 
 class TrustEvaluationRequest(BaseModel):
@@ -54,39 +48,39 @@ class AttestationRequest(BaseModel):
     agent_id: str
     attestation_type: str
     issuer_id: str
-    claim: Dict[str, Any]
+    claim: dict[str, Any]
     ttl_days: int = 365
 
 
 class SplitPaymentRequest(BaseModel):
     payer_id: str
-    recipients: List[Dict[str, str]]  # [{"id": "agent_x", "share": "0.5"}]
+    recipients: list[dict[str, str]]  # [{"id": "agent_x", "share": "0.5"}]
     total_amount: str
     token: str = "USDC"
     chain: str = "base"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class GroupPaymentRequest(BaseModel):
-    payers: List[Dict[str, str]]  # [{"id": "agent_x", "amount": "100"}]
+    payers: list[dict[str, str]]  # [{"id": "agent_x", "amount": "100"}]
     recipient_id: str
     token: str = "USDC"
     chain: str = "base"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class CascadePaymentRequest(BaseModel):
-    steps: List[Dict[str, Any]]
+    steps: list[dict[str, Any]]
     token: str = "USDC"
     chain: str = "base"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 # ============ Trust Score Routes ============
 
 
 @router.post("/agents/register")
-async def register_agent(req: RegisterAgentRequest) -> Dict[str, Any]:
+async def register_agent(req: RegisterAgentRequest) -> dict[str, Any]:
     """Register an agent with a trust profile."""
     profile = await _framework.register_agent(
         agent_id=req.agent_id,
@@ -98,7 +92,7 @@ async def register_agent(req: RegisterAgentRequest) -> Dict[str, Any]:
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent_profile(agent_id: str) -> Dict[str, Any]:
+async def get_agent_profile(agent_id: str) -> dict[str, Any]:
     """Get an agent's trust profile."""
     profile = await _framework.get_profile(agent_id)
     if not profile:
@@ -107,7 +101,7 @@ async def get_agent_profile(agent_id: str) -> Dict[str, Any]:
 
 
 @router.post("/agents/{agent_id}/kya-level")
-async def update_kya_level(agent_id: str, level: str) -> Dict[str, Any]:
+async def update_kya_level(agent_id: str, level: str) -> dict[str, Any]:
     """Update an agent's KYA verification level."""
     try:
         profile = await _framework.update_kya_level(agent_id, KYALevel(level))
@@ -117,7 +111,7 @@ async def update_kya_level(agent_id: str, level: str) -> Dict[str, Any]:
 
 
 @router.post("/evaluate")
-async def evaluate_trust(req: TrustEvaluationRequest) -> Dict[str, Any]:
+async def evaluate_trust(req: TrustEvaluationRequest) -> dict[str, Any]:
     """Evaluate trust between two agents for a transaction."""
     evaluation = await _framework.evaluate_trust(
         requester=req.requester,
@@ -129,7 +123,7 @@ async def evaluate_trust(req: TrustEvaluationRequest) -> Dict[str, Any]:
 
 
 @router.get("/agents/{agent_id}/score")
-async def get_trust_score(agent_id: str) -> Dict[str, Any]:
+async def get_trust_score(agent_id: str) -> dict[str, Any]:
     """Get an agent's current trust score with breakdown."""
     profile = await _framework.get_profile(agent_id)
     if not profile or not profile.trust_score:
@@ -138,7 +132,7 @@ async def get_trust_score(agent_id: str) -> Dict[str, Any]:
 
 
 @router.get("/agents/{agent_id}/network")
-async def get_trust_network(agent_id: str, depth: int = 1) -> Dict[str, Any]:
+async def get_trust_network(agent_id: str, depth: int = 1) -> dict[str, Any]:
     """Get the trust network around an agent."""
     return await _framework.get_trust_network(agent_id, depth=min(depth, 3))
 
@@ -147,7 +141,7 @@ async def get_trust_network(agent_id: str, depth: int = 1) -> Dict[str, Any]:
 
 
 @router.post("/attestations")
-async def issue_attestation(req: AttestationRequest) -> Dict[str, Any]:
+async def issue_attestation(req: AttestationRequest) -> dict[str, Any]:
     """Issue a trust attestation for an agent."""
     try:
         attestation = await _framework.issue_attestation(
@@ -163,13 +157,13 @@ async def issue_attestation(req: AttestationRequest) -> Dict[str, Any]:
 
 
 @router.get("/attestations/{attestation_id}/verify")
-async def verify_attestation(attestation_id: str) -> Dict[str, Any]:
+async def verify_attestation(attestation_id: str) -> dict[str, Any]:
     """Verify an attestation's validity."""
     return await _framework.verify_attestation(attestation_id)
 
 
 @router.delete("/attestations/{attestation_id}")
-async def revoke_attestation(attestation_id: str) -> Dict[str, Any]:
+async def revoke_attestation(attestation_id: str) -> dict[str, Any]:
     """Revoke an attestation."""
     success = await _framework.revoke_attestation(attestation_id)
     if not success:
@@ -180,9 +174,9 @@ async def revoke_attestation(attestation_id: str) -> Dict[str, Any]:
 @router.get("/agents/{agent_id}/attestations")
 async def get_agent_attestations(
     agent_id: str,
-    attestation_type: Optional[str] = None,
+    attestation_type: str | None = None,
     valid_only: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get attestations for an agent."""
     att_type = AttestationType(attestation_type) if attestation_type else None
     attestations = await _framework.get_attestations(
@@ -199,7 +193,7 @@ async def get_agent_attestations(
 
 
 @router.post("/payments/split")
-async def create_split_payment(req: SplitPaymentRequest) -> Dict[str, Any]:
+async def create_split_payment(req: SplitPaymentRequest) -> dict[str, Any]:
     """Create a split payment from one payer to multiple recipients."""
     recipients = [
         (r["id"], Decimal(r["share"]))
@@ -217,7 +211,7 @@ async def create_split_payment(req: SplitPaymentRequest) -> Dict[str, Any]:
 
 
 @router.post("/payments/group")
-async def create_group_payment(req: GroupPaymentRequest) -> Dict[str, Any]:
+async def create_group_payment(req: GroupPaymentRequest) -> dict[str, Any]:
     """Create a group payment from multiple payers to one recipient."""
     payers = [
         (p["id"], Decimal(p["amount"]))
@@ -234,7 +228,7 @@ async def create_group_payment(req: GroupPaymentRequest) -> Dict[str, Any]:
 
 
 @router.post("/payments/cascade")
-async def create_cascade_payment(req: CascadePaymentRequest) -> Dict[str, Any]:
+async def create_cascade_payment(req: CascadePaymentRequest) -> dict[str, Any]:
     """Create a cascading payment chain."""
     flow = await _orchestrator.create_cascade_payment(
         steps=req.steps,
@@ -249,7 +243,7 @@ async def create_cascade_payment(req: CascadePaymentRequest) -> Dict[str, Any]:
 async def execute_payment_flow(
     flow_id: str,
     _ks: None = Depends(require_kill_switch_clear_checkout),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute a payment flow."""
     try:
         flow = await _orchestrator.execute_flow(flow_id)
@@ -259,7 +253,7 @@ async def execute_payment_flow(
 
 
 @router.get("/payments/{flow_id}")
-async def get_payment_flow(flow_id: str) -> Dict[str, Any]:
+async def get_payment_flow(flow_id: str) -> dict[str, Any]:
     """Get payment flow status."""
     flow = await _orchestrator.get_flow(flow_id)
     if not flow:
@@ -268,7 +262,7 @@ async def get_payment_flow(flow_id: str) -> Dict[str, Any]:
 
 
 @router.post("/payments/{flow_id}/cancel")
-async def cancel_payment_flow(flow_id: str, reason: str = "") -> Dict[str, Any]:
+async def cancel_payment_flow(flow_id: str, reason: str = "") -> dict[str, Any]:
     """Cancel a payment flow."""
     try:
         flow = await _orchestrator.cancel_flow(flow_id, reason)
@@ -279,10 +273,10 @@ async def cancel_payment_flow(flow_id: str, reason: str = "") -> Dict[str, Any]:
 
 @router.get("/payments")
 async def list_payment_flows(
-    agent_id: Optional[str] = None,
-    flow_type: Optional[str] = None,
-    state: Optional[str] = None,
-) -> Dict[str, Any]:
+    agent_id: str | None = None,
+    flow_type: str | None = None,
+    state: str | None = None,
+) -> dict[str, Any]:
     """List payment flows with optional filters."""
     ft = PaymentFlowType(flow_type) if flow_type else None
     flows = await _orchestrator.list_flows(agent_id=agent_id, flow_type=ft)
@@ -296,6 +290,6 @@ async def list_payment_flows(
 
 
 @router.get("/stats")
-async def get_trust_stats() -> Dict[str, Any]:
+async def get_trust_stats() -> dict[str, Any]:
     """Get trust infrastructure statistics."""
     return await _framework.get_stats()

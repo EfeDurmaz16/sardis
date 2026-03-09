@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 class ConsentType(str, Enum):
@@ -32,23 +32,23 @@ class DelegationConsent:
     agent_id: str = ""
 
     # Linked credential (null for pre-provisioning consent)
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
 
     consent_type: ConsentType = ConsentType.INITIAL_GRANT
 
     # Timestamps
     granted_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     # Snapshot of what was approved at consent time
     approved_scopes_snapshot: dict[str, Any] = field(default_factory=dict)
 
     # Revocation
     revocable: bool = True
-    revoked_at: Optional[datetime] = None
-    revoke_reason: Optional[str] = None
+    revoked_at: datetime | None = None
+    revoke_reason: str | None = None
 
     # Provenance
     source_surface: str = "api"  # dashboard, sdk, browser_agent, api
@@ -61,9 +61,7 @@ class DelegationConsent:
     def is_valid(self) -> bool:
         if self.revoked_at is not None:
             return False
-        if self.expires_at and datetime.now(timezone.utc) >= self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) >= self.expires_at)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,7 +88,7 @@ class DelegationConsent:
 @runtime_checkable
 class ConsentStore(Protocol):
     async def record_consent(self, consent: DelegationConsent) -> str: ...
-    async def get(self, consent_id: str) -> Optional[DelegationConsent]: ...
+    async def get(self, consent_id: str) -> DelegationConsent | None: ...
     async def get_for_credential(self, credential_id: str) -> list[DelegationConsent]: ...
     async def get_for_agent(self, agent_id: str) -> list[DelegationConsent]: ...
     async def revoke_consent(self, consent_id: str, reason: str) -> None: ...
@@ -109,7 +107,7 @@ class InMemoryConsentStore:
         self._consents[consent.consent_id] = consent
         return consent.consent_id
 
-    async def get(self, consent_id: str) -> Optional[DelegationConsent]:
+    async def get(self, consent_id: str) -> DelegationConsent | None:
         return self._consents.get(consent_id)
 
     async def get_for_credential(self, credential_id: str) -> list[DelegationConsent]:
@@ -128,7 +126,7 @@ class InMemoryConsentStore:
         consent = self._consents.get(consent_id)
         if consent is None:
             raise KeyError(f"Consent {consent_id} not found")
-        consent.revoked_at = datetime.now(timezone.utc)
+        consent.revoked_at = datetime.now(UTC)
         consent.revoke_reason = reason
 
     async def is_consent_valid(self, consent_id: str) -> bool:
@@ -167,7 +165,7 @@ class PostgresConsentStore:
             agent_id=row["agent_id"],
             credential_id=row.get("credential_id"),
             consent_type=ConsentType(row["consent_type"]),
-            granted_at=row.get("granted_at", datetime.now(timezone.utc)),
+            granted_at=row.get("granted_at", datetime.now(UTC)),
             expires_at=row.get("expires_at"),
             approved_scopes_snapshot=scopes,
             revocable=row.get("revocable", True),
@@ -206,7 +204,7 @@ class PostgresConsentStore:
             )
         return consent.consent_id
 
-    async def get(self, consent_id: str) -> Optional[DelegationConsent]:
+    async def get(self, consent_id: str) -> DelegationConsent | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM delegation_consents WHERE consent_id = $1",

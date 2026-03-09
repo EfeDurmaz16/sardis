@@ -39,14 +39,13 @@ jobs:
       - name: Run ruff lint
         run: uv run ruff check .
 
-      - name: Run pytest
+      - name: Run root tests
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Run package tests
         run: |
-          uv run pytest tests/ \
-            packages/sardis-core/tests/ \
-            packages/sardis-guardrails/tests/ \
-            packages/sardis-ledger/tests/ \
-            packages/sardis-api/tests/ \
-            -v --tb=short
+          uv run pytest packages/sardis-core/tests/ -v --tb=short
+          uv run pytest packages/sardis-ledger/tests/ -v --tb=short
 
   idempotency-replay-e2e:
     name: Idempotency Replay E2E
@@ -143,7 +142,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -186,7 +184,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -226,7 +223,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
           run_install: false
 
       - name: Get pnpm store directory

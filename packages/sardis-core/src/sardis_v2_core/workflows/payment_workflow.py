@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("sardis.workflows.payment")
 
@@ -50,8 +50,8 @@ except ImportError:
 
 # Import activity stubs
 from .activities import (
-    PaymentActivityInput,
     ActivityResult,
+    PaymentActivityInput,
 )
 
 
@@ -63,9 +63,9 @@ class PaymentWorkflowInput:
     amount_minor: int
     currency: str = "USDC"
     chain: str = "base"
-    merchant_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    merchant_id: str | None = None
+    idempotency_key: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -74,8 +74,8 @@ class PaymentWorkflowResult:
     success: bool
     mandate_id: str
     phase_results: dict[str, ActivityResult]
-    error: Optional[str] = None
-    tx_hash: Optional[str] = None
+    error: str | None = None
+    tx_hash: str | None = None
 
 
 # Retry policies per phase
@@ -232,11 +232,11 @@ class PaymentWorkflow:
     ) -> PaymentWorkflowResult:
         """Fallback: run activities directly without Temporal."""
         from .activities import (
-            kya_verification,
-            policy_check,
-            compliance_screening,
             chain_execution,
+            compliance_screening,
+            kya_verification,
             ledger_append,
+            policy_check,
             webhook_notification,
         )
 

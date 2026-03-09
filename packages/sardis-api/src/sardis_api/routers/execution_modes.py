@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -23,8 +22,8 @@ class SimulateRequest(BaseModel):
     agent_id: str
     amount: str
     currency: str = "USDC"
-    merchant_id: Optional[str] = None
-    execution_mode: Optional[str] = None
+    merchant_id: str | None = None
+    execution_mode: str | None = None
 
 
 def _get_mode_router(request: Request):
@@ -40,7 +39,7 @@ async def available_modes(
     agent_id: str = Query(...),
     amount: str = Query(...),
     currency: str = Query("USDC"),
-    merchant_id: Optional[str] = Query(None),
+    merchant_id: str | None = Query(None),
     mode_router=Depends(_get_mode_router),
 ):
     """Available execution modes for agent + amount + currency + merchant."""

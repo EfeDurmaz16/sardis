@@ -15,7 +15,7 @@ import json
 import os
 
 import openai
-from sardis_openai import get_sardis_tools, SardisToolHandler
+from sardis_openai import SardisToolHandler, get_sardis_tools
 
 
 async def main():

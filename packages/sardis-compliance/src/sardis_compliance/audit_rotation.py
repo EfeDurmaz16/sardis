@@ -14,15 +14,14 @@ import gzip
 import hashlib
 import json
 import logging
-import os
-import shutil
 import threading
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol
-from collections import deque
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +65,10 @@ class RotationConfig:
     verify_on_rotation: bool = True
 
     # Cloud storage settings (if applicable)
-    s3_bucket: Optional[str] = None
+    s3_bucket: str | None = None
     s3_prefix: str = "audit/"
-    gcs_bucket: Optional[str] = None
-    azure_container: Optional[str] = None
+    gcs_bucket: str | None = None
+    azure_container: str | None = None
 
 
 @dataclass
@@ -81,14 +80,14 @@ class ArchiveMetadata:
     first_entry_at: datetime
     last_entry_at: datetime
     size_bytes: int
-    compressed_size_bytes: Optional[int] = None
+    compressed_size_bytes: int | None = None
     checksum: str = ""
     hash_chain_start: str = ""
     hash_chain_end: str = ""
     destination: ArchiveDestination = ArchiveDestination.LOCAL
     path: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "archive_id": self.archive_id,
@@ -122,7 +121,7 @@ class ArchiveStore(Protocol):
         """Download archive data."""
         ...
 
-    def list_archives(self) -> List[ArchiveMetadata]:
+    def list_archives(self) -> list[ArchiveMetadata]:
         """List all archives."""
         ...
 
@@ -138,14 +137,14 @@ class LocalArchiveStore:
         self._base_path = Path(base_path)
         self._base_path.mkdir(parents=True, exist_ok=True)
         self._metadata_file = self._base_path / "metadata.json"
-        self._metadata: Dict[str, Dict[str, Any]] = {}
+        self._metadata: dict[str, dict[str, Any]] = {}
         self._load_metadata()
 
     def _load_metadata(self) -> None:
         """Load metadata index."""
         if self._metadata_file.exists():
             try:
-                with open(self._metadata_file, "r") as f:
+                with open(self._metadata_file) as f:
                     self._metadata = json.load(f)
             except Exception as e:
                 logger.error(f"Failed to load archive metadata: {e}")
@@ -188,7 +187,7 @@ class LocalArchiveStore:
         with open(path, "rb") as f:
             return f.read()
 
-    def list_archives(self) -> List[ArchiveMetadata]:
+    def list_archives(self) -> list[ArchiveMetadata]:
         """List all local archives."""
         archives = []
         for archive_id, meta in self._metadata.items():
@@ -233,7 +232,7 @@ class S3ArchiveStore:
         self,
         bucket: str,
         prefix: str = "audit/",
-        region: Optional[str] = None,
+        region: str | None = None,
     ):
         self._bucket = bucket
         self._prefix = prefix
@@ -292,7 +291,7 @@ class S3ArchiveStore:
 
         raise ValueError(f"Archive not found: {archive_id}")
 
-    def list_archives(self) -> List[ArchiveMetadata]:
+    def list_archives(self) -> list[ArchiveMetadata]:
         """List all S3 archives."""
         client = self._get_client()
         archives = []
@@ -309,10 +308,10 @@ class S3ArchiveStore:
 
                 archives.append(ArchiveMetadata(
                     archive_id=archive_id,
-                    created_at=datetime.fromisoformat(meta.get("created_at", datetime.now(timezone.utc).isoformat())),
+                    created_at=datetime.fromisoformat(meta.get("created_at", datetime.now(UTC).isoformat())),
                     entry_count=int(meta.get("entry_count", 0)),
-                    first_entry_at=datetime.now(timezone.utc),  # Would need to store this
-                    last_entry_at=datetime.now(timezone.utc),
+                    first_entry_at=datetime.now(UTC),  # Would need to store this
+                    last_entry_at=datetime.now(UTC),
                     size_bytes=obj["Size"],
                     checksum=meta.get("checksum", ""),
                     destination=ArchiveDestination.S3,
@@ -347,9 +346,9 @@ class AuditLogRotator:
 
     def __init__(
         self,
-        config: Optional[RotationConfig] = None,
-        archive_store: Optional[ArchiveStore] = None,
-        on_rotation: Optional[Callable[[ArchiveMetadata], None]] = None,
+        config: RotationConfig | None = None,
+        archive_store: ArchiveStore | None = None,
+        on_rotation: Callable[[ArchiveMetadata], None] | None = None,
     ):
         """
         Initialize audit log rotator.
@@ -366,8 +365,8 @@ class AuditLogRotator:
         self._entries: deque = deque()
         self._lock = threading.Lock()
         self._current_size_bytes = 0
-        self._last_rotation = datetime.now(timezone.utc)
-        self._hash_chain: List[str] = []
+        self._last_rotation = datetime.now(UTC)
+        self._hash_chain: list[str] = []
         self._rotation_count = 0
 
     def _create_archive_store(self) -> ArchiveStore:
@@ -382,12 +381,12 @@ class AuditLogRotator:
         else:
             return LocalArchiveStore(self._config.archive_path)
 
-    def _compute_entry_hash(self, entry: Dict[str, Any], prev_hash: str = "") -> str:
+    def _compute_entry_hash(self, entry: dict[str, Any], prev_hash: str = "") -> str:
         """Compute hash for an entry."""
         data = json.dumps({**entry, "prev_hash": prev_hash}, sort_keys=True)
         return hashlib.sha256(data.encode()).hexdigest()
 
-    def append(self, entry: Dict[str, Any]) -> str:
+    def append(self, entry: dict[str, Any]) -> str:
         """
         Append an entry to the audit log.
 
@@ -422,13 +421,10 @@ class AuditLogRotator:
             return True
 
         # Time trigger
-        age = (datetime.now(timezone.utc) - self._last_rotation).total_seconds()
-        if age >= self._config.rotation_interval_hours * 3600:
-            return True
+        age = (datetime.now(UTC) - self._last_rotation).total_seconds()
+        return age >= self._config.rotation_interval_hours * 3600
 
-        return False
-
-    def _rotate(self) -> Optional[ArchiveMetadata]:
+    def _rotate(self) -> ArchiveMetadata | None:
         """Perform log rotation. Must be called with lock held."""
         if not self._entries:
             return None
@@ -437,7 +433,7 @@ class AuditLogRotator:
 
         # Prepare archive data
         entries_list = list(self._entries)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         archive_id = f"audit_{now.strftime('%Y%m%d_%H%M%S')}_{self._rotation_count}"
         self._rotation_count += 1
@@ -506,7 +502,7 @@ class AuditLogRotator:
 
         return metadata
 
-    def _verify_chain(self, entries: List[Dict[str, Any]]) -> bool:
+    def _verify_chain(self, entries: list[dict[str, Any]]) -> bool:
         """Verify hash chain integrity."""
         prev_hash = ""
         for entry in entries:
@@ -525,12 +521,12 @@ class AuditLogRotator:
 
         return True
 
-    def force_rotate(self) -> Optional[ArchiveMetadata]:
+    def force_rotate(self) -> ArchiveMetadata | None:
         """Force immediate rotation."""
         with self._lock:
             return self._rotate()
 
-    def get_current_entries(self) -> List[Dict[str, Any]]:
+    def get_current_entries(self) -> list[dict[str, Any]]:
         """Get current (non-archived) entries."""
         with self._lock:
             return list(self._entries)
@@ -540,11 +536,11 @@ class AuditLogRotator:
         with self._lock:
             return len(self._entries)
 
-    def get_archives(self) -> List[ArchiveMetadata]:
+    def get_archives(self) -> list[ArchiveMetadata]:
         """List all archives."""
         return self._archive_store.list_archives()
 
-    def restore_archive(self, archive_id: str) -> List[Dict[str, Any]]:
+    def restore_archive(self, archive_id: str) -> list[dict[str, Any]]:
         """
         Restore entries from an archive.
 
@@ -563,7 +559,7 @@ class AuditLogRotator:
 
         return entries
 
-    def cleanup_expired_archives(self) -> List[str]:
+    def cleanup_expired_archives(self) -> list[str]:
         """
         Remove archives older than retention period.
 
@@ -576,13 +572,12 @@ class AuditLogRotator:
             return []
 
         deleted = []
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self._config.retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self._config.retention_days)
 
         for archive in self._archive_store.list_archives():
-            if archive.created_at < cutoff:
-                if self._archive_store.delete(archive.archive_id):
-                    deleted.append(archive.archive_id)
-                    logger.info(f"Deleted expired archive: {archive.archive_id}")
+            if archive.created_at < cutoff and self._archive_store.delete(archive.archive_id):
+                deleted.append(archive.archive_id)
+                logger.info(f"Deleted expired archive: {archive.archive_id}")
 
         return deleted
 
@@ -596,7 +591,7 @@ class RotatingAuditStore:
 
     def __init__(
         self,
-        config: Optional[RotationConfig] = None,
+        config: RotationConfig | None = None,
     ):
         """
         Initialize rotating audit store.
@@ -607,9 +602,9 @@ class RotatingAuditStore:
         self._config = config or RotationConfig()
         self._rotator = AuditLogRotator(config=self._config)
         self._lock = threading.Lock()
-        self._by_mandate: Dict[str, List[str]] = {}
+        self._by_mandate: dict[str, list[str]] = {}
 
-    def append(self, entry: Dict[str, Any]) -> str:
+    def append(self, entry: dict[str, Any]) -> str:
         """
         Append an audit entry.
 
@@ -630,7 +625,7 @@ class RotatingAuditStore:
 
         return audit_id
 
-    def get_by_mandate(self, mandate_id: str) -> List[Dict[str, Any]]:
+    def get_by_mandate(self, mandate_id: str) -> list[dict[str, Any]]:
         """Get entries for a mandate (current and archived)."""
         with self._lock:
             audit_ids = set(self._by_mandate.get(mandate_id, []))
@@ -652,7 +647,7 @@ class RotatingAuditStore:
 
         return results
 
-    def get_recent(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent entries."""
         current = self._rotator.get_current_entries()
         return current[-limit:]
@@ -661,14 +656,14 @@ class RotatingAuditStore:
         """Get current entry count (non-archived)."""
         return self._rotator.get_current_count()
 
-    def force_rotate(self) -> Optional[ArchiveMetadata]:
+    def force_rotate(self) -> ArchiveMetadata | None:
         """Force immediate rotation."""
         return self._rotator.force_rotate()
 
-    def get_archives(self) -> List[ArchiveMetadata]:
+    def get_archives(self) -> list[ArchiveMetadata]:
         """Get list of archives."""
         return self._rotator.get_archives()
 
-    def export_all(self) -> List[Dict[str, Any]]:
+    def export_all(self) -> list[dict[str, Any]]:
         """Export all current entries."""
         return self._rotator.get_current_entries()

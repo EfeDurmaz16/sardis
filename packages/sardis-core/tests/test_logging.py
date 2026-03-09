@@ -13,33 +13,32 @@ from __future__ import annotations
 
 import json
 import logging
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch, MagicMock
-import io
-
 import sys
 from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sardis_v2_core.logging import (
-    # Core functions
-    mask_sensitive_data,
-    mask_value,
-    mask_headers,
-    is_sensitive_key,
+    JsonFormatter,
+    RequestContext,
+    StructuredLogger,
+    # Configuration
+    configure_logging,
     # Logging
     get_logger,
-    StructuredLogger,
-    RequestContext,
-    log_request,
-    log_response,
+    is_sensitive_key,
     # Decorators
     log_operation,
     log_operation_sync,
-    # Configuration
-    configure_logging,
-    JsonFormatter,
+    log_request,
+    log_response,
+    mask_headers,
+    # Core functions
+    mask_sensitive_data,
+    mask_value,
 )
 
 
@@ -363,9 +362,8 @@ class TestStructuredLogger:
         """Context should handle exceptions properly."""
         logger = StructuredLogger("test")
 
-        with pytest.raises(ValueError):
-            with logger.context(operation="failing_op"):
-                raise ValueError("test error")
+        with pytest.raises(ValueError), logger.context(operation="failing_op"):
+            raise ValueError("test error")
 
         # Context should be cleaned up
         assert logger.current_context is None

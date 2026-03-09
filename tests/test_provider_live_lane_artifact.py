@@ -4,7 +4,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 SCRIPT_PATH = Path("scripts/release/generate_provider_live_lane_artifact.py")
 
 

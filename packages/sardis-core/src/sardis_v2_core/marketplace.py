@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any
 from uuid import uuid4
 
 
@@ -54,31 +54,31 @@ class ServiceListing:
     """A service offered by an agent."""
     service_id: str = field(default_factory=lambda: f"svc_{uuid4().hex[:16]}")
     provider_agent_id: str = ""
-    
+
     # Service details
     name: str = ""
     description: str = ""
     category: ServiceCategory = ServiceCategory.OTHER
-    tags: List[str] = field(default_factory=list)
-    
+    tags: list[str] = field(default_factory=list)
+
     # Pricing
     price_amount: Decimal = Decimal("0")
     price_token: str = "USDC"
     price_type: str = "fixed"  # fixed, hourly, per_request
-    
+
     # Capabilities
-    capabilities: Dict[str, Any] = field(default_factory=dict)
-    api_endpoint: Optional[str] = None
-    
+    capabilities: dict[str, Any] = field(default_factory=dict)
+    api_endpoint: str | None = None
+
     # Status
     status: ServiceStatus = ServiceStatus.DRAFT
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
     # Stats
     total_orders: int = 0
     completed_orders: int = 0
-    rating: Optional[Decimal] = None
+    rating: Decimal | None = None
 
 
 @dataclass
@@ -89,10 +89,10 @@ class Milestone:
     description: str = ""
     amount: Decimal = Decimal("0")
     status: MilestoneStatus = MilestoneStatus.PENDING
-    due_date: Optional[datetime] = None
-    submitted_at: Optional[datetime] = None
-    approved_at: Optional[datetime] = None
-    released_at: Optional[datetime] = None
+    due_date: datetime | None = None
+    submitted_at: datetime | None = None
+    approved_at: datetime | None = None
+    released_at: datetime | None = None
 
 
 @dataclass
@@ -100,24 +100,24 @@ class ServiceOffer:
     """An offer/agreement between two agents for a service."""
     offer_id: str = field(default_factory=lambda: f"offer_{uuid4().hex[:16]}")
     service_id: str = ""
-    
+
     # Parties
     provider_agent_id: str = ""
     consumer_agent_id: str = ""
-    
+
     # Terms
     total_amount: Decimal = Decimal("0")
     token: str = "USDC"
-    milestones: List[Milestone] = field(default_factory=list)
-    
+    milestones: list[Milestone] = field(default_factory=list)
+
     # Status
     status: OfferStatus = OfferStatus.PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    accepted_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    accepted_at: datetime | None = None
+    completed_at: datetime | None = None
+
     # Escrow
-    escrow_tx_hash: Optional[str] = None
+    escrow_tx_hash: str | None = None
     escrow_amount: Decimal = Decimal("0")
     released_amount: Decimal = Decimal("0")
 
@@ -131,7 +131,7 @@ class ServiceReview:
     reviewer_agent_id: str = ""
     rating: int = 5  # 1-5
     comment: str = ""
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class MarketplaceRepository:
@@ -141,11 +141,11 @@ class MarketplaceRepository:
         self._dsn = dsn
         self._pg_pool = None
         self._use_postgres = dsn.startswith("postgresql://") or dsn.startswith("postgres://")
-        
+
         # In-memory storage for dev
-        self._services: Dict[str, ServiceListing] = {}
-        self._offers: Dict[str, ServiceOffer] = {}
-        self._reviews: Dict[str, ServiceReview] = {}
+        self._services: dict[str, ServiceListing] = {}
+        self._offers: dict[str, ServiceOffer] = {}
+        self._reviews: dict[str, ServiceReview] = {}
 
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
@@ -184,10 +184,10 @@ class MarketplaceRepository:
                 )
         else:
             self._services[service.service_id] = service
-        
+
         return service
 
-    async def get_service(self, service_id: str) -> Optional[ServiceListing]:
+    async def get_service(self, service_id: str) -> ServiceListing | None:
         """Get a service by ID."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -204,29 +204,29 @@ class MarketplaceRepository:
 
     async def list_services(
         self,
-        category: Optional[ServiceCategory] = None,
-        provider_id: Optional[str] = None,
+        category: ServiceCategory | None = None,
+        provider_id: str | None = None,
         status: ServiceStatus = ServiceStatus.ACTIVE,
         limit: int = 50,
-    ) -> List[ServiceListing]:
+    ) -> list[ServiceListing]:
         """List services with optional filters."""
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
                 query = "SELECT * FROM marketplace_services WHERE status = $1"
                 params = [status.value]
-                
+
                 if category:
                     query += f" AND category = ${len(params) + 1}"
                     params.append(category.value)
-                
+
                 if provider_id:
                     query += f" AND provider_agent_id = ${len(params) + 1}"
                     params.append(provider_id)
-                
+
                 query += f" ORDER BY created_at DESC LIMIT ${len(params) + 1}"
                 params.append(limit)
-                
+
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_service(row) for row in rows]
         else:
@@ -243,18 +243,18 @@ class MarketplaceRepository:
         self,
         service_id: str,
         **updates,
-    ) -> Optional[ServiceListing]:
+    ) -> ServiceListing | None:
         """Update a service listing."""
         service = await self.get_service(service_id)
         if not service:
             return None
-        
+
         for key, value in updates.items():
             if hasattr(service, key):
                 setattr(service, key, value)
-        
-        service.updated_at = datetime.now(timezone.utc)
-        
+
+        service.updated_at = datetime.now(UTC)
+
         if self._use_postgres:
             # Update in database
             pool = await self._get_pool()
@@ -272,7 +272,7 @@ class MarketplaceRepository:
                 )
         else:
             self._services[service_id] = service
-        
+
         return service
 
     # Service Offers
@@ -299,10 +299,10 @@ class MarketplaceRepository:
                 )
         else:
             self._offers[offer.offer_id] = offer
-        
+
         return offer
 
-    async def get_offer(self, offer_id: str) -> Optional[ServiceOffer]:
+    async def get_offer(self, offer_id: str) -> ServiceOffer | None:
         """Get an offer by ID."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -321,9 +321,9 @@ class MarketplaceRepository:
         self,
         agent_id: str,
         role: str = "any",  # provider, consumer, any
-        status: Optional[OfferStatus] = None,
+        status: OfferStatus | None = None,
         limit: int = 50,
-    ) -> List[ServiceOffer]:
+    ) -> list[ServiceOffer]:
         """List offers for an agent."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -334,16 +334,16 @@ class MarketplaceRepository:
                     query = "SELECT * FROM marketplace_offers WHERE consumer_agent_id = $1"
                 else:
                     query = "SELECT * FROM marketplace_offers WHERE provider_agent_id = $1 OR consumer_agent_id = $1"
-                
+
                 params = [agent_id]
-                
+
                 if status:
                     query += f" AND status = ${len(params) + 1}"
                     params.append(status.value)
-                
+
                 query += f" ORDER BY created_at DESC LIMIT ${len(params) + 1}"
                 params.append(limit)
-                
+
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_offer(row) for row in rows]
         else:
@@ -362,19 +362,19 @@ class MarketplaceRepository:
         self,
         offer_id: str,
         status: OfferStatus,
-    ) -> Optional[ServiceOffer]:
+    ) -> ServiceOffer | None:
         """Update offer status."""
         offer = await self.get_offer(offer_id)
         if not offer:
             return None
-        
+
         offer.status = status
-        
+
         if status == OfferStatus.ACCEPTED:
-            offer.accepted_at = datetime.now(timezone.utc)
+            offer.accepted_at = datetime.now(UTC)
         elif status == OfferStatus.COMPLETED:
-            offer.completed_at = datetime.now(timezone.utc)
-        
+            offer.completed_at = datetime.now(UTC)
+
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
@@ -391,7 +391,7 @@ class MarketplaceRepository:
                 )
         else:
             self._offers[offer_id] = offer
-        
+
         return offer
 
     # Reviews
@@ -415,7 +415,7 @@ class MarketplaceRepository:
                     review.rating,
                     review.comment,
                 )
-                
+
                 # Update service rating
                 await conn.execute(
                     """
@@ -438,14 +438,14 @@ class MarketplaceRepository:
                 reviews = [r for r in self._reviews.values() if r.service_id == review.service_id]
                 if reviews:
                     service.rating = Decimal(sum(r.rating for r in reviews)) / len(reviews)
-        
+
         return review
 
     async def list_reviews(
         self,
         service_id: str,
         limit: int = 50,
-    ) -> List[ServiceReview]:
+    ) -> list[ServiceReview]:
         """List reviews for a service."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -470,11 +470,11 @@ class MarketplaceRepository:
     async def search_services(
         self,
         query: str,
-        category: Optional[ServiceCategory] = None,
-        min_rating: Optional[Decimal] = None,
-        max_price: Optional[Decimal] = None,
+        category: ServiceCategory | None = None,
+        min_rating: Decimal | None = None,
+        max_price: Decimal | None = None,
         limit: int = 50,
-    ) -> List[ServiceListing]:
+    ) -> list[ServiceListing]:
         """Search services by query."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -485,22 +485,22 @@ class MarketplaceRepository:
                     AND (name ILIKE $1 OR description ILIKE $1 OR $1 = ANY(tags))
                 """
                 params = [f"%{query}%"]
-                
+
                 if category:
                     sql += f" AND category = ${len(params) + 1}"
                     params.append(category.value)
-                
+
                 if min_rating:
                     sql += f" AND rating >= ${len(params) + 1}"
                     params.append(float(min_rating))
-                
+
                 if max_price:
                     sql += f" AND price_amount <= ${len(params) + 1}"
                     params.append(float(max_price))
-                
+
                 sql += f" ORDER BY rating DESC NULLS LAST, completed_orders DESC LIMIT ${len(params) + 1}"
                 params.append(limit)
-                
+
                 rows = await conn.fetch(sql, *params)
                 return [self._row_to_service(row) for row in rows]
         else:

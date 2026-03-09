@@ -6,16 +6,16 @@ including session creation, tracking, expiration, and activity monitoring.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-import uuid
-import hashlib
+from typing import Any
 
 from sardis_checkout.models import (
-    CustomerSession,
     DEFAULT_SESSION_TIMEOUT_MINUTES,
+    CustomerSession,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,12 +50,12 @@ class SessionStore(ABC):
         pass
 
     @abstractmethod
-    async def get(self, session_id: str) -> Optional[CustomerSession]:
+    async def get(self, session_id: str) -> CustomerSession | None:
         """Get a session by ID."""
         pass
 
     @abstractmethod
-    async def get_by_customer(self, customer_id: str) -> List[CustomerSession]:
+    async def get_by_customer(self, customer_id: str) -> list[CustomerSession]:
         """Get all sessions for a customer."""
         pass
 
@@ -91,8 +91,8 @@ class InMemorySessionStore(SessionStore):
                 "CRITICAL: InMemorySessionStore cannot be used in production. "
                 "Configure a persistent session store (PostgreSQL or Redis)."
             )
-        self._sessions: Dict[str, CustomerSession] = {}
-        self._customer_sessions: Dict[str, List[str]] = {}  # customer_id -> session_ids
+        self._sessions: dict[str, CustomerSession] = {}
+        self._customer_sessions: dict[str, list[str]] = {}  # customer_id -> session_ids
 
     async def create(self, session: CustomerSession) -> CustomerSession:
         self._sessions[session.session_id] = session
@@ -102,10 +102,10 @@ class InMemorySessionStore(SessionStore):
             self._customer_sessions[session.customer_id].append(session.session_id)
         return session
 
-    async def get(self, session_id: str) -> Optional[CustomerSession]:
+    async def get(self, session_id: str) -> CustomerSession | None:
         return self._sessions.get(session_id)
 
-    async def get_by_customer(self, customer_id: str) -> List[CustomerSession]:
+    async def get_by_customer(self, customer_id: str) -> list[CustomerSession]:
         session_ids = self._customer_sessions.get(customer_id, [])
         return [
             self._sessions[sid] for sid in session_ids
@@ -171,12 +171,12 @@ class SessionManager:
     async def create_session(
         self,
         agent_id: str,
-        customer_id: Optional[str] = None,
-        customer_email: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_fingerprint: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        customer_id: str | None = None,
+        customer_email: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_fingerprint: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CustomerSession:
         """
         Create a new customer checkout session.
@@ -269,7 +269,7 @@ class SessionManager:
     async def update_activity(
         self,
         session_id: str,
-        extend_expiration: Optional[bool] = None,
+        extend_expiration: bool | None = None,
     ) -> CustomerSession:
         """
         Update the last activity timestamp for a session.
@@ -313,7 +313,7 @@ class SessionManager:
         logger.debug(f"Added checkout {checkout_id} to session {session_id}")
         return session
 
-    async def get_session_checkouts(self, session_id: str) -> List[str]:
+    async def get_session_checkouts(self, session_id: str) -> list[str]:
         """Get all checkout IDs associated with a session."""
         session = await self.get_session(session_id)
         return session.checkout_ids.copy()
@@ -341,7 +341,7 @@ class SessionManager:
     async def abandon_session(
         self,
         session_id: str,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> CustomerSession:
         """
         Mark a session as abandoned.
@@ -380,7 +380,7 @@ class SessionManager:
         logger.info(f"Session {session_id} force-expired")
         return session
 
-    async def get_session_info(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_info(self, session_id: str) -> dict[str, Any]:
         """
         Get detailed information about a session.
         """
@@ -418,7 +418,7 @@ class SessionManager:
         self,
         customer_id: str,
         active_only: bool = False,
-    ) -> List[CustomerSession]:
+    ) -> list[CustomerSession]:
         """
         Get all sessions for a customer.
 
@@ -448,7 +448,7 @@ class SessionManager:
             logger.info(f"Cleaned up {count} expired sessions")
         return count
 
-    async def get_active_session_count(self, agent_id: Optional[str] = None) -> int:
+    async def get_active_session_count(self, agent_id: str | None = None) -> int:
         """
         Get count of active sessions, optionally filtered by agent.
 

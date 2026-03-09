@@ -47,12 +47,12 @@ def _get_sandbox_class() -> Any:
 
 
 def create_sandbox(
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     simulation: bool = True,
     *,
     template: str = TEMPLATE_NAME,
     timeout: int = 60,
-    extra_env: Optional[Dict[str, str]] = None,
+    extra_env: dict[str, str] | None = None,
 ) -> Any:
     """Create an E2B sandbox with the Sardis agent template.
 
@@ -79,7 +79,7 @@ def create_sandbox(
     """
     Sandbox = _get_sandbox_class()
 
-    env_vars: Dict[str, str] = {
+    env_vars: dict[str, str] = {
         "SARDIS_SIMULATION": str(simulation).lower(),
     }
 
@@ -107,12 +107,12 @@ class SandboxResult:
 
 def run_agent_in_sandbox(
     agent_code: str,
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     simulation: bool = True,
     *,
     template: str = TEMPLATE_NAME,
     timeout: int = 60,
-    extra_env: Optional[Dict[str, str]] = None,
+    extra_env: dict[str, str] | None = None,
 ) -> SandboxResult:
     """Create a sandbox, run *agent_code*, and return the output.
 

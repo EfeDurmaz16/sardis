@@ -4,9 +4,8 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+
 import pytest
-from typing import AsyncGenerator
-from unittest.mock import patch
 
 # Add package paths for testing FIRST
 root_dir = Path(__file__).parent.parent
@@ -35,6 +34,7 @@ os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 
 # Clear the settings cache so tests get fresh settings
 from sardis_v2_core.config import load_settings
+
 load_settings.cache_clear()
 
 _BASE_SARDIS_ENV: dict[str, str] = {
@@ -135,7 +135,8 @@ def test_settings():
 async def test_client():
     """Create a test client for the API."""
     import time as _time
-    from httpx import AsyncClient, ASGITransport
+
+    from httpx import ASGITransport, AsyncClient
     from sardis_api.main import create_app
 
     app = create_app()
@@ -155,8 +156,9 @@ async def test_client():
 def sample_mandate():
     """Create a sample payment mandate for testing."""
     import time
+
     from sardis_v2_core.mandates import PaymentMandate
-    
+
     return PaymentMandate(
         mandate_id="test_mandate_001",
         issuer="test_issuer",

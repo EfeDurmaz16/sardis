@@ -11,9 +11,8 @@ TODO: Enable when nargo CLI is available in CI.
 from __future__ import annotations
 
 import pytest
-from python.types import PolicyCircuitInputs, PolicyCircuitPublicInputs, evidence_hash_to_pair
 from python.policy_circuit_sim import simulate_circuit
-
+from python.types import PolicyCircuitInputs, PolicyCircuitPublicInputs, evidence_hash_to_pair
 
 VALID_HASH = "a" * 64
 VALID_HIGH, VALID_LOW = evidence_hash_to_pair(VALID_HASH)

@@ -6,16 +6,22 @@ The schema is intentionally minimal and backwards-compatible.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
-from .spending_policy import MerchantRule, SpendingPolicy, SpendingScope, TimeWindowLimit, TrustLevel
+from .spending_policy import (
+    MerchantRule,
+    SpendingPolicy,
+    SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
+)
 
 
 def _dt_to_iso(dt: datetime) -> str:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.isoformat()
 
 
@@ -23,15 +29,15 @@ def _iso_to_dt(value: str) -> datetime:
     # datetime.fromisoformat supports offsets; fall back to UTC if missing
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
 def spending_policy_to_json(policy: SpendingPolicy) -> dict[str, Any]:
-    def dec(v: Optional[Decimal]) -> Optional[str]:
+    def dec(v: Decimal | None) -> str | None:
         return str(v) if v is not None else None
 
-    def twl(v: Optional[TimeWindowLimit]) -> Optional[dict[str, Any]]:
+    def twl(v: TimeWindowLimit | None) -> dict[str, Any] | None:
         if v is None:
             return None
         return {
@@ -85,7 +91,7 @@ def spending_policy_from_json(data: dict[str, Any]) -> SpendingPolicy:
             return Decimal(default)
         return Decimal(str(v))
 
-    def twl(v: Any) -> Optional[TimeWindowLimit]:
+    def twl(v: Any) -> TimeWindowLimit | None:
         if not isinstance(v, dict):
             return None
         return TimeWindowLimit(
@@ -93,7 +99,7 @@ def spending_policy_from_json(data: dict[str, Any]) -> SpendingPolicy:
             limit_amount=dec(v.get("limit_amount", "0")),
             currency=str(v.get("currency", "USDC")),
             current_spent=dec(v.get("current_spent", "0")),
-            window_start=_iso_to_dt(v.get("window_start", datetime.now(timezone.utc).isoformat())),
+            window_start=_iso_to_dt(v.get("window_start", datetime.now(UTC).isoformat())),
         )
 
     def mr(v: Any) -> MerchantRule:
@@ -107,7 +113,7 @@ def spending_policy_from_json(data: dict[str, Any]) -> SpendingPolicy:
             max_per_tx=Decimal(str(v["max_per_tx"])) if v.get("max_per_tx") is not None else None,
             daily_limit=Decimal(str(v["daily_limit"])) if v.get("daily_limit") is not None else None,
             reason=v.get("reason"),
-            created_at=_iso_to_dt(v.get("created_at", datetime.now(timezone.utc).isoformat())),
+            created_at=_iso_to_dt(v.get("created_at", datetime.now(UTC).isoformat())),
             expires_at=_iso_to_dt(v["expires_at"]) if v.get("expires_at") else None,
         )
 
@@ -149,7 +155,7 @@ def spending_policy_from_json(data: dict[str, Any]) -> SpendingPolicy:
         ],
         require_preauth=bool(data.get("require_preauth", False)),
         max_hold_hours=int(data.get("max_hold_hours", 168)),
-        created_at=_iso_to_dt(data.get("created_at", datetime.now(timezone.utc).isoformat())),
-        updated_at=_iso_to_dt(data.get("updated_at", datetime.now(timezone.utc).isoformat())),
+        created_at=_iso_to_dt(data.get("created_at", datetime.now(UTC).isoformat())),
+        updated_at=_iso_to_dt(data.get("updated_at", datetime.now(UTC).isoformat())),
     )
     return policy

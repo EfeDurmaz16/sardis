@@ -2,9 +2,16 @@
 Tests for SardisClient
 """
 import pytest
+
 from sardis_sdk import AsyncSardisClient, SardisClient
 from sardis_sdk.client import RetryConfig
-from sardis_sdk.models.errors import APIError, AuthenticationError, ConnectionError, RateLimitError, TimeoutError
+from sardis_sdk.models.errors import (
+    APIError,
+    AuthenticationError,
+    ConnectionError,
+    RateLimitError,
+    TimeoutError,
+)
 
 
 class TestClientInitialization:

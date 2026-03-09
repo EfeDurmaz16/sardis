@@ -234,8 +234,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
     print(f"Group: {group.name} ({group.group_id})")
-    print(f"Daily budget: $1,000")
-    print(f"Agents: researcher, purchaser, auditor")
+    print("Daily budget: $1,000")
+    print("Agents: researcher, purchaser, auditor")
     print()
 
     result = crew.kickoff()

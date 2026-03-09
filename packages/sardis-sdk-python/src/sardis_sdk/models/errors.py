@@ -7,7 +7,7 @@ detailed error information, and helper methods for error handling.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 
 class ErrorCode(str, Enum):
@@ -139,13 +139,13 @@ class SardisError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        code: Optional[Union[str, ErrorCode]] = None,
-        details: Optional[Dict[str, Any]] = None,
-        request_id: Optional[str] = None,
-        severity: Optional[ErrorSeverity] = None,
-        retryable: Optional[bool] = None,
-        cause: Optional[Exception] = None,
+        message: str | None = None,
+        code: str | ErrorCode | None = None,
+        details: dict[str, Any] | None = None,
+        request_id: str | None = None,
+        severity: ErrorSeverity | None = None,
+        retryable: bool | None = None,
+        cause: Exception | None = None,
     ):
         self.message = message or self.default_message
         self.code = code if isinstance(code, str) else (code.value if code else self.default_code.value)
@@ -171,7 +171,7 @@ class SardisError(Exception):
             f"request_id={self.request_id!r})"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert error to a dictionary representation.
 
         Returns:
@@ -195,7 +195,7 @@ class SardisError(Exception):
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SardisError":
+    def from_dict(cls, data: dict[str, Any]) -> SardisError:
         """Create an error from a dictionary.
 
         Args:
@@ -212,7 +212,7 @@ class SardisError(Exception):
             request_id=error_data.get("request_id"),
         )
 
-    def with_request_id(self, request_id: str) -> "SardisError":
+    def with_request_id(self, request_id: str) -> SardisError:
         """Create a copy of this error with a request ID attached.
 
         Args:
@@ -246,11 +246,11 @@ class APIError(SardisError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
+        message: str | None = None,
         status_code: int = 0,
-        code: Optional[Union[str, ErrorCode]] = None,
-        details: Optional[Dict[str, Any]] = None,
-        request_id: Optional[str] = None,
+        code: str | ErrorCode | None = None,
+        details: dict[str, Any] | None = None,
+        request_id: str | None = None,
         **kwargs: Any,
     ):
         self.status_code = status_code
@@ -272,9 +272,9 @@ class APIError(SardisError):
     def from_response(
         cls,
         status_code: int,
-        body: Dict[str, Any],
-        request_id: Optional[str] = None,
-    ) -> "APIError":
+        body: dict[str, Any],
+        request_id: str | None = None,
+    ) -> APIError:
         """Create an APIError from an HTTP response.
 
         Args:
@@ -312,7 +312,7 @@ class APIError(SardisError):
         )
 
     @staticmethod
-    def _get_error_class_for_status(status_code: int) -> Type["APIError"]:
+    def _get_error_class_for_status(status_code: int) -> type[APIError]:
         """Get the appropriate error class for a status code."""
         status_map = {
             400: ValidationError,
@@ -344,8 +344,8 @@ class AuthenticationError(APIError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        code: Optional[Union[str, ErrorCode]] = None,
+        message: str | None = None,
+        code: str | ErrorCode | None = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -370,9 +370,9 @@ class ValidationError(APIError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        field: Optional[str] = None,
-        errors: Optional[List[Dict[str, Any]]] = None,
+        message: str | None = None,
+        field: str | None = None,
+        errors: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ):
         details = kwargs.pop("details", {}) or {}
@@ -404,7 +404,7 @@ class NotFoundError(APIError):
         self,
         resource_type: str = "Resource",
         resource_id: str = "",
-        message: Optional[str] = None,
+        message: str | None = None,
         **kwargs: Any,
     ):
         self.resource_type = resource_type
@@ -444,8 +444,8 @@ class RateLimitError(APIError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        retry_after: Optional[int] = None,
+        message: str | None = None,
+        retry_after: int | None = None,
         **kwargs: Any,
     ):
         self.retry_after = retry_after
@@ -479,9 +479,9 @@ class InsufficientBalanceError(APIError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        required: Optional[str] = None,
-        available: Optional[str] = None,
+        message: str | None = None,
+        required: str | None = None,
+        available: str | None = None,
         currency: str = "USDC",
         **kwargs: Any,
     ):
@@ -517,7 +517,7 @@ class ServerError(APIError):
     default_severity = ErrorSeverity.HIGH
     default_retryable = True
 
-    def __init__(self, message: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str | None = None, **kwargs: Any):
         super().__init__(
             message=message or self.default_message,
             status_code=kwargs.pop("status_code", 500),
@@ -535,7 +535,7 @@ class BadGatewayError(APIError):
     default_message = "Bad gateway"
     default_retryable = True
 
-    def __init__(self, message: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str | None = None, **kwargs: Any):
         super().__init__(
             message=message or self.default_message,
             status_code=kwargs.pop("status_code", 502),
@@ -553,7 +553,7 @@ class ServiceUnavailableError(APIError):
     default_message = "Service temporarily unavailable"
     default_retryable = True
 
-    def __init__(self, message: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str | None = None, **kwargs: Any):
         super().__init__(
             message=message or self.default_message,
             status_code=kwargs.pop("status_code", 503),
@@ -571,7 +571,7 @@ class GatewayTimeoutError(APIError):
     default_message = "Gateway timeout"
     default_retryable = True
 
-    def __init__(self, message: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str | None = None, **kwargs: Any):
         super().__init__(
             message=message or self.default_message,
             status_code=kwargs.pop("status_code", 504),
@@ -715,7 +715,7 @@ class PolicyViolationError(ComplianceError):
 
 
 # Error registry for looking up errors by code
-ERROR_REGISTRY: Dict[str, Type[SardisError]] = {
+ERROR_REGISTRY: dict[str, type[SardisError]] = {
     ErrorCode.UNKNOWN_ERROR.value: SardisError,
     ErrorCode.AUTHENTICATION_ERROR.value: AuthenticationError,
     ErrorCode.INVALID_API_KEY.value: AuthenticationError,
@@ -735,7 +735,7 @@ ERROR_REGISTRY: Dict[str, Type[SardisError]] = {
 
 def error_from_code(
     code: str,
-    message: Optional[str] = None,
+    message: str | None = None,
     **kwargs: Any,
 ) -> SardisError:
     """Create an error instance from an error code.
@@ -753,48 +753,48 @@ def error_from_code(
 
 
 __all__ = [
-    # Enums
-    "ErrorCode",
-    "ErrorSeverity",
-    # Base errors
-    "SardisError",
+    "ERROR_REGISTRY",
     "APIError",
     # Authentication
     "AuthenticationError",
-    # Validation
-    "ValidationError",
-    # Resources
-    "NotFoundError",
-    # Rate limiting
-    "RateLimitError",
-    # Balance
-    "InsufficientBalanceError",
-    # Server
-    "ServerError",
     "BadGatewayError",
-    "ServiceUnavailableError",
-    "GatewayTimeoutError",
-    # Network
-    "NetworkError",
-    "ConnectionError",
-    "TimeoutError",
-    # Payment
-    "PaymentError",
-    "HoldError",
-    "HoldExpiredError",
-    "HoldAlreadyCapturedError",
-    "HoldAlreadyVoidedError",
     # Blockchain
     "BlockchainError",
-    "TransactionFailedError",
-    "GasEstimationError",
     "ChainNotSupportedError",
     # Compliance
     "ComplianceError",
+    "ConnectionError",
+    # Enums
+    "ErrorCode",
+    "ErrorSeverity",
+    "GasEstimationError",
+    "GatewayTimeoutError",
+    "HoldAlreadyCapturedError",
+    "HoldAlreadyVoidedError",
+    "HoldError",
+    "HoldExpiredError",
+    # Balance
+    "InsufficientBalanceError",
     "KYCRequiredError",
-    "SanctionsCheckFailedError",
+    # Network
+    "NetworkError",
+    # Resources
+    "NotFoundError",
+    # Payment
+    "PaymentError",
     "PolicyViolationError",
+    # Rate limiting
+    "RateLimitError",
+    "SanctionsCheckFailedError",
+    # Base errors
+    "SardisError",
+    # Server
+    "ServerError",
+    "ServiceUnavailableError",
+    "TimeoutError",
+    "TransactionFailedError",
+    # Validation
+    "ValidationError",
     # Utilities
     "error_from_code",
-    "ERROR_REGISTRY",
 ]

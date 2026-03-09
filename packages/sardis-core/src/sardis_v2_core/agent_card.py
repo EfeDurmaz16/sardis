@@ -155,11 +155,7 @@ def verify_agent_card(card: dict) -> bool:
     public_key = card.get("public_key")
     signature = card.get("signature")
 
-    if public_key and signature:
-        if not _verify_card_signature(card, public_key, signature):
-            return False
-
-    return True
+    return not (public_key and signature and not _verify_card_signature(card, public_key, signature))
 
 
 def _canonical_card_json(card: dict) -> bytes:
@@ -203,8 +199,8 @@ def _verify_card_signature(card: dict, public_key: str, signature: str) -> bool:
 def _verify_ed25519(key_bytes: bytes, message: bytes, signature: bytes) -> bool:
     """Verify Ed25519 signature."""
     try:
-        from nacl.signing import VerifyKey
         from nacl.exceptions import BadSignatureError
+        from nacl.signing import VerifyKey
 
         verify_key = VerifyKey(key_bytes)
         verify_key.verify(message, signature)
@@ -217,8 +213,8 @@ def _verify_ed25519(key_bytes: bytes, message: bytes, signature: bytes) -> bool:
 def _verify_ecdsa_p256(key_bytes: bytes, message: bytes, signature: bytes) -> bool:
     """Verify ECDSA P-256 (ES256) signature."""
     try:
-        from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
 
         public_key = ec.EllipticCurvePublicKey.from_encoded_point(
             ec.SECP256R1(), key_bytes,

@@ -1,5 +1,4 @@
 """Tests for alert rules engine."""
-import pytest
 from decimal import Decimal
 
 from sardis_v2_core.alert_rules import (

@@ -11,12 +11,13 @@ Provides data aggregation and metrics for compliance dashboards:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional, Callable
-from collections import defaultdict
 import threading
+from collections import defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +59,15 @@ class ComplianceAlert:
     category: str
     title: str
     description: str
-    subject_id: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    subject_id: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     status: AlertStatus = AlertStatus.OPEN
-    assigned_to: Optional[str] = None
-    resolution_notes: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    assigned_to: str | None = None
+    resolution_notes: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "alert_id": self.alert_id,
@@ -89,7 +90,7 @@ class MetricDataPoint:
     """A single data point for a metric."""
     timestamp: datetime
     value: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -97,11 +98,11 @@ class MetricSeries:
     """Time series data for a metric."""
     metric_type: MetricType
     name: str
-    data_points: List[MetricDataPoint] = field(default_factory=list)
+    data_points: list[MetricDataPoint] = field(default_factory=list)
     aggregation: str = "sum"  # sum, avg, max, min, count
 
     @property
-    def latest_value(self) -> Optional[float]:
+    def latest_value(self) -> float | None:
         """Get the most recent value."""
         if not self.data_points:
             return None
@@ -119,7 +120,7 @@ class MetricSeries:
             return 0.0
         return self.total / len(self.data_points)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "metric_type": self.metric_type.value,
@@ -144,7 +145,7 @@ class DashboardSummary:
     """Summary data for compliance dashboard."""
     period_start: datetime
     period_end: datetime
-    generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Key metrics
     total_transactions: int = 0
@@ -168,11 +169,11 @@ class DashboardSummary:
     critical_alerts: int = 0
 
     # Breakdowns
-    by_country: Dict[str, int] = field(default_factory=dict)
-    by_risk_level: Dict[str, int] = field(default_factory=dict)
-    by_category: Dict[str, int] = field(default_factory=dict)
+    by_country: dict[str, int] = field(default_factory=dict)
+    by_risk_level: dict[str, int] = field(default_factory=dict)
+    by_category: dict[str, int] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "period_start": self.period_start.isoformat(),
@@ -217,10 +218,10 @@ class AlertManager:
     """
 
     def __init__(self):
-        self._alerts: Dict[str, ComplianceAlert] = {}
+        self._alerts: dict[str, ComplianceAlert] = {}
         self._lock = threading.Lock()
         self._counter = 0
-        self._subscribers: List[Callable[[ComplianceAlert], None]] = []
+        self._subscribers: list[Callable[[ComplianceAlert], None]] = []
 
     def create_alert(
         self,
@@ -228,8 +229,8 @@ class AlertManager:
         category: str,
         title: str,
         description: str,
-        subject_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        subject_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ComplianceAlert:
         """Create a new alert."""
         with self._lock:
@@ -258,17 +259,17 @@ class AlertManager:
         logger.info(f"Alert created: {alert_id} - {severity.value} - {title}")
         return alert
 
-    def get_alert(self, alert_id: str) -> Optional[ComplianceAlert]:
+    def get_alert(self, alert_id: str) -> ComplianceAlert | None:
         """Get an alert by ID."""
         return self._alerts.get(alert_id)
 
     def update_alert(
         self,
         alert_id: str,
-        status: Optional[AlertStatus] = None,
-        assigned_to: Optional[str] = None,
-        resolution_notes: Optional[str] = None,
-    ) -> Optional[ComplianceAlert]:
+        status: AlertStatus | None = None,
+        assigned_to: str | None = None,
+        resolution_notes: str | None = None,
+    ) -> ComplianceAlert | None:
         """Update an alert."""
         with self._lock:
             alert = self._alerts.get(alert_id)
@@ -282,20 +283,20 @@ class AlertManager:
             if resolution_notes is not None:
                 alert.resolution_notes = resolution_notes
 
-            alert.updated_at = datetime.now(timezone.utc)
+            alert.updated_at = datetime.now(UTC)
 
         logger.info(f"Alert updated: {alert_id} - status={alert.status.value}")
         return alert
 
     def get_alerts(
         self,
-        status: Optional[AlertStatus] = None,
-        severity: Optional[AlertSeverity] = None,
-        category: Optional[str] = None,
-        subject_id: Optional[str] = None,
-        since: Optional[datetime] = None,
+        status: AlertStatus | None = None,
+        severity: AlertSeverity | None = None,
+        category: str | None = None,
+        subject_id: str | None = None,
+        since: datetime | None = None,
         limit: int = 100,
-    ) -> List[ComplianceAlert]:
+    ) -> list[ComplianceAlert]:
         """Get alerts with optional filtering."""
         with self._lock:
             alerts = list(self._alerts.values())
@@ -323,9 +324,9 @@ class AlertManager:
 
         return alerts[:limit]
 
-    def get_open_alerts_count(self) -> Dict[AlertSeverity, int]:
+    def get_open_alerts_count(self) -> dict[AlertSeverity, int]:
         """Get count of open alerts by severity."""
-        counts = {s: 0 for s in AlertSeverity}
+        counts = dict.fromkeys(AlertSeverity, 0)
         for alert in self._alerts.values():
             if alert.status == AlertStatus.OPEN:
                 counts[alert.severity] += 1
@@ -350,19 +351,19 @@ class MetricsCollector:
 
     def __init__(self, retention_days: int = 90):
         self._retention_days = retention_days
-        self._metrics: Dict[str, List[MetricDataPoint]] = defaultdict(list)
+        self._metrics: dict[str, list[MetricDataPoint]] = defaultdict(list)
         self._lock = threading.Lock()
 
     def record(
         self,
         metric_type: MetricType,
         value: float,
-        name: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[datetime] = None,
+        name: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        timestamp: datetime | None = None,
     ) -> None:
         """Record a metric value."""
-        timestamp = timestamp or datetime.now(timezone.utc)
+        timestamp = timestamp or datetime.now(UTC)
         key = f"{metric_type.value}:{name or 'default'}"
 
         with self._lock:
@@ -375,7 +376,7 @@ class MetricsCollector:
 
     def _cleanup_old_metrics(self, key: str) -> None:
         """Remove metrics older than retention period."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self._retention_days)
         self._metrics[key] = [
             dp for dp in self._metrics[key]
             if dp.timestamp > cutoff
@@ -384,9 +385,9 @@ class MetricsCollector:
     def get_series(
         self,
         metric_type: MetricType,
-        name: Optional[str] = None,
-        start: Optional[datetime] = None,
-        end: Optional[datetime] = None,
+        name: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ) -> MetricSeries:
         """Get metric time series."""
         key = f"{metric_type.value}:{name or 'default'}"
@@ -412,16 +413,16 @@ class MetricsCollector:
     def get_aggregated(
         self,
         metric_type: MetricType,
-        name: Optional[str] = None,
-        start: Optional[datetime] = None,
-        end: Optional[datetime] = None,
+        name: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
         interval: str = "hour",  # hour, day, week
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get aggregated metric data."""
         series = self.get_series(metric_type, name, start, end)
 
         # Group by interval
-        buckets: Dict[str, List[float]] = defaultdict(list)
+        buckets: dict[str, list[float]] = defaultdict(list)
 
         for dp in series.data_points:
             if interval == "hour":
@@ -453,10 +454,10 @@ class MetricsCollector:
 
     def get_current_totals(
         self,
-        since: Optional[datetime] = None,
-    ) -> Dict[str, float]:
+        since: datetime | None = None,
+    ) -> dict[str, float]:
         """Get current totals for all metrics."""
-        since = since or (datetime.now(timezone.utc) - timedelta(hours=24))
+        since = since or (datetime.now(UTC) - timedelta(hours=24))
         totals = {}
 
         with self._lock:
@@ -477,12 +478,12 @@ class ComplianceDashboard:
 
     def __init__(
         self,
-        alert_manager: Optional[AlertManager] = None,
-        metrics_collector: Optional[MetricsCollector] = None,
+        alert_manager: AlertManager | None = None,
+        metrics_collector: MetricsCollector | None = None,
     ):
         self._alert_manager = alert_manager or AlertManager()
         self._metrics = metrics_collector or MetricsCollector()
-        self._audit_entries: List[Dict[str, Any]] = []
+        self._audit_entries: list[dict[str, Any]] = []
         self._lock = threading.Lock()
 
     def record_transaction(
@@ -491,8 +492,8 @@ class ComplianceDashboard:
         allowed: bool,
         amount: float,
         risk_score: float,
-        country: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        country: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Record a transaction for dashboard metrics."""
         # Record transaction metric
@@ -522,7 +523,7 @@ class ComplianceDashboard:
                 "amount": amount,
                 "risk_score": risk_score,
                 "country": country,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 **(metadata or {}),
             })
             # Keep only recent entries
@@ -544,7 +545,7 @@ class ComplianceDashboard:
         screening_type: str,
         subject_id: str,
         is_match: bool,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Record a screening result."""
         self._metrics.record(MetricType.SCREENINGS, value=1, name="total")
@@ -564,16 +565,15 @@ class ComplianceDashboard:
                     subject_id=subject_id,
                     metadata=details,
                 )
-        elif screening_type == "adverse_media":
-            if is_match:
-                self._metrics.record(MetricType.ADVERSE_MEDIA, value=1)
+        elif screening_type == "adverse_media" and is_match:
+            self._metrics.record(MetricType.ADVERSE_MEDIA, value=1)
 
     def get_summary(
         self,
         period_hours: int = 24,
     ) -> DashboardSummary:
         """Get dashboard summary for a time period."""
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(hours=period_hours)
 
         # Get transaction metrics
@@ -612,8 +612,8 @@ class ComplianceDashboard:
         critical_alerts = alert_counts.get(AlertSeverity.CRITICAL, 0)
 
         # Calculate breakdowns
-        by_country: Dict[str, int] = defaultdict(int)
-        by_risk_level: Dict[str, int] = defaultdict(int)
+        by_country: dict[str, int] = defaultdict(int)
+        by_risk_level: dict[str, int] = defaultdict(int)
 
         for entry in recent_entries:
             country = entry.get("country", "unknown")
@@ -654,18 +654,18 @@ class ComplianceDashboard:
         metric_type: MetricType,
         days: int = 7,
         interval: str = "day",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get trend data for a metric."""
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(days=days)
         return self._metrics.get_aggregated(metric_type, start=start, end=end, interval=interval)
 
     def get_alerts(
         self,
-        status: Optional[AlertStatus] = None,
-        severity: Optional[AlertSeverity] = None,
+        status: AlertStatus | None = None,
+        severity: AlertSeverity | None = None,
         limit: int = 50,
-    ) -> List[ComplianceAlert]:
+    ) -> list[ComplianceAlert]:
         """Get compliance alerts."""
         return self._alert_manager.get_alerts(
             status=status,
@@ -693,10 +693,10 @@ class ComplianceDashboard:
     def update_alert(
         self,
         alert_id: str,
-        status: Optional[AlertStatus] = None,
-        assigned_to: Optional[str] = None,
-        resolution_notes: Optional[str] = None,
-    ) -> Optional[ComplianceAlert]:
+        status: AlertStatus | None = None,
+        assigned_to: str | None = None,
+        resolution_notes: str | None = None,
+    ) -> ComplianceAlert | None:
         """Update an alert."""
         return self._alert_manager.update_alert(
             alert_id=alert_id,

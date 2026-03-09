@@ -1,29 +1,29 @@
 """UCP data models."""
 
 from .mandates import (
-    UCPCurrency,
-    UCPDiscountType,
     UCPCartMandate,
     UCPCheckoutMandate,
-    UCPPaymentMandate,
-    UCPLineItem,
+    UCPCurrency,
     UCPDiscount,
-)
-from .profiles import (
-    UCPCapabilityType,
-    UCPBusinessProfile,
-    UCPPlatformProfile,
-    UCPCapability,
-    UCPPaymentCapability,
-    UCPEndpoints,
+    UCPDiscountType,
+    UCPLineItem,
+    UCPPaymentMandate,
 )
 from .orders import (
+    UCPFulfillment,
+    UCPFulfillmentEvent,
+    UCPFulfillmentStatus,
     UCPOrder,
     UCPOrderStatus,
-    UCPFulfillment,
-    UCPFulfillmentStatus,
-    UCPFulfillmentEvent,
     UCPShippingAddress,
+)
+from .profiles import (
+    UCPBusinessProfile,
+    UCPCapability,
+    UCPCapabilityType,
+    UCPEndpoints,
+    UCPPaymentCapability,
+    UCPPlatformProfile,
 )
 
 __all__ = [

@@ -5,7 +5,11 @@ from decimal import Decimal
 
 import pytest
 
+# Import API-layer adapters
+from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
+from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
 from sardis_v2_core.delegated_credential import (
     CredentialNetwork,
     CredentialScope,
@@ -14,15 +18,8 @@ from sardis_v2_core.delegated_credential import (
 )
 from sardis_v2_core.delegated_executor import (
     DelegatedPaymentRequest,
-    DelegatedPaymentResult,
 )
-from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
 from sardis_v2_core.execution_intent import ExecutionIntent
-
-# Import API-layer adapters
-from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
-from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -176,7 +173,6 @@ class TestDelegatedExecutionAdapter:
     @pytest.mark.asyncio
     async def test_expired_credential_raises(self, setup):
         adapter, cred_store = setup
-        from datetime import datetime, timedelta, timezone
         cred = DelegatedCredential(
             org_id="org_1",
             agent_id="agent_1",

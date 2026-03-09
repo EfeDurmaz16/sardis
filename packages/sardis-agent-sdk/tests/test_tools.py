@@ -3,26 +3,23 @@
 from __future__ import annotations
 
 import json
-from decimal import Decimal
 
 import pytest
-
-from sardis import SardisClient
-
 from sardis_agent_sdk import (
-    SardisToolkit,
-    SardisToolHandler,
     ALL_TOOLS,
     READ_ONLY_TOOLS,
-    TOOL_NAMES,
-    SARDIS_PAY_TOOL,
     SARDIS_CHECK_BALANCE_TOOL,
     SARDIS_CHECK_POLICY_TOOL,
-    SARDIS_SET_POLICY_TOOL,
-    SARDIS_LIST_TRANSACTIONS_TOOL,
     SARDIS_CREATE_HOLD_TOOL,
+    SARDIS_LIST_TRANSACTIONS_TOOL,
+    SARDIS_PAY_TOOL,
+    SARDIS_SET_POLICY_TOOL,
+    TOOL_NAMES,
+    SardisToolHandler,
+    SardisToolkit,
 )
 
+from sardis import SardisClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -70,14 +67,14 @@ class TestToolDefinitions:
         assert len(READ_ONLY_TOOLS) == 3
 
     def test_tool_names_set(self):
-        assert TOOL_NAMES == {
+        assert {
             "sardis_pay",
             "sardis_check_balance",
             "sardis_check_policy",
             "sardis_set_policy",
             "sardis_list_transactions",
             "sardis_create_hold",
-        }
+        } == TOOL_NAMES
 
     @pytest.mark.parametrize("tool", ALL_TOOLS)
     def test_tool_has_required_fields(self, tool: dict):

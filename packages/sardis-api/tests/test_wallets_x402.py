@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sardis_v2_core.database import Database
+from sardis_v2_core.wallets import Wallet
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers import wallets
-from sardis_v2_core.database import Database
-from sardis_v2_core.wallets import Wallet
 
 
 class _StubWalletRepo:
@@ -102,7 +102,7 @@ def _build_app(
             return "INSERT 0 1"
 
         if "delete from x402_challenges where expires_at < now()" in normalized:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             expired = [key for key, row in challenges.items() if row["expires_at"] < now]
             for key in expired:
                 challenges.pop(key, None)
@@ -155,7 +155,7 @@ def _build_app(
                 return None
             if row["wallet_id"] != wallet_id:
                 return None
-            if row["expires_at"] < datetime.now(timezone.utc):
+            if row["expires_at"] < datetime.now(UTC):
                 return None
             return {"challenge": row["challenge"]}
 

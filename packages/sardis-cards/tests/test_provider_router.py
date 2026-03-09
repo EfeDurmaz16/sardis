@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis_cards.models import Card, CardType
 from sardis_cards.providers.base import CardProvider
 from sardis_cards.providers.router import CardProviderRouter

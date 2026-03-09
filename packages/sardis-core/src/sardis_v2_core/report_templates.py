@@ -1,6 +1,7 @@
 """HTML report templates for compliance reports."""
 from __future__ import annotations
 
+
 def get_html_template(result) -> str:
     from .compliance_reports import ReportType
     templates = {

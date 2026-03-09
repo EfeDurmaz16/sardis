@@ -3,25 +3,21 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
 from sardis_v2_core.marketplace import (
     MarketplaceRepository,
+    Milestone,
+    OfferStatus,
+    ServiceCategory,
     ServiceListing,
     ServiceOffer,
     ServiceReview,
-    Milestone,
-    ServiceCategory,
     ServiceStatus,
-    OfferStatus,
-    MilestoneStatus,
 )
 
 from sardis_api.authz import require_principal
-
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["marketplace"])
 
@@ -33,12 +29,12 @@ class CreateServiceRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=100)
     description: str = Field(..., min_length=10, max_length=2000)
     category: str = Field(default="other")
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     price_amount: str = Field(..., description="Price in token units")
     price_token: str = Field(default="USDC")
     price_type: str = Field(default="fixed", description="fixed, hourly, per_request")
     capabilities: dict = Field(default_factory=dict)
-    api_endpoint: Optional[str] = None
+    api_endpoint: str | None = None
 
 
 class ServiceResponse(BaseModel):
@@ -48,18 +44,18 @@ class ServiceResponse(BaseModel):
     name: str
     description: str
     category: str
-    tags: List[str]
+    tags: list[str]
     price_amount: str
     price_token: str
     price_type: str
     status: str
-    rating: Optional[str]
+    rating: str | None
     total_orders: int
     completed_orders: int
     created_at: datetime
 
     @classmethod
-    def from_service(cls, s: ServiceListing) -> "ServiceResponse":
+    def from_service(cls, s: ServiceListing) -> ServiceResponse:
         return cls(
             service_id=s.service_id,
             provider_agent_id=s.provider_agent_id,
@@ -83,7 +79,7 @@ class CreateOfferRequest(BaseModel):
     service_id: str
     total_amount: str
     token: str = "USDC"
-    milestones: List[dict] = Field(default_factory=list)
+    milestones: list[dict] = Field(default_factory=list)
 
 
 class OfferResponse(BaseModel):
@@ -98,11 +94,11 @@ class OfferResponse(BaseModel):
     escrow_amount: str
     released_amount: str
     created_at: datetime
-    accepted_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    accepted_at: datetime | None
+    completed_at: datetime | None
 
     @classmethod
-    def from_offer(cls, o: ServiceOffer) -> "OfferResponse":
+    def from_offer(cls, o: ServiceOffer) -> OfferResponse:
         return cls(
             offer_id=o.offer_id,
             service_id=o.service_id,
@@ -136,7 +132,7 @@ class ReviewResponse(BaseModel):
     created_at: datetime
 
     @classmethod
-    def from_review(cls, r: ServiceReview) -> "ReviewResponse":
+    def from_review(cls, r: ServiceReview) -> ReviewResponse:
         return cls(
             review_id=r.review_id,
             offer_id=r.offer_id,
@@ -151,9 +147,9 @@ class ReviewResponse(BaseModel):
 class SearchRequest(BaseModel):
     """Search request."""
     query: str = Field(..., min_length=1)
-    category: Optional[str] = None
-    min_rating: Optional[str] = None
-    max_price: Optional[str] = None
+    category: str | None = None
+    min_rating: str | None = None
+    max_price: str | None = None
 
 
 # Dependencies
@@ -197,7 +193,7 @@ async def create_service(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid category: {request.category}",
         )
-    
+
     service = ServiceListing(
         provider_agent_id=provider_agent_id,
         name=request.name,
@@ -211,15 +207,15 @@ async def create_service(
         api_endpoint=request.api_endpoint,
         status=ServiceStatus.ACTIVE,
     )
-    
+
     service = await deps.repository.create_service(service)
     return ServiceResponse.from_service(service)
 
 
-@router.get("/services", response_model=List[ServiceResponse])
+@router.get("/services", response_model=list[ServiceResponse])
 async def list_services(
-    category: Optional[str] = None,
-    provider_id: Optional[str] = None,
+    category: str | None = None,
+    provider_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
 ):
@@ -251,9 +247,9 @@ async def get_service(
 @router.patch("/services/{service_id}", response_model=ServiceResponse)
 async def update_service(
     service_id: str,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    status: Optional[str] = None,
+    name: str | None = None,
+    description: str | None = None,
+    status: str | None = None,
     deps: MarketplaceDependencies = Depends(get_deps),
 ):
     """Update a service listing."""
@@ -264,7 +260,7 @@ async def update_service(
         updates["description"] = description
     if status:
         updates["status"] = ServiceStatus(status)
-    
+
     service = await deps.repository.update_service(service_id, **updates)
     if not service:
         raise HTTPException(
@@ -274,7 +270,7 @@ async def update_service(
     return ServiceResponse.from_service(service)
 
 
-@router.post("/services/search", response_model=List[ServiceResponse])
+@router.post("/services/search", response_model=list[ServiceResponse])
 async def search_services(
     request: SearchRequest,
     limit: int = Query(default=50, ge=1, le=100),
@@ -284,7 +280,7 @@ async def search_services(
     cat = ServiceCategory(request.category) if request.category else None
     min_rating = Decimal(request.min_rating) if request.min_rating else None
     max_price = Decimal(request.max_price) if request.max_price else None
-    
+
     services = await deps.repository.search_services(
         query=request.query,
         category=cat,
@@ -312,7 +308,7 @@ async def create_offer(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Service {request.service_id} not found",
         )
-    
+
     # Create milestones
     milestones = []
     for m in request.milestones:
@@ -321,7 +317,7 @@ async def create_offer(
             description=m.get("description", ""),
             amount=Decimal(m.get("amount", "0")),
         ))
-    
+
     offer = ServiceOffer(
         service_id=request.service_id,
         provider_agent_id=service.provider_agent_id,
@@ -330,16 +326,16 @@ async def create_offer(
         token=request.token,
         milestones=milestones,
     )
-    
+
     offer = await deps.repository.create_offer(offer)
     return OfferResponse.from_offer(offer)
 
 
-@router.get("/offers", response_model=List[OfferResponse])
+@router.get("/offers", response_model=list[OfferResponse])
 async def list_offers(
     role: str = Query(default="any", pattern="^(provider|consumer|any)$"),
     x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
 ):
@@ -432,13 +428,13 @@ async def create_review(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Offer {offer_id} not found",
         )
-    
+
     if offer.status != OfferStatus.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Can only review completed offers",
         )
-    
+
     review = ServiceReview(
         offer_id=offer_id,
         service_id=offer.service_id,
@@ -446,12 +442,12 @@ async def create_review(
         rating=request.rating,
         comment=request.comment,
     )
-    
+
     review = await deps.repository.create_review(review)
     return ReviewResponse.from_review(review)
 
 
-@router.get("/services/{service_id}/reviews", response_model=List[ReviewResponse])
+@router.get("/services/{service_id}/reviews", response_model=list[ReviewResponse])
 async def list_reviews(
     service_id: str,
     limit: int = Query(default=50, ge=1, le=100),

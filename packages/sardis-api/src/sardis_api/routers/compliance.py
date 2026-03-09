@@ -2,16 +2,16 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timezone
 import hashlib
 import hmac
-from inspect import isawaitable
 import json
 import logging
 import os
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional, List
+from inspect import isawaitable
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
@@ -48,7 +48,7 @@ class WebhookSecurityConfig:
     MIN_SECRET_LENGTH = 32
 
 
-def get_persona_webhook_secret() -> Optional[str]:
+def get_persona_webhook_secret() -> str | None:
     """
     Get Persona webhook secret from environment.
 
@@ -69,7 +69,7 @@ def verify_persona_webhook_signature(
     signature: str,
     timestamp: str,
     secret: str,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """
     Verify Persona webhook signature using HMAC-SHA256.
 
@@ -149,8 +149,8 @@ def verify_persona_webhook_signature(
 
 async def verify_persona_webhook(
     request: Request,
-    persona_signature: Optional[str] = Header(None, alias="Persona-Signature"),
-    persona_timestamp: Optional[str] = Header(None, alias="Persona-Signature-Timestamp"),
+    persona_signature: str | None = Header(None, alias="Persona-Signature"),
+    persona_timestamp: str | None = Header(None, alias="Persona-Signature-Timestamp"),
 ) -> bytes:
     """
     FastAPI dependency to verify Persona webhook signature.
@@ -211,9 +211,9 @@ class KYCVerificationRequest(BaseModel):
     """Request to create a KYC verification."""
 
     agent_id: str = Field(..., description="Agent ID to verify")
-    name_first: Optional[str] = Field(None, description="First name")
-    name_last: Optional[str] = Field(None, description="Last name")
-    email: Optional[str] = Field(None, description="Email address")
+    name_first: str | None = Field(None, description="First name")
+    name_last: str | None = Field(None, description="Last name")
+    email: str | None = Field(None, description="Email address")
 
 
 class KYCStatusResponse(BaseModel):
@@ -221,12 +221,12 @@ class KYCStatusResponse(BaseModel):
 
     agent_id: str
     status: str
-    verification_id: Optional[str] = None
+    verification_id: str | None = None
     is_verified: bool
-    verified_at: Optional[str] = None
-    expires_at: Optional[str] = None
+    verified_at: str | None = None
+    expires_at: str | None = None
     provider: str
-    warning: Optional[str] = None
+    warning: str | None = None
 
 
 class KYCInquiryResponse(BaseModel):
@@ -234,7 +234,7 @@ class KYCInquiryResponse(BaseModel):
 
     inquiry_id: str
     session_token: str
-    redirect_url: Optional[str] = None
+    redirect_url: str | None = None
     status: str
 
 
@@ -254,8 +254,8 @@ class SanctionsScreenResponse(BaseModel):
     is_sanctioned: bool
     should_block: bool
     provider: str
-    matches: List[dict] = []
-    reason: Optional[str] = None
+    matches: list[dict] = []
+    reason: str | None = None
 
 
 class TransactionScreenRequest(BaseModel):
@@ -274,14 +274,14 @@ class KYARegisterRequest(BaseModel):
 
     agent_id: str
     owner_id: str
-    capabilities: List[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
     max_budget_per_tx: str = "50.00"
     daily_budget: str = "500.00"
-    allowed_domains: List[str] = Field(default_factory=list)
-    blocked_domains: List[str] = Field(default_factory=list)
-    framework: Optional[str] = None
-    framework_version: Optional[str] = None
-    description: Optional[str] = None
+    allowed_domains: list[str] = Field(default_factory=list)
+    blocked_domains: list[str] = Field(default_factory=list)
+    framework: str | None = None
+    framework_version: str | None = None
+    description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -289,18 +289,18 @@ class KYACheckRequestModel(BaseModel):
     """Request payload for KYA evaluation."""
 
     amount: str = "0"
-    merchant_id: Optional[str] = None
-    merchant_domain: Optional[str] = None
+    merchant_id: str | None = None
+    merchant_domain: str | None = None
 
 
 class KYAUpgradeRequest(BaseModel):
     """Request payload for KYA level upgrade."""
 
     target_level: str = Field(..., description="Target KYA level: basic/verified/attested")
-    anchor_verification_id: Optional[str] = None
-    code_hash: Optional[str] = None
-    framework: Optional[str] = None
-    version: Optional[str] = None
+    anchor_verification_id: str | None = None
+    code_hash: str | None = None
+    framework: str | None = None
+    version: str | None = None
     attester: str = "self"
 
 
@@ -314,7 +314,7 @@ class EvidenceSignatureVerifyRequest(BaseModel):
     """Request payload for evidence JWS verification."""
 
     token: str
-    expected_bundle_digest: Optional[str] = None
+    expected_bundle_digest: str | None = None
 
 
 # ============================================================================
@@ -489,7 +489,7 @@ def _compute_bundle_digest(payload: dict[str, Any]) -> str:
     return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
-def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+def _parse_iso_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     text = value.strip()
@@ -500,7 +500,7 @@ def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
             text = text[:-1] + "+00:00"
         parsed = datetime.fromisoformat(text)
         if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=timezone.utc)
+            return parsed.replace(tzinfo=UTC)
         return parsed
     except Exception:
         return None
@@ -578,7 +578,7 @@ def _decode_evidence_cursor(token: str) -> dict[str, Any]:
 def _entry_sort_key(entry: dict[str, Any]) -> tuple[datetime, str]:
     evaluated = _parse_iso_datetime(str(entry.get("evaluated_at", "")))
     if evaluated is None:
-        evaluated = datetime.fromtimestamp(0, tz=timezone.utc)
+        evaluated = datetime.fromtimestamp(0, tz=UTC)
     return evaluated, str(entry.get("audit_id", ""))
 
 
@@ -1065,7 +1065,7 @@ async def get_compliance_status(
         "environment": os.getenv("SARDIS_ENVIRONMENT", "development"),
         "message": (
             "Using production providers"
-            if not ("Mock" in deps.kyc_service._provider.__class__.__name__)
+            if "Mock" not in deps.kyc_service._provider.__class__.__name__
             else "Using mock providers for development"
         ),
     }
@@ -1118,13 +1118,13 @@ async def get_recent_audit_entries(
 
 @router.get("/audit/evidence/export")
 async def export_audit_evidence_bundle(
-    mandate_id: Optional[str] = Query(default=None),
-    approval_id: Optional[str] = Query(default=None),
+    mandate_id: str | None = Query(default=None),
+    approval_id: str | None = Query(default=None),
     limit: int = Query(default=500, ge=1, le=5000),
     page_size: int = Query(default=250, ge=1, le=1000),
-    cursor: Optional[str] = Query(default=None, description="Opaque replay-safe pagination cursor"),
-    start_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 lower bound for evaluated_at"),
-    end_at: Optional[str] = Query(default=None, description="Inclusive ISO8601 upper bound for evaluated_at"),
+    cursor: str | None = Query(default=None, description="Opaque replay-safe pagination cursor"),
+    start_at: str | None = Query(default=None, description="Inclusive ISO8601 lower bound for evaluated_at"),
+    end_at: str | None = Query(default=None, description="Inclusive ISO8601 upper bound for evaluated_at"),
     include_signature: bool = Query(default=False),
     deps: ComplianceDependencies = Depends(get_deps),
     _: Principal = Depends(require_admin_principal),
@@ -1183,8 +1183,8 @@ async def export_audit_evidence_bundle(
         "page_size": page_size,
     }
     scope_hash = _hash_json(scope_payload)
-    cursor_snapshot_at: datetime = datetime.now(timezone.utc)
-    cursor_last_key: Optional[tuple[datetime, str]] = None
+    cursor_snapshot_at: datetime = datetime.now(UTC)
+    cursor_last_key: tuple[datetime, str] | None = None
 
     if cursor:
         try:
@@ -1241,7 +1241,7 @@ async def export_audit_evidence_bundle(
     has_more = len(stable_entries) > page_size
     serialized = stable_entries[:page_size]
 
-    next_cursor: Optional[str] = None
+    next_cursor: str | None = None
     if has_more and serialized:
         last_dt, last_audit_id = _entry_sort_key(serialized[-1])
         cursor_payload = {
@@ -1265,7 +1265,7 @@ async def export_audit_evidence_bundle(
     ]
     attestation_entries = _attestation_candidates(serialized)
 
-    approval_record: Optional[dict[str, Any]] = None
+    approval_record: dict[str, Any] | None = None
     if approval_id and deps.approval_service is not None:
         getter = getattr(deps.approval_service, "get_approval", None)
         if callable(getter):
@@ -1286,7 +1286,7 @@ async def export_audit_evidence_bundle(
     entries_digest = _compute_audit_entries_digest(serialized)
     hash_chain = _build_hash_chain_summary(serialized)
 
-    generated_at = datetime.now(timezone.utc).isoformat()
+    generated_at = datetime.now(UTC).isoformat()
     counts = {
         "total_entries": len(serialized),
         "policy_entries": len(policy_entries),
@@ -1431,8 +1431,8 @@ async def verify_audit_chain_integrity(
         }
 
     verification_result = await _resolve_maybe_awaitable(verifier())
-    verified: Optional[bool]
-    error: Optional[str]
+    verified: bool | None
+    error: str | None
     if isinstance(verification_result, tuple) and len(verification_result) >= 2:
         verified = bool(verification_result[0])
         error = verification_result[1]
@@ -1464,7 +1464,8 @@ async def verify_evidence_signature(
             detail="evidence_signing_secret_not_configured",
         )
 
-    from jwt import decode as jwt_decode, get_unverified_header
+    from jwt import decode as jwt_decode
+    from jwt import get_unverified_header
     from jwt.exceptions import InvalidTokenError
 
     try:
@@ -1570,7 +1571,7 @@ async def get_mandate_audit_proof(
 class PersonaWebhookPayload(BaseModel):
     """Persona webhook event payload."""
     data: dict
-    included: Optional[List[dict]] = None
+    included: list[dict] | None = None
 
 
 @public_router.post("/webhooks/persona")

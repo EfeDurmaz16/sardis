@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -54,7 +53,7 @@ class _FakeSubscriptionRepo:
 
     async def create_subscription(self, **kwargs):
         sub_id = "sub_1"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = {
             "id": sub_id,
             "status": "active",
@@ -159,7 +158,7 @@ def _build_app(*, deps: SubscriptionDependencies, principal_fn) -> FastAPI:
 
 
 def test_compute_next_billing_monthly_rolls_month_boundary():
-    dt = datetime(2026, 1, 31, 12, 0, tzinfo=timezone.utc)
+    dt = datetime(2026, 1, 31, 12, 0, tzinfo=UTC)
     nxt = compute_next_billing(dt, "monthly", 31)
     assert nxt.month == 2
     assert nxt.day in {28, 29}
@@ -240,7 +239,7 @@ async def test_recurring_service_processes_due_subscription():
     wallet_repo = _FakeWalletRepo(_Wallet(wallet_id="wallet_1", agent_id="agent_1"))
     agent_repo = _FakeAgentRepo()
     sub_repo = _FakeSubscriptionRepo()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     sub_repo.items["sub_1"] = {
         "id": "sub_1",
         "wallet_id": "wallet_1",

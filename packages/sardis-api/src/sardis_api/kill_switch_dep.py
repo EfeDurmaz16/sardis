@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
-
 from sardis_guardrails.kill_switch import KillSwitchError, get_kill_switch
 
 from .authz import Principal, require_principal
@@ -13,7 +11,7 @@ from .authz import Principal, require_principal
 logger = logging.getLogger("sardis.api.kill_switch")
 
 
-def _detect_rail(request: Request) -> Optional[str]:
+def _detect_rail(request: Request) -> str | None:
     """Detect payment rail from route prefix."""
     path = request.url.path
     if "/a2a" in path:
@@ -25,7 +23,7 @@ def _detect_rail(request: Request) -> Optional[str]:
     return None
 
 
-def _detect_chain(request: Request) -> Optional[str]:
+def _detect_chain(request: Request) -> str | None:
     """Detect target chain from request body or path."""
     # Check path params first
     chain = request.path_params.get("chain")
@@ -97,7 +95,7 @@ async def require_kill_switch_clear(
         )
 
 
-def _extract_agent_id(request: Request) -> Optional[str]:
+def _extract_agent_id(request: Request) -> str | None:
     """Best-effort agent ID extraction from request state or path params."""
     # Check if agent_id was set on request state by earlier middleware/deps
     if hasattr(request.state, "agent_id"):

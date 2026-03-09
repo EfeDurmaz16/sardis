@@ -44,21 +44,21 @@ from __future__ import annotations
 import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from uuid import uuid4
 
 from .kya_trust_scoring import (
-    TrustScorer,
-    TrustScore,
-    TrustTier,
-    KYALevel,
-    TransactionRecord,
-    ComplianceRecord,
-    ReputationRecord,
     BehavioralRecord,
+    ComplianceRecord,
+    KYALevel,
+    ReputationRecord,
+    TransactionRecord,
+    TrustScore,
+    TrustScorer,
+    TrustTier,
 )
 
 logger = logging.getLogger("sardis.core.trust_infrastructure")
@@ -95,21 +95,19 @@ class TrustAttestation:
     agent_id: str = ""
     attestation_type: AttestationType = AttestationType.IDENTITY
     issuer_id: str = ""  # Who issued this attestation
-    claim: Dict[str, Any] = field(default_factory=dict)
-    signature: Optional[str] = None  # Ed25519/ECDSA signature
-    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    claim: dict[str, Any] = field(default_factory=dict)
+    signature: str | None = None  # Ed25519/ECDSA signature
+    issued_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
     revoked: bool = False
 
     @property
     def is_valid(self) -> bool:
         if self.revoked:
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "agent_id": self.agent_id,
@@ -130,8 +128,8 @@ class TrustRelation:
     relation_type: TrustRelationType
     strength: float = 0.5  # 0.0 to 1.0
     interactions: int = 0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_interaction: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_interaction: datetime | None = None
 
 
 @dataclass
@@ -140,21 +138,21 @@ class AgentProfile:
     agent_id: str
     owner_id: str
     kya_level: KYALevel = KYALevel.NONE
-    capabilities: List[str] = field(default_factory=list)
-    attestations: List[TrustAttestation] = field(default_factory=list)
-    trust_score: Optional[TrustScore] = None
-    registered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    capabilities: list[str] = field(default_factory=list)
+    attestations: list[TrustAttestation] = field(default_factory=list)
+    trust_score: TrustScore | None = None
+    registered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def valid_attestations(self) -> List[TrustAttestation]:
+    def valid_attestations(self) -> list[TrustAttestation]:
         return [a for a in self.attestations if a.is_valid]
 
     @property
     def has_capability(self) -> bool:
         return len(self.capabilities) > 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "owner_id": self.owner_id,
@@ -177,12 +175,12 @@ class TrustEvaluation:
     trust_score: float
     requester_tier: TrustTier
     counterparty_tier: TrustTier
-    denial_reason: Optional[str] = None
-    required_attestations: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    denial_reason: str | None = None
+    required_attestations: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    evaluated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "requester_id": self.requester_id,
             "counterparty_id": self.counterparty_id,
@@ -208,11 +206,11 @@ class TrustFramework:
     and trust network analysis.
     """
 
-    def __init__(self, scorer: Optional[TrustScorer] = None) -> None:
+    def __init__(self, scorer: TrustScorer | None = None) -> None:
         self._scorer = scorer or TrustScorer()
-        self._profiles: Dict[str, AgentProfile] = {}
-        self._attestations: Dict[str, TrustAttestation] = {}
-        self._relations: List[TrustRelation] = []
+        self._profiles: dict[str, AgentProfile] = {}
+        self._attestations: dict[str, TrustAttestation] = {}
+        self._relations: list[TrustRelation] = []
 
     # ---- Agent Registry ----
 
@@ -221,8 +219,8 @@ class TrustFramework:
         agent_id: str,
         owner_id: str,
         kya_level: KYALevel = KYALevel.NONE,
-        capabilities: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        capabilities: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AgentProfile:
         """Register an agent with a trust profile."""
         profile = AgentProfile(
@@ -251,7 +249,7 @@ class TrustFramework:
         )
         return profile
 
-    async def get_profile(self, agent_id: str) -> Optional[AgentProfile]:
+    async def get_profile(self, agent_id: str) -> AgentProfile | None:
         """Get an agent's trust profile."""
         return self._profiles.get(agent_id)
 
@@ -283,10 +281,10 @@ class TrustFramework:
         counterparty: str,
         amount: Decimal,
         operation: str = "payment",
-        history: Optional[TransactionRecord] = None,
-        compliance: Optional[ComplianceRecord] = None,
-        reputation: Optional[ReputationRecord] = None,
-        behavioral: Optional[BehavioralRecord] = None,
+        history: TransactionRecord | None = None,
+        compliance: ComplianceRecord | None = None,
+        reputation: ReputationRecord | None = None,
+        behavioral: BehavioralRecord | None = None,
     ) -> TrustEvaluation:
         """Evaluate trust between two agents for a specific transaction.
 
@@ -323,8 +321,8 @@ class TrustFramework:
         combined_score = (req_score.overall * cpty_score.overall) ** 0.5
 
         # Check limits
-        warnings: List[str] = []
-        denial_reason: Optional[str] = None
+        warnings: list[str] = []
+        denial_reason: str | None = None
         approved = True
 
         # Check requester's spending limit
@@ -336,10 +334,9 @@ class TrustFramework:
             )
 
         # Check counterparty trust
-        if cpty_score.tier == TrustTier.UNTRUSTED and amount > Decimal("10"):
-            if approved:
-                approved = False
-                denial_reason = "Counterparty is untrusted for this amount"
+        if cpty_score.tier == TrustTier.UNTRUSTED and amount > Decimal("10") and approved:
+            approved = False
+            denial_reason = "Counterparty is untrusted for this amount"
 
         # Check capability
         if operation not in req_profile.capabilities and req_profile.capabilities:
@@ -388,7 +385,7 @@ class TrustFramework:
         agent_id: str,
         attestation_type: AttestationType,
         issuer_id: str,
-        claim: Dict[str, Any],
+        claim: dict[str, Any],
         ttl_days: int = 365,
     ) -> TrustAttestation:
         """Issue a trust attestation for an agent."""
@@ -408,7 +405,7 @@ class TrustFramework:
             issuer_id=issuer_id,
             claim=claim,
             signature=signature,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=ttl_days),
+            expires_at=datetime.now(UTC) + timedelta(days=ttl_days),
         )
 
         profile.attestations.append(attestation)
@@ -441,7 +438,7 @@ class TrustFramework:
         logger.info("Attestation revoked", extra={"attestation_id": attestation_id})
         return True
 
-    async def verify_attestation(self, attestation_id: str) -> Dict[str, Any]:
+    async def verify_attestation(self, attestation_id: str) -> dict[str, Any]:
         """Verify an attestation's validity."""
         attestation = self._attestations.get(attestation_id)
         if not attestation:
@@ -450,7 +447,7 @@ class TrustFramework:
         if attestation.revoked:
             return {"valid": False, "reason": "revoked"}
 
-        if attestation.expires_at and datetime.now(timezone.utc) > attestation.expires_at:
+        if attestation.expires_at and datetime.now(UTC) > attestation.expires_at:
             return {"valid": False, "reason": "expired"}
 
         # Verify signature
@@ -471,9 +468,9 @@ class TrustFramework:
     async def get_attestations(
         self,
         agent_id: str,
-        attestation_type: Optional[AttestationType] = None,
+        attestation_type: AttestationType | None = None,
         valid_only: bool = True,
-    ) -> List[TrustAttestation]:
+    ) -> list[TrustAttestation]:
         """Get attestations for an agent."""
         profile = self._profiles.get(agent_id)
         if not profile:
@@ -491,7 +488,7 @@ class TrustFramework:
 
     # ---- Trust Network ----
 
-    def _find_relation(self, source: str, target: str) -> Optional[TrustRelation]:
+    def _find_relation(self, source: str, target: str) -> TrustRelation | None:
         """Find trust relationship between two agents."""
         for rel in self._relations:
             if (rel.source_id == source and rel.target_id == target) or \
@@ -505,7 +502,7 @@ class TrustFramework:
 
         if relation:
             relation.interactions += 1
-            relation.last_interaction = datetime.now(timezone.utc)
+            relation.last_interaction = datetime.now(UTC)
             # Strengthen trust with interactions (asymptotic to 1.0)
             relation.strength = min(1.0, relation.strength + 0.05 * (1.0 - relation.strength))
         else:
@@ -515,19 +512,19 @@ class TrustFramework:
                 relation_type=TrustRelationType.DIRECT,
                 strength=0.1,
                 interactions=1,
-                last_interaction=datetime.now(timezone.utc),
+                last_interaction=datetime.now(UTC),
             ))
 
     async def get_trust_network(
         self, agent_id: str, depth: int = 1
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get the trust network around an agent.
 
         Returns direct connections (depth=1) or extended network (depth>1).
         """
-        visited: Set[str] = set()
-        nodes: List[Dict[str, Any]] = []
-        edges: List[Dict[str, Any]] = []
+        visited: set[str] = set()
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
 
         await self._traverse_network(agent_id, depth, visited, nodes, edges)
 
@@ -544,9 +541,9 @@ class TrustFramework:
         self,
         agent_id: str,
         depth: int,
-        visited: Set[str],
-        nodes: List[Dict[str, Any]],
-        edges: List[Dict[str, Any]],
+        visited: set[str],
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
     ) -> None:
         """Recursively traverse trust network."""
         if depth < 0 or agent_id in visited:
@@ -578,9 +575,9 @@ class TrustFramework:
 
     # ---- Utility ----
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get trust infrastructure statistics."""
-        tier_counts: Dict[str, int] = {}
+        tier_counts: dict[str, int] = {}
         for profile in self._profiles.values():
             if profile.trust_score:
                 tier = profile.trust_score.tier.value

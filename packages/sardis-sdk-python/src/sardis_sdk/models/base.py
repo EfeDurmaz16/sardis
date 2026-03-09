@@ -1,12 +1,10 @@
 """Base model for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
-
 
 # Supported blockchain networks
 Chain = Literal[
@@ -73,6 +71,6 @@ class SardisModel(BaseModel):
         return self.model_dump(mode="json", exclude_none=True)
     
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SardisModel":
+    def from_dict(cls, data: dict[str, Any]) -> SardisModel:
         """Create model from dictionary."""
         return cls.model_validate(data)

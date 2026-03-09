@@ -8,21 +8,18 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
+from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
+from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
 from sardis_v2_core.delegated_credential import (
-    CredentialNetwork,
     CredentialScope,
-    CredentialStatus,
-    DelegatedCredential,
 )
 from sardis_v2_core.delegation_consent import (
     ConsentType,
     DelegationConsent,
     InMemoryConsentStore,
 )
-from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
-from sardis_v2_core.delegated_executor import DelegatedPaymentRequest
 from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
 from sardis_v2_core.execution_mode import ExecutionMode, ExecutionModeRouter
 from sardis_v2_core.merchant_capability import (
@@ -35,8 +32,6 @@ from sardis_v2_core.settlement import (
     SettlementRecord,
     SettlementStatus,
 )
-from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
-from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
 
 
 def _fernet_key() -> bytes:
@@ -220,7 +215,7 @@ class TestDelegatedPaymentE2E:
     @pytest.mark.asyncio
     async def test_policy_governed_fallback_with_evidence(self, env):
         """Fallback only when policy allows, recorded in evidence."""
-        cred_store = env["cred_store"]
+        env["cred_store"]
         merchant_store = env["merchant_store"]
         mode_router = env["mode_router"]
 

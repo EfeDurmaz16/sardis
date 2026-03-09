@@ -1,13 +1,14 @@
 """Tests for ramp offramp endpoints."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 
-from sardis_api.routers.ramp import router as ramp_router, get_deps, RampDependencies
-from sardis_cards.offramp import OfframpQuote, OfframpTransaction, OfframpProvider, OfframpStatus
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sardis_api.routers.ramp import RampDependencies, get_deps
+from sardis_api.routers.ramp import router as ramp_router
+from sardis_cards.offramp import OfframpProvider, OfframpQuote, OfframpStatus, OfframpTransaction
 
 
 @pytest.fixture
@@ -46,7 +47,7 @@ def mock_offramp_service():
         output_amount_cents=9950,
         exchange_rate=Decimal("1.0"),
         fee_cents=50,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
     )
     svc.execute.return_value = OfframpTransaction(
         transaction_id="tx_123",
@@ -71,7 +72,7 @@ def mock_offramp_service():
         output_amount_cents=9950,
         destination_account="acct_456",
         status=OfframpStatus.COMPLETED,
-        completed_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(UTC),
     )
     return svc
 

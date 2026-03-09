@@ -6,10 +6,10 @@ All payment flows (A2A, AP2, checkout) submit ExecutionIntents here.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_guardrails.anomaly_engine import AnomalyEngine, RiskAssessment
+    from sardis_guardrails.anomaly_engine import AnomalyEngine
     from sardis_guardrails.kill_switch import KillSwitch
     from sardis_guardrails.transaction_caps import TransactionCapEngine
 
@@ -57,15 +57,15 @@ class ControlPlane:
 
     def __init__(
         self,
-        policy_evaluator: Optional[PolicyEvaluator] = None,
-        compliance_checker: Optional[ComplianceChecker] = None,
-        chain_executor: Optional[ChainExecutor] = None,
-        ledger_recorder: Optional[LedgerRecorder] = None,
-        anomaly_engine: Optional["AnomalyEngine"] = None,
-        kill_switch: Optional["KillSwitch"] = None,
-        cap_engine: Optional["TransactionCapEngine"] = None,
-        receipt_store: Optional[Any] = None,
-        outcome_tracker: Optional[Any] = None,
+        policy_evaluator: PolicyEvaluator | None = None,
+        compliance_checker: ComplianceChecker | None = None,
+        chain_executor: ChainExecutor | None = None,
+        ledger_recorder: LedgerRecorder | None = None,
+        anomaly_engine: AnomalyEngine | None = None,
+        kill_switch: KillSwitch | None = None,
+        cap_engine: TransactionCapEngine | None = None,
+        receipt_store: Any | None = None,
+        outcome_tracker: Any | None = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
@@ -153,7 +153,7 @@ class ControlPlane:
                     )
 
             # Step 1.5: Anomaly risk assessment (optional)
-            anomaly_flag: Optional[dict[str, Any]] = None
+            anomaly_flag: dict[str, Any] | None = None
             if self._anomaly_engine is not None:
                 from sardis_guardrails.anomaly_engine import RiskAction
 
@@ -363,7 +363,6 @@ class ControlPlane:
             from sardis_guardrails.transaction_caps import get_transaction_cap_engine
             engine = get_transaction_cap_engine()
             # Use check-only (don't record)
-            from sardis_guardrails.transaction_caps import CapCheckResult
             daily_spend = await engine._get_daily_spend("org", intent.org_id)
             cap_check = {
                 "daily_spend": str(daily_spend),

@@ -13,15 +13,15 @@ import hmac
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sardis_compliance.retry import (
-    create_retryable_client,
-    RetryConfig,
     CircuitBreakerConfig,
     RateLimitConfig,
+    RetryConfig,
+    create_retryable_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,20 +43,18 @@ class KYBResult:
     status: KYBStatus
     inquiry_id: str
     provider: str = "persona"
-    verified_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
-    reason: Optional[str] = None
-    business_name: Optional[str] = None
-    ein_last4: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    verified_at: datetime | None = None
+    expires_at: datetime | None = None
+    reason: str | None = None
+    business_name: str | None = None
+    ein_last4: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_verified(self) -> bool:
         if self.status != KYBStatus.APPROVED:
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
 
 
 @dataclass
@@ -64,17 +62,17 @@ class BusinessVerificationRequest:
     """Request to create a new business verification."""
     reference_id: str  # Organization ID
     business_name: str
-    ein: Optional[str] = None  # US Employer Identification Number
-    incorporation_state: Optional[str] = None
+    ein: str | None = None  # US Employer Identification Number
+    incorporation_state: str | None = None
     incorporation_country: str = "US"
-    website: Optional[str] = None
-    address_street: Optional[str] = None
-    address_city: Optional[str] = None
-    address_state: Optional[str] = None
-    address_country: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    beneficial_owners: list[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    website: str | None = None
+    address_street: str | None = None
+    address_city: str | None = None
+    address_state: str | None = None
+    address_country: str | None = None
+    address_postal_code: str | None = None
+    beneficial_owners: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -84,7 +82,7 @@ class BusinessInquirySession:
     session_token: str
     template_id: str
     status: KYBStatus
-    redirect_url: Optional[str] = None
+    redirect_url: str | None = None
 
 
 class KYBProvider(ABC):
@@ -123,7 +121,7 @@ class PersonaKYBProvider(KYBProvider):
         self,
         api_key: str,
         template_id: str,
-        webhook_secret: Optional[str] = None,
+        webhook_secret: str | None = None,
         environment: str = "sandbox",
     ):
         self._api_key = api_key
@@ -279,7 +277,7 @@ class PersonaKYBProvider(KYBProvider):
         }
         return status_map.get(persona_status, KYBStatus.PENDING)
 
-    def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+    def _parse_datetime(self, value: str | None) -> datetime | None:
         if not value:
             return None
         try:
@@ -297,7 +295,7 @@ class MockKYBProvider(KYBProvider):
     """Mock KYB provider for development and testing."""
 
     def __init__(self):
-        self._inquiries: Dict[str, KYBResult] = {}
+        self._inquiries: dict[str, KYBResult] = {}
         self._counter = 0
 
     async def create_business_inquiry(
@@ -337,7 +335,7 @@ class MockKYBProvider(KYBProvider):
                 status=KYBStatus.APPROVED,
                 inquiry_id=inquiry_id,
                 provider="mock",
-                verified_at=datetime.now(timezone.utc),
+                verified_at=datetime.now(UTC),
                 business_name=self._inquiries[inquiry_id].business_name,
             )
 
@@ -352,12 +350,12 @@ class KYBService:
 
     def __init__(
         self,
-        provider: Optional[KYBProvider] = None,
+        provider: KYBProvider | None = None,
         require_kyb_above: int = 10_000_000,  # $100,000 cumulative in minor units
     ):
         self._provider = provider or MockKYBProvider()
         self._require_kyb_above = require_kyb_above
-        self._cache: Dict[str, KYBResult] = {}
+        self._cache: dict[str, KYBResult] = {}
 
     async def create_verification(
         self,
@@ -430,7 +428,7 @@ class KYBService:
     async def handle_webhook(
         self,
         event_type: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> None:
         if event_type in ("inquiry.completed", "inquiry.approved"):
             inquiry_id = payload.get("data", {}).get("id")
@@ -442,6 +440,7 @@ class KYBService:
                     logger.info(f"KYB completed for {reference_id}: {result.status}")
                     try:
                         import json as _json
+
                         from sardis_v2_core.database import Database
                         await Database.execute(
                             """
@@ -469,9 +468,9 @@ class KYBService:
 
 
 def create_kyb_service(
-    api_key: Optional[str] = None,
-    template_id: Optional[str] = None,
-    webhook_secret: Optional[str] = None,
+    api_key: str | None = None,
+    template_id: str | None = None,
+    webhook_secret: str | None = None,
     environment: str = "sandbox",
 ) -> KYBService:
     """Factory function to create KYB service."""

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from decimal import Decimal
 
 import pytest
 
@@ -234,7 +233,7 @@ class TestMaestroStandard:
 
         # Send EXACTLY 5 identical requests
         responses = []
-        for i in range(5):
+        for _i in range(5):
             response = await client.post("/api/v2/mandates/execute", json=payload)
             responses.append(response)
 

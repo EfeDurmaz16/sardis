@@ -7,7 +7,6 @@ import asyncio
 import time
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Dict, List
 
 
 class RateLimitError(Exception):
@@ -122,9 +121,9 @@ class RateLimiter:
             )
         self.agent_id = agent_id
         self.burst_allowance = burst_allowance
-        self._limits: Dict[str, RateLimit] = {}
-        self._buckets: Dict[str, TokenBucket] = {}
-        self._transactions: Dict[str, List[TransactionRecord]] = {}
+        self._limits: dict[str, RateLimit] = {}
+        self._buckets: dict[str, TokenBucket] = {}
+        self._transactions: dict[str, list[TransactionRecord]] = {}
         self._lock = asyncio.Lock()
 
     def add_limit(
@@ -228,7 +227,7 @@ class RateLimiter:
 
     async def get_remaining_capacity(
         self, limit_name: str
-    ) -> Dict[str, int | Decimal | None]:
+    ) -> dict[str, int | Decimal | None]:
         """Get remaining capacity for a limit.
 
         Args:

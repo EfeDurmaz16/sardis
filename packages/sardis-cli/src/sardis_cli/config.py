@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Default configuration directory
 CONFIG_DIR = Path.home() / ".sardis"
@@ -22,19 +22,19 @@ def ensure_config_dir() -> Path:
     return CONFIG_DIR
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load configuration from file and environment."""
     config = DEFAULT_CONFIG.copy()
-    
+
     # Load from file if exists
     if CONFIG_FILE.exists():
         try:
             with open(CONFIG_FILE) as f:
                 file_config = json.load(f)
                 config.update(file_config)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
-    
+
     # Override with environment variables
     if os.environ.get("SARDIS_API_KEY"):
         config["api_key"] = os.environ["SARDIS_API_KEY"]
@@ -42,20 +42,20 @@ def load_config() -> Dict[str, Any]:
         config["api_base_url"] = os.environ["SARDIS_API_BASE_URL"]
     if os.environ.get("SARDIS_DEFAULT_CHAIN"):
         config["default_chain"] = os.environ["SARDIS_DEFAULT_CHAIN"]
-    
+
     return config
 
 
-def save_config(config: Dict[str, Any]) -> None:
+def save_config(config: dict[str, Any]) -> None:
     """Save configuration to file."""
     ensure_config_dir()
-    
+
     # Don't save sensitive data from environment
     save_data = {k: v for k, v in config.items() if k != "verbose"}
-    
+
     with open(CONFIG_FILE, "w") as f:
         json.dump(save_data, f, indent=2)
-    
+
     # Set restrictive permissions
     CONFIG_FILE.chmod(0o600)
 

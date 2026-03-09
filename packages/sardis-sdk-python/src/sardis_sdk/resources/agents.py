@@ -7,14 +7,16 @@ issue mandates, and be subject to policies.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
-from ..models import Agent, AgentCreate, AgentUpdate
-from ..pagination import Page, PageInfo, create_page_from_response
+from ..models import Agent
+from ..pagination import Page, create_page_from_response
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from ..client import AsyncSardisClient, SardisClient, TimeoutConfig
+    import builtins
+
+    from ..client import TimeoutConfig
 
 
 class AsyncAgentsResource(AsyncBaseResource):
@@ -51,11 +53,11 @@ class AsyncAgentsResource(AsyncBaseResource):
     async def create(
         self,
         name: str,
-        description: Optional[str] = None,
-        spending_limits: Optional[Dict[str, Any]] = None,
-        policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        description: str | None = None,
+        spending_limits: dict[str, Any] | None = None,
+        policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Create a new agent.
 
@@ -70,7 +72,7 @@ class AsyncAgentsResource(AsyncBaseResource):
         Returns:
             The created Agent object
         """
-        payload: Dict[str, Any] = {"name": name}
+        payload: dict[str, Any] = {"name": name}
 
         if description is not None:
             payload["description"] = description
@@ -87,7 +89,7 @@ class AsyncAgentsResource(AsyncBaseResource):
     async def get(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Get an agent by ID.
 
@@ -104,9 +106,9 @@ class AsyncAgentsResource(AsyncBaseResource):
     async def list(
         self,
         limit: int = 100,
-        offset: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Agent]:
+        offset: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Agent]:
         """List all agents.
 
         Args:
@@ -117,7 +119,7 @@ class AsyncAgentsResource(AsyncBaseResource):
         Returns:
             List of Agent objects
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if offset is not None:
             params["offset"] = offset
 
@@ -132,7 +134,7 @@ class AsyncAgentsResource(AsyncBaseResource):
         self,
         limit: int = 100,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Page[Agent]:
         """List agents with pagination info.
 
@@ -144,7 +146,7 @@ class AsyncAgentsResource(AsyncBaseResource):
         Returns:
             Page of Agent objects with pagination metadata
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         data = await self._get("agents", params=params, timeout=timeout)
 
         return create_page_from_response(
@@ -156,11 +158,11 @@ class AsyncAgentsResource(AsyncBaseResource):
     async def update(
         self,
         agent_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        is_active: Optional[bool] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        is_active: bool | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Update an agent.
 
@@ -175,7 +177,7 @@ class AsyncAgentsResource(AsyncBaseResource):
         Returns:
             The updated Agent object
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
         if description is not None:
@@ -191,7 +193,7 @@ class AsyncAgentsResource(AsyncBaseResource):
     async def delete(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete an agent.
 
@@ -236,11 +238,11 @@ class AgentsResource(SyncBaseResource):
     def create(
         self,
         name: str,
-        description: Optional[str] = None,
-        spending_limits: Optional[Dict[str, Any]] = None,
-        policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        description: str | None = None,
+        spending_limits: dict[str, Any] | None = None,
+        policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Create a new agent.
 
@@ -255,7 +257,7 @@ class AgentsResource(SyncBaseResource):
         Returns:
             The created Agent object
         """
-        payload: Dict[str, Any] = {"name": name}
+        payload: dict[str, Any] = {"name": name}
 
         if description is not None:
             payload["description"] = description
@@ -272,7 +274,7 @@ class AgentsResource(SyncBaseResource):
     def get(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Get an agent by ID.
 
@@ -289,9 +291,9 @@ class AgentsResource(SyncBaseResource):
     def list(
         self,
         limit: int = 100,
-        offset: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Agent]:
+        offset: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Agent]:
         """List all agents.
 
         Args:
@@ -302,7 +304,7 @@ class AgentsResource(SyncBaseResource):
         Returns:
             List of Agent objects
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if offset is not None:
             params["offset"] = offset
 
@@ -317,7 +319,7 @@ class AgentsResource(SyncBaseResource):
         self,
         limit: int = 100,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Page[Agent]:
         """List agents with pagination info.
 
@@ -329,7 +331,7 @@ class AgentsResource(SyncBaseResource):
         Returns:
             Page of Agent objects with pagination metadata
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         data = self._get("agents", params=params, timeout=timeout)
 
         return create_page_from_response(
@@ -341,11 +343,11 @@ class AgentsResource(SyncBaseResource):
     def update(
         self,
         agent_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        is_active: Optional[bool] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        is_active: bool | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Agent:
         """Update an agent.
 
@@ -360,7 +362,7 @@ class AgentsResource(SyncBaseResource):
         Returns:
             The updated Agent object
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
         if description is not None:
@@ -376,7 +378,7 @@ class AgentsResource(SyncBaseResource):
     def delete(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete an agent.
 
@@ -388,6 +390,6 @@ class AgentsResource(SyncBaseResource):
 
 
 __all__ = [
-    "AsyncAgentsResource",
     "AgentsResource",
+    "AsyncAgentsResource",
 ]

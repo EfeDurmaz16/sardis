@@ -14,22 +14,19 @@ Features:
 """
 from __future__ import annotations
 
-import asyncio
 import base64
 import gzip
 import hashlib
-import hmac
 import json
 import logging
-import os
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +65,8 @@ class BackupMetadata:
     wallet_id: str
     backup_type: BackupType
     version: str = "1.0"
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     # Content info
     data_hash: str = ""  # SHA-256 of unencrypted data
@@ -83,13 +80,13 @@ class BackupMetadata:
     encryption_algorithm: str = "AES-256-GCM"
     key_derivation: str = "PBKDF2-SHA256"
     kdf_iterations: int = 100000
-    salt: Optional[bytes] = None
-    nonce: Optional[bytes] = None
+    salt: bytes | None = None
+    nonce: bytes | None = None
 
     # Wallet state at backup
     wallet_version: str = ""
-    chain_addresses: Dict[str, str] = field(default_factory=dict)
-    token_balances_snapshot: Dict[str, str] = field(default_factory=dict)
+    chain_addresses: dict[str, str] = field(default_factory=dict)
+    token_balances_snapshot: dict[str, str] = field(default_factory=dict)
 
     # Recovery info
     recovery_hint: str = ""
@@ -97,10 +94,10 @@ class BackupMetadata:
     has_social_recovery: bool = False
 
     # Incremental backup info
-    parent_backup_id: Optional[str] = None
+    parent_backup_id: str | None = None
     sequence_number: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "backup_id": self.backup_id,
@@ -125,7 +122,7 @@ class BackupMetadata:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BackupMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> BackupMetadata:
         """Create from dictionary."""
         return cls(
             backup_id=data["backup_id"],
@@ -156,9 +153,9 @@ class BackupRecord:
     metadata: BackupMetadata
     encrypted_data: bytes
     status: BackupStatus = BackupStatus.PENDING
-    verification_timestamp: Optional[datetime] = None
-    storage_location: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    verification_timestamp: datetime | None = None
+    storage_location: str | None = None
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -167,11 +164,11 @@ class RestoreRequest:
     restore_id: str
     backup_id: str
     wallet_id: str
-    target_wallet_id: Optional[str] = None  # If restoring to different wallet
+    target_wallet_id: str | None = None  # If restoring to different wallet
     status: RestoreStatus = RestoreStatus.PENDING
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
     # Restore options
     restore_addresses: bool = True
@@ -182,7 +179,7 @@ class RestoreRequest:
     progress_percent: float = 0.0
     current_step: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "restore_id": self.restore_id,
@@ -255,7 +252,7 @@ class BackupStorageProvider(Protocol):
         self,
         backup_id: str,
         data: bytes,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ) -> str:
         """Store backup data, returns storage location."""
         ...
@@ -263,7 +260,7 @@ class BackupStorageProvider(Protocol):
     async def retrieve(
         self,
         backup_id: str,
-    ) -> Tuple[bytes, Dict[str, Any]]:
+    ) -> tuple[bytes, dict[str, Any]]:
         """Retrieve backup data and metadata."""
         ...
 
@@ -277,7 +274,7 @@ class BackupStorageProvider(Protocol):
     async def list_backups(
         self,
         wallet_id: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List backups for a wallet."""
         ...
 
@@ -352,18 +349,18 @@ class WalletBackupManager:
 
     def __init__(
         self,
-        config: Optional[BackupConfig] = None,
-        encryption: Optional[EncryptionService] = None,
-        storage: Optional[BackupStorageProvider] = None,
+        config: BackupConfig | None = None,
+        encryption: EncryptionService | None = None,
+        storage: BackupStorageProvider | None = None,
     ):
         self._config = config or BackupConfig()
         self._encryption = encryption or DefaultEncryption()
         self._storage = storage
 
         # In-memory storage for testing
-        self._backups: Dict[str, BackupRecord] = {}  # backup_id -> record
-        self._wallet_backups: Dict[str, List[str]] = {}  # wallet_id -> [backup_ids]
-        self._restore_requests: Dict[str, RestoreRequest] = {}
+        self._backups: dict[str, BackupRecord] = {}  # backup_id -> record
+        self._wallet_backups: dict[str, list[str]] = {}  # wallet_id -> [backup_ids]
+        self._restore_requests: dict[str, RestoreRequest] = {}
 
     def _generate_salt(self) -> bytes:
         """Generate cryptographic salt."""
@@ -394,11 +391,11 @@ class WalletBackupManager:
     async def create_backup(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
+        wallet_data: dict[str, Any],
         password: str,
         backup_type: BackupType = BackupType.FULL,
         recovery_hint: str = "",
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
     ) -> BackupRecord:
         """
         Create an encrypted backup of wallet data.
@@ -415,7 +412,7 @@ class WalletBackupManager:
             BackupRecord with encrypted data
         """
         backup_id = f"backup_{secrets.token_hex(12)}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Serialize wallet data
         json_data = json.dumps(wallet_data, default=str, sort_keys=True)
@@ -504,7 +501,7 @@ class WalletBackupManager:
             verified = await self.verify_backup(backup_id, password)
             if verified:
                 record.status = BackupStatus.VERIFIED
-                record.verification_timestamp = datetime.now(timezone.utc)
+                record.verification_timestamp = datetime.now(UTC)
 
         # Cleanup old backups
         await self._cleanup_old_backups(wallet_id)
@@ -570,7 +567,7 @@ class WalletBackupManager:
             # Verify JSON parseable
             json.loads(decompressed.decode('utf-8'))
 
-            record.verification_timestamp = datetime.now(timezone.utc)
+            record.verification_timestamp = datetime.now(UTC)
             record.status = BackupStatus.VERIFIED
 
             logger.info(f"Backup {backup_id} verified successfully")
@@ -585,8 +582,8 @@ class WalletBackupManager:
         self,
         backup_id: str,
         password: str,
-        target_wallet_id: Optional[str] = None,
-        restore_options: Optional[Dict[str, bool]] = None,
+        target_wallet_id: str | None = None,
+        restore_options: dict[str, bool] | None = None,
     ) -> RestoreRequest:
         """
         Restore a wallet from backup.
@@ -659,16 +656,16 @@ class WalletBackupManager:
             # 4. Restore settings
             # 5. Restore guardian configuration
 
-            restored_data = {
+            {
                 "wallet_id": target_wallet_id or metadata.wallet_id,
                 "data": wallet_data,
-                "restored_at": datetime.now(timezone.utc).isoformat(),
+                "restored_at": datetime.now(UTC).isoformat(),
             }
 
             restore.status = RestoreStatus.COMPLETED
             restore.current_step = "Restore completed"
             restore.progress_percent = 100.0
-            restore.completed_at = datetime.now(timezone.utc)
+            restore.completed_at = datetime.now(UTC)
 
             logger.info(
                 f"Restored wallet {metadata.wallet_id} from backup {backup_id}"
@@ -679,11 +676,11 @@ class WalletBackupManager:
         except Exception as e:
             restore.status = RestoreStatus.FAILED
             restore.error_message = str(e)
-            restore.completed_at = datetime.now(timezone.utc)
+            restore.completed_at = datetime.now(UTC)
             logger.error(f"Restore {restore_id} failed: {e}")
             raise
 
-    def get_backup_metadata(self, backup_id: str) -> Optional[BackupMetadata]:
+    def get_backup_metadata(self, backup_id: str) -> BackupMetadata | None:
         """Get metadata for a backup."""
         record = self._backups.get(backup_id)
         return record.metadata if record else None
@@ -692,10 +689,10 @@ class WalletBackupManager:
         self,
         wallet_id: str,
         include_expired: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List all backups for a wallet."""
         backup_ids = self._wallet_backups.get(wallet_id, [])
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         backups = []
         for backup_id in backup_ids:
@@ -762,7 +759,7 @@ class WalletBackupManager:
             return 0
 
         backup_ids = self._wallet_backups.get(wallet_id, [])
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         deleted = 0
 
         # Delete expired backups
@@ -782,7 +779,7 @@ class WalletBackupManager:
 
         return deleted
 
-    def export_backup(self, backup_id: str) -> Optional[bytes]:
+    def export_backup(self, backup_id: str) -> bytes | None:
         """
         Export backup as portable format for external storage.
 
@@ -803,7 +800,7 @@ class WalletBackupManager:
 
         return json.dumps(export_data).encode('utf-8')
 
-    def import_backup(self, export_data: bytes, wallet_id: str) -> Optional[BackupRecord]:
+    def import_backup(self, export_data: bytes, wallet_id: str) -> BackupRecord | None:
         """
         Import a backup from portable format.
 
@@ -848,11 +845,11 @@ class WalletBackupManager:
 
 
 # Singleton instance
-_backup_manager: Optional[WalletBackupManager] = None
+_backup_manager: WalletBackupManager | None = None
 
 
 def get_backup_manager(
-    config: Optional[BackupConfig] = None,
+    config: BackupConfig | None = None,
 ) -> WalletBackupManager:
     """Get the global backup manager instance."""
     global _backup_manager

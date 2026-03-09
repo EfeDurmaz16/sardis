@@ -1,14 +1,15 @@
 """Unit tests for confidence-based transaction routing."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+
+import pytest
+
 from sardis_v2_core.confidence_router import (
-    ConfidenceRouter,
-    ConfidenceLevel,
-    ConfidenceThresholds,
     ApprovalWorkflow,
-    ApprovalRequest,
+    ConfidenceLevel,
+    ConfidenceRouter,
+    ConfidenceThresholds,
 )
 from sardis_v2_core.spending_policy import SpendingPolicy
 
@@ -30,11 +31,11 @@ class TestConfidenceRouter:
         transaction = {
             "amount": Decimal("50"),
             "merchant_id": "aws",
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
         }
 
         history = [
-            {"amount": Decimal("45"), "merchant_id": "aws", "timestamp": datetime.now(timezone.utc)}
+            {"amount": Decimal("45"), "merchant_id": "aws", "timestamp": datetime.now(UTC)}
             for _ in range(20)
         ]
 
@@ -64,11 +65,11 @@ class TestConfidenceRouter:
         transaction = {
             "amount": Decimal("100"),
             "merchant_id": "new_merchant",
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
         }
 
         history = [
-            {"amount": Decimal("50"), "merchant_id": "other", "timestamp": datetime.now(timezone.utc)}
+            {"amount": Decimal("50"), "merchant_id": "other", "timestamp": datetime.now(UTC)}
             for _ in range(5)
         ]
 
@@ -98,11 +99,11 @@ class TestConfidenceRouter:
         transaction = {
             "amount": Decimal("200"),  # Large relative to history
             "merchant_id": "unknown",
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
         }
 
         history = [
-            {"amount": Decimal("10"), "merchant_id": "other", "timestamp": datetime.now(timezone.utc)}
+            {"amount": Decimal("10"), "merchant_id": "other", "timestamp": datetime.now(UTC)}
             for _ in range(3)
         ]
 
@@ -132,7 +133,7 @@ class TestConfidenceRouter:
         transaction = {
             "amount": Decimal("50"),
             "merchant_id": "suspicious",
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
         }
 
         confidence = router.calculate_confidence(
@@ -266,7 +267,7 @@ class TestConfidenceRouter:
         router = ConfidenceRouter(thresholds=thresholds)
         policy = SpendingPolicy(agent_id="agent-123", limit_total=Decimal("10000"))
 
-        confidence = router.calculate_confidence(
+        router.calculate_confidence(
             agent_id="agent-123",
             transaction={"amount": Decimal("100")},
             policy=policy,
@@ -399,7 +400,6 @@ class TestApprovalWorkflow:
     async def test_expired_approval_request(self):
         """Test approval request expiration."""
         import asyncio
-        from datetime import timedelta
 
         workflow = ApprovalWorkflow()
 

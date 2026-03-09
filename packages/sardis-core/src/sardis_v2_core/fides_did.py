@@ -6,10 +6,6 @@ DID format: did:fides:<base58-ed25519-pubkey>
 """
 from __future__ import annotations
 
-import base64
-import hashlib
-from typing import Optional
-
 from nacl import signing
 
 DID_PREFIX = "did:fides:"
@@ -89,7 +85,7 @@ def generate_did_keypair() -> tuple[str, bytes, bytes]:
     return did, public_key, bytes(signer)
 
 
-def sardis_did_to_fides_did(sardis_did: str, public_key: bytes) -> Optional[str]:
+def sardis_did_to_fides_did(sardis_did: str, public_key: bytes) -> str | None:
     """Convert a did:sardis:<agent_id> to did:fides:<base58-pubkey>.
 
     Returns None if the public key is not a valid Ed25519 key.

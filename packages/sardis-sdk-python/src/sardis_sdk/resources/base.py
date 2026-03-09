@@ -9,21 +9,15 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Type,
     TypeVar,
-    Union,
 )
 
-from ..client import RequestContext, TimeoutConfig
-from ..pagination import AsyncPaginator, Page, PageInfo, SyncPaginator, create_page_from_response
+from ..pagination import AsyncPaginator, Page, SyncPaginator
 
 if TYPE_CHECKING:
-    from ..client import AsyncSardisClient, SardisClient
+    from collections.abc import Callable
+
+    from ..client import AsyncSardisClient, RequestContext, SardisClient, TimeoutConfig
 
 # Type variable for model types
 T = TypeVar("T")
@@ -40,7 +34,7 @@ class AsyncBaseResource:
         _client: The async client instance
     """
 
-    def __init__(self, client: "AsyncSardisClient") -> None:
+    def __init__(self, client: AsyncSardisClient) -> None:
         """Initialize the resource.
 
         Args:
@@ -51,10 +45,10 @@ class AsyncBaseResource:
     async def _get(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a GET request.
 
         Args:
@@ -77,10 +71,10 @@ class AsyncBaseResource:
     async def _post(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a POST request.
 
         Args:
@@ -103,10 +97,10 @@ class AsyncBaseResource:
     async def _put(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a PUT request.
 
         Args:
@@ -129,10 +123,10 @@ class AsyncBaseResource:
     async def _patch(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a PATCH request.
 
         Args:
@@ -155,9 +149,9 @@ class AsyncBaseResource:
     async def _delete(
         self,
         path: str,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a DELETE request.
 
         Args:
@@ -178,9 +172,9 @@ class AsyncBaseResource:
     def _create_paginator(
         self,
         fetch_page: Callable[..., Page[T]],
-        initial_params: Optional[Dict[str, Any]] = None,
-        max_items: Optional[int] = None,
-        max_pages: Optional[int] = None,
+        initial_params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+        max_pages: int | None = None,
     ) -> AsyncPaginator[T]:
         """Create an async paginator for list operations.
 
@@ -212,7 +206,7 @@ class SyncBaseResource:
         _client: The sync client instance
     """
 
-    def __init__(self, client: "SardisClient") -> None:
+    def __init__(self, client: SardisClient) -> None:
         """Initialize the resource.
 
         Args:
@@ -223,10 +217,10 @@ class SyncBaseResource:
     def _get(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a GET request.
 
         Args:
@@ -249,10 +243,10 @@ class SyncBaseResource:
     def _post(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a POST request.
 
         Args:
@@ -275,10 +269,10 @@ class SyncBaseResource:
     def _put(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a PUT request.
 
         Args:
@@ -301,10 +295,10 @@ class SyncBaseResource:
     def _patch(
         self,
         path: str,
-        data: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a PATCH request.
 
         Args:
@@ -327,9 +321,9 @@ class SyncBaseResource:
     def _delete(
         self,
         path: str,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        context: Optional[RequestContext] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+        context: RequestContext | None = None,
+    ) -> dict[str, Any]:
         """Make a DELETE request.
 
         Args:
@@ -350,9 +344,9 @@ class SyncBaseResource:
     def _create_paginator(
         self,
         fetch_page: Callable[..., Page[T]],
-        initial_params: Optional[Dict[str, Any]] = None,
-        max_items: Optional[int] = None,
-        max_pages: Optional[int] = None,
+        initial_params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+        max_pages: int | None = None,
     ) -> SyncPaginator[T]:
         """Create a sync paginator for list operations.
 
@@ -380,7 +374,7 @@ Resource = AsyncBaseResource
 
 __all__ = [
     "AsyncBaseResource",
-    "SyncBaseResource",
     "BaseResource",
     "Resource",
+    "SyncBaseResource",
 ]

@@ -22,28 +22,25 @@ Usage:
 """
 from __future__ import annotations
 
-import re
 import logging
+import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
-from typing import (
-    Any,
-    Callable,
-    Optional,
-    Pattern,
-    Sequence,
-    TypeVar,
-    Union,
-    TYPE_CHECKING,
-)
 from functools import wraps
+from re import Pattern
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    TypeVar,
+)
 
+from .constants import PaymentLimits, SecurityConfig
 from .exceptions import SardisValidationError
-from .constants import PaymentLimits, SecurityConfig, TokenConfig
 
 if TYPE_CHECKING:
-    from .tokens import TokenType
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -109,12 +106,12 @@ class ValidationResult:
     """
 
     is_valid: bool
-    error: Optional[str] = None
-    field: Optional[str] = None
+    error: str | None = None
+    field: str | None = None
     value: Any = None
 
     @classmethod
-    def success(cls, field: Optional[str] = None) -> "ValidationResult":
+    def success(cls, field: str | None = None) -> ValidationResult:
         """Create a successful validation result."""
         return cls(is_valid=True, field=field)
 
@@ -122,9 +119,9 @@ class ValidationResult:
     def failure(
         cls,
         error: str,
-        field: Optional[str] = None,
+        field: str | None = None,
         value: Any = None,
-    ) -> "ValidationResult":
+    ) -> ValidationResult:
         """Create a failed validation result."""
         return cls(is_valid=False, error=error, field=field, value=value)
 
@@ -154,7 +151,7 @@ def validate_not_none(
 
 
 def validate_not_empty(
-    value: Union[str, Sequence[Any], None],
+    value: str | Sequence[Any] | None,
     field_name: str = "value",
 ) -> None:
     """Validate that a value is not empty.
@@ -176,10 +173,10 @@ def validate_not_empty(
 def validate_string(
     value: Any,
     field_name: str = "value",
-    min_length: Optional[int] = None,
-    max_length: Optional[int] = None,
-    pattern: Optional[Pattern[str]] = None,
-    allowed_values: Optional[Sequence[str]] = None,
+    min_length: int | None = None,
+    max_length: int | None = None,
+    pattern: Pattern[str] | None = None,
+    allowed_values: Sequence[str] | None = None,
 ) -> str:
     """Validate and normalize a string value.
 
@@ -242,8 +239,8 @@ def validate_string(
 def validate_integer(
     value: Any,
     field_name: str = "value",
-    min_value: Optional[int] = None,
-    max_value: Optional[int] = None,
+    min_value: int | None = None,
+    max_value: int | None = None,
 ) -> int:
     """Validate and convert an integer value.
 
@@ -291,9 +288,9 @@ def validate_integer(
 def validate_decimal(
     value: Any,
     field_name: str = "value",
-    min_value: Optional[Decimal] = None,
-    max_value: Optional[Decimal] = None,
-    max_decimal_places: Optional[int] = None,
+    min_value: Decimal | None = None,
+    max_value: Decimal | None = None,
+    max_decimal_places: int | None = None,
 ) -> Decimal:
     """Validate and convert a decimal value.
 
@@ -317,10 +314,7 @@ def validate_decimal(
         )
 
     try:
-        if isinstance(value, Decimal):
-            dec_value = value
-        else:
-            dec_value = Decimal(str(value))
+        dec_value = value if isinstance(value, Decimal) else Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
         raise SardisValidationError(
             f"{field_name} must be a valid decimal number",
@@ -580,8 +574,8 @@ def validate_tx_hash(
 def validate_amount(
     value: Any,
     field_name: str = "amount",
-    min_value: Optional[Decimal] = None,
-    max_value: Optional[Decimal] = None,
+    min_value: Decimal | None = None,
+    max_value: Decimal | None = None,
     allow_zero: bool = False,
 ) -> Decimal:
     """Validate a payment amount.
@@ -758,7 +752,7 @@ def validate_timestamp(
     value: Any,
     field_name: str = "timestamp",
     allow_future: bool = True,
-    max_age_seconds: Optional[int] = None,
+    max_age_seconds: int | None = None,
 ) -> int:
     """Validate a Unix timestamp.
 
@@ -780,7 +774,7 @@ def validate_timestamp(
         min_value=0,
     )
 
-    now = int(datetime.now(timezone.utc).timestamp())
+    now = int(datetime.now(UTC).timestamp())
 
     if not allow_future and timestamp > now:
         raise SardisValidationError(
@@ -802,8 +796,8 @@ def validate_timestamp(
 def validate_hex_string(
     value: Any,
     field_name: str = "value",
-    min_bytes: Optional[int] = None,
-    max_bytes: Optional[int] = None,
+    min_bytes: int | None = None,
+    max_bytes: int | None = None,
 ) -> str:
     """Validate a hex-encoded string.
 
@@ -1043,8 +1037,8 @@ def validate_hold_request(
     wallet_id: Any,
     amount: Any,
     token: Any,
-    merchant_id: Optional[Any] = None,
-    expiration_hours: Optional[Any] = None,
+    merchant_id: Any | None = None,
+    expiration_hours: Any | None = None,
 ) -> dict[str, Any]:
     """Validate a hold creation request.
 

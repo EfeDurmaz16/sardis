@@ -1,14 +1,16 @@
 """Marketplace models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from .base import SardisModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class ServiceCategory(str, Enum):
@@ -49,18 +51,18 @@ class Service(SardisModel):
     service_id: str = Field(alias="id")
     provider_agent_id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     category: ServiceCategory
     tags: list[str] = Field(default_factory=list)
     price_amount: Decimal
     price_token: str = "USDC"
     price_type: str = "fixed"
     capabilities: dict[str, Any] = Field(default_factory=dict)
-    api_endpoint: Optional[str] = None
+    api_endpoint: str | None = None
     status: ServiceStatus = ServiceStatus.DRAFT
     total_orders: int = 0
     completed_orders: int = 0
-    rating: Optional[Decimal] = None
+    rating: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -75,12 +77,12 @@ class ServiceOffer(SardisModel):
     total_amount: Decimal
     token: str = "USDC"
     status: OfferStatus
-    escrow_tx_hash: Optional[str] = None
+    escrow_tx_hash: str | None = None
     escrow_amount: Decimal = Decimal("0")
     released_amount: Decimal = Decimal("0")
     created_at: datetime
-    accepted_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    accepted_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class ServiceReview(SardisModel):
@@ -91,7 +93,7 @@ class ServiceReview(SardisModel):
     service_id: str
     reviewer_agent_id: str
     rating: int  # 1-5
-    comment: Optional[str] = None
+    comment: str | None = None
     created_at: datetime
 
 
@@ -99,14 +101,14 @@ class CreateServiceRequest(SardisModel):
     """Request to create a service listing."""
     
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     category: ServiceCategory
     tags: list[str] = Field(default_factory=list)
     price_amount: Decimal
     price_token: str = "USDC"
     price_type: str = "fixed"
     capabilities: dict[str, Any] = Field(default_factory=dict)
-    api_endpoint: Optional[str] = None
+    api_endpoint: str | None = None
 
 
 class CreateOfferRequest(SardisModel):
@@ -122,4 +124,4 @@ class CreateReviewRequest(SardisModel):
     """Request to create a service review."""
     
     rating: int  # 1-5
-    comment: Optional[str] = None
+    comment: str | None = None

@@ -46,7 +46,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .wallet import Wallet
@@ -56,11 +56,11 @@ if TYPE_CHECKING:
 class PolicyResult:
     """Result of a policy check."""
     approved: bool
-    reason: Optional[str] = None
+    reason: str | None = None
     checks_passed: list[str] = field(default_factory=list)
     checks_failed: list[str] = field(default_factory=list)
     requires_approval: bool = False
-    approval_reason: Optional[str] = None
+    approval_reason: str | None = None
 
     def __repr__(self) -> str:
         if self.requires_approval:
@@ -121,24 +121,24 @@ class Policy:
             approval_threshold=100,  # human approval needed above $100
         )
     """
-    
+
     max_per_tx: Decimal = field(default_factory=lambda: Decimal("100.00"))
     max_total: Decimal = field(default_factory=lambda: Decimal("1000.00"))
-    allowed_destinations: Optional[Set[str]] = None  # None = allow all
-    blocked_destinations: Set[str] = field(default_factory=set)
-    allowed_tokens: Set[str] = field(default_factory=lambda: {"USDC", "USDT", "PYUSD"})
+    allowed_destinations: set[str] | None = None  # None = allow all
+    blocked_destinations: set[str] = field(default_factory=set)
+    allowed_tokens: set[str] = field(default_factory=lambda: {"USDC", "USDT", "PYUSD"})
     require_purpose: bool = False
-    approval_threshold: Optional[Decimal] = None
-    
+    approval_threshold: Decimal | None = None
+
     def __init__(
         self,
         max_per_tx: float | Decimal = 100,
         max_total: float | Decimal = 1000,
-        allowed_destinations: Optional[Set[str]] = None,
-        blocked_destinations: Optional[Set[str]] = None,
-        allowed_tokens: Optional[Set[str]] = None,
+        allowed_destinations: set[str] | None = None,
+        blocked_destinations: set[str] | None = None,
+        allowed_tokens: set[str] | None = None,
         require_purpose: bool = False,
-        approval_threshold: Optional[float | Decimal] = None,
+        approval_threshold: float | Decimal | None = None,
     ):
         """
         Create a spending policy.
@@ -159,14 +159,14 @@ class Policy:
         self.allowed_tokens = allowed_tokens or {"USDC", "USDT", "PYUSD"}
         self.require_purpose = require_purpose
         self.approval_threshold = Decimal(str(approval_threshold)) if approval_threshold is not None else None
-    
+
     def check(
         self,
         amount: Decimal | float,
-        wallet: Optional["Wallet"] = None,
-        destination: Optional[str] = None,
+        wallet: Wallet | None = None,
+        destination: str | None = None,
         token: str = "USDC",
-        purpose: Optional[str] = None,
+        purpose: str | None = None,
     ) -> PolicyResult:
         """
         Run this payment through the policy check pipeline.
@@ -216,7 +216,7 @@ class Policy:
                 checks_passed=checks_passed,
                 checks_failed=checks_failed,
             )
-        
+
         # ── Check 2: Token type ────────────────────────────────────────
         if token in self.allowed_tokens:
             checks_passed.append("token_allowed")
@@ -228,7 +228,7 @@ class Policy:
                 checks_passed=checks_passed,
                 checks_failed=checks_failed,
             )
-        
+
         # ── Check 3: Destination blocklist (deny wins) ─────────────────
         if destination and destination in self.blocked_destinations:
             checks_failed.append("destination_blocked")
@@ -239,7 +239,7 @@ class Policy:
                 checks_failed=checks_failed,
             )
         checks_passed.append("destination_not_blocked")
-        
+
         # ── Check 4: Destination allowlist (if configured) ──────────────
         if self.allowed_destinations is not None and destination:
             allowed = self._check_destination_pattern(destination, self.allowed_destinations)
@@ -253,7 +253,7 @@ class Policy:
                     checks_passed=checks_passed,
                     checks_failed=checks_failed,
                 )
-        
+
         # ── Check 5: Purpose requirement ───────────────────────────────
         if self.require_purpose and not purpose:
             checks_failed.append("purpose_required")
@@ -265,7 +265,7 @@ class Policy:
             )
         if self.require_purpose:
             checks_passed.append("purpose_provided")
-        
+
         # ── Check 6: Wallet lifetime spending limit ─────────────────────
         if wallet:
             if wallet.can_spend(amount):
@@ -299,8 +299,8 @@ class Policy:
             checks_passed=checks_passed,
             checks_failed=checks_failed,
         )
-    
-    def _check_destination_pattern(self, destination: str, patterns: Set[str]) -> bool:
+
+    def _check_destination_pattern(self, destination: str, patterns: set[str]) -> bool:
         """Check if destination matches any pattern (supports wildcards)."""
         for pattern in patterns:
             if pattern.endswith("*"):
@@ -310,7 +310,7 @@ class Policy:
             elif destination == pattern:
                 return True
         return False
-    
+
     def __repr__(self) -> str:
         return f"Policy(max_per_tx={self.max_per_tx})"
 

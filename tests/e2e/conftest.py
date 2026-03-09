@@ -2,6 +2,7 @@
 Pytest configuration for E2E tests.
 """
 import os
+
 import pytest
 
 

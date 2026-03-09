@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
 
 
 class ProtocolReasonCode(str, Enum):
@@ -80,7 +79,7 @@ class ReasonCodeMapping:
 
 
 # Deterministic mapping table for all protocol rejection paths
-REASON_CODE_TABLE: Dict[ProtocolReasonCode, ReasonCodeMapping] = {
+REASON_CODE_TABLE: dict[ProtocolReasonCode, ReasonCodeMapping] = {
     # TAP - Trust Anchor Protocol
     ProtocolReasonCode.TAP_HEADER_MISSING: ReasonCodeMapping(
         code=ProtocolReasonCode.TAP_HEADER_MISSING,
@@ -394,7 +393,7 @@ def map_legacy_reason_to_code(reason: str) -> ProtocolReasonCode | None:
         Corresponding ProtocolReasonCode or None if not mappable
     """
     # Direct mappings from verifier.py
-    legacy_map: Dict[str, ProtocolReasonCode] = {
+    legacy_map: dict[str, ProtocolReasonCode] = {
         "mandate_expired": ProtocolReasonCode.AP2_MANDATE_EXPIRED,
         "domain_not_authorized": ProtocolReasonCode.AP2_DOMAIN_NOT_AUTHORIZED,
         "mandate_replayed": ProtocolReasonCode.AP2_MANDATE_REPLAYED,

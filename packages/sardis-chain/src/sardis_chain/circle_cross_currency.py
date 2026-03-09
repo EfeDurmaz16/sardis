@@ -17,10 +17,9 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -78,7 +77,7 @@ class CrossCurrencyQuote:
     to_amount: Decimal
     rate: Decimal
     quote_type: QuoteType = QuoteType.TRADABLE
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
     @property
     def is_crypto_to_crypto(self) -> bool:
@@ -95,8 +94,8 @@ class CrossCurrencyTrade:
     to_currency: str
     to_amount: Decimal
     status: TradeStatus = TradeStatus.PENDING
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @dataclass
@@ -107,8 +106,8 @@ class SettlementDetail:
     status: str
     currency: str
     amount: Decimal
-    reference: Optional[str] = None
-    expected_payment_due_at: Optional[str] = None
+    reference: str | None = None
+    expected_payment_due_at: str | None = None
 
 
 @dataclass
@@ -117,9 +116,9 @@ class SettlementBatch:
     batch_id: str
     entity_id: str
     status: SettlementStatus = SettlementStatus.PENDING
-    details: List[SettlementDetail] = field(default_factory=list)
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    details: list[SettlementDetail] = field(default_factory=list)
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 @dataclass
@@ -129,8 +128,8 @@ class FiatAccount:
     account_type: str  # "wire", "pix", etc.
     status: str
     description: str
-    currency: Optional[str] = None
-    bank_name: Optional[str] = None
+    currency: str | None = None
+    bank_name: str | None = None
 
 
 class CircleCrossCurrencyError(Exception):
@@ -175,7 +174,7 @@ class CircleCrossCurrencyClient:
 
     # ── Fiat Accounts ──────────────────────────────────────────────
 
-    async def list_fiat_accounts(self) -> List[FiatAccount]:
+    async def list_fiat_accounts(self) -> list[FiatAccount]:
         """List linked fiat accounts on Circle Mint.
 
         Required for fiat → USDC swaps. Each account represents a
@@ -202,7 +201,7 @@ class CircleCrossCurrencyClient:
         self,
         fiat_account_id: str,
         currency: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Register a fiat account for cross-currency trading.
 
         Must be called once per currency before requesting fiat quotes.
@@ -222,9 +221,9 @@ class CircleCrossCurrencyClient:
     async def get_quote(
         self,
         from_currency: str,
-        from_amount: Optional[Decimal] = None,
+        from_amount: Decimal | None = None,
         to_currency: str = "USDC",
-        to_amount: Optional[Decimal] = None,
+        to_amount: Decimal | None = None,
         quote_type: QuoteType = QuoteType.TRADABLE,
     ) -> CrossCurrencyQuote:
         """Get a cross-currency quote with locked rate.
@@ -249,7 +248,7 @@ class CircleCrossCurrencyClient:
 
         idempotency_key = str(uuid.uuid4())
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "type": quote_type.value,
             "idempotencyKey": idempotency_key,
             "from": {
@@ -341,7 +340,7 @@ class CircleCrossCurrencyClient:
 
     # ── Settlements ────────────────────────────────────────────────
 
-    async def get_settlements(self) -> List[SettlementBatch]:
+    async def get_settlements(self) -> list[SettlementBatch]:
         """Get settlement batches for pending and completed trades.
 
         For fiat swaps, this shows payment instructions and settlement status.
@@ -388,7 +387,7 @@ class CircleCrossCurrencyClient:
 
         return batches
 
-    async def get_settlement_instructions(self, currency: str) -> Dict[str, Any]:
+    async def get_settlement_instructions(self, currency: str) -> dict[str, Any]:
         """Get settlement payment instructions for a fiat currency.
 
         Returns bank details where fiat must be sent for fiat → USDC swaps.

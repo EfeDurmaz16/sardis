@@ -11,11 +11,13 @@ from __future__ import annotations
 import json
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from langchain_core.callbacks import CallbackManagerForToolRun
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +118,7 @@ class SardisPayTool(BaseTool):
         amount: str,
         token: str = "USDC",
         purpose: str = "",
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         amount_d = _safe_decimal(amount)
         if amount_d is None:
@@ -169,7 +171,7 @@ class SardisCheckBalanceTool(BaseTool):
         self,
         token: str = "USDC",
         chain: str = "base",
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         if not self.wallet_id:
             return _error_response("No wallet_id configured on SardisCheckBalanceTool")
@@ -217,7 +219,7 @@ class SardisCheckPolicyTool(BaseTool):
         amount: str,
         token: str = "USDC",
         purpose: str = "",
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         amount_d = _safe_decimal(amount)
         if amount_d is None:
@@ -315,7 +317,7 @@ class SardisSetPolicyTool(BaseTool):
     def _run(
         self,
         policy: str,
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         if not self.wallet_id:
             return _error_response("No wallet_id configured on SardisSetPolicyTool")
@@ -372,7 +374,7 @@ class SardisListTransactionsTool(BaseTool):
     def _run(
         self,
         limit: int = 10,
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         if not self.wallet_id:
             return _error_response("No wallet_id configured on SardisListTransactionsTool")

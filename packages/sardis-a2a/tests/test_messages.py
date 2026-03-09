@@ -1,17 +1,16 @@
 """Tests for A2A message types."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 import pytest
-
 from sardis_a2a.messages import (
-    A2AMessageType,
-    A2AMessageStatus,
-    A2AMessage,
-    A2APaymentRequest,
-    A2APaymentResponse,
     A2ACredentialRequest,
     A2ACredentialResponse,
+    A2AMessage,
+    A2AMessageStatus,
+    A2AMessageType,
+    A2APaymentRequest,
+    A2APaymentResponse,
 )
 
 

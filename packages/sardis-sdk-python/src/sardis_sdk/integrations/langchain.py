@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import warnings
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,7 @@ class PayInput(BaseModel):
 
     amount: float = Field(description="Payment amount")
     merchant: str = Field(description="Merchant identifier")
-    merchant_address: Optional[str] = Field(default=None, description="Recipient wallet address")
+    merchant_address: str | None = Field(default=None, description="Recipient wallet address")
     purpose: str = Field(default="Service payment", description="Reason for payment")
     token: str = Field(default="USDC", description="Token symbol")
 
@@ -44,7 +44,7 @@ class PolicyCheckInput(BaseModel):
 
     merchant: str = Field(description="Merchant identifier")
     amount: float = Field(description="Amount to validate")
-    purpose: Optional[str] = Field(default=None, description="Optional purpose")
+    purpose: str | None = Field(default=None, description="Optional purpose")
 
 
 class BalanceCheckInput(BaseModel):

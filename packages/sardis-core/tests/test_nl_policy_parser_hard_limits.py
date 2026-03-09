@@ -1,11 +1,11 @@
 """Hard-limit and fuzz tests for NL policy parser security controls."""
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
-from decimal import Decimal
 import random
 import string
 import sys
+from dataclasses import FrozenInstanceError
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -14,10 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sardis_v2_core.nl_policy_parser import (  # noqa: E402
     IMMUTABLE_PARSER_HARD_LIMITS,
-    NLPolicyParser,
-    RegexPolicyParser,
     ExtractedPolicy,
     ExtractedSpendingLimit,
+    NLPolicyParser,
+    RegexPolicyParser,
 )
 
 

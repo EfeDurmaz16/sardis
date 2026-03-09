@@ -25,16 +25,14 @@ Trusted Forwarder Contracts:
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Optional, Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 
 from eth_account import Account
 from eth_account.messages import encode_defunct, encode_structured_data
-from eth_utils import to_checksum_address, keccak
+from eth_utils import to_checksum_address
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +74,10 @@ class ForwardRequest:
     data: bytes = b""  # Calldata for the target contract
 
     # Signature fields (populated after signing)
-    signature: Optional[str] = None
-    deadline: Optional[int] = None  # Unix timestamp when signature expires
+    signature: str | None = None
+    deadline: int | None = None  # Unix timestamp when signature expires
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for EIP-712 encoding."""
         return {
             "from": to_checksum_address(self.from_address),
@@ -186,11 +184,11 @@ class MetaTransactionResult:
     relayer_address: str
     user_address: str
     target_address: str
-    gas_used: Optional[int] = None
-    gas_cost_wei: Optional[int] = None
-    relayed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    gas_used: int | None = None
+    gas_cost_wei: int | None = None
+    relayed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class MetaTransactionRelayer:
@@ -223,7 +221,7 @@ class MetaTransactionRelayer:
     EXECUTE_SELECTOR = "47153f82"
 
     @classmethod
-    def get_forwarder_addresses(cls) -> Dict[str, str]:
+    def get_forwarder_addresses(cls) -> dict[str, str]:
         """Load forwarder addresses from env vars, falling back to defaults."""
         import os
         addresses = {}
@@ -299,7 +297,7 @@ class MetaTransactionRelayer:
         nonce = int(result, 16)
         return nonce
 
-    def validate_request(self, request: ForwardRequest) -> tuple[bool, Optional[str]]:
+    def validate_request(self, request: ForwardRequest) -> tuple[bool, str | None]:
         """
         Validate a ForwardRequest before relaying.
 
@@ -319,7 +317,7 @@ class MetaTransactionRelayer:
 
         # Check deadline if present
         if request.deadline:
-            now = int(datetime.now(timezone.utc).timestamp())
+            now = int(datetime.now(UTC).timestamp())
             if now > request.deadline:
                 return False, "Request expired"
 

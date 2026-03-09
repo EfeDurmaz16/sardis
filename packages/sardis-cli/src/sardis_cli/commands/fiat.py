@@ -21,7 +21,7 @@ def fiat(ctx):
 @click.pass_context
 def balance(ctx, agent_id: str | None, currency: str):
     """Show fiat balance (platform Treasury + agent sub-balances)."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
     table = Table(title="Fiat Balances")
     table.add_column("Account", style="cyan")
@@ -52,22 +52,22 @@ def balance(ctx, agent_id: str | None, currency: str):
 @click.pass_context
 def offramp(ctx, amount: float, agent_id: str, token: str, currency: str, provider: str | None):
     """Off-ramp crypto to fiat (USDC -> USD via RampRouter)."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
-    console.print(f"\n[bold]Off-Ramp Request[/bold]")
+    console.print("\n[bold]Off-Ramp Request[/bold]")
     console.print(f"  Agent: [cyan]{agent_id}[/cyan]")
     console.print(f"  Amount: [green]{amount} {token}[/green] → [green]{currency}[/green]")
 
     if provider:
         console.print(f"  Provider: [yellow]{provider}[/yellow]")
     else:
-        console.print(f"  Provider: [yellow]auto (RampRouter)[/yellow]")
+        console.print("  Provider: [yellow]auto (RampRouter)[/yellow]")
 
-    console.print(f"\n[dim]Getting best quote...[/dim]")
-    console.print(f"  Best provider: [green]Coinbase[/green] (0.0% fee)")
+    console.print("\n[dim]Getting best quote...[/dim]")
+    console.print("  Best provider: [green]Coinbase[/green] (0.0% fee)")
     console.print(f"  You receive: [bold green]${amount:.2f} {currency}[/bold green]")
-    console.print(f"  Fee: [green]$0.00[/green]")
-    console.print(f"\n[yellow]⚠ Sandbox mode: No real transaction executed[/yellow]")
+    console.print("  Fee: [green]$0.00[/green]")
+    console.print("\n[yellow]⚠ Sandbox mode: No real transaction executed[/yellow]")
 
 
 @fiat.command()
@@ -80,9 +80,9 @@ def offramp(ctx, amount: float, agent_id: str, token: str, currency: str, provid
 @click.pass_context
 def onramp(ctx, amount: float, agent_id: str, currency: str, token: str, chain: str, provider: str | None):
     """On-ramp fiat to crypto (USD -> USDC via RampRouter)."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
-    console.print(f"\n[bold]On-Ramp Request[/bold]")
+    console.print("\n[bold]On-Ramp Request[/bold]")
     console.print(f"  Agent: [cyan]{agent_id}[/cyan]")
     console.print(f"  Amount: [green]${amount:.2f} {currency}[/green] → [green]{token}[/green]")
     console.print(f"  Chain: [cyan]{chain}[/cyan]")
@@ -90,9 +90,9 @@ def onramp(ctx, amount: float, agent_id: str, currency: str, token: str, chain: 
     if provider:
         console.print(f"  Provider: [yellow]{provider}[/yellow]")
     else:
-        console.print(f"  Provider: [yellow]auto (RampRouter)[/yellow]")
+        console.print("  Provider: [yellow]auto (RampRouter)[/yellow]")
 
-    console.print(f"\n[dim]Getting best quote...[/dim]")
-    console.print(f"  Best provider: [green]Coinbase Onramp[/green] (0.0% fee for USDC)")
+    console.print("\n[dim]Getting best quote...[/dim]")
+    console.print("  Best provider: [green]Coinbase Onramp[/green] (0.0% fee for USDC)")
     console.print(f"  You receive: [bold green]{amount:.2f} {token}[/bold green] on {chain}")
-    console.print(f"\n[yellow]⚠ Sandbox mode: No real transaction executed[/yellow]")
+    console.print("\n[yellow]⚠ Sandbox mode: No real transaction executed[/yellow]")

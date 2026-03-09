@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from fastapi import FastAPI
@@ -47,7 +47,7 @@ class _AuditEntry:
             "a1": "2026-02-24T10:00:00+00:00",
             "a2": "2026-02-25T10:00:00+00:00",
             "a3": "2026-02-26T10:00:00+00:00",
-        }.get(self.audit_id, datetime.now(timezone.utc).isoformat())
+        }.get(self.audit_id, datetime.now(UTC).isoformat())
         return {
             "audit_id": self.audit_id,
             "mandate_id": self.mandate_id,

@@ -5,10 +5,11 @@ Automatically trips when failures exceed threshold, preventing cascading failure
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, TypeVar, ParamSpec
+from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -143,7 +144,7 @@ class CircuitBreaker:
 
             return result
 
-        except Exception as e:
+        except Exception:
             async with self._lock:
                 await self._on_failure()
             raise

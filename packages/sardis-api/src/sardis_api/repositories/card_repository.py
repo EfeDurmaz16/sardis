@@ -8,10 +8,11 @@ NOTE: The in-memory mode is intentionally simple and not multi-instance safe.
 """
 
 from __future__ import annotations
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+
 import os
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 
 class CardRepository:
@@ -44,9 +45,9 @@ class CardRepository:
         limit_per_tx: float = 0,
         limit_daily: float = 0,
         limit_monthly: float = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not self._use_postgres():
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             row: dict[str, Any] = {
                 "id": str(uuid.uuid4()),
                 "card_id": card_id,
@@ -110,7 +111,7 @@ class CardRepository:
             d.pop("wallet_external_id", None)
             return d
 
-    async def get_by_card_id(self, card_id: str) -> Optional[Dict[str, Any]]:
+    async def get_by_card_id(self, card_id: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             return self._cards.get(card_id)
         pool = await self._get_pool()
@@ -134,7 +135,7 @@ class CardRepository:
             d.pop("wallet_external_id", None)
             return d
 
-    async def get_by_provider_card_id(self, provider_card_id: str) -> Optional[Dict[str, Any]]:
+    async def get_by_provider_card_id(self, provider_card_id: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             for card in self._cards.values():
                 if card.get("provider_card_id") == provider_card_id:
@@ -161,7 +162,7 @@ class CardRepository:
             d.pop("wallet_external_id", None)
             return d
 
-    async def get_by_wallet_id(self, wallet_id: str) -> List[Dict[str, Any]]:
+    async def get_by_wallet_id(self, wallet_id: str) -> list[dict[str, Any]]:
         if not self._use_postgres():
             return [
                 card for card in self._cards.values()
@@ -192,7 +193,7 @@ class CardRepository:
 
     async def update_status(
         self, card_id: str, status: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             card = self._cards.get(card_id)
             if not card:
@@ -226,7 +227,7 @@ class CardRepository:
     async def update_limits(
         self, card_id: str, limit_per_tx: float | None = None,
         limit_daily: float | None = None, limit_monthly: float | None = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             card = self._cards.get(card_id)
             if not card:
@@ -267,7 +268,7 @@ class CardRepository:
 
     async def update_funded_amount(
         self, card_id: str, amount: float
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             card = self._cards.get(card_id)
             if not card:
@@ -299,7 +300,7 @@ class CardRepository:
         status: str = "pending",
         decline_reason: str | None = None,
         settled_at: datetime | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not self._use_postgres():
             row: dict[str, Any] = {
                 "id": str(uuid.uuid4()),
@@ -313,7 +314,7 @@ class CardRepository:
                 "merchant_id": merchant_id,
                 "status": status,
                 "decline_reason": decline_reason,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "settled_at": settled_at.isoformat() if settled_at else None,
             }
             self._transactions.setdefault(card_id, []).insert(0, row)
@@ -368,7 +369,7 @@ class CardRepository:
 
     async def list_transactions(
         self, card_id: str, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         if not self._use_postgres():
             return list(self._transactions.get(card_id, []))[:limit]
         pool = await self._get_pool()

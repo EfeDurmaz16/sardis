@@ -8,21 +8,18 @@ Markers: protocol_conformance, security
 """
 from __future__ import annotations
 
-import pytest
 import time
 from dataclasses import dataclass
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
-from typing import Optional
 
-from sardis_protocol.verifier import MandateVerifier, MandateChainVerification
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.mandates import PaymentMandate, CartMandate, IntentMandate
-from sardis_v2_core.wallets import Wallet
-from sardis_v2_core.agents import Agent, SpendingLimits, AgentPolicy
+import pytest
 from sardis_cards.models import Card, CardStatus, CardType
+from sardis_protocol.schemas import AP2PaymentExecuteRequest
+from sardis_protocol.verifier import MandateVerifier
+from sardis_v2_core import SardisSettings
+from sardis_v2_core.agents import Agent, AgentPolicy, SpendingLimits
+from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
+from sardis_v2_core.wallets import Wallet
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.security]
 
@@ -33,10 +30,10 @@ class MockWalletStore:
     """Mock wallet store for isolation testing."""
     wallets: dict[str, Wallet]
 
-    def get(self, wallet_id: str) -> Optional[Wallet]:
+    def get(self, wallet_id: str) -> Wallet | None:
         return self.wallets.get(wallet_id)
 
-    def get_owner(self, wallet_id: str) -> Optional[str]:
+    def get_owner(self, wallet_id: str) -> str | None:
         """Get the agent_id that owns this wallet."""
         wallet = self.wallets.get(wallet_id)
         return wallet.agent_id if wallet else None
@@ -47,10 +44,10 @@ class MockCardStore:
     """Mock card store for isolation testing."""
     cards: dict[str, Card]
 
-    def get(self, card_id: str) -> Optional[Card]:
+    def get(self, card_id: str) -> Card | None:
         return self.cards.get(card_id)
 
-    def get_owner(self, card_id: str) -> Optional[str]:
+    def get_owner(self, card_id: str) -> str | None:
         """Get the wallet_id that owns this card."""
         card = self.cards.get(card_id)
         return card.wallet_id if card else None
@@ -61,7 +58,7 @@ class MockAgentStore:
     """Mock agent store for isolation testing."""
     agents: dict[str, Agent]
 
-    def get(self, agent_id: str) -> Optional[Agent]:
+    def get(self, agent_id: str) -> Agent | None:
         return self.agents.get(agent_id)
 
 
@@ -422,7 +419,7 @@ def test_card_spending_limits_are_per_card_not_per_agent():
     """
     # Setup: Agent with two cards
     agent_id = "agent_a"
-    wallet_a = Wallet.new(agent_id=agent_id, wallet_id="wallet_a")
+    Wallet.new(agent_id=agent_id, wallet_id="wallet_a")
 
     card_1 = Card(
         card_id="card_1",
@@ -442,7 +439,7 @@ def test_card_spending_limits_are_per_card_not_per_agent():
         funded_amount=Decimal("1000.00"),  # Sufficient funds
     )
 
-    card_store = MockCardStore(cards={
+    MockCardStore(cards={
         "card_1": card_1,
         "card_2": card_2,
     })
@@ -565,7 +562,7 @@ def test_ap2_subject_validated_against_tap_identity():
     )
 
     # Verify identity binding check
-    verifier = MandateVerifier(settings=settings, identity_registry=identity_registry)
+    MandateVerifier(settings=settings, identity_registry=identity_registry)
 
     # The verifier should detect that the verification_method (Agent B's key)
     # doesn't match the subject field (Agent A)
@@ -594,7 +591,7 @@ def test_ucp_checkout_sessions_scoped_to_creating_agent():
     Verifies that checkout sessions maintain proper tenant isolation and
     cannot be accessed or manipulated by other agents.
     """
-    from sardis_checkout.models import CheckoutSession, CustomerSession, PSPType, PaymentStatus
+    from sardis_checkout.models import CheckoutSession, CustomerSession, PaymentStatus, PSPType
 
     # Setup: Two agents creating checkout sessions
     agent_a_id = "agent_a"

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 import httpx
 import pytest
-
 from sardis_cards.models import Card, CardStatus, CardType
 from sardis_cards.providers.base import CardProvider
 from sardis_cards.providers.partner_issuers import BridgeCardsProvider, RainCardsProvider
@@ -30,7 +28,7 @@ class _FakeProvider(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
     ) -> Card:
         self.calls.append("create_card")
         if self._fail_create:
@@ -50,7 +48,7 @@ class _FakeProvider(CardProvider):
         self.cards[provider_card_id] = card
         return card
 
-    async def get_card(self, provider_card_id: str) -> Optional[Card]:
+    async def get_card(self, provider_card_id: str) -> Card | None:
         self.calls.append("get_card")
         return self.cards.get(provider_card_id)
 
@@ -81,9 +79,9 @@ class _FakeProvider(CardProvider):
     async def update_limits(
         self,
         provider_card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         self.calls.append("update_limits")
         card = self.cards[provider_card_id]

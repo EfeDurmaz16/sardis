@@ -7,10 +7,10 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -52,27 +52,27 @@ class SettlementRecord:
 
     # References
     network_reference: str = ""  # tx_hash for crypto, Stripe PI ID for card
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
 
     # Card-aware lifecycle fields
-    authorization_status: Optional[str] = None  # authorized/captured/voided
-    capture_status: Optional[str] = None  # pending_capture/captured/partial
-    dispute_status: Optional[str] = None  # none/opened/won/lost
-    reversal_reference: Optional[str] = None  # chargeback/reversal ID
-    liability_party: Optional[str] = None  # sardis/merchant/network/issuer
+    authorization_status: str | None = None  # authorized/captured/voided
+    capture_status: str | None = None  # pending_capture/captured/partial
+    dispute_status: str | None = None  # none/opened/won/lost
+    reversal_reference: str | None = None  # chargeback/reversal ID
+    liability_party: str | None = None  # sardis/merchant/network/issuer
 
     # Timestamps
     initiated_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
-    confirmed_at: Optional[datetime] = None
-    settled_at: Optional[datetime] = None
-    failed_at: Optional[datetime] = None
-    expected_settlement_at: Optional[datetime] = None
+    confirmed_at: datetime | None = None
+    settled_at: datetime | None = None
+    failed_at: datetime | None = None
+    expected_settlement_at: datetime | None = None
 
     # Retry
     retry_count: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
     # Extra
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -114,15 +114,15 @@ class SettlementRecord:
 @runtime_checkable
 class SettlementStore(Protocol):
     async def create(self, record: SettlementRecord) -> str: ...
-    async def get(self, settlement_id: str) -> Optional[SettlementRecord]: ...
-    async def get_by_intent(self, intent_id: str) -> Optional[SettlementRecord]: ...
+    async def get(self, settlement_id: str) -> SettlementRecord | None: ...
+    async def get_by_intent(self, intent_id: str) -> SettlementRecord | None: ...
     async def update_status(
         self, settlement_id: str, status: SettlementStatus,
         **kwargs,
     ) -> None: ...
     async def get_pending(self) -> list[SettlementRecord]: ...
     async def get_summary(
-        self, org_id: Optional[str] = None,
+        self, org_id: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -141,10 +141,10 @@ class InMemorySettlementStore:
             self._by_intent[record.intent_id] = record.settlement_id
         return record.settlement_id
 
-    async def get(self, settlement_id: str) -> Optional[SettlementRecord]:
+    async def get(self, settlement_id: str) -> SettlementRecord | None:
         return self._records.get(settlement_id)
 
-    async def get_by_intent(self, intent_id: str) -> Optional[SettlementRecord]:
+    async def get_by_intent(self, intent_id: str) -> SettlementRecord | None:
         sid = self._by_intent.get(intent_id)
         if sid is None:
             return None
@@ -157,7 +157,7 @@ class InMemorySettlementStore:
         if rec is None:
             raise KeyError(f"Settlement {settlement_id} not found")
         rec.status = status
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if status == SettlementStatus.CONFIRMED:
             rec.confirmed_at = now
         elif status == SettlementStatus.SETTLED:
@@ -184,7 +184,7 @@ class InMemorySettlementStore:
             )
         ]
 
-    async def get_summary(self, org_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_summary(self, org_id: str | None = None) -> dict[str, Any]:
         summary: dict[str, dict[str, Any]] = {}
         for r in self._records.values():
             mode = r.mode.value
@@ -229,7 +229,7 @@ class PostgresSettlementStore:
             dispute_status=row.get("dispute_status"),
             reversal_reference=row.get("reversal_reference"),
             liability_party=row.get("liability_party"),
-            initiated_at=row.get("initiated_at", datetime.now(timezone.utc)),
+            initiated_at=row.get("initiated_at", datetime.now(UTC)),
             confirmed_at=row.get("confirmed_at"),
             settled_at=row.get("settled_at"),
             failed_at=row.get("failed_at"),
@@ -272,7 +272,7 @@ class PostgresSettlementStore:
             )
         return record.settlement_id
 
-    async def get(self, settlement_id: str) -> Optional[SettlementRecord]:
+    async def get(self, settlement_id: str) -> SettlementRecord | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM settlement_records WHERE settlement_id = $1",
@@ -282,7 +282,7 @@ class PostgresSettlementStore:
             return None
         return self._row_to_record(dict(row))
 
-    async def get_by_intent(self, intent_id: str) -> Optional[SettlementRecord]:
+    async def get_by_intent(self, intent_id: str) -> SettlementRecord | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM settlement_records WHERE intent_id = $1 ORDER BY created_at DESC LIMIT 1",
@@ -300,21 +300,21 @@ class PostgresSettlementStore:
         idx = 3
         if status == SettlementStatus.CONFIRMED:
             parts.append(f"confirmed_at = ${idx}")
-            params.append(datetime.now(timezone.utc))
+            params.append(datetime.now(UTC))
             idx += 1
         elif status == SettlementStatus.SETTLED:
             parts.append(f"settled_at = ${idx}")
-            params.append(datetime.now(timezone.utc))
+            params.append(datetime.now(UTC))
             idx += 1
         elif status == SettlementStatus.FAILED:
             parts.append(f"failed_at = ${idx}")
-            params.append(datetime.now(timezone.utc))
+            params.append(datetime.now(UTC))
             idx += 1
             if "error" in kwargs:
                 parts.append(f"last_error = ${idx}")
                 params.append(kwargs["error"])
                 idx += 1
-            parts.append(f"retry_count = retry_count + 1")
+            parts.append("retry_count = retry_count + 1")
 
         set_clause = ", ".join(parts)
         async with self._pool.acquire() as conn:
@@ -332,7 +332,7 @@ class PostgresSettlementStore:
             )
         return [self._row_to_record(dict(r)) for r in rows]
 
-    async def get_summary(self, org_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_summary(self, org_id: str | None = None) -> dict[str, Any]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT mode, COUNT(*) as cnt,

@@ -2,7 +2,6 @@
 Tests for WalletsResource
 """
 import pytest
-from sardis_sdk import SardisClient
 
 
 class TestCreateWallet:

@@ -39,17 +39,17 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Literal
+from typing import Literal
 from uuid import uuid4
 
 from .database import Database
 from .exceptions import (
+    SardisConflictError,
     SardisNotFoundError,
     SardisValidationError,
-    SardisConflictError,
 )
 from .tokens import TokenType
 
@@ -96,32 +96,32 @@ class Escrow:
     expires_at: datetime
 
     # Funding details
-    funded_at: Optional[datetime] = None
-    funding_tx_hash: Optional[str] = None
+    funded_at: datetime | None = None
+    funding_tx_hash: str | None = None
 
     # Delivery confirmation
-    delivery_proof: Optional[str] = None
-    delivered_at: Optional[datetime] = None
+    delivery_proof: str | None = None
+    delivered_at: datetime | None = None
 
     # Release/refund details
-    released_at: Optional[datetime] = None
-    release_tx_hash: Optional[str] = None
-    refunded_at: Optional[datetime] = None
-    refund_tx_hash: Optional[str] = None
-    refund_reason: Optional[str] = None
+    released_at: datetime | None = None
+    release_tx_hash: str | None = None
+    refunded_at: datetime | None = None
+    refund_tx_hash: str | None = None
+    refund_reason: str | None = None
 
     # Dispute details
-    disputed_at: Optional[datetime] = None
-    dispute_reason: Optional[str] = None
-    dispute_resolution: Optional[str] = None
+    disputed_at: datetime | None = None
+    dispute_reason: str | None = None
+    dispute_resolution: str | None = None
 
     # Additional metadata
     metadata: dict = field(default_factory=dict)
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def is_expired(self) -> bool:
         """Check if escrow has expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def can_transition_to(self, new_state: EscrowState) -> bool:
         """Check if state transition is valid."""
@@ -144,7 +144,7 @@ class EscrowManager:
         token: TokenType,
         chain: str,
         timeout_hours: int = 24,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> Escrow:
         """
         Create a new escrow between two agents.
@@ -171,7 +171,7 @@ class EscrowManager:
             raise SardisValidationError("Payer and payee must be different agents")
 
         escrow_id = f"escrow_{uuid4().hex[:16]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = now + timedelta(hours=timeout_hours)
 
         escrow = Escrow(
@@ -233,7 +233,7 @@ class EscrowManager:
                 f"Cannot fund escrow in state {escrow.state.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Update database
         async with Database.connection() as conn:
@@ -280,7 +280,7 @@ class EscrowManager:
                 f"Cannot confirm delivery for escrow in state {escrow.state.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Update database
         async with Database.connection() as conn:
@@ -304,7 +304,7 @@ class EscrowManager:
 
         return escrow
 
-    async def release_escrow(self, escrow_id: str, tx_hash: Optional[str] = None) -> Escrow:
+    async def release_escrow(self, escrow_id: str, tx_hash: str | None = None) -> Escrow:
         """
         Release escrowed funds to payee.
 
@@ -327,7 +327,7 @@ class EscrowManager:
                 f"Cannot release escrow in state {escrow.state.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Update database
         async with Database.connection() as conn:
@@ -351,7 +351,7 @@ class EscrowManager:
 
         return escrow
 
-    async def refund_escrow(self, escrow_id: str, reason: str, tx_hash: Optional[str] = None) -> Escrow:
+    async def refund_escrow(self, escrow_id: str, reason: str, tx_hash: str | None = None) -> Escrow:
         """
         Refund escrowed funds to payer.
 
@@ -375,7 +375,7 @@ class EscrowManager:
                 f"Cannot refund escrow in state {escrow.state.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Update database
         async with Database.connection() as conn:
@@ -425,7 +425,7 @@ class EscrowManager:
                 f"Cannot dispute escrow in state {escrow.state.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Update database
         async with Database.connection() as conn:
@@ -456,7 +456,7 @@ class EscrowManager:
         Returns:
             List of expired escrows that were marked
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with Database.connection() as conn:
             # Find escrows that are expired but not yet marked
@@ -522,7 +522,7 @@ class EscrowManager:
         self,
         agent_id: str,
         role: Literal["payer", "payee", "any"] = "any",
-        state: Optional[EscrowState] = None,
+        state: EscrowState | None = None,
     ) -> list[Escrow]:
         """
         List escrows for an agent.

@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Protocol
+from datetime import UTC, datetime, timedelta
+from typing import Any, Protocol
 
-from .agent_card import SardisAgentCard, AgentCapability, PaymentCapability
+from .agent_card import AgentCapability, PaymentCapability, SardisAgentCard
 
 logger = logging.getLogger(__name__)
 
@@ -26,22 +26,22 @@ class DiscoveredAgent:
     agent_url: str  # Base URL for the agent
 
     # Cached agent card
-    card: Optional[SardisAgentCard] = None
-    card_raw: Optional[Dict[str, Any]] = None
+    card: SardisAgentCard | None = None
+    card_raw: dict[str, Any] | None = None
 
     # Cache metadata
-    discovered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_verified_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    discovered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_verified_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     cache_ttl_seconds: int = 3600  # 1 hour default
 
     # Status
     available: bool = True
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
     def is_cache_valid(self) -> bool:
         """Check if the cached data is still valid."""
         expiry = self.last_verified_at + timedelta(seconds=self.cache_ttl_seconds)
-        return datetime.now(timezone.utc) < expiry
+        return datetime.now(UTC) < expiry
 
     def supports_capability(self, capability: AgentCapability) -> bool:
         """Check if this agent supports a specific capability."""
@@ -59,7 +59,7 @@ class DiscoveredAgent:
 class HttpClient(Protocol):
     """Protocol for HTTP client operations."""
 
-    async def get(self, url: str, headers: Dict[str, str] | None = None) -> tuple[int, Dict[str, Any]]:
+    async def get(self, url: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
         """Make an HTTP GET request.
 
         Returns:
@@ -97,7 +97,7 @@ class AgentDiscoveryService:
         """
         self._http_client = http_client
         self._cache_ttl = cache_ttl_seconds
-        self._agents: Dict[str, DiscoveredAgent] = {}
+        self._agents: dict[str, DiscoveredAgent] = {}
 
     async def discover_agent(
         self,
@@ -183,7 +183,7 @@ class AgentDiscoveryService:
 
             agent = DiscoveredAgent(
                 agent_id=f"unknown_{hash(agent_url) % 10000}",
-                agent_name=f"Unknown Agent",
+                agent_name="Unknown Agent",
                 agent_url=agent_url,
                 cache_ttl_seconds=self._cache_ttl,
                 available=False,
@@ -228,11 +228,11 @@ class AgentDiscoveryService:
 
         return agent
 
-    def get_agent(self, agent_url: str) -> Optional[DiscoveredAgent]:
+    def get_agent(self, agent_url: str) -> DiscoveredAgent | None:
         """Get a cached agent by URL."""
         return self._agents.get(agent_url.rstrip("/"))
 
-    def get_agent_by_id(self, agent_id: str) -> Optional[DiscoveredAgent]:
+    def get_agent_by_id(self, agent_id: str) -> DiscoveredAgent | None:
         """Get a cached agent by ID."""
         for agent in self._agents.values():
             if agent.agent_id == agent_id:
@@ -245,7 +245,7 @@ class AgentDiscoveryService:
         token: str | None = None,
         chain: str | None = None,
         available_only: bool = True,
-    ) -> List[DiscoveredAgent]:
+    ) -> list[DiscoveredAgent]:
         """
         List discovered agents with optional filtering.
 
@@ -289,7 +289,7 @@ class AgentDiscoveryService:
         self._agents.clear()
         return count
 
-    def _parse_agent_card(self, data: Dict[str, Any]) -> SardisAgentCard:
+    def _parse_agent_card(self, data: dict[str, Any]) -> SardisAgentCard:
         """Parse an agent card from JSON data."""
         # Parse capabilities
         capabilities = []

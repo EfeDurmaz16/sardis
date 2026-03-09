@@ -49,147 +49,145 @@ Example usage:
 """
 
 # Core manager
-from .manager import (
-    WalletManager,
-    EnhancedWalletManager,
-    PolicyEvaluation,
-    PolicyStore,
+# Activity Monitoring
+from .activity_monitor import (
+    ActivityMonitor,
+    ActivityPattern,
+    ActivityType,
+    Alert,
+    AlertSeverity,
+    AlertType,
+    MonitoringConfig,
+    WalletActivity,
+    WatchlistEntry,
+    get_activity_monitor,
+)
+
+# Audit Logging
+from .audit_log import (
+    AuditAction,
+    AuditCategory,
+    AuditEntry,
+    AuditLevel,
+    AuditLogger,
+    AuditQuery,
+    AuditStats,
+    RetentionPolicy,
+    get_audit_logger,
+)
+
+# Backup and Restore
+from .backup_restore import (
+    BackupConfig,
+    BackupMetadata,
+    BackupRecord,
+    BackupStatus,
+    BackupType,
+    RestoreRequest,
+    RestoreStatus,
+    WalletBackupManager,
+    get_backup_manager,
+)
+
+# HD Wallet
+from .hd_wallet import (
+    CHAIN_COIN_TYPES,
+    STANDARD_TEMPLATES,
+    CoinType,
+    DerivedAddress,
+    HDPath,
+    HDPathComponent,
+    HDPathPurpose,
+    HDPathTemplate,
+    HDWalletConfig,
+    HDWalletManager,
+    get_hd_wallet_manager,
+)
+
+# Health Checks
+from .health_check import (
+    CheckCategory,
+    HealthCheckConfig,
+    HealthChecker,
+    HealthCheckResult,
+    HealthStatus,
+    WalletHealthReport,
+    get_health_checker,
 )
 
 # Key Rotation
 from .key_rotation import (
-    MPCKeyStatus,
-    RotationReason,
-    MPCKeyInfo,
-    KeyRotationEvent,
-    MPCKeyRotationPolicy,
-    MPCSignerPort,
     KeyRotationCallback,
+    KeyRotationEvent,
+    MPCKeyInfo,
     MPCKeyRotationManager,
+    MPCKeyRotationPolicy,
+    MPCKeyStatus,
+    MPCSignerPort,
+    RotationReason,
     get_mpc_key_rotation_manager,
+)
+from .manager import (
+    EnhancedWalletManager,
+    PolicyEvaluation,
+    PolicyStore,
+    WalletManager,
+)
+
+# Multi-signature
+from .multisig import (
+    ApprovalStatus,
+    ApprovalThreshold,
+    MultisigConfig,
+    MultisigManager,
+    MultisigSigner,
+    PendingTransaction,
+    SignerRole,
+    TransactionApproval,
+    TransactionType,
+    get_multisig_manager,
+)
+
+# Session Management
+from .session_manager import (
+    DeviceInfo,
+    MFAChallenge,
+    MFAMethod,
+    Session,
+    SessionAction,
+    SessionAuditEvent,
+    SessionManager,
+    SessionPolicy,
+    SessionStatus,
+    get_session_manager,
 )
 
 # Social Recovery
 from .social_recovery import (
-    GuardianStatus,
-    RecoveryStatus,
     Guardian,
+    GuardianStatus,
     RecoveryChallenge,
     RecoveryRequest,
+    RecoveryStatus,
     SocialRecoveryConfig,
     SocialRecoveryManager,
     get_social_recovery_manager,
 )
 
-# HD Wallet
-from .hd_wallet import (
-    HDPathPurpose,
-    CoinType,
-    HDPathComponent,
-    HDPath,
-    HDPathTemplate,
-    DerivedAddress,
-    HDWalletConfig,
-    HDWalletManager,
-    STANDARD_TEMPLATES,
-    CHAIN_COIN_TYPES,
-    get_hd_wallet_manager,
-)
-
-# Backup and Restore
-from .backup_restore import (
-    BackupType,
-    BackupStatus,
-    RestoreStatus,
-    BackupMetadata,
-    BackupRecord,
-    RestoreRequest,
-    BackupConfig,
-    WalletBackupManager,
-    get_backup_manager,
-)
-
-# Multi-signature
-from .multisig import (
-    SignerRole,
-    TransactionType,
-    ApprovalStatus,
-    MultisigSigner,
-    ApprovalThreshold,
-    TransactionApproval,
-    PendingTransaction,
-    MultisigConfig,
-    MultisigManager,
-    get_multisig_manager,
-)
-
 # Spending Limits
 from .spending_limits import (
-    LimitType,
-    LimitScope,
-    LimitAction,
-    VelocityCheckType,
-    SpendingLimit,
-    VelocityRule,
-    DynamicLimitAdjustment,
     ComplianceLimit,
+    DynamicLimitAdjustment,
+    LimitAction,
+    LimitScope,
+    LimitType,
+    SpendingLimit,
     SpendingLimitsConfig,
     SpendingLimitsManager,
+    VelocityCheckType,
+    VelocityRule,
     get_spending_limits_manager,
 )
-
-# Activity Monitoring
-from .activity_monitor import (
-    AlertSeverity,
-    AlertType,
-    ActivityType,
-    WalletActivity,
-    Alert,
-    WatchlistEntry,
-    ActivityPattern,
-    MonitoringConfig,
-    ActivityMonitor,
-    get_activity_monitor,
-)
-
-# Session Management
-from .session_manager import (
-    SessionStatus,
-    SessionAction,
-    MFAMethod,
-    DeviceInfo,
-    Session,
-    MFAChallenge,
-    SessionPolicy,
-    SessionAuditEvent,
-    SessionManager,
-    get_session_manager,
-)
-
-# Audit Logging
-from .audit_log import (
-    AuditCategory,
-    AuditLevel,
-    AuditAction,
-    AuditEntry,
-    AuditQuery,
-    AuditStats,
-    RetentionPolicy,
-    AuditLogger,
-    get_audit_logger,
-)
-
-# Health Checks
-from .health_check import (
-    HealthStatus,
-    CheckCategory,
-    HealthCheckResult,
-    WalletHealthReport,
-    HealthCheckConfig,
-    HealthChecker,
-    get_health_checker,
-)
-
 
 __all__ = [
     # Core Manager

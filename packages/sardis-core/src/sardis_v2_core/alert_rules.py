@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class AlertSeverity(str, Enum):
@@ -45,9 +45,9 @@ class Alert:
     alert_type: AlertType = AlertType.PAYMENT_EXECUTED
     severity: AlertSeverity = AlertSeverity.INFO
     message: str = ""
-    agent_id: Optional[str] = None
-    organization_id: Optional[str] = None
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    agent_id: str | None = None
+    organization_id: str | None = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     data: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -70,13 +70,13 @@ class AlertRule:
     id: str = field(default_factory=lambda: f"rule_{uuid.uuid4().hex[:16]}")
     name: str = ""
     condition_type: ConditionType = ConditionType.AMOUNT_EXCEEDS
-    threshold: Optional[Decimal] = None
+    threshold: Decimal | None = None
     channels: list[str] = field(default_factory=list)
     enabled: bool = True
-    organization_id: Optional[str] = None
-    agent_id: Optional[str] = None  # If set, only applies to specific agent
+    organization_id: str | None = None
+    agent_id: str | None = None  # If set, only applies to specific agent
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert rule to dictionary for serialization."""
@@ -105,11 +105,10 @@ class AlertRuleEngine:
         """Load default system alert rules."""
         # Budget threshold alerts (50%, 75%, 90%, 100%)
         for percentage in [50, 75, 90, 100]:
-            severity = AlertSeverity.INFO
             if percentage >= 75:
-                severity = AlertSeverity.WARNING
+                pass
             if percentage >= 90:
-                severity = AlertSeverity.CRITICAL
+                pass
 
             rule = AlertRule(
                 name=f"Budget {percentage}% threshold",
@@ -164,13 +163,13 @@ class AlertRuleEngine:
             return True
         return False
 
-    def get_rule(self, rule_id: str) -> Optional[AlertRule]:
+    def get_rule(self, rule_id: str) -> AlertRule | None:
         """Get a specific alert rule."""
         return self.rules.get(rule_id)
 
     def list_rules(
         self,
-        organization_id: Optional[str] = None,
+        organization_id: str | None = None,
         enabled_only: bool = False,
     ) -> list[AlertRule]:
         """List all alert rules, optionally filtered."""
@@ -208,7 +207,7 @@ class AlertRuleEngine:
             List of alerts generated from matching rules
         """
         alerts: list[Alert] = []
-        event_type = event.get("event_type", "")
+        event.get("event_type", "")
         agent_id = event.get("agent_id")
         organization_id = event.get("organization_id")
 
@@ -227,7 +226,7 @@ class AlertRuleEngine:
 
         return alerts
 
-    def _evaluate_rule(self, rule: AlertRule, event: dict[str, Any]) -> Optional[Alert]:
+    def _evaluate_rule(self, rule: AlertRule, event: dict[str, Any]) -> Alert | None:
         """Evaluate a single rule against an event."""
         event_type = event.get("event_type", "")
 

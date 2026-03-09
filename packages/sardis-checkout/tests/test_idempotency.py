@@ -11,13 +11,12 @@ Tests cover:
 from __future__ import annotations
 
 import asyncio
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch
 import json
-
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -30,10 +29,9 @@ for pkg in ["sardis-core"]:
 from sardis_checkout.idempotency import (
     IdempotencyError,
     IdempotencyKeyConflict,
-    IdempotencyOperationInProgress,
-    IdempotencyStore,
-    InMemoryIdempotencyStore,
     IdempotencyManager,
+    IdempotencyOperationInProgress,
+    InMemoryIdempotencyStore,
 )
 from sardis_checkout.models import IdempotencyRecord
 

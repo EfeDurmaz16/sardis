@@ -13,18 +13,17 @@ import logging
 import sys
 import uuid
 from contextvars import ContextVar
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
 
 # Context variables for correlation tracking
-correlation_id_var: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-agent_id_var: ContextVar[Optional[str]] = ContextVar("agent_id", default=None)
-wallet_id_var: ContextVar[Optional[str]] = ContextVar("wallet_id", default=None)
-user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
+agent_id_var: ContextVar[str | None] = ContextVar("agent_id", default=None)
+wallet_id_var: ContextVar[str | None] = ContextVar("wallet_id", default=None)
+user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
 
 
-def _otel_trace_context() -> tuple[Optional[str], Optional[str]]:
+def _otel_trace_context() -> tuple[str | None, str | None]:
     """Return (trace_id, span_id) from OpenTelemetry if available."""
     try:
         from opentelemetry import trace as _trace
@@ -61,7 +60,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -134,7 +133,7 @@ class StructuredFormatter(logging.Formatter):
 def setup_logging(
     level: str = "INFO",
     json_format: bool = True,
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
 ) -> None:
     """
     Configure structured logging for the application.
@@ -175,7 +174,7 @@ def setup_logging(
         root_logger.addHandler(file_handler)
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Get the current correlation ID from context."""
     return correlation_id_var.get()
 
@@ -190,7 +189,7 @@ def generate_correlation_id() -> str:
     return f"cor_{uuid.uuid4().hex[:16]}"
 
 
-def get_request_id() -> Optional[str]:
+def get_request_id() -> str | None:
     """Get the current request ID from context."""
     return request_id_var.get()
 
@@ -234,11 +233,11 @@ class LogContext:
 
     def __init__(
         self,
-        correlation_id: Optional[str] = None,
-        request_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        correlation_id: str | None = None,
+        request_id: str | None = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        user_id: str | None = None,
     ):
         self.correlation_id = correlation_id
         self.request_id = request_id
@@ -247,7 +246,7 @@ class LogContext:
         self.user_id = user_id
         self.previous_context = {}
 
-    def __enter__(self) -> "LogContext":
+    def __enter__(self) -> LogContext:
         """Save current context and set new values."""
         self.previous_context = {
             "correlation_id": correlation_id_var.get(),
@@ -297,7 +296,7 @@ def log_transaction(
     logger: logging.Logger,
     level: str,
     message: str,
-    tx_id: Optional[str] = None,
+    tx_id: str | None = None,
     **kwargs,
 ) -> None:
     """Log a transaction-related message with context."""
@@ -311,9 +310,9 @@ def log_payment(
     logger: logging.Logger,
     level: str,
     message: str,
-    mandate_id: Optional[str] = None,
-    amount: Optional[str] = None,
-    chain: Optional[str] = None,
+    mandate_id: str | None = None,
+    amount: str | None = None,
+    chain: str | None = None,
     **kwargs,
 ) -> None:
     """Log a payment-related message with context."""
@@ -331,8 +330,8 @@ def log_compliance(
     logger: logging.Logger,
     level: str,
     message: str,
-    check_type: Optional[str] = None,
-    result: Optional[str] = None,
+    check_type: str | None = None,
+    result: str | None = None,
     **kwargs,
 ) -> None:
     """Log a compliance check with context."""

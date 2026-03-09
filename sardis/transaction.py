@@ -6,14 +6,13 @@ Transactions represent payments from one wallet to a destination.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 from uuid import uuid4
 
-from .wallet import Wallet
 from .policy import Policy, PolicyResult
+from .wallet import Wallet
 
 
 class TransactionStatus(str, Enum):
@@ -36,15 +35,15 @@ class TransactionResult:
     to: str
     currency: str
     timestamp: datetime
-    tx_hash: Optional[str] = None  # On-chain hash (simulated in demo)
-    message: Optional[str] = None
-    policy_result: Optional[PolicyResult] = None
-    approval_id: Optional[str] = None
-    
+    tx_hash: str | None = None  # On-chain hash (simulated in demo)
+    message: str | None = None
+    policy_result: PolicyResult | None = None
+    approval_id: str | None = None
+
     @property
     def success(self) -> bool:
         return self.status == TransactionStatus.EXECUTED
-    
+
     def __repr__(self) -> str:
         status_icon = "✓" if self.success else "✗"
         return f"TransactionResult({status_icon} {self.amount} {self.currency} → {self.to})"
@@ -54,7 +53,7 @@ class TransactionResult:
 class Transaction:
     """
     A payment transaction from a wallet to a destination.
-    
+
     Example:
         >>> wallet = Wallet(initial_balance=100)
         >>> tx = Transaction(from_wallet=wallet, to="openai:api", amount=5)
@@ -62,15 +61,15 @@ class Transaction:
         >>> print(result.success)  # True
         >>> print(wallet.balance)  # 95.00
     """
-    
+
     from_wallet: Wallet
     to: str  # Destination (address, agent ID, or merchant identifier)
     amount: Decimal
     currency: str = "USDC"
-    purpose: Optional[str] = None
-    policy: Optional[Policy] = None
+    purpose: str | None = None
+    policy: Policy | None = None
     tx_id: str = field(default_factory=lambda: f"tx_{uuid4().hex[:16]}")
-    
+
     def __init__(
         self,
         from_wallet: Wallet,
@@ -78,12 +77,12 @@ class Transaction:
         amount: float | Decimal,
         *,
         currency: str = "USDC",
-        purpose: Optional[str] = None,
-        policy: Optional[Policy] = None,
+        purpose: str | None = None,
+        policy: Policy | None = None,
     ):
         """
         Create a new transaction.
-        
+
         Args:
             from_wallet: Source wallet
             to: Destination identifier (address, agent, or merchant)
@@ -99,23 +98,23 @@ class Transaction:
         self.purpose = purpose
         self.policy = policy or Policy()
         self.tx_id = f"tx_{uuid4().hex[:16]}"
-    
+
     def execute(self) -> TransactionResult:
         """
         Execute the transaction.
-        
+
         Checks policy, deducts from wallet, and returns result.
         In production, this triggers on-chain settlement.
         """
-        timestamp = datetime.now(timezone.utc)
-        
+        timestamp = datetime.now(UTC)
+
         # Check policy
         policy_result = self.policy.check(
             amount=self.amount,
             wallet=self.from_wallet,
             destination=self.to,
         )
-        
+
         if not policy_result.approved:
             return TransactionResult(
                 tx_id=self.tx_id,
@@ -158,10 +157,10 @@ class Transaction:
                 message="Insufficient funds or limit exceeded",
                 policy_result=policy_result,
             )
-        
+
         # Generate simulated tx hash (in production, this is real on-chain hash)
         tx_hash = f"0x{uuid4().hex}"
-        
+
         return TransactionResult(
             tx_id=self.tx_id,
             status=TransactionStatus.EXECUTED,
@@ -174,7 +173,7 @@ class Transaction:
             message="Transaction executed successfully",
             policy_result=policy_result,
         )
-    
+
     def __repr__(self) -> str:
         return f"Transaction({self.amount} {self.currency} → {self.to})"
 

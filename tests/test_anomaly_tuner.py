@@ -1,9 +1,9 @@
 """Tests for the anomaly tuner — weight adjustment from outcomes."""
 
-import pytest
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
 
+import pytest
 from sardis_guardrails.anomaly_tuner import AnomalyTuner
 from sardis_v2_core.outcome_tracker import PaymentOutcome
 
@@ -17,7 +17,7 @@ def _make_outcome(decision: str, outcome_type: str, signals: list[dict] | None =
         org_id="org_1",
         amount=Decimal("100"),
         outcome_data={"anomaly_signals": signals or []},
-        resolved_at=datetime.now(timezone.utc),
+        resolved_at=datetime.now(UTC),
     )
 
 

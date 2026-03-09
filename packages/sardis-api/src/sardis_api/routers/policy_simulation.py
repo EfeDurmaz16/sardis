@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -56,7 +56,7 @@ class CompileResponse(BaseModel):
     has_daily_limit: bool
     has_weekly_limit: bool
     has_monthly_limit: bool
-    approval_threshold: Optional[str] = None
+    approval_threshold: str | None = None
     definition_hash: str
 
 
@@ -77,7 +77,7 @@ class SimulatePolicyRequest(BaseModel):
     currency: str = Field(default="USDC")
     chain: str = Field(default="base")
     agent_id: str = Field(default="")
-    definition: Optional[PolicyDefinitionModel] = None
+    definition: PolicyDefinitionModel | None = None
 
 
 class SimulatePolicyResponse(BaseModel):
@@ -85,8 +85,8 @@ class SimulatePolicyResponse(BaseModel):
     intent_id: str
     would_succeed: bool
     failure_reasons: list[str] = Field(default_factory=list)
-    policy_result: Optional[dict[str, Any]] = None
-    compliance_result: Optional[dict[str, Any]] = None
+    policy_result: dict[str, Any] | None = None
+    compliance_result: dict[str, Any] | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
@@ -116,7 +116,8 @@ async def compile_policy(
     principal: Principal = Depends(require_principal),
 ):
     """Compile a DSL definition into a SpendingPolicy."""
-    from sardis_v2_core.policy_dsl import PolicyDefinition, PolicyRule, compile_policy as dsl_compile
+    from sardis_v2_core.policy_dsl import PolicyDefinition, PolicyRule
+    from sardis_v2_core.policy_dsl import compile_policy as dsl_compile
 
     definition = PolicyDefinition(
         version=body.definition.version,

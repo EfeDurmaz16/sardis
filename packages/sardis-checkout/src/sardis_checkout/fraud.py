@@ -11,22 +11,21 @@ This module provides a comprehensive fraud detection framework with:
 from __future__ import annotations
 
 import logging
+import re
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Tuple
-import uuid
-import re
-import hashlib
+from typing import Any
 
 from sardis_checkout.models import (
+    CheckoutRequest,
     FraudCheckResult,
     FraudDecision,
     FraudRiskLevel,
     FraudRule,
     FraudSignal,
-    CheckoutRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,20 +53,20 @@ class FraudCheckContext:
     """Context for fraud checks containing all available signals."""
     checkout_id: str
     agent_id: str
-    customer_id: Optional[str] = None
-    customer_email: Optional[str] = None
+    customer_id: str | None = None
+    customer_email: str | None = None
     amount: Decimal = Decimal("0")
     currency: str = "USD"
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    device_fingerprint: Optional[str] = None
-    billing_country: Optional[str] = None
-    card_country: Optional[str] = None
-    card_bin: Optional[str] = None  # First 6 digits of card
+    ip_address: str | None = None
+    user_agent: str | None = None
+    device_fingerprint: str | None = None
+    billing_country: str | None = None
+    card_country: str | None = None
+    card_bin: str | None = None  # First 6 digits of card
     is_new_customer: bool = True
     previous_checkouts: int = 0
     previous_successful_payments: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -84,7 +83,7 @@ class FraudSignalProvider(ABC):
     async def get_signals(
         self,
         context: FraudCheckContext,
-    ) -> List[FraudSignal]:
+    ) -> list[FraudSignal]:
         """
         Analyze checkout context and return fraud signals.
 
@@ -117,15 +116,15 @@ class VelocityCheckProvider(FraudSignalProvider):
         self.max_checkouts_per_device_hour = max_checkouts_per_device_hour
         self.max_amount_per_customer_day = max_amount_per_customer_day
         # In-memory tracking (use Redis/database in production)
-        self._ip_counts: Dict[str, List[datetime]] = {}
-        self._device_counts: Dict[str, List[datetime]] = {}
-        self._customer_amounts: Dict[str, List[Tuple[datetime, Decimal]]] = {}
+        self._ip_counts: dict[str, list[datetime]] = {}
+        self._device_counts: dict[str, list[datetime]] = {}
+        self._customer_amounts: dict[str, list[tuple[datetime, Decimal]]] = {}
 
     @property
     def name(self) -> str:
         return "velocity"
 
-    def _cleanup_old_entries(self, entries: List[Any], cutoff: datetime) -> List[Any]:
+    def _cleanup_old_entries(self, entries: list[Any], cutoff: datetime) -> list[Any]:
         """Remove entries older than cutoff."""
         return [e for e in entries if (e[0] if isinstance(e, tuple) else e) > cutoff]
 
@@ -153,7 +152,7 @@ class VelocityCheckProvider(FraudSignalProvider):
     async def get_signals(
         self,
         context: FraudCheckContext,
-    ) -> List[FraudSignal]:
+    ) -> list[FraudSignal]:
         signals = []
         now = context.timestamp
         self._cleanup_all_tracking(now)
@@ -272,7 +271,7 @@ class GeoCheckProvider(FraudSignalProvider):
 
     def __init__(
         self,
-        high_risk_countries: Optional[set] = None,
+        high_risk_countries: set | None = None,
     ):
         self.high_risk_countries = high_risk_countries or self.HIGH_RISK_COUNTRIES
 
@@ -283,7 +282,7 @@ class GeoCheckProvider(FraudSignalProvider):
     async def get_signals(
         self,
         context: FraudCheckContext,
-    ) -> List[FraudSignal]:
+    ) -> list[FraudSignal]:
         signals = []
 
         # Check country mismatch
@@ -340,7 +339,7 @@ class AmountCheckProvider(FraudSignalProvider):
     async def get_signals(
         self,
         context: FraudCheckContext,
-    ) -> List[FraudSignal]:
+    ) -> list[FraudSignal]:
         signals = []
         amount = context.amount
 
@@ -414,7 +413,7 @@ class EmailCheckProvider(FraudSignalProvider):
 
     def __init__(
         self,
-        disposable_domains: Optional[set] = None,
+        disposable_domains: set | None = None,
     ):
         self.disposable_domains = disposable_domains or self.DISPOSABLE_DOMAINS
 
@@ -425,7 +424,7 @@ class EmailCheckProvider(FraudSignalProvider):
     async def get_signals(
         self,
         context: FraudCheckContext,
-    ) -> List[FraudSignal]:
+    ) -> list[FraudSignal]:
         signals = []
 
         if not context.customer_email:
@@ -479,8 +478,8 @@ class FraudRuleEngine:
     Evaluates custom rules against fraud signals and context.
     """
 
-    def __init__(self, rules: Optional[List[FraudRule]] = None):
-        self._rules: List[FraudRule] = rules or []
+    def __init__(self, rules: list[FraudRule] | None = None):
+        self._rules: list[FraudRule] = rules or []
 
     def add_rule(self, rule: FraudRule) -> None:
         """Add a fraud rule."""
@@ -499,8 +498,8 @@ class FraudRuleEngine:
     def evaluate(
         self,
         context: FraudCheckContext,
-        signals: List[FraudSignal],
-    ) -> Tuple[List[str], FraudDecision]:
+        signals: list[FraudSignal],
+    ) -> tuple[list[str], FraudDecision]:
         """
         Evaluate rules against context and signals.
 
@@ -529,7 +528,7 @@ class FraudRuleEngine:
         self,
         rule: FraudRule,
         context: FraudCheckContext,
-        signals: List[FraudSignal],
+        signals: list[FraudSignal],
     ) -> bool:
         """Evaluate a single rule."""
         conditions = rule.conditions
@@ -579,8 +578,8 @@ class FraudDetector:
 
     def __init__(
         self,
-        signal_providers: Optional[List[FraudSignalProvider]] = None,
-        rule_engine: Optional[FraudRuleEngine] = None,
+        signal_providers: list[FraudSignalProvider] | None = None,
+        rule_engine: FraudRuleEngine | None = None,
         risk_threshold_review: float = 30.0,
         risk_threshold_decline: float = 70.0,
         auto_approve_returning_customers: bool = True,
@@ -612,7 +611,7 @@ class FraudDetector:
             FraudCheckResult with decision and details
         """
         # Collect signals from all providers
-        all_signals: List[FraudSignal] = []
+        all_signals: list[FraudSignal] = []
 
         for provider in self.signal_providers:
             try:
@@ -668,7 +667,7 @@ class FraudDetector:
         risk_score: float,
         rule_decision: FraudDecision,
         context: FraudCheckContext,
-        signals: List[FraudSignal],
+        signals: list[FraudSignal],
     ) -> FraudDecision:
         """Determine final fraud decision."""
         # Rule decision takes precedence
@@ -704,8 +703,8 @@ class FraudDetector:
 
     def _get_review_reason(
         self,
-        signals: List[FraudSignal],
-        triggered_rules: List[str],
+        signals: list[FraudSignal],
+        triggered_rules: list[str],
     ) -> str:
         """Generate human-readable review reason."""
         reasons = []
@@ -723,9 +722,9 @@ class FraudDetector:
     async def check_checkout_request(
         self,
         request: CheckoutRequest,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_fingerprint: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_fingerprint: str | None = None,
     ) -> FraudCheckResult:
         """
         Convenience method to check a CheckoutRequest.

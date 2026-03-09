@@ -13,9 +13,9 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -42,15 +42,15 @@ class SSOConfig:
     enabled: bool
 
     # OIDC
-    oidc_issuer_url: Optional[str] = None
-    oidc_client_id: Optional[str] = None
-    oidc_client_secret: Optional[str] = None
+    oidc_issuer_url: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = None
     oidc_scopes: list[str] = None
 
     # SAML
-    saml_entity_id: Optional[str] = None
-    saml_sso_url: Optional[str] = None
-    saml_certificate: Optional[str] = None
+    saml_entity_id: str | None = None
+    saml_sso_url: str | None = None
+    saml_certificate: str | None = None
 
     # Behavior
     auto_provision_users: bool = True
@@ -71,7 +71,7 @@ class SSOInitResponse(BaseModel):
 
 class SSOUserInfo(BaseModel):
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     subject_id: str
     provider_id: str
 
@@ -139,7 +139,7 @@ def _store_sso_state(state: str, org_id: str, provider_type: str) -> None:
     }
 
 
-def _validate_sso_state(state: str) -> Optional[dict[str, Any]]:
+def _validate_sso_state(state: str) -> dict[str, Any] | None:
     """Validate and consume a SSO state token. Returns state data or None."""
     data = _SSO_STATE_STORE.pop(state, None)
     if data is None:
@@ -159,7 +159,7 @@ class SSOConfigStore:
     def __init__(self, pool: Any) -> None:
         self._pool = pool
 
-    async def get_by_org(self, org_id: str) -> Optional[SSOConfig]:
+    async def get_by_org(self, org_id: str) -> SSOConfig | None:
         """Get the enabled SSO config for an org."""
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(

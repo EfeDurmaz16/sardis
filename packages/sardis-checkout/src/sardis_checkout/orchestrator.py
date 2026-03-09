@@ -16,54 +16,52 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional, Dict, List
+from typing import Any
 
-from sardis_checkout.connectors.base import PSPConnector
-from sardis_checkout.models import (
-    CheckoutRequest,
-    CheckoutResponse,
-    CheckoutCustomization,
-    PaymentStatus,
-    CheckoutEventType,
-    FraudDecision,
-    DEFAULT_SESSION_TIMEOUT_MINUTES,
-)
-from sardis_checkout.idempotency import (
-    IdempotencyManager,
-    InMemoryIdempotencyStore,
-    IdempotencyError,
-)
 from sardis_checkout.analytics import (
     CheckoutAnalytics,
     InMemoryAnalyticsBackend,
 )
-from sardis_checkout.payment_links import (
-    PaymentLinkManager,
-    InMemoryPaymentLinkStore,
-)
-from sardis_checkout.partial_payments import (
-    PartialPaymentManager,
-    InMemoryPartialPaymentStore,
-)
+from sardis_checkout.connectors.base import PSPConnector
 from sardis_checkout.currency import (
     CurrencyConverter,
     MultiCurrencyCheckout,
 )
-from sardis_checkout.sessions import (
-    SessionManager,
-    InMemorySessionStore,
-)
-from sardis_checkout.webhooks import (
-    WebhookDeliveryManager,
-    InMemoryWebhookStore,
-)
 from sardis_checkout.fraud import (
-    FraudDetector,
     FraudCheckContext,
     FraudDeclined,
+    FraudDetector,
+)
+from sardis_checkout.idempotency import (
+    IdempotencyError,
+    IdempotencyManager,
+    InMemoryIdempotencyStore,
+)
+from sardis_checkout.models import (
+    DEFAULT_SESSION_TIMEOUT_MINUTES,
+    CheckoutEventType,
+    CheckoutRequest,
+    CheckoutResponse,
+    FraudDecision,
+    PaymentStatus,
+)
+from sardis_checkout.partial_payments import (
+    InMemoryPartialPaymentStore,
+    PartialPaymentManager,
+)
+from sardis_checkout.payment_links import (
+    InMemoryPaymentLinkStore,
+    PaymentLinkManager,
+)
+from sardis_checkout.sessions import (
+    InMemorySessionStore,
+    SessionManager,
+)
+from sardis_checkout.webhooks import (
+    InMemoryWebhookStore,
+    WebhookDeliveryManager,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,21 +98,21 @@ class CheckoutOrchestrator:
     def __init__(
         self,
         # Core dependencies (optional - will use in-memory defaults if not provided)
-        idempotency_manager: Optional[IdempotencyManager] = None,
-        analytics: Optional[CheckoutAnalytics] = None,
-        payment_link_manager: Optional[PaymentLinkManager] = None,
-        partial_payment_manager: Optional[PartialPaymentManager] = None,
-        currency_converter: Optional[CurrencyConverter] = None,
-        session_manager: Optional[SessionManager] = None,
-        webhook_manager: Optional[WebhookDeliveryManager] = None,
-        fraud_detector: Optional[FraudDetector] = None,
+        idempotency_manager: IdempotencyManager | None = None,
+        analytics: CheckoutAnalytics | None = None,
+        payment_link_manager: PaymentLinkManager | None = None,
+        partial_payment_manager: PartialPaymentManager | None = None,
+        currency_converter: CurrencyConverter | None = None,
+        session_manager: SessionManager | None = None,
+        webhook_manager: WebhookDeliveryManager | None = None,
+        fraud_detector: FraudDetector | None = None,
         # Configuration
         enable_fraud_check: bool = True,
         fraud_decline_behavior: str = "reject",  # "reject" or "review"
         default_session_timeout_minutes: int = DEFAULT_SESSION_TIMEOUT_MINUTES,
     ):
         # PSP connectors
-        self.connectors: Dict[str, PSPConnector] = {}
+        self.connectors: dict[str, PSPConnector] = {}
 
         # Initialize managers with defaults if not provided
         self.idempotency_manager = idempotency_manager or IdempotencyManager(
@@ -161,10 +159,10 @@ class CheckoutOrchestrator:
     async def create_checkout(
         self,
         request: CheckoutRequest,
-        psp_preference: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_fingerprint: Optional[str] = None,
+        psp_preference: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        device_fingerprint: str | None = None,
     ) -> CheckoutResponse:
         """
         Create checkout session with policy check and PSP routing.
@@ -424,9 +422,9 @@ class CheckoutOrchestrator:
     async def handle_webhook(
         self,
         psp: str,
-        payload: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> dict[str, Any]:
         """
         Handle PSP webhook.
 
@@ -501,8 +499,8 @@ class CheckoutOrchestrator:
         self,
         checkout_id: str,
         amount: Decimal,
-        psp_payment_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        psp_payment_id: str | None = None,
+    ) -> dict[str, Any]:
         """Record a partial payment for a checkout."""
         state = await self.partial_payment_manager.record_payment(
             checkout_id=checkout_id,
@@ -527,8 +525,8 @@ class CheckoutOrchestrator:
         self,
         amount: Decimal,
         base_currency: str,
-        accepted_currencies: List[str],
-    ) -> Dict[str, Dict[str, Any]]:
+        accepted_currencies: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """Get available currencies with converted amounts."""
         return await self.multi_currency.get_checkout_currencies(
             amount=amount,
@@ -536,11 +534,11 @@ class CheckoutOrchestrator:
             accepted_currencies=accepted_currencies,
         )
 
-    async def get_session_info(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_info(self, session_id: str) -> dict[str, Any]:
         """Get customer session information."""
         return await self.session_manager.get_session_info(session_id)
 
-    async def cleanup(self) -> Dict[str, int]:
+    async def cleanup(self) -> dict[str, int]:
         """
         Run cleanup tasks for expired resources.
 
@@ -563,7 +561,7 @@ class CheckoutOrchestrator:
         logger.info(f"Cleanup completed: {results}")
         return results
 
-    def _serialize_request(self, request: CheckoutRequest) -> Dict[str, Any]:
+    def _serialize_request(self, request: CheckoutRequest) -> dict[str, Any]:
         """Serialize a CheckoutRequest for idempotency hashing."""
         return {
             "agent_id": request.agent_id,
@@ -575,7 +573,7 @@ class CheckoutOrchestrator:
             "metadata": request.metadata,
         }
 
-    def _serialize_response(self, response: CheckoutResponse) -> Dict[str, Any]:
+    def _serialize_response(self, response: CheckoutResponse) -> dict[str, Any]:
         """Serialize a CheckoutResponse for caching."""
         return {
             "checkout_id": response.checkout_id,
@@ -593,7 +591,7 @@ class CheckoutOrchestrator:
             "customer_session_id": response.customer_session_id,
         }
 
-    def _deserialize_response(self, data: Dict[str, Any]) -> CheckoutResponse:
+    def _deserialize_response(self, data: dict[str, Any]) -> CheckoutResponse:
         """Deserialize a cached CheckoutResponse."""
         return CheckoutResponse(
             checkout_id=data["checkout_id"],

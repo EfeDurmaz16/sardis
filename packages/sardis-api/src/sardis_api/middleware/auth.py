@@ -7,10 +7,9 @@ import logging
 import os
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
-from fastapi import HTTPException, Request, Security, status
+from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
 logger = logging.getLogger("sardis.api.auth")
@@ -27,12 +26,12 @@ class APIKey:
     key_hash: str
     organization_id: str
     name: str
-    scopes: List[str]
+    scopes: list[str]
     rate_limit: int
     is_active: bool
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     created_at: datetime
-    last_used_at: Optional[datetime]
+    last_used_at: datetime | None
 
 
 @dataclass
@@ -40,7 +39,7 @@ class AuthContext:
     """Authentication context for a request."""
     api_key: APIKey
     organization_id: str
-    scopes: List[str]
+    scopes: list[str]
     is_authenticated: bool = True
 
 
@@ -51,10 +50,10 @@ class APIKeyManager:
         self._dsn = dsn
         self._pg_pool = None
         self._use_postgres = dsn.startswith("postgresql://") or dsn.startswith("postgres://")
-        
+
         # In-memory cache for dev/testing
-        self._keys: Dict[str, APIKey] = {}
-        self._key_to_id: Dict[str, str] = {}  # prefix -> key_id
+        self._keys: dict[str, APIKey] = {}
+        self._key_to_id: dict[str, str] = {}  # prefix -> key_id
 
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
@@ -122,9 +121,9 @@ class APIKeyManager:
         self,
         organization_id: str,
         name: str,
-        scopes: List[str] = None,
+        scopes: list[str] = None,
         rate_limit: int = 100,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
         *,
         test: bool = False,
     ) -> tuple[str, APIKey]:
@@ -138,9 +137,9 @@ class APIKeyManager:
         """
         full_key, prefix, key_hash = self.generate_api_key(test=test)
         scopes = scopes or ["read", "write"]
-        
+
         key_id = f"key_{secrets.token_hex(8)}"
-        
+
         api_key = APIKey(
             key_id=key_id,
             key_prefix=prefix,
@@ -151,10 +150,10 @@ class APIKeyManager:
             rate_limit=rate_limit,
             is_active=True,
             expires_at=expires_at,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             last_used_at=None,
         )
-        
+
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
@@ -178,22 +177,22 @@ class APIKeyManager:
         else:
             self._keys[key_id] = api_key
             self._key_to_id[prefix] = key_id
-        
+
         return full_key, api_key
 
-    async def validate_key(self, key: str) -> Optional[APIKey]:
+    async def validate_key(self, key: str) -> APIKey | None:
         """
         Validate an API key.
-        
+
         Returns:
             APIKey if valid, None otherwise
         """
         if not key:
             return None
-        
+
         prefix = self.get_prefix(key)
         key_hash = self.hash_key(key)
-        
+
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
@@ -210,7 +209,7 @@ class APIKeyManager:
 
                 if row:
                     # Check expiration
-                    if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
+                    if row["expires_at"] and row["expires_at"] < datetime.now(UTC):
                         return None
 
                     # Update last used
@@ -243,7 +242,7 @@ class APIKeyManager:
                     key_hash,
                 )
                 if user_row:
-                    if user_row["expires_at"] and user_row["expires_at"] < datetime.now(timezone.utc):
+                    if user_row["expires_at"] and user_row["expires_at"] < datetime.now(UTC):
                         return None
                     await conn.execute(
                         "UPDATE user_api_keys SET last_used_at = NOW() WHERE id = $1",
@@ -269,24 +268,24 @@ class APIKeyManager:
             key_id = self._key_to_id.get(prefix)
             if not key_id:
                 return None
-            
+
             api_key = self._keys.get(key_id)
             if not api_key:
                 return None
-            
+
             # Verify hash
             if not hmac.compare_digest(api_key.key_hash, key_hash):
                 return None
-            
+
             # Check active and expiration
             if not api_key.is_active:
                 return None
-            if api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc):
+            if api_key.expires_at and api_key.expires_at < datetime.now(UTC):
                 return None
-            
+
             # Update last used
-            api_key.last_used_at = datetime.now(timezone.utc)
-            
+            api_key.last_used_at = datetime.now(UTC)
+
             return api_key
 
     async def revoke_key(self, key_id: str) -> bool:
@@ -305,7 +304,7 @@ class APIKeyManager:
                 return True
             return False
 
-    async def find_org_by_email(self, email: str) -> Optional[str]:
+    async def find_org_by_email(self, email: str) -> str | None:
         """Find an organization by email stored in settings JSONB.
 
         Returns the organization external_id if found, None otherwise.
@@ -326,7 +325,7 @@ class APIKeyManager:
             # Return None (no duplicate detected) for in-memory mode.
             return None
 
-    async def list_keys(self, organization_id: str) -> List[APIKey]:
+    async def list_keys(self, organization_id: str) -> list[APIKey]:
         """List all API keys for an organization."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -363,7 +362,7 @@ class APIKeyManager:
                 if key.organization_id == organization_id
             ]
 
-    async def get_key(self, key_id: str) -> Optional[APIKey]:
+    async def get_key(self, key_id: str) -> APIKey | None:
         """Get an API key by ID."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -397,7 +396,7 @@ class APIKeyManager:
 
 
 # Global API key manager instance (set during app initialization)
-_api_key_manager: Optional[APIKeyManager] = None
+_api_key_manager: APIKeyManager | None = None
 
 
 def set_api_key_manager(manager: APIKeyManager):
@@ -415,16 +414,16 @@ def get_api_key_manager() -> APIKeyManager:
 
 async def get_api_key(
     api_key: str = Security(api_key_header),
-) -> Optional[APIKey]:
+) -> APIKey | None:
     """
     Dependency to get and validate API key from request.
-    
+
     Returns None if no key provided (for optional auth).
     Raises HTTPException if key is invalid.
     """
     if not api_key:
         return None
-    
+
     manager = get_api_key_manager()
     validated_key = await manager.validate_key(api_key)
 
@@ -444,8 +443,8 @@ async def get_api_key(
                 rate_limit=1000,
                 is_active=True,
                 expires_at=None,
-                created_at=datetime.now(timezone.utc),
-                last_used_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
+                last_used_at=datetime.now(UTC),
             )
 
         raise HTTPException(
@@ -453,7 +452,7 @@ async def get_api_key(
             detail="Invalid or expired API key",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     return validated_key
 
 
@@ -462,7 +461,7 @@ async def require_api_key(
 ) -> APIKey:
     """
     Dependency that requires a valid API key.
-    
+
     Raises HTTPException if no key or invalid key.
     """
     if not api_key:
@@ -471,7 +470,7 @@ async def require_api_key(
             detail="API key required",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     validated_key = await get_api_key(api_key)
     if not validated_key:
         raise HTTPException(
@@ -479,14 +478,14 @@ async def require_api_key(
             detail="Invalid or expired API key",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    
+
     return validated_key
 
 
 def require_scope(required_scope: str):
     """
     Dependency factory that requires a specific scope.
-    
+
     Usage:
         @router.post("/resource", dependencies=[Depends(require_scope("write"))])
     """
@@ -497,5 +496,5 @@ def require_scope(required_scope: str):
                 detail=f"Scope '{required_scope}' required",
             )
         return api_key
-    
+
     return check_scope

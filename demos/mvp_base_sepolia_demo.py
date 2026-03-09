@@ -20,7 +20,6 @@ import uuid
 
 import requests
 from nacl import signing
-from nacl.encoding import HexEncoder
 
 BASE_URL = os.getenv("SARDIS_API_BASE_URL", "http://localhost:8000/api/v2/mvp")
 

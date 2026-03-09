@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import time
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
+import pytest
 from sardis_compliance.checks import (
-    ComplianceResult,
-    ComplianceProvider,
-    SimpleRuleProvider,
     ComplianceEngine,
+    ComplianceResult,
+    SimpleRuleProvider,
 )
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 
@@ -25,7 +24,7 @@ def create_test_mandate(
         created="2025-12-08T00:00:00Z",
         proof_value="test_signature",
     )
-    
+
     return PaymentMandate(
         mandate_id=f"test_mandate_{int(time.time())}",
         mandate_type="payment",
@@ -54,7 +53,7 @@ class TestComplianceResult:
             provider="rules",
             rule_id="baseline",
         )
-        
+
         assert result.allowed is True
         assert result.reason is None
         assert result.provider == "rules"
@@ -69,7 +68,7 @@ class TestComplianceResult:
             provider="rules",
             rule_id="token_allowlist",
         )
-        
+
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
         assert result.provider == "rules"
@@ -77,7 +76,7 @@ class TestComplianceResult:
     def test_result_has_timestamp(self):
         """Test compliance result has reviewed_at timestamp."""
         result = ComplianceResult(allowed=True)
-        
+
         assert result.reviewed_at is not None
 
 
@@ -88,7 +87,7 @@ class TestSimpleRuleProvider:
     def settings(self):
         """Create test settings."""
         from sardis_v2_core import SardisSettings
-        
+
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
 
@@ -101,7 +100,7 @@ class TestSimpleRuleProvider:
         """Test USDC is allowed."""
         mandate = create_test_mandate(token="USDC", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
         assert result.provider == "rules"
         assert result.rule_id == "baseline"
@@ -110,28 +109,28 @@ class TestSimpleRuleProvider:
         """Test USDT is allowed."""
         mandate = create_test_mandate(token="USDT", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_allowed_token_pyusd(self, provider):
         """Test PYUSD is allowed."""
         mandate = create_test_mandate(token="PYUSD", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_allowed_token_eurc(self, provider):
         """Test EURC is allowed."""
         mandate = create_test_mandate(token="EURC", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_disallowed_token(self, provider):
         """Test non-permitted token is rejected."""
         mandate = create_test_mandate(token="DAI", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
         assert result.rule_id == "token_allowlist"
@@ -140,7 +139,7 @@ class TestSimpleRuleProvider:
         """Test unknown token is rejected."""
         mandate = create_test_mandate(token="UNKNOWN_TOKEN", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
 
@@ -148,14 +147,14 @@ class TestSimpleRuleProvider:
         """Test amount within limit is allowed."""
         mandate = create_test_mandate(token="USDC", amount=100000000)  # $1,000,000
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_amount_over_limit(self, provider):
         """Test amount over $10M limit is rejected."""
         mandate = create_test_mandate(token="USDC", amount=1_000_000_01)  # > $10M
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "amount_over_limit"
         assert result.rule_id == "max_amount"
@@ -165,7 +164,7 @@ class TestSimpleRuleProvider:
         # 1_000_000_00 = $10,000,000 (in cents)
         mandate = create_test_mandate(token="USDC", amount=1_000_000_00)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
 
@@ -176,7 +175,7 @@ class TestComplianceEngine:
     def settings(self):
         """Create test settings."""
         from sardis_v2_core import SardisSettings
-        
+
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
 
@@ -195,7 +194,7 @@ class TestComplianceEngine:
         """Test preflight check for allowed payment."""
         mandate = create_test_mandate(token="USDC", amount=10000)
         result = await engine.preflight(mandate)
-        
+
         assert result.allowed is True
 
     @pytest.mark.asyncio
@@ -203,7 +202,7 @@ class TestComplianceEngine:
         """Test preflight check rejects bad token."""
         mandate = create_test_mandate(token="BAD_TOKEN", amount=10000)
         result = await engine.preflight(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
 
@@ -212,7 +211,7 @@ class TestComplianceEngine:
         """Test preflight check rejects excessive amount."""
         mandate = create_test_mandate(token="USDC", amount=1_000_000_01)
         result = await engine.preflight(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "amount_over_limit"
 
@@ -222,7 +221,7 @@ class TestCustomComplianceProvider:
 
     def test_custom_provider_interface(self):
         """Test custom provider implements the protocol."""
-        
+
         class CustomProvider:
             def evaluate(self, mandate: PaymentMandate) -> ComplianceResult:
                 # Custom logic: block transactions to specific address
@@ -234,9 +233,9 @@ class TestCustomComplianceProvider:
                         rule_id="blocked_addresses",
                     )
                 return ComplianceResult(allowed=True, provider="custom")
-        
+
         provider = CustomProvider()
-        
+
         # Test blocked address
         blocked_mandate = PaymentMandate(
             mandate_id="test",
@@ -258,11 +257,11 @@ class TestCustomComplianceProvider:
             destination="0xBLOCKED",
             audit_hash="hash",
         )
-        
+
         result = provider.evaluate(blocked_mandate)
         assert result.allowed is False
         assert result.reason == "blocked_address"
-        
+
         # Test allowed address
         allowed_mandate = create_test_mandate()
         result = provider.evaluate(allowed_mandate)
@@ -272,7 +271,7 @@ class TestCustomComplianceProvider:
     async def test_engine_with_custom_provider(self):
         """Test ComplianceEngine with custom provider."""
         from sardis_v2_core import SardisSettings
-        
+
         class AlwaysAllowProvider:
             def evaluate(self, mandate: PaymentMandate) -> ComplianceResult:
                 return ComplianceResult(
@@ -280,16 +279,16 @@ class TestCustomComplianceProvider:
                     provider="always_allow",
                     rule_id="permissive",
                 )
-        
+
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(environment="dev")
-        
+
         engine = ComplianceEngine(settings, provider=AlwaysAllowProvider())
-        
+
         # Even "bad" token should be allowed
         mandate = create_test_mandate(token="ANY_TOKEN", amount=999999999)
         result = await engine.preflight(mandate)
-        
+
         assert result.allowed is True
         assert result.provider == "always_allow"
 
@@ -301,7 +300,7 @@ class TestComplianceEdgeCases:
     def settings(self):
         """Create test settings."""
         from sardis_v2_core import SardisSettings
-        
+
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
 
@@ -314,14 +313,14 @@ class TestComplianceEdgeCases:
         """Test zero amount transaction."""
         mandate = create_test_mandate(token="USDC", amount=0)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_one_cent_amount(self, provider):
         """Test one cent transaction."""
         mandate = create_test_mandate(token="USDC", amount=1)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is True
 
     def test_case_sensitive_token(self, provider):
@@ -329,7 +328,7 @@ class TestComplianceEdgeCases:
         # Lowercase should fail
         mandate = create_test_mandate(token="usdc", amount=1000)
         result = provider.evaluate(mandate)
-        
+
         assert result.allowed is False
         assert result.reason == "token_not_permitted"
 
@@ -338,11 +337,11 @@ class TestComplianceEdgeCases:
         mandate1 = create_test_mandate(token="USDC", amount=1000)
         mandate2 = create_test_mandate(token="BAD", amount=1000)
         mandate3 = create_test_mandate(token="USDT", amount=1000)
-        
+
         result1 = provider.evaluate(mandate1)
         result2 = provider.evaluate(mandate2)
         result3 = provider.evaluate(mandate3)
-        
+
         assert result1.allowed is True
         assert result2.allowed is False
         assert result3.allowed is True
@@ -353,7 +352,6 @@ class TestComplianceProviderProtocol:
 
     def test_protocol_requires_evaluate_method(self):
         """Test that ComplianceProvider protocol requires evaluate method."""
-        from typing import runtime_checkable, Protocol
 
         # SimpleRuleProvider should satisfy the protocol
         from sardis_v2_core import SardisSettings
@@ -407,6 +405,7 @@ class TestNLPolicyProvider:
     def test_set_and_get_policy(self, provider):
         """Test setting and getting policies for agents."""
         from decimal import Decimal
+
         from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
 
         policy = SpendingPolicy(
@@ -426,6 +425,7 @@ class TestNLPolicyProvider:
     def test_policy_enforces_per_tx_limit(self, provider):
         """Test that NL policy enforces per-transaction limits."""
         from decimal import Decimal
+
         from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
 
         # Create policy with $50 per-tx limit
@@ -586,7 +586,7 @@ class TestComplianceEngineAuditTrail:
     async def test_recent_audits(self, engine):
         """Test getting recent audit entries."""
         # Create several mandates
-        for i in range(5):
+        for _i in range(5):
             mandate = create_test_mandate()
             await engine.preflight(mandate)
 

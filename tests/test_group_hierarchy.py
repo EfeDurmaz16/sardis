@@ -1,18 +1,17 @@
 """Tests for group policy hierarchy — cascading org -> team -> agent policies."""
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
 
+import pytest
 from sardis_v2_core.agent_groups import (
     AgentGroup,
-    AgentGroupRepository,
     AgentGroupHierarchy,
-    GroupSpendingLimits,
+    AgentGroupRepository,
     GroupMerchantPolicy,
+    GroupSpendingLimits,
     merge_group_policies,
 )
-
 
 # ============ merge_group_policies unit tests ============
 

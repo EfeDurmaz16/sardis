@@ -15,18 +15,17 @@ Features:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import os
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet, Transaction
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -66,21 +65,21 @@ class MultisigSigner:
     public_key: bytes
     role: SignerRole = SignerRole.OPERATOR
     weight: int = 1  # For weighted voting
-    added_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    added_by: Optional[str] = None
+    added_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    added_by: str | None = None
     is_active: bool = True
 
     # Approval limits
-    max_approval_amount: Optional[Decimal] = None  # None = unlimited
-    daily_approval_limit: Optional[Decimal] = None
+    max_approval_amount: Decimal | None = None  # None = unlimited
+    daily_approval_limit: Decimal | None = None
     approved_today: Decimal = field(default_factory=lambda: Decimal("0"))
-    last_approval_date: Optional[datetime] = None
+    last_approval_date: datetime | None = None
 
     # Security settings
     require_mfa: bool = False
-    allowed_hours: Optional[Tuple[int, int]] = None  # (start_hour, end_hour) UTC
+    allowed_hours: tuple[int, int] | None = None  # (start_hour, end_hour) UTC
 
-    def can_approve(self, amount: Decimal) -> Tuple[bool, str]:
+    def can_approve(self, amount: Decimal) -> tuple[bool, str]:
         """Check if signer can approve a given amount."""
         if not self.is_active:
             return False, "Signer is not active"
@@ -91,7 +90,7 @@ class MultisigSigner:
 
         # Check daily limit
         if self.daily_approval_limit:
-            today = datetime.now(timezone.utc).date()
+            today = datetime.now(UTC).date()
             if self.last_approval_date and self.last_approval_date.date() == today:
                 if self.approved_today + amount > self.daily_approval_limit:
                     return False, f"Would exceed daily limit of {self.daily_approval_limit}"
@@ -101,7 +100,7 @@ class MultisigSigner:
 
         # Check time restrictions
         if self.allowed_hours:
-            current_hour = datetime.now(timezone.utc).hour
+            current_hour = datetime.now(UTC).hour
             start, end = self.allowed_hours
             if start <= end:
                 if not (start <= current_hour < end):
@@ -114,14 +113,14 @@ class MultisigSigner:
 
     def record_approval(self, amount: Decimal) -> None:
         """Record an approval for daily limit tracking."""
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         if self.last_approval_date and self.last_approval_date.date() != today:
             self.approved_today = Decimal("0")
 
         self.approved_today += amount
-        self.last_approval_date = datetime.now(timezone.utc)
+        self.last_approval_date = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "signer_id": self.signer_id,
@@ -145,13 +144,13 @@ class ApprovalThreshold:
     timeout_hours: int = 24
     require_owner: bool = False
     require_admin: bool = False
-    max_amount: Optional[Decimal] = None  # Max amount for this threshold
+    max_amount: Decimal | None = None  # Max amount for this threshold
 
     def is_met(
         self,
-        approvals: List["TransactionApproval"],
-        signers: Dict[str, MultisigSigner],
-    ) -> Tuple[bool, str]:
+        approvals: list[TransactionApproval],
+        signers: dict[str, MultisigSigner],
+    ) -> tuple[bool, str]:
         """Check if threshold is met."""
         valid_approvals = [a for a in approvals if a.status == ApprovalStatus.APPROVED]
 
@@ -196,23 +195,21 @@ class TransactionApproval:
     pending_tx_id: str
     signer_id: str
     status: ApprovalStatus = ApprovalStatus.PENDING
-    signature: Optional[bytes] = None
-    approved_at: Optional[datetime] = None
+    signature: bytes | None = None
+    approved_at: datetime | None = None
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=24)
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=24)
     )
-    rejection_reason: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    rejection_reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_valid(self) -> bool:
         """Check if approval is still valid."""
         if self.status != ApprovalStatus.APPROVED:
             return False
-        if datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not datetime.now(UTC) > self.expires_at
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "approval_id": self.approval_id,
@@ -232,9 +229,9 @@ class PendingTransaction:
     wallet_id: str
     transaction_type: TransactionType
     initiated_by: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=24)
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=24)
     )
 
     # Transaction details
@@ -242,21 +239,21 @@ class PendingTransaction:
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
     token: str = "USDC"
     chain: str = "base"
-    data: Optional[str] = None  # Contract call data
+    data: str | None = None  # Contract call data
 
     # Approval tracking
-    required_threshold: Optional[ApprovalThreshold] = None
-    approvals: List[TransactionApproval] = field(default_factory=list)
+    required_threshold: ApprovalThreshold | None = None
+    approvals: list[TransactionApproval] = field(default_factory=list)
     status: ApprovalStatus = ApprovalStatus.PENDING
 
     # Execution info
-    executed_at: Optional[datetime] = None
-    tx_hash: Optional[str] = None
-    execution_error: Optional[str] = None
+    executed_at: datetime | None = None
+    tx_hash: str | None = None
+    execution_error: str | None = None
 
     def is_expired(self) -> bool:
         """Check if transaction has expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def get_approval_count(self) -> int:
         """Get number of valid approvals."""
@@ -266,7 +263,7 @@ class PendingTransaction:
         """Get number of rejections."""
         return sum(1 for a in self.approvals if a.status == ApprovalStatus.REJECTED)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "pending_tx_id": self.pending_tx_id,
@@ -296,12 +293,12 @@ class MultisigConfig:
     default_timeout_hours: int = 24
 
     # Thresholds by transaction type
-    thresholds: Dict[TransactionType, ApprovalThreshold] = field(default_factory=dict)
+    thresholds: dict[TransactionType, ApprovalThreshold] = field(default_factory=dict)
 
     # Emergency settings
     emergency_threshold: int = 1  # For emergency transactions
     emergency_timeout_hours: int = 1
-    emergency_signers: List[str] = field(default_factory=list)
+    emergency_signers: list[str] = field(default_factory=list)
 
     # Security settings
     max_pending_transactions: int = 10
@@ -333,7 +330,7 @@ class TransactionExecutor(Protocol):
         amount: Decimal,
         token: str,
         chain: str,
-        data: Optional[str] = None,
+        data: str | None = None,
     ) -> str:
         """Execute transaction, returns tx_hash."""
         ...
@@ -344,7 +341,7 @@ class MultisigNotificationService(Protocol):
 
     async def notify_approval_needed(
         self,
-        signers: List[MultisigSigner],
+        signers: list[MultisigSigner],
         pending_tx: PendingTransaction,
     ) -> None:
         """Notify signers that approval is needed."""
@@ -372,17 +369,17 @@ class MultisigManager:
 
     def __init__(
         self,
-        executor: Optional[TransactionExecutor] = None,
-        notification_service: Optional[MultisigNotificationService] = None,
+        executor: TransactionExecutor | None = None,
+        notification_service: MultisigNotificationService | None = None,
     ):
         self._executor = executor
         self._notifications = notification_service
 
         # Storage (in production, use database)
-        self._configs: Dict[str, MultisigConfig] = {}  # wallet_id -> config
-        self._signers: Dict[str, Dict[str, MultisigSigner]] = {}  # wallet_id -> signer_id -> signer
-        self._pending_txs: Dict[str, PendingTransaction] = {}  # pending_tx_id -> tx
-        self._wallet_pending: Dict[str, List[str]] = {}  # wallet_id -> [pending_tx_ids]
+        self._configs: dict[str, MultisigConfig] = {}  # wallet_id -> config
+        self._signers: dict[str, dict[str, MultisigSigner]] = {}  # wallet_id -> signer_id -> signer
+        self._pending_txs: dict[str, PendingTransaction] = {}  # pending_tx_id -> tx
+        self._wallet_pending: dict[str, list[str]] = {}  # wallet_id -> [pending_tx_ids]
 
         # Locks
         self._approval_lock = asyncio.Lock()
@@ -391,8 +388,8 @@ class MultisigManager:
     async def setup_multisig(
         self,
         wallet_id: str,
-        signers: List[Dict[str, Any]],
-        config: Optional[MultisigConfig] = None,
+        signers: list[dict[str, Any]],
+        config: MultisigConfig | None = None,
     ) -> MultisigConfig:
         """
         Set up multi-sig for a wallet.
@@ -465,7 +462,7 @@ class MultisigManager:
     async def add_signer(
         self,
         wallet_id: str,
-        signer_data: Dict[str, Any],
+        signer_data: dict[str, Any],
         added_by: str,
     ) -> MultisigSigner:
         """Add a new signer to a multi-sig wallet."""
@@ -513,7 +510,7 @@ class MultisigManager:
         token: str = "USDC",
         chain: str = "base",
         transaction_type: TransactionType = TransactionType.TRANSFER,
-        data: Optional[str] = None,
+        data: str | None = None,
     ) -> PendingTransaction:
         """
         Initiate a multi-sig transaction.
@@ -550,7 +547,7 @@ class MultisigManager:
             wallet_id=wallet_id,
             transaction_type=transaction_type,
             initiated_by=initiated_by,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=threshold.timeout_hours),
+            expires_at=datetime.now(UTC) + timedelta(hours=threshold.timeout_hours),
             to_address=to_address,
             amount=amount,
             token=token,
@@ -640,7 +637,7 @@ class MultisigManager:
                 signer_id=signer_id,
                 status=ApprovalStatus.APPROVED,
                 signature=signature,
-                approved_at=datetime.now(timezone.utc),
+                approved_at=datetime.now(UTC),
             )
 
             pending_tx.approvals.append(approval)
@@ -758,7 +755,7 @@ class MultisigManager:
                     logger.warning("Using mock tx_hash for multisig execution (non-prod)")
                     pending_tx.tx_hash = f"0x{secrets.token_hex(32)}"
 
-                pending_tx.executed_at = datetime.now(timezone.utc)
+                pending_tx.executed_at = datetime.now(UTC)
 
                 logger.info(
                     f"Executed transaction {pending_tx_id}: {pending_tx.tx_hash}"
@@ -798,7 +795,7 @@ class MultisigManager:
         self,
         wallet_id: str,
         include_expired: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get pending transactions for a wallet."""
         pending_ids = self._wallet_pending.get(wallet_id, [])
         transactions = []
@@ -814,12 +811,12 @@ class MultisigManager:
 
         return transactions
 
-    def get_signers(self, wallet_id: str) -> List[Dict[str, Any]]:
+    def get_signers(self, wallet_id: str) -> list[dict[str, Any]]:
         """Get all signers for a wallet."""
         signers = self._signers.get(wallet_id, {})
         return [s.to_dict() for s in signers.values()]
 
-    def get_config(self, wallet_id: str) -> Optional[Dict[str, Any]]:
+    def get_config(self, wallet_id: str) -> dict[str, Any] | None:
         """Get multi-sig config for a wallet."""
         config = self._configs.get(wallet_id)
         if not config:
@@ -836,7 +833,7 @@ class MultisigManager:
 
 
 # Singleton instance
-_multisig_manager: Optional[MultisigManager] = None
+_multisig_manager: MultisigManager | None = None
 
 
 def get_multisig_manager() -> MultisigManager:

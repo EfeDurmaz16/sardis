@@ -3,7 +3,6 @@
 Tests the broadcast_success flag pattern in ChainExecutor that guards nonce release.
 """
 import inspect
-import textwrap
 
 
 def test_broadcast_success_flag_exists():

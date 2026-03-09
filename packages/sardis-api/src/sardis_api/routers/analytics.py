@@ -8,16 +8,14 @@ Designed for consumption by the dashboard frontend (Recharts compatible).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any, Literal
-from decimal import Decimal
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from sardis_v2_core.database import get_db_pool
 
 from sardis_api.authz import Principal, require_principal
-from sardis_v2_core.database import get_db_pool
-from sardis_v2_core.anomaly_detection import AnomalyDetector, AnomalyResult
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ class TimeSeriesDataPoint(BaseModel):
 class SpendingOverTimeResponse(BaseModel):
     """Response for spending-over-time endpoint."""
     period: str
-    data: List[TimeSeriesDataPoint]
+    data: list[TimeSeriesDataPoint]
     total: float
     average: float
 
@@ -46,7 +44,7 @@ class SpendingOverTimeResponse(BaseModel):
 class AgentSpendingItem(BaseModel):
     """Spending data for a single agent."""
     agent_id: str
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     total: float
     transaction_count: int
     average: float
@@ -54,7 +52,7 @@ class AgentSpendingItem(BaseModel):
 
 class AgentSpendingResponse(BaseModel):
     """Response for spending-by-agent endpoint."""
-    agents: List[AgentSpendingItem]
+    agents: list[AgentSpendingItem]
     total: float
 
 
@@ -68,14 +66,14 @@ class CategorySpendingItem(BaseModel):
 
 class CategorySpendingResponse(BaseModel):
     """Response for category/merchant breakdown."""
-    categories: List[CategorySpendingItem]
+    categories: list[CategorySpendingItem]
     total: float
 
 
 class BudgetUtilizationItem(BaseModel):
     """Budget utilization for a single agent."""
     agent_id: str
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     spent: float
     budget: float
     utilization: float  # 0-100
@@ -84,14 +82,14 @@ class BudgetUtilizationItem(BaseModel):
 
 class BudgetUtilizationResponse(BaseModel):
     """Response for budget utilization endpoint."""
-    items: List[BudgetUtilizationItem]
+    items: list[BudgetUtilizationItem]
 
 
 class PolicyBlockItem(BaseModel):
     """Policy block event."""
     timestamp: str
     agent_id: str
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     amount: float
     merchant: str
     reason: str
@@ -99,7 +97,7 @@ class PolicyBlockItem(BaseModel):
 
 class PolicyBlocksResponse(BaseModel):
     """Response for policy blocks endpoint."""
-    blocks: List[PolicyBlockItem]
+    blocks: list[PolicyBlockItem]
     total_blocks: int
     block_rate: float  # Percentage of transactions blocked
     total_transactions: int
@@ -115,7 +113,7 @@ class TopMerchantItem(BaseModel):
 
 class TopMerchantsResponse(BaseModel):
     """Response for top merchants endpoint."""
-    merchants: List[TopMerchantItem]
+    merchants: list[TopMerchantItem]
     total: float
 
 
@@ -128,7 +126,7 @@ class AnalyticsSummaryResponse(BaseModel):
     successful_transactions: int
     blocked_transactions: int
     block_rate: float
-    top_merchant: Optional[str] = None
+    top_merchant: str | None = None
     largest_transaction: float
 
 
@@ -136,17 +134,17 @@ class AnomalyAlert(BaseModel):
     """Anomaly detection alert."""
     timestamp: str
     agent_id: str
-    agent_name: Optional[str] = None
+    agent_name: str | None = None
     amount: float
     merchant: str
     reason: str
     confidence: float
-    z_score: Optional[float] = None
+    z_score: float | None = None
 
 
 class AnomaliesResponse(BaseModel):
     """Response for anomalies endpoint."""
-    anomalies: List[AnomalyAlert]
+    anomalies: list[AnomalyAlert]
     total: int
 
 
@@ -155,12 +153,12 @@ class AnomaliesResponse(BaseModel):
 # ============================================================================
 
 async def _get_date_range(
-    period: Optional[str] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    period: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> tuple[datetime, datetime]:
     """Parse and validate date range parameters."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if date_from and date_to:
         try:
@@ -191,7 +189,7 @@ async def _get_date_range(
 async def _query_transactions(
     start_date: datetime,
     end_date: datetime,
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
 ):
     """Query transactions from database."""
     pool = await get_db_pool()
@@ -233,10 +231,10 @@ async def _query_transactions(
 
 @router.get("/spending-over-time", response_model=SpendingOverTimeResponse)
 async def get_spending_over_time(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
+    agent_id: str | None = Query(None, description="Filter by agent ID"),
     group_by: Literal["day", "week", "month"] = Query("day", description="Group by interval"),
     principal: Principal = Depends(require_principal),
 ):
@@ -296,9 +294,9 @@ async def get_spending_over_time(
 
 @router.get("/spending-by-agent", response_model=AgentSpendingResponse)
 async def get_spending_by_agent(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
     principal: Principal = Depends(require_principal),
 ):
     """Get spending breakdown by agent."""
@@ -341,10 +339,10 @@ async def get_spending_by_agent(
 
 @router.get("/spending-by-category", response_model=CategorySpendingResponse)
 async def get_spending_by_category(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
+    agent_id: str | None = Query(None, description="Filter by agent ID"),
     principal: Principal = Depends(require_principal),
 ):
     """Get spending breakdown by category."""
@@ -390,7 +388,7 @@ async def get_spending_by_category(
 
 @router.get("/budget-utilization", response_model=BudgetUtilizationResponse)
 async def get_budget_utilization(
-    period: Optional[str] = Query("30d", description="Period: 7d, 30d, 90d"),
+    period: str | None = Query("30d", description="Period: 7d, 30d, 90d"),
     principal: Principal = Depends(require_principal),
 ):
     """Get budget utilization per agent."""
@@ -437,9 +435,9 @@ async def get_budget_utilization(
 
 @router.get("/policy-blocks", response_model=PolicyBlocksResponse)
 async def get_policy_blocks(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
     principal: Principal = Depends(require_principal),
 ):
     """Get policy block statistics."""
@@ -500,9 +498,9 @@ async def get_policy_blocks(
 
 @router.get("/top-merchants", response_model=TopMerchantsResponse)
 async def get_top_merchants(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
     limit: int = Query(10, description="Number of merchants to return"),
     principal: Principal = Depends(require_principal),
 ):
@@ -545,7 +543,7 @@ async def get_top_merchants(
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
 async def get_analytics_summary(
-    period: Optional[str] = Query("30d", description="Period: 7d, 30d, 90d"),
+    period: str | None = Query("30d", description="Period: 7d, 30d, 90d"),
     principal: Principal = Depends(require_principal),
 ):
     """Get high-level analytics summary."""
@@ -602,10 +600,10 @@ async def get_analytics_summary(
 
 @router.get("/export")
 async def export_spending_data(
-    period: Optional[str] = Query(None, description="Period: 7d, 30d, 90d"),
-    date_from: Optional[str] = Query(None, description="Start date (ISO 8601)"),
-    date_to: Optional[str] = Query(None, description="End date (ISO 8601)"),
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
+    date_from: str | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: str | None = Query(None, description="End date (ISO 8601)"),
+    agent_id: str | None = Query(None, description="Filter by agent ID"),
     principal: Principal = Depends(require_principal),
 ):
     """Export spending data as CSV."""

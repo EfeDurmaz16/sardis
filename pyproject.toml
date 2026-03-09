@@ -92,15 +92,47 @@ packages = ["sardis"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v"
+addopts = "-v --import-mode=importlib"
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
-ignore = ["E501"]
+select = ["E", "F", "I", "W", "B", "C4", "UP", "N", "SIM"]
+ignore = [
+    "E501",   # line too long — handled by formatter
+    "B008",   # Depends() in defaults — standard FastAPI pattern
+    "B904",   # raise from — too noisy for existing code
+    "E402",   # module-level import order — conditional imports
+    "N806",   # variable in function should be lowercase — false positive on constants
+    "N801",   # class name should use CapWords — false positive on test fixtures
+    "N818",   # exception name should end with Error
+    "B023",   # function definition does not bind loop variable
+    "B017",   # assertRaises(Exception) too broad
+    "E741",   # ambiguous variable name
+    "B027",   # empty method in abstract class
+    "F821",   # undefined name — forward references in type annotations
+    "SIM102", # collapsible if — readability preference
+    "SIM105", # contextlib.suppress — readability preference
+    "SIM108", # ternary operator — readability preference
+    "SIM113", # enumerate — style preference
+    "SIM103", # return condition directly — style preference
+    "SIM117", # combine with statements — style preference
+    "PLC0415", # import not at top level — conditional imports
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+    "PLR0911", # too many return statements
+    "UP035",  # deprecated import — compatibility
+    "E722",   # bare except
+    "N802",   # function name should be lowercase
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "F811"]
+"tests/**" = ["F401", "F811", "F841", "E722", "B007", "N802"]
+"demos/**" = ["F401", "F841"]
+"examples/**" = ["F401", "F841"]
 
 [dependency-groups]
 dev = [

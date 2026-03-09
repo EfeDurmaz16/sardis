@@ -17,7 +17,6 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
 
 import httpx
 
@@ -69,8 +68,8 @@ class CircleTransaction:
 
     tx_id: str
     state: str  # INITIATED, PENDING, CONFIRMED, FAILED, CANCELLED
-    tx_hash: Optional[str] = None
-    error_reason: Optional[str] = None
+    tx_hash: str | None = None
+    error_reason: str | None = None
 
 
 class CircleWalletClient:
@@ -116,7 +115,7 @@ class CircleWalletClient:
         method: str,
         path: str,
         *,
-        json: Optional[dict] = None,
+        json: dict | None = None,
     ) -> dict:
         """Make an authenticated request to Circle W3S API."""
         url = f"{self._base_url}{path}"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol
 
@@ -144,8 +144,9 @@ class X402Settler:
                 X402SettlementStatus.SETTLING,
             )
 
-            from sardis_v2_core.mandates import PaymentMandate, VCProof
             import time
+
+            from sardis_v2_core.mandates import PaymentMandate, VCProof
 
             challenge = settlement.challenge
             mandate = PaymentMandate(
@@ -157,7 +158,7 @@ class X402Settler:
                 nonce=settlement.payment_id,
                 proof=VCProof(
                     verification_method="x402",
-                    created=datetime.now(timezone.utc).isoformat(),
+                    created=datetime.now(UTC).isoformat(),
                     proof_value="x402",
                 ),
                 domain="x402",
@@ -175,7 +176,7 @@ class X402Settler:
                 settlement.payment_id,
                 X402SettlementStatus.SETTLED,
                 tx_hash=tx_hash,
-                settled_at=datetime.now(timezone.utc),
+                settled_at=datetime.now(UTC),
             )
 
             updated = await self.store.get(settlement.payment_id)

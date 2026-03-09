@@ -3,8 +3,9 @@ import asyncio
 import os
 
 from browser_use import Agent, Controller
-from sardis import SardisClient
 from sardis_browser_use import register_sardis_actions
+
+from sardis import SardisClient
 
 # Set up controller with Sardis payment actions
 controller = Controller()

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from sardis_api.routers.ap2 import _detect_prompt_injection_signal
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
+
+from sardis_api.routers.ap2 import _detect_prompt_injection_signal
 
 
 def _payload(memo: str) -> AP2PaymentExecuteRequest:

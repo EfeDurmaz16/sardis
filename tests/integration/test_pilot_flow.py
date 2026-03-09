@@ -4,28 +4,31 @@ Sardis Pilot Flow Integration Test
 """
 import asyncio
 import os
+import secrets
 import sys
 from decimal import Decimal
-import secrets
 
 # Add project root to path
 from pathlib import Path
+
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from datetime import UTC
+
 from sardis_sdk import SardisClient
-from sardis_sdk.models import AgentCreate
+
 
 async def run_pilot_flow():
     """Test the full agent -> wallet -> payment flow."""
     print("\n🚀 Starting Sardis Pilot Flow Test\n")
-    
+
     # Use local dev API by default
     base_url = os.getenv("SARDIS_API_URL", "http://localhost:8000/api/v2/")
     api_key = os.getenv("SARDIS_API_KEY", "sardis_test_key")
-    
+
     print(f"Target: {base_url}")
-    
+
     async with SardisClient(base_url=base_url, api_key=api_key) as client:
         # 1. Create Agent
         print("\n1. Creating AI Agent...")
@@ -58,7 +61,7 @@ async def run_pilot_flow():
                     name="Treasury Wallet"
                 )
                 print(f"   ✅ Wallet Created: {wallet.wallet_id}")
-            
+
             print(f"      Limits: {wallet.limit_per_tx} / {wallet.limit_total}")
         except Exception as e:
             print(f"   ❌ Failed to create/get wallet: {e}")
@@ -67,13 +70,13 @@ async def run_pilot_flow():
         # 3. Fund Wallet (Sandbox)
         print("\n3. Funding Wallet (Sandbox Faucet)...")
         try:
-            fund_tx = await client.wallets.fund(
+            await client.wallets.fund(
                 wallet_id=wallet.wallet_id,
                 amount=Decimal("500.00"),
                 token="USDC"
             )
-            print(f"   ✅ Wallet Funded: 500.00 USDC")
-            
+            print("   ✅ Wallet Funded: 500.00 USDC")
+
             # Verify balance
             balance = await client.wallets.get_balance(wallet.wallet_id, "USDC")
             print(f"      Current Balance: {balance} USDC")
@@ -86,12 +89,12 @@ async def run_pilot_flow():
         try:
             # Construct mandate payload complying with PaymentMandate schema
             import time
-            from datetime import datetime, timezone
+            from datetime import datetime
             from uuid import uuid4
-            
+
             domain = agent.metadata.get("domain", "localhost") if agent.metadata else "localhost"
             mandate_id = f"mandate_{uuid4().hex[:16]}"
-            
+
             mandate_payload = {
                 "mandate_id": mandate_id,
                 "mandate_type": "payment",
@@ -109,14 +112,14 @@ async def run_pilot_flow():
                 "proof": {
                     "type": "DataIntegrityProof",
                     "verification_method": f"did:web:{domain}#key-1",
-                    "created": datetime.now(timezone.utc).isoformat(),
+                    "created": datetime.now(UTC).isoformat(),
                     "proof_purpose": "assertionMethod",
                     "proof_value": secrets.token_urlsafe(64)
                 }
             }
-            
+
             result = await client.payments.execute_mandate(mandate_payload)
-            print(f"   ✅ Payment Executed!")
+            print("   ✅ Payment Executed!")
             print(f"      TX Hash: {result.tx_hash}")
             print(f"      Status: {result.status}")
         except Exception as e:
@@ -128,7 +131,7 @@ async def run_pilot_flow():
         print("\n5. Verifying Resource Listings...")
         agents = await client.agents.list(limit=5)
         print(f"   Agents found: {len(agents)}")
-        
+
         wallets = await client.wallets.list(agent_id=agent.agent_id)
         print(f"   Wallets for agent: {len(wallets)}")
 

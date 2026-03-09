@@ -4,15 +4,13 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
 from sardis_v2_core.delegated_credential import (
     CredentialNetwork,
-    CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.execution_mode import ExecutionMode, ExecutionModeRouter
+from sardis_v2_core.execution_mode import ExecutionModeRouter
 from sardis_v2_core.merchant_capability import (
     InMemoryMerchantCapabilityStore,
     MerchantExecutionCapability,

@@ -18,9 +18,9 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +59,16 @@ class MediaArticle:
     category: MediaCategory
     severity: MediaSeverity
     summary: str
-    url: Optional[str] = None
+    url: str | None = None
     is_verified: bool = False  # Whether the information has been verified
     confidence_score: float = 0.0  # 0.0 to 1.0
-    entities_mentioned: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    entities_mentioned: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def age_days(self) -> int:
         """Calculate age of article in days."""
-        delta = datetime.now(timezone.utc) - self.published_date
+        delta = datetime.now(UTC) - self.published_date
         return delta.days
 
     @property
@@ -83,14 +83,14 @@ class AdverseMediaResult:
     has_adverse_media: bool
     subject_id: str
     subject_name: str
-    screened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    articles: List[MediaArticle] = field(default_factory=list)
+    screened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    articles: list[MediaArticle] = field(default_factory=list)
     highest_severity: MediaSeverity = MediaSeverity.INFORMATIONAL
-    categories_found: List[MediaCategory] = field(default_factory=list)
+    categories_found: list[MediaCategory] = field(default_factory=list)
     provider: str = "mock"
     requires_review: bool = False
     risk_score: float = 0.0  # 0-100
-    reason: Optional[str] = None
+    reason: str | None = None
 
     @property
     def article_count(self) -> int:
@@ -98,12 +98,12 @@ class AdverseMediaResult:
         return len(self.articles)
 
     @property
-    def recent_articles(self) -> List[MediaArticle]:
+    def recent_articles(self) -> list[MediaArticle]:
         """Get only recent articles."""
         return [a for a in self.articles if a.is_recent]
 
     @property
-    def critical_articles(self) -> List[MediaArticle]:
+    def critical_articles(self) -> list[MediaArticle]:
         """Get only critical/high severity articles."""
         return [
             a for a in self.articles
@@ -116,13 +116,13 @@ class AdverseMediaRequest:
     """Request for adverse media screening."""
     subject_id: str
     name: str
-    aliases: List[str] = field(default_factory=list)
-    country: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    organization: Optional[str] = None
+    aliases: list[str] = field(default_factory=list)
+    country: str | None = None
+    date_of_birth: str | None = None
+    organization: str | None = None
     include_historical: bool = True  # Include articles older than 2 years
-    categories: List[MediaCategory] = field(default_factory=lambda: list(MediaCategory))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    categories: list[MediaCategory] = field(default_factory=lambda: list(MediaCategory))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class AdverseMediaProvider(ABC):
@@ -148,7 +148,7 @@ class AdverseMediaProvider(ABC):
     async def get_article_details(
         self,
         article_id: str,
-    ) -> Optional[MediaArticle]:
+    ) -> MediaArticle | None:
         """Get detailed information about a specific article."""
         pass
 
@@ -279,7 +279,7 @@ class DowJonesMediaProvider(AdverseMediaProvider):
     async def get_article_details(
         self,
         article_id: str,
-    ) -> Optional[MediaArticle]:
+    ) -> MediaArticle | None:
         """Get detailed article information."""
         client = await self._get_client()
 
@@ -297,7 +297,7 @@ class DowJonesMediaProvider(AdverseMediaProvider):
     def _parse_result(
         self,
         request: AdverseMediaRequest,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> AdverseMediaResult:
         """Parse Dow Jones response into AdverseMediaResult."""
         articles = []
@@ -328,7 +328,7 @@ class DowJonesMediaProvider(AdverseMediaProvider):
             reason="Adverse media found" if articles else None,
         )
 
-    def _parse_article(self, data: Dict[str, Any]) -> MediaArticle:
+    def _parse_article(self, data: dict[str, Any]) -> MediaArticle:
         """Parse article data into MediaArticle."""
         category_str = data.get("category", "other")
         try:
@@ -346,7 +346,7 @@ class DowJonesMediaProvider(AdverseMediaProvider):
         if isinstance(published, str):
             published = datetime.fromisoformat(published.replace("Z", "+00:00"))
         else:
-            published = datetime.now(timezone.utc)
+            published = datetime.now(UTC)
 
         return MediaArticle(
             article_id=data.get("id", ""),
@@ -373,7 +373,7 @@ class DowJonesMediaProvider(AdverseMediaProvider):
         }
         return ranks.get(severity, 0)
 
-    def _calculate_risk_score(self, articles: List[MediaArticle]) -> float:
+    def _calculate_risk_score(self, articles: list[MediaArticle]) -> float:
         """Calculate overall risk score from articles."""
         if not articles:
             return 0.0
@@ -427,7 +427,7 @@ class MockAdverseMediaProvider(AdverseMediaProvider):
                 article_id="art_001",
                 title="CEO Charged with Fraud",
                 source="Financial Times",
-                published_date=datetime(2024, 1, 15, tzinfo=timezone.utc),
+                published_date=datetime(2024, 1, 15, tzinfo=UTC),
                 category=MediaCategory.FINANCIAL_CRIME,
                 severity=MediaSeverity.HIGH,
                 summary="Company executive charged with securities fraud",
@@ -440,7 +440,7 @@ class MockAdverseMediaProvider(AdverseMediaProvider):
                 article_id="art_002",
                 title="Government Official Accepts Bribes",
                 source="Reuters",
-                published_date=datetime(2023, 6, 1, tzinfo=timezone.utc),
+                published_date=datetime(2023, 6, 1, tzinfo=UTC),
                 category=MediaCategory.CORRUPTION,
                 severity=MediaSeverity.CRITICAL,
                 summary="Official convicted of accepting bribes",
@@ -451,7 +451,7 @@ class MockAdverseMediaProvider(AdverseMediaProvider):
     }
 
     def __init__(self):
-        self._custom_results: Dict[str, AdverseMediaResult] = {}
+        self._custom_results: dict[str, AdverseMediaResult] = {}
 
     async def screen_individual(
         self,
@@ -470,7 +470,7 @@ class MockAdverseMediaProvider(AdverseMediaProvider):
                 highest_severity = max(
                     articles, key=lambda a: self._severity_rank(a.severity)
                 ).severity
-                categories = list(set(a.category for a in articles))
+                categories = list({a.category for a in articles})
 
                 return AdverseMediaResult(
                     has_adverse_media=True,
@@ -503,7 +503,7 @@ class MockAdverseMediaProvider(AdverseMediaProvider):
     async def get_article_details(
         self,
         article_id: str,
-    ) -> Optional[MediaArticle]:
+    ) -> MediaArticle | None:
         """Get mock article details."""
         for articles in self.KNOWN_SUBJECTS.values():
             for article in articles:
@@ -540,7 +540,7 @@ class AdverseMediaService:
 
     def __init__(
         self,
-        provider: Optional[AdverseMediaProvider] = None,
+        provider: AdverseMediaProvider | None = None,
         cache_ttl_seconds: int = 43200,  # 12 hours
         min_severity_for_review: MediaSeverity = MediaSeverity.MEDIUM,
     ):
@@ -555,15 +555,15 @@ class AdverseMediaService:
         self._provider = provider or MockAdverseMediaProvider()
         self._cache_ttl = cache_ttl_seconds
         self._min_severity = min_severity_for_review
-        self._cache: Dict[str, tuple[AdverseMediaResult, datetime]] = {}
+        self._cache: dict[str, tuple[AdverseMediaResult, datetime]] = {}
 
     async def screen_individual(
         self,
         subject_id: str,
         name: str,
-        aliases: Optional[List[str]] = None,
-        country: Optional[str] = None,
-        categories: Optional[List[MediaCategory]] = None,
+        aliases: list[str] | None = None,
+        country: str | None = None,
+        categories: list[MediaCategory] | None = None,
         force_refresh: bool = False,
     ) -> AdverseMediaResult:
         """
@@ -576,7 +576,7 @@ class AdverseMediaService:
         # Check cache
         if not force_refresh and cache_key in self._cache:
             result, cached_at = self._cache[cache_key]
-            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            age = (datetime.now(UTC) - cached_at).total_seconds()
             if age < self._cache_ttl:
                 logger.debug(f"Adverse media cache hit for {subject_id}")
                 return result
@@ -599,7 +599,7 @@ class AdverseMediaService:
             result.requires_review = severity_rank >= min_rank
 
         # Cache result
-        self._cache[cache_key] = (result, datetime.now(timezone.utc))
+        self._cache[cache_key] = (result, datetime.now(UTC))
 
         logger.info(
             f"Adverse media screening completed: subject={subject_id}, "
@@ -612,8 +612,8 @@ class AdverseMediaService:
         self,
         subject_id: str,
         name: str,
-        country: Optional[str] = None,
-        categories: Optional[List[MediaCategory]] = None,
+        country: str | None = None,
+        categories: list[MediaCategory] | None = None,
         force_refresh: bool = False,
     ) -> AdverseMediaResult:
         """
@@ -623,7 +623,7 @@ class AdverseMediaService:
 
         if not force_refresh and cache_key in self._cache:
             result, cached_at = self._cache[cache_key]
-            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            age = (datetime.now(UTC) - cached_at).total_seconds()
             if age < self._cache_ttl:
                 return result
 
@@ -642,7 +642,7 @@ class AdverseMediaService:
             min_rank = self._severity_rank(self._min_severity)
             result.requires_review = severity_rank >= min_rank
 
-        self._cache[cache_key] = (result, datetime.now(timezone.utc))
+        self._cache[cache_key] = (result, datetime.now(UTC))
 
         logger.info(
             f"Org adverse media screening completed: subject={subject_id}, "
@@ -660,7 +660,7 @@ class AdverseMediaService:
         result = await self.screen_individual(subject_id, name)
         return result.highest_severity in (MediaSeverity.CRITICAL, MediaSeverity.HIGH)
 
-    async def get_article(self, article_id: str) -> Optional[MediaArticle]:
+    async def get_article(self, article_id: str) -> MediaArticle | None:
         """Get detailed article information."""
         return await self._provider.get_article_details(article_id)
 
@@ -681,8 +681,8 @@ class AdverseMediaService:
 
 
 def create_adverse_media_service(
-    api_key: Optional[str] = None,
-    account_id: Optional[str] = None,
+    api_key: str | None = None,
+    account_id: str | None = None,
     provider_name: str = "dowjones",
 ) -> AdverseMediaService:
     """

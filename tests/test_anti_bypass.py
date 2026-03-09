@@ -10,35 +10,29 @@ Tests verify that common bypass attempts are detected and blocked:
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import Mock
 
 import pytest
-
-from sardis_protocol.verifier import MandateVerifier, MandateChainVerification
+from sardis_protocol.verifier import MandateVerifier
 from sardis_protocol.x402 import (
     X402Challenge,
     X402PaymentPayload,
     verify_payment_payload,
-    X402VerificationResult,
-)
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_v2_core.spending_policy import (
-    SpendingPolicy,
-    TimeWindowLimit,
-    TrustLevel,
-    SpendingScope,
-    MerchantRule,
-)
-from sardis_v2_core.mandates import (
-    IntentMandate,
-    CartMandate,
-    PaymentMandate,
-    VCProof,
-    MandateChain,
 )
 from sardis_v2_core import load_settings
+from sardis_v2_core.mandates import (
+    CartMandate,
+    IntentMandate,
+    MandateChain,
+    PaymentMandate,
+    VCProof,
+)
+from sardis_v2_core.spending_policy import (
+    SpendingPolicy,
+    SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
+)
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.security]
 
@@ -168,7 +162,7 @@ def test_split_payment_aggregate_exceeds_policy():
     # Gas fee is included in policy evaluation, so $101 * 9 = $909 fits,
     # but $101 * 10 = $1010 exceeds the $1000 daily limit.
     payments_processed = 0
-    for i in range(10):
+    for _i in range(10):
         amount = Decimal("100.00")
         fee = Decimal("1.00")
 
@@ -223,7 +217,7 @@ def test_rapid_sequential_payments_same_vendor():
     merchant_id = "merchant:rapid_test"
 
     # Make 3 rapid payments of $150 each to same merchant
-    for i in range(3):
+    for _i in range(3):
         amount = Decimal("150.00")
         ok, reason = policy.validate_payment(
             amount=amount,
@@ -340,7 +334,7 @@ def test_merchant_name_change_does_not_bypass_domain_policy():
 
     # Verify chain enforces merchant_domain consistency
     try:
-        chain = MandateChain(intent=intent, cart=cart, payment=payment)
+        MandateChain(intent=intent, cart=cart, payment=payment)
         # Chain creation should succeed if domains match
         assert cart.merchant_domain == payment.merchant_domain
     except ValueError as e:
@@ -565,7 +559,7 @@ def test_skipping_ucp_still_enforces_policy():
         amount_minor=10000,
     )
 
-    chain = MandateChain(intent=intent, cart=cart, payment=payment)
+    MandateChain(intent=intent, cart=cart, payment=payment)
 
     # Create a policy that would reject this amount
     policy = SpendingPolicy(
@@ -615,7 +609,7 @@ def test_bypassing_tap_does_not_disable_ap2_policy_checks():
     )
 
     # Create mandate chain (AP2 validation)
-    chain = MandateChain(intent=intent, cart=cart, payment=payment)
+    MandateChain(intent=intent, cart=cart, payment=payment)
 
     # Policy checks should still apply
     policy = SpendingPolicy(

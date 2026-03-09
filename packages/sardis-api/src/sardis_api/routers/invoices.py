@@ -1,18 +1,15 @@
 """Invoice management API endpoints."""
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
 from sardis_v2_core.database import Database
-from sardis_api.middleware.auth import require_api_key, APIKey
+
+from sardis_api.middleware.auth import APIKey, require_api_key
 
 router = APIRouter()
 
@@ -21,25 +18,25 @@ router = APIRouter()
 class CreateInvoiceRequest(BaseModel):
     amount: str
     currency: str = "USDC"
-    description: Optional[str] = None
-    merchant_name: Optional[str] = None
-    payer_agent_id: Optional[str] = None
-    reference: Optional[str] = None
+    description: str | None = None
+    merchant_name: str | None = None
+    payer_agent_id: str | None = None
+    reference: str | None = None
 
 
 class InvoiceResponse(BaseModel):
     invoice_id: str
     organization_id: str
-    merchant_name: Optional[str] = None
+    merchant_name: str | None = None
     amount: str
     amount_paid: str = "0.00"
     currency: str = "USDC"
-    description: Optional[str] = None
+    description: str | None = None
     status: str = "pending"
     created_at: str
-    paid_at: Optional[str] = None
-    payer_agent_id: Optional[str] = None
-    reference: Optional[str] = None
+    paid_at: str | None = None
+    payer_agent_id: str | None = None
+    reference: str | None = None
 
 
 @router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
@@ -49,7 +46,7 @@ async def create_invoice(
 ):
     """Create a new invoice."""
     invoice_id = f"inv_{uuid4().hex[:12]}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     await Database.execute(
         """
@@ -86,9 +83,9 @@ async def create_invoice(
     )
 
 
-@router.get("", response_model=List[InvoiceResponse])
+@router.get("", response_model=list[InvoiceResponse])
 async def list_invoices(
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     api_key: APIKey = Depends(require_api_key),
@@ -179,7 +176,7 @@ async def update_invoice_status(
     if not row:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     paid_at = now if status_update == "paid" else row.get("paid_at")
 
     await Database.execute(
@@ -226,7 +223,7 @@ async def reconcile_invoice_with_deposit(
     if row["status"] == "paid":
         return True  # Already reconciled
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     invoice_amount = Decimal(row["amount"])
     paid_amount = Decimal(amount_paid)
 

@@ -14,14 +14,12 @@ Features:
 from __future__ import annotations
 
 import hashlib
-import hmac
 import logging
 import os
-import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     pass
@@ -51,7 +49,7 @@ class CoinType(int, Enum):
 
 
 # Chain to coin type mapping
-CHAIN_COIN_TYPES: Dict[str, int] = {
+CHAIN_COIN_TYPES: dict[str, int] = {
     "bitcoin": CoinType.BITCOIN,
     "bitcoin_testnet": CoinType.BITCOIN_TESTNET,
     "ethereum": CoinType.ETHEREUM,
@@ -64,7 +62,7 @@ CHAIN_COIN_TYPES: Dict[str, int] = {
 }
 
 # Default purposes for chains
-CHAIN_DEFAULT_PURPOSE: Dict[str, HDPathPurpose] = {
+CHAIN_DEFAULT_PURPOSE: dict[str, HDPathPurpose] = {
     "bitcoin": HDPathPurpose.BIP84,  # Native SegWit
     "ethereum": HDPathPurpose.BIP44,
     "polygon": HDPathPurpose.BIP44,
@@ -84,7 +82,7 @@ class HDPathComponent:
         return f"{self.index}{suffix}"
 
     @classmethod
-    def from_string(cls, s: str) -> "HDPathComponent":
+    def from_string(cls, s: str) -> HDPathComponent:
         """Parse a path component from string."""
         s = s.strip()
         hardened = s.endswith("'") or s.endswith("h") or s.endswith("H")
@@ -127,7 +125,7 @@ class HDPath:
 
         return "/".join(parts)
 
-    def to_list(self) -> List[Tuple[int, bool]]:
+    def to_list(self) -> list[tuple[int, bool]]:
         """Convert to list of (index, hardened) tuples."""
         return [
             (self.purpose, self.purpose_hardened),
@@ -138,7 +136,7 @@ class HDPath:
         ]
 
     @classmethod
-    def parse(cls, path_string: str) -> "HDPath":
+    def parse(cls, path_string: str) -> HDPath:
         """
         Parse a path string into an HDPath object.
 
@@ -182,8 +180,8 @@ class HDPath:
         account: int = 0,
         address_index: int = 0,
         change: int = 0,
-        purpose: Optional[int] = None,
-    ) -> "HDPath":
+        purpose: int | None = None,
+    ) -> HDPath:
         """
         Create an HD path for a specific chain.
 
@@ -208,7 +206,7 @@ class HDPath:
             address_index=address_index,
         )
 
-    def derive_child(self, index: int, hardened: bool = False) -> "HDPath":
+    def derive_child(self, index: int, hardened: bool = False) -> HDPath:
         """Create a new path with incremented address index."""
         return HDPath(
             purpose=self.purpose,
@@ -223,11 +221,11 @@ class HDPath:
             address_hardened=hardened,
         )
 
-    def next_address(self) -> "HDPath":
+    def next_address(self) -> HDPath:
         """Get path for next address."""
         return self.derive_child(self.address_index + 1, self.address_hardened)
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate the path configuration."""
         errors = []
 
@@ -264,7 +262,7 @@ class HDPathTemplate:
     template: str
     name: str
     description: str = ""
-    chain: Optional[str] = None
+    chain: str | None = None
     default_account: int = 0
     default_change: int = 0
     max_account: int = 100
@@ -272,8 +270,8 @@ class HDPathTemplate:
 
     def render(
         self,
-        account: Optional[int] = None,
-        change: Optional[int] = None,
+        account: int | None = None,
+        change: int | None = None,
         index: int = 0,
     ) -> str:
         """Render the template with values."""
@@ -286,9 +284,9 @@ class HDPathTemplate:
 
     def to_hd_path(
         self,
-        account: Optional[int] = None,
+        account: int | None = None,
         index: int = 0,
-        change: Optional[int] = None,
+        change: int | None = None,
     ) -> HDPath:
         """Convert template to HDPath with given values."""
         path_str = self.render(account, change, index)
@@ -296,7 +294,7 @@ class HDPathTemplate:
 
 
 # Standard path templates
-STANDARD_TEMPLATES: Dict[str, HDPathTemplate] = {
+STANDARD_TEMPLATES: dict[str, HDPathTemplate] = {
     "bip44_eth": HDPathTemplate(
         template="m/44'/60'/{account}'/0/{index}",
         name="BIP-44 Ethereum",
@@ -344,13 +342,13 @@ class DerivedAddress:
     path: str
     path_obj: HDPath
     chain: str
-    public_key: Optional[bytes] = None
-    derived_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    label: Optional[str] = None
+    public_key: bytes | None = None
+    derived_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    label: str | None = None
     is_used: bool = False
-    last_used_at: Optional[datetime] = None
+    last_used_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "address": self.address,
@@ -369,7 +367,7 @@ class HDDerivationProvider(Protocol):
         self,
         master_key_ref: str,
         path: HDPath,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Derive a key at the given path.
 
@@ -407,9 +405,9 @@ class HDWalletConfig:
     require_hardened_account: bool = True
 
     # Custom templates
-    custom_templates: Dict[str, HDPathTemplate] = field(default_factory=dict)
+    custom_templates: dict[str, HDPathTemplate] = field(default_factory=dict)
 
-    def get_template(self, name: str) -> Optional[HDPathTemplate]:
+    def get_template(self, name: str) -> HDPathTemplate | None:
         """Get a template by name."""
         if name in self.custom_templates:
             return self.custom_templates[name]
@@ -430,16 +428,16 @@ class HDWalletManager:
 
     def __init__(
         self,
-        config: Optional[HDWalletConfig] = None,
-        derivation_provider: Optional[HDDerivationProvider] = None,
+        config: HDWalletConfig | None = None,
+        derivation_provider: HDDerivationProvider | None = None,
     ):
         self._config = config or HDWalletConfig()
         self._provider = derivation_provider
 
         # Storage (in production, use database)
-        self._derived_addresses: Dict[str, Dict[str, DerivedAddress]] = {}  # wallet_id -> path -> address
-        self._wallet_configs: Dict[str, Dict[str, Any]] = {}  # wallet_id -> config
-        self._address_indices: Dict[str, Dict[str, int]] = {}  # wallet_id -> (chain, account) -> next_index
+        self._derived_addresses: dict[str, dict[str, DerivedAddress]] = {}  # wallet_id -> path -> address
+        self._wallet_configs: dict[str, dict[str, Any]] = {}  # wallet_id -> config
+        self._address_indices: dict[str, dict[str, int]] = {}  # wallet_id -> (chain, account) -> next_index
 
     def create_path(
         self,
@@ -447,7 +445,7 @@ class HDWalletManager:
         account: int = 0,
         address_index: int = 0,
         change: int = 0,
-        template: Optional[str] = None,
+        template: str | None = None,
     ) -> HDPath:
         """
         Create an HD path for a chain.
@@ -474,7 +472,7 @@ class HDWalletManager:
             change=change,
         )
 
-    def validate_path(self, path: HDPath) -> Tuple[bool, List[str]]:
+    def validate_path(self, path: HDPath) -> tuple[bool, list[str]]:
         """
         Validate an HD path against security requirements.
 
@@ -503,9 +501,9 @@ class HDWalletManager:
         master_key_ref: str,
         chain: str,
         account: int = 0,
-        address_index: Optional[int] = None,
-        label: Optional[str] = None,
-        template: Optional[str] = None,
+        address_index: int | None = None,
+        label: str | None = None,
+        template: str | None = None,
     ) -> DerivedAddress:
         """
         Derive a new address for a wallet.
@@ -589,7 +587,7 @@ class HDWalletManager:
         account: int = 0,
         count: int = 10,
         start_index: int = 0,
-    ) -> List[DerivedAddress]:
+    ) -> list[DerivedAddress]:
         """
         Derive multiple addresses in batch.
 
@@ -620,9 +618,9 @@ class HDWalletManager:
     def get_derived_addresses(
         self,
         wallet_id: str,
-        chain: Optional[str] = None,
-        account: Optional[int] = None,
-    ) -> List[DerivedAddress]:
+        chain: str | None = None,
+        account: int | None = None,
+    ) -> list[DerivedAddress]:
         """Get list of derived addresses for a wallet."""
         addresses = list(self._derived_addresses.get(wallet_id, {}).values())
 
@@ -637,7 +635,7 @@ class HDWalletManager:
         self,
         wallet_id: str,
         path: str,
-    ) -> Optional[DerivedAddress]:
+    ) -> DerivedAddress | None:
         """Find a derived address by its path."""
         return self._derived_addresses.get(wallet_id, {}).get(path)
 
@@ -645,7 +643,7 @@ class HDWalletManager:
         self,
         wallet_id: str,
         address: str,
-    ) -> Optional[DerivedAddress]:
+    ) -> DerivedAddress | None:
         """Find a derived address by its address string."""
         for derived in self._derived_addresses.get(wallet_id, {}).values():
             if derived.address.lower() == address.lower():
@@ -661,7 +659,7 @@ class HDWalletManager:
         derived = self.find_address(wallet_id, address)
         if derived:
             derived.is_used = True
-            derived.last_used_at = datetime.now(timezone.utc)
+            derived.last_used_at = datetime.now(UTC)
             return True
         return False
 
@@ -714,7 +712,7 @@ class HDWalletManager:
         name: str,
         template: str,
         description: str = "",
-        chain: Optional[str] = None,
+        chain: str | None = None,
     ) -> HDPathTemplate:
         """Add a custom path template."""
         # Validate template
@@ -737,7 +735,7 @@ class HDWalletManager:
 
         return tmpl
 
-    def get_available_templates(self) -> Dict[str, Dict[str, Any]]:
+    def get_available_templates(self) -> dict[str, dict[str, Any]]:
         """Get all available path templates."""
         templates = {}
 
@@ -763,11 +761,11 @@ class HDWalletManager:
 
 
 # Singleton instance
-_hd_wallet_manager: Optional[HDWalletManager] = None
+_hd_wallet_manager: HDWalletManager | None = None
 
 
 def get_hd_wallet_manager(
-    config: Optional[HDWalletConfig] = None,
+    config: HDWalletConfig | None = None,
 ) -> HDWalletManager:
     """Get the global HD wallet manager instance."""
     global _hd_wallet_manager

@@ -13,12 +13,9 @@ Key concepts:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, List
 from uuid import uuid4
-
-from pydantic import BaseModel, Field
 
 
 class OrganizationPlan(str):
@@ -51,17 +48,17 @@ class Organization:
     slug: str  # URL-safe identifier (e.g. "acme-corp")
     plan: str = OrganizationPlan.FREE
     settings: dict = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Optional billing/metadata fields
-    billing_email: Optional[str] = None
-    stripe_customer_id: Optional[str] = None
-    subscription_status: Optional[str] = None  # active, canceled, past_due
+    billing_email: str | None = None
+    stripe_customer_id: str | None = None
+    subscription_status: str | None = None  # active, canceled, past_due
     metadata: dict = field(default_factory=dict)
 
     @staticmethod
-    def new(name: str, slug: str, plan: str = OrganizationPlan.FREE) -> "Organization":
+    def new(name: str, slug: str, plan: str = OrganizationPlan.FREE) -> Organization:
         """Create a new organization with generated ID."""
         return Organization(
             id=f"org_{uuid4().hex[:16]}",
@@ -83,17 +80,17 @@ class Team:
     id: str
     org_id: str
     name: str
-    parent_team_id: Optional[str] = None  # For team hierarchy
-    budget_limit: Optional[Decimal] = None  # Team spending cap
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    parent_team_id: str | None = None  # For team hierarchy
+    budget_limit: Decimal | None = None  # Team spending cap
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Optional metadata
-    description: Optional[str] = None
+    description: str | None = None
     metadata: dict = field(default_factory=dict)
 
     @staticmethod
-    def new(org_id: str, name: str, parent_team_id: Optional[str] = None) -> "Team":
+    def new(org_id: str, name: str, parent_team_id: str | None = None) -> Team:
         """Create a new team with generated ID."""
         return Team(
             id=f"team_{uuid4().hex[:16]}",
@@ -115,13 +112,13 @@ class OrgMember:
     org_id: str
     user_id: str
     role: str = MemberRole.VIEWER
-    teams: List[str] = field(default_factory=list)  # Team IDs this member belongs to
-    invited_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    joined_at: Optional[datetime] = None
+    teams: list[str] = field(default_factory=list)  # Team IDs this member belongs to
+    invited_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    joined_at: datetime | None = None
 
     # Invitation/status fields
     invite_accepted: bool = False
-    invited_by: Optional[str] = None  # User ID who sent the invitation
+    invited_by: str | None = None  # User ID who sent the invitation
     metadata: dict = field(default_factory=dict)
 
     @staticmethod
@@ -129,8 +126,8 @@ class OrgMember:
         org_id: str,
         user_id: str,
         role: str = MemberRole.VIEWER,
-        invited_by: Optional[str] = None,
-    ) -> "OrgMember":
+        invited_by: str | None = None,
+    ) -> OrgMember:
         """Create a new organization member with generated ID."""
         return OrgMember(
             id=f"member_{uuid4().hex[:16]}",
@@ -175,7 +172,7 @@ class OrganizationManager:
 
         # Lookup indexes
         self._slug_to_org_id: dict[str, str] = {}
-        self._user_orgs: dict[str, List[str]] = {}  # user_id -> [org_ids]
+        self._user_orgs: dict[str, list[str]] = {}  # user_id -> [org_ids]
 
     # ========== Organization Management ==========
 
@@ -184,9 +181,9 @@ class OrganizationManager:
         name: str,
         slug: str,
         plan: str = OrganizationPlan.FREE,
-        billing_email: Optional[str] = None,
-        settings: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        billing_email: str | None = None,
+        settings: dict | None = None,
+        metadata: dict | None = None,
     ) -> Organization:
         """
         Create a new organization.
@@ -216,7 +213,7 @@ class OrganizationManager:
                 raise ValueError(f"Organization with slug '{slug}' already exists")
 
             org_id = f"org_{uuid4().hex[:16]}"
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await Database.execute(
                 """
@@ -262,7 +259,7 @@ class OrganizationManager:
             self._slug_to_org_id[slug] = org.id
             return org
 
-    async def get_org(self, org_id: str) -> Optional[Organization]:
+    async def get_org(self, org_id: str) -> Organization | None:
         """Get organization by ID."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -287,7 +284,7 @@ class OrganizationManager:
         else:
             return self._orgs.get(org_id)
 
-    async def get_org_by_slug(self, slug: str) -> Optional[Organization]:
+    async def get_org_by_slug(self, slug: str) -> Organization | None:
         """Get organization by slug."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -316,12 +313,12 @@ class OrganizationManager:
     async def update_org(
         self,
         org_id: str,
-        name: Optional[str] = None,
-        plan: Optional[str] = None,
-        billing_email: Optional[str] = None,
-        settings: Optional[dict] = None,
-        metadata: Optional[dict] = None,
-    ) -> Optional[Organization]:
+        name: str | None = None,
+        plan: str | None = None,
+        billing_email: str | None = None,
+        settings: dict | None = None,
+        metadata: dict | None = None,
+    ) -> Organization | None:
         """Update organization fields."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -355,7 +352,7 @@ class OrganizationManager:
                 return await self.get_org(org_id)
 
             updates.append(f"updated_at = ${idx}")
-            params.append(datetime.now(timezone.utc))
+            params.append(datetime.now(UTC))
 
             query = f"UPDATE organizations SET {', '.join(updates)} WHERE id = $1"
             await Database.execute(query, *params)
@@ -377,7 +374,7 @@ class OrganizationManager:
             if metadata is not None:
                 org.metadata = metadata
 
-            org.updated_at = datetime.now(timezone.utc)
+            org.updated_at = datetime.now(UTC)
             return org
 
     async def delete_org(self, org_id: str) -> bool:
@@ -430,17 +427,17 @@ class OrganizationManager:
         self,
         org_id: str,
         name: str,
-        parent_team_id: Optional[str] = None,
-        budget_limit: Optional[Decimal] = None,
-        description: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        parent_team_id: str | None = None,
+        budget_limit: Decimal | None = None,
+        description: str | None = None,
+        metadata: dict | None = None,
     ) -> Team:
         """Create a new team within an organization."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
 
             team_id = f"team_{uuid4().hex[:16]}"
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await Database.execute(
                 """
@@ -479,7 +476,7 @@ class OrganizationManager:
             self._teams[team.id] = team
             return team
 
-    async def get_team(self, team_id: str) -> Optional[Team]:
+    async def get_team(self, team_id: str) -> Team | None:
         """Get team by ID."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -505,8 +502,8 @@ class OrganizationManager:
     async def get_teams(
         self,
         org_id: str,
-        parent_team_id: Optional[str] = None,
-    ) -> List[Team]:
+        parent_team_id: str | None = None,
+    ) -> list[Team]:
         """Get all teams in an organization, optionally filtered by parent."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -545,11 +542,11 @@ class OrganizationManager:
     async def update_team(
         self,
         team_id: str,
-        name: Optional[str] = None,
-        budget_limit: Optional[Decimal] = None,
-        description: Optional[str] = None,
-        metadata: Optional[dict] = None,
-    ) -> Optional[Team]:
+        name: str | None = None,
+        budget_limit: Decimal | None = None,
+        description: str | None = None,
+        metadata: dict | None = None,
+    ) -> Team | None:
         """Update team fields."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -579,7 +576,7 @@ class OrganizationManager:
                 return await self.get_team(team_id)
 
             updates.append(f"updated_at = ${idx}")
-            params.append(datetime.now(timezone.utc))
+            params.append(datetime.now(UTC))
 
             query = f"UPDATE teams SET {', '.join(updates)} WHERE id = $1"
             await Database.execute(query, *params)
@@ -599,7 +596,7 @@ class OrganizationManager:
             if metadata is not None:
                 team.metadata = metadata
 
-            team.updated_at = datetime.now(timezone.utc)
+            team.updated_at = datetime.now(UTC)
             return team
 
     async def delete_team(self, team_id: str) -> bool:
@@ -622,15 +619,15 @@ class OrganizationManager:
         org_id: str,
         user_id: str,
         role: str = MemberRole.VIEWER,
-        teams: Optional[List[str]] = None,
-        invited_by: Optional[str] = None,
+        teams: list[str] | None = None,
+        invited_by: str | None = None,
     ) -> OrgMember:
         """Add a member to an organization."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
 
             member_id = f"member_{uuid4().hex[:16]}"
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await Database.execute(
                 """
@@ -677,7 +674,7 @@ class OrganizationManager:
 
             return member
 
-    async def get_member(self, member_id: str) -> Optional[OrgMember]:
+    async def get_member(self, member_id: str) -> OrgMember | None:
         """Get member by ID."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -703,7 +700,7 @@ class OrganizationManager:
         else:
             return self._members.get(member_id)
 
-    async def get_org_members(self, org_id: str) -> List[OrgMember]:
+    async def get_org_members(self, org_id: str) -> list[OrgMember]:
         """Get all members of an organization."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -732,7 +729,7 @@ class OrganizationManager:
 
     async def get_user_membership(
         self, org_id: str, user_id: str
-    ) -> Optional[OrgMember]:
+    ) -> OrgMember | None:
         """Get a user's membership in a specific organization."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -766,9 +763,9 @@ class OrganizationManager:
     async def update_member_role(
         self,
         member_id: str,
-        role: Optional[str] = None,
-        teams: Optional[List[str]] = None,
-    ) -> Optional[OrgMember]:
+        role: str | None = None,
+        teams: list[str] | None = None,
+    ) -> OrgMember | None:
         """Update member role or team assignments."""
         if self._use_postgres:
             from sardis_v2_core.database import Database
@@ -831,7 +828,7 @@ class OrganizationManager:
 
     # ========== Agent and Spending Queries ==========
 
-    async def get_org_agents(self, org_id: str) -> List[str]:
+    async def get_org_agents(self, org_id: str) -> list[str]:
         """
         Get all agent IDs belonging to an organization.
 
@@ -862,7 +859,7 @@ class OrganizationManager:
             # In-memory mode: would need access to agent repository
             return []
 
-    async def get_team_agents(self, team_id: str) -> List[str]:
+    async def get_team_agents(self, team_id: str) -> list[str]:
         """
         Get all agent IDs belonging to a specific team.
 

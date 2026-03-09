@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import asyncio
-import pytest
 from decimal import Decimal
 
+import pytest
 from sardis_v2_core.cache import (
-    CacheService,
     CacheMetrics,
+    CacheService,
     InMemoryCache,
-    RedisCache,
 )
 
 
@@ -470,7 +469,7 @@ class TestCacheService:
         resource = "transfer_wallet_123"
 
         # Acquire lock
-        owner = await cache.acquire_lock(resource, ttl_seconds=30)
+        await cache.acquire_lock(resource, ttl_seconds=30)
 
         # Try to acquire with context manager - should timeout
         with pytest.raises(TimeoutError):

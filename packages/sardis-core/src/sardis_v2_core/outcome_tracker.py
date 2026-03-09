@@ -9,9 +9,9 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ class PaymentOutcome:
     decision_reason: str = ""
     outcome_type: str = ""      # 'completed', 'disputed', 'refunded', 'fraud_confirmed', 'false_positive'
     outcome_data: dict[str, Any] = field(default_factory=dict)
-    decided_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    resolved_at: Optional[datetime] = None
+    decided_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    resolved_at: datetime | None = None
     agent_id: str = ""
     org_id: str = ""
     merchant_id: str = ""
@@ -71,7 +71,7 @@ class AgentRiskProfile:
     false_negative_count: int = 0
     avg_anomaly_score: float = 0.0
     avg_confidence_score: float = 0.0
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def false_positive_rate(self) -> float:
@@ -115,9 +115,9 @@ class MerchantRiskProfile:
     fraud_count: int = 0
     dispute_rate: float = 0.0
     risk_tier: str = "unknown"  # 'low', 'medium', 'high', 'blocked'
-    first_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_transaction: Optional[datetime] = None
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_transaction: datetime | None = None
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -190,14 +190,14 @@ class OutcomeTracker:
         n = profile.total_decisions
         profile.avg_anomaly_score = ((profile.avg_anomaly_score * (n - 1)) + anomaly_score) / n
         profile.avg_confidence_score = ((profile.avg_confidence_score * (n - 1)) + confidence_score) / n
-        profile.last_updated = datetime.now(timezone.utc)
+        profile.last_updated = datetime.now(UTC)
 
         # Update merchant profile
         if merchant_id:
             mp = self._get_or_create_merchant_profile(merchant_id)
             mp.total_transactions += 1
-            mp.last_transaction = datetime.now(timezone.utc)
-            mp.last_updated = datetime.now(timezone.utc)
+            mp.last_transaction = datetime.now(UTC)
+            mp.last_updated = datetime.now(UTC)
 
         logger.info(
             "Decision recorded: outcome_id=%s decision=%s agent=%s",
@@ -209,7 +209,7 @@ class OutcomeTracker:
         self,
         outcome_id: str,
         outcome_type: str,
-        outcome_data: Optional[dict[str, Any]] = None,
+        outcome_data: dict[str, Any] | None = None,
     ) -> None:
         """Record the real-world outcome of a previous decision."""
         outcome = self._outcomes.get(outcome_id)
@@ -218,7 +218,7 @@ class OutcomeTracker:
 
         outcome.outcome_type = outcome_type
         outcome.outcome_data = outcome_data or {}
-        outcome.resolved_at = datetime.now(timezone.utc)
+        outcome.resolved_at = datetime.now(UTC)
 
         # Update profiles based on outcome
         profile = self._get_or_create_agent_profile(outcome.agent_id, outcome.org_id)
@@ -230,7 +230,7 @@ class OutcomeTracker:
         elif outcome_type in ("completed", "false_positive"):
             if outcome.decision in ("denied", "flagged"):
                 profile.false_positive_count += 1
-        profile.last_updated = datetime.now(timezone.utc)
+        profile.last_updated = datetime.now(UTC)
 
         # Update merchant profile
         if outcome.merchant_id:
@@ -246,20 +246,20 @@ class OutcomeTracker:
                 mp.dispute_rate = (mp.dispute_count + mp.fraud_count) / mp.total_transactions
             # Update risk tier
             mp.risk_tier = self._compute_risk_tier(mp)
-            mp.last_updated = datetime.now(timezone.utc)
+            mp.last_updated = datetime.now(UTC)
 
         logger.info(
             "Outcome recorded: outcome_id=%s type=%s agent=%s",
             outcome_id, outcome_type, outcome.agent_id,
         )
 
-    async def get_outcome(self, outcome_id: str) -> Optional[PaymentOutcome]:
+    async def get_outcome(self, outcome_id: str) -> PaymentOutcome | None:
         return self._outcomes.get(outcome_id)
 
-    async def get_agent_profile(self, agent_id: str) -> Optional[AgentRiskProfile]:
+    async def get_agent_profile(self, agent_id: str) -> AgentRiskProfile | None:
         return self._agent_profiles.get(agent_id)
 
-    async def get_merchant_profile(self, merchant_id: str) -> Optional[MerchantRiskProfile]:
+    async def get_merchant_profile(self, merchant_id: str) -> MerchantRiskProfile | None:
         return self._merchant_profiles.get(merchant_id)
 
     async def compute_agent_stats(self, agent_id: str) -> dict[str, Any]:

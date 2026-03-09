@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
-from typing import Optional
 
 from .policy_store import AsyncPolicyStore
 from .spending_policy import SpendingPolicy, create_default_policy
@@ -28,7 +27,7 @@ class InMemoryPolicyStore(AsyncPolicyStore):
             max_items=max_items,
         )
 
-    async def fetch_policy(self, agent_id: str) -> Optional[SpendingPolicy]:
+    async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None:
         return self._policies.get(agent_id)
 
     async def set_policy(self, agent_id: str, policy: SpendingPolicy) -> None:
@@ -59,6 +58,6 @@ class InMemoryPolicyStore(AsyncPolicyStore):
             window.record_spend(amount)
 
         policy.spent_total += amount
-        policy.updated_at = datetime.now(timezone.utc)
+        policy.updated_at = datetime.now(UTC)
         self._policies[agent_id] = policy
         return policy

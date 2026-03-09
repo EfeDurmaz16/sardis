@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 console = Console()
 
@@ -23,7 +23,7 @@ def spending(ctx):
 @click.pass_context
 def summary(ctx, agent_id: str | None, period: str, output_format: str):
     """Show spending summary (daily/weekly/monthly)."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
     if output_format == "json":
         import json

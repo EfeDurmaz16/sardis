@@ -7,15 +7,14 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
-
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.tap import (
-    validate_tap_version,
     TAP_PROTOCOL_VERSION,
     TAP_SUPPORTED_VERSIONS,
     validate_tap_headers,
+    validate_tap_version,
 )
-from sardis_protocol.x402 import validate_x402_version, X402_SUPPORTED_VERSIONS
+from sardis_protocol.x402 import X402_SUPPORTED_VERSIONS, validate_x402_version
 
 # UCP is optional - only test if installed
 sardis_ucp = pytest.importorskip("sardis_ucp", reason="sardis_ucp not installed")
@@ -244,6 +243,6 @@ def test_version_error_messages_follow_standard_format():
     _, x402_err = validate_x402_version("99.0")
     _, ucp_err = validate_ucp_version("99.0")
 
-    assert tap_err is not None and "tap_version_unsupported:99.0" == tap_err
-    assert x402_err is not None and "x402_version_unsupported:99.0" == x402_err
-    assert ucp_err is not None and "ucp_version_unsupported:99.0" == ucp_err
+    assert tap_err is not None and tap_err == "tap_version_unsupported:99.0"
+    assert x402_err is not None and x402_err == "x402_version_unsupported:99.0"
+    assert ucp_err is not None and ucp_err == "ucp_version_unsupported:99.0"

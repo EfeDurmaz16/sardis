@@ -23,9 +23,9 @@ def cards(ctx):
 @click.pass_context
 def create(ctx, agent_id: str, spending_limit: float, currency: str, categories: str | None):
     """Create a virtual card for an agent."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
-    console.print(f"\n[bold]Creating Virtual Card[/bold]")
+    console.print("\n[bold]Creating Virtual Card[/bold]")
     console.print(f"  Agent: [cyan]{agent_id}[/cyan]")
     console.print(f"  Limit: [green]${spending_limit:.2f}/month[/green]")
     console.print(f"  Currency: [white]{currency}[/white]")
@@ -33,13 +33,13 @@ def create(ctx, agent_id: str, spending_limit: float, currency: str, categories:
     if categories:
         console.print(f"  Categories: [yellow]{categories}[/yellow]")
     else:
-        console.print(f"  Categories: [yellow]all (unrestricted)[/yellow]")
+        console.print("  Categories: [yellow]all (unrestricted)[/yellow]")
 
-    console.print(f"\n  Card ID: [bold cyan]card_sim_abc123[/bold cyan]")
-    console.print(f"  Number: [dim]4242 •••• •••• 1234[/dim]")
-    console.print(f"  Status: [green]active[/green]")
-    console.print(f"  Provider: [white]Stripe Issuing[/white]")
-    console.print(f"\n[yellow]⚠ Sandbox mode: Virtual card created in test environment[/yellow]")
+    console.print("\n  Card ID: [bold cyan]card_sim_abc123[/bold cyan]")
+    console.print("  Number: [dim]4242 •••• •••• 1234[/dim]")
+    console.print("  Status: [green]active[/green]")
+    console.print("  Provider: [white]Stripe Issuing[/white]")
+    console.print("\n[yellow]⚠ Sandbox mode: Virtual card created in test environment[/yellow]")
 
 
 @cards.command("list")
@@ -48,7 +48,7 @@ def create(ctx, agent_id: str, spending_limit: float, currency: str, categories:
 @click.pass_context
 def list_cards(ctx, agent_id: str | None, status: str):
     """List virtual cards."""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
     table = Table(title="Virtual Cards")
     table.add_column("Card ID", style="cyan")

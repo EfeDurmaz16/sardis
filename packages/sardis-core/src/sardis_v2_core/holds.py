@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import List, Optional
 from uuid import uuid4
 
 from .exceptions import SardisDatabaseError
@@ -19,23 +18,23 @@ class Hold:
     """A pre-authorization hold on funds."""
     hold_id: str
     wallet_id: str
-    merchant_id: Optional[str]
+    merchant_id: str | None
     amount: Decimal
     token: str
     status: str = "active"  # active, captured, voided, expired
-    purpose: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
-    captured_amount: Optional[Decimal] = None
-    captured_at: Optional[datetime] = None
-    capture_tx_id: Optional[str] = None
-    voided_at: Optional[datetime] = None
+    purpose: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
+    captured_amount: Decimal | None = None
+    captured_at: datetime | None = None
+    capture_tx_id: str | None = None
+    voided_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if the hold has expired."""
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def can_capture(self) -> bool:
         """Check if the hold can be captured."""
@@ -50,21 +49,21 @@ class Hold:
 class HoldResult:
     """Result of a hold operation."""
     success: bool
-    hold: Optional[Hold] = None
-    error: Optional[str] = None
+    hold: Hold | None = None
+    error: str | None = None
 
     @classmethod
-    def succeeded(cls, hold: Hold) -> "HoldResult":
+    def succeeded(cls, hold: Hold) -> HoldResult:
         return cls(success=True, hold=hold)
 
     @classmethod
-    def failed(cls, error: str) -> "HoldResult":
+    def failed(cls, error: str) -> HoldResult:
         return cls(success=False, error=error)
 
 
 class HoldsRepository:
     """Repository for managing holds with database persistence.
-    
+
     Uses TTLDict for in-memory storage to prevent memory leaks.
     Default TTL is 7 days (matching hold expiration), max 10,000 holds.
     """
@@ -102,9 +101,9 @@ class HoldsRepository:
         wallet_id: str,
         amount: Decimal,
         token: str = "USDC",
-        merchant_id: Optional[str] = None,
-        purpose: Optional[str] = None,
-        expiration_hours: Optional[int] = None,
+        merchant_id: str | None = None,
+        purpose: str | None = None,
+        expiration_hours: int | None = None,
     ) -> HoldResult:
         """Create a new hold."""
         if amount <= Decimal("0"):
@@ -112,7 +111,7 @@ class HoldsRepository:
 
         hold_id = f"hold_{uuid4().hex[:16]}"
         hours = expiration_hours or self.DEFAULT_EXPIRATION_HOURS
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+        expires_at = datetime.now(UTC) + timedelta(hours=hours)
 
         hold = Hold(
             hold_id=hold_id,
@@ -155,7 +154,7 @@ class HoldsRepository:
 
         return HoldResult.succeeded(hold)
 
-    async def get(self, hold_id: str) -> Optional[Hold]:
+    async def get(self, hold_id: str) -> Hold | None:
         """Get a hold by ID."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -178,8 +177,8 @@ class HoldsRepository:
     async def capture(
         self,
         hold_id: str,
-        amount: Optional[Decimal] = None,
-        tx_id: Optional[str] = None,
+        amount: Decimal | None = None,
+        tx_id: str | None = None,
     ) -> HoldResult:
         """Capture a hold."""
         hold = await self.get(hold_id)
@@ -197,7 +196,7 @@ class HoldsRepository:
                 f"Capture amount {capture_amount} exceeds hold amount {hold.amount}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if self._use_postgres:
             try:
@@ -245,7 +244,7 @@ class HoldsRepository:
         if not hold.can_void():
             return HoldResult.failed(f"Hold is {hold.status}, cannot void")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if self._use_postgres:
             try:
@@ -279,9 +278,9 @@ class HoldsRepository:
     async def list_by_wallet(
         self,
         wallet_id: str,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 50,
-    ) -> List[Hold]:
+    ) -> list[Hold]:
         """List holds for a wallet."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -322,7 +321,7 @@ class HoldsRepository:
                 holds = [h for h in holds if h.status == status]
             return sorted(holds, key=lambda h: h.created_at, reverse=True)[:limit]
 
-    async def list_active(self, limit: int = 100) -> List[Hold]:
+    async def list_active(self, limit: int = 100) -> list[Hold]:
         """List all active holds."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -341,7 +340,7 @@ class HoldsRepository:
                 )
                 return [self._row_to_hold(row) for row in rows]
         else:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             holds = [
                 h for h in self._memory_holds.values()
                 if h.status == "active" and (h.expires_at is None or h.expires_at > now)
@@ -362,7 +361,7 @@ class HoldsRepository:
                 # Parse "UPDATE N" to get count
                 return int(result.split()[-1]) if result else 0
         else:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             count = 0
             for hold in self._memory_holds.values():
                 if hold.status == "active" and hold.expires_at and hold.expires_at <= now:

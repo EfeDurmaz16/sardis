@@ -9,7 +9,6 @@ import time
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Dict, List
 
 
 class AlertSeverity(str, Enum):
@@ -44,17 +43,17 @@ class SpendingPattern:
     max_amount: Decimal = Decimal("0")
 
     # Time-based patterns (hour of day: 0-23)
-    hourly_distribution: Dict[int, int] = field(default_factory=dict)
+    hourly_distribution: dict[int, int] = field(default_factory=dict)
 
     # Merchant patterns
-    merchant_frequencies: Dict[str, int] = field(default_factory=dict)
+    merchant_frequencies: dict[str, int] = field(default_factory=dict)
 
     # Token/chain patterns
-    token_frequencies: Dict[str, int] = field(default_factory=dict)
-    chain_frequencies: Dict[str, int] = field(default_factory=dict)
+    token_frequencies: dict[str, int] = field(default_factory=dict)
+    chain_frequencies: dict[str, int] = field(default_factory=dict)
 
     # Recent transaction amounts (for running statistics)
-    recent_amounts: List[Decimal] = field(default_factory=list)
+    recent_amounts: list[Decimal] = field(default_factory=list)
     max_recent_history: int = 100  # Keep last 100 transactions
 
     last_updated: float = field(default_factory=time.time)
@@ -188,7 +187,7 @@ class BehavioralMonitor:
 
             self.pattern.last_updated = time.time()
 
-    async def check_transaction(self, transaction: TransactionData) -> List[BehavioralAlert]:
+    async def check_transaction(self, transaction: TransactionData) -> list[BehavioralAlert]:
         """Check a transaction for behavioral anomalies.
 
         Args:
@@ -202,7 +201,7 @@ class BehavioralMonitor:
             if self.pattern.total_transactions < self.min_transactions_for_baseline:
                 return []
 
-            alerts: List[BehavioralAlert] = []
+            alerts: list[BehavioralAlert] = []
             sigma_threshold = self.SIGMA_THRESHOLDS[self.sensitivity]
 
             # Check amount anomaly

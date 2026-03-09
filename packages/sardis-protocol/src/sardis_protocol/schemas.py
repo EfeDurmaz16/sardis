@@ -1,12 +1,10 @@
 """Typed protocol payloads for the API service."""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
-
 from sardis_v2_core.mandates import PaymentMandate
-
 
 # AP2 Protocol Version Constants
 AP2_PROTOCOL_VERSION = "2025.1"
@@ -42,9 +40,9 @@ class AP2PaymentExecuteRequest(BaseModel):
 
     Supports multiple payment methods as per AP2's payment-agnostic design.
     """
-    intent: Dict[str, Any]
-    cart: Dict[str, Any]
-    payment: Dict[str, Any]
+    intent: dict[str, Any]
+    cart: dict[str, Any]
+    payment: dict[str, Any]
     payment_method: str = Field(
         default="stablecoin",
         description="Payment method: stablecoin, virtual_card, x402, bank_transfer",
@@ -86,7 +84,7 @@ class AP2PaymentExecuteResponse(BaseModel):
 class X402PaymentExecuteRequest(BaseModel):
     """
     x402 micropayment execution request.
-    
+
     Reference: https://www.x402.org/
     See also: https://github.com/google-agentic-commerce/a2a-x402
     """
@@ -107,16 +105,16 @@ class X402PaymentExecuteRequest(BaseModel):
     payee_address: str = Field(description="Payee's wallet address")
     x402_version: str = Field(default="1.0", description="x402 protocol version")
     x402_network: str = Field(default="base", description="Settlement network")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class X402PaymentExecuteResponse(BaseModel):
     """Response from x402 payment execution."""
     payment_id: str
     status: str  # pending, completed, failed
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     chain: str = "base"
-    access_token: Optional[str] = None
-    expires_at: Optional[str] = None
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
+    access_token: str | None = None
+    expires_at: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None

@@ -23,16 +23,15 @@ import os
 import sys
 import time
 from decimal import Decimal
-from typing import List
 
 # Try to import rich for beautiful output
 try:
+    from rich import box
     from rich.console import Console
+    from rich.markdown import Markdown
     from rich.panel import Panel
     from rich.table import Table
     from rich.tree import Tree
-    from rich import box
-    from rich.markdown import Markdown
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -75,7 +74,7 @@ class DemoDisplay:
                 print(f"  {description}")
             print('─' * 50)
 
-    def flow_diagram(self, title: str, nodes: List[tuple]):
+    def flow_diagram(self, title: str, nodes: list[tuple]):
         """Display a flow diagram."""
         if RICH_AVAILABLE:
             tree = Tree(f"[bold cyan]{title}[/bold cyan]")
@@ -94,7 +93,7 @@ class DemoDisplay:
                 for child in children:
                     print(f"    → {child}")
 
-    def agent_table(self, agents: List[dict]):
+    def agent_table(self, agents: list[dict]):
         """Display agent information table."""
         if RICH_AVAILABLE:
             table = Table(title="Agent Details", box=box.ROUNDED)
@@ -219,10 +218,10 @@ def scenario_group_payment(display: DemoDisplay, client: SardisClient):
     group_budget = Decimal("500.00")
 
     if RICH_AVAILABLE:
-        display.console.print(f"\n[bold]Group:[/bold] Marketing Team")
+        display.console.print("\n[bold]Group:[/bold] Marketing Team")
         display.console.print(f"[bold]Shared Budget:[/bold] [green]${group_budget}[/green]")
-        display.console.print(f"[bold]Daily Limit:[/bold] $200")
-        display.console.print(f"[bold]Members:[/bold] 4 agents\n")
+        display.console.print("[bold]Daily Limit:[/bold] $200")
+        display.console.print("[bold]Members:[/bold] 4 agents\n")
     else:
         print("\nGroup: Marketing Team")
         print(f"Shared Budget: ${group_budget}")
@@ -277,7 +276,7 @@ def scenario_group_payment(display: DemoDisplay, client: SardisClient):
         summary.add_row("Daily Limit Used", f"{(total_spent/200*100):.0f}%")
         display.console.print(summary)
     else:
-        print(f"\nGroup Budget Summary:")
+        print("\nGroup Budget Summary:")
         print(f"  Initial Budget: ${group_budget}")
         print(f"  Total Spent: ${total_spent}")
         print(f"  Remaining: ${remaining}")
@@ -336,7 +335,6 @@ def scenario_cascade_payment(display: DemoDisplay, client: SardisClient):
 
     # Execute cascade
     payment_amount = Decimal("50.00")
-    merchant = "claude.ai"
 
     if RICH_AVAILABLE:
         display.console.print("\n[bold]Executing Cascade Payment:[/bold]\n")
@@ -364,7 +362,7 @@ def scenario_cascade_payment(display: DemoDisplay, client: SardisClient):
     agents[1]["balance"] -= payment_amount
     agents[1]["contribution"] = payment_amount
 
-    display.success(f"Cascade payment completed via Secondary Agent!")
+    display.success("Cascade payment completed via Secondary Agent!")
 
     # Final state
     display.agent_table(agents)

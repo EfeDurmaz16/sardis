@@ -51,12 +51,12 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
 
     Uses Base Sepolia (chain_id=84532).
     """
-    from sardis_v2_core.identity import IdentityRegistry
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-    from sardis_v2_core import SpendingPolicy, create_default_policy
+    from sardis_chain.executor import ChainExecutor
     from sardis_compliance.checks import ComplianceEngine
     from sardis_ledger.records import LedgerStore
-    from sardis_chain.executor import ChainExecutor
+    from sardis_v2_core import create_default_policy
+    from sardis_v2_core.identity import IdentityRegistry
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     # --- 1. Register agent identity ---
     registry = IdentityRegistry()
@@ -111,7 +111,7 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
     assert len(entries) >= 1, "Audit store should have at least one entry"
 
     # --- 7. Chain execution (simulated mode in test) ---
-    chain_exec = ChainExecutor(settings=settings)
+    ChainExecutor(settings=settings)
     # In testnet mode without real RPC, the executor returns simulated results
     # This verifies the execution pipeline works end-to-end
 
@@ -138,8 +138,8 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_oversized_payment(settings, agent_id):
     """Verify that compliance correctly blocks payments over the limit."""
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
     from sardis_compliance.checks import ComplianceEngine
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_block_{uuid.uuid4().hex[:8]}",
@@ -171,8 +171,8 @@ async def test_compliance_blocks_oversized_payment(settings, agent_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_unsupported_token(settings, agent_id):
     """Verify that compliance blocks unsupported tokens."""
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
     from sardis_compliance.checks import ComplianceEngine
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_token_{uuid.uuid4().hex[:8]}",

@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
-from uuid import UUID
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.callbacks import BaseCallbackHandler
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger("sardis_langchain")
 
@@ -59,10 +61,10 @@ class SardisCallbackHandler(BaseCallbackHandler):
         input_str: str,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
-        tags: Optional[list[str]] = None,
-        metadata: Optional[dict[str, Any]] = None,
-        inputs: Optional[dict[str, Any]] = None,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         tool_name = serialized.get("name", "")
@@ -74,7 +76,7 @@ class SardisCallbackHandler(BaseCallbackHandler):
             "tool": tool_name,
             "input": input_str,
             "run_id": str(run_id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self.records.append(record)
         logger.log(self.log_level, "Sardis tool invoked: %s | input: %s", tool_name, input_str)
@@ -86,8 +88,8 @@ class SardisCallbackHandler(BaseCallbackHandler):
         output: str,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
-        tags: Optional[list[str]] = None,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         # Try to find the matching start record by run_id
@@ -107,10 +109,10 @@ class SardisCallbackHandler(BaseCallbackHandler):
         record = {
             "event": "tool_end",
             "tool": tool_name,
-            "success": parsed.get("success", None),
+            "success": parsed.get("success"),
             "output": parsed,
             "run_id": str(run_id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self.records.append(record)
 
@@ -130,8 +132,8 @@ class SardisCallbackHandler(BaseCallbackHandler):
         error: BaseException,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
-        tags: Optional[list[str]] = None,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         matching = [r for r in self.records if r.get("run_id") == str(run_id)]
@@ -145,7 +147,7 @@ class SardisCallbackHandler(BaseCallbackHandler):
             "tool": tool_name,
             "error": str(error),
             "run_id": str(run_id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self.records.append(record)
         logger.error("Sardis tool error: %s | %s", tool_name, error)

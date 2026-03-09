@@ -21,8 +21,8 @@ async def expire_holds() -> None:
         logger.info("Starting hold expiration job")
 
         # Import here to avoid circular dependencies
-        from sardis_v2_core.holds import HoldsRepository
         from sardis_v2_core.database import get_database
+        from sardis_v2_core.holds import HoldsRepository
 
         # Get database connection (PostgreSQL in production)
         db = get_database()

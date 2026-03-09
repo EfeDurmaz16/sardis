@@ -5,7 +5,7 @@ Exposes the existing ReconciliationEngine behind admin-only endpoints.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -20,9 +20,9 @@ router = APIRouter(dependencies=[Depends(require_mfa_if_enabled)])
 
 class ReconciliationCheckRequest(BaseModel):
     """Request to reconcile a specific wallet or entry."""
-    wallet_id: Optional[str] = Field(default=None, description="Wallet to reconcile")
-    entry_id: Optional[str] = Field(default=None, description="Specific ledger entry ID")
-    chain: Optional[str] = Field(default=None, description="Chain filter (e.g. 'base')")
+    wallet_id: str | None = Field(default=None, description="Wallet to reconcile")
+    entry_id: str | None = Field(default=None, description="Specific ledger entry ID")
+    chain: str | None = Field(default=None, description="Chain filter (e.g. 'base')")
     limit: int = Field(default=50, ge=1, le=500, description="Max entries to reconcile")
 
 
@@ -46,7 +46,6 @@ async def reconciliation_check(
     Compares ledger entries against on-chain state and returns discrepancies.
     """
     try:
-        from sardis_ledger.reconciliation import ReconciliationEngine
 
         # Get the reconciliation engine from app state or create one
         engine = getattr(request.app.state, "reconciliation_engine", None)

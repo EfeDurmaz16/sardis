@@ -40,24 +40,13 @@ import random
 import re
 import time
 import uuid
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    Generic,
-    Iterator,
-    List,
-    Literal,
-    Optional,
     TypeVar,
-    Union,
-    overload,
 )
 
 import httpx
@@ -75,6 +64,8 @@ from .models.errors import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .resources.agents import AgentsResource, AsyncAgentsResource
     from .resources.approvals import ApprovalsResource, AsyncApprovalsResource
     from .resources.cards import AsyncCardsResource, CardsResource
@@ -211,8 +202,8 @@ class TokenInfo:
     """
 
     access_token: str
-    refresh_token: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    refresh_token: str | None = None
+    expires_at: datetime | None = None
     token_type: str = "Bearer"
 
     @property
@@ -236,9 +227,9 @@ class RequestContext:
     """
 
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timeout: Optional[TimeoutConfig] = None
-    idempotency_key: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    timeout: TimeoutConfig | None = None
+    idempotency_key: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class RequestLogger:
@@ -252,9 +243,9 @@ class RequestLogger:
         self,
         method: str,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
-        context: Optional[RequestContext] = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
+        context: RequestContext | None = None,
     ) -> None:
         """Log an outgoing request."""
         if self.log_level == LogLevel.NONE:
@@ -291,10 +282,10 @@ class RequestLogger:
         self,
         status_code: int,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
         duration_ms: float = 0,
-        context: Optional[RequestContext] = None,
+        context: RequestContext | None = None,
     ) -> None:
         """Log an incoming response."""
         if self.log_level == LogLevel.NONE:
@@ -332,7 +323,7 @@ class RequestLogger:
         attempt: int,
         delay: float,
         reason: str,
-        context: Optional[RequestContext] = None,
+        context: RequestContext | None = None,
     ) -> None:
         """Log a retry attempt."""
         request_id = context.request_id if context else "unknown"
@@ -344,7 +335,7 @@ class RequestLogger:
             reason,
         )
 
-    def _sanitize_headers(self, headers: Dict[str, str]) -> Dict[str, str]:
+    def _sanitize_headers(self, headers: dict[str, str]) -> dict[str, str]:
         """Remove sensitive headers from logs."""
         sensitive_keys = {"authorization", "x-api-key", "api-key", "cookie", "set-cookie"}
         return {
@@ -369,14 +360,14 @@ class BaseClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        retry: Optional[RetryConfig] = None,
-        pool: Optional[PoolConfig] = None,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
-        token_refresh_callback: Optional[Callable[[], str]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
     ):
         """Initialize the base client.
 
@@ -419,7 +410,7 @@ class BaseClient:
 
         # Token refresh
         self._token_refresh_callback = token_refresh_callback
-        self._token_info: Optional[TokenInfo] = None
+        self._token_info: TokenInfo | None = None
 
         # Default headers
         self._default_headers = {
@@ -432,9 +423,9 @@ class BaseClient:
 
     def _get_headers(
         self,
-        context: Optional[RequestContext] = None,
-        extra_headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, str]:
+        context: RequestContext | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, str]:
         """Build headers for a request."""
         headers = self._default_headers.copy()
 
@@ -459,10 +450,10 @@ class BaseClient:
 
         return f"{self._base_url}{path}"
 
-    def _extract_x402_header_details(self, response: httpx.Response) -> Dict[str, Any]:
+    def _extract_x402_header_details(self, response: httpx.Response) -> dict[str, Any]:
         """Extract x402 challenge details from response headers."""
         headers = {k.lower(): v for k, v in response.headers.items()}
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
 
         challenge_value = headers.get("x-payment-challenge") or headers.get("paymentrequired")
         if challenge_value:
@@ -483,7 +474,7 @@ class BaseClient:
     def _handle_error_response(
         self,
         response: httpx.Response,
-        context: Optional[RequestContext] = None,
+        context: RequestContext | None = None,
     ) -> None:
         """Handle error responses and raise appropriate exceptions."""
         status_code = response.status_code
@@ -577,14 +568,14 @@ class AsyncSardisClient(BaseClient):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = BaseClient.DEFAULT_BASE_URL,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        retry: Optional[RetryConfig] = None,
-        pool: Optional[PoolConfig] = None,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
-        token_refresh_callback: Optional[Callable[[], str]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
     ):
         """Initialize the async client.
 
@@ -609,29 +600,29 @@ class AsyncSardisClient(BaseClient):
             default_headers=default_headers,
         )
 
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
         # Initialize resources lazily
-        self._agents: Optional["AsyncAgentsResource"] = None
-        self._wallets: Optional["AsyncWalletsResource"] = None
-        self._payments: Optional["AsyncPaymentsResource"] = None
-        self._holds: Optional["AsyncHoldsResource"] = None
-        self._cards: Optional["AsyncCardsResource"] = None
-        self._policies: Optional["AsyncPoliciesResource"] = None
-        self._webhooks: Optional["AsyncWebhooksResource"] = None
-        self._marketplace: Optional["AsyncMarketplaceResource"] = None
-        self._transactions: Optional["AsyncTransactionsResource"] = None
-        self._ledger: Optional["AsyncLedgerResource"] = None
-        self._groups: Optional["AsyncGroupsResource"] = None
-        self._treasury: Optional["AsyncTreasuryResource"] = None
-        self._approvals: Optional["AsyncApprovalsResource"] = None
-        self._kill_switch: Optional["AsyncKillSwitchResource"] = None
-        self._evidence: Optional["AsyncEvidenceResource"] = None
-        self._simulation: Optional["AsyncSimulationResource"] = None
-        self._exceptions: Optional["AsyncExceptionsResource"] = None
+        self._agents: AsyncAgentsResource | None = None
+        self._wallets: AsyncWalletsResource | None = None
+        self._payments: AsyncPaymentsResource | None = None
+        self._holds: AsyncHoldsResource | None = None
+        self._cards: AsyncCardsResource | None = None
+        self._policies: AsyncPoliciesResource | None = None
+        self._webhooks: AsyncWebhooksResource | None = None
+        self._marketplace: AsyncMarketplaceResource | None = None
+        self._transactions: AsyncTransactionsResource | None = None
+        self._ledger: AsyncLedgerResource | None = None
+        self._groups: AsyncGroupsResource | None = None
+        self._treasury: AsyncTreasuryResource | None = None
+        self._approvals: AsyncApprovalsResource | None = None
+        self._kill_switch: AsyncKillSwitchResource | None = None
+        self._evidence: AsyncEvidenceResource | None = None
+        self._simulation: AsyncSimulationResource | None = None
+        self._exceptions: AsyncExceptionsResource | None = None
 
     @property
-    def groups(self) -> "AsyncGroupsResource":
+    def groups(self) -> AsyncGroupsResource:
         """Access the groups resource."""
         if self._groups is None:
             from .resources.groups import AsyncGroupsResource
@@ -639,7 +630,7 @@ class AsyncSardisClient(BaseClient):
         return self._groups
 
     @property
-    def agents(self) -> "AsyncAgentsResource":
+    def agents(self) -> AsyncAgentsResource:
         """Access the agents resource."""
         if self._agents is None:
             from .resources.agents import AsyncAgentsResource
@@ -647,7 +638,7 @@ class AsyncSardisClient(BaseClient):
         return self._agents
 
     @property
-    def wallets(self) -> "AsyncWalletsResource":
+    def wallets(self) -> AsyncWalletsResource:
         """Access the wallets resource."""
         if self._wallets is None:
             from .resources.wallets import AsyncWalletsResource
@@ -655,7 +646,7 @@ class AsyncSardisClient(BaseClient):
         return self._wallets
 
     @property
-    def payments(self) -> "AsyncPaymentsResource":
+    def payments(self) -> AsyncPaymentsResource:
         """Access the payments resource."""
         if self._payments is None:
             from .resources.payments import AsyncPaymentsResource
@@ -663,7 +654,7 @@ class AsyncSardisClient(BaseClient):
         return self._payments
 
     @property
-    def holds(self) -> "AsyncHoldsResource":
+    def holds(self) -> AsyncHoldsResource:
         """Access the holds resource."""
         if self._holds is None:
             from .resources.holds import AsyncHoldsResource
@@ -671,7 +662,7 @@ class AsyncSardisClient(BaseClient):
         return self._holds
 
     @property
-    def cards(self) -> "AsyncCardsResource":
+    def cards(self) -> AsyncCardsResource:
         """Access the cards resource."""
         if self._cards is None:
             from .resources.cards import AsyncCardsResource
@@ -679,7 +670,7 @@ class AsyncSardisClient(BaseClient):
         return self._cards
 
     @property
-    def policies(self) -> "AsyncPoliciesResource":
+    def policies(self) -> AsyncPoliciesResource:
         """Access the policies resource."""
         if self._policies is None:
             from .resources.policies import AsyncPoliciesResource
@@ -687,7 +678,7 @@ class AsyncSardisClient(BaseClient):
         return self._policies
 
     @property
-    def webhooks(self) -> "AsyncWebhooksResource":
+    def webhooks(self) -> AsyncWebhooksResource:
         """Access the webhooks resource."""
         if self._webhooks is None:
             from .resources.webhooks import AsyncWebhooksResource
@@ -695,7 +686,7 @@ class AsyncSardisClient(BaseClient):
         return self._webhooks
 
     @property
-    def marketplace(self) -> "AsyncMarketplaceResource":
+    def marketplace(self) -> AsyncMarketplaceResource:
         """Access the marketplace resource."""
         if self._marketplace is None:
             from .resources.marketplace import AsyncMarketplaceResource
@@ -703,7 +694,7 @@ class AsyncSardisClient(BaseClient):
         return self._marketplace
 
     @property
-    def transactions(self) -> "AsyncTransactionsResource":
+    def transactions(self) -> AsyncTransactionsResource:
         """Access the transactions resource."""
         if self._transactions is None:
             from .resources.transactions import AsyncTransactionsResource
@@ -711,7 +702,7 @@ class AsyncSardisClient(BaseClient):
         return self._transactions
 
     @property
-    def ledger(self) -> "AsyncLedgerResource":
+    def ledger(self) -> AsyncLedgerResource:
         """Access the ledger resource."""
         if self._ledger is None:
             from .resources.ledger import AsyncLedgerResource
@@ -719,7 +710,7 @@ class AsyncSardisClient(BaseClient):
         return self._ledger
 
     @property
-    def treasury(self) -> "AsyncTreasuryResource":
+    def treasury(self) -> AsyncTreasuryResource:
         """Access the treasury resource."""
         if self._treasury is None:
             from .resources.treasury import AsyncTreasuryResource
@@ -727,7 +718,7 @@ class AsyncSardisClient(BaseClient):
         return self._treasury
 
     @property
-    def approvals(self) -> "AsyncApprovalsResource":
+    def approvals(self) -> AsyncApprovalsResource:
         """Access the approvals resource."""
         if self._approvals is None:
             from .resources.approvals import AsyncApprovalsResource
@@ -735,7 +726,7 @@ class AsyncSardisClient(BaseClient):
         return self._approvals
 
     @property
-    def kill_switch(self) -> "AsyncKillSwitchResource":
+    def kill_switch(self) -> AsyncKillSwitchResource:
         """Access the kill switch resource."""
         if self._kill_switch is None:
             from .resources.kill_switch import AsyncKillSwitchResource
@@ -743,7 +734,7 @@ class AsyncSardisClient(BaseClient):
         return self._kill_switch
 
     @property
-    def evidence(self) -> "AsyncEvidenceResource":
+    def evidence(self) -> AsyncEvidenceResource:
         """Access the evidence resource."""
         if self._evidence is None:
             from .resources.evidence import AsyncEvidenceResource
@@ -751,7 +742,7 @@ class AsyncSardisClient(BaseClient):
         return self._evidence
 
     @property
-    def simulation(self) -> "AsyncSimulationResource":
+    def simulation(self) -> AsyncSimulationResource:
         """Access the simulation resource."""
         if self._simulation is None:
             from .resources.simulation import AsyncSimulationResource
@@ -759,7 +750,7 @@ class AsyncSardisClient(BaseClient):
         return self._simulation
 
     @property
-    def exceptions(self) -> "AsyncExceptionsResource":
+    def exceptions(self) -> AsyncExceptionsResource:
         """Access the exceptions resource."""
         if self._exceptions is None:
             from .resources.exceptions import AsyncExceptionsResource
@@ -792,12 +783,12 @@ class AsyncSardisClient(BaseClient):
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        context: Optional[RequestContext] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        context: RequestContext | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Make an HTTP request with retry logic.
 
         Args:
@@ -833,7 +824,7 @@ class AsyncSardisClient(BaseClient):
         else:
             request_timeout = self._timeout.to_httpx_timeout()
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self._retry.max_retries + 1):
             start_time = time.monotonic()
@@ -951,7 +942,7 @@ class AsyncSardisClient(BaseClient):
             request_id=context.request_id,
         )
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         """Check API health status.
 
         Returns:
@@ -961,9 +952,9 @@ class AsyncSardisClient(BaseClient):
 
     async def execute_payment(
         self,
-        mandate: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Legacy convenience wrapper for executing a single mandate."""
         return await self._request(
             "POST",
@@ -974,9 +965,9 @@ class AsyncSardisClient(BaseClient):
 
     async def execute_ap2_payment(
         self,
-        bundle: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Legacy convenience wrapper for executing an AP2 bundle."""
         return await self._request(
             "POST",
@@ -991,15 +982,15 @@ class AsyncSardisClient(BaseClient):
             await self._client.aclose()
             self._client = None
 
-    async def __aenter__(self) -> "AsyncSardisClient":
+    async def __aenter__(self) -> AsyncSardisClient:
         """Async context manager entry."""
         return self
 
     async def __aexit__(
         self,
-        exc_type: Optional[type],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """Async context manager exit."""
         await self.close()
@@ -1021,14 +1012,14 @@ class SardisClient(BaseClient):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = BaseClient.DEFAULT_BASE_URL,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-        retry: Optional[RetryConfig] = None,
-        pool: Optional[PoolConfig] = None,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
-        token_refresh_callback: Optional[Callable[[], str]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
     ):
         """Initialize the sync client.
 
@@ -1053,29 +1044,29 @@ class SardisClient(BaseClient):
             default_headers=default_headers,
         )
 
-        self._client: Optional[httpx.Client] = None
+        self._client: httpx.Client | None = None
 
         # Initialize resources lazily
-        self._agents: Optional["AgentsResource"] = None
-        self._wallets: Optional["WalletsResource"] = None
-        self._payments: Optional["PaymentsResource"] = None
-        self._holds: Optional["HoldsResource"] = None
-        self._cards: Optional["CardsResource"] = None
-        self._policies: Optional["PoliciesResource"] = None
-        self._webhooks: Optional["WebhooksResource"] = None
-        self._marketplace: Optional["MarketplaceResource"] = None
-        self._transactions: Optional["TransactionsResource"] = None
-        self._ledger: Optional["LedgerResource"] = None
-        self._groups: Optional["GroupsResource"] = None
-        self._treasury: Optional["TreasuryResource"] = None
-        self._approvals: Optional["ApprovalsResource"] = None
-        self._kill_switch: Optional["KillSwitchResource"] = None
-        self._evidence: Optional["EvidenceResource"] = None
-        self._simulation: Optional["SimulationResource"] = None
-        self._exceptions: Optional["ExceptionsResource"] = None
+        self._agents: AgentsResource | None = None
+        self._wallets: WalletsResource | None = None
+        self._payments: PaymentsResource | None = None
+        self._holds: HoldsResource | None = None
+        self._cards: CardsResource | None = None
+        self._policies: PoliciesResource | None = None
+        self._webhooks: WebhooksResource | None = None
+        self._marketplace: MarketplaceResource | None = None
+        self._transactions: TransactionsResource | None = None
+        self._ledger: LedgerResource | None = None
+        self._groups: GroupsResource | None = None
+        self._treasury: TreasuryResource | None = None
+        self._approvals: ApprovalsResource | None = None
+        self._kill_switch: KillSwitchResource | None = None
+        self._evidence: EvidenceResource | None = None
+        self._simulation: SimulationResource | None = None
+        self._exceptions: ExceptionsResource | None = None
 
     @property
-    def groups(self) -> "GroupsResource":
+    def groups(self) -> GroupsResource:
         """Access the groups resource."""
         if self._groups is None:
             from .resources.groups import GroupsResource
@@ -1083,7 +1074,7 @@ class SardisClient(BaseClient):
         return self._groups
 
     @property
-    def agents(self) -> "AgentsResource":
+    def agents(self) -> AgentsResource:
         """Access the agents resource."""
         if self._agents is None:
             from .resources.agents import AgentsResource
@@ -1091,7 +1082,7 @@ class SardisClient(BaseClient):
         return self._agents
 
     @property
-    def wallets(self) -> "WalletsResource":
+    def wallets(self) -> WalletsResource:
         """Access the wallets resource."""
         if self._wallets is None:
             from .resources.wallets import WalletsResource
@@ -1099,7 +1090,7 @@ class SardisClient(BaseClient):
         return self._wallets
 
     @property
-    def payments(self) -> "PaymentsResource":
+    def payments(self) -> PaymentsResource:
         """Access the payments resource."""
         if self._payments is None:
             from .resources.payments import PaymentsResource
@@ -1107,7 +1098,7 @@ class SardisClient(BaseClient):
         return self._payments
 
     @property
-    def holds(self) -> "HoldsResource":
+    def holds(self) -> HoldsResource:
         """Access the holds resource."""
         if self._holds is None:
             from .resources.holds import HoldsResource
@@ -1115,7 +1106,7 @@ class SardisClient(BaseClient):
         return self._holds
 
     @property
-    def cards(self) -> "CardsResource":
+    def cards(self) -> CardsResource:
         """Access the cards resource."""
         if self._cards is None:
             from .resources.cards import CardsResource
@@ -1123,7 +1114,7 @@ class SardisClient(BaseClient):
         return self._cards
 
     @property
-    def policies(self) -> "PoliciesResource":
+    def policies(self) -> PoliciesResource:
         """Access the policies resource."""
         if self._policies is None:
             from .resources.policies import PoliciesResource
@@ -1131,7 +1122,7 @@ class SardisClient(BaseClient):
         return self._policies
 
     @property
-    def webhooks(self) -> "WebhooksResource":
+    def webhooks(self) -> WebhooksResource:
         """Access the webhooks resource."""
         if self._webhooks is None:
             from .resources.webhooks import WebhooksResource
@@ -1139,7 +1130,7 @@ class SardisClient(BaseClient):
         return self._webhooks
 
     @property
-    def marketplace(self) -> "MarketplaceResource":
+    def marketplace(self) -> MarketplaceResource:
         """Access the marketplace resource."""
         if self._marketplace is None:
             from .resources.marketplace import MarketplaceResource
@@ -1147,7 +1138,7 @@ class SardisClient(BaseClient):
         return self._marketplace
 
     @property
-    def transactions(self) -> "TransactionsResource":
+    def transactions(self) -> TransactionsResource:
         """Access the transactions resource."""
         if self._transactions is None:
             from .resources.transactions import TransactionsResource
@@ -1155,7 +1146,7 @@ class SardisClient(BaseClient):
         return self._transactions
 
     @property
-    def ledger(self) -> "LedgerResource":
+    def ledger(self) -> LedgerResource:
         """Access the ledger resource."""
         if self._ledger is None:
             from .resources.ledger import LedgerResource
@@ -1163,7 +1154,7 @@ class SardisClient(BaseClient):
         return self._ledger
 
     @property
-    def treasury(self) -> "TreasuryResource":
+    def treasury(self) -> TreasuryResource:
         """Access the treasury resource."""
         if self._treasury is None:
             from .resources.treasury import TreasuryResource
@@ -1171,7 +1162,7 @@ class SardisClient(BaseClient):
         return self._treasury
 
     @property
-    def approvals(self) -> "ApprovalsResource":
+    def approvals(self) -> ApprovalsResource:
         """Access the approvals resource."""
         if self._approvals is None:
             from .resources.approvals import ApprovalsResource
@@ -1179,7 +1170,7 @@ class SardisClient(BaseClient):
         return self._approvals
 
     @property
-    def kill_switch(self) -> "KillSwitchResource":
+    def kill_switch(self) -> KillSwitchResource:
         """Access the kill switch resource."""
         if self._kill_switch is None:
             from .resources.kill_switch import KillSwitchResource
@@ -1187,7 +1178,7 @@ class SardisClient(BaseClient):
         return self._kill_switch
 
     @property
-    def evidence(self) -> "EvidenceResource":
+    def evidence(self) -> EvidenceResource:
         """Access the evidence resource."""
         if self._evidence is None:
             from .resources.evidence import EvidenceResource
@@ -1195,7 +1186,7 @@ class SardisClient(BaseClient):
         return self._evidence
 
     @property
-    def simulation(self) -> "SimulationResource":
+    def simulation(self) -> SimulationResource:
         """Access the simulation resource."""
         if self._simulation is None:
             from .resources.simulation import SimulationResource
@@ -1203,7 +1194,7 @@ class SardisClient(BaseClient):
         return self._simulation
 
     @property
-    def exceptions(self) -> "ExceptionsResource":
+    def exceptions(self) -> ExceptionsResource:
         """Access the exceptions resource."""
         if self._exceptions is None:
             from .resources.exceptions import ExceptionsResource
@@ -1236,12 +1227,12 @@ class SardisClient(BaseClient):
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        context: Optional[RequestContext] = None,
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        context: RequestContext | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Make an HTTP request with retry logic.
 
         Args:
@@ -1277,7 +1268,7 @@ class SardisClient(BaseClient):
         else:
             request_timeout = self._timeout.to_httpx_timeout()
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self._retry.max_retries + 1):
             start_time = time.monotonic()
@@ -1395,7 +1386,7 @@ class SardisClient(BaseClient):
             request_id=context.request_id,
         )
 
-    def health(self) -> Dict[str, Any]:
+    def health(self) -> dict[str, Any]:
         """Check API health status.
 
         Returns:
@@ -1405,9 +1396,9 @@ class SardisClient(BaseClient):
 
     def execute_payment(
         self,
-        mandate: Dict[str, Any],
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-    ) -> Dict[str, Any]:
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Legacy convenience wrapper for executing a single mandate."""
         return self._request(
             "POST",
@@ -1418,9 +1409,9 @@ class SardisClient(BaseClient):
 
     def execute_ap2_payment(
         self,
-        bundle: Dict[str, Any],
-        timeout: Optional[Union[float, TimeoutConfig]] = None,
-    ) -> Dict[str, Any]:
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Legacy convenience wrapper for executing an AP2 bundle."""
         return self._request(
             "POST",
@@ -1435,15 +1426,15 @@ class SardisClient(BaseClient):
             self._client.close()
             self._client = None
 
-    def __enter__(self) -> "SardisClient":
+    def __enter__(self) -> SardisClient:
         """Context manager entry."""
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """Context manager exit."""
         self.close()

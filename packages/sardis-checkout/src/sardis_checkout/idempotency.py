@@ -16,8 +16,8 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, TypeVar, Generic, Callable, Awaitable
 from functools import wraps
+from typing import Any, Awaitable, Callable, TypeVar
 
 from sardis_checkout.models import IdempotencyRecord
 
@@ -45,7 +45,7 @@ class IdempotencyStore(ABC):
     """Abstract interface for idempotency record storage."""
 
     @abstractmethod
-    async def get(self, idempotency_key: str) -> Optional[IdempotencyRecord]:
+    async def get(self, idempotency_key: str) -> IdempotencyRecord | None:
         """Get an idempotency record by key."""
         pass
 
@@ -83,9 +83,9 @@ class InMemoryIdempotencyStore(IdempotencyStore):
     """
 
     def __init__(self):
-        self._records: Dict[str, IdempotencyRecord] = {}
+        self._records: dict[str, IdempotencyRecord] = {}
 
-    async def get(self, idempotency_key: str) -> Optional[IdempotencyRecord]:
+    async def get(self, idempotency_key: str) -> IdempotencyRecord | None:
         record = self._records.get(idempotency_key)
         if record and record.expires_at < datetime.utcnow():
             del self._records[idempotency_key]
@@ -154,7 +154,7 @@ class IdempotencyManager:
         self.default_ttl_hours = default_ttl_hours
         self.lock_timeout_seconds = lock_timeout_seconds
 
-    def _compute_request_hash(self, request_data: Dict[str, Any]) -> str:
+    def _compute_request_hash(self, request_data: dict[str, Any]) -> str:
         """Compute a hash of the request data for conflict detection."""
         # Sort keys for consistent hashing
         normalized = json.dumps(request_data, sort_keys=True, default=str)
@@ -176,8 +176,8 @@ class IdempotencyManager:
     def _serialize_result(
         self,
         result: Any,
-        serialize_fn: Optional[Callable[[Any], Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        serialize_fn: Callable[[Any], dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Serialize operation results for storage."""
         if serialize_fn:
             return serialize_fn(result)
@@ -195,8 +195,8 @@ class IdempotencyManager:
         self,
         idempotency_key: str,
         operation: str,
-        request_data: Dict[str, Any],
-    ) -> Optional[Any]:
+        request_data: dict[str, Any],
+    ) -> Any | None:
         """
         Check if an idempotent operation has already been completed.
 
@@ -259,8 +259,8 @@ class IdempotencyManager:
         self,
         idempotency_key: str,
         operation: str,
-        request_data: Dict[str, Any],
-        agent_id: Optional[str] = None,
+        request_data: dict[str, Any],
+        agent_id: str | None = None,
     ) -> IdempotencyRecord:
         """
         Start a new idempotent operation.
@@ -288,9 +288,9 @@ class IdempotencyManager:
     async def complete_operation(
         self,
         idempotency_key: str,
-        response: Dict[str, Any],
-        checkout_id: Optional[str] = None,
-        response_code: Optional[int] = 200,
+        response: dict[str, Any],
+        checkout_id: str | None = None,
+        response_code: int | None = 200,
     ) -> None:
         """Mark an idempotent operation as completed with its response."""
         record = await self.store.get(idempotency_key)
@@ -315,7 +315,7 @@ class IdempotencyManager:
     async def fail_operation(
         self,
         idempotency_key: str,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> None:
         """Mark an idempotent operation as failed."""
         record = await self.store.get(idempotency_key)
@@ -338,10 +338,10 @@ class IdempotencyManager:
         self,
         idempotency_key: str,
         operation: str,
-        request_data: Dict[str, Any],
+        request_data: dict[str, Any],
         execute_fn: Callable[[], T | Awaitable[T]],
-        serialize_fn: Optional[Callable[[T], Dict[str, Any]]] = None,
-        agent_id: Optional[str] = None,
+        serialize_fn: Callable[[T], dict[str, Any]] | None = None,
+        agent_id: str | None = None,
     ) -> T:
         """
         Execute an operation with idempotency guarantees.
@@ -388,7 +388,7 @@ class IdempotencyManager:
 
 def idempotent(
     key_param: str = "idempotency_key",
-    operation: Optional[str] = None,
+    operation: str | None = None,
 ):
     """
     Decorator to make an async method idempotent.
@@ -412,7 +412,7 @@ def idempotent(
                 return await fn(self, *args, **kwargs)
 
             # Get idempotency manager
-            manager: Optional[IdempotencyManager] = getattr(
+            manager: IdempotencyManager | None = getattr(
                 self, "idempotency_manager", None
             )
             if not manager:

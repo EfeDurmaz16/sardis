@@ -10,13 +10,9 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from unittest.mock import Mock, patch
-
 import sys
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 # Add source to path
@@ -28,11 +24,11 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_wallet.spending_limits import (
-    LimitType,
-    LimitScope,
     LimitAction,
-    VelocityCheckType,
+    LimitScope,
+    LimitType,
     SpendingLimit,
+    VelocityCheckType,
 )
 
 
@@ -205,7 +201,7 @@ class TestSpendingLimit:
 
     def test_reset_daily_limit(self):
         """Should reset daily limit after 24 hours."""
-        yesterday = datetime.now(timezone.utc) - timedelta(hours=25)
+        yesterday = datetime.now(UTC) - timedelta(hours=25)
 
         limit = SpendingLimit(
             limit_id="limit_8",
@@ -225,7 +221,7 @@ class TestSpendingLimit:
 
     def test_no_reset_within_window(self):
         """Should not reset within time window."""
-        recent = datetime.now(timezone.utc) - timedelta(hours=12)
+        recent = datetime.now(UTC) - timedelta(hours=12)
 
         limit = SpendingLimit(
             limit_id="limit_9",
@@ -424,7 +420,7 @@ class TestSpendingLimitEdgeCases:
 
     def test_lifetime_limit_no_reset(self):
         """Lifetime limit should not reset."""
-        old_reset = datetime.now(timezone.utc) - timedelta(days=365)
+        old_reset = datetime.now(UTC) - timedelta(days=365)
 
         limit = SpendingLimit(
             limit_id="lifetime",

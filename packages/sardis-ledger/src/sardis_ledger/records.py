@@ -15,35 +15,26 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import sqlite3
 import threading
 import uuid
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Any
 
-from sardis_v2_core.transactions import Transaction, OnChainRecord
 from sardis_v2_core.tokens import normalize_token_amount
+from sardis_v2_core.transactions import OnChainRecord, Transaction
 
 from .models import (
-    DECIMAL_PRECISION,
-    DECIMAL_SCALE,
     AuditAction,
     AuditLog,
     BalanceSnapshot,
-    BatchTransaction,
-    LedgerEntry,
-    LedgerEntryStatus,
-    LedgerEntryType,
     LockRecord,
-    ReconciliationRecord,
-    ReconciliationStatus,
     to_ledger_decimal,
-    validate_amount,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,20 +57,20 @@ class ChainReceipt:
     audit_anchor: str
 
     # Optional additional fields
-    gas_used: Optional[int] = None
-    gas_price: Optional[Decimal] = None
-    timestamp: Optional[datetime] = None
+    gas_used: int | None = None
+    gas_price: Decimal | None = None
+    timestamp: datetime | None = None
     confirmed: bool = True
     execution_path: str = "legacy_tx"
-    user_op_hash: Optional[str] = None
-    proof_artifact_path: Optional[str] = None
-    proof_artifact_sha256: Optional[str] = None
+    user_op_hash: str | None = None
+    proof_artifact_path: str | None = None
+    proof_artifact_sha256: str | None = None
 
     def __post_init__(self):
         if self.gas_price is not None:
             self.gas_price = to_ledger_decimal(self.gas_price)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "tx_hash": self.tx_hash,
@@ -115,20 +106,20 @@ class PendingReconciliation:
     amount: str
     currency: str
     error: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     retry_count: int = 0
-    last_retry: Optional[datetime] = None
+    last_retry: datetime | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
     # Priority for retry ordering
     priority: int = 0
 
     # Additional context
-    block_number: Optional[int] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    block_number: int | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -183,22 +174,22 @@ class LedgerStore:
             enable_wal: Enable Write-Ahead Logging for SQLite (recommended)
         """
         self._dsn = dsn
-        self._sqlite_conn: Optional[sqlite3.Connection] = None
+        self._sqlite_conn: sqlite3.Connection | None = None
         self._pg_pool = None
         self._records: list[Transaction] = []
-        self._receipt_mem: Dict[str, Dict[str, Any]] = {}
+        self._receipt_mem: dict[str, dict[str, Any]] = {}
         self._use_postgres = False
 
         # Thread safety
         self._lock = threading.RLock()
 
         # Audit tracking
-        self._last_audit_hash: Optional[str] = None
-        self._audit_logs: List[AuditLog] = []
+        self._last_audit_hash: str | None = None
+        self._audit_logs: list[AuditLog] = []
 
         # Balance snapshot tracking
-        self._snapshots: Dict[str, List[BalanceSnapshot]] = {}
-        self._entry_counts: Dict[str, int] = {}
+        self._snapshots: dict[str, list[BalanceSnapshot]] = {}
+        self._entry_counts: dict[str, int] = {}
         self._snapshot_interval = 1000  # Create snapshot every N entries
 
         logger.info(f"Initializing LedgerStore with DSN type: {dsn.split(':')[0]}")
@@ -411,12 +402,12 @@ class LedgerStore:
         # Set schema version
         self._sqlite_conn.execute(
             "INSERT OR REPLACE INTO ledger_meta (key, value, updated_at) VALUES (?, ?, ?)",
-            ("schema_version", str(self.SCHEMA_VERSION), datetime.now(timezone.utc).isoformat())
+            ("schema_version", str(self.SCHEMA_VERSION), datetime.now(UTC).isoformat())
         )
 
         self._sqlite_conn.commit()
         logger.info(f"SQLite database initialized at {path}")
-    
+
     async def _get_pg_pool(self):
         """Lazy initialization of PostgreSQL pool."""
         if self._pg_pool is None:
@@ -485,7 +476,7 @@ class LedgerStore:
         )
         self._sqlite_conn.commit()
 
-    def create_receipt(self, payment_mandate, chain_receipt: ChainReceipt) -> Dict[str, Any]:
+    def create_receipt(self, payment_mandate, chain_receipt: ChainReceipt) -> dict[str, Any]:
         """
         Create deterministic receipt with hash-chained Merkle root.
         - leaf_hash = sha256(mandate_id|tx_hash|timestamp|audit_anchor)
@@ -500,7 +491,7 @@ class LedgerStore:
             timestamp = chain_receipt.timestamp.isoformat()
         else:
             # Fallback: use current time but this is less deterministic
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(UTC).isoformat()
 
         payload = "|".join(
             [
@@ -553,11 +544,11 @@ class LedgerStore:
             self._set_last_root_sqlite(merkle_root)
         else:
             self._receipt_mem[receipt_id] = receipt
-            setattr(self, "_last_root_mem", merkle_root)
+            self._last_root_mem = merkle_root
 
         return receipt
 
-    def get_receipt(self, receipt_id: str) -> Optional[Dict[str, Any]]:
+    def get_receipt(self, receipt_id: str) -> dict[str, Any] | None:
         if self._sqlite_conn:
             row = self._sqlite_conn.execute(
                 "SELECT receipt_id, mandate_id, tx_hash, chain, audit_anchor, merkle_root, proof_json, created_at FROM receipts WHERE receipt_id = ?",
@@ -578,7 +569,7 @@ class LedgerStore:
             }
         return self._receipt_mem.get(receipt_id)
 
-    def get_receipt_by_tx_hash(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+    def get_receipt_by_tx_hash(self, tx_hash: str) -> dict[str, Any] | None:
         """Get the most recent receipt for a given chain transaction hash (sync)."""
         if self._use_postgres:
             raise RuntimeError("PostgreSQL mode requires get_receipt_by_tx_hash_async()")
@@ -614,15 +605,12 @@ class LedgerStore:
         candidates.sort(key=lambda r: str(r.get("timestamp", "")), reverse=True)
         return candidates[0]
 
-    async def create_receipt_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Dict[str, Any]:
+    async def create_receipt_async(self, payment_mandate, chain_receipt: ChainReceipt) -> dict[str, Any]:
         """Create receipt with Merkle proof (async, PostgreSQL supported)."""
         if not self._use_postgres:
             return self.create_receipt(payment_mandate, chain_receipt)
 
-        if chain_receipt.timestamp:
-            timestamp_dt = chain_receipt.timestamp
-        else:
-            timestamp_dt = datetime.now(timezone.utc)
+        timestamp_dt = chain_receipt.timestamp or datetime.now(UTC)
         timestamp = timestamp_dt.isoformat()
 
         payload = "|".join([
@@ -656,10 +644,9 @@ class LedgerStore:
             "timestamp": timestamp,
         }
 
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO receipts (
                         tx_id, receipt_id, mandate_id, tx_hash, chain, audit_anchor,
                         merkle_root, leaf_hash, proof_json, status, created_at
@@ -670,30 +657,30 @@ class LedgerStore:
                         proof_json = EXCLUDED.proof_json,
                         created_at = EXCLUDED.created_at
                     """,
-                    chain_receipt.tx_hash,
-                    receipt_id,
-                    payment_mandate.mandate_id,
-                    chain_receipt.tx_hash,
-                    chain_receipt.chain,
-                    chain_receipt.audit_anchor,
-                    merkle_root,
-                    leaf_hash,
-                    json.dumps(proof),
-                    "confirmed",
-                    timestamp_dt,
-                )
-                await conn.execute(
-                    """
+                chain_receipt.tx_hash,
+                receipt_id,
+                payment_mandate.mandate_id,
+                chain_receipt.tx_hash,
+                chain_receipt.chain,
+                chain_receipt.audit_anchor,
+                merkle_root,
+                leaf_hash,
+                json.dumps(proof),
+                "confirmed",
+                timestamp_dt,
+            )
+            await conn.execute(
+                """
                     INSERT INTO ledger_meta (key, value, updated_at)
                     VALUES ('merkle_root', $1, NOW())
                     ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()
                     """,
-                    merkle_root,
-                )
+                merkle_root,
+            )
 
         return receipt
 
-    async def get_receipt_async(self, receipt_id: str) -> Optional[Dict[str, Any]]:
+    async def get_receipt_async(self, receipt_id: str) -> dict[str, Any] | None:
         """Get receipt by ID (async, PostgreSQL supported)."""
         if not self._use_postgres:
             return self.get_receipt(receipt_id)
@@ -723,7 +710,7 @@ class LedgerStore:
             "timestamp": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
         }
 
-    async def get_receipt_by_tx_hash_async(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+    async def get_receipt_by_tx_hash_async(self, tx_hash: str) -> dict[str, Any] | None:
         """Get the most recent receipt for a given chain transaction hash (async)."""
         if not self._use_postgres:
             return self.get_receipt_by_tx_hash(tx_hash)
@@ -793,10 +780,10 @@ class LedgerStore:
 
     def verify_receipt_integrity(
         self,
-        receipt: Dict[str, Any],
+        receipt: dict[str, Any],
         *,
-        current_root: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        current_root: str | None = None,
+    ) -> dict[str, Any]:
         """
         Verify a receipt's Merkle leaf/root derivation.
 
@@ -884,7 +871,7 @@ class LedgerStore:
             f"mandate={payment_mandate.mandate_id}, tx={chain_receipt.tx_hash}"
         )
         return entry_id
-    
+
     async def append_async(self, payment_mandate, chain_receipt: ChainReceipt) -> Transaction:
         """Append a transaction to the ledger (async version for PostgreSQL)."""
         amount = normalize_token_amount(payment_mandate.token, int(payment_mandate.amount_minor))
@@ -906,7 +893,7 @@ class LedgerStore:
                 status="confirmed" if chain_receipt.block_number else "pending",
             )
         )
-        
+
         if hasattr(self, '_use_postgres') and self._use_postgres:
             pool = await self._get_pg_pool()
             async with pool.acquire() as conn:
@@ -932,7 +919,7 @@ class LedgerStore:
             return self.append(payment_mandate, chain_receipt)
         else:
             self._records.append(tx)
-        
+
         return tx
 
     def list_recent(self, limit: int = 50) -> list[Transaction]:
@@ -945,7 +932,7 @@ class LedgerStore:
             (limit,),
         ).fetchall()
         return self._rows_to_transactions(rows)
-    
+
     async def list_recent_async(self, limit: int = 50) -> list[Transaction]:
         """List recent transactions (async version for PostgreSQL)."""
         if hasattr(self, '_use_postgres') and self._use_postgres:
@@ -953,10 +940,10 @@ class LedgerStore:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT tx_id, from_wallet, to_wallet, amount, currency, chain, 
+                    SELECT tx_id, from_wallet, to_wallet, amount, currency, chain,
                            chain_tx_hash, audit_anchor, created_at
-                    FROM ledger_entries 
-                    ORDER BY created_at DESC 
+                    FROM ledger_entries
+                    ORDER BY created_at DESC
                     LIMIT $1
                     """,
                     limit,
@@ -968,10 +955,10 @@ class LedgerStore:
     def list_entry_records(
         self,
         *,
-        wallet_id: Optional[str] = None,
+        wallet_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List ledger entry records for API responses (sync).
 
@@ -1009,7 +996,7 @@ class LedgerStore:
                         (limit, offset),
                     ).fetchall()
 
-                out: list[Dict[str, Any]] = []
+                out: list[dict[str, Any]] = []
                 for row in rows:
                     created_at = row[9]
                     out.append(
@@ -1034,7 +1021,7 @@ class LedgerStore:
                 records = [tx for tx in records if tx.from_wallet == wallet_id or tx.to_wallet == wallet_id]
             sorted_records = sorted(records, key=lambda tx: tx.created_at, reverse=True)
             sliced = sorted_records[offset : offset + limit]
-            out: list[Dict[str, Any]] = []
+            out: list[dict[str, Any]] = []
             for tx in sliced:
                 chain = tx.on_chain_records[0].chain if tx.on_chain_records else None
                 chain_tx_hash = tx.on_chain_records[0].tx_hash if tx.on_chain_records else None
@@ -1057,10 +1044,10 @@ class LedgerStore:
     async def list_entry_records_async(
         self,
         *,
-        wallet_id: Optional[str] = None,
+        wallet_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List ledger entry records for API responses (async; PostgreSQL supported)."""
         if not self._use_postgres:
             return self.list_entry_records(wallet_id=wallet_id, limit=limit, offset=offset)
@@ -1094,7 +1081,7 @@ class LedgerStore:
                     offset,
                 )
 
-        out: list[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for row in rows:
             created_at = row["created_at"]
             out.append(
@@ -1113,7 +1100,7 @@ class LedgerStore:
             )
         return out
 
-    def get_entry_record(self, tx_id: str) -> Optional[Dict[str, Any]]:
+    def get_entry_record(self, tx_id: str) -> dict[str, Any] | None:
         """
         Get a single ledger entry record for API responses (sync).
 
@@ -1167,7 +1154,7 @@ class LedgerStore:
                     }
             return None
 
-    async def get_entry_record_async(self, tx_id: str) -> Optional[Dict[str, Any]]:
+    async def get_entry_record_async(self, tx_id: str) -> dict[str, Any] | None:
         """Get a single ledger entry record for API responses (async; PostgreSQL supported)."""
         if not self._use_postgres:
             return self.get_entry_record(tx_id)
@@ -1271,7 +1258,7 @@ class LedgerStore:
         """
         import uuid
         entry_id = f"recon_{uuid.uuid4().hex[:16]}"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         if self._sqlite_conn:
             from_wallet_id = getattr(payment_mandate, "wallet_id", None) or payment_mandate.subject
@@ -1337,7 +1324,7 @@ class LedgerStore:
 
         return entry_id
 
-    def get_pending_reconciliation(self, limit: int = 100) -> List[PendingReconciliation]:
+    def get_pending_reconciliation(self, limit: int = 100) -> list[PendingReconciliation]:
         """
         Get pending reconciliation entries ordered by creation time.
 
@@ -1372,7 +1359,7 @@ class LedgerStore:
                     amount=row[7],
                     currency=row[8],
                     error=row[9],
-                    created_at=datetime.fromisoformat(row[10]) if row[10] else datetime.now(timezone.utc),
+                    created_at=datetime.fromisoformat(row[10]) if row[10] else datetime.now(UTC),
                     retry_count=row[11] or 0,
                     last_retry=datetime.fromisoformat(row[12]) if row[12] else None,
                     resolved=bool(row[13]),
@@ -1393,7 +1380,7 @@ class LedgerStore:
 
     def mark_reconciliation_resolved(self, entry_id: str) -> bool:
         """Mark a reconciliation entry as resolved."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         if self._sqlite_conn:
             cursor = self._sqlite_conn.execute(
@@ -1412,13 +1399,13 @@ class LedgerStore:
         else:
             if hasattr(self, '_reconciliation_queue') and entry_id in self._reconciliation_queue:
                 self._reconciliation_queue[entry_id].resolved = True
-                self._reconciliation_queue[entry_id].resolved_at = datetime.now(timezone.utc)
+                self._reconciliation_queue[entry_id].resolved_at = datetime.now(UTC)
                 return True
             return False
 
     def increment_reconciliation_retry(self, entry_id: str) -> bool:
         """Increment retry count for a reconciliation entry."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         if self._sqlite_conn:
             cursor = self._sqlite_conn.execute(
@@ -1435,7 +1422,7 @@ class LedgerStore:
             if hasattr(self, '_reconciliation_queue') and entry_id in self._reconciliation_queue:
                 entry = self._reconciliation_queue[entry_id]
                 entry.retry_count += 1
-                entry.last_retry = datetime.now(timezone.utc)
+                entry.last_retry = datetime.now(UTC)
                 return True
             return False
 
@@ -1468,12 +1455,13 @@ class LedgerStore:
             try:
                 # Reconstruct minimal mandate and receipt for append
                 import time
+
                 from sardis_v2_core.mandates import PaymentMandate, VCProof
 
                 now = int(time.time())
                 proof = VCProof(
                     verification_method="sardis:reconciliation#key-1",
-                    created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    created=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     proof_value="reconciliation",
                 )
 
@@ -1534,7 +1522,7 @@ class LedgerStore:
         holder_id: str,
         timeout_seconds: float = 30.0,
         expiry_seconds: float = 300.0,
-    ) -> Optional[LockRecord]:
+    ) -> LockRecord | None:
         """
         Acquire a row-level lock on a resource.
 
@@ -1557,7 +1545,7 @@ class LedgerStore:
         import time
 
         start_time = time.monotonic()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = now + timedelta(seconds=expiry_seconds)
 
         while True:
@@ -1652,7 +1640,7 @@ class LedgerStore:
 
     def is_locked(self, resource_type: str, resource_id: str) -> bool:
         """Check if a resource is currently locked."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         with self._lock:
             if self._sqlite_conn:
@@ -1673,9 +1661,9 @@ class LedgerStore:
         self,
         resource_type: str,
         resource_id: str,
-        holder_id: Optional[str] = None,
+        holder_id: str | None = None,
         timeout_seconds: float = 30.0,
-    ) -> Generator[Optional[LockRecord], None, None]:
+    ) -> Generator[LockRecord | None, None, None]:
         """
         Context manager for acquiring and releasing locks.
 
@@ -1699,9 +1687,9 @@ class LedgerStore:
 
     def append_batch(
         self,
-        entries: Sequence[Tuple[Any, ChainReceipt]],
-        actor_id: Optional[str] = None,
-    ) -> List[Transaction]:
+        entries: Sequence[tuple[Any, ChainReceipt]],
+        actor_id: str | None = None,
+    ) -> list[Transaction]:
         """
         Append multiple transactions atomically.
 
@@ -1720,7 +1708,7 @@ class LedgerStore:
         if not entries:
             return []
 
-        transactions: List[Transaction] = []
+        transactions: list[Transaction] = []
 
         with self._lock:
             if self._sqlite_conn:
@@ -1775,7 +1763,7 @@ class LedgerStore:
                                 chain_receipt.audit_anchor,
                                 "confirmed",
                                 tx.created_at.isoformat(),
-                                datetime.now(timezone.utc).isoformat(),
+                                datetime.now(UTC).isoformat(),
                             ),
                         )
                         transactions.append(tx)
@@ -1800,7 +1788,7 @@ class LedgerStore:
         self,
         account_id: str,
         currency: str = "USDC",
-    ) -> Optional[BalanceSnapshot]:
+    ) -> BalanceSnapshot | None:
         """
         Create a balance snapshot for an account.
 
@@ -1917,7 +1905,7 @@ class LedgerStore:
                     start_time = snapshot_row[1]
                 else:
                     base_balance = Decimal("0")
-                    start_time = datetime.min.replace(tzinfo=timezone.utc).isoformat()
+                    start_time = datetime.min.replace(tzinfo=UTC).isoformat()
 
                 # Add entries between snapshot and at_time
                 delta_row = self._sqlite_conn.execute(
@@ -1953,10 +1941,10 @@ class LedgerStore:
         action: AuditAction,
         entity_type: str,
         entity_id: str,
-        actor_id: Optional[str] = None,
-        old_value: Optional[Dict] = None,
-        new_value: Optional[Dict] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        old_value: dict | None = None,
+        new_value: dict | None = None,
+        request_id: str | None = None,
     ) -> AuditLog:
         """
         Add an audit log entry.
@@ -2021,12 +2009,12 @@ class LedgerStore:
 
     def get_audit_logs(
         self,
-        entity_type: Optional[str] = None,
-        entity_id: Optional[str] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 100,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """
         Get audit logs with filtering.
 
@@ -2048,7 +2036,7 @@ class LedgerStore:
                            created_at, previous_hash, entry_hash
                     FROM audit_logs WHERE 1=1
                 """
-                params: List[Any] = []
+                params: list[Any] = []
 
                 if entity_type:
                     query += " AND entity_type = ?"
@@ -2079,7 +2067,7 @@ class LedgerStore:
                         old_value=json.loads(row[6]) if row[6] else None,
                         new_value=json.loads(row[7]) if row[7] else None,
                         request_id=row[8],
-                        created_at=datetime.fromisoformat(row[9]) if row[9] else datetime.now(timezone.utc),
+                        created_at=datetime.fromisoformat(row[9]) if row[9] else datetime.now(UTC),
                         previous_hash=row[10],
                         entry_hash=row[11],
                     )
@@ -2090,7 +2078,7 @@ class LedgerStore:
 
     # ============ Enhanced Query Methods ============
 
-    def get_entry_by_chain_tx(self, chain: str, tx_hash: str) -> Optional[Dict[str, Any]]:
+    def get_entry_by_chain_tx(self, chain: str, tx_hash: str) -> dict[str, Any] | None:
         """Get a ledger entry by its chain transaction hash."""
         with self._lock:
             if self._sqlite_conn:
@@ -2128,10 +2116,10 @@ class LedgerStore:
 
     def get_entries_for_reconciliation(
         self,
-        chain: Optional[str] = None,
-        from_time: Optional[datetime] = None,
+        chain: str | None = None,
+        from_time: datetime | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get entries that need reconciliation with blockchain.
 
@@ -2147,7 +2135,7 @@ class LedgerStore:
                     WHERE chain_tx_hash IS NOT NULL
                     AND status = 'confirmed'
                 """
-                params: List[Any] = []
+                params: list[Any] = []
 
                 if chain:
                     query += " AND chain = ?"
@@ -2181,7 +2169,7 @@ class LedgerStore:
 
         return []
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get ledger statistics."""
         with self._lock:
             if self._sqlite_conn:

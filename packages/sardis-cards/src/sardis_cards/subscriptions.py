@@ -22,11 +22,12 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class Subscription:
 
     # Merchant info
     merchant: str = ""  # merchant domain or descriptor
-    merchant_mcc: Optional[str] = None
+    merchant_mcc: str | None = None
 
     # Billing details
     amount_cents: int = 0  # expected charge amount
@@ -97,11 +98,11 @@ class Subscription:
     billing_cycle: BillingCycle = BillingCycle.MONTHLY
     billing_day: int = 1  # day of month (1-28) or day of week (0-6 for weekly)
     next_billing: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
     # Card association
-    card_id: Optional[str] = None  # shared card or dedicated
+    card_id: str | None = None  # shared card or dedicated
 
     # Approval settings
     auto_approve: bool = True
@@ -112,20 +113,20 @@ class Subscription:
 
     # Notifications
     notify_owner: bool = True
-    notification_channel: Optional[str] = None  # webhook URL or email
+    notification_channel: str | None = None  # webhook URL or email
 
     # Status
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
-    last_charged_at: Optional[datetime] = None
+    last_charged_at: datetime | None = None
     failure_count: int = 0
     max_failures: int = 3  # pause after N consecutive failures
 
     # Timestamps
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
     updated_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
     @property
@@ -145,10 +146,7 @@ class Subscription:
 
         # Amount match: within tolerance
         diff = abs(amount_cents - self.amount_cents)
-        if diff > self.amount_tolerance_cents:
-            return False
-
-        return True
+        return not diff > self.amount_tolerance_cents
 
     def compute_next_billing(self) -> datetime:
         """Calculate the next billing date after the current one."""
@@ -185,20 +183,20 @@ class BillingEvent:
     wallet_id: str = ""
 
     scheduled_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
     status: BillingEventStatus = BillingEventStatus.PENDING
     amount_cents: int = 0
 
     # Linked records
-    fund_tx_id: Optional[str] = None  # auto-conversion transaction
-    approval_id: Optional[str] = None  # HITL approval request
-    charge_tx_id: Optional[str] = None  # Lithic transaction ID
+    fund_tx_id: str | None = None  # auto-conversion transaction
+    approval_id: str | None = None  # HITL approval request
+    charge_tx_id: str | None = None  # Lithic transaction ID
 
-    error: Optional[str] = None
+    error: str | None = None
 
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
 
@@ -210,12 +208,12 @@ class OwnerNotification:
     subscription_id: str = ""
     owner_id: str = ""
     notification_type: NotificationType = NotificationType.UPCOMING_BILLING
-    channel: Optional[str] = None  # webhook URL or email
-    payload: Dict[str, Any] = field(default_factory=dict)
+    channel: str | None = None  # webhook URL or email
+    payload: dict[str, Any] = field(default_factory=dict)
     sent: bool = False
-    sent_at: Optional[datetime] = None
+    sent_at: datetime | None = None
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
 
@@ -227,29 +225,29 @@ class SubscriptionServiceProtocol(Protocol):
     """Interface for subscription storage backends."""
 
     async def create(self, subscription: Subscription) -> Subscription: ...
-    async def get(self, sub_id: str) -> Optional[Subscription]: ...
-    async def list_by_wallet(self, wallet_id: str) -> List[Subscription]: ...
+    async def get(self, sub_id: str) -> Subscription | None: ...
+    async def list_by_wallet(self, wallet_id: str) -> list[Subscription]: ...
     async def update_status(
         self, sub_id: str, status: SubscriptionStatus
-    ) -> Optional[Subscription]: ...
+    ) -> Subscription | None: ...
     async def update_next_billing(
         self, sub_id: str, next_billing: datetime
     ) -> None: ...
     async def get_due_subscriptions(
         self, within_hours: int = 48
-    ) -> List[Subscription]: ...
+    ) -> list[Subscription]: ...
     async def match_charge(
         self,
         card_id: str,
         merchant_descriptor: str,
         amount_cents: int,
-    ) -> Optional[Subscription]: ...
+    ) -> Subscription | None: ...
     async def record_billing_event(
         self, event: BillingEvent
     ) -> BillingEvent: ...
     async def get_billing_history(
         self, sub_id: str, limit: int = 20
-    ) -> List[BillingEvent]: ...
+    ) -> list[BillingEvent]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +258,9 @@ class SubscriptionService:
     """In-memory subscription service for testing and simulated mode."""
 
     def __init__(self) -> None:
-        self._subscriptions: Dict[str, Subscription] = {}
-        self._billing_events: Dict[str, BillingEvent] = {}
-        self._notifications: List[OwnerNotification] = []
+        self._subscriptions: dict[str, Subscription] = {}
+        self._billing_events: dict[str, BillingEvent] = {}
+        self._notifications: list[OwnerNotification] = []
 
     async def create(self, subscription: Subscription) -> Subscription:
         """Register a new subscription."""
@@ -274,11 +272,11 @@ class SubscriptionService:
         )
         return subscription
 
-    async def get(self, sub_id: str) -> Optional[Subscription]:
+    async def get(self, sub_id: str) -> Subscription | None:
         """Get subscription by ID."""
         return self._subscriptions.get(sub_id)
 
-    async def list_by_wallet(self, wallet_id: str) -> List[Subscription]:
+    async def list_by_wallet(self, wallet_id: str) -> list[Subscription]:
         """List all subscriptions for a wallet."""
         return [
             s
@@ -286,7 +284,7 @@ class SubscriptionService:
             if s.wallet_id == wallet_id
         ]
 
-    async def list_active(self) -> List[Subscription]:
+    async def list_active(self) -> list[Subscription]:
         """List all active subscriptions."""
         return [
             s
@@ -294,39 +292,39 @@ class SubscriptionService:
             if s.status == SubscriptionStatus.ACTIVE
         ]
 
-    async def cancel(self, sub_id: str) -> Optional[Subscription]:
+    async def cancel(self, sub_id: str) -> Subscription | None:
         """Cancel a subscription."""
         sub = self._subscriptions.get(sub_id)
         if sub:
             sub.status = SubscriptionStatus.CANCELLED
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
         return sub
 
-    async def pause(self, sub_id: str) -> Optional[Subscription]:
+    async def pause(self, sub_id: str) -> Subscription | None:
         """Pause a subscription (can be resumed)."""
         sub = self._subscriptions.get(sub_id)
         if sub:
             sub.status = SubscriptionStatus.PAUSED
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
         return sub
 
-    async def resume(self, sub_id: str) -> Optional[Subscription]:
+    async def resume(self, sub_id: str) -> Subscription | None:
         """Resume a paused subscription."""
         sub = self._subscriptions.get(sub_id)
         if sub and sub.status == SubscriptionStatus.PAUSED:
             sub.status = SubscriptionStatus.ACTIVE
             sub.failure_count = 0
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
         return sub
 
     async def update_status(
         self, sub_id: str, status: SubscriptionStatus
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """Update subscription status."""
         sub = self._subscriptions.get(sub_id)
         if sub:
             sub.status = status
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
         return sub
 
     async def update_next_billing(
@@ -336,16 +334,16 @@ class SubscriptionService:
         sub = self._subscriptions.get(sub_id)
         if sub:
             sub.next_billing = next_billing
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
 
     async def record_charge(self, sub_id: str, charge_tx_id: str) -> None:
         """Record a successful charge and advance billing date."""
         sub = self._subscriptions.get(sub_id)
         if sub:
-            sub.last_charged_at = datetime.now(timezone.utc)
+            sub.last_charged_at = datetime.now(UTC)
             sub.failure_count = 0
             sub.next_billing = sub.compute_next_billing()
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
             logger.info(
                 f"Subscription {sub_id} charged (tx={charge_tx_id}), "
                 f"next billing: {sub.next_billing.isoformat()}"
@@ -356,7 +354,7 @@ class SubscriptionService:
         sub = self._subscriptions.get(sub_id)
         if sub:
             sub.failure_count += 1
-            sub.updated_at = datetime.now(timezone.utc)
+            sub.updated_at = datetime.now(UTC)
             if sub.failure_count >= sub.max_failures:
                 sub.status = SubscriptionStatus.PAST_DUE
                 logger.warning(
@@ -366,9 +364,9 @@ class SubscriptionService:
 
     async def get_due_subscriptions(
         self, within_hours: int = 48
-    ) -> List[Subscription]:
+    ) -> list[Subscription]:
         """Get active subscriptions due within the given timeframe."""
-        cutoff = datetime.now(timezone.utc) + timedelta(hours=within_hours)
+        cutoff = datetime.now(UTC) + timedelta(hours=within_hours)
         return [
             s
             for s in self._subscriptions.values()
@@ -380,7 +378,7 @@ class SubscriptionService:
         card_id: str,
         merchant_descriptor: str,
         amount_cents: int,
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """
         Match a card charge to a known subscription.
 
@@ -413,7 +411,7 @@ class SubscriptionService:
 
     async def get_billing_history(
         self, sub_id: str, limit: int = 20
-    ) -> List[BillingEvent]:
+    ) -> list[BillingEvent]:
         """Get billing history for a subscription."""
         events = [
             e
@@ -433,7 +431,7 @@ class SubscriptionService:
             f"for subscription {notification.subscription_id}"
         )
 
-    async def get_pending_notifications(self) -> List[OwnerNotification]:
+    async def get_pending_notifications(self) -> list[OwnerNotification]:
         """Get unsent notifications."""
         return [n for n in self._notifications if not n.sent]
 
@@ -442,7 +440,7 @@ class SubscriptionService:
         for n in self._notifications:
             if n.id == notif_id:
                 n.sent = True
-                n.sent_at = datetime.now(timezone.utc)
+                n.sent_at = datetime.now(UTC)
                 break
 
 
@@ -461,10 +459,10 @@ class BillingProcessor:
     def __init__(
         self,
         subscription_service: SubscriptionService,
-        balance_checker: Optional[Callable[[str], Any]] = None,
-        auto_funder: Optional[Callable[[str, int], Any]] = None,
-        approval_creator: Optional[Callable[[str, int, str, str], Any]] = None,
-        notification_sender: Optional[Callable[[OwnerNotification], Any]] = None,
+        balance_checker: Callable[[str], Any] | None = None,
+        auto_funder: Callable[[str, int], Any] | None = None,
+        approval_creator: Callable[[str, int, str, str], Any] | None = None,
+        notification_sender: Callable[[OwnerNotification], Any] | None = None,
     ) -> None:
         """
         Args:
@@ -482,7 +480,7 @@ class BillingProcessor:
 
     async def process_upcoming_billings(
         self, within_hours: int = 48
-    ) -> List[BillingEvent]:
+    ) -> list[BillingEvent]:
         """
         Process all subscriptions due within the given timeframe.
 
@@ -497,7 +495,7 @@ class BillingProcessor:
             return []
 
         logger.info(f"Processing {len(due_subs)} upcoming subscriptions")
-        events: List[BillingEvent] = []
+        events: list[BillingEvent] = []
 
         for sub in due_subs:
             event = await self._process_single(sub)
@@ -590,7 +588,7 @@ class BillingProcessor:
     async def handle_charge_settled(
         self, card_id: str, merchant_descriptor: str, amount_cents: int,
         charge_tx_id: str,
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """
         Called when a card charge settles (from Lithic webhook).
 
@@ -635,7 +633,7 @@ class BillingProcessor:
         self,
         sub: Subscription,
         notif_type: NotificationType,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> None:
         """Send notification to subscription owner."""
         if not sub.notify_owner:

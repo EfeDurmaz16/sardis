@@ -11,9 +11,8 @@ Current APScheduler jobs migrated here as Temporal Schedules:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("sardis.workflows.schedules")
 

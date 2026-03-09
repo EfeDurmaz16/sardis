@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
-from .base import CardProvider
 from ..models import Card, CardStatus, CardTransaction, CardType, FundingSource, TransactionStatus
+from .base import CardProvider
 
 
 def _to_decimal(value: Any, default: Decimal) -> Decimal:
@@ -24,7 +24,7 @@ def _to_decimal(value: Any, default: Decimal) -> Decimal:
 
 
 def _to_iso_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def parse_mapping(value: Any) -> dict[str, str]:
@@ -124,9 +124,9 @@ class PartnerIssuerProvider(CardProvider):
         self,
         operation: str,
         *,
-        path_params: Optional[dict[str, str]] = None,
-        payload: Optional[dict[str, Any]] = None,
-        query: Optional[dict[str, Any]] = None,
+        path_params: dict[str, str] | None = None,
+        payload: dict[str, Any] | None = None,
+        query: dict[str, Any] | None = None,
     ) -> Any:
         method = self._methods.get(operation, "GET")
         path_tmpl = self._paths.get(operation)
@@ -206,7 +206,7 @@ class PartnerIssuerProvider(CardProvider):
         raw: dict[str, Any],
         *,
         wallet_id: str = "",
-        fallback_card: Optional[Card] = None,
+        fallback_card: Card | None = None,
     ) -> Card:
         limits = raw.get("limits") if isinstance(raw.get("limits"), dict) else {}
         provider_card_id = str(raw.get("id") or raw.get("card_id") or raw.get("token") or "")
@@ -278,7 +278,7 @@ class PartnerIssuerProvider(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str],
+        locked_merchant_id: str | None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "wallet_id": wallet_id,
@@ -303,7 +303,7 @@ class PartnerIssuerProvider(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
     ) -> Card:
         response = await self._send(
             "create_card",
@@ -323,7 +323,7 @@ class PartnerIssuerProvider(CardProvider):
         card.limit_monthly = limit_monthly
         return card
 
-    async def get_card(self, provider_card_id: str) -> Optional[Card]:
+    async def get_card(self, provider_card_id: str) -> Card | None:
         response = await self._send("get_card", path_params={"card_id": provider_card_id})
         data = response if isinstance(response, dict) else {}
         if not data:
@@ -364,9 +364,9 @@ class PartnerIssuerProvider(CardProvider):
     async def update_limits(
         self,
         provider_card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         payload: dict[str, Any] = {"limits": {}}
         if limit_per_tx is not None:
@@ -429,7 +429,7 @@ class PartnerIssuerProvider(CardProvider):
                 out.append(self._to_transaction(item))
         return out
 
-    async def get_transaction(self, provider_tx_id: str) -> Optional[CardTransaction]:
+    async def get_transaction(self, provider_tx_id: str) -> CardTransaction | None:
         response = await self._send("get_transaction", path_params={"tx_id": provider_tx_id})
         if not isinstance(response, dict) or not response:
             return None

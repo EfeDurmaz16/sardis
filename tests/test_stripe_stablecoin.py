@@ -1,13 +1,12 @@
 """Tests for Stripe Stablecoin-Backed Card Issuing integration."""
 from __future__ import annotations
 
-import asyncio
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_cards.providers.stripe_stablecoin import (
+    USDC_BASE_CONTRACT,
     DepositStatus,
     FundingTransferStatus,
     StablecoinAccountStatus,
@@ -16,9 +15,7 @@ from sardis_cards.providers.stripe_stablecoin import (
     StablecoinFinancialAccount,
     StripeStablecoinClient,
     StripeStablecoinError,
-    USDC_BASE_CONTRACT,
 )
-
 
 # ── Data Models ───────────────────────────────────────────────────────
 
@@ -366,9 +363,9 @@ class TestStablecoinCardService:
 sardis_api_available = True
 try:
     from sardis_api.routers.stablecoin_cards import (
-        OnboardAgentRequest,
-        IssueCardRequest,
         BalanceResponse,
+        IssueCardRequest,
+        OnboardAgentRequest,
     )
 except ImportError:
     sardis_api_available = False

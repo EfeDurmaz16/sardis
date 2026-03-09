@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -19,8 +19,8 @@ from sardis_sdk.client import RetryConfig
 class _MockEntry:
     method: str
     url: str
-    response: Optional[httpx.Response] = None
-    exception: Optional[Exception] = None
+    response: httpx.Response | None = None
+    exception: Exception | None = None
 
 
 class _LocalHTTPXMock:
@@ -37,7 +37,7 @@ class _LocalHTTPXMock:
         status_code: int = 200,
         json: Any = None,
         content: bytes | None = None,
-        headers: Optional[dict[str, str]] = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         if content is None and json is not None:
             content = json_dumps_bytes(json)
@@ -85,7 +85,7 @@ def json_dumps_bytes(payload: Any) -> bytes:
     return json.dumps(payload, default=str).encode("utf-8")
 
 
-def _append_query_params(url: str, params: Optional[dict[str, Any]]) -> str:
+def _append_query_params(url: str, params: dict[str, Any] | None) -> str:
     if not params:
         return url
     query = urlencode(params, doseq=True)

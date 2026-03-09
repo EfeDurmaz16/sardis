@@ -7,11 +7,11 @@ rail interface and routing logic.
 """
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Protocol, runtime_checkable
-from datetime import datetime, timezone
 
 
 class Rail(Enum):

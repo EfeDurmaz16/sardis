@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sardis_v2_core.outcome_tracker import PaymentOutcome
+
     from .anomaly_engine import AnomalyEngine
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class TuningReport:
     clean_count: int = 0
     false_positive_rate: float = 0.0
     false_negative_rate: float = 0.0
-    computed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    computed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -75,11 +76,11 @@ class AnomalyTuner:
 
     def __init__(self, learning_rate: float = _LEARNING_RATE) -> None:
         self._learning_rate = learning_rate
-        self._last_report: Optional[TuningReport] = None
+        self._last_report: TuningReport | None = None
 
     async def compute_weight_adjustments(
         self,
-        outcomes: list["PaymentOutcome"],
+        outcomes: list[PaymentOutcome],
         current_weights: dict[str, float],
     ) -> dict[str, float]:
         """Compute recommended weight adjustments from resolved outcomes.
@@ -95,9 +96,9 @@ class AnomalyTuner:
             return dict(current_weights)
 
         # Count signal firings vs fraud outcomes
-        signal_fires: dict[str, int] = {k: 0 for k in current_weights}
-        signal_fraud: dict[str, int] = {k: 0 for k in current_weights}
-        signal_clean: dict[str, int] = {k: 0 for k in current_weights}
+        signal_fires: dict[str, int] = dict.fromkeys(current_weights, 0)
+        signal_fraud: dict[str, int] = dict.fromkeys(current_weights, 0)
+        signal_clean: dict[str, int] = dict.fromkeys(current_weights, 0)
 
         fraud_types = {"fraud_confirmed", "disputed"}
         clean_types = {"completed", "false_positive"}
@@ -183,13 +184,13 @@ class AnomalyTuner:
 
     async def apply_adjustments(
         self,
-        engine: "AnomalyEngine",
+        engine: AnomalyEngine,
         adjustments: dict[str, float],
     ) -> None:
         """Apply weight adjustments to an anomaly engine instance."""
         engine.WEIGHTS = dict(adjustments)
         logger.info("Applied weight adjustments to anomaly engine: %s", adjustments)
 
-    async def get_tuning_report(self) -> Optional[TuningReport]:
+    async def get_tuning_report(self) -> TuningReport | None:
         """Get the last tuning report."""
         return self._last_report

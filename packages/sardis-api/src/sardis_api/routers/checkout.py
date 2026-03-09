@@ -4,23 +4,18 @@ from __future__ import annotations
 import json as _json
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus
+from sardis_checkout.models import CheckoutRequest, CheckoutResponse
 from sardis_checkout.orchestrator import CheckoutOrchestrator
-from sardis_v2_core.wallets import Wallet
-from sardis_v2_core.wallet_repository import WalletRepository
-from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope
-from sardis_v2_core.tokens import TokenType
 from sardis_v2_core.database import Database
+from sardis_v2_core.wallet_repository import WalletRepository
 
-from sardis_api.authz import require_principal, Principal
+from sardis_api.authz import Principal, require_principal
 from sardis_api.webhook_replay import run_with_replay_protection
 
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -34,18 +29,18 @@ class CreateCheckoutRequest(BaseModel):
     amount: Decimal
     currency: str = "USDC"
     chain: str = "base"
-    description: Optional[str] = None
-    merchant_id: Optional[str] = None
+    description: str | None = None
+    merchant_id: str | None = None
     success_url: str = Field(default="https://example.com/success")
     cancel_url: str = Field(default="https://example.com/cancel")
-    psp_preference: Optional[str] = None  # "stripe", "paypal", "coinbase", "circle"
+    psp_preference: str | None = None  # "stripe", "paypal", "coinbase", "circle"
 
 
 class CheckoutStatusResponse(BaseModel):
     checkout_id: str
     status: str
-    psp_name: Optional[str] = None
-    redirect_url: Optional[str] = None
+    psp_name: str | None = None
+    redirect_url: str | None = None
     amount: str
     currency: str
     created_at: str
@@ -64,7 +59,7 @@ def get_deps() -> CheckoutDependencies:
 
 async def _save_checkout(checkout: CheckoutResponse, organization_id: str) -> None:
     """Save checkout session to PostgreSQL."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await Database.execute(
         """
         INSERT INTO checkouts (checkout_id, organization_id, status, amount, currency, metadata, created_at, updated_at)
@@ -87,7 +82,7 @@ async def _save_checkout(checkout: CheckoutResponse, organization_id: str) -> No
     )
 
 
-async def _get_checkout(checkout_id: str, organization_id: str) -> Optional[dict]:
+async def _get_checkout(checkout_id: str, organization_id: str) -> dict | None:
     """Get checkout from PostgreSQL, scoped to organization."""
     return await Database.fetchrow(
         "SELECT * FROM checkouts WHERE checkout_id = $1 AND organization_id = $2",
@@ -175,7 +170,7 @@ async def get_checkout_status(
     await Database.execute(
         "UPDATE checkouts SET status = $1, updated_at = $2 WHERE checkout_id = $3",
         status_from_psp.value if hasattr(status_from_psp, "value") else str(status_from_psp),
-        datetime.now(timezone.utc),
+        datetime.now(UTC),
         checkout_id,
     )
 

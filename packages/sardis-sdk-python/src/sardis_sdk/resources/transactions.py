@@ -5,14 +5,15 @@ This module provides both async and sync interfaces for transaction operations.
 """
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
+    from decimal import Decimal
+
     from ..client import TimeoutConfig
 
 
@@ -24,7 +25,7 @@ class GasEstimate(BaseModel):
     max_fee_gwei: Decimal
     max_priority_fee_gwei: Decimal
     estimated_cost_wei: int
-    estimated_cost_usd: Optional[Decimal] = None
+    estimated_cost_usd: Decimal | None = None
 
 
 class TransactionStatus(BaseModel):
@@ -33,7 +34,7 @@ class TransactionStatus(BaseModel):
     tx_hash: str
     chain: str
     status: str  # pending, submitted, confirming, confirmed, failed
-    block_number: Optional[int] = None
+    block_number: int | None = None
     confirmations: int = 0
 
 
@@ -67,8 +68,8 @@ class AsyncTransactionsResource(AsyncBaseResource):
 
     async def list_chains(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[ChainInfo]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[ChainInfo]:
         """List supported blockchain networks.
 
         Args:
@@ -86,7 +87,7 @@ class AsyncTransactionsResource(AsyncBaseResource):
         to_address: str,
         amount: Decimal,
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> GasEstimate:
         """Estimate gas for a transaction.
 
@@ -116,7 +117,7 @@ class AsyncTransactionsResource(AsyncBaseResource):
         self,
         tx_hash: str,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TransactionStatus:
         """Get the status of a transaction.
 
@@ -138,8 +139,8 @@ class AsyncTransactionsResource(AsyncBaseResource):
     async def list_tokens(
         self,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[dict[str, Any]]:
         """List supported tokens on a chain.
 
         Args:
@@ -173,8 +174,8 @@ class TransactionsResource(SyncBaseResource):
 
     def list_chains(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[ChainInfo]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[ChainInfo]:
         """List supported blockchain networks.
 
         Args:
@@ -192,7 +193,7 @@ class TransactionsResource(SyncBaseResource):
         to_address: str,
         amount: Decimal,
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> GasEstimate:
         """Estimate gas for a transaction.
 
@@ -222,7 +223,7 @@ class TransactionsResource(SyncBaseResource):
         self,
         tx_hash: str,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TransactionStatus:
         """Get the status of a transaction.
 
@@ -244,8 +245,8 @@ class TransactionsResource(SyncBaseResource):
     def list_tokens(
         self,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[dict[str, Any]]:
         """List supported tokens on a chain.
 
         Args:
@@ -260,9 +261,9 @@ class TransactionsResource(SyncBaseResource):
 
 
 __all__ = [
+    "AsyncTransactionsResource",
+    "ChainInfo",
     "GasEstimate",
     "TransactionStatus",
-    "ChainInfo",
-    "AsyncTransactionsResource",
     "TransactionsResource",
 ]

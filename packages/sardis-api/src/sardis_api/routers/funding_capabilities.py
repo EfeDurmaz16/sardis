@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends
-
-from sardis_api.authz import Principal, require_admin_principal
 from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
 from sardis_v2_core.config import load_settings
+
+from sardis_api.authz import Principal, require_admin_principal
 
 router = APIRouter(prefix="/funding", tags=["funding"])
 

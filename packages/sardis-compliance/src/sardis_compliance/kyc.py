@@ -11,15 +11,15 @@ import hmac
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sardis_compliance.retry import (
-    create_retryable_client,
-    RetryConfig,
     CircuitBreakerConfig,
     RateLimitConfig,
+    RetryConfig,
+    create_retryable_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,26 +51,24 @@ class KYCResult:
     status: KYCStatus
     verification_id: str
     provider: str = "persona"
-    verified_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
-    reason: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    verified_at: datetime | None = None
+    expires_at: datetime | None = None
+    reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_expired(self) -> bool:
         """Check if KYC verification has expired."""
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_verified(self) -> bool:
         """Check if KYC is verified and not expired."""
         if self.status != KYCStatus.APPROVED:
             return False
-        if self.is_expired:
-            return False
-        return True
+        return not self.is_expired
 
     @property
     def effective_status(self) -> KYCStatus:
@@ -83,7 +81,7 @@ class KYCResult:
             return KYCStatus.EXPIRED
         return self.status
 
-    def time_until_expiration(self) -> Optional[float]:
+    def time_until_expiration(self) -> float | None:
         """
         Get seconds until expiration, or None if no expiration set.
 
@@ -91,7 +89,7 @@ class KYCResult:
         """
         if self.expires_at is None:
             return None
-        delta = self.expires_at - datetime.now(timezone.utc)
+        delta = self.expires_at - datetime.now(UTC)
         return delta.total_seconds()
 
 
@@ -100,15 +98,15 @@ class VerificationRequest:
     """Request to create a new verification."""
     reference_id: str  # Agent ID or Wallet ID
     verification_type: VerificationType = VerificationType.IDENTITY
-    name_first: Optional[str] = None
-    name_last: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address_street: Optional[str] = None
-    address_city: Optional[str] = None
-    address_country: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    name_first: str | None = None
+    name_last: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address_street: str | None = None
+    address_city: str | None = None
+    address_country: str | None = None
+    address_postal_code: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -118,8 +116,8 @@ class InquirySession:
     session_token: str
     template_id: str
     status: KYCStatus
-    redirect_url: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    redirect_url: str | None = None
+    expires_at: datetime | None = None
 
 
 class KYCProvider(ABC):
@@ -169,7 +167,7 @@ class FailoverKYCProvider(KYCProvider):
     ):
         self._primary = primary
         self._fallback = fallback
-        self._inquiry_provider: Dict[str, KYCProvider] = {}
+        self._inquiry_provider: dict[str, KYCProvider] = {}
 
     async def create_inquiry(
         self,
@@ -237,13 +235,13 @@ class FailoverKYCProvider(KYCProvider):
 class PersonaKYCProvider(KYCProvider):
     """
     Persona KYC provider implementation.
-    
+
     Persona provides identity verification through:
     - Government ID verification
     - Selfie verification
     - Database verification
     - Watchlist screening
-    
+
     API Reference: https://docs.withpersona.com/reference/introduction
     """
 
@@ -253,12 +251,12 @@ class PersonaKYCProvider(KYCProvider):
         self,
         api_key: str,
         template_id: str,
-        webhook_secret: Optional[str] = None,
+        webhook_secret: str | None = None,
         environment: str = "sandbox",
     ):
         """
         Initialize Persona provider.
-        
+
         Args:
             api_key: Persona API key
             template_id: Inquiry template ID
@@ -322,11 +320,11 @@ class PersonaKYCProvider(KYCProvider):
     ) -> InquirySession:
         """
         Create a new Persona inquiry.
-        
+
         Returns an InquirySession with a session token for frontend integration.
         """
-        client = await self._get_client()
-        
+        await self._get_client()
+
         # Build inquiry data
         data = {
             "data": {
@@ -337,7 +335,7 @@ class PersonaKYCProvider(KYCProvider):
                 },
             },
         }
-        
+
         # Add optional fields
         fields = {}
         if request.name_first:
@@ -356,10 +354,10 @@ class PersonaKYCProvider(KYCProvider):
             fields["address-country-code"] = request.address_country
         if request.address_postal_code:
             fields["address-postal-code"] = request.address_postal_code
-        
+
         if fields:
             data["data"]["attributes"]["fields"] = fields
-        
+
         result = await self._request("post", "/inquiries", json=data)
 
         inquiry_data = result.get("data", {})
@@ -426,16 +424,16 @@ class PersonaKYCProvider(KYCProvider):
         if not self._webhook_secret:
             logger.warning("Webhook secret not configured")
             return False
-        
+
         try:
             expected = hmac.new(
                 self._webhook_secret.encode(),
                 payload,
                 hashlib.sha256,
             ).hexdigest()
-            
+
             return hmac.compare_digest(signature, expected)
-            
+
         except Exception as e:
             logger.error(f"Webhook verification failed: {e}")
             return False
@@ -454,7 +452,7 @@ class PersonaKYCProvider(KYCProvider):
         }
         return status_map.get(persona_status, KYCStatus.PENDING)
 
-    def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+    def _parse_datetime(self, value: str | None) -> datetime | None:
         """Parse ISO datetime string."""
         if not value:
             return None
@@ -473,12 +471,12 @@ class PersonaKYCProvider(KYCProvider):
 class MockKYCProvider(KYCProvider):
     """
     Mock KYC provider for development and testing.
-    
+
     Simulates Persona behavior without making real API calls.
     """
 
     def __init__(self):
-        self._inquiries: Dict[str, KYCResult] = {}
+        self._inquiries: dict[str, KYCResult] = {}
         self._counter = 0
 
     async def create_inquiry(
@@ -488,7 +486,7 @@ class MockKYCProvider(KYCProvider):
         """Create a mock inquiry."""
         self._counter += 1
         inquiry_id = f"inq_mock_{self._counter}"
-        
+
         # Store initial result
         self._inquiries[inquiry_id] = KYCResult(
             status=KYCStatus.PENDING,
@@ -496,7 +494,7 @@ class MockKYCProvider(KYCProvider):
             provider="mock",
             metadata={"reference_id": request.reference_id},
         )
-        
+
         return InquirySession(
             inquiry_id=inquiry_id,
             session_token=f"session_mock_{self._counter}",
@@ -539,7 +537,7 @@ class MockKYCProvider(KYCProvider):
                 status=KYCStatus.APPROVED,
                 verification_id=inquiry_id,
                 provider="mock",
-                verified_at=datetime.now(timezone.utc),
+                verified_at=datetime.now(UTC),
             )
 
     def decline_inquiry(self, inquiry_id: str, reason: str = "Test decline") -> None:
@@ -556,7 +554,7 @@ class MockKYCProvider(KYCProvider):
 class KYCService:
     """
     High-level KYC service for managing identity verification.
-    
+
     Features:
     - Provider abstraction (Persona or mock)
     - Caching of verification results
@@ -566,19 +564,19 @@ class KYCService:
 
     def __init__(
         self,
-        provider: Optional[KYCProvider] = None,
+        provider: KYCProvider | None = None,
         require_kyc_above: int = 1_000_000,  # $10,000 in minor units
     ):
         """
         Initialize KYC service.
-        
+
         Args:
             provider: KYC provider instance
             require_kyc_above: Amount threshold requiring KYC (in minor units)
         """
         self._provider = provider or MockKYCProvider()
         self._require_kyc_above = require_kyc_above
-        self._cache: Dict[str, KYCResult] = {}
+        self._cache: dict[str, KYCResult] = {}
 
     async def create_verification(
         self,
@@ -697,7 +695,7 @@ class KYCService:
         self,
         agent_id: str,
         warning_days: int = 30,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Check if verification is expiring soon and return a warning message.
 
@@ -718,7 +716,7 @@ class KYCService:
             return None
 
         if remaining <= 0:
-            return f"KYC verification has expired. Re-verification required."
+            return "KYC verification has expired. Re-verification required."
 
         days_remaining = remaining / 86400  # seconds to days
 
@@ -737,21 +735,21 @@ class KYCService:
     ) -> bool:
         """
         Check if KYC is required for a transaction.
-        
+
         KYC is required if:
         - Amount exceeds threshold
         - Agent is not verified
         """
         if amount_minor < self._require_kyc_above:
             return False
-        
+
         result = await self.check_verification(agent_id)
         return not result.is_verified
 
     async def handle_webhook(
         self,
         event_type: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> None:
         """Handle KYC webhook events."""
         if event_type == "inquiry.completed":
@@ -765,6 +763,7 @@ class KYCService:
                     # Persist to database
                     try:
                         import json as _json
+
                         from sardis_v2_core.database import Database
                         await Database.execute(
                             """
@@ -798,9 +797,9 @@ class KYCService:
 
 
 def create_kyc_service(
-    api_key: Optional[str] = None,
-    template_id: Optional[str] = None,
-    webhook_secret: Optional[str] = None,
+    api_key: str | None = None,
+    template_id: str | None = None,
+    webhook_secret: str | None = None,
     environment: str = "sandbox",
 ) -> KYCService:
     """

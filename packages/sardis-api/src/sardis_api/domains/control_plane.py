@@ -6,14 +6,13 @@ configured with the app's actual service instances.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from sardis_v2_core.control_plane import ControlPlane
 from sardis_v2_core.execution_intent import ExecutionIntent, ExecutionResult, SimulationResult
 
 logger = logging.getLogger(__name__)
 
-_instance: Optional[ControlPlane] = None
+_instance: ControlPlane | None = None
 
 
 def init_control_plane(
@@ -50,7 +49,7 @@ def init_control_plane(
     return _instance
 
 
-def get_control_plane() -> Optional[ControlPlane]:
+def get_control_plane() -> ControlPlane | None:
     """Get the initialized control plane, or None."""
     return _instance
 

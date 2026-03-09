@@ -11,8 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
-import time
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class RedisNonceManager:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
+        redis_url: str | None = None,
         ttl: int = DEFAULT_TTL,
     ):
         self._redis_url = redis_url or os.getenv("SARDIS_REDIS_URL", os.getenv("UPSTASH_REDIS_URL", ""))

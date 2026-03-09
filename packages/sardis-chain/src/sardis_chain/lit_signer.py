@@ -17,11 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -30,7 +29,7 @@ from .executor import MPCSignerPort, TransactionRequest
 logger = logging.getLogger(__name__)
 
 # Lit Protocol network configurations
-LIT_NETWORKS: Dict[str, Dict[str, str]] = {
+LIT_NETWORKS: dict[str, dict[str, str]] = {
     "datil-dev": {
         "relay_url": "https://relayer-server-staging-cayenne.getlit.dev",
         "rpc_url": "https://chain-rpc.litprotocol.com/http",
@@ -118,7 +117,7 @@ class LitProtocolSigner(MPCSignerPort):
         )
 
         # Cache: wallet_id -> {pkp_public_key, pkp_token_id, eth_address}
-        self._pkp_cache: Dict[str, Dict[str, str]] = {}
+        self._pkp_cache: dict[str, dict[str, str]] = {}
 
         logger.info(
             "LitProtocolSigner initialized (network=%s, relay=%s)",
@@ -130,9 +129,9 @@ class LitProtocolSigner(MPCSignerPort):
         self,
         method: str,
         url: str,
-        body: Dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
         retry_count: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make an HTTP request with retry logic."""
         try:
             if method == "POST":
@@ -150,7 +149,7 @@ class LitProtocolSigner(MPCSignerPort):
                 return await self._request(method, url, body, retry_count + 1)
             raise
 
-    async def _get_or_mint_pkp(self, wallet_id: str) -> Dict[str, str]:
+    async def _get_or_mint_pkp(self, wallet_id: str) -> dict[str, str]:
         """Get cached PKP or mint a new one for the wallet_id.
 
         Uses a deterministic auth method ID derived from the wallet_id so the
@@ -229,7 +228,7 @@ class LitProtocolSigner(MPCSignerPort):
 
     async def _poll_mint(
         self, request_id: str, timeout: float = 60.0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Poll relay for PKP mint completion."""
         start = time.monotonic()
         while time.monotonic() - start < timeout:
@@ -337,7 +336,6 @@ class LitProtocolSigner(MPCSignerPort):
         # The hash to sign is keccak256(0x02 || rlp(fields))
         unsigned_payload = b"\x02" + rlp_encoded
 
-        from hashlib import sha3_256
         try:
             from eth_hash.auto import keccak
             tx_hash = keccak(unsigned_payload)

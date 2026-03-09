@@ -5,7 +5,6 @@ Validates addresses, amounts, token/chain combinations, and sanitizes inputs.
 
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Set
 
 from pydantic import BaseModel, field_validator
 
@@ -174,7 +173,7 @@ class ChainTokenValidator:
     """Validator for chain and token combinations."""
 
     # Supported token/chain combinations
-    SUPPORTED_COMBINATIONS: Set[tuple[str, str]] = {
+    SUPPORTED_COMBINATIONS: set[tuple[str, str]] = {
         ("BASE", "USDC"),
         ("BASE", "EURC"),
         ("POLYGON", "USDC"),

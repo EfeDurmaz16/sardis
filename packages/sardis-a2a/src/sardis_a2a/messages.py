@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class A2AMessageType(str, Enum):
@@ -59,28 +59,28 @@ class A2AMessage:
     recipient_id: str = ""
 
     # Timing
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     # Request correlation
-    correlation_id: Optional[str] = None  # Links request/response pairs
-    in_reply_to: Optional[str] = None  # Message this is responding to
+    correlation_id: str | None = None  # Links request/response pairs
+    in_reply_to: str | None = None  # Message this is responding to
 
     # Payload
-    payload: Dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
 
     # Signature
-    signature: Optional[str] = None
+    signature: str | None = None
     signature_algorithm: str = "Ed25519"
 
     # Status
     status: A2AMessageStatus = A2AMessageStatus.PENDING
 
     # Error (if failed)
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "message_id": self.message_id,
@@ -100,14 +100,14 @@ class A2AMessage:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "A2AMessage":
+    def from_dict(cls, data: dict[str, Any]) -> A2AMessage:
         """Create from dictionary."""
         return cls(
             message_id=data.get("message_id", str(uuid.uuid4())),
             message_type=A2AMessageType(data.get("message_type", "ack")),
             sender_id=data.get("sender_id", ""),
             recipient_id=data.get("recipient_id", ""),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(timezone.utc),
+            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.now(UTC),
             expires_at=datetime.fromisoformat(data["expires_at"]) if data.get("expires_at") else None,
             correlation_id=data.get("correlation_id"),
             in_reply_to=data.get("in_reply_to"),
@@ -145,22 +145,22 @@ class A2APaymentRequest:
 
     # Purpose/context
     purpose: str = ""
-    reference: Optional[str] = None  # External reference (invoice, order ID, etc.)
-    memo: Optional[str] = None
+    reference: str | None = None  # External reference (invoice, order ID, etc.)
+    memo: str | None = None
 
     # Mandate information
-    mandate_id: Optional[str] = None
-    audit_hash: Optional[str] = None
+    mandate_id: str | None = None
+    audit_hash: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     # Callback
-    callback_url: Optional[str] = None
+    callback_url: str | None = None
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_a2a_message(self) -> A2AMessage:
         """Convert to A2A message format."""
@@ -188,7 +188,7 @@ class A2APaymentRequest:
         )
 
     @classmethod
-    def from_a2a_message(cls, message: A2AMessage) -> "A2APaymentRequest":
+    def from_a2a_message(cls, message: A2AMessage) -> A2APaymentRequest:
         """Create from A2A message."""
         payload = message.payload
         return cls(
@@ -231,19 +231,19 @@ class A2APaymentResponse:
     status: str = "pending"  # pending, submitted, confirmed, failed
 
     # Transaction details (if successful)
-    tx_hash: Optional[str] = None
-    chain: Optional[str] = None
-    block_number: Optional[int] = None
+    tx_hash: str | None = None
+    chain: str | None = None
+    block_number: int | None = None
 
     # Error details (if failed)
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_a2a_message(self) -> A2AMessage:
         """Convert to A2A message format."""
@@ -288,7 +288,7 @@ class A2ACredentialRequest:
 
     # Credential to verify
     credential_type: str = "mandate"  # mandate, identity, authorization
-    credential_data: Dict[str, Any] = field(default_factory=dict)
+    credential_data: dict[str, Any] = field(default_factory=dict)
 
     # What to verify
     verify_signature: bool = True
@@ -296,7 +296,7 @@ class A2ACredentialRequest:
     verify_chain: bool = True  # For mandate chains
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_a2a_message(self) -> A2AMessage:
         """Convert to A2A message format."""
@@ -329,19 +329,19 @@ class A2ACredentialResponse:
 
     # Verification result
     valid: bool = False
-    verified_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    verified_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Verification details
-    signature_valid: Optional[bool] = None
-    not_expired: Optional[bool] = None
-    chain_valid: Optional[bool] = None
+    signature_valid: bool | None = None
+    not_expired: bool | None = None
+    chain_valid: bool | None = None
 
     # Error (if failed)
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
     # Additional info from verification
-    verification_details: Dict[str, Any] = field(default_factory=dict)
+    verification_details: dict[str, Any] = field(default_factory=dict)
 
     def to_a2a_message(self) -> A2AMessage:
         """Convert to A2A message format."""

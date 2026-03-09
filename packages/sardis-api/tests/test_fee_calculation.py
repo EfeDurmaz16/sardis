@@ -8,8 +8,7 @@ FINTECH CRITICAL: Floating-point errors can accumulate and cause financial discr
 """
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, InvalidOperation
-import pytest
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 
 class FeeCalculator:

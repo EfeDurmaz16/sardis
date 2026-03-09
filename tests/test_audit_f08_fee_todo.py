@@ -1,6 +1,5 @@
 """Test F08: Verify gas fee estimates are defined in manager.py."""
 import pathlib
-from decimal import Decimal
 
 
 def test_gas_fee_estimates_defined():

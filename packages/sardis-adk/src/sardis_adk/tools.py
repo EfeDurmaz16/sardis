@@ -8,16 +8,14 @@ pair is configured at import time by ``SardisToolkit``.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from sardis import SardisClient
 
 # ---------------------------------------------------------------------------
 # Module-level state, configured by SardisToolkit.configure()
 # ---------------------------------------------------------------------------
 
-_client: Optional[SardisClient] = None
-_wallet_id: Optional[str] = None
+_client: SardisClient | None = None
+_wallet_id: str | None = None
 
 
 def configure(client: SardisClient, wallet_id: str) -> None:

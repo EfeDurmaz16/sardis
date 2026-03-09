@@ -8,11 +8,9 @@ Requires: pip install 'sardis-openai-agents[agents]' openai
 from __future__ import annotations
 
 import asyncio
-import os
 
 from agents import Agent, Runner
-
-from sardis_openai_agents import configure, get_sardis_tools
+from sardis_openai_agents import get_sardis_tools
 
 # Optional: configure programmatically instead of via env vars
 # configure(api_key="sk_...", wallet_id="wid_...")

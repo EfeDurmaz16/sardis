@@ -6,14 +6,16 @@ Wallets hold funds and execute payments for agents.
 """
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
-from ..models import Wallet, WalletBalance, WalletCreate, WalletTransferResponse
+from ..models import Wallet, WalletBalance, WalletTransferResponse
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from ..client import AsyncSardisClient, SardisClient, TimeoutConfig
+    import builtins
+    from decimal import Decimal
+
+    from ..client import TimeoutConfig
 
 
 class AsyncWalletsResource(AsyncBaseResource):
@@ -48,11 +50,11 @@ class AsyncWalletsResource(AsyncBaseResource):
         mpc_provider: str = "turnkey",
         account_type: str = "mpc_v1",
         currency: str = "USDC",
-        chain: Optional[str] = None,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        chain: str | None = None,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Create a new non-custodial wallet for an agent.
 
@@ -69,7 +71,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         Returns:
             The created Wallet object
         """
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "agent_id": agent_id,
             "mpc_provider": mpc_provider,
             "account_type": account_type,
@@ -91,7 +93,7 @@ class AsyncWalletsResource(AsyncBaseResource):
     async def get(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Get a wallet by ID.
 
@@ -107,10 +109,10 @@ class AsyncWalletsResource(AsyncBaseResource):
 
     async def list(
         self,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         limit: int = 100,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Wallet]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Wallet]:
         """List wallets.
 
         Args:
@@ -121,7 +123,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         Returns:
             List of Wallet objects
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
 
@@ -136,7 +138,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         wallet_id: str,
         chain: str = "base",
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WalletBalance:
         """Get wallet balance from chain (non-custodial, read-only).
 
@@ -156,8 +158,8 @@ class AsyncWalletsResource(AsyncBaseResource):
     async def get_addresses(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, str]:
         """Get all wallet addresses (chain -> address mapping).
 
         Args:
@@ -174,7 +176,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         wallet_id: str,
         chain: str,
         address: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Set wallet address for a chain.
 
@@ -194,11 +196,11 @@ class AsyncWalletsResource(AsyncBaseResource):
     async def update(
         self,
         wallet_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-        is_active: Optional[bool] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        is_active: bool | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Update a wallet.
 
@@ -213,7 +215,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         Returns:
             Updated Wallet object
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if limit_per_tx is not None:
             payload["limit_per_tx"] = str(limit_per_tx)
         if limit_total is not None:
@@ -235,11 +237,11 @@ class AsyncWalletsResource(AsyncBaseResource):
         token: str = "USDC",
         chain: str = "base_sepolia",
         domain: str = "localhost",
-        memo: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        memo: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WalletTransferResponse:
         """Transfer stablecoins from a wallet (agent is sender)."""
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "destination": destination,
             "amount": str(amount),
             "token": token,
@@ -259,7 +261,7 @@ class AsyncWalletsResource(AsyncBaseResource):
         entrypoint_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
         paymaster_enabled: bool = True,
         bundler_profile: str = "pimlico",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         payload = {
             "smart_account_address": smart_account_address,
@@ -303,11 +305,11 @@ class WalletsResource(SyncBaseResource):
         mpc_provider: str = "turnkey",
         account_type: str = "mpc_v1",
         currency: str = "USDC",
-        chain: Optional[str] = None,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        chain: str | None = None,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Create a new non-custodial wallet for an agent.
 
@@ -324,7 +326,7 @@ class WalletsResource(SyncBaseResource):
         Returns:
             The created Wallet object
         """
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "agent_id": agent_id,
             "mpc_provider": mpc_provider,
             "account_type": account_type,
@@ -346,7 +348,7 @@ class WalletsResource(SyncBaseResource):
     def get(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Get a wallet by ID.
 
@@ -362,10 +364,10 @@ class WalletsResource(SyncBaseResource):
 
     def list(
         self,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         limit: int = 100,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Wallet]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Wallet]:
         """List wallets.
 
         Args:
@@ -376,7 +378,7 @@ class WalletsResource(SyncBaseResource):
         Returns:
             List of Wallet objects
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
 
@@ -391,7 +393,7 @@ class WalletsResource(SyncBaseResource):
         wallet_id: str,
         chain: str = "base",
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WalletBalance:
         """Get wallet balance from chain (non-custodial, read-only).
 
@@ -411,8 +413,8 @@ class WalletsResource(SyncBaseResource):
     def get_addresses(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, str]:
         """Get all wallet addresses (chain -> address mapping).
 
         Args:
@@ -429,7 +431,7 @@ class WalletsResource(SyncBaseResource):
         wallet_id: str,
         chain: str,
         address: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Set wallet address for a chain.
 
@@ -449,11 +451,11 @@ class WalletsResource(SyncBaseResource):
     def update(
         self,
         wallet_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-        is_active: Optional[bool] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        is_active: bool | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         """Update a wallet.
 
@@ -468,7 +470,7 @@ class WalletsResource(SyncBaseResource):
         Returns:
             Updated Wallet object
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if limit_per_tx is not None:
             payload["limit_per_tx"] = str(limit_per_tx)
         if limit_total is not None:
@@ -490,11 +492,11 @@ class WalletsResource(SyncBaseResource):
         token: str = "USDC",
         chain: str = "base_sepolia",
         domain: str = "localhost",
-        memo: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        memo: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WalletTransferResponse:
         """Transfer stablecoins from a wallet (agent is sender)."""
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "destination": destination,
             "amount": str(amount),
             "token": token,
@@ -514,7 +516,7 @@ class WalletsResource(SyncBaseResource):
         entrypoint_address: str = "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
         paymaster_enabled: bool = True,
         bundler_profile: str = "pimlico",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Wallet:
         payload = {
             "smart_account_address": smart_account_address,

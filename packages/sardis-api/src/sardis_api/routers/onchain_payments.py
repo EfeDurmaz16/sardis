@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from inspect import isawaitable
 import json
 import logging
 import os
@@ -11,14 +10,11 @@ import re
 import time
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Literal, Optional
+from inspect import isawaitable
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-
-from sardis_api.authz import Principal, require_principal
-from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
-from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 from sardis_v2_core.policy_attestation import (
@@ -27,6 +23,10 @@ from sardis_v2_core.policy_attestation import (
     verify_signed_policy_snapshot,
 )
 from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+
+from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
+from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -37,24 +37,24 @@ class OnChainPaymentRequest(BaseModel):
     amount: Decimal = Field(gt=0)
     token: str = "USDC"
     chain: str = "base"
-    memo: Optional[str] = None
-    rail: Optional[Literal["turnkey", "cdp"]] = Field(
+    memo: str | None = None
+    rail: Literal["turnkey", "cdp"] | None = Field(
         default=None,
         description="Execution rail override. If omitted, uses server default.",
     )
-    cdp_wallet_id: Optional[str] = Field(
+    cdp_wallet_id: str | None = Field(
         default=None,
         description="Optional CDP wallet id override. Falls back to wallet.cdp_wallet_id.",
     )
-    policy_hash: Optional[str] = Field(
+    policy_hash: str | None = Field(
         default=None,
         description="Optional expected policy hash pin. Execution fails on mismatch.",
     )
-    policy_id: Optional[str] = Field(
+    policy_id: str | None = Field(
         default=None,
         description="Optional expected policy id/version pin. Execution fails on mismatch.",
     )
-    goal_drift_score: Optional[Decimal] = Field(
+    goal_drift_score: Decimal | None = Field(
         default=None,
         ge=Decimal("0"),
         le=Decimal("1"),
@@ -67,18 +67,18 @@ class OnChainPaymentRequest(BaseModel):
 
 
 class OnChainPaymentResponse(BaseModel):
-    tx_hash: Optional[str] = None
-    explorer_url: Optional[str] = None
+    tx_hash: str | None = None
+    explorer_url: str | None = None
     status: str = "submitted"
-    approval_id: Optional[str] = None
-    policy_hash: Optional[str] = None
-    policy_audit_anchor: Optional[str] = None
-    policy_audit_id: Optional[str] = None
-    compliance_audit_id: Optional[str] = None
-    fee_amount: Optional[str] = None
-    fee_bps: Optional[int] = None
-    net_amount: Optional[str] = None
-    fee_tx_hash: Optional[str] = None
+    approval_id: str | None = None
+    policy_hash: str | None = None
+    policy_audit_anchor: str | None = None
+    policy_audit_id: str | None = None
+    compliance_audit_id: str | None = None
+    fee_amount: str | None = None
+    fee_bps: int | None = None
+    net_amount: str | None = None
+    fee_tx_hash: str | None = None
 
 
 @dataclass
@@ -91,7 +91,7 @@ class OnChainPaymentDependencies:
     sanctions_service: Any = None
     kya_service: Any = None
     coinbase_cdp_provider: Any = None
-    default_on_chain_provider: Optional[str] = None
+    default_on_chain_provider: str | None = None
     audit_store: Any = None
     settings: Any = None
 
@@ -111,7 +111,7 @@ PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
 KYT_REVIEW_DEFAULT = {"high", "severe"}
 
 
-def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:
+def _explorer_url(chain: str, tx_hash: str) -> str | None:
     c = (chain or "").strip().lower()
     if c in {"base", "base-mainnet"}:
         return f"https://basescan.org/tx/{tx_hash}"
@@ -135,7 +135,7 @@ async def _require_wallet_access(wallet: Any, principal: Principal, deps: OnChai
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
 
-def _contains_prompt_injection_signal(text: Optional[str]) -> Optional[str]:
+def _contains_prompt_injection_signal(text: str | None) -> str | None:
     value = (text or "").strip()
     if not value:
         return None
@@ -165,7 +165,7 @@ def _build_policy_snapshot_envelope(
     *,
     policy: Any,
     source_text: str,
-) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+) -> tuple[dict[str, Any] | None, str | None]:
     secret = _policy_snapshot_signer_secret()
     if not secret:
         if _signed_policy_snapshot_required():
@@ -222,7 +222,7 @@ def _kyt_review_levels() -> set[str]:
     return parsed or set(KYT_REVIEW_DEFAULT)
 
 
-def _kyt_review_levels_for_org(organization_id: Optional[str]) -> set[str]:
+def _kyt_review_levels_for_org(organization_id: str | None) -> set[str]:
     default_levels = _kyt_review_levels()
     org_id = (organization_id or "").strip()
     if not org_id:
@@ -276,7 +276,7 @@ def _try_build_policy_receipt(
     decision: str,
     reason: str,
     context: dict[str, Any],
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     try:
         return build_policy_decision_receipt(
             policy=policy,
@@ -296,7 +296,7 @@ async def _append_policy_audit_entry(
     allowed: bool,
     reason: str,
     receipt_payload: dict[str, Any],
-) -> Optional[str]:
+) -> str | None:
     if deps.audit_store is None:
         return None
     entry = ComplianceAuditEntry(
@@ -322,9 +322,9 @@ async def _append_compliance_audit_entry(
     allowed: bool,
     reason: str,
     provider: str,
-    rule_id: Optional[str] = None,
-    metadata: Optional[dict[str, Any]] = None,
-) -> Optional[str]:
+    rule_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str | None:
     if deps.audit_store is None:
         return None
     entry = ComplianceAuditEntry(
@@ -366,10 +366,10 @@ async def pay_onchain(
     source_address = wallet.get_address(request.chain) if hasattr(wallet, "get_address") else None
 
     # Policy enforcement gate (fail-closed in production when policy store missing).
-    policy_receipt: Optional[dict[str, Any]] = None
-    policy_snapshot: Optional[dict[str, Any]] = None
-    policy_audit_id: Optional[str] = None
-    compliance_audit_id: Optional[str] = None
+    policy_receipt: dict[str, Any] | None = None
+    policy_snapshot: dict[str, Any] | None = None
+    policy_audit_id: str | None = None
+    compliance_audit_id: str | None = None
     requested_policy_hash = (request.policy_hash or "").strip() or None
     requested_policy_id = (request.policy_id or "").strip() or None
     policy_pin_requested = requested_policy_hash is not None or requested_policy_id is not None

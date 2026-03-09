@@ -78,9 +78,9 @@ from __future__ import annotations
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from sardis_v2_core.mandates import MandateChain, PaymentMandate
 
@@ -146,8 +146,8 @@ class ExecutionAuditEntry:
     mandate_id: str
     phase: ExecutionPhase
     success: bool
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    details: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    details: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
 
@@ -161,9 +161,9 @@ class ReconciliationEntry:
     payment_mandate: Any  # PaymentMandate
     chain_receipt: Any  # ChainReceipt
     error: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     retry_count: int = 0
-    last_retry: Optional[datetime] = None
+    last_retry: datetime | None = None
     resolved: bool = False
 
 
@@ -178,7 +178,7 @@ class PaymentExecutionError(Exception):
         message: str,
         phase: ExecutionPhase,
         mandate_id: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.phase = phase
@@ -274,19 +274,19 @@ class LedgerAppendError(PaymentExecutionError):
 
 
 class WalletPolicyEngine(Protocol):
-    def validate_policies(self, mandate: PaymentMandate) -> "PolicyEvaluation": ...
+    def validate_policies(self, mandate: PaymentMandate) -> PolicyEvaluation: ...
 
 
 class CompliancePort(Protocol):
-    def preflight(self, mandate: PaymentMandate) -> "ComplianceResult": ...
+    def preflight(self, mandate: PaymentMandate) -> ComplianceResult: ...
 
 
 class ChainExecutorPort(Protocol):
-    async def dispatch_payment(self, mandate: PaymentMandate) -> "ChainReceipt": ...
+    async def dispatch_payment(self, mandate: PaymentMandate) -> ChainReceipt: ...
 
 
 class LedgerPort(Protocol):
-    def append(self, payment_mandate: PaymentMandate, chain_receipt: "ChainReceipt") -> "Transaction": ...
+    def append(self, payment_mandate: PaymentMandate, chain_receipt: ChainReceipt) -> Transaction: ...
 
 
 class GroupPolicyPort(Protocol):
@@ -297,8 +297,8 @@ class GroupPolicyPort(Protocol):
         agent_id: str,
         amount: Any,
         fee: Any,
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
     ) -> Any: ...
 
     async def record_spend(self, agent_id: str, amount: Any) -> None: ...
@@ -324,7 +324,7 @@ class ReconciliationQueuePort(Protocol):
     """Interface for reconciliation queue storage."""
 
     def enqueue(self, entry: ReconciliationEntry) -> str: ...
-    def get_pending(self, limit: int = 100) -> List[ReconciliationEntry]: ...
+    def get_pending(self, limit: int = 100) -> list[ReconciliationEntry]: ...
     def mark_resolved(self, mandate_id: str) -> bool: ...
     def increment_retry(self, mandate_id: str) -> bool: ...
 
@@ -350,7 +350,7 @@ class InMemoryReconciliationQueue:
                 "Pending reconciliation entries WILL BE LOST on restart. "
                 "Set reconciliation_queue= to a persistent implementation."
             )
-        self._queue: Dict[str, ReconciliationEntry] = {}
+        self._queue: dict[str, ReconciliationEntry] = {}
 
     def enqueue(self, entry: ReconciliationEntry) -> str:
         """Add entry to reconciliation queue."""
@@ -361,7 +361,7 @@ class InMemoryReconciliationQueue:
         )
         return entry.mandate_id
 
-    def get_pending(self, limit: int = 100) -> List[ReconciliationEntry]:
+    def get_pending(self, limit: int = 100) -> list[ReconciliationEntry]:
         """Get pending reconciliation entries."""
         pending = [
             e for e in self._queue.values()
@@ -382,7 +382,7 @@ class InMemoryReconciliationQueue:
         if mandate_id in self._queue:
             entry = self._queue[mandate_id]
             entry.retry_count += 1
-            entry.last_retry = datetime.now(timezone.utc)
+            entry.last_retry = datetime.now(UTC)
             return True
         return False
 
@@ -444,7 +444,7 @@ class PaymentOrchestrator:
         mandate_id: str,
         phase: ExecutionPhase,
         success: bool,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
         error: str | None = None,
     ) -> None:
         """Record an audit entry for execution phase."""
@@ -584,7 +584,7 @@ class PaymentOrchestrator:
         # immediately — no compliance check, no chain execution, no money moves.
         try:
             if hasattr(self._wallet_manager, "async_validate_policies"):
-                policy = await getattr(self._wallet_manager, "async_validate_policies")(payment)
+                policy = await self._wallet_manager.async_validate_policies(payment)
             else:
                 policy = self._wallet_manager.validate_policies(payment)
             if not policy.allowed:
@@ -734,7 +734,7 @@ class PaymentOrchestrator:
         # the agent could exceed its limits by making rapid payments.
         try:
             if hasattr(self._wallet_manager, "async_record_spend"):
-                await getattr(self._wallet_manager, "async_record_spend")(payment)
+                await self._wallet_manager.async_record_spend(payment)
                 self._audit(
                     mandate_id,
                     ExecutionPhase.POLICY_STATE_UPDATE,
@@ -854,7 +854,7 @@ class PaymentOrchestrator:
         """Get count of pending reconciliation entries."""
         return self._reconciliation_queue.count_pending()
 
-    def get_audit_log(self, mandate_id: str | None = None, limit: int = 100) -> List[ExecutionAuditEntry]:
+    def get_audit_log(self, mandate_id: str | None = None, limit: int = 100) -> list[ExecutionAuditEntry]:
         """Get audit log entries, optionally filtered by mandate_id."""
         if mandate_id:
             return [e for e in self._audit_log if e.mandate_id == mandate_id][-limit:]

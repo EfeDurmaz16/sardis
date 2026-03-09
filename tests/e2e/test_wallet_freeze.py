@@ -11,8 +11,9 @@ Tests the wallet freeze functionality:
 Run with: pytest tests/e2e/test_wallet_freeze.py -v
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -30,7 +31,7 @@ class TestWalletFreeze:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet
                 wallet = await client.wallets.create(
-                    agent_id=f"freeze_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"freeze_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                     metadata={"test": "freeze_blocking"},
                 )
@@ -61,7 +62,7 @@ class TestWalletFreeze:
 
                 # Attempt transaction on frozen wallet - should be blocked
                 mandate = {
-                    "mandate_id": f"frozen_wallet_test_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"frozen_wallet_test_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:test_merchant",
                     "amount_minor": "10000000",  # $10
@@ -98,7 +99,7 @@ class TestWalletFreeze:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create and freeze wallet
                 wallet = await client.wallets.create(
-                    agent_id=f"unfreeze_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"unfreeze_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -125,7 +126,7 @@ class TestWalletFreeze:
 
                     # Transaction should now succeed (or fail for other reasons, not freeze)
                     mandate = {
-                        "mandate_id": f"unfrozen_test_{datetime.now(timezone.utc).timestamp()}",
+                        "mandate_id": f"unfrozen_test_{datetime.now(UTC).timestamp()}",
                         "subject": wallet.id,
                         "destination": "vendor:test_merchant",
                         "amount_minor": "5000000",  # $5
@@ -160,7 +161,7 @@ class TestWalletFreeze:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"freeze_metadata_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"freeze_metadata_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -200,7 +201,7 @@ class TestWalletFreeze:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"freeze_all_tx_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"freeze_all_tx_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -215,7 +216,7 @@ class TestWalletFreeze:
                     payment_blocked = False
                     try:
                         mandate = {
-                            "mandate_id": f"frozen_payment_{datetime.now(timezone.utc).timestamp()}",
+                            "mandate_id": f"frozen_payment_{datetime.now(UTC).timestamp()}",
                             "subject": wallet.id,
                             "destination": "vendor:merchant",
                             "amount_minor": "5000000",
@@ -230,9 +231,8 @@ class TestWalletFreeze:
                             payment_blocked = True
 
                     # Test 2: Block hold creation
-                    hold_blocked = False
                     try:
-                        hold = await client.holds.create(
+                        await client.holds.create(
                             wallet_id=wallet.id,
                             amount_minor=10000000,
                             token="USDC",
@@ -240,24 +240,23 @@ class TestWalletFreeze:
                         )
                     except AttributeError:
                         # Holds not implemented yet
-                        hold_blocked = True
+                        pass
                     except Exception as e:
                         if any(kw in str(e).lower() for kw in ["frozen", "freeze", "blocked"]):
-                            hold_blocked = True
+                            pass
 
                     # Test 3: Block card creation
-                    card_blocked = False
                     try:
-                        card = await client.cards.create(
+                        await client.cards.create(
                             wallet_id=wallet.id,
                             spend_limit=50000,
                         )
                     except AttributeError:
                         # Cards not implemented yet
-                        card_blocked = True
+                        pass
                     except Exception as e:
                         if any(kw in str(e).lower() for kw in ["frozen", "freeze", "blocked"]):
-                            card_blocked = True
+                            pass
 
                     # At minimum, payment should be blocked
                     assert payment_blocked, "Payment should be blocked on frozen wallet"
@@ -277,12 +276,12 @@ class TestWalletFreeze:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create two wallets - one frozen, one not
                 wallet1 = await client.wallets.create(
-                    agent_id=f"list_frozen_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"list_frozen_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
                 wallet2 = await client.wallets.create(
-                    agent_id=f"list_unfrozen_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"list_unfrozen_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 

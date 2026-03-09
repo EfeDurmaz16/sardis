@@ -7,25 +7,17 @@ and security guarantees. All tests run in-memory without external services.
 import hashlib
 import time
 from decimal import Decimal
-from typing import Optional
 
 import pytest
-
 from sardis_ucp.adapters.ap2 import (
-    AP2CartMandate,
-    AP2IntentMandate,
     AP2MandateAdapter,
-    AP2PaymentMandate,
-    AP2ToUCPResult,
-    UCPToAP2Result,
 )
 from sardis_ucp.capabilities.checkout import (
-    CheckoutSession,
+    CheckoutSessionExpiredError,
+    CheckoutSessionNotFoundError,
     CheckoutSessionStatus,
     InvalidCheckoutOperationError,
     UCPCheckoutCapability,
-    CheckoutSessionExpiredError,
-    CheckoutSessionNotFoundError,
 )
 from sardis_ucp.models.mandates import (
     UCPCartMandate,
@@ -548,7 +540,7 @@ async def test_state_machine_exhaustive(checkout_capability, sample_line_items):
 
     assert session.status == CheckoutSessionStatus.OPEN
 
-    result = await checkout_capability.complete_checkout(
+    await checkout_capability.complete_checkout(
         session_id=session.session_id,
         chain="base",
         token="USDC",
@@ -709,7 +701,7 @@ async def test_mandate_chain_linking(checkout_capability, sample_line_items):
     cart_mandate_id = session.cart_mandate.mandate_id
 
     # Complete to generate checkout and payment mandates
-    result = await checkout_capability.complete_checkout(
+    await checkout_capability.complete_checkout(
         session_id=session.session_id,
         chain="base",
         token="USDC",

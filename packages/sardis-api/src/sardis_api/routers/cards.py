@@ -5,22 +5,22 @@ import hashlib
 import hmac
 import logging
 import os
-from dataclasses import asdict
-from decimal import Decimal
-from typing import Optional, List, Any, Literal
 import uuid
-from datetime import datetime, timezone
+from dataclasses import asdict
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis_v2_core import AgentRepository
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.canonical_state_machine import normalize_lithic_card_event
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.kill_switch_dep import require_kill_switch_clear
 from sardis_api.transaction_cap_dep import enforce_transaction_caps
-from sardis_v2_core import AgentRepository
-from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
-from sardis_api.canonical_state_machine import normalize_lithic_card_event
 
 logger = logging.getLogger(__name__)
 
@@ -34,21 +34,21 @@ class IssueCardRequest(BaseModel):
     limit_per_tx: Decimal = Field(default=Decimal("500.00"))
     limit_daily: Decimal = Field(default=Decimal("2000.00"))
     limit_monthly: Decimal = Field(default=Decimal("10000.00"))
-    locked_merchant_id: Optional[str] = None
+    locked_merchant_id: str | None = None
     funding_source: str = Field(default="fiat")
     # Cardholder identity — the responsible human (org owner) behind the agent.
     # All fields are optional for backward compatibility; providers fall back to
     # "Sardis Agent" defaults when not supplied.
-    cardholder_name: Optional[str] = Field(default=None, description="Full name of the cardholder (org owner)")
-    cardholder_email: Optional[str] = Field(default=None, description="Email address of the cardholder")
-    cardholder_phone: Optional[str] = Field(default=None, description="E.164 phone number of the cardholder")
-    reuse_cardholder_id: Optional[str] = Field(default=None, description="Existing provider cardholder ID to reuse instead of creating a new one")
+    cardholder_name: str | None = Field(default=None, description="Full name of the cardholder (org owner)")
+    cardholder_email: str | None = Field(default=None, description="Email address of the cardholder")
+    cardholder_phone: str | None = Field(default=None, description="E.164 phone number of the cardholder")
+    reuse_cardholder_id: str | None = Field(default=None, description="Existing provider cardholder ID to reuse instead of creating a new one")
 
 
 class FundCardRequest(BaseModel):
     """Request to fund a card."""
     amount: Decimal = Field(gt=0)
-    source: Optional[Literal["fiat", "stablecoin"]] = Field(
+    source: Literal["fiat", "stablecoin"] | None = Field(
         default=None,
         description="If omitted, uses SARDIS_TREASURY_DEFAULT_ROUTE",
     )
@@ -56,9 +56,9 @@ class FundCardRequest(BaseModel):
 
 class UpdateLimitsRequest(BaseModel):
     """Request to update card spending limits."""
-    limit_per_tx: Optional[Decimal] = None
-    limit_daily: Optional[Decimal] = None
-    limit_monthly: Optional[Decimal] = None
+    limit_per_tx: Decimal | None = None
+    limit_daily: Decimal | None = None
+    limit_monthly: Decimal | None = None
 
 
 class CardTransactionResponse(BaseModel):
@@ -71,8 +71,8 @@ class CardTransactionResponse(BaseModel):
     merchant_category: str
     status: str
     created_at: str
-    settled_at: Optional[str] = None
-    decline_reason: Optional[str] = None
+    settled_at: str | None = None
+    decline_reason: str | None = None
 
 
 class SimulatePurchaseRequest(BaseModel):
@@ -83,7 +83,7 @@ class SimulatePurchaseRequest(BaseModel):
     merchant_name: str = Field(default="Demo Merchant")
     mcc_code: str = Field(default="5734", description="4-digit MCC code (e.g., 7995 for gambling)")
     status: str = Field(default="approved", description="Provider status to simulate")
-    decline_reason: Optional[str] = Field(default=None, description="Optional decline reason")
+    decline_reason: str | None = Field(default=None, description="Optional decline reason")
 
 
 class ASASecurityPolicyResponse(BaseModel):
@@ -201,13 +201,13 @@ def create_cards_router(
         if value is None:
             return None
         if isinstance(value, datetime):
-            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+            return value if value.tzinfo else value.replace(tzinfo=UTC)
         if isinstance(value, (int, float)):
             # Heuristic: millis if large
             ts = float(value)
             if ts > 1e12:
                 ts /= 1000.0
-            return datetime.fromtimestamp(ts, tz=timezone.utc)
+            return datetime.fromtimestamp(ts, tz=UTC)
         if isinstance(value, str):
             s = value.strip()
             if not s:
@@ -217,7 +217,7 @@ def create_cards_router(
                 s = s[:-1] + "+00:00"
             try:
                 dt = datetime.fromisoformat(s)
-                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+                return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
             except Exception:
                 return None
         return None
@@ -242,7 +242,7 @@ def create_cards_router(
 
         # Event-type based normalization (most reliable)
         if "settled" in event_type:
-            return "settled", settled_at or datetime.now(timezone.utc), decline_reason
+            return "settled", settled_at or datetime.now(UTC), decline_reason
         if "declined" in event_type:
             return "declined", settled_at, decline_reason
 
@@ -254,7 +254,7 @@ def create_cards_router(
         if raw_status in ("pending", "processing"):
             return "pending", settled_at, decline_reason
         if raw_status in ("settled", "completed"):
-            return "settled", settled_at or datetime.now(timezone.utc), decline_reason
+            return "settled", settled_at or datetime.now(UTC), decline_reason
 
         return raw_status or "pending", settled_at, decline_reason
 
@@ -272,7 +272,7 @@ def create_cards_router(
             configured = "fiat_first"
         return configured
 
-    def _resolve_card_funding_source(requested_source: Optional[str]) -> Literal["fiat", "stablecoin"]:
+    def _resolve_card_funding_source(requested_source: str | None) -> Literal["fiat", "stablecoin"]:
         if requested_source in {"fiat", "stablecoin"}:
             return requested_source
         return "stablecoin" if _treasury_default_route() == "stablecoin_first" else "fiat"
@@ -404,7 +404,7 @@ def create_cards_router(
 
     @r.get("", dependencies=auth_deps)
     async def list_cards(
-        wallet_id: Optional[str] = Query(None),
+        wallet_id: str | None = Query(None),
         limit: int = Query(default=50, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
         principal: Principal = Depends(require_principal),

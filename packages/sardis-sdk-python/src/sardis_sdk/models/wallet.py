@@ -1,21 +1,23 @@
 """Wallet models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from .base import SardisModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class TokenLimit(SardisModel):
     """Token-specific spending limits (for policy tracking only, not balance storage)."""
     
     token: str
-    limit_per_tx: Optional[Decimal] = None
-    limit_total: Optional[Decimal] = None
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
     # Note: No balance field - balances are read from chain (non-custodial)
 
 
@@ -87,8 +89,8 @@ class CreateWalletRequest(SardisModel):
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
     account_type: str = "mpc_v1"  # "mpc_v1" | "erc4337_v2"
     currency: str = "USDC"
-    limit_per_tx: Optional[Decimal] = None
-    limit_total: Optional[Decimal] = None
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
 
 
 # Aliases

@@ -1,8 +1,7 @@
 """Tests for the receipt store — save, get, verify, list."""
 
 import pytest
-
-from sardis_v2_core.execution_receipt import ExecutionReceipt, build_receipt
+from sardis_v2_core.execution_receipt import build_receipt
 from sardis_v2_core.receipt_store import InMemoryReceiptStore
 
 

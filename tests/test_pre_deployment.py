@@ -9,7 +9,6 @@ Usage:
 """
 
 import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -28,9 +27,9 @@ class TestCoreModulesExist:
     def test_sardis_chain_imports(self):
         """Test sardis-chain module imports."""
         from sardis_chain.executor import (
-            ChainExecutor,
-            SARDIS_CONTRACTS,
             CHAIN_CONFIGS,
+            SARDIS_CONTRACTS,
+            ChainExecutor,
         )
         assert ChainExecutor is not None
         assert isinstance(SARDIS_CONTRACTS, dict)
@@ -39,14 +38,12 @@ class TestCoreModulesExist:
     def test_sardis_compliance_imports(self):
         """Test sardis-compliance module imports."""
         from sardis_compliance.kyc import (
-            PersonaKYCProvider,
-            KYCStatus,
             KYCService,
+            PersonaKYCProvider,
         )
         from sardis_compliance.sanctions import (
             EllipticProvider,
             SanctionsService,
-            SanctionsRisk,
         )
         assert PersonaKYCProvider is not None
         assert EllipticProvider is not None
@@ -60,8 +57,8 @@ class TestCoreModulesExist:
 
     def test_sardis_cards_imports(self):
         """Test sardis-cards module imports."""
-        from sardis_cards.providers.lithic import LithicProvider
         from sardis_cards.models import Card, CardTransaction
+        from sardis_cards.providers.lithic import LithicProvider
         assert LithicProvider is not None
         assert Card is not None
         assert CardTransaction is not None
@@ -190,7 +187,7 @@ class TestSmartContractConfiguration:
         env_policy = os.environ.get('SARDIS_BASE_SEPOLIA_POLICY_MODULE_ADDRESS', '')
 
         # Either hardcoded or env var should have an address
-        has_policy = bool(policy_module) or bool(env_policy)
+        bool(policy_module) or bool(env_policy)
 
         # Verify the structure has the expected keys
         assert 'policy_module' in base_sepolia

@@ -5,12 +5,10 @@ This module provides both async and sync interfaces for payment operations.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.payment import (
-    ExecuteAP2Request,
     ExecuteAP2Response,
-    ExecuteMandateRequest,
     ExecutePaymentResponse,
 )
 from .base import AsyncBaseResource, SyncBaseResource
@@ -39,8 +37,8 @@ class AsyncPaymentsResource(AsyncBaseResource):
 
     async def execute_mandate(
         self,
-        mandate: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecutePaymentResponse:
         """Execute a single payment mandate.
 
@@ -56,10 +54,10 @@ class AsyncPaymentsResource(AsyncBaseResource):
 
     async def execute_ap2(
         self,
-        intent: Dict[str, Any],
-        cart: Dict[str, Any],
-        payment: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        intent: dict[str, Any],
+        cart: dict[str, Any],
+        payment: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecuteAP2Response:
         """Execute a full AP2 payment bundle (Intent -> Cart -> Payment).
 
@@ -81,8 +79,8 @@ class AsyncPaymentsResource(AsyncBaseResource):
 
     async def execute_ap2_bundle(
         self,
-        bundle: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecuteAP2Response:
         """Execute a pre-built AP2 payment bundle.
 
@@ -121,8 +119,8 @@ class PaymentsResource(SyncBaseResource):
 
     def execute_mandate(
         self,
-        mandate: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecutePaymentResponse:
         """Execute a single payment mandate.
 
@@ -138,10 +136,10 @@ class PaymentsResource(SyncBaseResource):
 
     def execute_ap2(
         self,
-        intent: Dict[str, Any],
-        cart: Dict[str, Any],
-        payment: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        intent: dict[str, Any],
+        cart: dict[str, Any],
+        payment: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecuteAP2Response:
         """Execute a full AP2 payment bundle (Intent -> Cart -> Payment).
 
@@ -163,8 +161,8 @@ class PaymentsResource(SyncBaseResource):
 
     def execute_ap2_bundle(
         self,
-        bundle: Dict[str, Any],
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExecuteAP2Response:
         """Execute a pre-built AP2 payment bundle.
 

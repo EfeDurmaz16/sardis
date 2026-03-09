@@ -1,13 +1,12 @@
 """Stripe inbound webhook router for Treasury and Issuing events."""
 from __future__ import annotations
 
-import hmac
 import hashlib
+import hmac
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
@@ -91,7 +90,7 @@ def verify_stripe_signature(payload: bytes, signature: str, webhook_secret: str)
 @router.post("/webhooks", status_code=status.HTTP_200_OK)
 async def handle_stripe_webhook(
     request: Request,
-    stripe_signature: Optional[str] = Header(None, alias="Stripe-Signature"),
+    stripe_signature: str | None = Header(None, alias="Stripe-Signature"),
     deps: StripeWebhookDeps = Depends(get_deps),
 ):
     """Handle inbound Stripe webhook events for Treasury and Issuing.
@@ -224,7 +223,7 @@ async def handle_stripe_webhook(
                             merchant_data.get("network_id", ""),
                             "approved" if approved else "declined",
                             reason if not approved else None,
-                            datetime.now(timezone.utc),
+                            datetime.now(UTC),
                         )
                     logger.info(
                         "Authorization decision persisted: card=%s amount=%s approved=%s",

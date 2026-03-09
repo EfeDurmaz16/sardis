@@ -16,24 +16,19 @@ os.environ.setdefault("SARDIS_ENVIRONMENT", "dev")
 os.environ.setdefault("DATABASE_URL", "memory://")
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_purposes_only_32chars")
 
-import asyncio
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-
 from sardis_v2_core.merchant import (
     Merchant,
-    MerchantCheckoutSession,
     MerchantCheckoutLink,
+    MerchantCheckoutSession,
+    _generate_client_secret,
     _generate_external_id,
     _generate_webhook_secret,
-    _generate_client_secret,
 )
-
 
 # ── Domain Model Tests ─────────────────────────────────────────────
 
@@ -100,26 +95,26 @@ class TestMerchantModel:
 
 
 def _make_merchant(**overrides) -> Merchant:
-    defaults = dict(
-        merchant_id="merch_test123",
-        name="Test Merchant",
-        settlement_preference="usdc",
-        settlement_wallet_id="wal_settle_001",
-        is_active=True,
-    )
+    defaults = {
+        "merchant_id": "merch_test123",
+        "name": "Test Merchant",
+        "settlement_preference": "usdc",
+        "settlement_wallet_id": "wal_settle_001",
+        "is_active": True,
+    }
     defaults.update(overrides)
     return Merchant(**defaults)
 
 
 def _make_session(**overrides) -> MerchantCheckoutSession:
-    defaults = dict(
-        session_id="mcs_test456",
-        merchant_id="merch_test123",
-        amount=Decimal("49.99"),
-        currency="USDC",
-        status="pending",
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
-    )
+    defaults = {
+        "session_id": "mcs_test456",
+        "merchant_id": "merch_test123",
+        "amount": Decimal("49.99"),
+        "currency": "USDC",
+        "status": "pending",
+        "expires_at": datetime.now(UTC) + timedelta(minutes=15),
+    }
     defaults.update(overrides)
     return MerchantCheckoutSession(**defaults)
 
@@ -135,35 +130,35 @@ class MockMerchantRepo:
         self.merchants[merchant.merchant_id] = merchant
         return merchant
 
-    async def get_merchant(self, merchant_id: str) -> Optional[Merchant]:
+    async def get_merchant(self, merchant_id: str) -> Merchant | None:
         return self.merchants.get(merchant_id)
 
     async def list_merchants(self, org_id: str) -> list[Merchant]:
         return [m for m in self.merchants.values() if m.org_id == org_id]
 
-    async def update_merchant(self, merchant_id: str, **kwargs) -> Optional[Merchant]:
+    async def update_merchant(self, merchant_id: str, **kwargs) -> Merchant | None:
         m = self.merchants.get(merchant_id)
         if not m:
             return None
         for k, v in kwargs.items():
             setattr(m, k, v)
-        m.updated_at = datetime.now(timezone.utc)
+        m.updated_at = datetime.now(UTC)
         return m
 
     async def create_session(self, session: MerchantCheckoutSession) -> MerchantCheckoutSession:
         self.sessions[session.session_id] = session
         return session
 
-    async def get_session(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session(self, session_id: str) -> MerchantCheckoutSession | None:
         return self.sessions.get(session_id)
 
-    async def get_session_by_secret(self, client_secret: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session_by_secret(self, client_secret: str) -> MerchantCheckoutSession | None:
         for s in self.sessions.values():
             if s.client_secret == client_secret:
                 return s
         return None
 
-    async def get_session_for_update(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session_for_update(self, session_id: str) -> MerchantCheckoutSession | None:
         return self.sessions.get(session_id)
 
     async def update_session(self, session_id: str, **kwargs) -> None:
@@ -185,10 +180,10 @@ class MockMerchantRepo:
         self.links[link.link_id] = link
         return link
 
-    async def get_checkout_link(self, link_id: str) -> Optional[MerchantCheckoutLink]:
+    async def get_checkout_link(self, link_id: str) -> MerchantCheckoutLink | None:
         return self.links.get(link_id)
 
-    async def get_checkout_link_by_slug(self, slug: str) -> Optional[MerchantCheckoutLink]:
+    async def get_checkout_link_by_slug(self, slug: str) -> MerchantCheckoutLink | None:
         for l in self.links.values():
             if l.slug == slug and l.is_active:
                 return l
@@ -326,7 +321,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/{merchant_id}/links" in paths
 
     def test_checkout_router_has_endpoints(self):
-        from sardis_api.routers.merchant_checkout import router, public_router
+        from sardis_api.routers.merchant_checkout import public_router, router
         auth_paths = [r.path for r in router.routes]
         public_paths = [r.path for r in public_router.routes]
 
@@ -387,11 +382,11 @@ class TestSessionLifecycle:
     @pytest.mark.asyncio
     async def test_expired_session_blocks_connect(self, repo):
         """Sessions past their expiry should not accept wallet connections."""
-        session = _make_session(expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
+        session = _make_session(expires_at=datetime.now(UTC) - timedelta(minutes=1))
         await repo.create_session(session)
 
         s = await repo.get_session(session.session_id)
-        assert s.expires_at < datetime.now(timezone.utc)
+        assert s.expires_at < datetime.now(UTC)
 
     @pytest.mark.asyncio
     async def test_list_sessions_by_merchant(self, repo):
@@ -638,8 +633,8 @@ class TestWebhookDelivery:
     @pytest.mark.asyncio
     async def test_webhook_includes_event_id(self):
         """Webhook payload should contain event_id for deduplication."""
+
         from sardis_checkout.merchant_webhooks import MerchantWebhookService
-        import json
 
         repo = MockMerchantRepo()
         service = MerchantWebhookService(merchant_repo=repo)

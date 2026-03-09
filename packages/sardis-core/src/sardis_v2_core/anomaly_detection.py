@@ -8,11 +8,10 @@ Uses z-score and percentile-based methods to identify unusual spending behavior.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
-from dataclasses import dataclass
-from decimal import Decimal
 import statistics
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class BaselineStats:
     transaction_count: int
     total_volume: float
     avg_daily_transactions: float
-    common_merchants: Dict[str, int]  # merchant -> transaction count
+    common_merchants: dict[str, int]  # merchant -> transaction count
     last_updated: datetime
 
 
@@ -40,10 +39,10 @@ class AnomalyResult:
     is_anomaly: bool
     confidence: float  # 0.0 to 1.0
     reason: str
-    baseline_stats: Optional[BaselineStats] = None
-    z_score: Optional[float] = None
-    percentile: Optional[float] = None
-    merchant_flags: List[str] = None
+    baseline_stats: BaselineStats | None = None
+    z_score: float | None = None
+    percentile: float | None = None
+    merchant_flags: list[str] = None
 
     def __post_init__(self):
         if self.merchant_flags is None:
@@ -76,7 +75,7 @@ class AnomalyDetector:
         agent_id: str,
         amount: float,
         merchant: str,
-        transaction_history: Optional[List[Dict[str, Any]]] = None,
+        transaction_history: list[dict[str, Any]] | None = None,
     ) -> AnomalyResult:
         """
         Detect if a transaction is anomalous based on agent's spending patterns.
@@ -131,7 +130,7 @@ class AnomalyDetector:
             confidence = max(confidence, 0.6)
 
         # First transaction with this merchant
-        if merchant.lower() not in [m.lower() for m in baseline.common_merchants.keys()]:
+        if merchant.lower() not in [m.lower() for m in baseline.common_merchants]:
             # Not necessarily anomalous, but worth noting
             if amount > baseline.percentile_90:
                 reasons.append(f"First transaction with {merchant} is unusually large")
@@ -152,7 +151,7 @@ class AnomalyDetector:
     async def get_agent_baseline(
         self,
         agent_id: str,
-        transaction_history: List[Dict[str, Any]],
+        transaction_history: list[dict[str, Any]],
     ) -> BaselineStats:
         """
         Calculate baseline spending statistics for an agent.
@@ -197,10 +196,7 @@ class AnomalyDetector:
         median_amount = statistics.median(amounts)
 
         # Standard deviation (handle single value case)
-        if len(amounts) > 1:
-            std_dev = statistics.stdev(amounts)
-        else:
-            std_dev = 0.0
+        std_dev = statistics.stdev(amounts) if len(amounts) > 1 else 0.0
 
         # Percentiles
         sorted_amounts = sorted(amounts)
@@ -209,7 +205,7 @@ class AnomalyDetector:
         percentile_95 = self._percentile(sorted_amounts, 95)
 
         # Merchant frequency
-        merchant_counts: Dict[str, int] = {}
+        merchant_counts: dict[str, int] = {}
         for tx in transaction_history:
             merchant = tx.get("merchant", "unknown")
             merchant_counts[merchant] = merchant_counts.get(merchant, 0) + 1
@@ -248,7 +244,7 @@ class AnomalyDetector:
             total_volume=round(sum(amounts), 2),
             avg_daily_transactions=round(avg_daily_transactions, 2),
             common_merchants=merchant_counts,
-            last_updated=datetime.now(timezone.utc),
+            last_updated=datetime.now(UTC),
         )
 
         # Cache the baseline
@@ -278,7 +274,7 @@ class AnomalyDetector:
     def _calculate_percentile(
         self,
         amount: float,
-        transaction_history: List[Dict[str, Any]],
+        transaction_history: list[dict[str, Any]],
     ) -> float:
         """Calculate what percentile this amount falls into."""
         amounts = sorted([float(tx.get("amount", 0)) for tx in transaction_history if tx.get("amount", 0) > 0])
@@ -296,8 +292,8 @@ class AnomalyDetector:
         self,
         merchant: str,
         baseline: BaselineStats,
-        transaction_history: List[Dict[str, Any]],
-    ) -> List[str]:
+        transaction_history: list[dict[str, Any]],
+    ) -> list[str]:
         """Check for merchant-related anomalies."""
         flags = []
 
@@ -325,7 +321,7 @@ class AnomalyDetector:
 
         return flags
 
-    def _percentile(self, sorted_values: List[float], percentile: int) -> float:
+    def _percentile(self, sorted_values: list[float], percentile: int) -> float:
         """Calculate percentile from sorted values."""
         if not sorted_values:
             return 0.0
@@ -344,7 +340,7 @@ class AnomalyDetector:
 
         return d0 + d1
 
-    async def clear_baseline_cache(self, agent_id: Optional[str] = None) -> None:
+    async def clear_baseline_cache(self, agent_id: str | None = None) -> None:
         """
         Clear cached baseline statistics.
 

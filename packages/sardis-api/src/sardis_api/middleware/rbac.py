@@ -16,14 +16,13 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional, Callable
+from collections.abc import Callable
 
-from fastapi import Request, HTTPException, status
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-
+from fastapi import HTTPException, Request, status
 from sardis_v2_core.organizations import OrganizationManager, OrgMember
 from sardis_v2_core.rbac import Permission, RBACEngine
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 logger = logging.getLogger("sardis.api.rbac")
 
@@ -39,7 +38,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
       4. Attaches org_member to request.state for RBAC checks
     """
 
-    def __init__(self, app, org_manager: Optional[OrganizationManager] = None):
+    def __init__(self, app, org_manager: OrganizationManager | None = None):
         """
         Initialize RBAC middleware.
 
@@ -57,7 +56,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             self._org_manager = OrganizationManager(dsn=dsn)
         return self._org_manager
 
-    def _extract_org_id(self, request: Request) -> Optional[str]:
+    def _extract_org_id(self, request: Request) -> str | None:
         """
         Extract org_id from request path parameters or headers.
 
@@ -89,7 +88,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         return None
 
-    def _extract_user_id(self, request: Request) -> Optional[str]:
+    def _extract_user_id(self, request: Request) -> str | None:
         """
         Extract authenticated user ID from request.
 
@@ -301,7 +300,7 @@ async def require_role(role: str):
 
 # ========== Helper: Get organization context from request ==========
 
-def get_org_context(request: Request) -> tuple[Optional[str], Optional[OrgMember]]:
+def get_org_context(request: Request) -> tuple[str | None, OrgMember | None]:
     """
     Extract organization context from request state.
 
@@ -319,7 +318,7 @@ def get_org_context(request: Request) -> tuple[Optional[str], Optional[OrgMember
     return org_id, org_member
 
 
-def get_user_id(request: Request) -> Optional[str]:
+def get_user_id(request: Request) -> str | None:
     """
     Extract authenticated user ID from request state.
 

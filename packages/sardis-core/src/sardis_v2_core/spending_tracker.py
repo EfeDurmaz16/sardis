@@ -11,12 +11,12 @@ Example:
 """
 from __future__ import annotations
 
-import os
 import logging
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Dict, Optional, Any
+import os
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
 
 try:
     import redis.asyncio as aioredis
@@ -38,9 +38,9 @@ class SpendingSummary:
     daily_total: Decimal = field(default_factory=lambda: Decimal("0"))
     weekly_total: Decimal = field(default_factory=lambda: Decimal("0"))
     monthly_total: Decimal = field(default_factory=lambda: Decimal("0"))
-    by_vendor: Dict[str, Dict[str, Decimal]] = field(default_factory=dict)
-    by_category: Dict[str, Dict[str, Decimal]] = field(default_factory=dict)
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    by_vendor: dict[str, dict[str, Decimal]] = field(default_factory=dict)
+    by_category: dict[str, dict[str, Decimal]] = field(default_factory=dict)
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -50,9 +50,9 @@ class TransactionRecord:
     vendor: str
     amount: Decimal
     category: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    tx_id: Optional[str] = None
-    chain: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    tx_id: str | None = None
+    chain: str | None = None
 
 
 # ============================================================================
@@ -82,8 +82,8 @@ class SpendingTracker:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
-        redis_client: Optional[Any] = None,
+        redis_url: str | None = None,
+        redis_client: Any | None = None,
     ):
         """
         Initialize the spending tracker.
@@ -116,8 +116,8 @@ class SpendingTracker:
         vendor: str,
         amount: float,
         category: str,
-        tx_id: Optional[str] = None,
-        chain: Optional[str] = None,
+        tx_id: str | None = None,
+        chain: str | None = None,
     ) -> None:
         """
         Record a transaction for spending tracking.
@@ -130,7 +130,7 @@ class SpendingTracker:
             tx_id: Transaction ID (optional)
             chain: Blockchain chain (optional)
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         vendor_lower = vendor.lower()
         category_lower = category.lower()
 
@@ -213,7 +213,7 @@ class SpendingTracker:
         Returns:
             Current spending amount as float
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         vendor_lower = vendor.lower()
 
         if period == "daily":
@@ -247,7 +247,7 @@ class SpendingTracker:
         Returns:
             Current spending amount as float
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         category_lower = category.lower()
 
         if period == "daily":
@@ -279,7 +279,7 @@ class SpendingTracker:
         Returns:
             Total spending amount as float
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if period == "daily":
             suffix = now.strftime('%Y-%m-%d')
@@ -305,7 +305,7 @@ class SpendingTracker:
         Returns:
             SpendingSummary with all spending data
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         pattern = f"{self.PREFIX}:{wallet_id}:*"
 
         summary = SpendingSummary(wallet_id=wallet_id)
@@ -339,7 +339,7 @@ class SpendingTracker:
         summary.last_updated = now
         return summary
 
-    async def get_spending_data_for_policy(self, wallet_id: str) -> Dict[str, Dict[str, float]]:
+    async def get_spending_data_for_policy(self, wallet_id: str) -> dict[str, dict[str, float]]:
         """
         Get spending data formatted for policy evaluation (OPA compatible).
 
@@ -469,8 +469,8 @@ class InMemorySpendingTracker:
     """
 
     def __init__(self):
-        self._data: Dict[str, float] = {}
-        self._recent: Dict[str, list] = {}
+        self._data: dict[str, float] = {}
+        self._recent: dict[str, list] = {}
 
     async def record_transaction(
         self,
@@ -478,10 +478,10 @@ class InMemorySpendingTracker:
         vendor: str,
         amount: float,
         category: str,
-        tx_id: Optional[str] = None,
-        chain: Optional[str] = None,
+        tx_id: str | None = None,
+        chain: str | None = None,
     ) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         vendor_lower = vendor.lower()
         category_lower = category.lower()
 
@@ -520,7 +520,7 @@ class InMemorySpendingTracker:
         self._recent[wallet_id] = self._recent[wallet_id][:1000]
 
     async def get_spending(self, wallet_id: str, vendor: str, period: str) -> float:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         vendor_lower = vendor.lower()
 
         if period == "daily":
@@ -536,7 +536,7 @@ class InMemorySpendingTracker:
         return self._data.get(key, 0.0)
 
     async def get_total_spending(self, wallet_id: str, period: str) -> float:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if period == "daily":
             suffix = now.strftime('%Y-%m-%d')
@@ -591,7 +591,7 @@ class InMemorySpendingTracker:
 # ============================================================================
 
 def create_spending_tracker(
-    redis_url: Optional[str] = None,
+    redis_url: str | None = None,
     use_memory: bool = False,
 ) -> SpendingTracker | InMemorySpendingTracker:
     """

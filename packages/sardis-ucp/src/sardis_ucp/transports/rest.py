@@ -5,7 +5,7 @@ Maps UCP checkout operations to HTTP REST endpoints.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 import httpx
 
@@ -15,7 +15,7 @@ from ..capabilities.checkout import UCPCheckoutCapability
 class UCPTransport(Protocol):
     """Protocol defining the transport interface for UCP operations."""
 
-    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> dict[str, Any]:
         """Create a new checkout session.
 
         Args:
@@ -27,7 +27,7 @@ class UCPTransport(Protocol):
         """
         ...
 
-    async def update_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def update_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Update an existing checkout session.
 
         Args:
@@ -39,7 +39,7 @@ class UCPTransport(Protocol):
         """
         ...
 
-    async def complete_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def complete_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Complete a checkout session and generate payment mandate.
 
         Args:
@@ -51,7 +51,7 @@ class UCPTransport(Protocol):
         """
         ...
 
-    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Cancel a checkout session.
 
         Args:
@@ -63,7 +63,7 @@ class UCPTransport(Protocol):
         """
         ...
 
-    async def get_checkout(self, session_id: str) -> Dict[str, Any]:
+    async def get_checkout(self, session_id: str) -> dict[str, Any]:
         """Get a checkout session by ID.
 
         Args:
@@ -96,7 +96,7 @@ class UCPRestTransport:
     def __init__(
         self,
         base_url: str,
-        capability: Optional[UCPCheckoutCapability] = None,
+        capability: UCPCheckoutCapability | None = None,
     ) -> None:
         """Initialize REST transport.
 
@@ -107,7 +107,7 @@ class UCPRestTransport:
         self._base_url = base_url.rstrip("/")
         self._capability = capability
 
-    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> dict[str, Any]:
         """Create a new checkout session via POST /checkout.
 
         Args:
@@ -119,8 +119,8 @@ class UCPRestTransport:
         """
         if self._capability:
             # Delegate to local capability if available
-            from ..models.mandates import UCPCurrency, UCPLineItem
-            from decimal import Decimal
+
+            from ..models.mandates import UCPCurrency
 
             session = self._capability.create_checkout(
                 merchant_id=kwargs.get("merchant_id", ""),
@@ -142,7 +142,7 @@ class UCPRestTransport:
             resp.raise_for_status()
             return resp.json()
 
-    async def update_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def update_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Update a checkout session via PATCH /checkout/{id}.
 
         Args:
@@ -173,7 +173,7 @@ class UCPRestTransport:
             resp.raise_for_status()
             return resp.json()
 
-    async def complete_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def complete_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Complete a checkout via POST /checkout/{id}/complete.
 
         Args:
@@ -204,7 +204,7 @@ class UCPRestTransport:
             resp.raise_for_status()
             return resp.json()
 
-    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Cancel a checkout via DELETE /checkout/{id}.
 
         Args:
@@ -227,7 +227,7 @@ class UCPRestTransport:
             resp.raise_for_status()
             return resp.json()
 
-    async def get_checkout(self, session_id: str) -> Dict[str, Any]:
+    async def get_checkout(self, session_id: str) -> dict[str, Any]:
         """Get a checkout session via GET /checkout/{id}.
 
         Args:

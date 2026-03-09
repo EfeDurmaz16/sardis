@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 from sardis_v2_core.alert_channels import (
     AlertDispatcher,
@@ -18,7 +17,7 @@ from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
 logger = logging.getLogger("sardis.api.ops_alerts")
 
-_dispatcher: Optional[AlertDispatcher] = None
+_dispatcher: AlertDispatcher | None = None
 
 
 def init_ops_dispatcher() -> AlertDispatcher:
@@ -62,7 +61,7 @@ def init_ops_dispatcher() -> AlertDispatcher:
     return dispatcher
 
 
-def get_ops_dispatcher() -> Optional[AlertDispatcher]:
+def get_ops_dispatcher() -> AlertDispatcher | None:
     """Get the global operational alert dispatcher (None if not initialized)."""
     return _dispatcher
 

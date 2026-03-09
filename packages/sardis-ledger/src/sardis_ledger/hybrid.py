@@ -24,20 +24,13 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
+from typing import Any, TypeVar
 
-from .models import (
-    AuditAction,
-    AuditLog,
-    LedgerEntry,
-    LedgerEntryStatus,
-    LedgerEntryType,
-    to_ledger_decimal,
-)
 from .engine import LedgerEngine, LedgerError, LockManager
 from .immutable import (
     AuditEntry,
@@ -48,6 +41,11 @@ from .immutable import (
     VerificationResult,
     VerificationStatus,
 )
+from .models import (
+    LedgerEntry,
+    LedgerEntryType,
+    to_ledger_decimal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +55,7 @@ T = TypeVar("T")
 class HybridLedgerError(LedgerError):
     """Error in hybrid ledger operations."""
 
-    def __init__(self, message: str, pg_error: Optional[str] = None, immudb_error: Optional[str] = None):
+    def __init__(self, message: str, pg_error: str | None = None, immudb_error: str | None = None):
         super().__init__(message, code="HYBRID_LEDGER_ERROR")
         self.details["pg_error"] = pg_error
         self.details["immudb_error"] = immudb_error
@@ -98,8 +96,8 @@ class HybridConfig:
     enable_anchoring: bool = False
     anchor_chain: str = "base"
     anchor_interval_seconds: int = 3600
-    anchor_rpc_url: Optional[str] = None
-    anchor_private_key: Optional[str] = None
+    anchor_rpc_url: str | None = None
+    anchor_private_key: str | None = None
 
     # Consistency
     require_dual_write: bool = True  # Fail if either store fails
@@ -117,13 +115,13 @@ class HybridReceipt:
 
     entry_id: str
     pg_entry_id: str
-    immudb_receipt: Optional[ImmutableReceipt] = None
-    pg_hash: Optional[str] = None
-    immudb_hash: Optional[str] = None
+    immudb_receipt: ImmutableReceipt | None = None
+    pg_hash: str | None = None
+    immudb_hash: str | None = None
     consistent: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entry_id": self.entry_id,
             "pg_entry_id": self.pg_entry_id,
@@ -139,19 +137,19 @@ class HybridReceipt:
 class ConsistencyReport:
     """Report of consistency check between stores."""
 
-    checked_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    checked_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     total_checked: int = 0
     consistent: int = 0
     inconsistent: int = 0
     missing_in_pg: int = 0
     missing_in_immudb: int = 0
-    verification_errors: List[Dict[str, Any]] = field(default_factory=list)
+    verification_errors: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_consistent(self) -> bool:
         return self.inconsistent == 0 and self.missing_in_pg == 0 and self.missing_in_immudb == 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "checked_at": self.checked_at.isoformat(),
             "total_checked": self.total_checked,
@@ -199,11 +197,11 @@ class HybridLedger:
 
     def __init__(self, config: HybridConfig):
         self.config = config
-        self._pg_engine: Optional[LedgerEngine] = None
-        self._immudb_trail: Optional[ImmutableAuditTrail] = None
-        self._anchor: Optional[BlockchainAnchor] = None
+        self._pg_engine: LedgerEngine | None = None
+        self._immudb_trail: ImmutableAuditTrail | None = None
+        self._anchor: BlockchainAnchor | None = None
         self._connected = False
-        self._background_tasks: List[asyncio.Task] = []
+        self._background_tasks: list[asyncio.Task] = []
 
     async def connect(self) -> None:
         """Initialize and connect to all stores."""
@@ -252,10 +250,8 @@ class HybridLedger:
         # Cancel background tasks
         for task in self._background_tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         self._background_tasks.clear()
 
         # Disconnect immudb
@@ -277,14 +273,14 @@ class HybridLedger:
         amount: Decimal,
         entry_type: LedgerEntryType,
         currency: str = "USDC",
-        tx_id: Optional[str] = None,
-        chain: Optional[str] = None,
-        chain_tx_hash: Optional[str] = None,
-        block_number: Optional[int] = None,
+        tx_id: str | None = None,
+        chain: str | None = None,
+        chain_tx_hash: str | None = None,
+        block_number: int | None = None,
         fee: Decimal = Decimal("0"),
-        metadata: Optional[Dict[str, Any]] = None,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> HybridReceipt:
         """
         Create a ledger entry with dual-write to PostgreSQL and immudb.
@@ -308,10 +304,10 @@ class HybridLedger:
         """
         self._ensure_connected()
 
-        pg_entry: Optional[LedgerEntry] = None
-        immudb_receipt: Optional[ImmutableReceipt] = None
-        pg_error: Optional[str] = None
-        immudb_error: Optional[str] = None
+        pg_entry: LedgerEntry | None = None
+        immudb_receipt: ImmutableReceipt | None = None
+        pg_error: str | None = None
+        immudb_error: str | None = None
 
         # 1. Write to PostgreSQL (primary)
         if self.config.enable_postgresql and self._pg_engine:
@@ -376,14 +372,12 @@ class HybridLedger:
                 if self.config.require_dual_write:
                     # Rollback PostgreSQL entry
                     if pg_entry and self._pg_engine:
-                        try:
+                        with contextlib.suppress(Exception):
                             self._pg_engine.rollback_entry(
                                 pg_entry.entry_id,
                                 reason=f"immudb write failed: {e}",
                                 actor_id=actor_id,
                             )
-                        except Exception:
-                            pass
                     raise HybridLedgerError(
                         f"immudb write failed: {e}",
                         immudb_error=immudb_error,
@@ -411,8 +405,8 @@ class HybridLedger:
     async def _write_to_immudb(
         self,
         entry: AuditEntry,
-        actor_id: Optional[str],
-        request_id: Optional[str],
+        actor_id: str | None,
+        request_id: str | None,
     ) -> None:
         """Background write to immudb."""
         try:
@@ -471,18 +465,18 @@ class HybridLedger:
 
         # 3. Cross-verify hashes
         if pg_entry and result.stored_hash:
-            pg_hash = pg_entry.compute_hash()
+            pg_entry.compute_hash()
             # Note: Hashes might differ slightly due to timestamp precision
             # In production, use canonical serialization
             result.consistency_verified = True
 
         # All checks passed
         result.status = VerificationStatus.VERIFIED
-        result.verified_at = datetime.now(timezone.utc)
+        result.verified_at = datetime.now(UTC)
 
         return result
 
-    async def get_audit_proof(self, entry_id: str) -> Dict[str, Any]:
+    async def get_audit_proof(self, entry_id: str) -> dict[str, Any]:
         """
         Get comprehensive audit proof for an entry.
 
@@ -502,7 +496,7 @@ class HybridLedger:
         proof = {
             "version": "1.0",
             "entry_id": entry_id,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "stores": {},
         }
 
@@ -539,7 +533,7 @@ class HybridLedger:
     async def check_consistency(
         self,
         sample_size: int = 100,
-        from_time: Optional[datetime] = None,
+        from_time: datetime | None = None,
     ) -> ConsistencyReport:
         """
         Check consistency between PostgreSQL and immudb.
@@ -633,10 +627,10 @@ class HybridLedger:
     def get_entries(
         self,
         account_id: str,
-        currency: Optional[str] = None,
+        currency: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[LedgerEntry]:
+    ) -> list[LedgerEntry]:
         """Get entries from PostgreSQL."""
         if not self._pg_engine:
             raise HybridLedgerError("PostgreSQL not enabled")
@@ -644,7 +638,7 @@ class HybridLedger:
             account_id, currency=currency, limit=limit, offset=offset
         )
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check health of all stores."""
         health = {
             "status": "healthy",

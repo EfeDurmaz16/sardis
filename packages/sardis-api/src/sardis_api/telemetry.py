@@ -8,8 +8,6 @@ Configuration via SARDIS_OTEL_* env vars (see SardisSettings in config.py).
 from __future__ import annotations
 
 import logging
-import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +32,9 @@ def init_telemetry(
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-        from opentelemetry.sdk.resources import Resource
     except ImportError:
         logger.warning("opentelemetry-sdk not installed — tracing disabled")
         return
@@ -129,7 +127,7 @@ def get_tracer(name: str = "sardis"):
         return _NoOpTracer()
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     """Return the current trace ID as a hex string, or None."""
     try:
         from opentelemetry import trace
@@ -143,7 +141,7 @@ def get_current_trace_id() -> Optional[str]:
     return None
 
 
-def get_current_span_id() -> Optional[str]:
+def get_current_span_id() -> str | None:
     """Return the current span ID as a hex string, or None."""
     try:
         from opentelemetry import trace

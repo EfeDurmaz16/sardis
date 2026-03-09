@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class SubscriptionRepository:
@@ -147,7 +147,7 @@ class SubscriptionRepository:
             db_row = await conn.fetchrow("SELECT * FROM subscriptions WHERE id = $1", row["id"])
             return dict(db_row) if db_row else row
 
-    async def get_subscription(self, subscription_id: str) -> Optional[dict[str, Any]]:
+    async def get_subscription(self, subscription_id: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             return self._subscriptions.get(subscription_id)
         pool = await self._get_pool()
@@ -160,9 +160,9 @@ class SubscriptionRepository:
     async def list_subscriptions(
         self,
         *,
-        owner_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        status: Optional[str] = None,
+        owner_id: str | None = None,
+        wallet_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -308,11 +308,11 @@ class SubscriptionRepository:
         self,
         event_id: str,
         *,
-        status: Optional[str] = None,
-        fund_tx_id: Optional[str] = None,
-        charge_tx_id: Optional[str] = None,
-        error: Optional[str] = None,
-    ) -> Optional[dict[str, Any]]:
+        status: str | None = None,
+        fund_tx_id: str | None = None,
+        charge_tx_id: str | None = None,
+        error: str | None = None,
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             row = self._billing_events.get(event_id)
             if not row:
@@ -355,8 +355,8 @@ class SubscriptionRepository:
         *,
         charged_at: datetime,
         next_billing: datetime,
-        charge_tx_id: Optional[str] = None,
-    ) -> Optional[dict[str, Any]]:
+        charge_tx_id: str | None = None,
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             row = self._subscriptions.get(subscription_id)
             if not row:
@@ -389,7 +389,7 @@ class SubscriptionRepository:
             row = await conn.fetchrow("SELECT * FROM subscriptions WHERE id = $1", subscription_id)
             return dict(row) if row else None
 
-    async def mark_subscription_failed(self, subscription_id: str, *, error: str | None = None) -> Optional[dict[str, Any]]:
+    async def mark_subscription_failed(self, subscription_id: str, *, error: str | None = None) -> dict[str, Any] | None:
         if not self._use_postgres():
             row = self._subscriptions.get(subscription_id)
             if not row:

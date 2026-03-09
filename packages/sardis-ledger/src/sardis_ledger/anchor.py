@@ -7,14 +7,14 @@ providing immutable proof of ledger state at specific points in time.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from .merkle_tree import MerkleTree, compute_entry_hash
 
@@ -32,7 +32,7 @@ class AnchorStatus(str, Enum):
 class AnchorConfig:
     """Configuration for blockchain anchoring."""
     chain: str = "base"  # Primary chain for anchoring
-    contract_address: Optional[str] = None  # Contract to store anchors
+    contract_address: str | None = None  # Contract to store anchors
     anchor_interval: int = 3600  # Seconds between anchors (default 1 hour)
     min_entries_per_anchor: int = 10  # Minimum entries to trigger anchor
     max_entries_per_anchor: int = 10000  # Maximum entries per anchor
@@ -54,12 +54,12 @@ class AnchorRecord:
     entry_count: int = 0
     first_entry_id: str = ""
     last_entry_id: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     chain: str = "base"
-    transaction_hash: Optional[str] = None
+    transaction_hash: str | None = None
     status: AnchorStatus = AnchorStatus.PENDING
-    block_number: Optional[int] = None
-    gas_used: Optional[int] = None
+    block_number: int | None = None
+    gas_used: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -348,8 +348,8 @@ class LedgerAnchor:
 
     async def get_anchors(
         self,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
     ) -> list[AnchorRecord]:
         """
         Get list of anchors within date range.
@@ -377,7 +377,7 @@ class LedgerAnchor:
 
         return anchors
 
-    async def get_latest_anchor(self) -> Optional[AnchorRecord]:
+    async def get_latest_anchor(self) -> AnchorRecord | None:
         """
         Get the most recent anchor.
 
@@ -391,7 +391,7 @@ class LedgerAnchor:
 
     def get_proof_for_entry(
         self, entry_id: str,
-    ) -> Optional[tuple[list[tuple[str, str]], str]]:
+    ) -> tuple[list[tuple[str, str]], str] | None:
         """
         Get Merkle proof and leaf hash for a specific entry.
 
@@ -468,7 +468,7 @@ class AnchorChainProvider:
         """Encode anchor(bytes32, string) ABI call."""
         import hashlib
         # Function selector: anchor(bytes32,string)
-        sig = hashlib.sha3_256(b"anchor(bytes32,string)").digest()[:4] if hasattr(hashlib, 'sha3_256') else b''
+        hashlib.sha3_256(b"anchor(bytes32,string)").digest()[:4] if hasattr(hashlib, 'sha3_256') else b''
         # Use keccak manually via the standard approach
         # keccak256("anchor(bytes32,string)") first 4 bytes
         # For reliability, hardcode the selector
@@ -560,7 +560,7 @@ class AnchorScheduler:
         self.config = config
         self._chain_provider = chain_provider
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
         logger.info(
             f"AnchorScheduler initialized: interval={config.anchor_interval}s, "
@@ -580,8 +580,7 @@ class AnchorScheduler:
             return
 
         self._running = True
-        last_anchor_time = datetime.now(timezone.utc)
-        last_entry_id: Optional[str] = None
+        datetime.now(UTC)
 
         logger.info("AnchorScheduler started")
 
@@ -614,9 +613,9 @@ class AnchorScheduler:
                             f"tx={tx_hash[:16]}..."
                         )
 
-                        last_anchor_time = datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         if unanchored_entries:
-                            last_entry_id = unanchored_entries[-1].get(
+                            unanchored_entries[-1].get(
                                 "entry_id", unanchored_entries[-1].get("audit_id")
                             )
                     else:
@@ -664,10 +663,8 @@ class AnchorScheduler:
 
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
         logger.info("Scheduler stopped")
 

@@ -1,7 +1,7 @@
 """Treasury resource for Sardis SDK."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from ..models.treasury import (
     CreateExternalBankAccountRequest,
@@ -25,8 +25,8 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def sync_account_holders(
         self,
         *,
-        account_token: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        account_token: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
         payload = SyncAccountHolderRequest(account_token=account_token).model_dump(exclude_none=True)
         data = await self._post("treasury/account-holders/sync", payload, timeout=timeout)
@@ -35,9 +35,9 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def list_financial_accounts(
         self,
         *,
-        account_token: Optional[str] = None,
+        account_token: str | None = None,
         refresh: bool = False,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
         params: dict[str, object] = {"refresh": refresh}
         params["refresh"] = str(refresh).lower()
@@ -49,7 +49,7 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def create_external_bank_account(
         self,
         request: CreateExternalBankAccountRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExternalBankAccount:
         data = await self._post(
             "treasury/external-bank-accounts",
@@ -62,7 +62,7 @@ class AsyncTreasuryResource(AsyncBaseResource):
         self,
         token: str,
         request: VerifyMicroDepositsRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExternalBankAccount:
         data = await self._post(
             f"treasury/external-bank-accounts/{token}/verify-micro-deposits",
@@ -74,7 +74,7 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def fund(
         self,
         request: TreasuryPaymentRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = await self._post("treasury/fund", request.model_dump(exclude_none=True), timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
@@ -82,7 +82,7 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def withdraw(
         self,
         request: TreasuryPaymentRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = await self._post("treasury/withdraw", request.model_dump(exclude_none=True), timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
@@ -90,14 +90,14 @@ class AsyncTreasuryResource(AsyncBaseResource):
     async def get_payment(
         self,
         payment_token: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = await self._get(f"treasury/payments/{payment_token}", timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
 
     async def get_balances(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[TreasuryBalance]:
         data = await self._get("treasury/balances", timeout=timeout)
         return [TreasuryBalance.model_validate(item) for item in data]
@@ -109,8 +109,8 @@ class TreasuryResource(SyncBaseResource):
     def sync_account_holders(
         self,
         *,
-        account_token: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        account_token: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
         payload = SyncAccountHolderRequest(account_token=account_token).model_dump(exclude_none=True)
         data = self._post("treasury/account-holders/sync", payload, timeout=timeout)
@@ -119,9 +119,9 @@ class TreasuryResource(SyncBaseResource):
     def list_financial_accounts(
         self,
         *,
-        account_token: Optional[str] = None,
+        account_token: str | None = None,
         refresh: bool = False,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
         params: dict[str, object] = {"refresh": refresh}
         params["refresh"] = str(refresh).lower()
@@ -133,7 +133,7 @@ class TreasuryResource(SyncBaseResource):
     def create_external_bank_account(
         self,
         request: CreateExternalBankAccountRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExternalBankAccount:
         data = self._post(
             "treasury/external-bank-accounts",
@@ -146,7 +146,7 @@ class TreasuryResource(SyncBaseResource):
         self,
         token: str,
         request: VerifyMicroDepositsRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ExternalBankAccount:
         data = self._post(
             f"treasury/external-bank-accounts/{token}/verify-micro-deposits",
@@ -158,7 +158,7 @@ class TreasuryResource(SyncBaseResource):
     def fund(
         self,
         request: TreasuryPaymentRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = self._post("treasury/fund", request.model_dump(exclude_none=True), timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
@@ -166,7 +166,7 @@ class TreasuryResource(SyncBaseResource):
     def withdraw(
         self,
         request: TreasuryPaymentRequest,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = self._post("treasury/withdraw", request.model_dump(exclude_none=True), timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
@@ -174,14 +174,14 @@ class TreasuryResource(SyncBaseResource):
     def get_payment(
         self,
         payment_token: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> TreasuryPaymentResponse:
         data = self._get(f"treasury/payments/{payment_token}", timeout=timeout)
         return TreasuryPaymentResponse.model_validate(data)
 
     def get_balances(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> list[TreasuryBalance]:
         data = self._get("treasury/balances", timeout=timeout)
         return [TreasuryBalance.model_validate(item) for item in data]

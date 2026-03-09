@@ -14,9 +14,9 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from .config import NonceManagerConfig, get_config
 
@@ -37,12 +37,12 @@ class ReceiptValidation:
     """Result of transaction receipt validation."""
     status: TransactionReceiptStatus
     tx_hash: str
-    block_number: Optional[int] = None
-    gas_used: Optional[int] = None
-    effective_gas_price: Optional[int] = None
-    logs: List[Dict[str, Any]] = field(default_factory=list)
-    error_message: Optional[str] = None
-    revert_reason: Optional[str] = None
+    block_number: int | None = None
+    gas_used: int | None = None
+    effective_gas_price: int | None = None
+    logs: list[dict[str, Any]] = field(default_factory=list)
+    error_message: str | None = None
+    revert_reason: str | None = None
 
     @property
     def is_successful(self) -> bool:
@@ -71,15 +71,15 @@ class PendingTransaction:
     data_hash: str  # Hash of transaction data for replacement detection
 
     # Tracking
-    last_checked: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_checked: datetime = field(default_factory=lambda: datetime.now(UTC))
     check_count: int = 0
-    receipt: Optional[ReceiptValidation] = None
+    receipt: ReceiptValidation | None = None
 
     def is_stuck(self, timeout_seconds: float) -> bool:
         """Check if transaction is stuck (no receipt after timeout)."""
         if self.receipt and self.receipt.is_final:
             return False
-        elapsed = (datetime.now(timezone.utc) - self.submitted_at).total_seconds()
+        elapsed = (datetime.now(UTC) - self.submitted_at).total_seconds()
         return elapsed > timeout_seconds
 
 
@@ -113,8 +113,8 @@ class TransactionFailedError(Exception):
     def __init__(
         self,
         tx_hash: str,
-        revert_reason: Optional[str] = None,
-        receipt: Optional[ReceiptValidation] = None,
+        revert_reason: str | None = None,
+        receipt: ReceiptValidation | None = None,
     ):
         self.tx_hash = tx_hash
         self.revert_reason = revert_reason
@@ -144,16 +144,16 @@ class NonceManager:
 
     def __init__(
         self,
-        config: Optional[NonceManagerConfig] = None,
+        config: NonceManagerConfig | None = None,
     ):
         self._config = config or get_config().nonce_manager
-        self._locks: Dict[str, asyncio.Lock] = {}  # Per-address locks
+        self._locks: dict[str, asyncio.Lock] = {}  # Per-address locks
         self._locks_guard = asyncio.Lock()  # Guards creation of per-address locks
-        self._nonces: Dict[str, int] = {}  # Current nonce per address
-        self._pending_txs: Dict[str, PendingTransaction] = {}  # tx_hash -> PendingTransaction
-        self._address_pending: Dict[str, Set[str]] = {}  # address -> set of pending tx hashes
-        self._nonce_to_tx: Dict[str, str] = {}  # "address:nonce" -> tx_hash
-        self._last_sync: Dict[str, float] = {}  # Last nonce sync time per address
+        self._nonces: dict[str, int] = {}  # Current nonce per address
+        self._pending_txs: dict[str, PendingTransaction] = {}  # tx_hash -> PendingTransaction
+        self._address_pending: dict[str, set[str]] = {}  # address -> set of pending tx hashes
+        self._nonce_to_tx: dict[str, str] = {}  # "address:nonce" -> tx_hash
+        self._last_sync: dict[str, float] = {}  # Last nonce sync time per address
 
     def _get_lock(self, address: str) -> asyncio.Lock:
         """Get or create lock for an address.
@@ -311,7 +311,7 @@ class NonceManager:
             nonce=nonce,
             address=address_lower,
             chain=chain,
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             gas_price=gas_price,
             priority_fee=priority_fee,
             data_hash=data_hash,
@@ -419,7 +419,7 @@ class NonceManager:
         self,
         tx_hash: str,
         rpc_client: Any,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Attempt to extract revert reason from failed transaction."""
         try:
             # Get the original transaction
@@ -551,8 +551,8 @@ class NonceManager:
 
     async def get_stuck_transactions(
         self,
-        address: Optional[str] = None,
-    ) -> List[PendingTransaction]:
+        address: str | None = None,
+    ) -> list[PendingTransaction]:
         """
         Get list of stuck transactions.
 
@@ -565,7 +565,7 @@ class NonceManager:
         stuck = []
         timeout = self._config.stuck_tx_timeout_seconds
 
-        for tx_hash, pending in self._pending_txs.items():
+        for _tx_hash, pending in self._pending_txs.items():
             if address and pending.address != address.lower():
                 continue
 
@@ -578,7 +578,7 @@ class NonceManager:
         self,
         original_tx: PendingTransaction,
         rpc_client: Any,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """
         Calculate gas prices for a replacement transaction.
 
@@ -672,8 +672,8 @@ class NonceManager:
 
     def get_all_pending(
         self,
-        address: Optional[str] = None,
-    ) -> List[PendingTransaction]:
+        address: str | None = None,
+    ) -> list[PendingTransaction]:
         """Get all pending transactions, optionally filtered by address."""
         if address:
             address_lower = address.lower()
@@ -684,7 +684,7 @@ class NonceManager:
             ]
         return list(self._pending_txs.values())
 
-    def clear_pending(self, address: Optional[str] = None) -> int:
+    def clear_pending(self, address: str | None = None) -> int:
         """
         Clear pending transaction tracking.
 
@@ -730,11 +730,11 @@ class NonceManager:
 
 
 # Global nonce manager instance
-_nonce_manager: Optional[NonceManager] = None
+_nonce_manager: NonceManager | None = None
 
 
 def get_nonce_manager(
-    config: Optional[NonceManagerConfig] = None,
+    config: NonceManagerConfig | None = None,
 ) -> NonceManager:
     """Get the global nonce manager instance."""
     global _nonce_manager

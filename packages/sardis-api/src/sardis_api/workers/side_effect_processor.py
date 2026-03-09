@@ -61,15 +61,14 @@ async def _process_webhook(payload: dict[str, Any]) -> None:
         headers = payload.get("headers", {})
         headers.setdefault("Content-Type", "application/json")
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url,
-                json=body,
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as resp:
-                if resp.status >= 400:
-                    raise RuntimeError(f"Webhook returned {resp.status}")
+        async with aiohttp.ClientSession() as session, session.post(
+            url,
+            json=body,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status >= 400:
+                raise RuntimeError(f"Webhook returned {resp.status}")
     except ImportError:
         raise RuntimeError("aiohttp not installed")
 

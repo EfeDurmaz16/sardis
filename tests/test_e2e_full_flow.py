@@ -10,25 +10,35 @@ import hashlib
 import hmac as hmac_mod
 import json
 import time
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
-
+from fastapi.testclient import TestClient
 from sardis_api.authz import Principal, require_principal
+from sardis_api.routers.cards import create_cards_router
 from sardis_api.routers.ramp import (
-    router as ramp_router,
-    public_router as ramp_public_router,
-    get_deps as ramp_get_deps,
     RampDependencies,
 )
-from sardis_api.routers.wallets import router as wallets_router, get_deps as wallets_get_deps, WalletDependencies
-from sardis_api.routers.cards import create_cards_router
+from sardis_api.routers.ramp import (
+    get_deps as ramp_get_deps,
+)
+from sardis_api.routers.ramp import (
+    public_router as ramp_public_router,
+)
+from sardis_api.routers.ramp import (
+    router as ramp_router,
+)
+from sardis_api.routers.wallets import WalletDependencies
+from sardis_api.routers.wallets import get_deps as wallets_get_deps
+from sardis_api.routers.wallets import router as wallets_router
 from sardis_cards.offramp import (
-    OfframpQuote, OfframpTransaction, OfframpProvider, OfframpStatus,
+    OfframpProvider,
+    OfframpQuote,
+    OfframpStatus,
+    OfframpTransaction,
 )
 
 pytestmark = pytest.mark.e2e
@@ -85,7 +95,7 @@ def offramp_service():
         output_amount_cents=99_500_000,
         exchange_rate=Decimal("1.0"),
         fee_cents=500_000,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
     )
     tx = OfframpTransaction(
         transaction_id="tx_e2e",
@@ -98,7 +108,7 @@ def offramp_service():
         output_amount_cents=quote.output_amount_cents,
         destination_account="bank_acct_123",
         status=OfframpStatus.PROCESSING,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     service = AsyncMock()
     service.get_quote = AsyncMock(return_value=quote)

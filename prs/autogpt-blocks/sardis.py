@@ -10,12 +10,10 @@ Installation:
 from __future__ import annotations
 
 import os
-from typing import Iterator
-
-from pydantic import BaseModel, Field
 
 from backend.data.block import Block, BlockCategory, BlockOutput, BlockSchema
 from backend.data.model import SchemaField
+from pydantic import BaseModel
 
 
 class SardisCredentials(BaseModel):

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import Request
 
@@ -16,7 +16,7 @@ logger = logging.getLogger("sardis.audit")
 
 async def log_access_event(
     event_type: str,
-    request: Optional[Request] = None,
+    request: Request | None = None,
     user_id: str | None = None,
     org_id: str | None = None,
     status_code: int | None = None,

@@ -22,13 +22,11 @@ Usage:
 No external dependencies required (runs offline with RegexPolicyParser).
 """
 import asyncio
-import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
 
 # pytest is optional for direct execution
 try:
@@ -45,20 +43,14 @@ sys.path.insert(0, str(project_root / "packages" / "sardis-core" / "src"))
 
 # Import Sardis core components
 from sardis_v2_core import (
-    Agent,
     AgentPolicy,
     AgentRepository,
+    RegexPolicyParser,
     SpendingLimits,
-    Wallet,
-    WalletRepository,
     SpendingPolicy,
     TimeWindowLimit,
-    MerchantRule,
     TrustLevel,
-    SpendingScope,
-    create_default_policy,
-    RegexPolicyParser,
-    InMemorySpendingTracker,
+    WalletRepository,
 )
 
 
@@ -125,9 +117,9 @@ class PaymentAttempt:
     merchant: Merchant
     amount: Decimal
     expected_approved: bool
-    expected_reason: Optional[str] = None
-    actual_approved: Optional[bool] = None
-    actual_reason: Optional[str] = None
+    expected_reason: str | None = None
+    actual_approved: bool | None = None
+    actual_reason: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -164,7 +156,7 @@ async def run_full_scenario_test() -> ScenarioResults:
     results = ScenarioResults()
 
     print_header("SARDIS FULL SCENARIO E2E TEST")
-    print(f"  Time: {datetime.now(timezone.utc).isoformat()}")
+    print(f"  Time: {datetime.now(UTC).isoformat()}")
     print(f"  Platform: {sys.platform}")
     print(f"  Python: {sys.version.split()[0]}")
 

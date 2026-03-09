@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 import hashlib
 import inspect
-from typing import Any, Iterable
+from collections.abc import Iterable
+from decimal import Decimal
+from typing import Any
 
 from ..models import CardType
 from .issuing_ports import IssuerAdapter

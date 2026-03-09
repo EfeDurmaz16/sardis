@@ -1,18 +1,18 @@
 """Unit tests for GroupPolicyEvaluator."""
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from sardis_v2_core.agent_groups import (
     AgentGroupRepository,
-    GroupSpendingLimits,
     GroupMerchantPolicy,
+    GroupSpendingLimits,
 )
 from sardis_v2_core.group_policy import (
     GroupPolicyEvaluator,
     InMemoryGroupSpendingTracker,
-    GroupSpending,
 )
 
 

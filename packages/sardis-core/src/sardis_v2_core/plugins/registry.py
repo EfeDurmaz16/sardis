@@ -6,24 +6,19 @@ for Sardis plugins with timeout protection.
 """
 
 import asyncio
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
-import uuid
+from typing import Any
 
 from .base import (
-    ApprovalPlugin,
     ApprovalResult,
-    AuditPlugin,
     NotificationPlugin,
-    PolicyDecision,
-    PolicyPlugin,
     PluginMetadata,
     PluginType,
+    PolicyDecision,
     SardisPlugin,
-    WebhookPlugin,
 )
-
 
 # Plugin execution timeout (5 seconds)
 PLUGIN_TIMEOUT_SECONDS = 5.0
@@ -150,7 +145,7 @@ class PluginRegistry:
             return self._plugins[plugin_id]
 
     async def list_plugins(
-        self, plugin_type: Optional[PluginType] = None
+        self, plugin_type: PluginType | None = None
     ) -> list[PluginInfo]:
         """
         List all installed plugins, optionally filtered by type.
@@ -184,13 +179,13 @@ class PluginRegistry:
         policy_plugins = await self._get_enabled_plugins_by_type(PluginType.POLICY)
 
         decisions = []
-        for plugin_id, plugin in policy_plugins:
+        for _plugin_id, plugin in policy_plugins:
             try:
                 decision = await asyncio.wait_for(
                     plugin.evaluate(transaction), timeout=PLUGIN_TIMEOUT_SECONDS
                 )
                 decisions.append(decision)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Plugin timed out, treat as rejection
                 decisions.append(
                     PolicyDecision(
@@ -237,7 +232,7 @@ class PluginRegistry:
             )
 
         last_result = None
-        for plugin_id, plugin in approval_plugins:
+        for _plugin_id, plugin in approval_plugins:
             try:
                 result = await asyncio.wait_for(
                     plugin.request_approval(transaction), timeout=PLUGIN_TIMEOUT_SECONDS
@@ -249,7 +244,7 @@ class PluginRegistry:
 
                 last_result = result
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 last_result = ApprovalResult(
                     approved=False,
                     approver=None,
@@ -287,7 +282,7 @@ class PluginRegistry:
 
         # Execute all notification plugins concurrently
         tasks = []
-        for plugin_id, plugin in notification_plugins:
+        for _plugin_id, plugin in notification_plugins:
             task = asyncio.create_task(
                 self._execute_notification_plugin(plugin, event)
             )
@@ -305,7 +300,7 @@ class PluginRegistry:
             await asyncio.wait_for(
                 plugin.notify(event), timeout=PLUGIN_TIMEOUT_SECONDS
             )
-        except (asyncio.TimeoutError, Exception):
+        except (TimeoutError, Exception):
             # Notification failures are non-fatal, just log
             pass
 

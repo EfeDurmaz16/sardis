@@ -22,8 +22,8 @@ Usage:
         result = await handler.handle(tool_call)
 """
 
-from .tools import get_sardis_tools, SARDIS_TOOL_DEFINITIONS
 from .handler import SardisToolHandler, handle_tool_call
+from .tools import SARDIS_TOOL_DEFINITIONS, get_sardis_tools
 
 __all__ = [
     "get_sardis_tools",

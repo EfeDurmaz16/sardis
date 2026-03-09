@@ -5,12 +5,10 @@ A LangChain-powered AI agent with Sardis payment capabilities.
 Demonstrates policy-enforced autonomous spending.
 """
 import os
-import asyncio
+from datetime import UTC, datetime
 from typing import Any
-from datetime import datetime, timezone
 
 from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 
 console = Console()
@@ -37,7 +35,7 @@ class SardisAgent:
         self.api_key = api_key or os.getenv("SARDIS_API_KEY", "sk_test_demo")
         self.api_url = api_url or os.getenv("SARDIS_API_URL", "http://localhost:8000")
         self.wallet_id = wallet_id
-        self.agent_id = agent_id or f"demo_agent_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+        self.agent_id = agent_id or f"demo_agent_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
         self.transaction_history: list[dict[str, Any]] = []
         self._client = None
         self._tools = None
@@ -135,7 +133,7 @@ class SardisAgent:
         category: str,
     ) -> dict[str, Any]:
         """Execute a payment through Sardis."""
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         # First check policy
         policy_result = await self.check_policy(vendor, amount, category)

@@ -1,15 +1,11 @@
 """Ledger API routes for transaction history."""
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-
 from sardis_ledger.records import LedgerStore
 
 from sardis_api.authz import require_principal
-
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["ledger"])
 
@@ -21,9 +17,9 @@ class TransactionResponse(BaseModel):
     to_wallet: str
     amount: str
     currency: str
-    chain: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    audit_anchor: Optional[str] = None
+    chain: str | None = None
+    chain_tx_hash: str | None = None
+    audit_anchor: str | None = None
     created_at: str
     status: str = "confirmed"
 
@@ -31,14 +27,14 @@ class LedgerEntryResponse(BaseModel):
     """Ledger entry response model (SDK-compatible)."""
 
     tx_id: str
-    mandate_id: Optional[str] = None
-    from_wallet: Optional[str] = None
-    to_wallet: Optional[str] = None
+    mandate_id: str | None = None
+    from_wallet: str | None = None
+    to_wallet: str | None = None
     amount: str
     currency: str
-    chain: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    audit_anchor: Optional[str] = None
+    chain: str | None = None
+    chain_tx_hash: str | None = None
+    audit_anchor: str | None = None
     created_at: str
 
 
@@ -54,7 +50,7 @@ def get_deps() -> LedgerDependencies:
 
 @router.get("/entries", response_model=dict)
 async def list_entries(
-    wallet_id: Optional[str] = Query(default=None),
+    wallet_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     deps: LedgerDependencies = Depends(get_deps),
@@ -144,7 +140,7 @@ async def verify_entry(
     }
 
 
-@router.get("/recent", response_model=List[TransactionResponse])
+@router.get("/recent", response_model=list[TransactionResponse])
 async def get_recent_transactions(
     limit: int = Query(default=50, ge=1, le=500),
     deps: LedgerDependencies = Depends(get_deps),
@@ -155,7 +151,7 @@ async def get_recent_transactions(
         transactions = await deps.ledger.list_recent_async(limit)
     else:
         transactions = deps.ledger.list_recent(limit)
-    
+
     return [
         TransactionResponse(
             tx_id=tx.tx_id,
@@ -183,9 +179,9 @@ async def get_ledger_stats(
         transactions = await deps.ledger.list_recent_async(1000)
     else:
         transactions = deps.ledger.list_recent(1000)
-    
+
     total_volume = sum(float(tx.amount) for tx in transactions)
-    
+
     return {
         "total_transactions": len(transactions),
         "total_volume": str(total_volume),

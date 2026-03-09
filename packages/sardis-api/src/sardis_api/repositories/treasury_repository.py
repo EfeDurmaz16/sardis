@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+import hashlib
 import os
 import uuid
-import hashlib
+from datetime import UTC, datetime
+from typing import Any
 
 
 class TreasuryRepository:
@@ -53,11 +53,11 @@ class TreasuryRepository:
             "routing_number": account.get("routing_number"),
             "account_number_last4": (account.get("account_number") or "")[-4:] if account.get("account_number") else None,
             "metadata": account,
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(UTC),
         }
 
         if not self._use_postgres():
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             row["created_at"] = self._financial_accounts.get((organization_id, token), {}).get("created_at", now)
             self._financial_accounts[(organization_id, token)] = row
             return row
@@ -114,7 +114,7 @@ class TreasuryRepository:
             )
             return dict(db_row) if db_row else row
 
-    async def get_financial_account(self, organization_id: str, financial_account_token: str) -> Optional[dict[str, Any]]:
+    async def get_financial_account(self, organization_id: str, financial_account_token: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             return self._financial_accounts.get((organization_id, financial_account_token))
         pool = await self._get_pool()
@@ -137,7 +137,7 @@ class TreasuryRepository:
     async def list_financial_accounts(
         self,
         organization_id: str,
-        account_token: Optional[str] = None,
+        account_token: str | None = None,
     ) -> list[dict[str, Any]]:
         if not self._use_postgres():
             rows = [
@@ -169,7 +169,7 @@ class TreasuryRepository:
         self,
         organization_id: str,
         preferred_role: str = "ISSUING",
-    ) -> Optional[str]:
+    ) -> str | None:
         accounts = await self.list_financial_accounts(organization_id)
         if not accounts:
             return None
@@ -275,7 +275,7 @@ class TreasuryRepository:
             )
             return dict(db_row) if db_row else row
 
-    async def get_external_bank_account(self, organization_id: str, token: str) -> Optional[dict[str, Any]]:
+    async def get_external_bank_account(self, organization_id: str, token: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             return self._external_bank_accounts.get((organization_id, token))
         pool = await self._get_pool()
@@ -297,7 +297,7 @@ class TreasuryRepository:
         organization_id: str,
         payment: dict[str, Any],
         *,
-        idempotency_key: Optional[str] = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         payment_token = str(payment.get("token", ""))
         if not payment_token:
@@ -385,7 +385,7 @@ class TreasuryRepository:
             )
             return dict(db_row) if db_row else row
 
-    async def get_ach_payment(self, organization_id: str, payment_token: str) -> Optional[dict[str, Any]]:
+    async def get_ach_payment(self, organization_id: str, payment_token: str) -> dict[str, Any] | None:
         if not self._use_postgres():
             return self._payments.get((organization_id, payment_token))
         pool = await self._get_pool()
@@ -405,10 +405,10 @@ class TreasuryRepository:
         payment_token: str,
         status_value: str,
         *,
-        result: Optional[str] = None,
-        return_reason_code: Optional[str] = None,
-        provider_reference: Optional[str] = None,
-    ) -> Optional[dict[str, Any]]:
+        result: str | None = None,
+        return_reason_code: str | None = None,
+        provider_reference: str | None = None,
+    ) -> dict[str, Any] | None:
         if not self._use_postgres():
             row = self._payments.get((organization_id, payment_token))
             if row is None:
@@ -420,7 +420,7 @@ class TreasuryRepository:
                 row["last_return_reason_code"] = return_reason_code
             if provider_reference is not None:
                 row["provider_reference"] = provider_reference
-            row["updated_at"] = datetime.now(timezone.utc)
+            row["updated_at"] = datetime.now(UTC)
             return row
         pool = await self._get_pool()
         if pool is None:
@@ -520,7 +520,7 @@ class TreasuryRepository:
         available_amount_minor: int,
         pending_amount_minor: int,
         total_amount_minor: int,
-        as_of_event_token: Optional[str] = None,
+        as_of_event_token: str | None = None,
     ) -> dict[str, Any]:
         row = {
             "organization_id": organization_id,
@@ -530,7 +530,7 @@ class TreasuryRepository:
             "pending_amount_minor": int(pending_amount_minor),
             "total_amount_minor": int(total_amount_minor),
             "as_of_event_token": as_of_event_token,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         }
         if not self._use_postgres():
             self._balance_snapshots.append(row)
@@ -591,14 +591,14 @@ class TreasuryRepository:
         *,
         reservation_id: str,
         organization_id: str,
-        wallet_id: Optional[str],
-        card_id: Optional[str],
+        wallet_id: str | None,
+        card_id: str | None,
         currency: str,
         amount_minor: int,
         status: str,
-        reason: Optional[str] = None,
-        reference_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        reason: str | None = None,
+        reference_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         row = {
             "reservation_id": reservation_id,
@@ -611,7 +611,7 @@ class TreasuryRepository:
             "reason": reason,
             "reference_id": reference_id,
             "metadata": metadata or {},
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(UTC),
         }
         if not self._use_postgres():
             row["created_at"] = row["updated_at"]
@@ -658,7 +658,7 @@ class TreasuryRepository:
         organization_id: str,
         external_bank_account_token: str,
         reason: str,
-        return_code: Optional[str] = None,
+        return_code: str | None = None,
     ) -> None:
         if not self._use_postgres():
             row = self._external_bank_accounts.get((organization_id, external_bank_account_token))
@@ -692,7 +692,7 @@ class TreasuryRepository:
         self,
         organization_id: str,
         *,
-        status_filter: Optional[list[str]] = None,
+        status_filter: list[str] | None = None,
         limit: int = 200,
     ) -> list[dict[str, Any]]:
         if not self._use_postgres():
@@ -775,7 +775,7 @@ class TreasuryRepository:
 
     async def get_org_payment_stats(self, organization_id: str, *, hours: int = 24) -> dict[str, int]:
         if not self._use_postgres():
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             total_minor = 0
             count = 0
             for (org, _), row in self._payments.items():
@@ -912,9 +912,9 @@ class TreasuryRepository:
         amount_minor: int,
         currency: str,
         status_value: str,
-        connected_account_id: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        connected_account_id: str | None = None,
+        idempotency_key: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not transfer_id:
             raise ValueError("transfer_id is required")
@@ -931,8 +931,8 @@ class TreasuryRepository:
             "connected_account_id": connected_account_id,
             "idempotency_key": idempotency_key,
             "metadata": metadata or {},
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
         if not self._use_postgres():
@@ -1004,8 +1004,8 @@ class TreasuryRepository:
         organization_id: str,
         *,
         limit: int = 100,
-        provider: Optional[str] = None,
-        connected_account_id: Optional[str] = None,
+        provider: str | None = None,
+        connected_account_id: str | None = None,
     ) -> list[dict[str, Any]]:
         if not self._use_postgres():
             rows = [
@@ -1053,7 +1053,7 @@ class TreasuryRepository:
         hours: int = 24,
     ) -> dict[str, Any]:
         if not self._use_postgres():
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             total_minor = 0
             count = 0
             by_status: dict[str, int] = {}
@@ -1093,11 +1093,11 @@ class TreasuryRepository:
         provider: str,
         rail: str,
         status_value: str,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
         amount_minor: int,
         currency: str,
-        connected_account_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        connected_account_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not operation_id:
             raise ValueError("operation_id is required")
@@ -1117,7 +1117,7 @@ class TreasuryRepository:
             "currency": str(currency or "USD").upper(),
             "connected_account_id": connected_account_id,
             "metadata": metadata or {},
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         if not self._use_postgres():
@@ -1178,7 +1178,7 @@ class TreasuryRepository:
         self,
         organization_id: str,
         *,
-        operation_id: Optional[str] = None,
+        operation_id: str | None = None,
         limit: int = 200,
     ) -> list[dict[str, Any]]:
         if not self._use_postgres():
@@ -1258,15 +1258,15 @@ class TreasuryRepository:
     async def list_organization_ids(self) -> list[str]:
         if not self._use_postgres():
             orgs = set()
-            for org, _ in self._payments.keys():
+            for org, _ in self._payments:
                 orgs.add(org)
-            for org, _ in self._financial_accounts.keys():
+            for org, _ in self._financial_accounts:
                 orgs.add(org)
-            for org, _ in self._external_bank_accounts.keys():
+            for org, _ in self._external_bank_accounts:
                 orgs.add(org)
-            for org, _, _ in self._issuing_funding_events.keys():
+            for org, _, _ in self._issuing_funding_events:
                 orgs.add(org)
-            for org, _, _ in self._funding_attempts.keys():
+            for org, _, _ in self._funding_attempts:
                 orgs.add(org)
             return sorted(orgs)
         pool = await self._get_pool()
@@ -1295,7 +1295,7 @@ class TreasuryRepository:
         event_id: str,
         body: bytes,
         status_value: str = "processed",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         body_hash = hashlib.sha256(body).hexdigest() if body else ""
         if not self._use_postgres():
@@ -1305,7 +1305,7 @@ class TreasuryRepository:
                 "body_hash": body_hash,
                 "status": status_value,
                 "metadata": metadata or {},
-                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "processed_at": datetime.now(UTC).isoformat(),
             }
             return
         pool = await self._get_pool()

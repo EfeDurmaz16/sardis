@@ -9,14 +9,15 @@ When payments fail or policies block, provides structured recovery flows:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
-from enum import Enum
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Callable, Coroutine, Optional
-import asyncio
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,8 @@ class PaymentException:
     resolution_notes: str | None = None
     resolved_at: datetime | None = None
     resolved_by: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -148,7 +149,7 @@ class ExceptionWorkflowEngine:
             strategy = exc.suggested_strategy or self.suggest_strategy(exc)
 
         exc.status = ExceptionStatus.IN_PROGRESS
-        exc.updated_at = datetime.now(timezone.utc)
+        exc.updated_at = datetime.now(UTC)
 
         logger.info(
             "Executing strategy %s for exception %s (retry_count=%d)",
@@ -160,13 +161,13 @@ class ExceptionWorkflowEngine:
         if strategy == ResolutionStrategy.RETRY:
             if retry_fn is not None and exc.retry_count < exc.max_retries:
                 exc.retry_count += 1
-                exc.updated_at = datetime.now(timezone.utc)
+                exc.updated_at = datetime.now(UTC)
                 try:
                     success = await retry_fn()
                     if success:
                         exc.status = ExceptionStatus.RESOLVED
                         exc.resolution_notes = f"Resolved via immediate retry (attempt {exc.retry_count})"
-                        exc.resolved_at = datetime.now(timezone.utc)
+                        exc.resolved_at = datetime.now(UTC)
                     else:
                         exc.status = ExceptionStatus.OPEN
                         exc.resolution_notes = f"Retry attempt {exc.retry_count} failed"
@@ -194,7 +195,7 @@ class ExceptionWorkflowEngine:
                 )
                 await asyncio.sleep(backoff_seconds)
                 exc.retry_count += 1
-                exc.updated_at = datetime.now(timezone.utc)
+                exc.updated_at = datetime.now(UTC)
                 try:
                     success = await retry_fn()
                     if success:
@@ -203,7 +204,7 @@ class ExceptionWorkflowEngine:
                             f"Resolved via backoff retry (attempt {exc.retry_count}, "
                             f"backoff {backoff_seconds}s)"
                         )
-                        exc.resolved_at = datetime.now(timezone.utc)
+                        exc.resolved_at = datetime.now(UTC)
                     else:
                         exc.status = ExceptionStatus.OPEN
                         exc.resolution_notes = (
@@ -251,7 +252,7 @@ class ExceptionWorkflowEngine:
                 )
                 await asyncio.sleep(60)
                 exc.retry_count += 1
-                exc.updated_at = datetime.now(timezone.utc)
+                exc.updated_at = datetime.now(UTC)
                 try:
                     success = await retry_fn()
                     if success:
@@ -259,7 +260,7 @@ class ExceptionWorkflowEngine:
                         exc.resolution_notes = (
                             f"Resolved after 60s wait (attempt {exc.retry_count})"
                         )
-                        exc.resolved_at = datetime.now(timezone.utc)
+                        exc.resolved_at = datetime.now(UTC)
                     else:
                         exc.status = ExceptionStatus.OPEN
                         exc.resolution_notes = (
@@ -280,13 +281,13 @@ class ExceptionWorkflowEngine:
                 f"Refund required for {exc.original_amount} {exc.currency} "
                 f"on transaction {exc.transaction_id}. Initiate refund flow."
             )
-            exc.resolved_at = datetime.now(timezone.utc)
+            exc.resolved_at = datetime.now(UTC)
 
         else:
             exc.status = ExceptionStatus.ESCALATED
             exc.resolution_notes = f"Unknown strategy {strategy}; escalated"
 
-        exc.updated_at = datetime.now(timezone.utc)
+        exc.updated_at = datetime.now(UTC)
         return exc
 
     def resolve(
@@ -301,9 +302,9 @@ class ExceptionWorkflowEngine:
             raise KeyError(f"Exception not found: {exception_id}")
         exc.status = ExceptionStatus.RESOLVED
         exc.resolved_by = resolved_by
-        exc.resolved_at = datetime.now(timezone.utc)
+        exc.resolved_at = datetime.now(UTC)
         exc.resolution_notes = notes
-        exc.updated_at = datetime.now(timezone.utc)
+        exc.updated_at = datetime.now(UTC)
         logger.info("Exception %s manually resolved by %s", exception_id, resolved_by)
         return exc
 
@@ -314,7 +315,7 @@ class ExceptionWorkflowEngine:
             raise KeyError(f"Exception not found: {exception_id}")
         exc.status = ExceptionStatus.ESCALATED
         exc.resolution_notes = reason
-        exc.updated_at = datetime.now(timezone.utc)
+        exc.updated_at = datetime.now(UTC)
         logger.info("Exception %s escalated: %s", exception_id, reason)
         return exc
 

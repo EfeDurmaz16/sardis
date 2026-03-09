@@ -11,16 +11,16 @@ This module provides production-grade transaction handling with:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import threading
 import time
 import uuid
+from collections.abc import Generator, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, Generator, List, Optional, Sequence, Tuple, TypeVar
+from typing import Any, TypeVar
 
 from .models import (
     AuditAction,
@@ -31,8 +31,6 @@ from .models import (
     LedgerEntryStatus,
     LedgerEntryType,
     LockRecord,
-    ReconciliationRecord,
-    ReconciliationStatus,
     to_ledger_decimal,
     validate_amount,
 )
@@ -45,13 +43,13 @@ T = TypeVar("T")
 class LedgerError(Exception):
     """Base exception for ledger operations."""
 
-    def __init__(self, message: str, code: str = "LEDGER_ERROR", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, code: str = "LEDGER_ERROR", details: dict[str, Any] | None = None):
         super().__init__(message)
         self.code = code
         self.details = details or {}
-        self.timestamp = datetime.now(timezone.utc)
+        self.timestamp = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error": self.code,
             "message": str(self),
@@ -63,7 +61,7 @@ class LedgerError(Exception):
 class LockAcquisitionError(LedgerError):
     """Failed to acquire lock on resource."""
 
-    def __init__(self, resource_type: str, resource_id: str, holder_id: Optional[str] = None):
+    def __init__(self, resource_type: str, resource_id: str, holder_id: str | None = None):
         details = {"resource_type": resource_type, "resource_id": resource_id}
         if holder_id:
             details["current_holder"] = holder_id
@@ -153,7 +151,7 @@ class LockManager:
     """
 
     # Lock storage
-    _locks: Dict[str, LockRecord] = field(default_factory=dict)
+    _locks: dict[str, LockRecord] = field(default_factory=dict)
 
     # Thread safety
     _lock: threading.RLock = field(default_factory=threading.RLock)
@@ -163,7 +161,7 @@ class LockManager:
     lock_expiry: timedelta = field(default_factory=lambda: timedelta(minutes=5))
 
     # Cleanup tracking
-    _last_cleanup: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    _last_cleanup: datetime = field(default_factory=lambda: datetime.now(UTC))
     cleanup_interval: timedelta = field(default_factory=lambda: timedelta(minutes=1))
 
     def _make_key(self, resource_type: str, resource_id: str) -> str:
@@ -172,7 +170,7 @@ class LockManager:
 
     def _cleanup_expired(self) -> int:
         """Remove expired locks. Returns count of cleaned locks."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if now - self._last_cleanup < self.cleanup_interval:
             return 0
 
@@ -193,7 +191,7 @@ class LockManager:
         resource_type: str,
         resource_id: str,
         holder_id: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         is_exclusive: bool = True,
     ) -> LockRecord:
         """
@@ -230,7 +228,7 @@ class LockManager:
                         resource_id=resource_id,
                         holder_id=holder_id,
                         is_exclusive=is_exclusive,
-                        expires_at=datetime.now(timezone.utc) + self.lock_expiry,
+                        expires_at=datetime.now(UTC) + self.lock_expiry,
                     )
                     self._locks[key] = lock
                     logger.debug(f"Lock acquired: {key} by {holder_id}")
@@ -239,7 +237,7 @@ class LockManager:
                 # Same holder can re-acquire
                 if existing.holder_id == holder_id:
                     # Extend expiry
-                    existing.expires_at = datetime.now(timezone.utc) + self.lock_expiry
+                    existing.expires_at = datetime.now(UTC) + self.lock_expiry
                     logger.debug(f"Lock extended: {key} by {holder_id}")
                     return existing
 
@@ -262,7 +260,7 @@ class LockManager:
         resource_type: str,
         resource_id: str,
         holder_id: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         is_exclusive: bool = True,
     ) -> LockRecord:
         """Async version of acquire."""
@@ -282,14 +280,14 @@ class LockManager:
                         resource_id=resource_id,
                         holder_id=holder_id,
                         is_exclusive=is_exclusive,
-                        expires_at=datetime.now(timezone.utc) + self.lock_expiry,
+                        expires_at=datetime.now(UTC) + self.lock_expiry,
                     )
                     self._locks[key] = lock
                     logger.debug(f"Lock acquired (async): {key} by {holder_id}")
                     return lock
 
                 if existing.holder_id == holder_id:
-                    existing.expires_at = datetime.now(timezone.utc) + self.lock_expiry
+                    existing.expires_at = datetime.now(UTC) + self.lock_expiry
                     return existing
 
             elapsed = time.monotonic() - start_time
@@ -321,7 +319,7 @@ class LockManager:
                 logger.warning(f"Lock release denied: {key} owned by {existing.holder_id}, not {holder_id}")
                 return False
 
-            existing.released_at = datetime.now(timezone.utc)
+            existing.released_at = datetime.now(UTC)
             del self._locks[key]
             logger.debug(f"Lock released: {key} by {holder_id}")
             return True
@@ -333,7 +331,7 @@ class LockManager:
             existing = self._locks.get(key)
             return existing is not None and existing.is_active()
 
-    def get_lock_info(self, resource_type: str, resource_id: str) -> Optional[LockRecord]:
+    def get_lock_info(self, resource_type: str, resource_id: str) -> LockRecord | None:
         """Get information about current lock on resource."""
         key = self._make_key(resource_type, resource_id)
         with self._lock:
@@ -347,8 +345,8 @@ class LockManager:
         self,
         resource_type: str,
         resource_id: str,
-        holder_id: Optional[str] = None,
-        timeout: Optional[float] = None,
+        holder_id: str | None = None,
+        timeout: float | None = None,
     ) -> Generator[LockRecord, None, None]:
         """
         Context manager for acquiring and releasing locks.
@@ -371,8 +369,8 @@ class LockManager:
         self,
         resource_type: str,
         resource_id: str,
-        holder_id: Optional[str] = None,
-        timeout: Optional[float] = None,
+        holder_id: str | None = None,
+        timeout: float | None = None,
     ):
         """Async context manager for acquiring and releasing locks."""
         holder = holder_id or f"holder_{uuid.uuid4().hex[:12]}"
@@ -398,7 +396,7 @@ class LedgerEngine:
 
     def __init__(
         self,
-        lock_manager: Optional[LockManager] = None,
+        lock_manager: LockManager | None = None,
         snapshot_interval: int = 1000,  # Create snapshot every N entries
         enable_audit: bool = True,
     ):
@@ -407,15 +405,15 @@ class LedgerEngine:
         self.enable_audit = enable_audit
 
         # In-memory storage (replace with DB in production)
-        self._entries: Dict[str, LedgerEntry] = {}
-        self._entries_by_account: Dict[str, List[str]] = {}
-        self._snapshots: Dict[str, List[BalanceSnapshot]] = {}
-        self._audit_logs: List[AuditLog] = []
-        self._batches: Dict[str, BatchTransaction] = {}
-        self._entry_count: Dict[str, int] = {}
+        self._entries: dict[str, LedgerEntry] = {}
+        self._entries_by_account: dict[str, list[str]] = {}
+        self._snapshots: dict[str, list[BalanceSnapshot]] = {}
+        self._audit_logs: list[AuditLog] = []
+        self._batches: dict[str, BatchTransaction] = {}
+        self._entry_count: dict[str, int] = {}
 
         # Last audit hash for chain
-        self._last_audit_hash: Optional[str] = None
+        self._last_audit_hash: str | None = None
 
         # Thread safety for in-memory operations
         self._data_lock = threading.RLock()
@@ -431,11 +429,11 @@ class LedgerEngine:
         action: AuditAction,
         entity_type: str,
         entity_id: str,
-        actor_id: Optional[str] = None,
-        old_value: Optional[Dict] = None,
-        new_value: Optional[Dict] = None,
-        request_id: Optional[str] = None,
-    ) -> Optional[AuditLog]:
+        actor_id: str | None = None,
+        old_value: dict | None = None,
+        new_value: dict | None = None,
+        request_id: str | None = None,
+    ) -> AuditLog | None:
         """Add an audit log entry with hash chain."""
         if not self.enable_audit:
             return None
@@ -459,7 +457,7 @@ class LedgerEngine:
         logger.debug(f"Audit log: {action.value} {entity_type}:{entity_id}")
         return log
 
-    def get_balance(self, account_id: str, currency: str = "USDC", at_time: Optional[datetime] = None) -> Decimal:
+    def get_balance(self, account_id: str, currency: str = "USDC", at_time: datetime | None = None) -> Decimal:
         """
         Get account balance, optionally at a specific point in time.
 
@@ -502,7 +500,7 @@ class LedgerEngine:
                 start_time = snapshot.last_entry_created_at or snapshot.snapshot_at
             else:
                 balance = Decimal("0")
-                start_time = datetime.min.replace(tzinfo=timezone.utc)
+                start_time = datetime.min.replace(tzinfo=UTC)
 
             # Add entries after snapshot up to at_time
             for entry_id in entry_ids:
@@ -526,15 +524,15 @@ class LedgerEngine:
         amount: Decimal,
         entry_type: LedgerEntryType,
         currency: str = "USDC",
-        tx_id: Optional[str] = None,
-        chain: Optional[str] = None,
-        chain_tx_hash: Optional[str] = None,
-        block_number: Optional[int] = None,
-        audit_anchor: Optional[str] = None,
+        tx_id: str | None = None,
+        chain: str | None = None,
+        chain_tx_hash: str | None = None,
+        block_number: int | None = None,
+        audit_anchor: str | None = None,
         fee: Decimal = Decimal("0"),
-        metadata: Optional[Dict[str, Any]] = None,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
         skip_lock: bool = False,
     ) -> LedgerEntry:
         """
@@ -601,7 +599,7 @@ class LedgerEngine:
                 block_number=block_number,
                 audit_anchor=audit_anchor,
                 status=LedgerEntryStatus.CONFIRMED,
-                confirmed_at=datetime.now(timezone.utc),
+                confirmed_at=datetime.now(UTC),
                 metadata=metadata or {},
             )
 
@@ -697,9 +695,9 @@ class LedgerEngine:
 
     def create_batch(
         self,
-        entries: Sequence[Dict[str, Any]],
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        entries: Sequence[dict[str, Any]],
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> BatchTransaction:
         """
         Create and process a batch of entries atomically.
@@ -742,7 +740,7 @@ class LedgerEngine:
                 acquired_locks.append((account_id, lock))
 
             # Process all entries
-            created_entries: List[LedgerEntry] = []
+            created_entries: list[LedgerEntry] = []
             for i, spec in enumerate(entries):
                 try:
                     entry_type = spec.get("entry_type")
@@ -778,7 +776,7 @@ class LedgerEngine:
             # All succeeded
             batch.entries = created_entries
             batch.status = LedgerEntryStatus.CONFIRMED
-            batch.completed_at = datetime.now(timezone.utc)
+            batch.completed_at = datetime.now(UTC)
 
             with self._data_lock:
                 self._batches[batch.batch_id] = batch
@@ -806,9 +804,9 @@ class LedgerEngine:
 
     async def create_batch_async(
         self,
-        entries: Sequence[Dict[str, Any]],
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        entries: Sequence[dict[str, Any]],
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> BatchTransaction:
         """Async version of create_batch."""
         loop = asyncio.get_event_loop()
@@ -820,8 +818,8 @@ class LedgerEngine:
         self,
         entry_id: str,
         reason: str,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> LedgerEntry:
         """
         Rollback a ledger entry by creating a reversal entry.
@@ -853,19 +851,19 @@ class LedgerEngine:
         self,
         entry: LedgerEntry,
         reason: str,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> LedgerEntry:
         """Internal rollback implementation."""
         holder_id = request_id or self._generate_tx_id()
-        lock = self.lock_manager.acquire("account", entry.account_id, holder_id)
+        self.lock_manager.acquire("account", entry.account_id, holder_id)
 
         try:
             # Determine reversal type
             if entry.entry_type in (LedgerEntryType.CREDIT, LedgerEntryType.REFUND):
-                reversal_type = LedgerEntryType.DEBIT
+                pass
             else:
-                reversal_type = LedgerEntryType.CREDIT
+                pass
 
             # Create reversal entry
             reversal = LedgerEntry(
@@ -878,7 +876,7 @@ class LedgerEngine:
                 chain=entry.chain,
                 audit_anchor=entry.audit_anchor,
                 status=LedgerEntryStatus.CONFIRMED,
-                confirmed_at=datetime.now(timezone.utc),
+                confirmed_at=datetime.now(UTC),
                 metadata={
                     "original_entry_id": entry.entry_id,
                     "reversal_reason": reason,
@@ -934,8 +932,8 @@ class LedgerEngine:
         self,
         batch_id: str,
         reason: str,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> BatchTransaction:
         """
         Rollback an entire batch of entries.
@@ -970,7 +968,7 @@ class LedgerEngine:
         old_value = batch.to_dict()
         batch.is_rolled_back = True
         batch.rollback_reason = reason
-        batch.rollback_at = datetime.now(timezone.utc)
+        batch.rollback_at = datetime.now(UTC)
 
         self._add_audit_log(
             action=AuditAction.ROLLBACK,
@@ -986,7 +984,7 @@ class LedgerEngine:
 
         return batch
 
-    def get_entry(self, entry_id: str) -> Optional[LedgerEntry]:
+    def get_entry(self, entry_id: str) -> LedgerEntry | None:
         """Get a ledger entry by ID."""
         with self._data_lock:
             return self._entries.get(entry_id)
@@ -994,14 +992,14 @@ class LedgerEngine:
     def get_entries(
         self,
         account_id: str,
-        currency: Optional[str] = None,
-        entry_type: Optional[LedgerEntryType] = None,
-        status: Optional[LedgerEntryStatus] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        currency: str | None = None,
+        entry_type: LedgerEntryType | None = None,
+        status: LedgerEntryStatus | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[LedgerEntry]:
+    ) -> list[LedgerEntry]:
         """
         Get ledger entries for an account with filtering.
 
@@ -1051,9 +1049,9 @@ class LedgerEngine:
         self,
         account_id: str,
         currency: str = "USDC",
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
-    ) -> List[BalanceSnapshot]:
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> list[BalanceSnapshot]:
         """Get balance snapshots for an account."""
         key = f"{account_id}:{currency}"
         with self._data_lock:
@@ -1073,14 +1071,14 @@ class LedgerEngine:
 
     def get_audit_logs(
         self,
-        entity_type: Optional[str] = None,
-        entity_id: Optional[str] = None,
-        action: Optional[AuditAction] = None,
-        actor_id: Optional[str] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        action: AuditAction | None = None,
+        actor_id: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 100,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """Get audit logs with filtering."""
         with self._data_lock:
             logs = []
@@ -1103,7 +1101,7 @@ class LedgerEngine:
             logs.sort(key=lambda l: l.created_at, reverse=True)
             return logs[:limit]
 
-    def verify_audit_chain(self) -> Tuple[bool, Optional[str]]:
+    def verify_audit_chain(self) -> tuple[bool, str | None]:
         """
         Verify integrity of audit log hash chain.
 
@@ -1126,7 +1124,7 @@ class LedgerEngine:
 
         return True, None
 
-    def get_batch(self, batch_id: str) -> Optional[BatchTransaction]:
+    def get_batch(self, batch_id: str) -> BatchTransaction | None:
         """Get a batch by ID."""
         with self._data_lock:
             return self._batches.get(batch_id)

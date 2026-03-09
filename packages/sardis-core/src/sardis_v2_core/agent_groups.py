@@ -1,9 +1,9 @@
 """Agent group management for Sardis multi-agent governance."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import builtins
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, List
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -19,10 +19,10 @@ class GroupSpendingLimits(BaseModel):
 
 class GroupMerchantPolicy(BaseModel):
     """Merchant-level policy for a group."""
-    allowed_merchants: Optional[List[str]] = None  # None = all allowed
-    blocked_merchants: List[str] = Field(default_factory=list)
-    allowed_categories: Optional[List[str]] = None
-    blocked_categories: List[str] = Field(default_factory=list)
+    allowed_merchants: list[str] | None = None  # None = all allowed
+    blocked_merchants: list[str] = Field(default_factory=list)
+    allowed_categories: list[str] | None = None
+    blocked_categories: list[str] = Field(default_factory=list)
 
 
 class AgentGroup(BaseModel):
@@ -32,12 +32,12 @@ class AgentGroup(BaseModel):
     owner_id: str = "default"
     budget: GroupSpendingLimits = Field(default_factory=GroupSpendingLimits)
     merchant_policy: GroupMerchantPolicy = Field(default_factory=GroupMerchantPolicy)
-    agent_ids: List[str] = Field(default_factory=list)
+    agent_ids: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
-    parent_group_id: Optional[str] = None
-    hierarchy_path: List[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    parent_group_id: str | None = None
+    hierarchy_path: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     class Config:
         json_encoders = {
@@ -46,7 +46,7 @@ class AgentGroup(BaseModel):
         }
 
     @staticmethod
-    def new(name: str, owner_id: str = "default", **kwargs) -> "AgentGroup":
+    def new(name: str, owner_id: str = "default", **kwargs) -> AgentGroup:
         return AgentGroup(
             group_id=f"grp_{uuid4().hex[:16]}",
             name=name,
@@ -113,18 +113,18 @@ class AgentGroupRepository:
             metadata=data.get("metadata", {}),
             parent_group_id=data.get("parent_group_id"),
             hierarchy_path=data.get("hierarchy_path", []),
-            created_at=datetime.fromisoformat(data["created_at"]) if isinstance(data.get("created_at"), str) else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if isinstance(data.get("updated_at"), str) else datetime.now(timezone.utc),
+            created_at=datetime.fromisoformat(data["created_at"]) if isinstance(data.get("created_at"), str) else datetime.now(UTC),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if isinstance(data.get("updated_at"), str) else datetime.now(UTC),
         )
 
     async def create(
         self,
         name: str,
         owner_id: str = "default",
-        budget: Optional[GroupSpendingLimits] = None,
-        merchant_policy: Optional[GroupMerchantPolicy] = None,
-        agent_ids: Optional[List[str]] = None,
-        metadata: Optional[dict] = None,
+        budget: GroupSpendingLimits | None = None,
+        merchant_policy: GroupMerchantPolicy | None = None,
+        agent_ids: builtins.list[str] | None = None,
+        metadata: dict | None = None,
     ) -> AgentGroup:
         group = AgentGroup.new(
             name=name,
@@ -137,7 +137,7 @@ class AgentGroupRepository:
         await self._store.set(group.group_id, self._serialize(group), ttl=0)
         return group
 
-    async def get(self, group_id: str) -> Optional[AgentGroup]:
+    async def get(self, group_id: str) -> AgentGroup | None:
         data = await self._store.get(group_id)
         if data is None:
             return None
@@ -145,10 +145,10 @@ class AgentGroupRepository:
 
     async def list(
         self,
-        owner_id: Optional[str] = None,
+        owner_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[AgentGroup]:
+    ) -> builtins.list[AgentGroup]:
         all_keys = await self._store.keys("*")
         groups = []
         for key in all_keys:
@@ -162,11 +162,11 @@ class AgentGroupRepository:
     async def update(
         self,
         group_id: str,
-        name: Optional[str] = None,
-        budget: Optional[GroupSpendingLimits] = None,
-        merchant_policy: Optional[GroupMerchantPolicy] = None,
-        metadata: Optional[dict] = None,
-    ) -> Optional[AgentGroup]:
+        name: str | None = None,
+        budget: GroupSpendingLimits | None = None,
+        merchant_policy: GroupMerchantPolicy | None = None,
+        metadata: dict | None = None,
+    ) -> AgentGroup | None:
         data = await self._store.get(group_id)
         if data is None:
             return None
@@ -179,7 +179,7 @@ class AgentGroupRepository:
             group.merchant_policy = merchant_policy
         if metadata is not None:
             group.metadata = metadata
-        group.updated_at = datetime.now(timezone.utc)
+        group.updated_at = datetime.now(UTC)
         await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
@@ -190,29 +190,29 @@ class AgentGroupRepository:
             return True
         return False
 
-    async def add_agent(self, group_id: str, agent_id: str) -> Optional[AgentGroup]:
+    async def add_agent(self, group_id: str, agent_id: str) -> AgentGroup | None:
         data = await self._store.get(group_id)
         if data is None:
             return None
         group = self._deserialize(data)
         if agent_id not in group.agent_ids:
             group.agent_ids.append(agent_id)
-            group.updated_at = datetime.now(timezone.utc)
+            group.updated_at = datetime.now(UTC)
             await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
-    async def remove_agent(self, group_id: str, agent_id: str) -> Optional[AgentGroup]:
+    async def remove_agent(self, group_id: str, agent_id: str) -> AgentGroup | None:
         data = await self._store.get(group_id)
         if data is None:
             return None
         group = self._deserialize(data)
         if agent_id in group.agent_ids:
             group.agent_ids.remove(agent_id)
-            group.updated_at = datetime.now(timezone.utc)
+            group.updated_at = datetime.now(UTC)
             await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
-    async def get_groups_for_agent(self, agent_id: str) -> List[AgentGroup]:
+    async def get_groups_for_agent(self, agent_id: str) -> builtins.list[AgentGroup]:
         all_keys = await self._store.keys("*")
         result = []
         for key in all_keys:
@@ -224,8 +224,8 @@ class AgentGroupRepository:
     async def set_parent(
         self,
         group_id: str,
-        parent_group_id: Optional[str],
-    ) -> Optional[AgentGroup]:
+        parent_group_id: str | None,
+    ) -> AgentGroup | None:
         """Set parent group, validating no cycles. Updates hierarchy_path."""
         data = await self._store.get(group_id)
         if data is None:
@@ -260,7 +260,7 @@ class AgentGroupRepository:
             group.hierarchy_path = []
 
         group.parent_group_id = parent_group_id
-        group.updated_at = datetime.now(timezone.utc)
+        group.updated_at = datetime.now(UTC)
         await self._store.set(group_id, self._serialize(group), ttl=0)
         return group
 
@@ -289,9 +289,9 @@ def merge_group_policies(
 
     # Allowed merchants: intersection
     if child_mp.allowed_merchants is not None and parent_mp.allowed_merchants is not None:
-        allowed_set = set(m.lower() for m in child_mp.allowed_merchants) & set(
+        allowed_set = {m.lower() for m in child_mp.allowed_merchants} & {
             m.lower() for m in parent_mp.allowed_merchants
-        )
+        }
         merged_allowed_merchants = sorted(allowed_set)
     elif parent_mp.allowed_merchants is not None:
         merged_allowed_merchants = list(parent_mp.allowed_merchants)
@@ -301,15 +301,15 @@ def merge_group_policies(
         merged_allowed_merchants = None
 
     # Blocked merchants: union
-    blocked_set = set(m.lower() for m in child_mp.blocked_merchants) | set(
+    blocked_set = {m.lower() for m in child_mp.blocked_merchants} | {
         m.lower() for m in parent_mp.blocked_merchants
-    )
+    }
 
     # Allowed categories: intersection
     if child_mp.allowed_categories is not None and parent_mp.allowed_categories is not None:
-        allowed_cat_set = set(c.lower() for c in child_mp.allowed_categories) & set(
+        allowed_cat_set = {c.lower() for c in child_mp.allowed_categories} & {
             c.lower() for c in parent_mp.allowed_categories
-        )
+        }
         merged_allowed_categories = sorted(allowed_cat_set)
     elif parent_mp.allowed_categories is not None:
         merged_allowed_categories = list(parent_mp.allowed_categories)
@@ -319,9 +319,9 @@ def merge_group_policies(
         merged_allowed_categories = None
 
     # Blocked categories: union
-    blocked_cat_set = set(c.lower() for c in child_mp.blocked_categories) | set(
+    blocked_cat_set = {c.lower() for c in child_mp.blocked_categories} | {
         c.lower() for c in parent_mp.blocked_categories
-    )
+    }
 
     merged_mp = GroupMerchantPolicy(
         allowed_merchants=merged_allowed_merchants,
@@ -348,12 +348,12 @@ def merge_group_policies(
 class AgentGroupHierarchy:
     """Hierarchy resolution for group policy cascading."""
 
-    def __init__(self, repo: "AgentGroupRepository"):
+    def __init__(self, repo: AgentGroupRepository):
         self._repo = repo
 
-    async def get_ancestors(self, group_id: str) -> List[AgentGroup]:
+    async def get_ancestors(self, group_id: str) -> list[AgentGroup]:
         """Return chain from group to root (exclusive of self)."""
-        ancestors: List[AgentGroup] = []
+        ancestors: list[AgentGroup] = []
         current = await self._repo.get(group_id)
         if current is None:
             return []
@@ -375,7 +375,7 @@ class AgentGroupHierarchy:
     async def resolve_effective_policy(
         self,
         agent_id: str,
-    ) -> Optional[AgentGroup]:
+    ) -> AgentGroup | None:
         """Walk hierarchy from agent's group up to root, merging policies.
 
         Returns a synthetic AgentGroup with the most restrictive effective
@@ -387,7 +387,7 @@ class AgentGroupHierarchy:
 
         # For each group the agent belongs to, resolve up the hierarchy
         # and take the most restrictive across all groups
-        effective: Optional[AgentGroup] = None
+        effective: AgentGroup | None = None
         for group in groups:
             # Walk up to root
             resolved = group
@@ -395,9 +395,6 @@ class AgentGroupHierarchy:
             for ancestor in ancestors:
                 resolved = merge_group_policies(resolved, ancestor)
 
-            if effective is None:
-                effective = resolved
-            else:
-                effective = merge_group_policies(effective, resolved)
+            effective = resolved if effective is None else merge_group_policies(effective, resolved)
 
         return effective

@@ -21,8 +21,8 @@ Run:
 """
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, ".")
@@ -46,15 +46,15 @@ async def main():
     print()
     print(f"API Base URL: {API_BASE}")
     print()
-    
+
     async with httpx.AsyncClient(base_url=API_BASE, timeout=30) as client:
-        
+
         # =========================================
         # Step 1: Health Check
         # =========================================
         print("STEP 1: Health Check")
         print("-" * 40)
-        
+
         try:
             response = await client.get("/health")
             if response.status_code == 200:
@@ -77,13 +77,13 @@ async def main():
             print("  Then run this demo again.")
             return
         print()
-        
+
         # =========================================
         # Step 2: Execute a Payment
         # =========================================
         print("STEP 2: Execute Payment via API")
         print("-" * 40)
-        
+
         import time
         mandate = {
             "mandate_id": f"demo_mandate_{int(time.time())}",
@@ -95,18 +95,18 @@ async def main():
             "chain": "base_sepolia",
             "expires_at": int(time.time()) + 300,
         }
-        
+
         print(f"  Mandate ID: {mandate['mandate_id']}")
         print(f"  Amount: ${mandate['amount_minor'] / 100:.2f} USDC")
         print(f"  Destination: {mandate['destination'][:20]}...")
         print()
-        
+
         try:
             response = await client.post(
                 "/api/v2/mandates/execute",
                 json={"mandate": mandate}
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 print("  ✓ Payment executed!")
@@ -120,16 +120,16 @@ async def main():
         except Exception as e:
             print(f"  Error: {e}")
         print()
-        
+
         # =========================================
         # Step 3: Query Ledger
         # =========================================
         print("STEP 3: Query Transaction Ledger")
         print("-" * 40)
-        
+
         try:
             response = await client.get("/api/v2/ledger/recent?limit=5")
-            
+
             if response.status_code == 200:
                 data = response.json()
                 entries = data.get("entries", [])
@@ -141,16 +141,16 @@ async def main():
         except Exception as e:
             print(f"  Error: {e}")
         print()
-        
+
         # =========================================
         # Step 4: Check Supported Chains
         # =========================================
         print("STEP 4: Check Supported Chains")
         print("-" * 40)
-        
+
         try:
             response = await client.get("/api/v2/transactions/chains")
-            
+
             if response.status_code == 200:
                 data = response.json()
                 chains = data.get("chains", [])
@@ -162,7 +162,7 @@ async def main():
         except Exception as e:
             print(f"  Error: {e}")
         print()
-        
+
         # =========================================
         # Summary
         # =========================================

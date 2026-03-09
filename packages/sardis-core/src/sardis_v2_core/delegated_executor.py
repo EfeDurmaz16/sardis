@@ -8,14 +8,13 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from .delegated_credential import (
     CredentialNetwork,
     CredentialScope,
     DelegatedCredential,
 )
-
 
 # ---------------------------------------------------------------------------
 # Provider-neutral internal contract

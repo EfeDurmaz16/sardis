@@ -15,10 +15,9 @@ import asyncio
 import os
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -35,16 +34,14 @@ os.environ.setdefault("SARDIS_ENVIRONMENT", "dev")
 os.environ.setdefault("DATABASE_URL", "memory://")
 os.environ.setdefault("SECRET_KEY", "test_e2e_key_for_testing_purposes_only_32ch")
 
+from sardis_checkout.connectors.sardis_native import SardisNativeConnector
+from sardis_checkout.merchant_webhooks import MerchantWebhookService
+from sardis_checkout.models import CheckoutRequest, PaymentStatus
+from sardis_checkout.settlement import SettlementService
 from sardis_v2_core.merchant import (
     Merchant,
     MerchantCheckoutSession,
-    _generate_external_id,
 )
-from sardis_checkout.connectors.sardis_native import SardisNativeConnector
-from sardis_checkout.models import CheckoutRequest, PaymentStatus
-from sardis_checkout.settlement import SettlementService
-from sardis_checkout.merchant_webhooks import MerchantWebhookService
-
 
 # ── Mock Infrastructure ───────────────────────────────────────────
 
@@ -57,14 +54,14 @@ class MockMerchantRepo:
         self.merchants[merchant.merchant_id] = merchant
         return merchant
 
-    async def get_merchant(self, merchant_id: str) -> Optional[Merchant]:
+    async def get_merchant(self, merchant_id: str) -> Merchant | None:
         return self.merchants.get(merchant_id)
 
     async def create_session(self, session: MerchantCheckoutSession) -> MerchantCheckoutSession:
         self.sessions[session.session_id] = session
         return session
 
-    async def get_session(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session(self, session_id: str) -> MerchantCheckoutSession | None:
         return self.sessions.get(session_id)
 
     async def update_session(self, session_id: str, **kwargs) -> None:
@@ -90,10 +87,10 @@ class MockWallet:
     is_active: bool = True
     frozen: bool = False
     account_type: str = "eoa"
-    smart_account_address: Optional[str] = None
+    smart_account_address: str | None = None
     _addresses: dict = field(default_factory=dict)
 
-    def get_address(self, chain: str) -> Optional[str]:
+    def get_address(self, chain: str) -> str | None:
         return self._addresses.get(chain)
 
 
@@ -107,7 +104,7 @@ class MockWalletManager:
     def __init__(self):
         self.wallets: dict[str, MockWallet] = {}
 
-    async def get_wallet(self, wallet_id: str) -> Optional[MockWallet]:
+    async def get_wallet(self, wallet_id: str) -> MockWallet | None:
         return self.wallets.get(wallet_id)
 
     async def async_validate_policies(self, mandate):
@@ -387,7 +384,7 @@ class TestCheckoutEdgeCases:
 
         # Manually expire the session
         session = await repo.get_session(response.checkout_id)
-        session.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        session.expires_at = datetime.now(UTC) - timedelta(minutes=1)
 
         with pytest.raises(ValueError, match="expired"):
             await connector.execute_payment(response.checkout_id, payer_wallet.wallet_id)

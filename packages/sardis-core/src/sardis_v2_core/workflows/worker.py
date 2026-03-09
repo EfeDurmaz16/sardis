@@ -32,22 +32,22 @@ async def start_temporal_worker() -> None:
         )
         sys.exit(1)
 
-    from .payment_workflow import PaymentWorkflow
     from .activities import (
-        kya_verification,
-        policy_check,
-        compliance_screening,
         chain_execution,
+        compliance_screening,
+        kya_verification,
         ledger_append,
+        policy_check,
         webhook_notification,
     )
+    from .payment_workflow import PaymentWorkflow
     from .scheduled_jobs import (
-        reset_spending_limits,
-        expire_holds,
         expire_approvals,
-        recurring_billing,
-        treasury_reconciliation,
+        expire_holds,
         mandate_cleanup,
+        recurring_billing,
+        reset_spending_limits,
+        treasury_reconciliation,
     )
 
     temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
@@ -95,12 +95,12 @@ async def start_fallback_scheduler() -> None:
     scheduler = init_scheduler()
     # Register the same jobs via APScheduler
     from .scheduled_jobs import (
-        reset_spending_limits,
-        expire_holds,
         expire_approvals,
-        recurring_billing,
-        treasury_reconciliation,
+        expire_holds,
         mandate_cleanup,
+        recurring_billing,
+        reset_spending_limits,
+        treasury_reconciliation,
     )
 
     scheduler.add_cron_job(reset_spending_limits, "reset_spending_limits", hour=0, minute=0)
@@ -132,7 +132,7 @@ async def main() -> None:
             from temporalio.client import Client
 
             temporal_address = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-            client = await Client.connect(temporal_address, namespace=NAMESPACE)
+            await Client.connect(temporal_address, namespace=NAMESPACE)
             logger.info("Temporal server reachable — using Temporal worker")
             await start_temporal_worker()
         except Exception:

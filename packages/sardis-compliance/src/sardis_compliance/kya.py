@@ -35,17 +35,17 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
 import os
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
-from uuid import uuid4
+from typing import Any, Protocol
 
 logger = logging.getLogger("sardis.compliance.kya")
 
@@ -74,7 +74,7 @@ class KYAStatus(str, Enum):
 # ============ Amount Thresholds ============
 
 # KYA level required based on single-transaction amount
-KYA_AMOUNT_THRESHOLDS: Dict[KYALevel, Decimal] = {
+KYA_AMOUNT_THRESHOLDS: dict[KYALevel, Decimal] = {
     KYALevel.NONE: Decimal("0"),         # Cannot transact
     KYALevel.BASIC: Decimal("10.00"),    # Up to $10/tx
     KYALevel.VERIFIED: Decimal("1000.00"),  # Up to $1,000/tx
@@ -82,7 +82,7 @@ KYA_AMOUNT_THRESHOLDS: Dict[KYALevel, Decimal] = {
 }
 
 # Daily spending limits per KYA level
-KYA_DAILY_THRESHOLDS: Dict[KYALevel, Decimal] = {
+KYA_DAILY_THRESHOLDS: dict[KYALevel, Decimal] = {
     KYALevel.NONE: Decimal("0"),
     KYALevel.BASIC: Decimal("50.00"),
     KYALevel.VERIFIED: Decimal("5000.00"),
@@ -127,18 +127,18 @@ class AgentManifest:
     """
     agent_id: str
     owner_id: str
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     max_budget_per_tx: Decimal = field(default_factory=lambda: Decimal("50.00"))
     daily_budget: Decimal = field(default_factory=lambda: Decimal("500.00"))
-    allowed_domains: List[str] = field(default_factory=list)
-    blocked_domains: List[str] = field(default_factory=list)
-    framework: Optional[str] = None  # "langchain", "crewai", "autogpt", etc.
-    framework_version: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    allowed_domains: list[str] = field(default_factory=list)
+    blocked_domains: list[str] = field(default_factory=list)
+    framework: str | None = None  # "langchain", "crewai", "autogpt", etc.
+    framework_version: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "owner_id": self.owner_id,
@@ -155,17 +155,17 @@ class AgentManifest:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentManifest":
+    def from_dict(cls, data: dict[str, Any]) -> AgentManifest:
         created_at = data.get("created_at")
         if isinstance(created_at, str):
             try:
                 created_at_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             except ValueError:
-                created_at_dt = datetime.now(timezone.utc)
+                created_at_dt = datetime.now(UTC)
         elif isinstance(created_at, datetime):
             created_at_dt = created_at
         else:
-            created_at_dt = datetime.now(timezone.utc)
+            created_at_dt = datetime.now(UTC)
         return cls(
             agent_id=data["agent_id"],
             owner_id=data["owner_id"],
@@ -193,11 +193,11 @@ class AgentManifest:
 class CodeAttestation:
     """Attestation of an agent's code integrity."""
     code_hash: str                    # SHA-256 of agent logic
-    framework: Optional[str] = None   # e.g. "langchain", "crewai"
-    version: Optional[str] = None
-    attested_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    framework: str | None = None   # e.g. "langchain", "crewai"
+    version: str | None = None
+    attested_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     attester: str = "self"            # "self", "tee", "sardis"
-    tee_attestation: Optional[str] = None  # Remote attestation from TEE
+    tee_attestation: str | None = None  # Remote attestation from TEE
 
     def verify(self, expected_hash: str) -> bool:
         """Check if code hash matches expected value."""
@@ -215,7 +215,7 @@ class AgentTrustScore:
     total_volume: Decimal = field(default_factory=lambda: Decimal("0"))
     uptime_ratio: float = 1.0         # Liveness check success rate
     age_days: int = 0
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def recalculate(self) -> float:
         """Recalculate trust score based on agent behavior."""
@@ -243,7 +243,7 @@ class AgentTrustScore:
             success_component + compliance_component + uptime_component + maturity_component,
             4,
         )
-        self.last_updated = datetime.now(timezone.utc)
+        self.last_updated = datetime.now(UTC)
         return self.score
 
     @property
@@ -265,17 +265,17 @@ class KYAResult:
     level: KYALevel
     status: KYAStatus
     allowed: bool
-    reason: Optional[str] = None
-    owner_id: Optional[str] = None
-    anchor_verification_id: Optional[str] = None  # Persona/Stripe Identity ID
-    manifest_hash: Optional[str] = None
-    code_hash: Optional[str] = None
-    trust_score: Optional[float] = None
-    attestations: List[str] = field(default_factory=list)
-    checked_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    reason: str | None = None
+    owner_id: str | None = None
+    anchor_verification_id: str | None = None  # Persona/Stripe Identity ID
+    manifest_hash: str | None = None
+    code_hash: str | None = None
+    trust_score: float | None = None
+    attestations: list[str] = field(default_factory=list)
+    checked_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "level": self.level.value,
@@ -294,8 +294,8 @@ class KYACheckRequest:
     """Request to check an agent's KYA status for a payment."""
     agent_id: str
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
-    merchant_id: Optional[str] = None
-    merchant_domain: Optional[str] = None
+    merchant_id: str | None = None
+    merchant_domain: str | None = None
 
 
 # ============ Liveness ============
@@ -312,8 +312,8 @@ class AgentLivenessTracker:
 
     def __init__(self, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS):
         self._timeout = timeout_seconds
-        self._last_seen: Dict[str, float] = {}  # agent_id -> unix timestamp
-        self._ping_count: Dict[str, int] = {}
+        self._last_seen: dict[str, float] = {}  # agent_id -> unix timestamp
+        self._ping_count: dict[str, int] = {}
 
     def ping(self, agent_id: str) -> None:
         """Record a heartbeat from an agent."""
@@ -327,14 +327,14 @@ class AgentLivenessTracker:
             return False
         return (time.time() - last) < self._timeout
 
-    def get_last_seen(self, agent_id: str) -> Optional[datetime]:
+    def get_last_seen(self, agent_id: str) -> datetime | None:
         """Get the last heartbeat timestamp for an agent."""
         ts = self._last_seen.get(agent_id)
         if ts is None:
             return None
-        return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.fromtimestamp(ts, tz=UTC)
 
-    def get_stale_agents(self) -> List[str]:
+    def get_stale_agents(self) -> list[str]:
         """Get list of agents that have missed their heartbeat."""
         now = time.time()
         return [
@@ -374,11 +374,11 @@ class InMemoryKYAStore:
     """In-memory store for KYA records. Replace with PostgreSQL in production."""
 
     def __init__(self):
-        self._manifests: Dict[str, AgentManifest] = {}
-        self._levels: Dict[str, KYALevel] = {}
-        self._statuses: Dict[str, KYAStatus] = {}
-        self._trust_scores: Dict[str, AgentTrustScore] = {}
-        self._code_attestations: Dict[str, CodeAttestation] = {}
+        self._manifests: dict[str, AgentManifest] = {}
+        self._levels: dict[str, KYALevel] = {}
+        self._statuses: dict[str, KYAStatus] = {}
+        self._trust_scores: dict[str, AgentTrustScore] = {}
+        self._code_attestations: dict[str, CodeAttestation] = {}
 
     def store_manifest(self, manifest: AgentManifest) -> None:
         self._manifests[manifest.agent_id] = manifest
@@ -387,7 +387,7 @@ class InMemoryKYAStore:
         if manifest.agent_id not in self._statuses:
             self._statuses[manifest.agent_id] = KYAStatus.PENDING
 
-    def get_manifest(self, agent_id: str) -> Optional[AgentManifest]:
+    def get_manifest(self, agent_id: str) -> AgentManifest | None:
         return self._manifests.get(agent_id)
 
     def set_level(self, agent_id: str, level: KYALevel) -> None:
@@ -402,13 +402,13 @@ class InMemoryKYAStore:
     def get_status(self, agent_id: str) -> KYAStatus:
         return self._statuses.get(agent_id, KYAStatus.PENDING)
 
-    def get_trust_score(self, agent_id: str) -> Optional[AgentTrustScore]:
+    def get_trust_score(self, agent_id: str) -> AgentTrustScore | None:
         return self._trust_scores.get(agent_id)
 
     def set_trust_score(self, agent_id: str, score: AgentTrustScore) -> None:
         self._trust_scores[agent_id] = score
 
-    def get_code_attestation(self, agent_id: str) -> Optional[CodeAttestation]:
+    def get_code_attestation(self, agent_id: str) -> CodeAttestation | None:
         return self._code_attestations.get(agent_id)
 
     def set_code_attestation(self, agent_id: str, attestation: CodeAttestation) -> None:
@@ -433,7 +433,7 @@ class PostgresKYAStore(InMemoryKYAStore):
         self._loaded = False
         self._init_lock = asyncio.Lock()
         self._load_lock = asyncio.Lock()
-        self._liveness_state: Dict[str, Dict[str, Any]] = {}
+        self._liveness_state: dict[str, dict[str, Any]] = {}
 
     async def _get_pool(self):
         if self._pool is None:
@@ -486,17 +486,17 @@ class PostgresKYAStore(InMemoryKYAStore):
     @staticmethod
     def _parse_datetime(value: Any) -> datetime:
         if isinstance(value, datetime):
-            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+            return value if value.tzinfo else value.replace(tzinfo=UTC)
         if isinstance(value, str):
             try:
                 parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
             except ValueError:
                 pass
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     @classmethod
-    def _trust_score_from_dict(cls, agent_id: str, data: Any) -> Optional[AgentTrustScore]:
+    def _trust_score_from_dict(cls, agent_id: str, data: Any) -> AgentTrustScore | None:
         if not isinstance(data, dict):
             return None
         return AgentTrustScore(
@@ -512,7 +512,7 @@ class PostgresKYAStore(InMemoryKYAStore):
         )
 
     @classmethod
-    def _code_attestation_from_dict(cls, data: Any) -> Optional[CodeAttestation]:
+    def _code_attestation_from_dict(cls, data: Any) -> CodeAttestation | None:
         if not isinstance(data, dict):
             return None
         code_hash = str(data.get("code_hash", "")).strip()
@@ -528,7 +528,7 @@ class PostgresKYAStore(InMemoryKYAStore):
         )
 
     @staticmethod
-    def _trust_score_to_dict(score: AgentTrustScore) -> Dict[str, Any]:
+    def _trust_score_to_dict(score: AgentTrustScore) -> dict[str, Any]:
         return {
             "score": score.score,
             "successful_payments": score.successful_payments,
@@ -541,7 +541,7 @@ class PostgresKYAStore(InMemoryKYAStore):
         }
 
     @staticmethod
-    def _code_attestation_to_dict(attestation: CodeAttestation) -> Dict[str, Any]:
+    def _code_attestation_to_dict(attestation: CodeAttestation) -> dict[str, Any]:
         return {
             "code_hash": attestation.code_hash,
             "framework": attestation.framework,
@@ -617,11 +617,11 @@ class PostgresKYAStore(InMemoryKYAStore):
             self._loaded = True
             logger.info("KYA store loaded from PostgreSQL with %d agent records", len(self._manifests))
 
-    def get_liveness(self, agent_id: str) -> Optional[Dict[str, Any]]:
+    def get_liveness(self, agent_id: str) -> dict[str, Any] | None:
         value = self._liveness_state.get(agent_id)
         return dict(value) if value else None
 
-    async def persist_agent(self, agent_id: str, liveness: Optional[Dict[str, Any]] = None) -> None:
+    async def persist_agent(self, agent_id: str, liveness: dict[str, Any] | None = None) -> None:
         await self.ensure_loaded()
         manifest = self.get_manifest(agent_id)
         if manifest is None:
@@ -695,8 +695,8 @@ class KYAService:
 
     def __init__(
         self,
-        store: Optional[InMemoryKYAStore] = None,
-        liveness: Optional[AgentLivenessTracker] = None,
+        store: InMemoryKYAStore | None = None,
+        liveness: AgentLivenessTracker | None = None,
         liveness_timeout: int = 300,
     ):
         self._store = store or InMemoryKYAStore()
@@ -719,10 +719,8 @@ class KYAService:
                             pass
                     ping_count = liveness.get("ping_count")
                     if ping_count is not None:
-                        try:
+                        with contextlib.suppress(TypeError, ValueError):
                             self._liveness._ping_count[agent_id] = int(ping_count)
-                        except (TypeError, ValueError):
-                            pass
                 self._liveness_hydrated = True
 
     async def _persist_agent_state(self, agent_id: str) -> None:
@@ -891,8 +889,8 @@ class KYAService:
         agent_id: str,
         target_level: KYALevel,
         *,
-        anchor_verification_id: Optional[str] = None,
-        code_attestation: Optional[CodeAttestation] = None,
+        anchor_verification_id: str | None = None,
+        code_attestation: CodeAttestation | None = None,
     ) -> KYAResult:
         """
         Upgrade an agent's KYA level.
@@ -1077,7 +1075,7 @@ class KYAService:
         success: bool,
         amount: Decimal = Decimal("0"),
         policy_violation: bool = False,
-    ) -> Optional[AgentTrustScore]:
+    ) -> AgentTrustScore | None:
         """Record a payment outcome for trust score calculation."""
         await self._ensure_store_ready()
         trust = self._store.get_trust_score(agent_id)
@@ -1096,7 +1094,7 @@ class KYAService:
         # Update uptime from liveness tracker
         manifest = self._store.get_manifest(agent_id)
         if manifest:
-            age_seconds = (datetime.now(timezone.utc) - manifest.created_at).total_seconds()
+            age_seconds = (datetime.now(UTC) - manifest.created_at).total_seconds()
             trust.age_days = max(0, int(age_seconds / 86400))
 
         trust.recalculate()
@@ -1104,7 +1102,7 @@ class KYAService:
         await self._persist_agent_state(agent_id)
         return trust
 
-    async def get_trust_score(self, agent_id: str) -> Optional[AgentTrustScore]:
+    async def get_trust_score(self, agent_id: str) -> AgentTrustScore | None:
         """Get the current trust score for an agent."""
         await self._ensure_store_ready()
         return self._store.get_trust_score(agent_id)
@@ -1170,7 +1168,7 @@ class KYAService:
         await self._ensure_store_ready()
         return self._liveness.is_alive(agent_id)
 
-    async def check_stale_agents(self) -> List[str]:
+    async def check_stale_agents(self) -> list[str]:
         """Check for stale agents and suspend them."""
         await self._ensure_store_ready()
         stale = self._liveness.get_stale_agents()
@@ -1184,7 +1182,7 @@ class KYAService:
 
     # ── Getters ───────────────────────────────────────────────────
 
-    def get_manifest(self, agent_id: str) -> Optional[AgentManifest]:
+    def get_manifest(self, agent_id: str) -> AgentManifest | None:
         """Get agent manifest (in-memory fast path)."""
         return self._store.get_manifest(agent_id)
 
@@ -1196,7 +1194,7 @@ class KYAService:
         """Get agent KYA status (in-memory fast path)."""
         return self._store.get_status(agent_id)
 
-    async def get_manifest_async(self, agent_id: str) -> Optional[AgentManifest]:
+    async def get_manifest_async(self, agent_id: str) -> AgentManifest | None:
         """Get agent manifest with persisted-state hydration."""
         await self._ensure_store_ready()
         return self._store.get_manifest(agent_id)
@@ -1217,7 +1215,7 @@ class KYAService:
 
 def create_kya_service(
     liveness_timeout: int = 300,
-    dsn: Optional[str] = None,
+    dsn: str | None = None,
 ) -> KYAService:
     """
     Create a KYA service.

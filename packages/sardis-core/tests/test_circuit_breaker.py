@@ -15,26 +15,23 @@ Tests cover:
 from __future__ import annotations
 
 import asyncio
-import pytest
-import time
-from unittest.mock import Mock, AsyncMock, patch
-from dataclasses import dataclass
-
 import sys
 from pathlib import Path
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sardis_v2_core.circuit_breaker import (
-    CircuitState,
-    CircuitBreakerConfig,
-    CircuitStats,
-    CircuitBreakerError,
     CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerError,
     CircuitBreakerRegistry,
-    get_circuit_breaker_registry,
-    get_circuit_breaker,
-    create_service_circuit_breakers,
+    CircuitState,
     circuit_breaker,
+    create_service_circuit_breakers,
+    get_circuit_breaker,
+    get_circuit_breaker_registry,
 )
 
 

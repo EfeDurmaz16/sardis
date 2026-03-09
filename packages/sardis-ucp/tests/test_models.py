@@ -3,32 +3,25 @@
 import time
 from decimal import Decimal
 
-import pytest
-
 from sardis_ucp.models.mandates import (
-    UCPCurrency,
-    UCPDiscountType,
-    UCPLineItem,
-    UCPDiscount,
     UCPCartMandate,
     UCPCheckoutMandate,
+    UCPCurrency,
+    UCPDiscount,
+    UCPDiscountType,
+    UCPLineItem,
     UCPPaymentMandate,
 )
-from sardis_ucp.models.profiles import (
-    UCPCapabilityType,
-    UCPCapability,
-    UCPPaymentCapability,
-    UCPEndpoints,
-    UCPBusinessProfile,
-    UCPPlatformProfile,
-)
 from sardis_ucp.models.orders import (
-    UCPOrderStatus,
-    UCPFulfillmentStatus,
-    UCPShippingAddress,
-    UCPFulfillmentEvent,
     UCPFulfillment,
+    UCPFulfillmentStatus,
     UCPOrder,
+    UCPOrderStatus,
+)
+from sardis_ucp.models.profiles import (
+    UCPBusinessProfile,
+    UCPCapability,
+    UCPCapabilityType,
 )
 
 
@@ -426,7 +419,7 @@ class TestUCPFulfillment:
         )
 
         # Ship the order
-        event = fulfillment.add_event(
+        fulfillment.add_event(
             event_id="evt_1",
             status=UCPFulfillmentStatus.SHIPPED,
             location="Warehouse",

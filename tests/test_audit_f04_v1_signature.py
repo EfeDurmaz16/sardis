@@ -3,10 +3,9 @@ import base64
 import time
 
 from nacl.signing import SigningKey
-
+from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_protocol.verifier import MandateVerifier
 
 
 def test_v1_signature_rejected():

@@ -10,17 +10,17 @@ Designed to run daily (or on-demand) to:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 async def run_learning_loop(
     *,
-    outcome_tracker: Optional[Any] = None,
-    anomaly_engine: Optional[Any] = None,
-    confidence_router: Optional[Any] = None,
-    provider_tracker: Optional[Any] = None,
+    outcome_tracker: Any | None = None,
+    anomaly_engine: Any | None = None,
+    confidence_router: Any | None = None,
+    provider_tracker: Any | None = None,
 ) -> dict[str, Any]:
     """Execute one cycle of the learning loop.
 

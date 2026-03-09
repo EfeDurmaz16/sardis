@@ -5,7 +5,6 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_api.authz import Principal, require_admin_principal
 from sardis_api.routers.cpn import CPNDependencies, get_deps, router
 

@@ -11,21 +11,16 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
-import pytest
-import time
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.testclient import TestClient
-from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field
-from httpx import AsyncClient, ASGITransport
-
 import sys
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+from fastapi import FastAPI, HTTPException
+from httpx import ASGITransport, AsyncClient
+from pydantic import BaseModel, Field
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -36,15 +31,15 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_api.middleware.exceptions import (
-    RFC7807Error,
     ERROR_TYPE_BASE,
     ERROR_TYPES,
-    get_request_id,
-    is_production,
+    ExceptionHandlerMiddleware,
+    RFC7807Error,
     create_error_response,
     create_validation_error_response,
+    get_request_id,
+    is_production,
     register_exception_handlers,
-    ExceptionHandlerMiddleware,
 )
 
 
@@ -138,7 +133,7 @@ class TestErrorTypes:
 
     def test_error_type_format(self):
         """Error type slugs should be kebab-case."""
-        for error_code, (slug, title) in ERROR_TYPES.items():
+        for _error_code, (slug, _title) in ERROR_TYPES.items():
             # Slug should be lowercase with hyphens
             assert slug == slug.lower()
             assert "_" not in slug

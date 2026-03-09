@@ -4,9 +4,10 @@ Test F17: LocalAccountSigner dev-only warning.
 Ensures that LocalAccountSigner warns when used in production,
 since it stores private keys in memory (insecure).
 """
-import pytest
 import logging
 from unittest.mock import patch
+
+import pytest
 from sardis_chain.executor import LocalAccountSigner
 
 
@@ -20,7 +21,7 @@ def test_local_signer_warns_in_production(test_private_key, caplog):
     """Test that LocalAccountSigner logs a warning when SARDIS_ENV=production."""
     with patch.dict("os.environ", {"SARDIS_ENV": "production"}):
         with caplog.at_level(logging.WARNING):
-            signer = LocalAccountSigner(test_private_key)
+            LocalAccountSigner(test_private_key)
 
             # Verify warning was logged
             assert any(
@@ -38,7 +39,7 @@ def test_local_signer_no_warning_in_dev(test_private_key, caplog):
     """Test that LocalAccountSigner does NOT warn when SARDIS_ENV is not production."""
     with patch.dict("os.environ", {"SARDIS_ENV": "development"}, clear=True):
         with caplog.at_level(logging.WARNING):
-            signer = LocalAccountSigner(test_private_key)
+            LocalAccountSigner(test_private_key)
 
             # Verify no warning was logged
             assert not any(
@@ -56,7 +57,7 @@ def test_local_signer_no_warning_when_env_not_set(test_private_key, caplog):
             del os.environ["SARDIS_ENV"]
 
         with caplog.at_level(logging.WARNING):
-            signer = LocalAccountSigner(test_private_key)
+            LocalAccountSigner(test_private_key)
 
             # Verify no warning was logged
             assert not any(

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
-import uuid
 
 
 class CardStatus(str, Enum):
@@ -45,102 +44,102 @@ class TransactionStatus(str, Enum):
 @dataclass
 class Card:
     """Virtual card linked to an agent wallet."""
-    
+
     card_id: str = field(default_factory=lambda: f"card_{uuid.uuid4().hex[:16]}")
     wallet_id: str = ""
-    
+
     # Provider info
     provider: str = "lithic"
     provider_card_id: str = ""
-    
+
     # Card details (masked)
     card_number_last4: str = ""
     expiry_month: int = 0
     expiry_year: int = 0
-    
+
     # Card configuration
     card_type: CardType = CardType.MULTI_USE
     status: CardStatus = CardStatus.PENDING
-    locked_merchant_id: Optional[str] = None
-    
+    locked_merchant_id: str | None = None
+
     # Funding
     funding_source: FundingSource = FundingSource.STABLECOIN
     funded_amount: Decimal = field(default_factory=lambda: Decimal("0"))
     pending_funds: Decimal = field(default_factory=lambda: Decimal("0"))
-    
+
     # Spending limits
     limit_per_tx: Decimal = field(default_factory=lambda: Decimal("500.00"))
     limit_daily: Decimal = field(default_factory=lambda: Decimal("2000.00"))
     limit_monthly: Decimal = field(default_factory=lambda: Decimal("10000.00"))
-    
+
     # Spending tracking
     spent_today: Decimal = field(default_factory=lambda: Decimal("0.00"))
     spent_this_month: Decimal = field(default_factory=lambda: Decimal("0.00"))
     total_spent: Decimal = field(default_factory=lambda: Decimal("0.00"))
     pending_authorizations: Decimal = field(default_factory=lambda: Decimal("0.00"))
-    
+
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    activated_at: Optional[datetime] = None
-    frozen_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    last_funded_at: Optional[datetime] = None
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    activated_at: datetime | None = None
+    frozen_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    last_used_at: datetime | None = None
+    last_funded_at: datetime | None = None
+
     @property
     def is_active(self) -> bool:
         """Check if card can be used for transactions."""
         return self.status == CardStatus.ACTIVE
-    
+
     @property
     def available_balance(self) -> Decimal:
         """Calculate available balance for transactions."""
         daily_available = self.limit_daily - self.spent_today - self.pending_authorizations
         funded_available = self.funded_amount - self.pending_authorizations
         return max(Decimal("0"), min(daily_available, funded_available))
-    
-    def can_authorize(self, amount: Decimal, merchant_id: Optional[str] = None) -> tuple[bool, str]:
+
+    def can_authorize(self, amount: Decimal, merchant_id: str | None = None) -> tuple[bool, str]:
         """Check if a transaction can be authorized."""
         if self.status != CardStatus.ACTIVE:
             return False, f"Card is {self.status.value}"
-        
+
         if self.card_type == CardType.MERCHANT_LOCKED and merchant_id != self.locked_merchant_id:
             return False, f"Card is locked to merchant {self.locked_merchant_id}"
-        
+
         if amount > self.limit_per_tx:
             return False, f"Amount {amount} exceeds per-transaction limit {self.limit_per_tx}"
-        
+
         if amount > self.available_balance:
             return False, f"Amount {amount} exceeds available balance {self.available_balance}"
-        
+
         return True, "OK"
 
 
 @dataclass
 class CardTransaction:
     """A transaction on a virtual card."""
-    
+
     transaction_id: str = field(default_factory=lambda: f"ctx_{uuid.uuid4().hex[:16]}")
     card_id: str = ""
-    
+
     # Provider info
     provider_tx_id: str = ""
-    
+
     # Transaction details
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
     currency: str = "USD"
     merchant_name: str = ""
     merchant_category: str = ""
     merchant_id: str = ""
-    
+
     # Status
     status: TransactionStatus = TransactionStatus.PENDING
-    decline_reason: Optional[str] = None
-    
+    decline_reason: str | None = None
+
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    settled_at: Optional[datetime] = None
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    settled_at: datetime | None = None
+
     @property
     def is_settled(self) -> bool:
         """Check if transaction is settled."""

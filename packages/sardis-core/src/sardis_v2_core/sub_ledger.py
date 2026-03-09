@@ -28,10 +28,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from .stripe_treasury import StripeTreasuryProvider
 
@@ -60,8 +59,8 @@ class SubLedgerAccount:
     available_balance: Decimal = field(default_factory=lambda: Decimal("0"))
     pending_balance: Decimal = field(default_factory=lambda: Decimal("0"))    # Funds in transit
     held_balance: Decimal = field(default_factory=lambda: Decimal("0"))       # Reserved for cards
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def total_balance(self) -> Decimal:
@@ -79,7 +78,7 @@ class SubLedgerTransaction:
     balance_after: Decimal
     reference_id: str                   # e.g., Stripe transfer ID, card tx ID
     description: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict = field(default_factory=dict)
 
 
@@ -147,7 +146,7 @@ class SubLedgerManager:
             logger.info("Created sub-ledger account: %s for agent %s", account_id, agent_id)
             return account
 
-    async def get_account(self, agent_id: str) -> Optional[SubLedgerAccount]:
+    async def get_account(self, agent_id: str) -> SubLedgerAccount | None:
         """Get sub-ledger account for an agent.
 
         Args:
@@ -182,7 +181,7 @@ class SubLedgerManager:
         amount: Decimal,
         reference_id: str,
         description: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> SubLedgerTransaction:
         """Credit agent's sub-balance (from Treasury inbound).
 
@@ -211,7 +210,7 @@ class SubLedgerManager:
 
             # Credit available balance
             account.available_balance += amount
-            account.updated_at = datetime.now(timezone.utc)
+            account.updated_at = datetime.now(UTC)
 
             # Record transaction
             tx = SubLedgerTransaction(
@@ -240,7 +239,7 @@ class SubLedgerManager:
         amount: Decimal,
         reference_id: str,
         description: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> SubLedgerTransaction:
         """Debit agent's sub-balance (for bank payout).
 
@@ -275,7 +274,7 @@ class SubLedgerManager:
 
             # Debit available balance
             account.available_balance -= amount
-            account.updated_at = datetime.now(timezone.utc)
+            account.updated_at = datetime.now(UTC)
 
             # Record transaction
             tx = SubLedgerTransaction(
@@ -336,7 +335,7 @@ class SubLedgerManager:
             # Move from available to held
             account.available_balance -= amount
             account.held_balance += amount
-            account.updated_at = datetime.now(timezone.utc)
+            account.updated_at = datetime.now(UTC)
 
             # Record transaction
             tx = SubLedgerTransaction(
@@ -397,7 +396,7 @@ class SubLedgerManager:
             # Move from held back to available
             account.held_balance -= amount
             account.available_balance += amount
-            account.updated_at = datetime.now(timezone.utc)
+            account.updated_at = datetime.now(UTC)
 
             # Record transaction
             tx = SubLedgerTransaction(
@@ -459,7 +458,7 @@ class SubLedgerManager:
 
             # Deduct from held (funds already moved to Issuing)
             account.held_balance -= amount
-            account.updated_at = datetime.now(timezone.utc)
+            account.updated_at = datetime.now(UTC)
 
             # Record transaction
             tx = SubLedgerTransaction(

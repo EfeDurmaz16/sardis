@@ -2,9 +2,6 @@
 
 import importlib.util
 import os
-import sys
-
-import pytest
 
 # Import safe_account directly to avoid sardis_chain.__init__ pulling in
 # heavy cross-package deps (sardis_ledger, etc.)

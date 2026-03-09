@@ -21,12 +21,12 @@ import logging
 import os
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -60,18 +60,18 @@ class Guardian:
     guardian_identifier: str  # Hashed identifier (email, phone, etc.)
     guardian_name: str  # Display name
     share_index: int  # SSS share index
-    encrypted_share: Optional[bytes] = None  # Encrypted SSS share
+    encrypted_share: bytes | None = None  # Encrypted SSS share
     status: GuardianStatus = GuardianStatus.PENDING
-    added_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    accepted_at: Optional[datetime] = None
-    last_verified_at: Optional[datetime] = None
+    added_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    accepted_at: datetime | None = None
+    last_verified_at: datetime | None = None
     verification_method: str = "email_otp"  # How guardian verifies their identity
 
     # Security settings
     max_recovery_attempts: int = 3
     cooldown_hours: int = 24
     current_attempts: int = 0
-    last_attempt_at: Optional[datetime] = None
+    last_attempt_at: datetime | None = None
 
     def is_active(self) -> bool:
         """Check if guardian is active and can participate in recovery."""
@@ -85,7 +85,7 @@ class Guardian:
         # Check cooldown
         if self.last_attempt_at and self.current_attempts >= self.max_recovery_attempts:
             cooldown_end = self.last_attempt_at + timedelta(hours=self.cooldown_hours)
-            if datetime.now(timezone.utc) < cooldown_end:
+            if datetime.now(UTC) < cooldown_end:
                 return False
             # Reset after cooldown
             self.current_attempts = 0
@@ -95,9 +95,9 @@ class Guardian:
     def record_participation(self) -> None:
         """Record participation in a recovery attempt."""
         self.current_attempts += 1
-        self.last_attempt_at = datetime.now(timezone.utc)
+        self.last_attempt_at = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary (safe for client)."""
         return {
             "guardian_id": self.guardian_id,
@@ -120,12 +120,12 @@ class RecoveryChallenge:
     guardian_id: str
     challenge_type: str  # "otp", "signature", "hardware_key"
     challenge_data: str  # Challenge to be signed/answered
-    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    issued_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=1)
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=1)
     )
     verified: bool = False
-    verified_at: Optional[datetime] = None
+    verified_at: datetime | None = None
     attempts: int = 0
     max_attempts: int = 5
 
@@ -133,11 +133,9 @@ class RecoveryChallenge:
         """Check if challenge is still valid."""
         if self.verified:
             return False
-        if datetime.now(timezone.utc) > self.expires_at:
+        if datetime.now(UTC) > self.expires_at:
             return False
-        if self.attempts >= self.max_attempts:
-            return False
-        return True
+        return not self.attempts >= self.max_attempts
 
 
 @dataclass
@@ -146,30 +144,30 @@ class RecoveryRequest:
     recovery_id: str
     wallet_id: str
     requester_proof: str  # Proof of identity from requester
-    new_key_reference: Optional[str] = None  # New MPC key to transfer to
+    new_key_reference: str | None = None  # New MPC key to transfer to
     status: RecoveryStatus = RecoveryStatus.PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(days=7)
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=7)
     )
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     # Guardian participation
-    guardians_contacted: List[str] = field(default_factory=list)
-    shares_collected: Dict[str, bytes] = field(default_factory=dict)  # guardian_id -> share
+    guardians_contacted: list[str] = field(default_factory=list)
+    shares_collected: dict[str, bytes] = field(default_factory=dict)  # guardian_id -> share
     threshold: int = 0
     required_threshold: int = 0
 
     # Time lock
     time_lock_hours: int = 48
-    time_lock_expires_at: Optional[datetime] = None
+    time_lock_expires_at: datetime | None = None
 
     # Audit
-    activity_log: List[Dict[str, Any]] = field(default_factory=list)
+    activity_log: list[dict[str, Any]] = field(default_factory=list)
 
     def is_expired(self) -> bool:
         """Check if recovery request has expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_threshold_met(self) -> bool:
         """Check if enough shares have been collected."""
@@ -179,11 +177,11 @@ class RecoveryRequest:
         """Check if time lock has expired (recovery can proceed)."""
         if not self.time_lock_expires_at:
             return False
-        return datetime.now(timezone.utc) >= self.time_lock_expires_at
+        return datetime.now(UTC) >= self.time_lock_expires_at
 
     def start_time_lock(self) -> None:
         """Start the time lock period."""
-        self.time_lock_expires_at = datetime.now(timezone.utc) + timedelta(
+        self.time_lock_expires_at = datetime.now(UTC) + timedelta(
             hours=self.time_lock_hours
         )
         self.status = RecoveryStatus.THRESHOLD_MET
@@ -196,15 +194,15 @@ class RecoveryRequest:
         if self.is_threshold_met() and self.status == RecoveryStatus.COLLECTING_SHARES:
             self.start_time_lock()
 
-    def log_activity(self, action: str, details: Dict[str, Any]) -> None:
+    def log_activity(self, action: str, details: dict[str, Any]) -> None:
         """Log an activity."""
         self.activity_log.append({
             "action": action,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "details": details,
         })
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "recovery_id": self.recovery_id,
@@ -279,7 +277,7 @@ class NotificationService(Protocol):
         self,
         guardian: Guardian,
         notification_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> bool:
         """Send a notification to a guardian."""
         ...
@@ -299,20 +297,20 @@ class SocialRecoveryManager:
 
     def __init__(
         self,
-        config: Optional[SocialRecoveryConfig] = None,
-        encryption_service: Optional[ShareEncryptionService] = None,
-        notification_service: Optional[NotificationService] = None,
+        config: SocialRecoveryConfig | None = None,
+        encryption_service: ShareEncryptionService | None = None,
+        notification_service: NotificationService | None = None,
     ):
         self._config = config or SocialRecoveryConfig()
         self._encryption = encryption_service
         self._notifications = notification_service
 
         # Storage (in production, use database)
-        self._guardians: Dict[str, Dict[str, Guardian]] = {}  # wallet_id -> guardian_id -> guardian
-        self._recovery_requests: Dict[str, RecoveryRequest] = {}  # recovery_id -> request
-        self._wallet_recoveries: Dict[str, str] = {}  # wallet_id -> active recovery_id
-        self._challenges: Dict[str, RecoveryChallenge] = {}  # challenge_id -> challenge
-        self._wallet_configs: Dict[str, Dict[str, Any]] = {}  # wallet_id -> config overrides
+        self._guardians: dict[str, dict[str, Guardian]] = {}  # wallet_id -> guardian_id -> guardian
+        self._recovery_requests: dict[str, RecoveryRequest] = {}  # recovery_id -> request
+        self._wallet_recoveries: dict[str, str] = {}  # wallet_id -> active recovery_id
+        self._challenges: dict[str, RecoveryChallenge] = {}  # challenge_id -> challenge
+        self._wallet_configs: dict[str, dict[str, Any]] = {}  # wallet_id -> config overrides
 
         # Locks
         self._recovery_lock = asyncio.Lock()
@@ -322,7 +320,7 @@ class SocialRecoveryManager:
         secret: bytes,
         num_shares: int,
         threshold: int,
-    ) -> List[Tuple[int, bytes]]:
+    ) -> list[tuple[int, bytes]]:
         """
         Generate Shamir's Secret Sharing shares.
 
@@ -358,7 +356,7 @@ class SocialRecoveryManager:
 
     def _reconstruct_secret(
         self,
-        shares: List[Tuple[int, bytes]],
+        shares: list[tuple[int, bytes]],
         threshold: int,
     ) -> bytes:
         """
@@ -387,9 +385,9 @@ class SocialRecoveryManager:
         self,
         wallet_id: str,
         recovery_secret: bytes,
-        guardians: List[Dict[str, Any]],
-        threshold: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        guardians: list[dict[str, Any]],
+        threshold: int | None = None,
+    ) -> dict[str, Any]:
         """
         Set up social recovery for a wallet.
 
@@ -474,7 +472,7 @@ class SocialRecoveryManager:
         self._wallet_configs[wallet_id] = {
             "threshold": threshold,
             "num_guardians": num_guardians,
-            "setup_at": datetime.now(timezone.utc).isoformat(),
+            "setup_at": datetime.now(UTC).isoformat(),
         }
 
         logger.info(
@@ -519,8 +517,8 @@ class SocialRecoveryManager:
             raise ValueError("Invalid verification code")
 
         guardian.status = GuardianStatus.ACTIVE
-        guardian.accepted_at = datetime.now(timezone.utc)
-        guardian.last_verified_at = datetime.now(timezone.utc)
+        guardian.accepted_at = datetime.now(UTC)
+        guardian.last_verified_at = datetime.now(UTC)
 
         logger.info(f"Guardian {guardian_id} accepted role for wallet {wallet_id}")
         return True
@@ -529,7 +527,7 @@ class SocialRecoveryManager:
         self,
         wallet_id: str,
         requester_proof: str,
-        new_key_reference: Optional[str] = None,
+        new_key_reference: str | None = None,
     ) -> RecoveryRequest:
         """
         Initiate a recovery request.
@@ -575,7 +573,7 @@ class SocialRecoveryManager:
                 required_threshold=config["threshold"],
                 time_lock_hours=self._config.time_lock_hours,
                 status=RecoveryStatus.COLLECTING_SHARES,
-                expires_at=datetime.now(timezone.utc) + timedelta(
+                expires_at=datetime.now(UTC) + timedelta(
                     days=self._config.recovery_expiry_days
                 ),
             )
@@ -701,7 +699,7 @@ class SocialRecoveryManager:
             return False
 
         challenge.verified = True
-        challenge.verified_at = datetime.now(timezone.utc)
+        challenge.verified_at = datetime.now(UTC)
 
         # Get recovery and guardian
         recovery = self._recovery_requests.get(challenge.recovery_id)
@@ -710,7 +708,7 @@ class SocialRecoveryManager:
         if recovery and guardian:
             # Record participation
             guardian.record_participation()
-            guardian.last_verified_at = datetime.now(timezone.utc)
+            guardian.last_verified_at = datetime.now(UTC)
 
             # Add share to recovery
             if guardian.encrypted_share:
@@ -734,7 +732,7 @@ class SocialRecoveryManager:
     async def execute_recovery(
         self,
         recovery_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute the recovery after threshold is met and time lock expired.
 
@@ -756,7 +754,7 @@ class SocialRecoveryManager:
 
         if not recovery.is_time_lock_expired():
             time_remaining = (
-                recovery.time_lock_expires_at - datetime.now(timezone.utc)
+                recovery.time_lock_expires_at - datetime.now(UTC)
             )
             raise ValueError(
                 f"Time lock not expired - {time_remaining.total_seconds() / 3600:.1f} hours remaining"
@@ -775,7 +773,7 @@ class SocialRecoveryManager:
                 for gid, share_data in recovery.shares_collected.items()
             ]
 
-            recovered_secret = self._reconstruct_secret(
+            self._reconstruct_secret(
                 shares,
                 recovery.required_threshold,
             )
@@ -786,7 +784,7 @@ class SocialRecoveryManager:
             # 3. Update MPC configuration
 
             recovery.status = RecoveryStatus.COMPLETED
-            recovery.completed_at = datetime.now(timezone.utc)
+            recovery.completed_at = datetime.now(UTC)
             recovery.log_activity("recovery_completed", {
                 "new_key_reference": recovery.new_key_reference,
             })
@@ -840,12 +838,12 @@ class SocialRecoveryManager:
         logger.info(f"Recovery {recovery_id} cancelled by {cancelled_by}")
         return True
 
-    def get_wallet_guardians(self, wallet_id: str) -> List[Dict[str, Any]]:
+    def get_wallet_guardians(self, wallet_id: str) -> list[dict[str, Any]]:
         """Get list of guardians for a wallet."""
         guardians = self._guardians.get(wallet_id, {})
         return [g.to_dict() for g in guardians.values()]
 
-    def get_recovery_status(self, recovery_id: str) -> Optional[Dict[str, Any]]:
+    def get_recovery_status(self, recovery_id: str) -> dict[str, Any] | None:
         """Get status of a recovery request."""
         recovery = self._recovery_requests.get(recovery_id)
         if not recovery:
@@ -881,11 +879,11 @@ class SocialRecoveryManager:
 
 
 # Singleton instance
-_social_recovery_manager: Optional[SocialRecoveryManager] = None
+_social_recovery_manager: SocialRecoveryManager | None = None
 
 
 def get_social_recovery_manager(
-    config: Optional[SocialRecoveryConfig] = None,
+    config: SocialRecoveryConfig | None = None,
 ) -> SocialRecoveryManager:
     """Get the global social recovery manager instance."""
     global _social_recovery_manager

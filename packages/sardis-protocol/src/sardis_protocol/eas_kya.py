@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ class EASKYAClient:
             attestation_uid=uid,
         )
 
-    async def verify_attestation(self, uid: bytes) -> Optional[KYAAttestation]:
+    async def verify_attestation(self, uid: bytes) -> KYAAttestation | None:
         """Verify a KYA attestation by reading it from EAS.
 
         Args:
@@ -279,7 +279,7 @@ class EASKYAClient:
 
     def _parse_attestation_result(
         self, result: str, uid: bytes
-    ) -> Optional[KYAAttestation]:
+    ) -> KYAAttestation | None:
         """Parse the Attestation struct returned by EAS.getAttestation()."""
         raw = result.removeprefix("0x")
         if len(raw) < 512:  # minimum attestation struct size

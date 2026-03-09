@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
-from .base import CardProvider
 from ..models import Card, CardTransaction, CardType
+from .base import CardProvider
 
 
 class CardProviderRouter(CardProvider):
@@ -19,7 +18,7 @@ class CardProviderRouter(CardProvider):
     - Unknown cards are probed against primary then fallback.
     """
 
-    def __init__(self, primary: CardProvider, fallback: Optional[CardProvider] = None) -> None:
+    def __init__(self, primary: CardProvider, fallback: CardProvider | None = None) -> None:
         self.primary = primary
         self.fallback = fallback
         self._provider_by_card_id: dict[str, CardProvider] = {}
@@ -59,7 +58,7 @@ class CardProviderRouter(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
     ) -> Card:
         last_error: Exception | None = None
         for provider in (self.primary, self.fallback):
@@ -85,7 +84,7 @@ class CardProviderRouter(CardProvider):
             raise last_error
         raise RuntimeError("No card provider available")
 
-    async def get_card(self, provider_card_id: str) -> Optional[Card]:
+    async def get_card(self, provider_card_id: str) -> Card | None:
         provider = await self._resolve_provider(provider_card_id)
         card = await provider.get_card(provider_card_id)
         if card:
@@ -125,9 +124,9 @@ class CardProviderRouter(CardProvider):
     async def update_limits(
         self,
         provider_card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         provider = await self._resolve_provider(provider_card_id)
         card = await provider.update_limits(
@@ -158,7 +157,7 @@ class CardProviderRouter(CardProvider):
             offset=offset,
         )
 
-    async def get_transaction(self, provider_tx_id: str) -> Optional[CardTransaction]:
+    async def get_transaction(self, provider_tx_id: str) -> CardTransaction | None:
         tx = await self.primary.get_transaction(provider_tx_id)
         if tx is not None:
             return tx

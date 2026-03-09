@@ -13,9 +13,10 @@ Usage:
 """
 import os
 
-from crewai import Agent, Task, Crew
-from sardis import SardisClient
+from crewai import Agent, Crew, Task
 from sardis_crewai import get_sardis_tools
+
+from sardis import SardisClient
 
 
 def main():

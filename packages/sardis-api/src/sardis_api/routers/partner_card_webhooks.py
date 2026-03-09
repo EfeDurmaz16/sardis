@@ -7,9 +7,9 @@ import hmac
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -35,10 +35,10 @@ def get_deps() -> PartnerCardWebhookDeps:
     raise NotImplementedError("Dependency override required")
 
 
-def _compute_hmac(secret: str, body: bytes, *, timestamp: Optional[str] = None) -> tuple[str, str]:
+def _compute_hmac(secret: str, body: bytes, *, timestamp: str | None = None) -> tuple[str, str]:
     mac_body = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     if timestamp:
-        signed_payload = f"{timestamp}.{body.decode('utf-8')}".encode("utf-8")
+        signed_payload = f"{timestamp}.{body.decode('utf-8')}".encode()
         mac_timestamped = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
     else:
         mac_timestamped = mac_body
@@ -65,7 +65,7 @@ def _verify_signature(
     secret: str,
     signature_header: str,
     body: bytes,
-    timestamp: Optional[str] = None,
+    timestamp: str | None = None,
 ) -> bool:
     provided = _extract_sig_from_header(signature_header)
     if not provided:
@@ -150,7 +150,7 @@ async def _handle_partner_webhook(
     deps: PartnerCardWebhookDeps,
     secret: str,
     signature_header: str,
-    timestamp_header: Optional[str] = None,
+    timestamp_header: str | None = None,
 ) -> dict[str, str]:
     body = await request.body()
 
@@ -161,17 +161,16 @@ async def _handle_partner_webhook(
             detail=f"{provider}_webhook_secret_required_in_production",
         )
 
-    if secret:
-        if not _verify_signature(
-            secret=secret,
-            signature_header=signature_header,
-            body=body,
-            timestamp=timestamp_header,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="invalid_webhook_signature",
-            )
+    if secret and not _verify_signature(
+        secret=secret,
+        signature_header=signature_header,
+        body=body,
+        timestamp=timestamp_header,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_webhook_signature",
+        )
 
     try:
         payload = json.loads(body)
@@ -217,7 +216,7 @@ async def _handle_partner_webhook(
                 try:
                     settled_at = datetime.fromisoformat(str(data.get("settled_at")).replace("Z", "+00:00"))
                 except Exception:
-                    settled_at = datetime.now(timezone.utc)
+                    settled_at = datetime.now(UTC)
             status_value = "pending"
             raw_status = str(data.get("status") or "").lower()
             if "declined" in event_type or raw_status in {"declined", "denied"}:
@@ -225,7 +224,7 @@ async def _handle_partner_webhook(
             elif "settled" in event_type or raw_status in {"settled", "completed"}:
                 status_value = "settled"
                 if settled_at is None:
-                    settled_at = datetime.now(timezone.utc)
+                    settled_at = datetime.now(UTC)
             elif "authorized" in event_type or raw_status in {"approved", "authorized"}:
                 status_value = "approved"
 

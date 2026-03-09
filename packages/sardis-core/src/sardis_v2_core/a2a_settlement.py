@@ -26,20 +26,20 @@ Usage:
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from decimal import Decimal
 import time
-from typing import Any, Optional, Literal, Protocol
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any, Literal, Protocol
 from uuid import uuid4
 
 from .a2a_escrow import Escrow, EscrowState
 from .database import Database
 from .exceptions import (
-    SardisNotFoundError,
-    SardisValidationError,
     SardisConflictError,
+    SardisNotFoundError,
     SardisTransactionFailedError,
+    SardisValidationError,
 )
 from .mandates import PaymentMandate, VCProof
 from .tokens import TokenType, to_raw_token_amount
@@ -62,7 +62,7 @@ class SettlementResult:
     transaction hash, settlement type, and ledger entries.
     """
     escrow_id: str
-    tx_hash: Optional[str]
+    tx_hash: str | None
     settlement_type: Literal["on_chain", "off_chain"]
     ledger_entries: list[str]
     settled_at: datetime
@@ -71,10 +71,10 @@ class SettlementResult:
     amount: Decimal
     token: str
     chain: str
-    block_number: Optional[int] = None
-    explorer_url: Optional[str] = None
-    execution_path: Optional[str] = None
-    user_op_hash: Optional[str] = None
+    block_number: int | None = None
+    explorer_url: str | None = None
+    execution_path: str | None = None
+    user_op_hash: str | None = None
 
 
 class SettlementEngine:
@@ -88,8 +88,8 @@ class SettlementEngine:
     def __init__(
         self,
         *,
-        chain_executor: Optional[ChainExecutorPort] = None,
-        wallet_repo: Optional[WalletRepositoryPort] = None,
+        chain_executor: ChainExecutorPort | None = None,
+        wallet_repo: WalletRepositoryPort | None = None,
         domain: str = "sardis.sh",
     ) -> None:
         self._chain_executor = chain_executor
@@ -100,8 +100,8 @@ class SettlementEngine:
         self,
         escrow: Escrow,
         *,
-        chain_executor: Optional[ChainExecutorPort] = None,
-        wallet_repo: Optional[WalletRepositoryPort] = None,
+        chain_executor: ChainExecutorPort | None = None,
+        wallet_repo: WalletRepositoryPort | None = None,
     ) -> SettlementResult:
         """
         Execute on-chain settlement (blockchain transfer).
@@ -214,7 +214,7 @@ class SettlementEngine:
                 chain=escrow.chain,
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         settlement_id = f"settlement_{uuid4().hex[:16]}"
         block_number = getattr(receipt, "block_number", None)
         execution_path = getattr(receipt, "execution_path", None)
@@ -290,7 +290,7 @@ class SettlementEngine:
                 field="state",
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         settlement_id = f"settlement_{uuid4().hex[:16]}"
 
         # Record off-chain transfer in ledger (double-entry)
@@ -355,7 +355,7 @@ class SettlementEngine:
         Returns:
             List of ledger entry IDs created
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ledger_entries = []
 
         async with Database.transaction() as conn:
@@ -417,7 +417,7 @@ class SettlementEngine:
 
         return ledger_entries
 
-    async def get_settlement(self, escrow_id: str) -> Optional[SettlementResult]:
+    async def get_settlement(self, escrow_id: str) -> SettlementResult | None:
         """
         Get settlement result for an escrow.
 
@@ -460,8 +460,8 @@ class SettlementEngine:
 
     async def list_settlements(
         self,
-        agent_id: Optional[str] = None,
-        settlement_type: Optional[Literal["on_chain", "off_chain"]] = None,
+        agent_id: str | None = None,
+        settlement_type: Literal["on_chain", "off_chain"] | None = None,
         limit: int = 100,
     ) -> list[SettlementResult]:
         """
@@ -519,7 +519,7 @@ class SettlementEngine:
             ]
 
 
-def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:
+def _explorer_url(chain: str, tx_hash: str) -> str | None:
     normalized = (chain or "").strip().lower()
     if normalized in {"base", "base-mainnet"}:
         return f"https://basescan.org/tx/{tx_hash}"

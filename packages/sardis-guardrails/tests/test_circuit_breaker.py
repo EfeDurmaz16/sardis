@@ -1,8 +1,9 @@
 """Unit tests for circuit breaker pattern."""
 
 import asyncio
+
 import pytest
-import time
+
 from sardis_guardrails.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,

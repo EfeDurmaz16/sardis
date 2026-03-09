@@ -127,7 +127,7 @@ async def test_ready_endpoint(test_client):
 @pytest.mark.anyio
 async def test_ready_endpoint_not_ready():
     """Test /ready returns 503 when app.state.ready is not set."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
     from sardis_api.main import create_app
 
     app = create_app()
@@ -147,7 +147,7 @@ async def test_ready_endpoint_not_ready():
 @pytest.mark.anyio
 async def test_health_returns_503_when_not_ready():
     """Test /health returns 503 with not_ready when startup incomplete."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
     from sardis_api.main import create_app
 
     app = create_app()

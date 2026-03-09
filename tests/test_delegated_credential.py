@@ -1,13 +1,14 @@
 """Tests for delegated credential model, consent, and stores."""
 from __future__ import annotations
 
-import asyncio
-import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
+from sardis_v2_core.credential_store import (
+    CredentialEncryption,
+    InMemoryCredentialStore,
+)
 from sardis_v2_core.delegated_credential import (
     CREDENTIAL_HANDLING,
     CredentialClass,
@@ -16,16 +17,11 @@ from sardis_v2_core.delegated_credential import (
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.credential_store import (
-    CredentialEncryption,
-    InMemoryCredentialStore,
-)
 from sardis_v2_core.delegation_consent import (
     ConsentType,
     DelegationConsent,
     InMemoryConsentStore,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -102,7 +98,7 @@ class TestDelegatedCredential:
 
     def test_is_valid_expired(self):
         cred = _make_credential(
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         assert cred.is_valid is False
 
@@ -134,7 +130,7 @@ class TestDelegatedCredential:
 
     def test_can_execute_scope_expired(self):
         scope = CredentialScope(
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         cred = _make_credential(scope=scope)
         ok, msg = cred.can_execute(Decimal("10"))
@@ -394,12 +390,12 @@ class TestDelegationConsent:
 
     def test_consent_revoked_is_invalid(self):
         consent = _make_consent()
-        consent.revoked_at = datetime.now(timezone.utc)
+        consent.revoked_at = datetime.now(UTC)
         assert consent.is_valid is False
 
     def test_consent_expired_is_invalid(self):
         consent = _make_consent(
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         assert consent.is_valid is False
 

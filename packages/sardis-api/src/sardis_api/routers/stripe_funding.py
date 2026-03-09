@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from decimal import Decimal
-import os
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis_v2_core.funding import (
+    FundingAdapter,
+    FundingRequest,
+    FundingRoutingError,
+    StripeIssuingFundingAdapter,
+    execute_funding_with_failover,
+)
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stripe_issuing_funding_event
@@ -16,13 +23,6 @@ from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.routers.metrics import (
     record_funding_attempt,
     record_funding_failover_result,
-)
-from sardis_v2_core.funding import (
-    FundingAdapter,
-    FundingRequest,
-    FundingRoutingError,
-    StripeIssuingFundingAdapter,
-    execute_funding_with_failover,
 )
 
 router = APIRouter(prefix="/stripe/funding", tags=["stripe-funding"])
@@ -50,7 +50,7 @@ def get_deps() -> StripeFundingDeps:
 class FundIssuingBalanceRequest(BaseModel):
     amount: Decimal = Field(gt=0)
     description: str = Field(default="Fund agent virtual cards")
-    connected_account_id: Optional[str] = Field(
+    connected_account_id: str | None = Field(
         default=None,
         description="Optional Stripe Connect account id (acct_...).",
     )
@@ -66,12 +66,12 @@ class FundIssuingBalanceResponse(BaseModel):
     rail: str
     attempt_count: int = 1
     attempted_providers: list[str] = Field(default_factory=list)
-    connected_account_id: Optional[str] = None
+    connected_account_id: str | None = None
     connected_account_source: str
 
 
 class ConnectedAccountResolution(BaseModel):
-    connected_account_id: Optional[str] = None
+    connected_account_id: str | None = None
     source: str
 
 
@@ -81,9 +81,9 @@ class IssuingFundingHistoryItem(BaseModel):
     amount_minor: int
     currency: str
     status: str
-    connected_account_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    created_at: Optional[str] = None
+    connected_account_id: str | None = None
+    idempotency_key: str | None = None
+    created_at: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -101,11 +101,11 @@ class FundingAttemptHistoryItem(BaseModel):
     provider: str
     rail: str
     status: str
-    error: Optional[str] = None
+    error: str | None = None
     amount_minor: int
     currency: str
-    connected_account_id: Optional[str] = None
-    created_at: Optional[str] = None
+    connected_account_id: str | None = None
+    created_at: str | None = None
 
 
 class FundingRoutingPlanItem(BaseModel):
@@ -124,8 +124,8 @@ def _resolve_connected_account(
     *,
     principal: Principal,
     deps: StripeFundingDeps,
-    requested: Optional[str],
-) -> tuple[Optional[str], str]:
+    requested: str | None,
+) -> tuple[str | None, str]:
     if requested:
         return requested, "request"
 
@@ -183,7 +183,7 @@ async def _persist_funding_attempts(
     operation_id: str,
     amount_minor: int,
     currency: str,
-    connected_account_id: Optional[str],
+    connected_account_id: str | None,
     attempts: list[dict[str, Any]],
     metadata: dict[str, str],
 ) -> None:
@@ -252,8 +252,8 @@ async def get_issuing_topup_strategy(
 @router.get("/issuing/topups/history", response_model=list[IssuingFundingHistoryItem])
 async def list_issuing_topup_history(
     limit: int = Query(default=100, ge=1, le=500),
-    provider: Optional[str] = Query(default=None),
-    connected_account_id: Optional[str] = Query(default=None),
+    provider: str | None = Query(default=None),
+    connected_account_id: str | None = Query(default=None),
     deps: StripeFundingDeps = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
@@ -289,7 +289,7 @@ async def list_issuing_topup_history(
 
 @router.get("/issuing/topups/attempts", response_model=list[FundingAttemptHistoryItem])
 async def list_issuing_topup_attempts(
-    operation_id: Optional[str] = Query(default=None),
+    operation_id: str | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=1000),
     deps: StripeFundingDeps = Depends(get_deps),
     principal: Principal = Depends(require_principal),

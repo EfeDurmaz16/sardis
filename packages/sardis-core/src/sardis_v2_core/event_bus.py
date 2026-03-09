@@ -8,8 +8,9 @@ from __future__ import annotations
 import asyncio
 import fnmatch
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 from .webhooks import EventType, WebhookEvent, WebhookService
 
@@ -41,7 +42,7 @@ class EventBus:
     """
 
     _subscribers: dict[str, list[Callable]] = field(default_factory=dict)
-    _webhook_service: Optional[WebhookService] = None
+    _webhook_service: WebhookService | None = None
     _background_tasks: set[asyncio.Task[Any]] = field(default_factory=set)
 
     def subscribe(self, event_pattern: str, handler: Callable) -> None:
@@ -86,8 +87,8 @@ class EventBus:
         self,
         event_type: EventType,
         data: dict,
-        agent_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
+        agent_id: str | None = None,
+        organization_id: str | None = None,
         fire_and_forget: bool = True,
     ) -> None:
         """Emit an event - routes to all matching subscribers and webhook service.
@@ -179,7 +180,7 @@ class EventBus:
         except Exception:
             logger.exception("Event bus background task failed")
 
-    async def wait_for_background_tasks(self, timeout: Optional[float] = None) -> None:
+    async def wait_for_background_tasks(self, timeout: float | None = None) -> None:
         """Wait for all currently tracked background tasks to complete."""
         if not self._background_tasks:
             return
@@ -221,7 +222,7 @@ class EventBus:
 
 
 # Singleton instance for global event bus
-_default_bus: Optional[EventBus] = None
+_default_bus: EventBus | None = None
 
 
 def get_default_bus() -> EventBus:
@@ -242,8 +243,8 @@ async def emit_policy_event(
     event_type: EventType,
     policy_id: str,
     agent_id: str,
-    reason: Optional[str] = None,
-    details: Optional[dict] = None,
+    reason: str | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit a policy-related event.
 
@@ -283,8 +284,8 @@ async def emit_spend_event(
     amount: str,
     limit: str,
     period: str,
-    percentage: Optional[float] = None,
-    details: Optional[dict] = None,
+    percentage: float | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit a spending threshold event.
 
@@ -327,10 +328,10 @@ async def emit_approval_event(
     event_type: EventType,
     approval_id: str,
     agent_id: str,
-    transaction_id: Optional[str] = None,
-    approver_id: Optional[str] = None,
-    reason: Optional[str] = None,
-    details: Optional[dict] = None,
+    transaction_id: str | None = None,
+    approver_id: str | None = None,
+    reason: str | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit an approval-related event.
 
@@ -376,11 +377,11 @@ async def emit_card_event(
     event_type: EventType,
     card_id: str,
     agent_id: str,
-    transaction_id: Optional[str] = None,
-    amount: Optional[str] = None,
-    merchant: Optional[str] = None,
-    reason: Optional[str] = None,
-    details: Optional[dict] = None,
+    transaction_id: str | None = None,
+    amount: str | None = None,
+    merchant: str | None = None,
+    reason: str | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit a card-related event.
 
@@ -432,8 +433,8 @@ async def emit_compliance_event(
     agent_id: str,
     check_type: str,
     result: str,
-    reason: Optional[str] = None,
-    details: Optional[dict] = None,
+    reason: str | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit a compliance-related event.
 
@@ -476,8 +477,8 @@ async def emit_group_event(
     amount: str,
     limit: str,
     period: str,
-    percentage: Optional[float] = None,
-    details: Optional[dict] = None,
+    percentage: float | None = None,
+    details: dict | None = None,
 ) -> None:
     """Emit a group budget event.
 

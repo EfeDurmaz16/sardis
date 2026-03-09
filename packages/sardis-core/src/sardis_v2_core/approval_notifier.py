@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 from decimal import Decimal
 
-from .webhooks import WebhookEvent, WebhookService, EventType
+from .webhooks import EventType, WebhookEvent, WebhookService
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +21,14 @@ class ApprovalNotifier:
         action: str,
         requested_by: str,
         urgency: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        vendor: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        purpose: Optional[str] = None,
-        reason: Optional[str] = None,
-        card_limit: Optional[Decimal] = None,
-        expires_at: Optional[str] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        vendor: str | None = None,
+        amount: Decimal | None = None,
+        purpose: str | None = None,
+        reason: str | None = None,
+        card_limit: Decimal | None = None,
+        expires_at: str | None = None,
     ) -> None:
         """Notify that an approval request was created."""
         event = self._create_approval_event(
@@ -56,8 +55,8 @@ class ApprovalNotifier:
         approval_id: str,
         action: str,
         reviewed_by: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
     ) -> None:
         """Notify that an approval was approved."""
         event = self._create_approval_event(
@@ -77,8 +76,8 @@ class ApprovalNotifier:
         approval_id: str,
         action: str,
         reviewed_by: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
     ) -> None:
         """Notify that an approval was denied."""
         event = self._create_approval_event(
@@ -97,8 +96,8 @@ class ApprovalNotifier:
         self,
         approval_id: str,
         action: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
     ) -> None:
         """Notify that an approval request expired."""
         event = self._create_approval_event(
@@ -116,8 +115,8 @@ class ApprovalNotifier:
         self,
         approval_id: str,
         action: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
     ) -> None:
         """Notify that an approval request was cancelled."""
         event = self._create_approval_event(
@@ -137,17 +136,17 @@ class ApprovalNotifier:
         approval_id: str,
         action: str,
         status: str,
-        requested_by: Optional[str] = None,
-        reviewed_by: Optional[str] = None,
-        urgency: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        vendor: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        purpose: Optional[str] = None,
-        reason: Optional[str] = None,
-        card_limit: Optional[Decimal] = None,
-        expires_at: Optional[str] = None,
+        requested_by: str | None = None,
+        reviewed_by: str | None = None,
+        urgency: str | None = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        vendor: str | None = None,
+        amount: Decimal | None = None,
+        purpose: str | None = None,
+        reason: str | None = None,
+        card_limit: Decimal | None = None,
+        expires_at: str | None = None,
     ) -> WebhookEvent:
         """Create a webhook event for approval notification."""
         data = {

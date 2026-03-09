@@ -20,15 +20,15 @@ Key Features:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ VerifiedTx = Any  # Will be immudb.datatypes.VerifiableTx when imported
 class ImmutableStoreError(Exception):
     """Base exception for immutable store operations."""
 
-    def __init__(self, message: str, code: str = "IMMUTABLE_ERROR", details: Optional[Dict] = None):
+    def __init__(self, message: str, code: str = "IMMUTABLE_ERROR", details: dict | None = None):
         super().__init__(message)
         self.code = code
         self.details = details or {}
@@ -103,15 +103,15 @@ class ImmutableConfig:
     immudb_database: str = "sardis_audit"
 
     # PostgreSQL connection (optional, for hybrid mode)
-    postgres_url: Optional[str] = None
+    postgres_url: str | None = None
 
     # Blockchain anchoring
     enable_anchoring: bool = False
     anchor_chain: str = "base"  # base, ethereum, polygon
     anchor_interval_seconds: int = 3600  # 1 hour
-    anchor_rpc_url: Optional[str] = None
-    anchor_private_key: Optional[str] = None  # For signing anchor transactions
-    anchor_contract_address: Optional[str] = None
+    anchor_rpc_url: str | None = None
+    anchor_private_key: str | None = None  # For signing anchor transactions
+    anchor_contract_address: str | None = None
 
     # Retry configuration
     max_retries: int = 3
@@ -130,11 +130,11 @@ class MerkleProof:
     tx_id: int  # immudb transaction ID
     leaf_hash: str
     root_hash: str
-    proof_nodes: List[str]
+    proof_nodes: list[str]
     tree_size: int
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entry_id": self.entry_id,
             "tx_id": self.tx_id,
@@ -146,7 +146,7 @@ class MerkleProof:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MerkleProof":
+    def from_dict(cls, data: dict[str, Any]) -> MerkleProof:
         return cls(
             entry_id=data["entry_id"],
             tx_id=data["tx_id"],
@@ -176,18 +176,18 @@ class ImmutableReceipt:
 
     # immudb proof
     immudb_tx_id: int = 0
-    merkle_proof: Optional[MerkleProof] = None
+    merkle_proof: MerkleProof | None = None
 
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    verified_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    verified_at: datetime | None = None
 
     # Blockchain anchor (if enabled)
-    anchor_tx_hash: Optional[str] = None
-    anchor_chain: Optional[str] = None
-    anchor_block: Optional[int] = None
+    anchor_tx_hash: str | None = None
+    anchor_chain: str | None = None
+    anchor_block: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "receipt_id": self.receipt_id,
             "entry_id": self.entry_id,
@@ -208,7 +208,7 @@ class VerificationResult:
 
     entry_id: str
     status: VerificationStatus
-    verified_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    verified_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Verification details
     immudb_verified: bool = False
@@ -217,14 +217,14 @@ class VerificationResult:
     consistency_verified: bool = False
 
     # Hashes
-    computed_hash: Optional[str] = None
-    stored_hash: Optional[str] = None
-    merkle_root: Optional[str] = None
+    computed_hash: str | None = None
+    stored_hash: str | None = None
+    merkle_root: str | None = None
 
     # Error info
-    error: Optional[str] = None
+    error: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entry_id": self.entry_id,
             "status": self.status.value,
@@ -262,22 +262,22 @@ class AuditEntry:
     currency: str = "USDC"
 
     # Chain data
-    chain: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    block_number: Optional[int] = None
+    chain: str | None = None
+    chain_tx_hash: str | None = None
+    block_number: int | None = None
 
     # Actor and context
-    actor_id: Optional[str] = None
-    actor_type: Optional[str] = None  # "user", "agent", "system"
-    request_id: Optional[str] = None
-    ip_address: Optional[str] = None
+    actor_id: str | None = None
+    actor_type: str | None = None  # "user", "agent", "system"
+    request_id: str | None = None
+    ip_address: str | None = None
 
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    original_created_at: Optional[datetime] = None  # From original entry
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    original_created_at: datetime | None = None  # From original entry
 
     # Hash for integrity
-    entry_hash: Optional[str] = None
+    entry_hash: str | None = None
 
     def compute_hash(self) -> str:
         """Compute deterministic hash of entry."""
@@ -301,7 +301,7 @@ class AuditEntry:
         )
         return hashlib.sha256(data.encode()).hexdigest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entry_id": self.entry_id,
             "tx_id": self.tx_id,
@@ -326,7 +326,7 @@ class AuditEntry:
         return json.dumps(self.to_dict(), sort_keys=True)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AuditEntry":
+    def from_dict(cls, data: dict[str, Any]) -> AuditEntry:
         return cls(
             entry_id=data.get("entry_id", ""),
             tx_id=data.get("tx_id", ""),
@@ -342,17 +342,17 @@ class AuditEntry:
             actor_id=data.get("actor_id"),
             actor_type=data.get("actor_type"),
             request_id=data.get("request_id"),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
+            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(UTC),
             original_created_at=datetime.fromisoformat(data["original_created_at"]) if data.get("original_created_at") else None,
             entry_hash=data.get("entry_hash"),
         )
 
     @classmethod
-    def from_json(cls, json_str: str) -> "AuditEntry":
+    def from_json(cls, json_str: str) -> AuditEntry:
         return cls.from_dict(json.loads(json_str))
 
     @classmethod
-    def from_ledger_entry(cls, entry: Any, actor_id: Optional[str] = None, request_id: Optional[str] = None) -> "AuditEntry":
+    def from_ledger_entry(cls, entry: Any, actor_id: str | None = None, request_id: str | None = None) -> AuditEntry:
         """Create audit entry from a LedgerEntry."""
         audit = cls(
             tx_id=entry.tx_id,
@@ -400,9 +400,9 @@ class ImmutableAuditTrail:
 
     def __init__(self, config: ImmutableConfig):
         self.config = config
-        self._client: Optional[Any] = None  # ImmudbClient
+        self._client: Any | None = None  # ImmudbClient
         self._connected = False
-        self._last_state: Optional[Any] = None  # For state verification
+        self._last_state: Any | None = None  # For state verification
 
     async def connect(self) -> None:
         """Connect to immudb server."""
@@ -449,10 +449,8 @@ class ImmutableAuditTrail:
     async def disconnect(self) -> None:
         """Disconnect from immudb."""
         if self._client:
-            try:
+            with contextlib.suppress(Exception):
                 self._client.logout()
-            except Exception:
-                pass
             self._client = None
         self._connected = False
 
@@ -463,9 +461,9 @@ class ImmutableAuditTrail:
 
     async def append(
         self,
-        entry: Union[AuditEntry, Any],
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        entry: AuditEntry | Any,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> ImmutableReceipt:
         """
         Append an entry to the immutable audit trail.
@@ -544,7 +542,7 @@ class ImmutableAuditTrail:
             tree_size=getattr(verified_tx, "blTxId", 0),
         )
 
-    async def get(self, entry_id: str, verify: bool = True) -> Optional[AuditEntry]:
+    async def get(self, entry_id: str, verify: bool = True) -> AuditEntry | None:
         """
         Get an entry from the immutable store.
 
@@ -630,12 +628,12 @@ class ImmutableAuditTrail:
 
         # 5. All verifications passed
         result.status = VerificationStatus.VERIFIED
-        result.verified_at = datetime.now(timezone.utc)
+        result.verified_at = datetime.now(UTC)
 
         logger.debug(f"Verified entry {entry_id}: status={result.status.value}")
         return result
 
-    async def get_audit_proof(self, entry_id: str) -> Dict[str, Any]:
+    async def get_audit_proof(self, entry_id: str) -> dict[str, Any]:
         """
         Generate comprehensive audit proof for compliance/legal purposes.
 
@@ -661,7 +659,7 @@ class ImmutableAuditTrail:
         # Build audit proof document
         proof = {
             "version": "1.0",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "entry": entry.to_dict(),
             "verification": {
                 "immudb_tx_id": verified.tx,
@@ -678,7 +676,7 @@ class ImmutableAuditTrail:
         prefix: str = "audit:",
         limit: int = 100,
         offset: int = 0,
-    ) -> List[AuditEntry]:
+    ) -> list[AuditEntry]:
         """
         List entries from the immutable store.
 
@@ -718,7 +716,7 @@ class ImmutableAuditTrail:
 
         return entries
 
-    async def get_state(self) -> Dict[str, Any]:
+    async def get_state(self) -> dict[str, Any]:
         """Get current database state for verification."""
         self._ensure_connected()
 
@@ -729,7 +727,7 @@ class ImmutableAuditTrail:
             "signature": state.signature.signature.hex() if state.signature else None,
         }
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check health of immutable store connection."""
         try:
             self._ensure_connected()
@@ -762,10 +760,10 @@ class BlockchainAnchor:
 
     def __init__(self, config: ImmutableConfig):
         self.config = config
-        self._web3: Optional[Any] = None
-        self._contract: Optional[Any] = None
-        self._last_anchor_time: Optional[datetime] = None
-        self._pending_roots: List[Tuple[str, datetime]] = []
+        self._web3: Any | None = None
+        self._contract: Any | None = None
+        self._last_anchor_time: datetime | None = None
+        self._pending_roots: list[tuple[str, datetime]] = []
 
     async def connect(self) -> None:
         """Connect to blockchain RPC."""
@@ -791,7 +789,7 @@ class BlockchainAnchor:
 
         logger.info(f"Connected to {self.config.anchor_chain} for anchoring")
 
-    async def anchor(self, merkle_root: str, metadata: Optional[Dict] = None) -> Optional[str]:
+    async def anchor(self, merkle_root: str, metadata: dict | None = None) -> str | None:
         """
         Anchor a Merkle root to the blockchain.
 
@@ -810,15 +808,15 @@ class BlockchainAnchor:
             raise AnchoringError(merkle_root, self.config.anchor_chain, "Private key not configured")
 
         try:
-            from web3 import Web3
             from eth_account import Account
+            from web3 import Web3
 
             # Create anchor data
             anchor_data = {
                 "type": "sardis_audit_anchor",
                 "version": "1.0",
                 "merkle_root": merkle_root,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "chain": self.config.anchor_chain,
             }
             if metadata:

@@ -6,13 +6,15 @@ Agent groups enable multi-agent governance with shared budgets and merchant poli
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.group import AgentGroup
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from ..client import AsyncSardisClient, SardisClient, TimeoutConfig
+    import builtins
+
+    from ..client import TimeoutConfig
 
 
 class AsyncGroupsResource(AsyncBaseResource):
@@ -29,13 +31,13 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def create(
         self,
         name: str,
-        budget: Optional[Dict[str, Any]] = None,
-        merchant_policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        budget: dict[str, Any] | None = None,
+        merchant_policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Create a new agent group."""
-        payload: Dict[str, Any] = {"name": name}
+        payload: dict[str, Any] = {"name": name}
         if budget is not None:
             payload["budget"] = budget
         if merchant_policy is not None:
@@ -49,7 +51,7 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def get(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Get a group by ID."""
         data = await self._get(f"groups/{group_id}", timeout=timeout)
@@ -58,11 +60,11 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def list(
         self,
         limit: int = 50,
-        offset: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[AgentGroup]:
+        offset: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[AgentGroup]:
         """List all agent groups."""
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if offset is not None:
             params["offset"] = offset
 
@@ -74,14 +76,14 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def update(
         self,
         group_id: str,
-        name: Optional[str] = None,
-        budget: Optional[Dict[str, Any]] = None,
-        merchant_policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        name: str | None = None,
+        budget: dict[str, Any] | None = None,
+        merchant_policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Update a group."""
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
         if budget is not None:
@@ -97,7 +99,7 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def delete(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete a group."""
         await self._delete(f"groups/{group_id}", timeout=timeout)
@@ -106,7 +108,7 @@ class AsyncGroupsResource(AsyncBaseResource):
         self,
         group_id: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Add an agent to a group."""
         data = await self._post(
@@ -120,7 +122,7 @@ class AsyncGroupsResource(AsyncBaseResource):
         self,
         group_id: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Remove an agent from a group."""
         data = await self._delete(
@@ -132,8 +134,8 @@ class AsyncGroupsResource(AsyncBaseResource):
     async def get_spending(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get current spending for a group."""
         return await self._get(f"groups/{group_id}/spending", timeout=timeout)
 
@@ -152,13 +154,13 @@ class GroupsResource(SyncBaseResource):
     def create(
         self,
         name: str,
-        budget: Optional[Dict[str, Any]] = None,
-        merchant_policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        budget: dict[str, Any] | None = None,
+        merchant_policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Create a new agent group."""
-        payload: Dict[str, Any] = {"name": name}
+        payload: dict[str, Any] = {"name": name}
         if budget is not None:
             payload["budget"] = budget
         if merchant_policy is not None:
@@ -172,7 +174,7 @@ class GroupsResource(SyncBaseResource):
     def get(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Get a group by ID."""
         data = self._get(f"groups/{group_id}", timeout=timeout)
@@ -181,11 +183,11 @@ class GroupsResource(SyncBaseResource):
     def list(
         self,
         limit: int = 50,
-        offset: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[AgentGroup]:
+        offset: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[AgentGroup]:
         """List all agent groups."""
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if offset is not None:
             params["offset"] = offset
 
@@ -197,14 +199,14 @@ class GroupsResource(SyncBaseResource):
     def update(
         self,
         group_id: str,
-        name: Optional[str] = None,
-        budget: Optional[Dict[str, Any]] = None,
-        merchant_policy: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        name: str | None = None,
+        budget: dict[str, Any] | None = None,
+        merchant_policy: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Update a group."""
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if name is not None:
             payload["name"] = name
         if budget is not None:
@@ -220,7 +222,7 @@ class GroupsResource(SyncBaseResource):
     def delete(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete a group."""
         self._delete(f"groups/{group_id}", timeout=timeout)
@@ -229,7 +231,7 @@ class GroupsResource(SyncBaseResource):
         self,
         group_id: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Add an agent to a group."""
         data = self._post(
@@ -243,7 +245,7 @@ class GroupsResource(SyncBaseResource):
         self,
         group_id: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> AgentGroup:
         """Remove an agent from a group."""
         data = self._delete(
@@ -255,8 +257,8 @@ class GroupsResource(SyncBaseResource):
     def get_spending(
         self,
         group_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get current spending for a group."""
         return self._get(f"groups/{group_id}/spending", timeout=timeout)
 

@@ -12,7 +12,7 @@ import logging
 import os
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
@@ -25,27 +25,27 @@ T = TypeVar("T")
 @dataclass
 class DependencyConfig:
     """Configuration for optional dependencies."""
-    
+
     # Database
     database_url: str = ""
     use_postgres: bool = False
-    
+
     # Cache
-    redis_url: Optional[str] = None
-    
+    redis_url: str | None = None
+
     # External services
     stripe_enabled: bool = False
     turnkey_enabled: bool = False
     persona_enabled: bool = False
     elliptic_enabled: bool = False
     lithic_enabled: bool = False
-    
+
     @classmethod
-    def from_environment(cls) -> "DependencyConfig":
+    def from_environment(cls) -> DependencyConfig:
         """Load configuration from environment variables."""
         database_url = os.getenv("DATABASE_URL", "")
         use_postgres = database_url.startswith(("postgresql://", "postgres://"))
-        
+
         return cls(
             database_url=database_url,
             use_postgres=use_postgres,
@@ -61,87 +61,87 @@ class DependencyConfig:
 class DependencyContainer:
     """
     Central dependency injection container.
-    
+
     Provides lazy initialization of all service dependencies with proper
     error handling for missing optional dependencies.
-    
+
     Usage:
         container = DependencyContainer(settings)
-        
+
         # Access required dependencies (raises if not available)
         ledger = container.ledger_store
-        
+
         # Check optional dependencies
         if container.has_stripe:
             stripe = container.stripe_connector
     """
-    
+
     def __init__(
         self,
-        settings: Optional[SardisSettings] = None,
-        config: Optional[DependencyConfig] = None,
+        settings: SardisSettings | None = None,
+        config: DependencyConfig | None = None,
     ) -> None:
         self._settings = settings or load_settings()
         self._config = config or DependencyConfig.from_environment()
         self._cache: dict[str, Any] = {}
         self._initialized = False
-        
+
     @property
     def settings(self) -> SardisSettings:
         """Get application settings."""
         return self._settings
-    
+
     @property
     def config(self) -> DependencyConfig:
         """Get dependency configuration."""
         return self._config
-    
+
     @property
     def database_url(self) -> str:
         """Get effective database URL."""
         return self._config.database_url or self._settings.ledger_dsn
-    
+
     @property
     def use_postgres(self) -> bool:
         """Check if using PostgreSQL."""
         return self._config.use_postgres
-    
+
     # =========================================================================
     # Core Services (always available)
     # =========================================================================
-    
+
     @cached_property
     def identity_registry(self) -> Any:
         """Get identity registry (DB-backed in production)."""
         from sardis_v2_core.identity import IdentityRegistry
         dsn = self.database_url if self.use_postgres else None
         return IdentityRegistry(dsn=dsn)
-    
+
     @cached_property
     def wallet_manager(self) -> Any:
         """Get wallet manager."""
         from sardis_wallet.manager import WalletManager
         return WalletManager(settings=self._settings)
-    
+
     @cached_property
     def chain_executor(self) -> Any:
         """Get chain executor."""
         from sardis_chain.executor import ChainExecutor
         return ChainExecutor(settings=self._settings)
-    
+
     @cached_property
     def ledger_store(self) -> Any:
         """Get ledger store."""
         from sardis_ledger.records import LedgerStore
         dsn = self.database_url if self.use_postgres else self._settings.ledger_dsn
         return LedgerStore(dsn=dsn)
-    
+
     @cached_property
     def compliance_engine(self) -> Any:
         """Get compliance engine."""
         from sardis_compliance.checks import ComplianceEngine
         return ComplianceEngine(settings=self._settings)
-    
+
     @cached_property
     def mandate_verifier(self) -> Any:
         """Get mandate verifier."""
@@ -152,7 +152,7 @@ class DependencyContainer:
             archive=self.mandate_archive,
             identity_registry=self.identity_registry,
         )
-    
+
     @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator."""
@@ -163,71 +163,71 @@ class DependencyContainer:
             chain_executor=self.chain_executor,
             ledger=self.ledger_store,
         )
-    
+
     # =========================================================================
     # Storage (adapts to available backend)
     # =========================================================================
-    
+
     @cached_property
     def replay_cache(self) -> Any:
         """Get replay cache (PostgreSQL or SQLite/memory)."""
-        from sardis_protocol.storage import ReplayCache, SqliteReplayCache, PostgresReplayCache
-        
+        from sardis_protocol.storage import PostgresReplayCache, ReplayCache, SqliteReplayCache
+
         if self.use_postgres:
             return PostgresReplayCache(self.database_url)
         elif self._settings.replay_cache_dsn.startswith("sqlite:///"):
             return SqliteReplayCache(self._settings.replay_cache_dsn)
         else:
             return ReplayCache()
-    
+
     @cached_property
     def mandate_archive(self) -> Any:
         """Get mandate archive."""
         from sardis_protocol.storage import MandateArchive
         dsn = self.database_url if self.use_postgres else self._settings.mandate_archive_dsn
         return MandateArchive(dsn)
-    
+
     @cached_property
     def holds_repository(self) -> Any:
         """Get holds repository."""
         from sardis_v2_core.holds import HoldsRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return HoldsRepository(dsn=dsn)
-    
+
     @cached_property
     def webhook_repository(self) -> Any:
         """Get webhook repository."""
         from sardis_v2_core.webhooks import WebhookRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WebhookRepository(dsn=dsn)
-    
+
     @cached_property
     def webhook_service(self) -> Any:
         """Get webhook service."""
         from sardis_v2_core.webhooks import WebhookService
         return WebhookService(repository=self.webhook_repository)
-    
+
     @cached_property
     def wallet_repository(self) -> Any:
         """Get wallet repository."""
         from sardis_v2_core.wallet_repository import WalletRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WalletRepository(dsn=dsn)
-    
+
     @cached_property
     def agent_repository(self) -> Any:
         """Get agent repository."""
         from sardis_v2_core.agents import AgentRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return AgentRepository(dsn=dsn)
-    
+
     @cached_property
     def marketplace_repository(self) -> Any:
         """Get marketplace repository."""
         from sardis_v2_core.marketplace import MarketplaceRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return MarketplaceRepository(dsn=dsn)
-    
+
     @cached_property
     def spending_policy_store(self) -> Any:
         """Get spending policy state store (DB-backed atomic enforcement)."""
@@ -241,43 +241,43 @@ class DependencyContainer:
         """Get cache service (Redis or in-memory)."""
         from sardis_v2_core.cache import create_cache_service
         return create_cache_service(self._config.redis_url)
-    
+
     @cached_property
     def api_key_manager(self) -> Any:
         """Get API key manager."""
         from .middleware import APIKeyManager
         dsn = self.database_url if self.use_postgres else "memory://"
         return APIKeyManager(dsn=dsn)
-    
+
     # =========================================================================
     # Optional External Services
     # =========================================================================
-    
+
     @property
     def has_stripe(self) -> bool:
         """Check if Stripe is configured."""
         return self._config.stripe_enabled
-    
+
     @property
     def has_turnkey(self) -> bool:
         """Check if Turnkey MPC is configured."""
         return self._config.turnkey_enabled
-    
+
     @property
     def has_persona(self) -> bool:
         """Check if Persona KYC is configured."""
         return self._config.persona_enabled
-    
+
     @property
     def has_elliptic(self) -> bool:
         """Check if Elliptic AML is configured."""
         return self._config.elliptic_enabled
-    
+
     @property
     def has_lithic(self) -> bool:
         """Check if Lithic cards is configured."""
         return self._config.lithic_enabled
-    
+
     @cached_property
     def stripe_connector(self) -> Any:
         """Get Stripe connector (raises if not configured)."""
@@ -288,30 +288,30 @@ class DependencyContainer:
             )
         from sardis_checkout.connectors.stripe import StripeConnector
         return StripeConnector()
-    
+
     @cached_property
     def checkout_orchestrator(self) -> Any:
         """Get checkout orchestrator."""
         from sardis_checkout.orchestrator import CheckoutOrchestrator
         orchestrator = CheckoutOrchestrator()
-        
+
         # Register available connectors
         if self.has_stripe:
             try:
                 orchestrator.register_connector("stripe", self.stripe_connector)
             except (SardisDependencyNotConfiguredError, RuntimeError, ValueError, TypeError) as e:
                 logger.warning(f"Failed to register Stripe connector: {e}")
-        
+
         return orchestrator
-    
+
     # =========================================================================
     # Dependency Getters with Error Handling
     # =========================================================================
-    
+
     def get_required(self, name: str) -> Any:
         """
         Get a required dependency by name.
-        
+
         Raises SardisDependencyNotConfiguredError if not available.
         """
         getter = getattr(self, name, None)
@@ -320,7 +320,7 @@ class DependencyContainer:
                 name,
                 f"Unknown dependency: {name}",
             )
-        
+
         try:
             return getter
         except SardisDependencyNotConfiguredError:
@@ -330,11 +330,11 @@ class DependencyContainer:
                 name,
                 f"Failed to initialize {name}: {e}",
             ) from e
-    
-    def get_optional(self, name: str, default: Optional[T] = None) -> Optional[T]:
+
+    def get_optional(self, name: str, default: T | None = None) -> T | None:
         """
         Get an optional dependency by name.
-        
+
         Returns default if not available.
         """
         try:
@@ -344,7 +344,7 @@ class DependencyContainer:
 
 
 # Global container instance (initialized in create_app)
-_container: Optional[DependencyContainer] = None
+_container: DependencyContainer | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -358,8 +358,8 @@ def get_container() -> DependencyContainer:
 
 
 def init_container(
-    settings: Optional[SardisSettings] = None,
-    config: Optional[DependencyConfig] = None,
+    settings: SardisSettings | None = None,
+    config: DependencyConfig | None = None,
 ) -> DependencyContainer:
     """Initialize the global dependency container."""
     global _container

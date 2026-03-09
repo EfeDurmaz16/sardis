@@ -1,18 +1,18 @@
 """Unit tests for spending policies."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-import pytest
 
+import pytest
 from sardis_v2_core.spending_policy import (
-    SpendingPolicy,
-    TimeWindowLimit,
-    MerchantRule,
-    TrustLevel,
-    SpendingScope,
-    create_default_policy,
     DEFAULT_LIMITS,
+    MerchantRule,
+    SpendingPolicy,
+    SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
+    create_default_policy,
 )
 
 
@@ -26,7 +26,7 @@ class TestTimeWindowLimit:
             limit_amount=Decimal("1000.00"),
             currency="USDC",
         )
-        
+
         assert limit.window_type == "daily"
         assert limit.limit_amount == Decimal("1000.00")
         assert limit.current_spent == Decimal("0")
@@ -38,7 +38,7 @@ class TestTimeWindowLimit:
             limit_amount=Decimal("1000.00"),
             current_spent=Decimal("300.00"),
         )
-        
+
         remaining = limit.remaining()
         assert remaining == Decimal("700.00")
 
@@ -49,9 +49,9 @@ class TestTimeWindowLimit:
             limit_amount=Decimal("1000.00"),
             current_spent=Decimal("300.00"),
         )
-        
+
         can_spend, reason = limit.can_spend(Decimal("500.00"))
-        
+
         assert can_spend is True
         assert reason == "OK"
 
@@ -62,9 +62,9 @@ class TestTimeWindowLimit:
             limit_amount=Decimal("1000.00"),
             current_spent=Decimal("800.00"),
         )
-        
+
         can_spend, reason = limit.can_spend(Decimal("300.00"))
-        
+
         assert can_spend is False
         assert reason == "time_window_limit"
 
@@ -74,39 +74,39 @@ class TestTimeWindowLimit:
             window_type="daily",
             limit_amount=Decimal("1000.00"),
         )
-        
+
         limit.record_spend(Decimal("250.00"))
         limit.record_spend(Decimal("150.00"))
-        
+
         assert limit.current_spent == Decimal("400.00")
 
     def test_time_window_reset_daily(self):
         """Test daily window reset when expired."""
-        yesterday = datetime.now(timezone.utc) - timedelta(days=2)
+        yesterday = datetime.now(UTC) - timedelta(days=2)
         limit = TimeWindowLimit(
             window_type="daily",
             limit_amount=Decimal("1000.00"),
             current_spent=Decimal("800.00"),
             window_start=yesterday,
         )
-        
+
         # Calling remaining() triggers reset check
         limit.remaining()
-        
+
         assert limit.current_spent == Decimal("0")
 
     def test_time_window_reset_weekly(self):
         """Test weekly window reset when expired."""
-        two_weeks_ago = datetime.now(timezone.utc) - timedelta(weeks=2)
+        two_weeks_ago = datetime.now(UTC) - timedelta(weeks=2)
         limit = TimeWindowLimit(
             window_type="weekly",
             limit_amount=Decimal("5000.00"),
             current_spent=Decimal("4000.00"),
             window_start=two_weeks_ago,
         )
-        
+
         reset_occurred = limit.reset_if_expired()
-        
+
         assert reset_occurred is True
         assert limit.current_spent == Decimal("0")
 
@@ -116,11 +116,11 @@ class TestTimeWindowLimit:
             window_type="weekly",
             limit_amount=Decimal("5000.00"),
             current_spent=Decimal("2000.00"),
-            window_start=datetime.now(timezone.utc),
+            window_start=datetime.now(UTC),
         )
-        
+
         reset_occurred = limit.reset_if_expired()
-        
+
         assert reset_occurred is False
         assert limit.current_spent == Decimal("2000.00")
 
@@ -136,20 +136,20 @@ class TestMerchantRule:
             max_per_tx=Decimal("500.00"),
             reason="Trusted merchant",
         )
-        
+
         assert rule.rule_type == "allow"
         assert rule.merchant_id == "merchant_123"
         assert rule.is_active() is True
 
     def test_merchant_rule_is_active_expired(self):
         """Test is_active returns False for expired rule."""
-        past = datetime.now(timezone.utc) - timedelta(days=1)
+        past = datetime.now(UTC) - timedelta(days=1)
         rule = MerchantRule(
             rule_type="deny",
             merchant_id="merchant_456",
             expires_at=past,
         )
-        
+
         assert rule.is_active() is False
 
     def test_merchant_rule_matches_by_id(self):
@@ -158,7 +158,7 @@ class TestMerchantRule:
             rule_type="allow",
             merchant_id="merchant_123",
         )
-        
+
         assert rule.matches_merchant("merchant_123") is True
         assert rule.matches_merchant("merchant_456") is False
 
@@ -168,20 +168,20 @@ class TestMerchantRule:
             rule_type="allow",
             category="electronics",
         )
-        
+
         assert rule.matches_merchant("merchant_123", "electronics") is True
         assert rule.matches_merchant("merchant_123", "groceries") is False
         assert rule.matches_merchant("merchant_123") is False
 
     def test_merchant_rule_expired_does_not_match(self):
         """Test expired rule does not match."""
-        past = datetime.now(timezone.utc) - timedelta(days=1)
+        past = datetime.now(UTC) - timedelta(days=1)
         rule = MerchantRule(
             rule_type="allow",
             merchant_id="merchant_123",
             expires_at=past,
         )
-        
+
         assert rule.matches_merchant("merchant_123") is False
 
 
@@ -196,7 +196,7 @@ class TestSpendingPolicy:
             limit_per_tx=Decimal("500.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         assert policy.agent_id == "agent_001"
         assert policy.trust_level == TrustLevel.MEDIUM
         assert policy.limit_per_tx == Decimal("500.00")
@@ -209,12 +209,12 @@ class TestSpendingPolicy:
             limit_per_tx=Decimal("500.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("1.00"),
         )
-        
+
         assert is_valid is True
         assert reason == "OK"
 
@@ -225,12 +225,12 @@ class TestSpendingPolicy:
             limit_per_tx=Decimal("50.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
         )
-        
+
         assert is_valid is False
         assert reason == "per_transaction_limit"
 
@@ -242,12 +242,12 @@ class TestSpendingPolicy:
             limit_total=Decimal("200.00"),
             spent_total=Decimal("150.00"),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
         )
-        
+
         assert is_valid is False
         assert reason == "total_limit_exceeded"
 
@@ -257,13 +257,13 @@ class TestSpendingPolicy:
             agent_id="agent_001",
             allowed_scopes=[SpendingScope.RETAIL],
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             scope=SpendingScope.AGENT_TO_AGENT,
         )
-        
+
         assert is_valid is False
         assert reason == "scope_not_allowed"
 
@@ -273,13 +273,13 @@ class TestSpendingPolicy:
             agent_id="agent_001",
             allowed_scopes=[SpendingScope.ALL],
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             scope=SpendingScope.COMPUTE,
         )
-        
+
         assert is_valid is True
         assert reason == "OK"
 
@@ -295,12 +295,12 @@ class TestSpendingPolicy:
                 current_spent=Decimal("80.00"),
             ),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("50.00"),
             fee=Decimal("0.00"),
         )
-        
+
         assert is_valid is False
         assert reason == "time_window_limit"
 
@@ -319,13 +319,13 @@ class TestSpendingPolicyMerchantRules:
             merchant_id="bad_merchant",
             reason="Fraudulent",
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             merchant_id="bad_merchant",
         )
-        
+
         assert is_valid is False
         assert reason == "merchant_denied"
 
@@ -335,14 +335,14 @@ class TestSpendingPolicyMerchantRules:
             agent_id="agent_001",
         )
         policy.add_merchant_deny(category="gambling")
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             merchant_id="casino_001",
             merchant_category="gambling",
         )
-        
+
         assert is_valid is False
         assert reason == "merchant_denied"
 
@@ -352,13 +352,13 @@ class TestSpendingPolicyMerchantRules:
             agent_id="agent_001",
         )
         policy.add_merchant_allow(merchant_id="trusted_merchant")
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             merchant_id="unknown_merchant",
         )
-        
+
         assert is_valid is False
         assert reason == "merchant_not_allowlisted"
 
@@ -372,13 +372,13 @@ class TestSpendingPolicyMerchantRules:
             merchant_id="limited_merchant",
             max_per_tx=Decimal("50.00"),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             merchant_id="limited_merchant",
         )
-        
+
         assert is_valid is False
         assert reason == "merchant_cap_exceeded"
 
@@ -391,13 +391,13 @@ class TestSpendingPolicyMerchantRules:
             merchant_id="trusted_merchant",
             max_per_tx=Decimal("500.00"),
         )
-        
+
         is_valid, reason = policy.validate_payment(
             amount=Decimal("100.00"),
             fee=Decimal("0.00"),
             merchant_id="trusted_merchant",
         )
-        
+
         assert is_valid is True
         assert reason == "OK"
 
@@ -412,9 +412,9 @@ class TestSpendingPolicyHelpers:
             daily_limit=TimeWindowLimit(window_type="daily", limit_amount=Decimal("1000.00")),
             weekly_limit=TimeWindowLimit(window_type="weekly", limit_amount=Decimal("5000.00")),
         )
-        
+
         policy.record_spend(Decimal("100.00"))
-        
+
         assert policy.spent_total == Decimal("100.00")
         assert policy.daily_limit.current_spent == Decimal("100.00")
         assert policy.weekly_limit.current_spent == Decimal("100.00")
@@ -426,20 +426,20 @@ class TestSpendingPolicyHelpers:
             limit_total=Decimal("1000.00"),
             spent_total=Decimal("350.00"),
         )
-        
+
         remaining = policy.remaining_total()
         assert remaining == Decimal("650.00")
 
     def test_add_merchant_allow(self):
         """Test adding merchant allow rule."""
         policy = SpendingPolicy(agent_id="agent_001")
-        
+
         rule = policy.add_merchant_allow(
             merchant_id="good_merchant",
             max_per_tx=Decimal("200.00"),
             reason="Verified partner",
         )
-        
+
         assert len(policy.merchant_rules) == 1
         assert rule.rule_type == "allow"
         assert rule.merchant_id == "good_merchant"
@@ -448,12 +448,12 @@ class TestSpendingPolicyHelpers:
         """Test adding merchant deny rule (added at front)."""
         policy = SpendingPolicy(agent_id="agent_001")
         policy.add_merchant_allow(merchant_id="merchant_1")
-        
+
         rule = policy.add_merchant_deny(
             merchant_id="bad_merchant",
             reason="Suspicious activity",
         )
-        
+
         assert len(policy.merchant_rules) == 2
         assert policy.merchant_rules[0] == rule  # Deny rules added at front
         assert rule.rule_type == "deny"
@@ -465,7 +465,7 @@ class TestCreateDefaultPolicy:
     def test_create_low_trust_policy(self):
         """Test creating LOW trust policy."""
         policy = create_default_policy("agent_001", TrustLevel.LOW)
-        
+
         assert policy.agent_id == "agent_001"
         assert policy.trust_level == TrustLevel.LOW
         assert policy.limit_per_tx == Decimal("50.00")
@@ -475,7 +475,7 @@ class TestCreateDefaultPolicy:
     def test_create_medium_trust_policy(self):
         """Test creating MEDIUM trust policy."""
         policy = create_default_policy("agent_001", TrustLevel.MEDIUM)
-        
+
         assert policy.trust_level == TrustLevel.MEDIUM
         assert policy.limit_per_tx == Decimal("500.00")
         assert policy.limit_total == Decimal("50000.00")
@@ -483,14 +483,14 @@ class TestCreateDefaultPolicy:
     def test_create_high_trust_policy(self):
         """Test creating HIGH trust policy."""
         policy = create_default_policy("agent_001", TrustLevel.HIGH)
-        
+
         assert policy.trust_level == TrustLevel.HIGH
         assert policy.limit_per_tx == Decimal("5000.00")
 
     def test_create_unlimited_trust_policy(self):
         """Test creating UNLIMITED trust policy."""
         policy = create_default_policy("agent_001", TrustLevel.UNLIMITED)
-        
+
         assert policy.trust_level == TrustLevel.UNLIMITED
         assert policy.limit_per_tx == Decimal("999999999.00")
         assert policy.daily_limit is None
@@ -512,23 +512,24 @@ class TestSpendingPolicyAsyncEvaluate:
     @pytest.mark.asyncio
     async def test_evaluate_success(self):
         """Test evaluate() returns True for valid payment."""
-        from sardis_v2_core.wallets import Wallet
-        from sardis_v2_core.tokens import TokenType
         from unittest.mock import AsyncMock
-        
+
+        from sardis_v2_core.tokens import TokenType
+        from sardis_v2_core.wallets import Wallet
+
         wallet = Wallet.new("agent_001")
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
-        
+
         # Mock RPC client - return 200 USDC balance (enough for 100 + 1 fee)
         mock_rpc = AsyncMock()
         mock_rpc._call = AsyncMock(return_value="0x000000000000000000000000000000000000000000000000000000000bebc200")  # 200 USDC in hex
-        
+
         policy = SpendingPolicy(
             agent_id="agent_001",
             limit_per_tx=Decimal("500.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         is_valid, reason = await policy.evaluate(
             wallet=wallet,
             amount=Decimal("100.00"),
@@ -537,30 +538,31 @@ class TestSpendingPolicyAsyncEvaluate:
             token=TokenType.USDC,
             rpc_client=mock_rpc,
         )
-        
+
         assert is_valid is True
         assert reason == "OK"
 
     @pytest.mark.asyncio
     async def test_evaluate_insufficient_balance(self):
         """Test evaluate() fails when on-chain balance is insufficient."""
-        from sardis_v2_core.wallets import Wallet
-        from sardis_v2_core.tokens import TokenType
         from unittest.mock import AsyncMock
-        
+
+        from sardis_v2_core.tokens import TokenType
+        from sardis_v2_core.wallets import Wallet
+
         wallet = Wallet.new("agent_001")
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
-        
+
         # Mock RPC client returning low balance
         mock_rpc = AsyncMock()
         mock_rpc._call = AsyncMock(return_value="0x00000000000000000000000000000000000000000000000000000000000f4240")  # 1 USDC in hex
-        
+
         policy = SpendingPolicy(
             agent_id="agent_001",
             limit_per_tx=Decimal("500.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         is_valid, reason = await policy.evaluate(
             wallet=wallet,
             amount=Decimal("100.00"),
@@ -569,24 +571,24 @@ class TestSpendingPolicyAsyncEvaluate:
             token=TokenType.USDC,
             rpc_client=mock_rpc,
         )
-        
+
         assert is_valid is False
         assert reason == "insufficient_balance"
 
     @pytest.mark.asyncio
     async def test_evaluate_without_rpc_client(self):
         """Test evaluate() works without RPC client (skips balance check)."""
-        from sardis_v2_core.wallets import Wallet
         from sardis_v2_core.tokens import TokenType
-        
+        from sardis_v2_core.wallets import Wallet
+
         wallet = Wallet.new("agent_001")
-        
+
         policy = SpendingPolicy(
             agent_id="agent_001",
             limit_per_tx=Decimal("500.00"),
             limit_total=Decimal("10000.00"),
         )
-        
+
         # Should pass policy checks but skip balance check
         is_valid, reason = await policy.evaluate(
             wallet=wallet,
@@ -596,7 +598,7 @@ class TestSpendingPolicyAsyncEvaluate:
             token=TokenType.USDC,
             rpc_client=None,  # No RPC client
         )
-        
+
         # Policy checks pass, balance check skipped
         assert is_valid is True
         assert reason == "OK"

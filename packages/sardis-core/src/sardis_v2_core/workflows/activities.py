@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("sardis.workflows.activities")
 
@@ -41,9 +40,9 @@ class PaymentActivityInput:
     amount_minor: int
     currency: str = "USDC"
     chain: str = "base"
-    merchant_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    merchant_id: str | None = None
+    idempotency_key: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -51,8 +50,8 @@ class ActivityResult:
     """Standard result from any activity."""
     success: bool
     phase: str
-    data: Optional[dict[str, Any]] = None
-    error: Optional[str] = None
+    data: dict[str, Any] | None = None
+    error: str | None = None
 
 
 @activity.defn(name="kya_verification")

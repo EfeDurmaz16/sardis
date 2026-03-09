@@ -1,14 +1,13 @@
 """Tests for A2A agent card."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-
 from sardis_a2a.agent_card import (
     AgentCapability,
     PaymentCapability,
-    ServiceEndpoint,
     SardisAgentCard,
+    ServiceEndpoint,
     create_sardis_agent_card,
 )
 
@@ -273,7 +272,7 @@ class TestSardisAgentCard:
 
         assert isinstance(card.created_at, datetime)
         assert isinstance(card.updated_at, datetime)
-        assert card.created_at.tzinfo == timezone.utc
+        assert card.created_at.tzinfo == UTC
 
 
 class TestCreateSardisAgentCard:

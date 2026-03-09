@@ -13,21 +13,20 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
 
 from sardis_api.audit_log import log_admin_action
-from sardis_api.authz import require_admin_principal
 from sardis_api.middleware.mfa import require_mfa_if_enabled
-from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +72,7 @@ class AdminRateLimitState:
     failed_attempts: int = 0
     lockout_until: float = 0
     last_request: float = 0
-    request_timestamps: List[float] = field(default_factory=list)
+    request_timestamps: list[float] = field(default_factory=list)
 
 
 class AdminRateLimiter:
@@ -91,10 +90,10 @@ class AdminRateLimiter:
     the standard API rate limiter. Do not increase limits without security review.
     """
 
-    def __init__(self, config: Optional[AdminRateLimitConfig] = None):
+    def __init__(self, config: AdminRateLimitConfig | None = None):
         self.config = config or AdminRateLimitConfig()
-        self._states: Dict[str, AdminRateLimitState] = defaultdict(AdminRateLimitState)
-        self._sensitive_states: Dict[str, AdminRateLimitState] = defaultdict(AdminRateLimitState)
+        self._states: dict[str, AdminRateLimitState] = defaultdict(AdminRateLimitState)
+        self._sensitive_states: dict[str, AdminRateLimitState] = defaultdict(AdminRateLimitState)
 
     def _get_client_identifier(self, request: Request) -> str:
         """
@@ -148,7 +147,7 @@ class AdminRateLimiter:
         self,
         request: Request,
         is_sensitive: bool = False,
-    ) -> tuple[bool, dict, Optional[str]]:
+    ) -> tuple[bool, dict, str | None]:
         """
         Check if request is within admin rate limits.
 
@@ -387,17 +386,17 @@ class AdminStatsResponse(BaseModel):
 class AdminUserResponse(BaseModel):
     """Admin user info response."""
     user_id: str
-    email: Optional[str] = None
+    email: str | None = None
     role: str
     created_at: str
-    last_login: Optional[str] = None
+    last_login: str | None = None
 
 
 class AdminConfigUpdate(BaseModel):
     """Admin configuration update request."""
     key: str = Field(..., max_length=100)
     value: str = Field(..., max_length=1000)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class RateLimitStatus(BaseModel):
@@ -408,7 +407,7 @@ class RateLimitStatus(BaseModel):
     minute_limit: int
     hour_limit: int
     is_locked: bool
-    lockout_remaining: Optional[int] = None
+    lockout_remaining: int | None = None
 
 
 # ============================================================================
@@ -432,11 +431,11 @@ async def get_admin_stats(
         total_volume_usd=0.0,
         active_agents=0,
         active_wallets=0,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
 
-@router.get("/users", response_model=List[AdminUserResponse])
+@router.get("/users", response_model=list[AdminUserResponse])
 async def list_admin_users(
     request: Request,
     _: None = Depends(require_admin_rate_limit()),
@@ -530,7 +529,7 @@ async def get_rate_limit_status(
 async def create_audit_log_entry(
     request: Request,
     action: str,
-    details: Optional[Dict[str, Any]] = None,
+    details: dict[str, Any] | None = None,
     _: None = Depends(require_admin_rate_limit()),
 ):
     """
@@ -547,7 +546,7 @@ async def create_audit_log_entry(
     return {
         "success": True,
         "action": action,
-        "logged_at": datetime.now(timezone.utc).isoformat(),
+        "logged_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -558,8 +557,8 @@ async def create_audit_log_entry(
 class KillSwitchActivateRequest(BaseModel):
     """Request to activate a kill switch."""
     reason: str = Field(default="manual", description="Activation reason")
-    notes: Optional[str] = Field(default=None, description="Optional notes")
-    auto_reactivate_after_seconds: Optional[float] = Field(
+    notes: str | None = Field(default=None, description="Optional notes")
+    auto_reactivate_after_seconds: float | None = Field(
         default=None, description="Auto-deactivate after N seconds"
     )
 

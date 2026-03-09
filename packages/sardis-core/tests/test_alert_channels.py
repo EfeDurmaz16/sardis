@@ -1,16 +1,17 @@
 """Tests for alert channels and dispatcher."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from sardis_v2_core.alert_rules import Alert, AlertType, AlertSeverity
+import pytest
+
 from sardis_v2_core.alert_channels import (
     AlertDispatcher,
-    WebSocketChannel,
-    SlackChannel,
     DiscordChannel,
     EmailChannel,
     PagerDutyChannel,
+    SlackChannel,
+    WebSocketChannel,
 )
+from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
 
 @pytest.fixture

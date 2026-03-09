@@ -1,11 +1,12 @@
 """Test F07: Spend recording should log CRITICAL on failure."""
 import logging
 import time
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from sardis_wallet.manager import EnhancedWalletManager
+
+import pytest
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis_wallet.manager import EnhancedWalletManager
 
 
 def _proof():

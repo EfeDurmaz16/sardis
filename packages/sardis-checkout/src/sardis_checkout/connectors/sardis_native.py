@@ -6,8 +6,9 @@ import hashlib
 import logging
 import os
 import time
+from datetime import UTC
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sardis_checkout.connectors.base import PSPConnector
 from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
@@ -35,8 +36,8 @@ class SardisNativeConnector(PSPConnector):
         compliance_engine: Any,
         ledger_store: Any,
         merchant_repo: Any,
-        settlement_service: Optional[Any] = None,
-        merchant_webhook_service: Optional[Any] = None,
+        settlement_service: Any | None = None,
+        merchant_webhook_service: Any | None = None,
         checkout_base_url: str = CHECKOUT_BASE_URL,
     ):
         self._chain_executor = chain_executor
@@ -57,8 +58,9 @@ class SardisNativeConnector(PSPConnector):
         request: CheckoutRequest,
     ) -> CheckoutResponse:
         """Create a merchant checkout session and return redirect URL."""
+        from datetime import datetime, timedelta
+
         from sardis_v2_core.merchant import MerchantCheckoutSession
-        from datetime import datetime, timezone, timedelta
 
         merchant = await self._merchant_repo.get_merchant(request.metadata.get("merchant_id", ""))
         if not merchant:
@@ -76,7 +78,7 @@ class SardisNativeConnector(PSPConnector):
             success_url=request.success_url,
             cancel_url=request.cancel_url,
             metadata=request.metadata,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=SESSION_TIMEOUT_MINUTES),
+            expires_at=datetime.now(UTC) + timedelta(minutes=SESSION_TIMEOUT_MINUTES),
             embed_origin=embed_origin,
         )
         await self._merchant_repo.create_session(session)
@@ -139,9 +141,10 @@ class SardisNativeConnector(PSPConnector):
         15. Trigger settlement for fiat merchants (fire-and-forget)
         """
         import inspect
+
         from sardis_v2_core.mandates import PaymentMandate, VCProof
-        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
         from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
+        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
         # Step 1: Acquire row lock to prevent concurrent payment
         try:
@@ -168,8 +171,8 @@ class SardisNativeConnector(PSPConnector):
                     "net_amount": str(session.net_amount) if session.net_amount else str(session.amount),
                 }
             raise ValueError(f"Session status is '{session.status}', expected 'pending' or 'funded'")
-        from datetime import datetime, timezone
-        if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
+        from datetime import datetime
+        if session.expires_at and datetime.now(UTC) > session.expires_at:
             await self._merchant_repo.update_session(session_id, status="expired")
             # Fire checkout.expired webhook
             merchant_for_expiry = await self._merchant_repo.get_merchant(session.merchant_id)
@@ -339,16 +342,16 @@ class SardisNativeConnector(PSPConnector):
             treasury_addr = get_treasury_address()
             if treasury_addr:
                 try:
-                    from sardis_v2_core.mandates import PaymentMandate as PM, VCProof as VP
+                    from sardis_v2_core.mandates import PaymentMandate, VCProof
                     fee_amount_minor = to_raw_token_amount(TokenType(token), fee_calc.fee_amount)
-                    fee_mandate = PM(
+                    fee_mandate = PaymentMandate(
                         mandate_id=f"fee_{digest[:16]}",
                         mandate_type="platform_fee",
                         issuer=f"wallet:{payer_wallet_id}",
                         subject=wallet.agent_id,
                         expires_at=int(time.time()) + 300,
                         nonce=f"fee_{digest}",
-                        proof=VP(
+                        proof=VCProof(
                             verification_method=f"wallet:{payer_wallet_id}#key-1",
                             created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                             proof_value="platform-fee",
@@ -476,8 +479,8 @@ class SardisNativeConnector(PSPConnector):
 
     async def handle_webhook(
         self,
-        payload: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> dict[str, Any]:
         """Handle internal webhook (no external PSP webhooks for native connector)."""
         return payload

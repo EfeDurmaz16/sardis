@@ -1,11 +1,13 @@
 """Unit tests for emergency kill switch."""
 
-import pytest
 import asyncio
+
+import pytest
+
 from sardis_guardrails.kill_switch import (
+    ActivationReason,
     KillSwitch,
     KillSwitchError,
-    ActivationReason,
     get_kill_switch,
 )
 

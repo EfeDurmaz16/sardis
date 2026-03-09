@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
-import json
-from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EnterpriseSupportRepository:
@@ -181,7 +181,7 @@ class EnterpriseSupportRepository:
         description: str,
         priority: str,
         category: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         org_id = self._normalize_text(organization_id)
         ticket_id = f"sup_{uuid.uuid4().hex[:16]}"
@@ -251,8 +251,8 @@ class EnterpriseSupportRepository:
         self,
         *,
         organization_id: str,
-        status: Optional[str] = None,
-        priority: Optional[str] = None,
+        status: str | None = None,
+        priority: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -293,7 +293,7 @@ class EnterpriseSupportRepository:
             rows = await conn.fetch(query, *args)
         return [dict(row) for row in rows]
 
-    async def get_ticket(self, *, organization_id: str, ticket_id: str) -> Optional[dict[str, Any]]:
+    async def get_ticket(self, *, organization_id: str, ticket_id: str) -> dict[str, Any] | None:
         org_id = self._normalize_text(organization_id)
         tid = self._normalize_text(ticket_id)
         if not self._use_postgres():
@@ -322,7 +322,7 @@ class EnterpriseSupportRepository:
         organization_id: str,
         ticket_id: str,
         actor_id: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         now = _utc_now()
         row = await self.get_ticket(organization_id=organization_id, ticket_id=ticket_id)
         if row is None:
@@ -367,7 +367,7 @@ class EnterpriseSupportRepository:
         ticket_id: str,
         actor_id: str,
         resolution_note: str | None = None,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         now = _utc_now()
         row = await self.get_ticket(organization_id=organization_id, ticket_id=ticket_id)
         if row is None:

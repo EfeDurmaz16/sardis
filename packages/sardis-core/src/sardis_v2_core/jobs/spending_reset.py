@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger("sardis.jobs.spending_reset")
 
@@ -23,8 +23,8 @@ async def reset_spending_limits() -> None:
         logger.info("Starting spending limit reset job")
 
         # Import here to avoid circular dependencies
-        from sardis_v2_core.wallet_repository import WalletRepository
         from sardis_v2_core.database import get_database
+        from sardis_v2_core.wallet_repository import WalletRepository
 
         # Get database connection (PostgreSQL in production)
         db = get_database()
@@ -40,34 +40,31 @@ async def reset_spending_limits() -> None:
                 policy = wallet.spending_policy
 
                 # Reset daily limit
-                if policy.daily_limit:
-                    if policy.daily_limit.reset_if_expired():
-                        logger.info(
-                            f"Reset daily limit for wallet {wallet.wallet_id} "
-                            f"(agent: {wallet.agent_id})"
-                        )
-                        reset_count += 1
+                if policy.daily_limit and policy.daily_limit.reset_if_expired():
+                    logger.info(
+                        f"Reset daily limit for wallet {wallet.wallet_id} "
+                        f"(agent: {wallet.agent_id})"
+                    )
+                    reset_count += 1
 
                 # Reset weekly limit
-                if policy.weekly_limit:
-                    if policy.weekly_limit.reset_if_expired():
-                        logger.info(
-                            f"Reset weekly limit for wallet {wallet.wallet_id} "
-                            f"(agent: {wallet.agent_id})"
-                        )
-                        reset_count += 1
+                if policy.weekly_limit and policy.weekly_limit.reset_if_expired():
+                    logger.info(
+                        f"Reset weekly limit for wallet {wallet.wallet_id} "
+                        f"(agent: {wallet.agent_id})"
+                    )
+                    reset_count += 1
 
                 # Reset monthly limit
-                if policy.monthly_limit:
-                    if policy.monthly_limit.reset_if_expired():
-                        logger.info(
-                            f"Reset monthly limit for wallet {wallet.wallet_id} "
-                            f"(agent: {wallet.agent_id})"
-                        )
-                        reset_count += 1
+                if policy.monthly_limit and policy.monthly_limit.reset_if_expired():
+                    logger.info(
+                        f"Reset monthly limit for wallet {wallet.wallet_id} "
+                        f"(agent: {wallet.agent_id})"
+                    )
+                    reset_count += 1
 
                 # Update wallet timestamp
-                wallet.updated_at = datetime.now(timezone.utc)
+                wallet.updated_at = datetime.now(UTC)
 
         logger.info(
             f"Spending limit reset job completed: {reset_count} limits reset "

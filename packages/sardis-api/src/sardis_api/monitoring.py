@@ -20,23 +20,22 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any
+from typing import Any
 
 import sentry_sdk
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from fastapi import Request
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from fastapi import Request
 
 logger = logging.getLogger(__name__)
 
 
 def init_sentry(
-    dsn: Optional[str] = None,
-    environment: Optional[str] = None,
-    release: Optional[str] = None,
+    dsn: str | None = None,
+    environment: str | None = None,
+    release: str | None = None,
     traces_sample_rate: float = 0.1,
     profiles_sample_rate: float = 0.1,
     enable_tracing: bool = True,
@@ -109,7 +108,7 @@ def init_sentry(
     )
 
 
-def before_send_event(event: Dict[str, Any], hint: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def before_send_event(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
     """
     Filter and modify events before sending to Sentry.
 
@@ -141,7 +140,7 @@ def before_send_event(event: Dict[str, Any], hint: Dict[str, Any]) -> Optional[D
     return event
 
 
-def before_breadcrumb(crumb: Dict[str, Any], hint: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def before_breadcrumb(crumb: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
     """
     Filter and modify breadcrumbs before adding to the event.
 
@@ -193,10 +192,10 @@ def configure_request_context(request: Request) -> None:
 
 def capture_exception(
     exception: Exception,
-    context: Optional[Dict[str, Any]] = None,
-    tags: Optional[Dict[str, str]] = None,
+    context: dict[str, Any] | None = None,
+    tags: dict[str, str] | None = None,
     level: str = "error",
-) -> Optional[str]:
+) -> str | None:
     """
     Manually capture an exception and send to Sentry.
 
@@ -232,9 +231,9 @@ def capture_exception(
 def capture_message(
     message: str,
     level: str = "info",
-    tags: Optional[Dict[str, str]] = None,
-    context: Optional[Dict[str, Any]] = None,
-) -> Optional[str]:
+    tags: dict[str, str] | None = None,
+    context: dict[str, Any] | None = None,
+) -> str | None:
     """
     Capture a message and send to Sentry.
 
@@ -271,7 +270,7 @@ def add_breadcrumb(
     message: str,
     category: str = "default",
     level: str = "info",
-    data: Optional[Dict[str, Any]] = None,
+    data: dict[str, Any] | None = None,
 ) -> None:
     """
     Add a breadcrumb to the current scope.
@@ -296,7 +295,7 @@ def add_breadcrumb(
 async def transaction_context(
     name: str,
     op: str = "function",
-    description: Optional[str] = None,
+    description: str | None = None,
 ):
     """
     Context manager for creating a Sentry transaction.
@@ -316,14 +315,14 @@ async def transaction_context(
     with sentry_sdk.start_transaction(op=op, name=name, description=description) as transaction:
         try:
             yield transaction
-        except Exception as e:
+        except Exception:
             transaction.set_status("internal_error")
             raise
 
 
 def start_span(
     op: str,
-    description: Optional[str] = None,
+    description: str | None = None,
 ):
     """
     Start a span within the current transaction.
@@ -395,7 +394,7 @@ class SentryMiddleware:
                 raise
 
 
-def get_sentry_trace_id() -> Optional[str]:
+def get_sentry_trace_id() -> str | None:
     """
     Get the current Sentry trace ID.
 
@@ -412,8 +411,8 @@ def get_sentry_trace_id() -> Optional[str]:
 
 def set_user_context(
     user_id: str,
-    email: Optional[str] = None,
-    username: Optional[str] = None,
+    email: str | None = None,
+    username: str | None = None,
     **extra_data,
 ) -> None:
     """

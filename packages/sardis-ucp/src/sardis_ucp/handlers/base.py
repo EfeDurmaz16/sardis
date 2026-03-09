@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 from ..models.mandates import UCPPaymentMandate
 
@@ -32,26 +32,26 @@ class PaymentReceipt:
     status: PaymentStatus = PaymentStatus.SUBMITTED
 
     # Transaction details
-    tx_hash: Optional[str] = None
-    block_number: Optional[int] = None
-    gas_used: Optional[int] = None
+    tx_hash: str | None = None
+    block_number: int | None = None
+    gas_used: int | None = None
 
     # Audit
-    audit_anchor: Optional[str] = None
-    ledger_tx_id: Optional[str] = None
+    audit_anchor: str | None = None
+    ledger_tx_id: str | None = None
 
     # Timing
-    submitted_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    confirmed_at: Optional[datetime] = None
+    submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    confirmed_at: datetime | None = None
 
     # Error (if failed)
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "mandate_id": self.mandate_id,
@@ -134,7 +134,7 @@ class PaymentExecutionError(Exception):
         code: str,
         mandate_id: str | None = None,
         tx_hash: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.code = code

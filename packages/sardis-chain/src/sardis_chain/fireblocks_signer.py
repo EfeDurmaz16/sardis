@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -33,14 +33,14 @@ class FireblocksSigner:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        api_secret: Optional[str] = None,
-        base_url: Optional[str] = None,
+        api_key: str | None = None,
+        api_secret: str | None = None,
+        base_url: str | None = None,
     ):
         self._api_key = api_key or os.getenv("FIREBLOCKS_API_KEY", "")
         self._api_secret = api_secret or os.getenv("FIREBLOCKS_API_SECRET", "")
         self._base_url = base_url or self.BASE_URL
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -70,8 +70,8 @@ class FireblocksSigner:
         return jwt.encode(payload, self._api_secret, algorithm="RS256")
 
     async def _request(
-        self, method: str, path: str, body: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, method: str, path: str, body: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Make an authenticated request to the Fireblocks API."""
         client = await self._get_client()
         body_str = json.dumps(body) if body else ""
@@ -91,7 +91,7 @@ class FireblocksSigner:
 
     # --- MPCSignerPort interface ---
 
-    async def create_wallet(self, name: str) -> Dict[str, Any]:
+    async def create_wallet(self, name: str) -> dict[str, Any]:
         """Create a Fireblocks vault account."""
         result = await self._request(
             "POST",
@@ -124,7 +124,7 @@ class FireblocksSigner:
         asset_id: str,
         amount: str,
         note: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Sign and submit a transaction via Fireblocks."""
         tx_payload = {
             "assetId": asset_id,
@@ -143,7 +143,7 @@ class FireblocksSigner:
         logger.info(f"Fireblocks tx submitted: {result.get('id')}")
         return result
 
-    async def get_transaction_status(self, tx_id: str) -> Dict[str, Any]:
+    async def get_transaction_status(self, tx_id: str) -> dict[str, Any]:
         """Get transaction status from Fireblocks."""
         return await self._request("GET", f"/transactions/{tx_id}")
 

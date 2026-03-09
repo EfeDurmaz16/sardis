@@ -5,11 +5,9 @@ This module provides both async and sync interfaces for hold (pre-authorization)
 """
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.hold import (
-    CaptureHoldRequest,
     CreateHoldRequest,
     CreateHoldResponse,
     Hold,
@@ -17,6 +15,8 @@ from ..models.hold import (
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
+    from decimal import Decimal
+
     from ..client import TimeoutConfig
 
 
@@ -45,10 +45,10 @@ class AsyncHoldsResource(AsyncBaseResource):
         wallet_id: str,
         amount: Decimal,
         token: str = "USDC",
-        merchant_id: Optional[str] = None,
-        purpose: Optional[str] = None,
+        merchant_id: str | None = None,
+        purpose: str | None = None,
         duration_hours: int = 24,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> CreateHoldResponse:
         """Create a hold (pre-authorization) on funds.
 
@@ -78,7 +78,7 @@ class AsyncHoldsResource(AsyncBaseResource):
     async def get(
         self,
         hold_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Get a hold by ID.
 
@@ -95,8 +95,8 @@ class AsyncHoldsResource(AsyncBaseResource):
     async def capture(
         self,
         hold_id: str,
-        amount: Optional[Decimal] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        amount: Decimal | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Capture a hold (complete the payment).
 
@@ -108,7 +108,7 @@ class AsyncHoldsResource(AsyncBaseResource):
         Returns:
             Updated hold details
         """
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         if amount is not None:
             data["amount"] = str(amount)
         response = await self._post(f"/api/v2/holds/{hold_id}/capture", data, timeout=timeout)
@@ -117,7 +117,7 @@ class AsyncHoldsResource(AsyncBaseResource):
     async def void(
         self,
         hold_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Void a hold (cancel without payment).
 
@@ -134,8 +134,8 @@ class AsyncHoldsResource(AsyncBaseResource):
     async def list_by_wallet(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Hold]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Hold]:
         """List all holds for a wallet.
 
         Args:
@@ -150,8 +150,8 @@ class AsyncHoldsResource(AsyncBaseResource):
 
     async def list_active(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Hold]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Hold]:
         """List all active holds.
 
         Args:
@@ -189,10 +189,10 @@ class HoldsResource(SyncBaseResource):
         wallet_id: str,
         amount: Decimal,
         token: str = "USDC",
-        merchant_id: Optional[str] = None,
-        purpose: Optional[str] = None,
+        merchant_id: str | None = None,
+        purpose: str | None = None,
         duration_hours: int = 24,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> CreateHoldResponse:
         """Create a hold (pre-authorization) on funds.
 
@@ -222,7 +222,7 @@ class HoldsResource(SyncBaseResource):
     def get(
         self,
         hold_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Get a hold by ID.
 
@@ -239,8 +239,8 @@ class HoldsResource(SyncBaseResource):
     def capture(
         self,
         hold_id: str,
-        amount: Optional[Decimal] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        amount: Decimal | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Capture a hold (complete the payment).
 
@@ -252,7 +252,7 @@ class HoldsResource(SyncBaseResource):
         Returns:
             Updated hold details
         """
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         if amount is not None:
             data["amount"] = str(amount)
         response = self._post(f"/api/v2/holds/{hold_id}/capture", data, timeout=timeout)
@@ -261,7 +261,7 @@ class HoldsResource(SyncBaseResource):
     def void(
         self,
         hold_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Hold:
         """Void a hold (cancel without payment).
 
@@ -278,8 +278,8 @@ class HoldsResource(SyncBaseResource):
     def list_by_wallet(
         self,
         wallet_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Hold]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Hold]:
         """List all holds for a wallet.
 
         Args:
@@ -294,8 +294,8 @@ class HoldsResource(SyncBaseResource):
 
     def list_active(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Hold]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Hold]:
         """List all active holds.
 
         Args:

@@ -1,12 +1,9 @@
 """Tests for Human-in-the-Loop approval queue and goal drift detection."""
 from decimal import Decimal
 
-import pytest
-
 # ── Simple SDK: Policy approval threshold ──────────────────────────────
-
 from sardis.policy import Policy, PolicyResult
-from sardis.transaction import Transaction, TransactionResult, TransactionStatus
+from sardis.transaction import Transaction, TransactionStatus
 from sardis.wallet import Wallet
 
 
@@ -97,7 +94,7 @@ class TestTransactionPendingApproval:
 
 # ── Core SpendingPolicy: approval_threshold + drift ────────────────────
 
-from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+from sardis_v2_core.spending_policy import SpendingPolicy
 
 
 class TestSpendingPolicyApprovalThreshold:

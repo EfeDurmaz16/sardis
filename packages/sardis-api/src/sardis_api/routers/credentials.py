@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -27,25 +26,25 @@ class ProvisionCredentialRequest(BaseModel):
     agent_id: str
     network: str  # stripe_spt, visa_tap, mastercard_agent_pay
     consent_id: str
-    max_per_tx: Optional[str] = "500"
-    daily_limit: Optional[str] = "2000"
-    allowed_mccs: Optional[list[str]] = None
-    allowed_merchant_ids: Optional[list[str]] = None
+    max_per_tx: str | None = "500"
+    daily_limit: str | None = "2000"
+    allowed_mccs: list[str] | None = None
+    allowed_merchant_ids: list[str] | None = None
 
 
 class TightenScopeRequest(BaseModel):
-    max_per_tx: Optional[str] = None
-    daily_limit: Optional[str] = None
-    allowed_mccs: Optional[list[str]] = None
-    allowed_merchant_ids: Optional[list[str]] = None
+    max_per_tx: str | None = None
+    daily_limit: str | None = None
+    allowed_mccs: list[str] | None = None
+    allowed_merchant_ids: list[str] | None = None
 
 
 class ReprovisionRequest(BaseModel):
     consent_id: str
-    max_per_tx: Optional[str] = "500"
-    daily_limit: Optional[str] = "2000"
-    allowed_mccs: Optional[list[str]] = None
-    allowed_merchant_ids: Optional[list[str]] = None
+    max_per_tx: str | None = "500"
+    daily_limit: str | None = "2000"
+    allowed_mccs: list[str] | None = None
+    allowed_merchant_ids: list[str] | None = None
 
 
 class RevokeRequest(BaseModel):
@@ -140,7 +139,7 @@ async def provision_credential(
 async def list_credentials(
     request: Request,
     principal: Principal = Depends(require_principal),
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     cred_store=Depends(_get_credential_store),
 ):
     """List credentials for org/agent."""

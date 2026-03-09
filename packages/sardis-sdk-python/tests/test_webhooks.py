@@ -1,5 +1,4 @@
 """Tests for WebhooksResource."""
-import pytest
 
 
 MOCK_WEBHOOK = {

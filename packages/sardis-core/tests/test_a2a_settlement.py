@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -66,7 +66,7 @@ class _ChainExecutor:
 
 
 def _released_escrow() -> Escrow:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return Escrow(
         id="escrow_123",
         payer_agent_id="agent_payer",

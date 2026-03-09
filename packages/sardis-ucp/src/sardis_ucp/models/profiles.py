@@ -6,9 +6,9 @@ Profiles declare capabilities and endpoints for UCP participants.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class UCPCapabilityType(str, Enum):
@@ -42,10 +42,10 @@ class UCPCapability:
     capability_type: UCPCapabilityType
     version: str = "1.0"
     enabled: bool = True
-    endpoint: Optional[str] = None  # Override endpoint for this capability
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    endpoint: str | None = None  # Override endpoint for this capability
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "capability_type": self.capability_type.value,
@@ -61,8 +61,8 @@ class UCPPaymentCapability:
     """Payment-specific capability declaration."""
 
     # Supported payment methods
-    supported_tokens: List[str] = field(default_factory=lambda: ["USDC", "USDT"])
-    supported_chains: List[str] = field(default_factory=lambda: ["base", "polygon"])
+    supported_tokens: list[str] = field(default_factory=lambda: ["USDC", "USDT"])
+    supported_chains: list[str] = field(default_factory=lambda: ["base", "polygon"])
 
     # Limits
     min_amount_minor: int = 100  # $1.00
@@ -72,7 +72,7 @@ class UCPPaymentCapability:
     ap2_compliant: bool = True
     x402_compliant: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "supported_tokens": self.supported_tokens,
@@ -89,20 +89,20 @@ class UCPEndpoints:
     """Service endpoints for a UCP participant."""
 
     # REST API
-    rest_base_url: Optional[str] = None
+    rest_base_url: str | None = None
 
     # MCP server
-    mcp_command: Optional[str] = None
-    mcp_args: List[str] = field(default_factory=list)
+    mcp_command: str | None = None
+    mcp_args: list[str] = field(default_factory=list)
 
     # A2A agent card
-    agent_card_url: Optional[str] = None
+    agent_card_url: str | None = None
 
     # Webhooks
-    webhook_url: Optional[str] = None
-    webhook_secret: Optional[str] = None
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "rest_base_url": self.rest_base_url,
@@ -125,11 +125,11 @@ class UCPBusinessProfile:
     business_domain: str
 
     # Contact information
-    support_email: Optional[str] = None
-    support_url: Optional[str] = None
+    support_email: str | None = None
+    support_url: str | None = None
 
     # Capabilities
-    capabilities: List[UCPCapability] = field(default_factory=list)
+    capabilities: list[UCPCapability] = field(default_factory=list)
     payment_capability: UCPPaymentCapability = field(default_factory=UCPPaymentCapability)
 
     # Service endpoints
@@ -137,18 +137,18 @@ class UCPBusinessProfile:
 
     # Verification
     verified: bool = False
-    verified_at: Optional[datetime] = None
-    verification_method: Optional[str] = None
+    verified_at: datetime | None = None
+    verification_method: str | None = None
 
     # Signing keys for mandate verification
-    signing_key_id: Optional[str] = None
-    public_key: Optional[str] = None
+    signing_key_id: str | None = None
+    public_key: str | None = None
     key_algorithm: str = "Ed25519"
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def supports_capability(self, capability_type: UCPCapabilityType) -> bool:
         """Check if this business supports a specific capability."""
@@ -157,7 +157,7 @@ class UCPBusinessProfile:
             for c in self.capabilities
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "profile_id": self.profile_id,
@@ -192,10 +192,10 @@ class UCPPlatformProfile:
     platform_domain: str
 
     # Contact information
-    support_email: Optional[str] = None
+    support_email: str | None = None
 
     # Capabilities
-    capabilities: List[UCPCapability] = field(default_factory=list)
+    capabilities: list[UCPCapability] = field(default_factory=list)
     payment_capability: UCPPaymentCapability = field(default_factory=UCPPaymentCapability)
 
     # Service endpoints
@@ -203,25 +203,25 @@ class UCPPlatformProfile:
 
     # Verification
     verified: bool = False
-    verified_at: Optional[datetime] = None
+    verified_at: datetime | None = None
 
     # Signing keys for mandate verification
-    signing_key_id: Optional[str] = None
-    public_key: Optional[str] = None
+    signing_key_id: str | None = None
+    public_key: str | None = None
     key_algorithm: str = "Ed25519"
 
     # Agent configuration (for AI agents)
     is_agent: bool = False
-    agent_owner: Optional[str] = None  # Owner/operator of the agent
+    agent_owner: str | None = None  # Owner/operator of the agent
 
     # Rate limits
     rate_limit_per_minute: int = 60
     rate_limit_per_day: int = 10000
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def supports_capability(self, capability_type: UCPCapabilityType) -> bool:
         """Check if this platform supports a specific capability."""
@@ -230,7 +230,7 @@ class UCPPlatformProfile:
             for c in self.capabilities
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "profile_id": self.profile_id,

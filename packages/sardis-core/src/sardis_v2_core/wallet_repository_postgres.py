@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import builtins
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, List, Any, Literal
+from typing import Any, Literal
 
 from .wallets import Wallet
 
@@ -60,8 +61,8 @@ class PostgresWalletRepository:
             frozen_at=row.get("frozen_at"),
             frozen_by=row.get("frozen_by"),
             freeze_reason=row.get("freeze_reason"),
-            created_at=row.get("created_at") or datetime.now(timezone.utc),
-            updated_at=row.get("updated_at") or datetime.now(timezone.utc),
+            created_at=row.get("created_at") or datetime.now(UTC),
+            updated_at=row.get("updated_at") or datetime.now(UTC),
         )
 
     async def create(
@@ -73,11 +74,11 @@ class PostgresWalletRepository:
         currency: str = "USDC",
         limit_per_tx: Decimal = Decimal("100.00"),
         limit_total: Decimal = Decimal("1000.00"),
-        addresses: Optional[dict[str, str]] = None,
-        smart_account_address: Optional[str] = None,
-        entrypoint_address: Optional[str] = None,
+        addresses: dict[str, str] | None = None,
+        smart_account_address: str | None = None,
+        entrypoint_address: str | None = None,
         paymaster_enabled: bool = False,
-        bundler_profile: Optional[str] = None,
+        bundler_profile: str | None = None,
     ) -> Wallet:
         pool = await self._get_pool()
         wallet_id = wallet_id or f"wallet_{__import__('uuid').uuid4().hex[:16]}"
@@ -130,7 +131,7 @@ class PostgresWalletRepository:
                 )
                 return self._wallet_from_row(dict(row), agent_id)
 
-    async def get(self, wallet_id: str) -> Optional[Wallet]:
+    async def get(self, wallet_id: str) -> Wallet | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -151,7 +152,7 @@ class PostgresWalletRepository:
                 return None
             return self._wallet_from_row(dict(row), str(row["agent_external_id"]))
 
-    async def get_by_agent(self, agent_id: str) -> Optional[Wallet]:
+    async def get_by_agent(self, agent_id: str) -> Wallet | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -176,11 +177,11 @@ class PostgresWalletRepository:
 
     async def list(
         self,
-        agent_id: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        agent_id: str | None = None,
+        is_active: bool | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Wallet]:
+    ) -> builtins.list[Wallet]:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             where = []
@@ -246,16 +247,16 @@ class PostgresWalletRepository:
     async def update(
         self,
         wallet_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-        is_active: Optional[bool] = None,
-        addresses: Optional[dict[str, str]] = None,
-        account_type: Optional[Literal["mpc_v1", "erc4337_v2"]] = None,
-        smart_account_address: Optional[str] = None,
-        entrypoint_address: Optional[str] = None,
-        paymaster_enabled: Optional[bool] = None,
-        bundler_profile: Optional[str] = None,
-    ) -> Optional[Wallet]:
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        is_active: bool | None = None,
+        addresses: dict[str, str] | None = None,
+        account_type: Literal["mpc_v1", "erc4337_v2"] | None = None,
+        smart_account_address: str | None = None,
+        entrypoint_address: str | None = None,
+        paymaster_enabled: bool | None = None,
+        bundler_profile: str | None = None,
+    ) -> Wallet | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             current = await conn.fetchrow(
@@ -302,12 +303,12 @@ class PostgresWalletRepository:
     async def set_limits(
         self,
         wallet_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_total: Optional[Decimal] = None,
-    ) -> Optional[Wallet]:
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+    ) -> Wallet | None:
         return await self.update(wallet_id, limit_per_tx=limit_per_tx, limit_total=limit_total)
 
-    async def set_address(self, wallet_id: str, chain: str, address: str) -> Optional[Wallet]:
+    async def set_address(self, wallet_id: str, chain: str, address: str) -> Wallet | None:
         return await self.update(wallet_id, addresses={chain: address})
 
     async def delete(self, wallet_id: str) -> bool:
@@ -316,7 +317,7 @@ class PostgresWalletRepository:
             res = await conn.execute("DELETE FROM wallets WHERE external_id = $1", wallet_id)
             return "DELETE 1" in res
 
-    async def freeze(self, wallet_id: str, frozen_by: str, reason: str) -> Optional[Wallet]:
+    async def freeze(self, wallet_id: str, frozen_by: str, reason: str) -> Wallet | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -335,7 +336,7 @@ class PostgresWalletRepository:
             )
         return await self.get(wallet_id)
 
-    async def unfreeze(self, wallet_id: str) -> Optional[Wallet]:
+    async def unfreeze(self, wallet_id: str) -> Wallet | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -352,7 +353,7 @@ class PostgresWalletRepository:
             )
         return await self.get(wallet_id)
 
-    async def get_frozen_wallets(self) -> List[Wallet]:
+    async def get_frozen_wallets(self) -> builtins.list[Wallet]:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(

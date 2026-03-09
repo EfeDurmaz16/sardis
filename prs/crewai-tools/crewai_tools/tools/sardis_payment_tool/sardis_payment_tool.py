@@ -13,7 +13,6 @@ Or install the tools directly:
 from __future__ import annotations
 
 import os
-from typing import Optional, Type
 
 from crewai_tools import BaseTool
 from pydantic import BaseModel, Field
@@ -53,12 +52,12 @@ class SardisPaymentTool(BaseTool):
         "Checks spending limits and policies before executing. "
         "Supports USDC payments on Base, Polygon, Ethereum, Arbitrum, and Optimism."
     )
-    args_schema: Type[BaseModel] = SardisPaymentToolInput
+    args_schema: type[BaseModel] = SardisPaymentToolInput
 
-    api_key: Optional[str] = None
-    wallet_id: Optional[str] = None
+    api_key: str | None = None
+    wallet_id: str | None = None
 
-    def __init__(self, api_key: Optional[str] = None, wallet_id: Optional[str] = None, **kwargs):
+    def __init__(self, api_key: str | None = None, wallet_id: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.api_key = api_key or os.getenv("SARDIS_API_KEY")
         self.wallet_id = wallet_id or os.getenv("SARDIS_WALLET_ID")

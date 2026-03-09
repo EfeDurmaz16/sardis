@@ -1,15 +1,15 @@
 """Approval repository for PostgreSQL CRUD operations."""
 from __future__ import annotations
 
+import builtins
 import secrets
 import time
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
-from typing import Optional, List, Literal
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Literal
 
 from .database import Database
-
 
 ApprovalStatus = Literal['pending', 'approved', 'denied', 'expired', 'cancelled']
 ApprovalUrgency = Literal['low', 'medium', 'high']
@@ -31,20 +31,20 @@ class Approval:
     # Timestamps
     created_at: datetime
     expires_at: datetime
-    reviewed_at: Optional[datetime] = None
+    reviewed_at: datetime | None = None
 
     # Optional fields
-    reviewed_by: Optional[str] = None
-    vendor: Optional[str] = None
-    amount: Optional[Decimal] = None
-    purpose: Optional[str] = None
-    reason: Optional[str] = None
-    card_limit: Optional[Decimal] = None
+    reviewed_by: str | None = None
+    vendor: str | None = None
+    amount: Decimal | None = None
+    purpose: str | None = None
+    reason: str | None = None
+    card_limit: Decimal | None = None
 
     # Foreign keys (soft references)
-    agent_id: Optional[str] = None
-    wallet_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    agent_id: str | None = None
+    wallet_id: str | None = None
+    organization_id: str | None = None
 
     # Metadata
     metadata: dict = field(default_factory=dict)
@@ -78,24 +78,24 @@ class ApprovalRepository:
         status: ApprovalStatus = 'pending',
         urgency: ApprovalUrgency = 'medium',
         requested_by: str,
-        created_at: Optional[datetime] = None,
+        created_at: datetime | None = None,
         expires_at: datetime,
-        vendor: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        purpose: Optional[str] = None,
-        reason: Optional[str] = None,
-        card_limit: Optional[Decimal] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        vendor: str | None = None,
+        amount: Decimal | None = None,
+        purpose: str | None = None,
+        reason: str | None = None,
+        card_limit: Decimal | None = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        organization_id: str | None = None,
+        metadata: dict | None = None,
     ) -> Approval:
         """Create a new approval request (alternative signature).
 
         This overload accepts individual fields instead of an Approval object.
         """
         if created_at is None:
-            created_at = datetime.now(timezone.utc)
+            created_at = datetime.now(UTC)
 
         approval = Approval(
             id=Approval.generate_id(),
@@ -151,7 +151,7 @@ class ApprovalRepository:
 
         return approval
 
-    async def get(self, approval_id: str) -> Optional[Approval]:
+    async def get(self, approval_id: str) -> Approval | None:
         """Get approval by ID.
 
         Args:
@@ -179,11 +179,11 @@ class ApprovalRepository:
         self,
         approval_id: str,
         *,
-        status: Optional[ApprovalStatus] = None,
-        reviewed_by: Optional[str] = None,
-        reviewed_at: Optional[datetime] = None,
-        metadata: Optional[dict] = None,
-    ) -> Optional[Approval]:
+        status: ApprovalStatus | None = None,
+        reviewed_by: str | None = None,
+        reviewed_at: datetime | None = None,
+        metadata: dict | None = None,
+    ) -> Approval | None:
         """Update approval with new state.
 
         Args:
@@ -251,16 +251,16 @@ class ApprovalRepository:
     async def list(
         self,
         *,
-        status: Optional[ApprovalStatus] = None,
-        action: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
-        requested_by: Optional[str] = None,
-        urgency: Optional[ApprovalUrgency] = None,
+        status: ApprovalStatus | None = None,
+        action: str | None = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        organization_id: str | None = None,
+        requested_by: str | None = None,
+        urgency: ApprovalUrgency | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Approval]:
+    ) -> builtins.list[Approval]:
         """List approvals with optional filters.
 
         Args:
@@ -340,7 +340,7 @@ class ApprovalRepository:
         rows = await Database.fetch(query, *values)
         return [_row_to_approval(row) for row in rows]
 
-    async def get_expired_pending(self, as_of: Optional[datetime] = None) -> List[Approval]:
+    async def get_expired_pending(self, as_of: datetime | None = None) -> builtins.list[Approval]:
         """Get all pending approvals that have expired.
 
         Args:
@@ -350,7 +350,7 @@ class ApprovalRepository:
             List of expired pending approvals
         """
         if as_of is None:
-            as_of = datetime.now(timezone.utc)
+            as_of = datetime.now(UTC)
 
         query = """
             SELECT id, action, status, urgency, requested_by, reviewed_by,

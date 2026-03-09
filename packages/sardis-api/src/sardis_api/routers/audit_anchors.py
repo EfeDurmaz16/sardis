@@ -12,7 +12,8 @@ Provides endpoints for:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from datetime import UTC
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -33,10 +34,10 @@ class AnchorResponse(BaseModel):
     last_entry_id: str
     timestamp: str
     chain: str
-    transaction_hash: Optional[str] = None
+    transaction_hash: str | None = None
     status: str
-    block_number: Optional[int] = None
-    gas_used: Optional[int] = None
+    block_number: int | None = None
+    gas_used: int | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -44,14 +45,14 @@ class AnchorListResponse(BaseModel):
     """Response model for list of anchors."""
     anchors: list[AnchorResponse]
     total: int
-    from_date: Optional[str] = None
-    to_date: Optional[str] = None
+    from_date: str | None = None
+    to_date: str | None = None
 
 
 class CreateAnchorRequest(BaseModel):
     """Request model for creating manual anchor."""
-    from_entry_id: Optional[str] = None
-    to_entry_id: Optional[str] = None
+    from_entry_id: str | None = None
+    to_entry_id: str | None = None
     max_entries: int = Field(default=10000, ge=1, le=100000)
 
 
@@ -70,8 +71,8 @@ class VerifyAnchorResponse(BaseModel):
     is_valid: bool
     merkle_root: str
     chain: str
-    transaction_hash: Optional[str] = None
-    block_number: Optional[int] = None
+    transaction_hash: str | None = None
+    block_number: int | None = None
     verified_at: str
     message: str
 
@@ -125,8 +126,8 @@ def get_anchor_deps() -> AnchorDependencies:
 
 @router.get("/anchors", response_model=AnchorListResponse)
 async def list_anchors(
-    from_date: Optional[str] = Query(None, description="ISO format date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
-    to_date: Optional[str] = Query(None, description="ISO format date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    from_date: str | None = Query(None, description="ISO format date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    to_date: str | None = Query(None, description="ISO format date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
     deps: AnchorDependencies = Depends(get_anchor_deps),
 ) -> AnchorListResponse:
     """
@@ -339,8 +340,8 @@ async def verify_anchor(
         # Verify on-chain
         is_valid = await deps.anchor_service.verify_anchor(anchor_id)
 
-        from datetime import datetime, timezone
-        verified_at = datetime.now(timezone.utc).isoformat()
+        from datetime import datetime
+        verified_at = datetime.now(UTC).isoformat()
 
         message = (
             "Anchor verified successfully on-chain"
@@ -404,8 +405,8 @@ async def verify_entry(
                 detail=f"Anchor {request.anchor_id} not found",
             )
 
-        from datetime import datetime, timezone
-        verified_at = datetime.now(timezone.utc).isoformat()
+        from datetime import datetime
+        verified_at = datetime.now(UTC).isoformat()
 
         message = (
             f"Entry {entry_id} verified in anchor {request.anchor_id}"

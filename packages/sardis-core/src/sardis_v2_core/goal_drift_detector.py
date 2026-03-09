@@ -41,11 +41,9 @@ from __future__ import annotations
 import hashlib
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Optional, Any
-import math
+from typing import Any
 
 
 class DriftType(str, Enum):
@@ -82,7 +80,7 @@ class SpendingProfile:
     total_transactions: int
     window_start: datetime
     window_end: datetime
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -97,9 +95,9 @@ class DriftAlert:
     severity: DriftSeverity
     confidence: float  # 0.0–1.0, higher = more confident in drift detection
     details: dict[str, Any]  # Statistical details (p-value, effect size, etc.)
-    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    baseline_profile: Optional[SpendingProfile] = None
-    current_profile: Optional[SpendingProfile] = None
+    detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    baseline_profile: SpendingProfile | None = None
+    current_profile: SpendingProfile | None = None
 
 
 class GoalDriftDetector:
@@ -170,7 +168,7 @@ class GoalDriftDetector:
             raise ValueError(f"No transactions provided for agent {agent_id}")
 
         # Filter to window
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         window_start = now - timedelta(days=window_days)
         filtered_txs = []
 
@@ -201,10 +199,7 @@ class GoalDriftDetector:
         if amounts:
             mean_amount = statistics.mean(amounts)
             median_amount = statistics.median(amounts)
-            if len(amounts) > 1:
-                std_amount = statistics.stdev(amounts)
-            else:
-                std_amount = 0.0
+            std_amount = statistics.stdev(amounts) if len(amounts) > 1 else 0.0
 
             sorted_amounts = sorted(amounts)
             amount_distribution = {
@@ -334,7 +329,7 @@ class GoalDriftDetector:
                     "chi_squared": merchant_chi2,
                     "p_value": merchant_p,
                     "new_merchants": [
-                        m for m in current.merchant_distribution.keys()
+                        m for m in current.merchant_distribution
                         if m not in baseline.merchant_distribution
                     ],
                     "baseline_top_merchants": sorted(
@@ -709,7 +704,7 @@ class GoalDriftDetector:
         sorted_hours = sorted(time_dist.items(), key=lambda x: x[1], reverse=True)
         return [hour for hour, _ in sorted_hours[:3]]
 
-    def _parse_timestamp(self, ts: Any) -> Optional[datetime]:
+    def _parse_timestamp(self, ts: Any) -> datetime | None:
         """Parse timestamp from various formats."""
         if isinstance(ts, datetime):
             return ts
@@ -805,7 +800,7 @@ class VelocityGovernor:
         Returns:
             Tuple of (allowed, reason)
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Get recent transactions from Redis store (stored as ISO strings)
         raw_txs = await self._tx_log_store.get_list(agent_id)
@@ -814,7 +809,7 @@ class VelocityGovernor:
             try:
                 ts = datetime.fromisoformat(ts_str)
                 if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.replace(tzinfo=UTC)
                 txs.append(ts)
             except (ValueError, TypeError):
                 continue
@@ -850,5 +845,5 @@ class VelocityGovernor:
         Args:
             agent_id: Agent identifier
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self._tx_log_store.append_list(agent_id, now.isoformat(), max_len=1000, ttl=86400)

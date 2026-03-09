@@ -5,18 +5,16 @@ The SardisClient runs in simulation mode (no real API key needed).
 """
 from __future__ import annotations
 
-import pytest
-from sardis import SardisClient
-
 from sardis_crewai.tools import (
-    SardisPayTool,
     SardisCheckBalanceTool,
     SardisCheckPolicyTool,
-    SardisSetPolicyTool,
     SardisGroupBudgetTool,
+    SardisPayTool,
+    SardisSetPolicyTool,
     create_sardis_tools,
 )
 
+from sardis import SardisClient
 
 # ---------------------------------------------------------------------------
 # Helpers

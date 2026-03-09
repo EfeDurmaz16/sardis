@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional, Protocol
+from typing import Protocol
 
 from .models import Card, CardTransaction, CardType
 from .providers.base import CardProvider
@@ -60,7 +60,7 @@ class CardService:
     def __init__(
         self,
         provider: CardProvider,
-        balance_checker: Optional[WalletBalanceChecker] = None,
+        balance_checker: WalletBalanceChecker | None = None,
     ) -> None:
         """
         Initialize the card service.
@@ -71,12 +71,12 @@ class CardService:
         """
         self._provider = provider
         self._balance_checker = balance_checker
-    
+
     @property
     def provider_name(self) -> str:
         """Get the name of the current provider."""
         return self._provider.name
-    
+
     async def issue_card(
         self,
         wallet_id: str,
@@ -84,9 +84,9 @@ class CardService:
         limit_per_tx: Decimal = Decimal("500.00"),
         limit_daily: Decimal = Decimal("2000.00"),
         limit_monthly: Decimal = Decimal("10000.00"),
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
         auto_activate: bool = True,
-        require_minimum_balance: Optional[Decimal] = None,
+        require_minimum_balance: Decimal | None = None,
         balance_currency: str = "USD",
     ) -> Card:
         """
@@ -165,19 +165,19 @@ class CardService:
             card = await self._provider.activate_card(card.provider_card_id)
 
         return card
-    
-    async def get_card(self, card_id: str) -> Optional[Card]:
+
+    async def get_card(self, card_id: str) -> Card | None:
         """
         Get card details.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
-            
+
         Returns:
             Card object if found, None otherwise
         """
         return await self._provider.get_card(card_id)
-    
+
     async def fund_card(
         self,
         card_id: str,
@@ -186,76 +186,76 @@ class CardService:
     ) -> Card:
         """
         Add funds to a card.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
             amount: Amount to add
             source: Funding source (stablecoin, bank_transfer, crypto)
-            
+
         Returns:
             Updated Card object
         """
         if amount <= 0:
             raise ValueError("Funding amount must be positive")
-        
+
         card = await self._provider.get_card(card_id)
         if not card:
             raise ValueError(f"Card not found: {card_id}")
-        
+
         return await self._provider.fund_card(card_id, amount)
-    
+
     async def freeze_card(self, card_id: str) -> Card:
         """
         Freeze a card to prevent transactions.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
-            
+
         Returns:
             Updated Card object
         """
         return await self._provider.freeze_card(card_id)
-    
+
     async def unfreeze_card(self, card_id: str) -> Card:
         """
         Unfreeze a previously frozen card.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
-            
+
         Returns:
             Updated Card object
         """
         return await self._provider.unfreeze_card(card_id)
-    
+
     async def cancel_card(self, card_id: str) -> Card:
         """
         Cancel a card permanently.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
-            
+
         Returns:
             Updated Card object
         """
         return await self._provider.cancel_card(card_id)
-    
+
     async def update_limits(
         self,
         card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         """
         Update card spending limits.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
             limit_per_tx: New per-transaction limit
             limit_daily: New daily limit
             limit_monthly: New monthly limit
-            
+
         Returns:
             Updated Card object
         """
@@ -265,7 +265,7 @@ class CardService:
             limit_daily=limit_daily,
             limit_monthly=limit_monthly,
         )
-    
+
     async def list_transactions(
         self,
         card_id: str,
@@ -274,24 +274,24 @@ class CardService:
     ) -> list[CardTransaction]:
         """
         List transactions for a card.
-        
+
         Args:
             card_id: The card ID (provider_card_id)
             limit: Maximum number of transactions to return
             offset: Number of transactions to skip
-            
+
         Returns:
             List of CardTransaction objects
         """
         return await self._provider.list_transactions(card_id, limit, offset)
-    
-    async def get_transaction(self, transaction_id: str) -> Optional[CardTransaction]:
+
+    async def get_transaction(self, transaction_id: str) -> CardTransaction | None:
         """
         Get a specific transaction.
-        
+
         Args:
             transaction_id: The transaction ID (provider_tx_id)
-            
+
         Returns:
             CardTransaction object if found, None otherwise
         """

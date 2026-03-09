@@ -16,20 +16,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, List, Literal
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
-
 from sardis_v2_core import (
-    SpendingPolicy,
     TrustLevel,
-    SpendingScope,
-    TimeWindowLimit,
-    MerchantRule,
     create_default_policy,
 )
 
@@ -106,7 +100,7 @@ class SandboxStore:
 
     def _seed_demo_data(self):
         """Pre-seed demo data for playground."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Create 3 demo agents
         agents_data = [
@@ -205,7 +199,7 @@ class SandboxPaymentRequest(BaseModel):
     agent_id: str = Field(default="agent_demo_001", description="Agent ID (use demo agent or create new)")
     amount: Decimal = Field(..., gt=0, description="Payment amount in USD")
     merchant: str = Field(..., description="Merchant name or domain")
-    merchant_category: Optional[str] = Field(default=None, description="e.g., 'cloud', 'api', 'saas'")
+    merchant_category: str | None = Field(default=None, description="e.g., 'cloud', 'api', 'saas'")
     chain: str = Field(default="base_sepolia", description="Blockchain to simulate on")
     token: str = Field(default="USDC", description="Token to use")
 
@@ -217,8 +211,8 @@ class SandboxPaymentResponse(BaseModel):
     amount: str
     merchant: str
     policy_result: str
-    policy_reason: Optional[str] = None
-    ledger_entry_id: Optional[str] = None
+    policy_reason: str | None = None
+    ledger_entry_id: str | None = None
     simulated: bool = True
 
 
@@ -227,7 +221,7 @@ class PolicyCheckRequest(BaseModel):
     agent_id: str = Field(default="agent_demo_002", description="Agent ID")
     amount: Decimal = Field(..., gt=0)
     merchant: str
-    policy_nl: Optional[str] = Field(
+    policy_nl: str | None = Field(
         default=None,
         description="Natural language policy to test (if not using agent's default)",
     )
@@ -244,8 +238,8 @@ class PolicyCheckResponse(BaseModel):
 
 class CreateDemoWalletRequest(BaseModel):
     """Request to create a demo wallet."""
-    agent_id: Optional[str] = Field(default=None, description="Agent ID (auto-generated if not provided)")
-    agent_name: Optional[str] = Field(default="Demo Agent", description="Agent display name")
+    agent_id: str | None = Field(default=None, description="Agent ID (auto-generated if not provided)")
+    agent_name: str | None = Field(default="Demo Agent", description="Agent display name")
     initial_balance: Decimal = Field(default=Decimal("100.00"), description="Initial testnet balance")
     trust_level: TrustLevel = Field(default=TrustLevel.MEDIUM)
 
@@ -279,10 +273,10 @@ class IssueDemoCardResponse(BaseModel):
 
 class DemoDataResponse(BaseModel):
     """All demo data for the playground."""
-    agents: List[dict]
-    wallets: List[dict]
-    transactions: List[dict]
-    cards: List[dict]
+    agents: list[dict]
+    wallets: list[dict]
+    transactions: list[dict]
+    cards: list[dict]
 
 
 class LedgerEntryResponse(BaseModel):
@@ -321,7 +315,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
             name="Sandbox Agent",
             trust_level=TrustLevel.MEDIUM,
             kya_level=1,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         _sandbox_store.agents[req.agent_id] = agent
 
@@ -338,7 +332,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
             balance=Decimal("1000.00"),
             currency="USDC",
             chain=req.chain,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         _sandbox_store.wallets[wallet.wallet_id] = wallet
 
@@ -384,7 +378,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
         merchant=req.merchant,
         status="completed" if success and policy_result != "requires_approval" else "denied",
         policy_result=policy_result,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         chain=req.chain,
         token=req.token,
     )
@@ -399,7 +393,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
         event_type="payment_executed" if success else "payment_denied",
         amount=req.amount,
         merchant=req.merchant,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         metadata={
             "policy_result": policy_result,
             "policy_reason": policy_reason or "OK",
@@ -497,7 +491,7 @@ async def sandbox_create_wallet(req: CreateDemoWalletRequest):
             name=req.agent_name or "Demo Agent",
             trust_level=req.trust_level,
             kya_level=0 if req.trust_level == TrustLevel.LOW else 1,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     # Create wallet
@@ -508,7 +502,7 @@ async def sandbox_create_wallet(req: CreateDemoWalletRequest):
         balance=req.initial_balance,
         currency="USDC",
         chain="base_sepolia",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     _sandbox_store.wallets[wallet_id] = wallet
 
@@ -554,7 +548,7 @@ async def sandbox_issue_card(req: IssueDemoCardRequest):
         last_four=last_four,
         status="active",
         spending_limit=req.spending_limit,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     _sandbox_store.cards[card_id] = card
 
@@ -637,9 +631,9 @@ async def sandbox_demo_data():
     )
 
 
-@router.get("/ledger", response_model=List[LedgerEntryResponse], tags=["Sandbox"])
+@router.get("/ledger", response_model=list[LedgerEntryResponse], tags=["Sandbox"])
 async def sandbox_ledger(
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     limit: int = 50,
 ):
     """

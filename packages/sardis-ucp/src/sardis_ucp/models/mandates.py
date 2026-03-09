@@ -11,10 +11,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 
 class UCPCurrency(str, Enum):
@@ -51,14 +51,14 @@ class UCPLineItem:
     currency: UCPCurrency = UCPCurrency.USD
 
     # Optional fields
-    sku: Optional[str] = None
-    category: Optional[str] = None
-    image_url: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    sku: str | None = None
+    category: str | None = None
+    image_url: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Tax handling
     taxable: bool = True
-    tax_rate: Optional[Decimal] = None  # As decimal (e.g., 0.08 for 8%)
+    tax_rate: Decimal | None = None  # As decimal (e.g., 0.08 for 8%)
 
     @property
     def total_minor(self) -> int:
@@ -72,7 +72,7 @@ class UCPLineItem:
             return 0
         return int(self.total_minor * self.tax_rate)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "item_id": self.item_id,
@@ -98,8 +98,8 @@ class UCPDiscount:
     name: str
     discount_type: UCPDiscountType
     value: Decimal  # Percentage (0-100) or fixed amount in minor units
-    code: Optional[str] = None  # Coupon code if applicable
-    applied_to: Optional[List[str]] = None  # Line item IDs (None = entire cart)
+    code: str | None = None  # Coupon code if applicable
+    applied_to: list[str] | None = None  # Line item IDs (None = entire cart)
     min_purchase_minor: int = 0  # Minimum purchase amount for discount
 
     def calculate_discount_minor(self, subtotal_minor: int) -> int:
@@ -109,13 +109,11 @@ class UCPDiscount:
 
         if self.discount_type == UCPDiscountType.PERCENTAGE:
             return int(subtotal_minor * (self.value / Decimal("100")))
-        elif self.discount_type == UCPDiscountType.FIXED:
-            return min(int(self.value), subtotal_minor)
-        elif self.discount_type == UCPDiscountType.COUPON:
+        elif self.discount_type == UCPDiscountType.FIXED or self.discount_type == UCPDiscountType.COUPON:
             return min(int(self.value), subtotal_minor)
         return 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "discount_id": self.discount_id,
@@ -142,20 +140,20 @@ class UCPCartMandate:
     merchant_domain: str
 
     # Cart contents
-    line_items: List[UCPLineItem]
+    line_items: list[UCPLineItem]
     currency: UCPCurrency
 
     # Pricing
     subtotal_minor: int
     taxes_minor: int
     shipping_minor: int = 0
-    discounts: List[UCPDiscount] = field(default_factory=list)
+    discounts: list[UCPDiscount] = field(default_factory=list)
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 3600)  # 1 hour
     nonce: str = field(default_factory=lambda: uuid.uuid4().hex)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def total_discount_minor(self) -> int:
@@ -171,7 +169,7 @@ class UCPCartMandate:
         """Check if the cart mandate has expired."""
         return self.expires_at <= int(time.time())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "mandate_id": self.mandate_id,
@@ -209,25 +207,25 @@ class UCPCheckoutMandate:
     # Authorization details
     authorized_amount_minor: int
     currency: UCPCurrency
-    scope: List[str] = field(default_factory=lambda: ["checkout", "payment"])
+    scope: list[str] = field(default_factory=lambda: ["checkout", "payment"])
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 900)  # 15 minutes
     nonce: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     # Signature proof (for verification)
     proof_type: Literal["DataIntegrityProof"] = "DataIntegrityProof"
-    proof_value: Optional[str] = None
-    verification_method: Optional[str] = None
+    proof_value: str | None = None
+    verification_method: str | None = None
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_expired(self) -> bool:
         """Check if the checkout mandate has expired."""
         return self.expires_at <= int(time.time())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "mandate_id": self.mandate_id,
@@ -272,21 +270,21 @@ class UCPPaymentMandate:
     nonce: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 300)  # 5 minutes
 
     # Signature proof (for verification)
     proof_type: Literal["DataIntegrityProof"] = "DataIntegrityProof"
-    proof_value: Optional[str] = None
-    verification_method: Optional[str] = None
+    proof_value: str | None = None
+    verification_method: str | None = None
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_expired(self) -> bool:
         """Check if the payment mandate has expired."""
         return self.expires_at <= int(time.time())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "mandate_id": self.mandate_id,

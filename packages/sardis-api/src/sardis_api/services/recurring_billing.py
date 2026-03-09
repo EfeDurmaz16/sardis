@@ -6,10 +6,11 @@ import calendar
 import hashlib
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 from sardis_chain.executor import STABLECOIN_ADDRESSES
 from sardis_v2_core.mandates import PaymentMandate, VCProof
@@ -19,7 +20,7 @@ logger = logging.getLogger("sardis.recurring")
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def compute_next_billing(current: datetime, billing_cycle: str, billing_day: int) -> datetime:
@@ -33,7 +34,7 @@ def compute_next_billing(current: datetime, billing_cycle: str, billing_day: int
 
     # Monthly default.
     if current.tzinfo is None:
-        current = current.replace(tzinfo=timezone.utc)
+        current = current.replace(tzinfo=UTC)
     year = current.year
     month = current.month + 1
     if month == 13:
@@ -49,8 +50,8 @@ class RecurringBillingResult:
     subscription_id: str
     billing_event_id: str
     status: str
-    tx_hash: Optional[str] = None
-    reason: Optional[str] = None
+    tx_hash: str | None = None
+    reason: str | None = None
 
 
 AutoFundHandler = Callable[[dict[str, Any], int], Awaitable[str]]
@@ -66,7 +67,7 @@ class RecurringBillingService:
         chain_executor,
         wallet_manager,
         compliance,
-        autofund_handler: Optional[AutoFundHandler] = None,
+        autofund_handler: AutoFundHandler | None = None,
         allow_simulated_autofund: bool = True,
     ):
         self._subscription_repo = subscription_repo
@@ -80,9 +81,9 @@ class RecurringBillingService:
 
     def configure_autofund_handler(
         self,
-        handler: Optional[AutoFundHandler],
+        handler: AutoFundHandler | None,
         *,
-        allow_simulated_fallback: Optional[bool] = None,
+        allow_simulated_fallback: bool | None = None,
     ) -> None:
         """Update recurring auto-fund runtime wiring.
 
@@ -108,7 +109,7 @@ class RecurringBillingService:
             return 0
         return int(result, 16)
 
-    async def _maybe_autofund(self, subscription: dict[str, Any], amount_minor: int) -> Optional[str]:
+    async def _maybe_autofund(self, subscription: dict[str, Any], amount_minor: int) -> str | None:
         if not subscription.get("autofund_enabled"):
             return None
         if self._autofund_handler is not None:
@@ -155,7 +156,7 @@ class RecurringBillingService:
                 amount_minor = to_raw_token_amount(TokenType(token), amount_decimal)
 
                 # Auto-fund branch if token balance is below next cycle amount.
-                fund_tx_id: Optional[str] = None
+                fund_tx_id: str | None = None
                 try:
                     balance_minor = await self._estimate_wallet_balance_minor(wallet, chain, token)
                 except Exception:

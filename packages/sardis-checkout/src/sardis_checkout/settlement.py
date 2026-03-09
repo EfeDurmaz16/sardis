@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 _CHECKOUT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
 
@@ -22,8 +21,8 @@ class SettlementService:
     def __init__(
         self,
         merchant_repo: Any,
-        offramp_service: Optional[Any] = None,
-        merchant_webhook_service: Optional[Any] = None,
+        offramp_service: Any | None = None,
+        merchant_webhook_service: Any | None = None,
     ):
         self._merchant_repo = merchant_repo
         self._offramp = offramp_service
@@ -86,7 +85,7 @@ class SettlementService:
 
         try:
             # Get quote from Bridge
-            from sardis_v2_core.tokens import to_raw_token_amount, TokenType
+            from sardis_v2_core.tokens import TokenType, to_raw_token_amount
             amount_minor = to_raw_token_amount(TokenType.USDC, session.amount)
 
             quote = await self._offramp.get_quote(

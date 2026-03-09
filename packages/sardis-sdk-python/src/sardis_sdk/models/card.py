@@ -1,12 +1,12 @@
 """Virtual card models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
-
-from pydantic import Field
+from typing import TYPE_CHECKING
 
 from .base import SardisModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class Card(SardisModel):
@@ -14,14 +14,14 @@ class Card(SardisModel):
     card_id: str
     wallet_id: str
     provider: str
-    provider_card_id: Optional[str] = None
+    provider_card_id: str | None = None
     card_type: str = "multi_use"
     status: str = "pending"
     limit_per_tx: float = 0.0
     limit_daily: float = 0.0
     limit_monthly: float = 0.0
     funded_amount: float = 0.0
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 class CardTransaction(SardisModel):
@@ -33,8 +33,8 @@ class CardTransaction(SardisModel):
     merchant_category: str
     status: str
     created_at: str
-    settled_at: Optional[str] = None
-    decline_reason: Optional[str] = None
+    settled_at: str | None = None
+    decline_reason: str | None = None
 
 
 class SimulateCardPurchaseResponse(SardisModel):

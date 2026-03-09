@@ -7,19 +7,16 @@ exceptions raised by the control plane.
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
 from sardis_v2_core.exception_workflows import (
-    ExceptionStatus,
-    ExceptionType,
     ExceptionWorkflowEngine,
     PaymentException,
     ResolutionStrategy,
 )
+
 from sardis_api.authz import require_principal
 
 logger = logging.getLogger(__name__)
@@ -46,19 +43,19 @@ class ExceptionResponse(BaseModel):
     description: str
     original_amount: str
     currency: str
-    merchant_id: Optional[str] = None
+    merchant_id: str | None = None
     retry_count: int
     max_retries: int
-    suggested_strategy: Optional[str] = None
-    resolution_notes: Optional[str] = None
-    resolved_at: Optional[str] = None
-    resolved_by: Optional[str] = None
+    suggested_strategy: str | None = None
+    resolution_notes: str | None = None
+    resolved_at: str | None = None
+    resolved_by: str | None = None
     created_at: str
     updated_at: str
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def from_exc(cls, exc: PaymentException) -> "ExceptionResponse":
+    def from_exc(cls, exc: PaymentException) -> ExceptionResponse:
         return cls(
             exception_id=exc.exception_id,
             transaction_id=exc.transaction_id,
@@ -86,7 +83,7 @@ class ExceptionResponse(BaseModel):
 
 
 class ResolveRequest(BaseModel):
-    notes: Optional[str] = Field(None, description="Resolution notes")
+    notes: str | None = Field(None, description="Resolution notes")
     resolved_by: str = Field(..., description="Identifier of the person resolving")
 
 
@@ -95,7 +92,7 @@ class EscalateRequest(BaseModel):
 
 
 class RetryRequest(BaseModel):
-    strategy: Optional[str] = Field(
+    strategy: str | None = Field(
         None,
         description=(
             "Override strategy: retry | retry_with_backoff | wait_and_retry. "
@@ -116,7 +113,7 @@ class RetryRequest(BaseModel):
     tags=["exceptions"],
 )
 async def list_exceptions(
-    agent_id: Optional[str] = Query(
+    agent_id: str | None = Query(
         None, description="Filter exceptions to a specific agent"
     ),
 ) -> list[ExceptionResponse]:
@@ -215,7 +212,7 @@ async def retry_exception(
         )
 
     # Parse optional strategy override
-    strategy: Optional[ResolutionStrategy] = None
+    strategy: ResolutionStrategy | None = None
     if body.strategy:
         try:
             strategy = ResolutionStrategy(body.strategy)

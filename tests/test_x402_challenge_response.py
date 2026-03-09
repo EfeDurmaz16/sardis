@@ -11,21 +11,19 @@ Tests cover:
 import base64
 import json
 import time
-from datetime import datetime
 
 import pytest
-
 from sardis_protocol.x402 import (
+    X402_PAYMENT_REQUIRED_HEADER,
+    X402_PAYMENT_RESPONSE_HEADER,
+    X402_PAYMENT_SIGNATURE_HEADER,
+    X402_VERSION_1,
+    X402_VERSION_2,
     X402Challenge,
     X402ChallengeResponse,
     X402HeaderBuilder,
     X402PaymentPayload,
     X402VerificationResult,
-    X402_PAYMENT_REQUIRED_HEADER,
-    X402_PAYMENT_SIGNATURE_HEADER,
-    X402_PAYMENT_RESPONSE_HEADER,
-    X402_VERSION_1,
-    X402_VERSION_2,
     generate_challenge,
     parse_challenge_header,
     serialize_challenge_header,

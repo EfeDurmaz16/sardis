@@ -3,21 +3,13 @@ from __future__ import annotations
 
 import os
 import time
-import pytest
-from decimal import Decimal
-from httpx import AsyncClient
 
-from sardis_v2_core.mandates import (
-    IntentMandate,
-    CartMandate,
-    PaymentMandate,
-    MandateChain,
-    VCProof,
-)
+import pytest
+from httpx import AsyncClient
 
 # All tests in this module require a PostgreSQL database
 pytestmark = pytest.mark.skipif(
-    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or
          os.environ.get("DATABASE_URL", "").startswith("postgres://")),
     reason="Requires PostgreSQL database (set DATABASE_URL env var)"
 )
@@ -42,7 +34,7 @@ def create_mandate_bundle(
     """Create a full AP2 mandate bundle for testing."""
     expires_at = int(time.time()) + 300
     proof = create_vc_proof()
-    
+
     return {
         "intent": {
             "mandate_id": f"intent_{int(time.time())}",
@@ -110,12 +102,12 @@ class TestPaymentFlowAPI:
             "chain": "base_sepolia",
             "expires_at": int(time.time()) + 300,
         }
-        
+
         response = await test_client.post(
             "/api/v2/mandates/execute",
             json={"mandate": mandate},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "ledger_tx_id" in data
@@ -135,12 +127,12 @@ class TestPaymentFlowAPI:
             "chain": "base_sepolia",
             "expires_at": int(time.time()) - 100,  # Already expired
         }
-        
+
         response = await test_client.post(
             "/api/v2/mandates/execute",
             json={"mandate": mandate},
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "expired" in data.get("detail", "").lower() or "error" in data
@@ -149,12 +141,12 @@ class TestPaymentFlowAPI:
     async def test_execute_ap2_bundle_success(self, test_client: AsyncClient):
         """Test executing a full AP2 mandate bundle."""
         bundle = create_mandate_bundle(amount_minor=5000)
-        
+
         response = await test_client.post(
             "/api/v2/ap2/payments/execute",
             json=bundle,
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "ledger_tx_id" in data
@@ -165,12 +157,12 @@ class TestPaymentFlowAPI:
     async def test_execute_ap2_bundle_invalid_token(self, test_client: AsyncClient):
         """Test AP2 bundle with invalid token is rejected."""
         bundle = create_mandate_bundle(token="INVALID_TOKEN")
-        
+
         response = await test_client.post(
             "/api/v2/ap2/payments/execute",
             json=bundle,
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "token" in str(data).lower() or "compliance" in str(data).lower()
@@ -179,19 +171,19 @@ class TestPaymentFlowAPI:
     async def test_execute_ap2_bundle_amount_over_limit(self, test_client: AsyncClient):
         """Test AP2 bundle with excessive amount is rejected."""
         bundle = create_mandate_bundle(amount_minor=1_000_000_01)  # > $10M
-        
+
         response = await test_client.post(
             "/api/v2/ap2/payments/execute",
             json=bundle,
         )
-        
+
         assert response.status_code == 400
 
     @pytest.mark.asyncio
     async def test_execute_multiple_payments(self, test_client: AsyncClient):
         """Test executing multiple payments in sequence."""
         results = []
-        
+
         for i in range(3):
             mandate = {
                 "mandate_id": f"multi_payment_{int(time.time())}_{i}",
@@ -203,15 +195,15 @@ class TestPaymentFlowAPI:
                 "chain": "base_sepolia",
                 "expires_at": int(time.time()) + 300,
             }
-            
+
             response = await test_client.post(
                 "/api/v2/mandates/execute",
                 json={"mandate": mandate},
             )
-            
+
             assert response.status_code == 200
             results.append(response.json())
-        
+
         # All should have unique tx hashes
         tx_hashes = [r["chain_tx_hash"] for r in results]
         assert len(set(tx_hashes)) == 3
@@ -227,12 +219,12 @@ class TestPaymentFlowValidation:
             "mandate_id": "test",
             # Missing required fields
         }
-        
+
         response = await test_client.post(
             "/api/v2/mandates/execute",
             json={"mandate": incomplete_mandate},
         )
-        
+
         assert response.status_code in [400, 422]
 
     @pytest.mark.asyncio
@@ -248,12 +240,12 @@ class TestPaymentFlowValidation:
             "chain": "invalid_chain_name",
             "expires_at": int(time.time()) + 300,
         }
-        
+
         response = await test_client.post(
             "/api/v2/mandates/execute",
             json={"mandate": mandate},
         )
-        
+
         # Should fail with chain-related error
         assert response.status_code in [400, 422, 500]
 
@@ -274,27 +266,27 @@ class TestPaymentFlowLedger:
             "chain": "base_sepolia",
             "expires_at": int(time.time()) + 300,
         }
-        
+
         # Execute payment
         payment_response = await test_client.post(
             "/api/v2/mandates/execute",
             json={"mandate": mandate},
         )
-        
+
         assert payment_response.status_code == 200
         payment_data = payment_response.json()
         ledger_tx_id = payment_data.get("ledger_tx_id")
-        
+
         # Verify ledger entry exists
         if ledger_tx_id:
             ledger_response = await test_client.get("/api/v2/ledger/recent")
-            
+
             if ledger_response.status_code == 200:
                 ledger_data = ledger_response.json()
                 entries = ledger_data.get("entries", [])
-                
+
                 # Should find our transaction
-                tx_ids = [e.get("tx_id") for e in entries]
+                [e.get("tx_id") for e in entries]
                 # Note: In simulated mode, ledger might be in-memory
 
 

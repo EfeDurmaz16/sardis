@@ -23,9 +23,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sardis_v2_core.event_bus import EventBus, get_default_bus
+from sardis_v2_core.event_bus import get_default_bus
 from sardis_v2_core.webhooks import EventType, WebhookEvent
 
 # --- Setup ------------------------------------------------------------------
@@ -51,7 +51,7 @@ def on_policy_event(event: WebhookEvent) -> None:
 
     event_log.append({
         "type": event.event_type.value,
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
         "data": data,
     })
 
@@ -65,7 +65,7 @@ def on_spend_event(event: WebhookEvent) -> None:
 
     event_log.append({
         "type": event.event_type.value,
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
         "data": data,
     })
 
@@ -74,14 +74,14 @@ def on_any_event(event: WebhookEvent) -> None:
     """Catch-all handler for logging."""
     event_log.append({
         "type": event.event_type.value,
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
     })
 
 
 async def on_approval_needed(event: WebhookEvent) -> None:
     """Async handler for approval routing events."""
     data = event.data
-    print(f"  [APPROVAL] Human approval needed!")
+    print("  [APPROVAL] Human approval needed!")
     print(f"    Agent: {data.get('agent_id', 'n/a')}")
     print(f"    Amount: ${data.get('amount', 'n/a')}")
     print(f"    Reason: {data.get('reason', 'Threshold exceeded')}")

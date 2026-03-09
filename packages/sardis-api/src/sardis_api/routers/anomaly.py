@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -46,8 +46,8 @@ class AssessRequest(BaseModel):
 
     agent_id: str = Field(..., description="Agent identifier to assess")
     amount: str = Field(..., description="Transaction amount (e.g. '250.00')")
-    merchant_id: Optional[str] = Field(None, description="Optional merchant identifier")
-    mcc_code: Optional[str] = Field(None, description="Optional merchant category code / slug")
+    merchant_id: str | None = Field(None, description="Optional merchant identifier")
+    mcc_code: str | None = Field(None, description="Optional merchant category code / slug")
 
 
 class SignalOut(BaseModel):
@@ -76,8 +76,8 @@ class AnomalyEventOut(BaseModel):
     action: str
     signals: list[SignalOut]
     timestamp: datetime
-    transaction_amount: Optional[str] = None
-    transaction_merchant: Optional[str] = None
+    transaction_amount: str | None = None
+    transaction_merchant: str | None = None
 
 
 class ThresholdsConfig(BaseModel):
@@ -106,8 +106,8 @@ class AnomalyConfig(BaseModel):
 class UpdateConfigRequest(BaseModel):
     """Partial update to anomaly engine configuration."""
 
-    thresholds: Optional[ThresholdsConfig] = None
-    signal_weights: Optional[SignalWeightsConfig] = None
+    thresholds: ThresholdsConfig | None = None
+    signal_weights: SignalWeightsConfig | None = None
 
 
 # In-memory event log (bounded ring buffer — max 500 entries)
@@ -199,9 +199,9 @@ async def assess_risk(
 
 @router.get("/events", response_model=list[AnomalyEventOut])
 async def list_events(
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
-    min_score: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum overall score"),
-    action: Optional[str] = Query(None, description="Filter by action (e.g. 'flag')"),
+    agent_id: str | None = Query(None, description="Filter by agent ID"),
+    min_score: float | None = Query(None, ge=0.0, le=1.0, description="Minimum overall score"),
+    action: str | None = Query(None, description="Filter by action (e.g. 'flag')"),
     limit: int = Query(50, ge=1, le=500, description="Maximum number of results"),
     principal: Principal = Depends(require_principal),
 ):

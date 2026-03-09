@@ -11,8 +11,7 @@ Tables used:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
 
 from .subscriptions import (
     BillingCycle,
@@ -96,7 +95,7 @@ class PostgresSubscriptionService:
         )
         return subscription
 
-    async def get(self, sub_id: str) -> Optional[Subscription]:
+    async def get(self, sub_id: str) -> Subscription | None:
         """Get subscription by ID."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -107,7 +106,7 @@ class PostgresSubscriptionService:
             return None
         return self._row_to_subscription(row)
 
-    async def list_by_wallet(self, wallet_id: str) -> List[Subscription]:
+    async def list_by_wallet(self, wallet_id: str) -> list[Subscription]:
         """List all subscriptions for a wallet."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -117,7 +116,7 @@ class PostgresSubscriptionService:
             )
         return [self._row_to_subscription(r) for r in rows]
 
-    async def list_active(self) -> List[Subscription]:
+    async def list_active(self) -> list[Subscription]:
         """List all active subscriptions."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -126,15 +125,15 @@ class PostgresSubscriptionService:
             )
         return [self._row_to_subscription(r) for r in rows]
 
-    async def cancel(self, sub_id: str) -> Optional[Subscription]:
+    async def cancel(self, sub_id: str) -> Subscription | None:
         """Cancel a subscription."""
         return await self.update_status(sub_id, SubscriptionStatus.CANCELLED)
 
-    async def pause(self, sub_id: str) -> Optional[Subscription]:
+    async def pause(self, sub_id: str) -> Subscription | None:
         """Pause a subscription."""
         return await self.update_status(sub_id, SubscriptionStatus.PAUSED)
 
-    async def resume(self, sub_id: str) -> Optional[Subscription]:
+    async def resume(self, sub_id: str) -> Subscription | None:
         """Resume a paused subscription."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -146,13 +145,13 @@ class PostgresSubscriptionService:
                 RETURNING *
                 """,
                 sub_id,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         return self._row_to_subscription(row) if row else None
 
     async def update_status(
         self, sub_id: str, status: SubscriptionStatus
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """Update subscription status."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -163,7 +162,7 @@ class PostgresSubscriptionService:
                 """,
                 sub_id,
                 status.value,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         return self._row_to_subscription(row) if row else None
 
@@ -180,7 +179,7 @@ class PostgresSubscriptionService:
                 """,
                 sub_id,
                 next_billing,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
 
     async def record_charge(self, sub_id: str, charge_tx_id: str) -> None:
@@ -205,9 +204,9 @@ class PostgresSubscriptionService:
                 WHERE id = $1
                 """,
                 sub_id,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
                 next_billing,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         logger.info(
             f"Subscription {sub_id} charged (tx={charge_tx_id}), "
@@ -237,7 +236,7 @@ class PostgresSubscriptionService:
                 sub_id,
                 new_count,
                 new_status,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
 
             if new_status == "past_due":
@@ -251,10 +250,10 @@ class PostgresSubscriptionService:
 
     async def get_due_subscriptions(
         self, within_hours: int = 48
-    ) -> List[Subscription]:
+    ) -> list[Subscription]:
         """Get active subscriptions due within the given timeframe."""
         pool = await self._get_pool()
-        cutoff = datetime.now(timezone.utc) + timedelta(hours=within_hours)
+        cutoff = datetime.now(UTC) + timedelta(hours=within_hours)
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
@@ -271,7 +270,7 @@ class PostgresSubscriptionService:
         card_id: str,
         merchant_descriptor: str,
         amount_cents: int,
-    ) -> Optional[Subscription]:
+    ) -> Subscription | None:
         """
         Match a card charge to a known subscription.
 
@@ -351,7 +350,7 @@ class PostgresSubscriptionService:
 
     async def get_billing_history(
         self, sub_id: str, limit: int = 20
-    ) -> List[BillingEvent]:
+    ) -> list[BillingEvent]:
         """Get billing history for a subscription."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -396,7 +395,7 @@ class PostgresSubscriptionService:
             f"for subscription {notification.subscription_id}"
         )
 
-    async def get_pending_notifications(self) -> List[OwnerNotification]:
+    async def get_pending_notifications(self) -> list[OwnerNotification]:
         """Get unsent notifications."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -421,7 +420,7 @@ class PostgresSubscriptionService:
                 WHERE id = $1
                 """,
                 notif_id,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
 
     # ------------------------------------------------------------------

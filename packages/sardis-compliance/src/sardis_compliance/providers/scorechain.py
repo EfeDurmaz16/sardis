@@ -15,17 +15,16 @@ API Reference: https://api.scorechain.com/v1
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import httpx
 
 from sardis_compliance.sanctions import (
-    SanctionsProvider,
-    ScreeningResult,
-    WalletScreeningRequest,
-    TransactionScreeningRequest,
-    SanctionsRisk,
     EntityType,
+    SanctionsProvider,
+    SanctionsRisk,
+    ScreeningResult,
+    TransactionScreeningRequest,
+    WalletScreeningRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ class ScorechainProvider(SanctionsProvider):
         """
         self._api_key = api_key
         self._timeout = timeout
-        self._http_client: Optional[httpx.AsyncClient] = None
+        self._http_client: httpx.AsyncClient | None = None
         self._blocklist: set[str] = set()
 
     async def _get_client(self) -> httpx.AsyncClient:

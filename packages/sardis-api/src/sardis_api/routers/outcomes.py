@@ -8,7 +8,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -37,7 +37,7 @@ class OutcomeResponse(BaseModel):
     decision: str
     decision_reason: str
     outcome_type: str
-    resolved_at: Optional[str] = None
+    resolved_at: str | None = None
     agent_id: str
     org_id: str
     merchant_id: str
@@ -74,7 +74,7 @@ class MerchantRiskProfileResponse(BaseModel):
     dispute_rate: float
     risk_tier: str
     first_seen: str
-    last_transaction: Optional[str] = None
+    last_transaction: str | None = None
     last_updated: str
 
 

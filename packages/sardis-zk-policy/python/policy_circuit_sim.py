@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .types import PolicyCircuitInputs, PolicyCircuitPublicInputs
 
@@ -25,24 +24,24 @@ from .types import PolicyCircuitInputs, PolicyCircuitPublicInputs
 class CircuitResult:
     """Result of simulating the ZK circuit."""
     passed: bool
-    failed_check: Optional[str] = None
+    failed_check: str | None = None
 
 
-def check_amount(inputs: PolicyCircuitInputs) -> Optional[str]:
+def check_amount(inputs: PolicyCircuitInputs) -> str | None:
     """Check 1: amount <= max_per_transaction."""
     if inputs.amount > inputs.max_per_transaction:
         return "amount exceeds per-transaction limit"
     return None
 
 
-def check_daily_limit(inputs: PolicyCircuitInputs) -> Optional[str]:
+def check_daily_limit(inputs: PolicyCircuitInputs) -> str | None:
     """Check 2: daily_total + amount <= daily_limit."""
     if inputs.daily_total + inputs.amount > inputs.daily_limit:
         return "daily limit exceeded"
     return None
 
 
-def check_mcc(inputs: PolicyCircuitInputs) -> Optional[str]:
+def check_mcc(inputs: PolicyCircuitInputs) -> str | None:
     """Check 3: mcc_hash NOT IN blocked_mcc_hashes."""
     for blocked in inputs.blocked_mcc_hashes:
         if blocked != 0 and blocked == inputs.mcc_hash:
@@ -50,7 +49,7 @@ def check_mcc(inputs: PolicyCircuitInputs) -> Optional[str]:
     return None
 
 
-def check_time_window(inputs: PolicyCircuitInputs) -> Optional[str]:
+def check_time_window(inputs: PolicyCircuitInputs) -> str | None:
     """Check 4: hour within [window_start, window_end].
 
     Supports wrap-around windows (e.g., 22:00 to 06:00).
@@ -66,14 +65,14 @@ def check_time_window(inputs: PolicyCircuitInputs) -> Optional[str]:
     return None
 
 
-def check_per_merchant_limit(inputs: PolicyCircuitInputs) -> Optional[str]:
+def check_per_merchant_limit(inputs: PolicyCircuitInputs) -> str | None:
     """Check 5: merchant_total + amount <= per_merchant_limit."""
     if inputs.merchant_total + inputs.amount > inputs.per_merchant_limit:
         return "per-merchant limit exceeded"
     return None
 
 
-def check_evidence_hash(public: PolicyCircuitPublicInputs) -> Optional[str]:
+def check_evidence_hash(public: PolicyCircuitPublicInputs) -> str | None:
     """Evidence hash must be non-zero."""
     if public.evidence_hash_high == 0:
         return "evidence hash must be non-zero"

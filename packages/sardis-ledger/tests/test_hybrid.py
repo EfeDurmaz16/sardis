@@ -6,23 +6,22 @@ Start with: docker-compose -f docker-compose.immudb.yml up -d
 
 Run with: pytest tests/test_hybrid.py -v
 """
-import asyncio
 from decimal import Decimal
+
 import pytest
 
 # Skip all tests if immudb-py is not installed
 pytest.importorskip("immudb")
 
 from sardis_ledger.hybrid import (
+    ConsistencyReport,
     HybridConfig,
     HybridLedger,
     HybridReceipt,
-    ConsistencyReport,
     create_hybrid_ledger,
 )
-from sardis_ledger.models import LedgerEntryType
 from sardis_ledger.immutable import VerificationStatus
-
+from sardis_ledger.models import LedgerEntryType
 
 pytestmark = pytest.mark.immudb
 

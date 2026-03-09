@@ -1,12 +1,11 @@
 """Merchant domain model and repository for Pay with Sardis."""
 from __future__ import annotations
 
-import hashlib
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from .database import Database
 
@@ -27,20 +26,20 @@ def _generate_client_secret() -> str:
 class Merchant:
     """A merchant registered for Pay with Sardis."""
     merchant_id: str = field(default_factory=lambda: _generate_external_id("merch"))
-    org_id: Optional[str] = None
+    org_id: str | None = None
     name: str = ""
-    logo_url: Optional[str] = None
-    webhook_url: Optional[str] = None
+    logo_url: str | None = None
+    webhook_url: str | None = None
     webhook_secret: str = field(default_factory=_generate_webhook_secret)
     settlement_preference: str = "usdc"  # usdc | fiat
-    settlement_wallet_id: Optional[str] = None
+    settlement_wallet_id: str | None = None
     bank_account: dict[str, Any] = field(default_factory=dict)
-    mcc_code: Optional[str] = None
-    category: Optional[str] = None
+    mcc_code: str | None = None
+    category: str | None = None
     platform_fee_bps: int = 0
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -49,27 +48,27 @@ class MerchantCheckoutSession:
     session_id: str = field(default_factory=lambda: _generate_external_id("mcs"))
     client_secret: str = field(default_factory=_generate_client_secret)
     merchant_id: str = ""
-    payer_wallet_id: Optional[str] = None
-    payer_wallet_address: Optional[str] = None
+    payer_wallet_id: str | None = None
+    payer_wallet_address: str | None = None
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
     currency: str = "USDC"
-    description: Optional[str] = None
+    description: str | None = None
     status: str = "pending"  # pending|funded|paid|settled|expired|failed
-    payment_method: Optional[str] = None  # wallet|fund_and_pay
-    tx_hash: Optional[str] = None
-    settlement_tx_hash: Optional[str] = None
-    settlement_status: Optional[str] = None
-    offramp_id: Optional[str] = None
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
+    payment_method: str | None = None  # wallet|fund_and_pay
+    tx_hash: str | None = None
+    settlement_tx_hash: str | None = None
+    settlement_status: str | None = None
+    offramp_id: str | None = None
+    success_url: str | None = None
+    cancel_url: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    expires_at: Optional[datetime] = None
-    idempotency_key: Optional[str] = None
+    expires_at: datetime | None = None
+    idempotency_key: str | None = None
     platform_fee_amount: Decimal = field(default_factory=lambda: Decimal("0"))
-    net_amount: Optional[Decimal] = None
-    embed_origin: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    net_amount: Decimal | None = None
+    embed_origin: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -79,11 +78,11 @@ class MerchantCheckoutLink:
     merchant_id: str = ""
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
     currency: str = "USDC"
-    description: Optional[str] = None
+    description: str | None = None
     slug: str = ""
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 # Column names used in SELECT for sessions (shared across queries)
@@ -132,7 +131,7 @@ class MerchantRepository:
         )
         return merchant
 
-    async def get_merchant(self, merchant_id: str) -> Optional[Merchant]:
+    async def get_merchant(self, merchant_id: str) -> Merchant | None:
         row = await Database.fetchrow(
             """
             SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
@@ -171,7 +170,7 @@ class MerchantRepository:
         "mcc_code", "category", "platform_fee_bps", "is_active",
     })
 
-    async def update_merchant(self, merchant_id: str, **kwargs: Any) -> Optional[Merchant]:
+    async def update_merchant(self, merchant_id: str, **kwargs: Any) -> Merchant | None:
         import json
         sets: list[str] = []
         args: list[Any] = []
@@ -188,7 +187,7 @@ class MerchantRepository:
             idx += 1
         if not sets:
             return await self.get_merchant(merchant_id)
-        sets.append(f"updated_at = NOW()")
+        sets.append("updated_at = NOW()")
         args.append(merchant_id)
         await Database.execute(
             f"UPDATE merchants SET {', '.join(sets)} WHERE external_id = ${idx}",
@@ -231,7 +230,7 @@ class MerchantRepository:
         )
         return session
 
-    async def get_session(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session(self, session_id: str) -> MerchantCheckoutSession | None:
         row = await Database.fetchrow(
             f"""
             SELECT {_SESSION_COLUMNS}
@@ -245,7 +244,7 @@ class MerchantRepository:
             return None
         return self._row_to_session(row)
 
-    async def get_session_by_secret(self, client_secret: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session_by_secret(self, client_secret: str) -> MerchantCheckoutSession | None:
         """Look up session by client_secret (for public endpoints)."""
         row = await Database.fetchrow(
             f"""
@@ -260,7 +259,7 @@ class MerchantRepository:
             return None
         return self._row_to_session(row)
 
-    async def get_session_for_update(self, session_id: str) -> Optional[MerchantCheckoutSession]:
+    async def get_session_for_update(self, session_id: str) -> MerchantCheckoutSession | None:
         """Get session with row lock (FOR UPDATE NOWAIT) to prevent concurrent payment."""
         row = await Database.fetchrow(
             f"""
@@ -307,7 +306,7 @@ class MerchantRepository:
         )
 
     async def list_sessions_by_merchant(
-        self, merchant_id: str, status: Optional[str] = None, limit: int = 50
+        self, merchant_id: str, status: str | None = None, limit: int = 50
     ) -> list[MerchantCheckoutSession]:
         if status:
             rows = await Database.fetch(
@@ -367,7 +366,7 @@ class MerchantRepository:
         )
         return link
 
-    async def get_checkout_link(self, link_id: str) -> Optional[MerchantCheckoutLink]:
+    async def get_checkout_link(self, link_id: str) -> MerchantCheckoutLink | None:
         row = await Database.fetchrow(
             """
             SELECT l.link_id, m.external_id AS merchant_id,
@@ -383,7 +382,7 @@ class MerchantRepository:
             return None
         return self._row_to_link(row)
 
-    async def get_checkout_link_by_slug(self, slug: str) -> Optional[MerchantCheckoutLink]:
+    async def get_checkout_link_by_slug(self, slug: str) -> MerchantCheckoutLink | None:
         row = await Database.fetchrow(
             """
             SELECT l.link_id, m.external_id AS merchant_id,
@@ -414,7 +413,7 @@ class MerchantRepository:
         )
         return [self._row_to_link(r) for r in rows]
 
-    async def update_checkout_link(self, link_id: str, **kwargs: Any) -> Optional[MerchantCheckoutLink]:
+    async def update_checkout_link(self, link_id: str, **kwargs: Any) -> MerchantCheckoutLink | None:
         allowed = {"amount", "currency", "description", "slug", "is_active"}
         sets: list[str] = []
         args: list[Any] = []

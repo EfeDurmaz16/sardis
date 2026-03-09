@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import base64
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
@@ -15,7 +16,7 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + pad)
 
 
-def select_jwk_by_kid(jwks: Mapping[str, Any], kid: str) -> Optional[Mapping[str, Any]]:
+def select_jwk_by_kid(jwks: Mapping[str, Any], kid: str) -> Mapping[str, Any] | None:
     """Select a JWK entry by key id from a JWKS payload."""
     keys = jwks.get("keys", [])
     if not isinstance(keys, list):

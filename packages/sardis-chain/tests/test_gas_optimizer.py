@@ -3,7 +3,6 @@ Tests for multi-chain gas optimizer.
 """
 import asyncio
 import sys
-import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -18,9 +17,9 @@ for pkg in ["sardis-core", "sardis-ledger"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_chain.gas_optimizer import (
-    GasOptimizer,
-    GasEstimate,
     ChainRoute,
+    GasEstimate,
+    GasOptimizer,
     get_gas_optimizer,
 )
 
@@ -257,7 +256,7 @@ class TestGasOptimizer:
         chain = "base"
 
         # First call
-        price1 = await optimizer._get_gas_price(chain)
+        await optimizer._get_gas_price(chain)
 
         # Wait for cache to expire
         await asyncio.sleep(0.15)

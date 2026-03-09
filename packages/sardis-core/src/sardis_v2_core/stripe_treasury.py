@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class FinancialAccount:
     balance: TreasuryBalance
     supported_currencies: list[str] = field(default_factory=lambda: ["usd"])
     features: list[str] = field(default_factory=list)
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -67,7 +67,7 @@ class InboundTransfer:
     status: TransferStatus
     source_type: str  # "ach", "wire", "stripe_balance"
     description: str = ""
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -81,7 +81,7 @@ class OutboundPayment:
     destination_type: str  # "ach", "wire", "issuing_balance"
     destination_id: str = ""
     description: str = ""
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -93,7 +93,7 @@ class IssuingFundTransfer:
     currency: str
     status: TransferStatus
     financial_account_id: str = ""
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 class StripeTreasuryProvider:
@@ -122,7 +122,7 @@ class StripeTreasuryProvider:
     def __init__(
         self,
         stripe_secret_key: str,
-        financial_account_id: Optional[str] = None,
+        financial_account_id: str | None = None,
         environment: Literal["sandbox", "production"] = "sandbox",
     ):
         self._api_key = stripe_secret_key
@@ -148,13 +148,13 @@ class StripeTreasuryProvider:
         )
 
     @property
-    def financial_account_id(self) -> Optional[str]:
+    def financial_account_id(self) -> str | None:
         return self._financial_account_id
 
     async def create_financial_account(
         self,
-        features: Optional[list[str]] = None,
-        metadata: Optional[dict[str, str]] = None,
+        features: list[str] | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> FinancialAccount:
         """Create the platform Financial Account (done once during setup).
 
@@ -223,7 +223,7 @@ class StripeTreasuryProvider:
         destination_account: str,
         destination_type: Literal["ach", "wire"] = "ach",
         description: str = "",
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> OutboundPayment:
         """Send funds from Treasury to an external bank account.
 
@@ -259,8 +259,8 @@ class StripeTreasuryProvider:
         self,
         amount: Decimal,
         description: str = "Fund agent virtual cards",
-        connected_account_id: Optional[str] = None,
-        metadata: Optional[dict[str, str]] = None,
+        connected_account_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> IssuingFundTransfer:
         """Transfer funds from Treasury to Issuing balance for card funding.
 
@@ -341,7 +341,7 @@ class StripeTreasuryProvider:
     async def get_inbound_transfers(
         self,
         limit: int = 20,
-        status: Optional[TransferStatus] = None,
+        status: TransferStatus | None = None,
     ) -> list[InboundTransfer]:
         """List inbound transfers to Treasury.
 
@@ -359,7 +359,7 @@ class StripeTreasuryProvider:
     async def get_outbound_payments(
         self,
         limit: int = 20,
-        status: Optional[TransferStatus] = None,
+        status: TransferStatus | None = None,
     ) -> list[OutboundPayment]:
         """List outbound payments from Treasury.
 

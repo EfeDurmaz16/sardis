@@ -1,10 +1,11 @@
 """Tests for wallet transfer endpoint."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
 
-from sardis_api.routers.wallets import router as wallets_router, get_deps, WalletDependencies
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sardis_api.routers.wallets import WalletDependencies, get_deps
+from sardis_api.routers.wallets import router as wallets_router
 
 
 @pytest.fixture

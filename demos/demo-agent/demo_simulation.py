@@ -5,17 +5,15 @@ Sardis Demo - Simulation Mode
 Demonstrates the complete agent payment flow in simulation mode.
 No API server required - simulates all Sardis functionality locally.
 """
-import asyncio
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any
 import hashlib
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
 
 console = Console()
 
@@ -157,7 +155,7 @@ class SimulatedSardisClient:
 
     def get_daily_spent(self, wallet_id: str) -> float:
         """Get total spent today."""
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         return sum(
             tx.amount
             for tx in self.transactions
@@ -196,7 +194,7 @@ class SimulatedSardisClient:
         )
 
         tx_id = f"tx_{uuid.uuid4().hex[:12]}"
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         if allowed:
             # Simulate on-chain transaction

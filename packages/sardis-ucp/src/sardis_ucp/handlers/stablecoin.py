@@ -8,13 +8,11 @@ Handler name: sardis.stablecoin
 
 from __future__ import annotations
 
-import hashlib
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 from ..models.mandates import UCPPaymentMandate
-from .base import PaymentHandler, PaymentReceipt, PaymentStatus, PaymentExecutionError
+from .base import PaymentExecutionError, PaymentReceipt, PaymentStatus
 
 logger = logging.getLogger(__name__)
 

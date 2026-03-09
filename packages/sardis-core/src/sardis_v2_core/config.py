@@ -1,11 +1,11 @@
 """Canonical configuration surface for Sardis services."""
 from __future__ import annotations
 
+import json
 from enum import Enum
 from functools import lru_cache
-import json
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -51,7 +51,7 @@ class TurnkeyConfig(BaseSettings):
     api_private_key: str = ""  # Can be hex-encoded key or path to PEM file
     default_wallet_id: str = ""
     api_base: str = "https://api.turnkey.com"
-    
+
     class Config:
         env_prefix = "TURNKEY_"
 
@@ -68,7 +68,7 @@ class ChainConfig(BaseSettings):
     name: str = "base_sepolia"
     rpc_url: str = "https://sepolia.base.org"
     chain_id: int = 84532
-    stablecoins: List[str] = Field(default_factory=lambda: ["USDC"])
+    stablecoins: list[str] = Field(default_factory=lambda: ["USDC"])
     settlement_vault: str = ""
 
 
@@ -193,8 +193,8 @@ class CardStackConfig(BaseSettings):
     """Card stack provider routing configuration."""
 
     primary_provider: Literal["lithic", "stripe_issuing", "mock", "rain", "bridge_cards"] = "mock"
-    fallback_provider: Optional[Literal["lithic", "stripe_issuing", "rain", "bridge_cards"]] = None
-    on_chain_provider: Optional[Literal["coinbase_cdp"]] = None
+    fallback_provider: Literal["lithic", "stripe_issuing", "rain", "bridge_cards"] | None = None
+    on_chain_provider: Literal["coinbase_cdp"] | None = None
     org_provider_overrides_json: str = ""
 
     class Config:
@@ -206,7 +206,7 @@ class FundingRoutingConfig(BaseSettings):
 
     strategy: Literal["fiat_first", "stablecoin_first", "hybrid"] = "fiat_first"
     primary_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"] = "circle_cpn"
-    fallback_adapter: Optional[Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"]] = "bridge"
+    fallback_adapter: Literal["stripe", "coinbase_cdp", "rain", "bridge", "circle_cpn"] | None = "bridge"
     stablecoin_prefund_enabled: bool = False
     require_connected_account: bool = False
 
@@ -216,20 +216,20 @@ class FundingRoutingConfig(BaseSettings):
 
 class SardisSettings(BaseSettings):
     """Main Sardis configuration."""
-    
+
     # Environment
     environment: Literal["dev", "sandbox", "prod"] = "dev"
-    
+
     # API
     api_base_url: str = "http://localhost:8000"
-    
+
     # CORS - allowed origins for API (use str to handle comma-separated env vars)
     allowed_origins: str = "http://localhost:3005,http://localhost:5173"
     # Mandate domain allowlist
     allowed_domains: list[str] = Field(default_factory=lambda: ["sardis.sh", "localhost"])
-    
+
     @property
-    def allowed_origins_list(self) -> List[str]:
+    def allowed_origins_list(self) -> list[str]:
         """Return allowed origins as a list."""
         canonical_prod_origins = [
             "https://sardis.sh",
@@ -266,13 +266,13 @@ class SardisSettings(BaseSettings):
                 if origin not in origins:
                     origins.append(origin)
         return origins
-    
+
     # Security
     secret_key: str = ""
-    
+
     # Mandate settings
     mandate_ttl_seconds: int = 300
-    
+
     # Database - PostgreSQL for production
     database_url: str = ""
     database_replica_url: str = ""  # Read replica (Neon branch or standby)
@@ -286,9 +286,9 @@ class SardisSettings(BaseSettings):
 
     # Redis/Upstash for caching (optional)
     redis_url: str = ""
-    
+
     # Chain configuration - defaults for demo
-    chains: List[ChainConfig] = Field(default_factory=lambda: [
+    chains: list[ChainConfig] = Field(default_factory=lambda: [
         ChainConfig(
             name="base_sepolia",
             rpc_url="https://sepolia.base.org",
@@ -304,10 +304,10 @@ class SardisSettings(BaseSettings):
             settlement_vault="",
         ),
     ])
-    
+
     # MPC provider - simulated by default for demo
     mpc: MPCProvider = Field(default_factory=MPCProvider)
-    
+
     # Turnkey configuration (loaded from TURNKEY_* env vars)
     turnkey: TurnkeyConfig = Field(default_factory=TurnkeyConfig)
     lithic: LithicConfig = Field(default_factory=LithicConfig)
@@ -320,7 +320,7 @@ class SardisSettings(BaseSettings):
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
     delegated: DelegatedCredentialConfig = Field(default_factory=DelegatedCredentialConfig)
     funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
-    
+
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
     # ERC-4337 gasless execution (v2 smart wallets)
@@ -365,7 +365,7 @@ class SardisSettings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "prod"
-    
+
     @property
     def turnkey_configured(self) -> bool:
         """Check if Turnkey is properly configured."""
@@ -411,18 +411,17 @@ class SardisSettings(BaseSettings):
                 "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
         return v or "dev-only-secret-key-not-for-production"
-    
+
     @field_validator("database_url", "ledger_dsn", mode="before")
     @classmethod
     def set_database_defaults(cls, v: str, info) -> str:
         """Use DATABASE_URL for ledger_dsn if not set."""
         import os
-        import warnings
-        
+
         if not v:
             # Try DATABASE_URL first
             v = os.getenv("DATABASE_URL", "postgresql://localhost/sardis")
-        
+
         # Warn if using SQLite in production
         env = _normalize_environment(os.getenv("SARDIS_ENVIRONMENT", "dev"))
         if env == "prod" and v.startswith("sqlite"):
@@ -430,27 +429,27 @@ class SardisSettings(BaseSettings):
                 "SQLite is not allowed in production. "
                 "Set DATABASE_URL to a PostgreSQL connection string."
             )
-        
+
         return v
-    
+
     @field_validator("mandate_archive_dsn", "replay_cache_dsn", mode="before")
     @classmethod
     def set_cache_defaults(cls, v: str, info) -> str:
         """Use DATABASE_URL for archive/cache DSNs if PostgreSQL is available."""
         import os
-        
+
         if not v:
             database_url = os.getenv("DATABASE_URL", "")
             if database_url.startswith(("postgresql://", "postgres://")):
                 return database_url
             return v
-        
+
         # Use DATABASE_URL if v is default SQLite and PostgreSQL is available
         if v.startswith("sqlite:") and info.field_name in ("mandate_archive_dsn", "replay_cache_dsn"):
             database_url = os.getenv("DATABASE_URL", "")
             if database_url.startswith(("postgresql://", "postgres://")):
                 return database_url
-        
+
         return v
 
 
@@ -562,8 +561,8 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
 @lru_cache
 def load_settings(env_file: str | None = None) -> SardisSettings:
     """Load SardisSettings once per process to keep services consistent."""
-    import os
     import logging
+    import os
 
     logger = logging.getLogger(__name__)
     env_path = Path(env_file) if env_file else None

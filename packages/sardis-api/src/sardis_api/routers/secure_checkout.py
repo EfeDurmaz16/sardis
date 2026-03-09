@@ -12,18 +12,21 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sardis_v2_core.policy_attestation import (
+    build_signed_policy_snapshot,
+    verify_signed_policy_snapshot,
+)
 
 from sardis_api.authz import Principal, require_principal
-from sardis_v2_core.policy_attestation import build_signed_policy_snapshot, verify_signed_policy_snapshot
 
 logger = logging.getLogger(__name__)
 _PAN_LIKE_DIGITS_RE = re.compile(r"\b\d{12,19}\b")
@@ -95,7 +98,7 @@ class SecureCheckoutDependencies:
     approval_service: Any | None = None
     audit_sink: Any | None = None
     cache_service: Any | None = None
-    store: "InMemorySecureCheckoutStore | None" = None
+    store: InMemorySecureCheckoutStore | None = None
 
 
 class SecureExecutionOptions(BaseModel):
@@ -117,7 +120,7 @@ class CreateSecureCheckoutJobRequest(BaseModel):
     currency: str = "USD"
     purpose: str = "agent_checkout"
     intent_id: str = Field(default_factory=lambda: f"intent_{uuid.uuid4().hex[:16]}")
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
     options: SecureExecutionOptions = Field(default_factory=SecureExecutionOptions)
 
@@ -125,19 +128,19 @@ class CreateSecureCheckoutJobRequest(BaseModel):
 class ExecuteSecureCheckoutJobRequest(BaseModel):
     """Dispatch an already created secure checkout job."""
 
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
 
 
 class CompleteSecureCheckoutJobRequest(BaseModel):
     status: str = Field(pattern="^(completed|failed)$")
-    executor_ref: Optional[str] = None
-    failure_reason: Optional[str] = None
+    executor_ref: str | None = None
+    failure_reason: str | None = None
 
 
 class MerchantCapabilityRequest(BaseModel):
     merchant_url: str
-    amount: Optional[Decimal] = Field(default=None, gt=0)
+    amount: Decimal | None = Field(default=None, gt=0)
     currency: str = "USD"
 
 
@@ -162,7 +165,7 @@ class SecureCheckoutSecurityPolicyResponse(BaseModel):
     pan_entry_break_glass_only: bool
     pan_boundary_mode: str
     pan_provider: str
-    pan_provider_boundary_mode: Optional[str] = None
+    pan_provider_boundary_mode: str | None = None
     pan_boundary_mode_locked: bool = False
     issuer_hosted_reveal_preferred: bool
     supported_merchant_modes: list[str] = Field(default_factory=list)
@@ -190,19 +193,19 @@ class SecureCheckoutJobResponse(BaseModel):
     amount: str
     currency: str
     approval_required: bool
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
     approval_quorum_required: int = 0
     policy_reason: str = "OK"
-    executor_ref: Optional[str] = None
-    secret_ref: Optional[str] = None
-    secret_expires_at: Optional[str] = None
+    executor_ref: str | None = None
+    secret_ref: str | None = None
+    secret_expires_at: str | None = None
     redacted_card: dict[str, Any] = Field(default_factory=dict)
     options: SecureExecutionOptions
     created_at: str
     updated_at: str
-    error_code: Optional[str] = None
-    error: Optional[str] = None
+    error_code: str | None = None
+    error: str | None = None
 
 
 class ConsumeExecutorSecretResponse(BaseModel):
@@ -221,23 +224,23 @@ class ConsumeExecutorSecretResponse(BaseModel):
 class SecureCheckoutApprovalEvidence(BaseModel):
     approval_id: str
     status: str
-    reviewed_by: Optional[str] = None
-    wallet_id: Optional[str] = None
-    organization_id: Optional[str] = None
-    reviewed_at: Optional[str] = None
+    reviewed_by: str | None = None
+    wallet_id: str | None = None
+    organization_id: str | None = None
+    reviewed_at: str | None = None
 
 
 class SecureCheckoutPolicyEvidence(BaseModel):
     policy_present: bool
     policy_reason: str
-    policy_hash: Optional[str] = None
-    policy_snapshot_id: Optional[str] = None
-    policy_snapshot_chain_hash: Optional[str] = None
-    policy_snapshot_signer_kid: Optional[str] = None
-    max_per_tx: Optional[str] = None
-    max_daily: Optional[str] = None
-    max_monthly: Optional[str] = None
-    approval_threshold: Optional[str] = None
+    policy_hash: str | None = None
+    policy_snapshot_id: str | None = None
+    policy_snapshot_chain_hash: str | None = None
+    policy_snapshot_signer_kid: str | None = None
+    max_per_tx: str | None = None
+    max_daily: str | None = None
+    max_monthly: str | None = None
+    approval_threshold: str | None = None
 
 
 class SecureCheckoutAttestationEvidence(BaseModel):
@@ -251,7 +254,7 @@ class SecureCheckoutAttestationEvidence(BaseModel):
 
 class SecureCheckoutEvidenceIntegrity(BaseModel):
     digest_sha256: str
-    hash_chain_tail: Optional[str] = None
+    hash_chain_tail: str | None = None
     hash_chain_entries: int = 0
     event_count: int = 0
 
@@ -264,7 +267,7 @@ class SecureCheckoutEvidenceExportResponse(BaseModel):
     audit_events: list[dict[str, Any]] = Field(default_factory=list)
     integrity: SecureCheckoutEvidenceIntegrity
     generated_at: str
-    scope_window: dict[str, Optional[str]] = Field(default_factory=dict)
+    scope_window: dict[str, str | None] = Field(default_factory=dict)
     verifier_hints: list[str] = Field(default_factory=list)
 
 
@@ -292,7 +295,7 @@ def _checkout_policy_signer_secret() -> str:
 
 
 def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _parse_csv_env(name: str) -> list[str]:
@@ -466,14 +469,14 @@ def _pan_provider_boundary_matrix() -> dict[str, str]:
     return matrix
 
 
-def _provider_boundary_mode(provider: str) -> Optional[str]:
+def _provider_boundary_mode(provider: str) -> str | None:
     provider_key = str(provider or "").strip().lower()
     if not provider_key:
         return None
     return _pan_provider_boundary_matrix().get(provider_key)
 
 
-def _resolve_pan_boundary_mode() -> tuple[str, Optional[str], bool]:
+def _resolve_pan_boundary_mode() -> tuple[str, str | None, bool]:
     configured = os.getenv(
         "SARDIS_CHECKOUT_PAN_BOUNDARY_MODE",
         _DEFAULT_PAN_BOUNDARY_MODE,
@@ -679,13 +682,13 @@ def _canonical_json_bytes(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=_json_default).encode("utf-8")
 
 
-def _hash_chain_tail(events: list[dict[str, Any]]) -> tuple[Optional[str], int]:
+def _hash_chain_tail(events: list[dict[str, Any]]) -> tuple[str | None, int]:
     if not events:
         return None, 0
     previous = hashlib.sha256(b"secure_checkout_evidence_v1").hexdigest()
     for item in events:
         event_hash = hashlib.sha256(_canonical_json_bytes(item)).hexdigest()
-        previous = hashlib.sha256(f"{previous}:{event_hash}".encode("utf-8")).hexdigest()
+        previous = hashlib.sha256(f"{previous}:{event_hash}".encode()).hexdigest()
     return previous, len(events)
 
 
@@ -705,9 +708,9 @@ def _compute_executor_signature(
 async def _dispatch_to_executor(
     *,
     job: dict[str, Any],
-    secret_ref: Optional[str] = None,
-    secret_expires_at: Optional[str] = None,
-) -> tuple[bool, Optional[str], Optional[str]]:
+    secret_ref: str | None = None,
+    secret_expires_at: str | None = None,
+) -> tuple[bool, str | None, str | None]:
     """
     Dispatch metadata-only execution request to an isolated worker.
 
@@ -766,7 +769,7 @@ async def _dispatch_to_executor(
     if response.status_code >= 400:
         return False, None, f"executor_dispatch_http_{response.status_code}"
 
-    executor_ref: Optional[str] = None
+    executor_ref: str | None = None
     try:
         body = response.json()
         if isinstance(body, dict):
@@ -801,12 +804,12 @@ class InMemorySecureCheckoutStore:
             self._jobs_by_intent_id[job["intent_id"]] = job["job_id"]
             return dict(job)
 
-    async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
+    async def get_job(self, job_id: str) -> dict[str, Any] | None:
         async with self._lock:
             job = self._jobs_by_id.get(job_id)
             return dict(job) if job else None
 
-    async def update_job(self, job_id: str, **fields: Any) -> Optional[dict[str, Any]]:
+    async def update_job(self, job_id: str, **fields: Any) -> dict[str, Any] | None:
         async with self._lock:
             job = self._jobs_by_id.get(job_id)
             if not job:
@@ -829,7 +832,7 @@ class InMemorySecureCheckoutStore:
         async with self._lock:
             self._secrets.pop(secret_ref, None)
 
-    async def consume_secret(self, secret_ref: str) -> Optional[dict[str, Any]]:
+    async def consume_secret(self, secret_ref: str) -> dict[str, Any] | None:
         async with self._lock:
             secret = self._secrets.get(secret_ref)
             if not secret:
@@ -844,7 +847,7 @@ class InMemorySecureCheckoutStore:
             self._secrets.pop(secret_ref, None)
             return payload
 
-    async def get_completion_receipt(self, idempotency_key: str) -> Optional[dict[str, Any]]:
+    async def get_completion_receipt(self, idempotency_key: str) -> dict[str, Any] | None:
         async with self._lock:
             item = self._completion_receipts.get(idempotency_key)
             return dict(item) if item else None
@@ -888,12 +891,12 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
             return await super().upsert_job(job)
         return await self._job_repository.upsert_job(job)
 
-    async def get_job(self, job_id: str) -> Optional[dict[str, Any]]:
+    async def get_job(self, job_id: str) -> dict[str, Any] | None:
         if not self._job_repository:
             return await super().get_job(job_id)
         return await self._job_repository.get_job(job_id)
 
-    async def update_job(self, job_id: str, **fields: Any) -> Optional[dict[str, Any]]:
+    async def update_job(self, job_id: str, **fields: Any) -> dict[str, Any] | None:
         if not self._job_repository:
             return await super().update_job(job_id, **fields)
         return await self._job_repository.update_job(job_id, **fields)
@@ -926,7 +929,7 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
             return
         await self._cache.delete(self._secret_key(secret_ref))
 
-    async def consume_secret(self, secret_ref: str) -> Optional[dict[str, Any]]:
+    async def consume_secret(self, secret_ref: str) -> dict[str, Any] | None:
         if not self._cache:
             return await super().consume_secret(secret_ref)
 
@@ -945,7 +948,7 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
             expires_at_raw = str(body.get("expires_at") or "").strip()
             expires_at = datetime.fromisoformat(expires_at_raw) if expires_at_raw else _now_utc()
             if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
+                expires_at = expires_at.replace(tzinfo=UTC)
             if _now_utc() > expires_at:
                 return None
             payload = body.get("payload")
@@ -955,7 +958,7 @@ class RepositoryBackedSecureCheckoutStore(InMemorySecureCheckoutStore):
         except Exception:
             return None
 
-    async def get_completion_receipt(self, idempotency_key: str) -> Optional[dict[str, Any]]:
+    async def get_completion_receipt(self, idempotency_key: str) -> dict[str, Any] | None:
         if not self._cache:
             return await super().get_completion_receipt(idempotency_key)
         raw = await self._cache.get(self._completion_key(idempotency_key))
@@ -1099,9 +1102,9 @@ async def _emit_audit_event(
     }
     record_callable = None
     if hasattr(sink, "record_event"):
-        record_callable = getattr(sink, "record_event")
+        record_callable = sink.record_event
     elif hasattr(sink, "write_event"):
-        record_callable = getattr(sink, "write_event")
+        record_callable = sink.write_event
     elif hasattr(sink, "append"):
         try:
             from sardis_compliance.checks import ComplianceAuditEntry
@@ -1118,7 +1121,7 @@ async def _emit_audit_event(
                 provider="secure_checkout",
                 metadata=dict(sanitized_payload),
             )
-            record_callable = getattr(sink, "append")
+            record_callable = sink.append
             result = record_callable(entry)
             if inspect.isawaitable(result):
                 await result
@@ -1134,7 +1137,7 @@ async def _emit_audit_event(
         await result
 
 
-def _iso_or_none(value: Any) -> Optional[str]:
+def _iso_or_none(value: Any) -> str | None:
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -1176,7 +1179,7 @@ def _policy_snapshot(policy: Any) -> dict[str, Any]:
     return {k: v for k, v in snapshot.items() if v is not None}
 
 
-def _build_signed_checkout_policy_snapshot(policy: Any) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+def _build_signed_checkout_policy_snapshot(policy: Any) -> tuple[dict[str, Any] | None, str | None]:
     secret = _checkout_policy_signer_secret()
     if not secret:
         if _checkout_signed_policy_snapshot_required():
@@ -1216,7 +1219,7 @@ async def _collect_job_audit_events(
 
     events: list[Any] = []
     if hasattr(sink, "events"):
-        raw_events = getattr(sink, "events")
+        raw_events = sink.events
         if isinstance(raw_events, list):
             events.extend(raw_events)
     elif hasattr(sink, "list_events"):
@@ -1330,15 +1333,16 @@ async def _collect_policy_evidence(
 
 async def _dispatch_security_alert(
     *,
-    job: Optional[dict[str, Any]],
+    job: dict[str, Any] | None,
     code: str,
     detail: str,
 ) -> None:
     if not _dispatch_security_alert_enabled():
         return
     try:
-        from sardis_api.routers.alerts import dispatch_alert
         from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+
+        from sardis_api.routers.alerts import dispatch_alert
 
         alert = Alert(
             alert_type=AlertType.POLICY_VIOLATION,
@@ -1508,10 +1512,10 @@ def _schedule_auto_unfreeze_after_cooldown(
 async def _handle_security_incident(
     *,
     deps: SecureCheckoutDependencies,
-    job: Optional[dict[str, Any]],
+    job: dict[str, Any] | None,
     code: str,
     detail: str,
-    secret_ref: Optional[str] = None,
+    secret_ref: str | None = None,
 ) -> None:
     severity = _security_incident_severity(code)
     cooldown_seconds = _security_incident_cooldown_seconds(severity)
@@ -1620,10 +1624,10 @@ async def _verify_executor_auth(
     *,
     deps: SecureCheckoutDependencies,
     request: Request,
-    token: Optional[str],
-    timestamp: Optional[str],
-    nonce: Optional[str],
-    signature: Optional[str],
+    token: str | None,
+    timestamp: str | None,
+    nonce: str | None,
+    signature: str | None,
     payload_bytes: bytes,
 ) -> None:
     expected = os.getenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "").strip()
@@ -1778,8 +1782,8 @@ async def _evaluate_policy(
 async def _validate_approved_token(
     *,
     deps: SecureCheckoutDependencies,
-    approval_id: Optional[str],
-    approval_ids: Optional[list[str]],
+    approval_id: str | None,
+    approval_ids: list[str] | None,
     principal: Principal,
     wallet_id: str,
     min_approvals: int = 1,
@@ -2375,10 +2379,10 @@ def create_secure_checkout_router() -> APIRouter:
     async def consume_executor_secret(
         secret_ref: str,
         request: Request,
-        x_sardis_executor_token: Optional[str] = Header(default=None),
-        x_sardis_executor_timestamp: Optional[str] = Header(default=None),
-        x_sardis_executor_nonce: Optional[str] = Header(default=None),
-        x_sardis_executor_signature: Optional[str] = Header(default=None),
+        x_sardis_executor_token: str | None = Header(default=None),
+        x_sardis_executor_timestamp: str | None = Header(default=None),
+        x_sardis_executor_nonce: str | None = Header(default=None),
+        x_sardis_executor_signature: str | None = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
         store = _resolve_store(deps)
@@ -2428,11 +2432,11 @@ def create_secure_checkout_router() -> APIRouter:
         job_id: str,
         payload: CompleteSecureCheckoutJobRequest,
         request: Request,
-        x_sardis_executor_token: Optional[str] = Header(default=None),
-        x_sardis_completion_idempotency_key: Optional[str] = Header(default=None),
-        x_sardis_executor_timestamp: Optional[str] = Header(default=None),
-        x_sardis_executor_nonce: Optional[str] = Header(default=None),
-        x_sardis_executor_signature: Optional[str] = Header(default=None),
+        x_sardis_executor_token: str | None = Header(default=None),
+        x_sardis_completion_idempotency_key: str | None = Header(default=None),
+        x_sardis_executor_timestamp: str | None = Header(default=None),
+        x_sardis_executor_nonce: str | None = Header(default=None),
+        x_sardis_executor_signature: str | None = Header(default=None),
         deps: SecureCheckoutDependencies = Depends(get_deps),
     ):
         store = _resolve_store(deps)

@@ -24,24 +24,20 @@ import logging
 import os
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-
+from fastapi.responses import JSONResponse
 from sardis_v2_core.exceptions import (
-    SardisException,
     SardisDependencyNotConfiguredError,
-    SardisValidationError,
-    SardisNotFoundError,
-    SardisAuthenticationError,
-    SardisAuthorizationError,
+    SardisException,
     SardisRateLimitError,
 )
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +54,9 @@ class RFC7807Error:
     detail: str
     instance: str
     request_id: str
-    extensions: Optional[Dict[str, Any]] = None
+    extensions: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to RFC 7807 compliant dictionary."""
         result = {
             "type": self.type,
@@ -483,7 +479,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):
     ) -> JSONResponse:
         try:
             return await call_next(request)
-        except SardisException as exc:
+        except SardisException:
             # Let the exception handlers deal with it
             raise
         except Exception as exc:

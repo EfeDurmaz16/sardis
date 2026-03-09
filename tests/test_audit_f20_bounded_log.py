@@ -1,7 +1,8 @@
 """Test that orchestrator audit log is bounded to 10,000 entries."""
-import pytest
 from unittest.mock import AsyncMock, Mock
-from sardis_v2_core.orchestrator import PaymentOrchestrator, ExecutionPhase
+
+import pytest
+from sardis_v2_core.orchestrator import ExecutionPhase, PaymentOrchestrator
 
 
 @pytest.fixture

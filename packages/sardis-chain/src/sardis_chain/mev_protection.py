@@ -15,14 +15,12 @@ import hmac
 import json
 import logging
 import random
-import secrets
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import httpx
 
@@ -53,7 +51,7 @@ class MEVConfig:
     max_block_delay: int = 2  # Max blocks to wait for private inclusion
     timing_jitter_ms: int = 500  # Random delay to add
     slippage_tolerance_bps: int = 50  # 0.5% default slippage
-    signing_key: Optional[str] = None  # For Flashbots auth
+    signing_key: str | None = None  # For Flashbots auth
 
 
 @dataclass
@@ -62,9 +60,9 @@ class ProtectedTransaction:
     raw_tx: str
     tx_hash: str
     visibility: TransactionVisibility
-    submitted_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    target_block: Optional[int] = None
-    mev_share_hints: List[str] = field(default_factory=list)
+    submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    target_block: int | None = None
+    mev_share_hints: list[str] = field(default_factory=list)
     protection_level: MEVProtectionLevel = MEVProtectionLevel.STANDARD
 
 
@@ -73,10 +71,10 @@ class SubmissionResult:
     """Result of submitting a protected transaction."""
     success: bool
     tx_hash: str
-    bundle_hash: Optional[str] = None
-    error: Optional[str] = None
+    bundle_hash: str | None = None
+    error: str | None = None
     submitted_via: str = "public"  # "public", "flashbots", "mev_share"
-    expected_block: Optional[int] = None
+    expected_block: int | None = None
 
 
 class MEVProtectionProvider(ABC):
@@ -86,7 +84,7 @@ class MEVProtectionProvider(ABC):
     async def submit_transaction(
         self,
         signed_tx: str,
-        target_block: Optional[int] = None,
+        target_block: int | None = None,
     ) -> SubmissionResult:
         """Submit a transaction with MEV protection."""
         pass
@@ -95,7 +93,7 @@ class MEVProtectionProvider(ABC):
     async def get_bundle_status(
         self,
         bundle_hash: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check status of a submitted bundle."""
         pass
 
@@ -113,7 +111,7 @@ class FlashbotsProvider(MEVProtectionProvider):
     def __init__(
         self,
         relay_url: str = "https://relay.flashbots.net",
-        signing_key: Optional[str] = None,
+        signing_key: str | None = None,
     ):
         self._relay_url = relay_url
         self._signing_key = signing_key
@@ -128,7 +126,7 @@ class FlashbotsProvider(MEVProtectionProvider):
             )
         return self._client
 
-    def _sign_payload(self, payload: Dict[str, Any]) -> str:
+    def _sign_payload(self, payload: dict[str, Any]) -> str:
         """Sign payload for Flashbots authentication."""
         if not self._signing_key:
             raise ValueError("Signing key required for Flashbots")
@@ -148,7 +146,7 @@ class FlashbotsProvider(MEVProtectionProvider):
     async def submit_transaction(
         self,
         signed_tx: str,
-        target_block: Optional[int] = None,
+        target_block: int | None = None,
     ) -> SubmissionResult:
         """Submit transaction via Flashbots private pool."""
         client = await self._get_client()
@@ -205,7 +203,7 @@ class FlashbotsProvider(MEVProtectionProvider):
     async def get_bundle_status(
         self,
         bundle_hash: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get bundle inclusion status."""
         client = await self._get_client()
 
@@ -251,7 +249,7 @@ class MEVShareProvider(MEVProtectionProvider):
     def __init__(
         self,
         relay_url: str = "https://relay.flashbots.net",
-        signing_key: Optional[str] = None,
+        signing_key: str | None = None,
     ):
         self._relay_url = relay_url
         self._signing_key = signing_key
@@ -269,9 +267,9 @@ class MEVShareProvider(MEVProtectionProvider):
     async def submit_transaction(
         self,
         signed_tx: str,
-        target_block: Optional[int] = None,
-        hints: Optional[List[str]] = None,
-        max_block_number: Optional[int] = None,
+        target_block: int | None = None,
+        hints: list[str] | None = None,
+        max_block_number: int | None = None,
     ) -> SubmissionResult:
         """
         Submit transaction via MEV-Share.
@@ -341,7 +339,7 @@ class MEVShareProvider(MEVProtectionProvider):
     async def get_bundle_status(
         self,
         bundle_hash: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get MEV-Share submission status."""
         client = await self._get_client()
 
@@ -388,7 +386,7 @@ class MEVProtectionService:
 
     def __init__(
         self,
-        config: Optional[MEVConfig] = None,
+        config: MEVConfig | None = None,
     ):
         """
         Initialize MEV protection service.
@@ -411,7 +409,7 @@ class MEVProtectionService:
         signed_tx: str,
         tx_value: Decimal = Decimal("0"),
         is_dex_swap: bool = False,
-        current_block: Optional[int] = None,
+        current_block: int | None = None,
     ) -> SubmissionResult:
         """
         Apply MEV protection and submit transaction.
@@ -485,7 +483,7 @@ class MEVProtectionService:
         self,
         bundle_hash: str,
         submitted_via: str = "flashbots",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check status of a protected transaction."""
         if submitted_via == "mev_share":
             return await self._mev_share.get_bundle_status(bundle_hash)
@@ -529,7 +527,7 @@ class MEVProtectionService:
 
 def create_mev_protection(
     protection_level: MEVProtectionLevel = MEVProtectionLevel.STANDARD,
-    signing_key: Optional[str] = None,
+    signing_key: str | None = None,
 ) -> MEVProtectionService:
     """
     Factory function to create MEV protection service.

@@ -15,13 +15,13 @@ class SkillDefinition:
     name: str
     description: str
     category: str
-    parameters: List[str] = field(default_factory=list)
-    required_permissions: List[str] = field(default_factory=list)
+    parameters: list[str] = field(default_factory=list)
+    required_permissions: list[str] = field(default_factory=list)
     version: str = "0.1.0"
 
 
 # Core skill definitions
-SKILLS: List[SkillDefinition] = [
+SKILLS: list[SkillDefinition] = [
     SkillDefinition(
         name="balance_check",
         description="Check wallet balance across supported chains",
@@ -74,7 +74,7 @@ SKILLS: List[SkillDefinition] = [
 ]
 
 
-def get_skill(name: str) -> Optional[SkillDefinition]:
+def get_skill(name: str) -> SkillDefinition | None:
     """Get a skill definition by name."""
     for skill in SKILLS:
         if skill.name == name:
@@ -82,7 +82,7 @@ def get_skill(name: str) -> Optional[SkillDefinition]:
     return None
 
 
-def list_skills(category: Optional[str] = None) -> List[SkillDefinition]:
+def list_skills(category: str | None = None) -> list[SkillDefinition]:
     """List all skills, optionally filtered by category."""
     if category:
         return [s for s in SKILLS if s.category == category]
@@ -94,15 +94,15 @@ from typing import Type
 from sardis_openclaw.base import OpenClawSkill, SkillContext, SkillResult
 from sardis_openclaw.skills import (
     BalanceCheckSkill,
-    SendPaymentSkill,
+    BridgeTransferSkill,
     ComplianceCheckSkill,
     CreateInvoiceSkill,
-    BridgeTransferSkill,
-    SpendingReportSkill,
     PolicyUpdateSkill,
+    SendPaymentSkill,
+    SpendingReportSkill,
 )
 
-SKILL_REGISTRY: dict[str, Type[OpenClawSkill]] = {
+SKILL_REGISTRY: dict[str, type[OpenClawSkill]] = {
     "balance_check": BalanceCheckSkill,
     "send_payment": SendPaymentSkill,
     "check_compliance": ComplianceCheckSkill,

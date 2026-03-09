@@ -1,7 +1,8 @@
 """Unit tests for Merkle tree implementation."""
 
 import pytest
-from sardis_ledger.merkle_tree import MerkleTree, MerkleNode, compute_entry_hash
+
+from sardis_ledger.merkle_tree import MerkleTree, compute_entry_hash
 
 
 class TestMerkleTree:

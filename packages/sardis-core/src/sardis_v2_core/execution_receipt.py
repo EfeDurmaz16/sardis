@@ -13,7 +13,7 @@ import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 def _receipt_id() -> str:
@@ -79,7 +79,7 @@ class ExecutionReceipt:
         ])
         return hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
 
-    def sign(self, secret: str | None = None) -> "ExecutionReceipt":
+    def sign(self, secret: str | None = None) -> ExecutionReceipt:
         """Sign the receipt in place and return self for chaining."""
         self.signature = self.compute_signature(secret)
         return self
@@ -93,7 +93,7 @@ class ExecutionReceipt:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ExecutionReceipt":
+    def from_dict(cls, data: dict[str, Any]) -> ExecutionReceipt:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 

@@ -1,8 +1,8 @@
 """Tests for the Policy DSL — compile, decompile, validate."""
 
-import pytest
 from decimal import Decimal
 
+import pytest
 from sardis_v2_core.policy_dsl import (
     PolicyDefinition,
     PolicyRule,

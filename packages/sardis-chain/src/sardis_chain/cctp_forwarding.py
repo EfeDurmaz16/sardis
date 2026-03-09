@@ -19,17 +19,16 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
 
 from .cctp_constants import (
     CCTP_DOMAINS,
     USDC_ADDRESSES,
+    get_bridge_estimate_seconds,
     get_cctp_domain,
     is_cctp_supported,
-    get_bridge_estimate_seconds,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,14 +67,14 @@ class ForwardingAddress:
     forwarding_address: str = ""
     destination_address: str = ""
     wallet_id: str = ""
-    agent_id: Optional[str] = None
+    agent_id: str | None = None
     status: ForwardingStatus = ForwardingStatus.PENDING
     total_forwarded: Decimal = Decimal("0")
-    last_deposit_amount: Optional[Decimal] = None
-    circle_forwarding_id: Optional[str] = None
-    error: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    last_deposit_amount: Decimal | None = None
+    circle_forwarding_id: str | None = None
+    error: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -105,10 +104,10 @@ class ForwardingDeposit:
     destination_chain: str = DEFAULT_DESTINATION_CHAIN
     amount: Decimal = Decimal("0")
     source_tx_hash: str = ""
-    destination_tx_hash: Optional[str] = None
+    destination_tx_hash: str | None = None
     status: ForwardingStatus = ForwardingStatus.DEPOSIT_DETECTED
-    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -156,7 +155,7 @@ class CCTPForwardingService:
         source_chain: str,
         destination_address: str,
         wallet_id: str,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
     ) -> ForwardingAddress:
         """Create a forwarding address on source_chain that auto-bridges to Base.
 
@@ -258,7 +257,7 @@ class CCTPForwardingService:
         self,
         destination_address: str,
         wallet_id: str,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
     ) -> dict[str, ForwardingAddress]:
         """Create forwarding addresses on ALL supported funding chains.
 
@@ -294,7 +293,7 @@ class CCTPForwardingService:
     async def get_forwarding_status(
         self,
         forwarding_id: str,
-    ) -> Optional[ForwardingAddress]:
+    ) -> ForwardingAddress | None:
         """Get the current status of a forwarding address."""
         fwd = self._forwarding_addresses.get(forwarding_id)
         if fwd is None:

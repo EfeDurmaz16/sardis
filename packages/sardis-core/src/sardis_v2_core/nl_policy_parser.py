@@ -12,22 +12,21 @@ Example:
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import os
 import re
 import unicodedata
-import hashlib
-import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
-from enum import Enum
-from typing import Literal, Optional, List, Any
 import uuid
-import logging
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any, Literal
 
 try:
     import instructor
-    from openai import OpenAI, AsyncOpenAI
+    from openai import AsyncOpenAI, OpenAI
     HAS_INSTRUCTOR = True
 except ImportError:
     HAS_INSTRUCTOR = False
@@ -39,11 +38,11 @@ except ImportError:
     HAS_PYDANTIC = False
 
 from .spending_policy import (
-    SpendingPolicy,
-    TimeWindowLimit,
     MerchantRule,
-    TrustLevel,
+    SpendingPolicy,
     SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,11 +108,11 @@ if HAS_PYDANTIC:
     class ExtractedCategoryRestriction(BaseModel):
         """Category-based spending restrictions."""
 
-        allowed_categories: List[str] = Field(
+        allowed_categories: list[str] = Field(
             default_factory=list,
             description="List of allowed merchant categories"
         )
-        blocked_categories: List[str] = Field(
+        blocked_categories: list[str] = Field(
             default_factory=list,
             description="List of blocked merchant categories (e.g., 'gambling', 'adult')"
         )
@@ -129,7 +128,7 @@ if HAS_PYDANTIC:
             ge=0, le=23, default=23,
             description="End hour (0-23) for allowed spending window"
         )
-        allowed_days: List[Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]] = Field(
+        allowed_days: list[Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]] = Field(
             default_factory=lambda: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
             description="Days of week when spending is allowed"
         )
@@ -147,27 +146,27 @@ if HAS_PYDANTIC:
         description: str = Field(
             description="Original natural language input or summary"
         )
-        spending_limits: List[ExtractedSpendingLimit] = Field(
+        spending_limits: list[ExtractedSpendingLimit] = Field(
             default_factory=list,
             description="List of spending limits per vendor/category"
         )
-        category_restrictions: Optional[ExtractedCategoryRestriction] = Field(
+        category_restrictions: ExtractedCategoryRestriction | None = Field(
             default=None,
             description="Category-based restrictions if specified"
         )
-        time_restrictions: Optional[ExtractedTimeRestriction] = Field(
+        time_restrictions: ExtractedTimeRestriction | None = Field(
             default=None,
             description="Time-based restrictions if specified"
         )
-        requires_approval_above: Optional[float] = Field(
+        requires_approval_above: float | None = Field(
             default=None,
             description="Amount threshold requiring manual approval"
         )
-        global_daily_limit: Optional[float] = Field(
+        global_daily_limit: float | None = Field(
             default=None,
             description="Global daily spending limit across all vendors"
         )
-        global_monthly_limit: Optional[float] = Field(
+        global_monthly_limit: float | None = Field(
             default=None,
             description="Global monthly spending limit across all vendors"
         )
@@ -244,8 +243,8 @@ Extract the policy accurately and completely."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
+        api_key: str | None = None,
+        model: str | None = None,
         temperature: float = 0.1,
     ):
         """
@@ -275,7 +274,7 @@ Extract the policy accurately and completely."""
             # Explicit key — assume OpenAI unless model hints at Groq
             self.api_key = api_key
             self.model = model or "gpt-4o"
-            self._base_url: Optional[str] = None
+            self._base_url: str | None = None
         elif groq_key:
             # Groq: open-source Llama via fast inference
             self.api_key = groq_key
@@ -319,9 +318,9 @@ Extract the policy accurately and completely."""
         action: str,
         parser_type: str,
         source_text: str = "",
-        extracted: Optional["ExtractedPolicy"] = None,
-        policy: Optional[SpendingPolicy] = None,
-        warnings: Optional[list[str]] = None,
+        extracted: ExtractedPolicy | None = None,
+        policy: SpendingPolicy | None = None,
+        warnings: list[str] | None = None,
     ) -> None:
         """Record audit evidence for every NL -> policy conversion step."""
         self._ensure_audit_state()
@@ -329,7 +328,7 @@ Extract the policy accurately and completely."""
         warning_list = list(warnings or [])
         event: dict[str, Any] = {
             "audit_event_id": f"nlpa_{uuid.uuid4().hex[:16]}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "action": action,
             "parser_type": parser_type,
             "source_hash": self._hash_text(normalized),
@@ -455,7 +454,7 @@ Extract the policy accurately and completely."""
     _MAX_CATEGORY_LENGTH = 50
 
     def _validate_extracted_policy(
-        self, extracted: "ExtractedPolicy", original_input: str
+        self, extracted: ExtractedPolicy, original_input: str
     ) -> list[str]:
         """Deterministic post-LLM validation of ALL extracted fields.
 
@@ -541,7 +540,7 @@ Extract the policy accurately and completely."""
 
         return warnings
 
-    def _validate_extracted_amounts(self, extracted: "ExtractedPolicy") -> None:
+    def _validate_extracted_amounts(self, extracted: ExtractedPolicy) -> None:
         """Deterministic validation of LLM-extracted amounts against hard caps.
 
         SECURITY: Even if the LLM is tricked into outputting huge numbers,
@@ -759,7 +758,7 @@ Extract the policy accurately and completely."""
                 rule = MerchantRule(
                     rule_type="deny",
                     category=blocked_cat.lower(),
-                    reason=f"NL policy: blocked category",
+                    reason="NL policy: blocked category",
                 )
                 policy.merchant_rules.insert(0, rule)  # Deny rules first
 
@@ -943,7 +942,7 @@ class RegexPolicyParser:
 
         audit_event = {
             "audit_event_id": f"nlpa_{uuid.uuid4().hex[:16]}",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "action": "regex_parse",
             "parser_type": "regex",
             "source_hash": self._hash_text(sanitized),
@@ -966,8 +965,8 @@ class RegexPolicyParser:
 
 def create_policy_parser(
     use_llm: bool = True,
-    api_key: Optional[str] = None,
-    model: Optional[str] = None,
+    api_key: str | None = None,
+    model: str | None = None,
 ) -> NLPolicyParser | RegexPolicyParser:
     """
     Create appropriate policy parser based on configuration.
@@ -1009,7 +1008,7 @@ def create_policy_parser(
 async def parse_nl_policy(
     natural_language: str,
     agent_id: str = "",
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
 ) -> SpendingPolicy:
     """
     Convenience function to parse natural language and return SpendingPolicy.
@@ -1034,7 +1033,7 @@ async def parse_nl_policy(
 def parse_nl_policy_sync(
     natural_language: str,
     agent_id: str = "",
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
 ) -> SpendingPolicy:
     """
     Synchronous version of parse_nl_policy.
@@ -1117,7 +1116,7 @@ def get_policy_templates() -> dict[str, dict[str, str]]:
     }
 
 
-def get_policy_template(template_name: str, agent_id: str = "") -> Optional[SpendingPolicy]:
+def get_policy_template(template_name: str, agent_id: str = "") -> SpendingPolicy | None:
     """
     Get a pre-built policy template by name.
 

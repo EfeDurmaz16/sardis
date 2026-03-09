@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+import sys
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -32,7 +32,7 @@ def test_record_spend_resets_expired_window():
     policy = create_default_policy(agent_id)
     assert policy.daily_limit is not None
     policy.daily_limit.current_spent = Decimal("90.0")
-    policy.daily_limit.window_start = datetime.now(timezone.utc) - timedelta(days=2)
+    policy.daily_limit.window_start = datetime.now(UTC) - timedelta(days=2)
     asyncio.run(store.set_policy(agent_id, policy))
 
     asyncio.run(store.record_spend(agent_id, Decimal("5.0")))

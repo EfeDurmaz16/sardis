@@ -23,9 +23,9 @@ Run:
 import os
 
 import anthropic
+from sardis_agent_sdk import SardisToolkit
 
 from sardis import SardisClient
-from sardis_agent_sdk import SardisToolkit
 
 # --- Sardis Setup -----------------------------------------------------------
 
@@ -112,7 +112,7 @@ def run_manual():
         "execute payments when asked."
     )
 
-    for turn in range(5):
+    for _turn in range(5):
         response = client.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=2048,

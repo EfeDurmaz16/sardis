@@ -23,14 +23,13 @@ Reference: https://www.fincen.gov/resources/filing-information
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +77,12 @@ class SuspiciousTransaction:
     from_address: str
     to_address: str
     chain: str
-    tx_hash: Optional[str] = None
-    flags: List[str] = field(default_factory=list)
+    tx_hash: str | None = None
+    flags: list[str] = field(default_factory=list)
     risk_score: float = 0.0
-    notes: Optional[str] = None
+    notes: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "tx_id": self.tx_id,
@@ -106,16 +105,16 @@ class SubjectInformation:
     """Information about the subject of the SAR."""
     subject_id: str  # Wallet ID or agent ID
     subject_type: str  # "individual", "entity", "wallet"
-    name: Optional[str] = None
-    address: Optional[str] = None
-    identification: Optional[str] = None  # Redacted for privacy
-    wallet_address: Optional[str] = None
-    account_opened_date: Optional[datetime] = None
-    relationship_start_date: Optional[datetime] = None
-    occupation: Optional[str] = None
-    country_of_residence: Optional[str] = None
+    name: str | None = None
+    address: str | None = None
+    identification: str | None = None  # Redacted for privacy
+    wallet_address: str | None = None
+    account_opened_date: datetime | None = None
+    relationship_start_date: datetime | None = None
+    occupation: str | None = None
+    country_of_residence: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "subject_id": self.subject_id,
@@ -144,7 +143,7 @@ class SuspiciousActivityReport:
     internal_reference: str
 
     # Report metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_by: str = "system"  # User or system that initiated SAR
     status: SARStatus = SARStatus.DRAFT
     priority: SARPriority = SARPriority.MEDIUM
@@ -152,15 +151,15 @@ class SuspiciousActivityReport:
     # Activity details
     activity_type: SuspiciousActivityType = SuspiciousActivityType.OTHER
     activity_description: str = ""
-    detection_date: Optional[datetime] = None
-    activity_period_start: Optional[datetime] = None
-    activity_period_end: Optional[datetime] = None
+    detection_date: datetime | None = None
+    activity_period_start: datetime | None = None
+    activity_period_end: datetime | None = None
 
     # Subject information
-    subject: Optional[SubjectInformation] = None
+    subject: SubjectInformation | None = None
 
     # Transactions
-    suspicious_transactions: List[SuspiciousTransaction] = field(default_factory=list)
+    suspicious_transactions: list[SuspiciousTransaction] = field(default_factory=list)
     total_amount: Decimal = field(default=Decimal("0"))
     transaction_count: int = 0
 
@@ -169,19 +168,19 @@ class SuspiciousActivityReport:
     investigator_notes: str = ""  # Internal notes (not filed)
 
     # Filing information
-    filing_deadline: Optional[datetime] = None
-    filed_at: Optional[datetime] = None
-    filed_by: Optional[str] = None
-    filing_reference: Optional[str] = None  # External reference from regulator
+    filing_deadline: datetime | None = None
+    filed_at: datetime | None = None
+    filed_by: str | None = None
+    filing_reference: str | None = None  # External reference from regulator
 
     # Compliance review
-    reviewed_by: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-    approval_notes: Optional[str] = None
+    reviewed_by: str | None = None
+    reviewed_at: datetime | None = None
+    approval_notes: str | None = None
 
     # Evidence
-    evidence_links: List[str] = field(default_factory=list)
-    supporting_documents: List[str] = field(default_factory=list)
+    evidence_links: list[str] = field(default_factory=list)
+    supporting_documents: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Set filing deadline if not provided."""
@@ -200,14 +199,14 @@ class SuspiciousActivityReport:
         """Mark SAR as pending compliance review."""
         self.status = SARStatus.PENDING_REVIEW
         self.reviewed_by = reviewer
-        self.reviewed_at = datetime.now(timezone.utc)
+        self.reviewed_at = datetime.now(UTC)
         logger.info(f"SAR {self.sar_id} marked pending review by {reviewer}")
 
-    def approve(self, approver: str, notes: Optional[str] = None) -> None:
+    def approve(self, approver: str, notes: str | None = None) -> None:
         """Approve SAR for filing."""
         self.status = SARStatus.APPROVED
         self.reviewed_by = approver
-        self.reviewed_at = datetime.now(timezone.utc)
+        self.reviewed_at = datetime.now(UTC)
         self.approval_notes = notes
         logger.info(f"SAR {self.sar_id} approved by {approver}")
 
@@ -215,17 +214,17 @@ class SuspiciousActivityReport:
         """Reject SAR (not to be filed)."""
         self.status = SARStatus.REJECTED
         self.reviewed_by = rejector
-        self.reviewed_at = datetime.now(timezone.utc)
+        self.reviewed_at = datetime.now(UTC)
         self.approval_notes = reason
         logger.info(f"SAR {self.sar_id} rejected by {rejector}: {reason}")
 
-    def file(self, filer: str, filing_ref: Optional[str] = None) -> None:
+    def file(self, filer: str, filing_ref: str | None = None) -> None:
         """Mark SAR as filed with regulator."""
         if self.status != SARStatus.APPROVED:
             raise ValueError(f"Cannot file SAR with status {self.status}. Must be approved first.")
 
         self.status = SARStatus.FILED
-        self.filed_at = datetime.now(timezone.utc)
+        self.filed_at = datetime.now(UTC)
         self.filed_by = filer
         self.filing_reference = filing_ref or f"SAR-{self.sar_id}"
         logger.info(f"SAR {self.sar_id} filed by {filer} with reference {self.filing_reference}")
@@ -234,9 +233,9 @@ class SuspiciousActivityReport:
         """Check if SAR filing deadline has passed."""
         if not self.filing_deadline:
             return False
-        return datetime.now(timezone.utc) > self.filing_deadline and self.status != SARStatus.FILED
+        return datetime.now(UTC) > self.filing_deadline and self.status != SARStatus.FILED
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "sar_id": self.sar_id,
@@ -304,7 +303,7 @@ class SARGenerator:
     5-year retention compliance. Falls back to in-memory storage for dev/test.
     """
 
-    def __init__(self, storage_path: Optional[str] = None, dsn: Optional[str] = None):
+    def __init__(self, storage_path: str | None = None, dsn: str | None = None):
         """
         Initialize SAR generator.
 
@@ -313,7 +312,7 @@ class SARGenerator:
             dsn: PostgreSQL DSN for persistent storage (optional)
         """
         self.storage_path = storage_path
-        self._sars: Dict[str, SuspiciousActivityReport] = {}
+        self._sars: dict[str, SuspiciousActivityReport] = {}
         self._dsn = dsn
         self._pool = None
         logger.info("SARGenerator initialized")
@@ -323,7 +322,7 @@ class SARGenerator:
         activity_type: SuspiciousActivityType,
         wallet_id: str,
         description: str,
-        detection_date: Optional[datetime] = None,
+        detection_date: datetime | None = None,
         priority: SARPriority = SARPriority.MEDIUM,
     ) -> SuspiciousActivityReport:
         """
@@ -340,14 +339,14 @@ class SARGenerator:
             Created SuspiciousActivityReport
         """
         sar_id = f"sar_{uuid.uuid4().hex[:16]}"
-        internal_ref = f"INT-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+        internal_ref = f"INT-{datetime.now(UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
 
         sar = SuspiciousActivityReport(
             sar_id=sar_id,
             internal_reference=internal_ref,
             activity_type=activity_type,
             activity_description=description,
-            detection_date=detection_date or datetime.now(timezone.utc),
+            detection_date=detection_date or datetime.now(UTC),
             priority=priority,
             subject=SubjectInformation(
                 subject_id=wallet_id,
@@ -407,7 +406,7 @@ class SARGenerator:
                 _json.dumps(sar.to_dict(), default=str),
             )
 
-    async def get_sar_async(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
+    async def get_sar_async(self, sar_id: str) -> SuspiciousActivityReport | None:
         """Get a SAR by ID, checking DB if not in memory."""
         if sar_id in self._sars:
             return self._sars[sar_id]
@@ -439,7 +438,7 @@ class SARGenerator:
             detection_date=row["detection_date"],
             filing_deadline=row.get("filing_deadline"),
             filed_at=row.get("filed_date"),
-            created_at=row.get("created_at", datetime.now(timezone.utc)),
+            created_at=row.get("created_at", datetime.now(UTC)),
             subject=SubjectInformation(
                 subject_id=row.get("subject_id", ""),
                 subject_type=row.get("subject_type", "wallet"),
@@ -447,17 +446,17 @@ class SARGenerator:
             ),
         )
 
-    def get_sar(self, sar_id: str) -> Optional[SuspiciousActivityReport]:
+    def get_sar(self, sar_id: str) -> SuspiciousActivityReport | None:
         """Get a SAR by ID."""
         return self._sars.get(sar_id)
 
     async def list_sars_async(
         self,
-        status: Optional[SARStatus] = None,
-        priority: Optional[SARPriority] = None,
+        status: SARStatus | None = None,
+        priority: SARPriority | None = None,
         overdue_only: bool = False,
         limit: int = 100,
-    ) -> List[SuspiciousActivityReport]:
+    ) -> list[SuspiciousActivityReport]:
         """List SARs from database with optional filtering."""
         if not self._dsn:
             return self.list_sars(status=status, priority=priority, overdue_only=overdue_only)
@@ -476,7 +475,7 @@ class SARGenerator:
                     params.append(priority.value)
                     idx += 1
                 if overdue_only:
-                    conditions.append(f"filing_deadline < NOW() AND status != 'filed'")
+                    conditions.append("filing_deadline < NOW() AND status != 'filed'")
 
                 where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
                 params.append(limit)
@@ -489,10 +488,10 @@ class SARGenerator:
 
     def list_sars(
         self,
-        status: Optional[SARStatus] = None,
-        priority: Optional[SARPriority] = None,
+        status: SARStatus | None = None,
+        priority: SARPriority | None = None,
         overdue_only: bool = False,
-    ) -> List[SuspiciousActivityReport]:
+    ) -> list[SuspiciousActivityReport]:
         """
         List SARs with optional filtering (in-memory fallback).
 
@@ -517,16 +516,16 @@ class SARGenerator:
 
         return sars
 
-    def get_overdue_sars(self) -> List[SuspiciousActivityReport]:
+    def get_overdue_sars(self) -> list[SuspiciousActivityReport]:
         """Get all SARs past their filing deadline."""
         return self.list_sars(overdue_only=True)
 
     def detect_structuring(
         self,
-        transactions: List[Dict[str, Any]],
+        transactions: list[dict[str, Any]],
         threshold: Decimal = Decimal("10000"),
         time_window_hours: int = 24,
-    ) -> Optional[SuspiciousActivityReport]:
+    ) -> SuspiciousActivityReport | None:
         """
         Detect structuring (breaking up transactions to avoid thresholds).
 
@@ -580,7 +579,7 @@ class SARGenerator:
                         wallet_id=wallet_id,
                         amount=Decimal(str(tx.get("amount", 0))),
                         currency=tx.get("currency", "USDC"),
-                        timestamp=tx.get("timestamp", datetime.now(timezone.utc)),
+                        timestamp=tx.get("timestamp", datetime.now(UTC)),
                         from_address=tx.get("from_address", ""),
                         to_address=tx.get("to_address", ""),
                         chain=tx.get("chain", ""),

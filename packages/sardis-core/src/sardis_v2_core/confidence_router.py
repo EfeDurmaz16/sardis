@@ -27,13 +27,13 @@ How confidence routing works:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from enum import Enum
-from typing import Optional, Any, TYPE_CHECKING
 import math
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from enum import Enum
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .spending_policy import SpendingPolicy
@@ -84,7 +84,7 @@ class TransactionConfidence:
     factors: dict[str, float]  # Individual factor contributions
     recommendation: str
     transaction_id: str = field(default_factory=lambda: f"tx_{uuid.uuid4().hex[:16]}")
-    calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(slots=True)
@@ -97,18 +97,18 @@ class ApprovalRequest:
     transaction_id: str
     agent_id: str
     amount: Decimal
-    merchant_id: Optional[str]
+    merchant_id: str | None
     confidence: TransactionConfidence
     required_approvers: list[str]
     approvals: dict[str, datetime] = field(default_factory=dict)  # approver_id -> timestamp
     rejections: dict[str, tuple[datetime, str]] = field(default_factory=dict)  # approver_id -> (timestamp, reason)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=1))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(UTC) + timedelta(hours=1))
     quorum: int = 1  # Number of approvals required
 
     def is_expired(self) -> bool:
         """Check if approval request has timed out."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_approved(self) -> bool:
         """Check if quorum has been reached."""
@@ -124,7 +124,7 @@ class ApprovalRequest:
             return False
         if approver_id in self.approvals or approver_id in self.rejections:
             return False  # Already voted
-        self.approvals[approver_id] = datetime.now(timezone.utc)
+        self.approvals[approver_id] = datetime.now(UTC)
         return self.is_approved()
 
     def add_rejection(self, approver_id: str, reason: str) -> None:
@@ -132,7 +132,7 @@ class ApprovalRequest:
         if approver_id not in self.required_approvers:
             return
         if approver_id not in self.rejections:
-            self.rejections[approver_id] = (datetime.now(timezone.utc), reason)
+            self.rejections[approver_id] = (datetime.now(UTC), reason)
 
 
 class ConfidenceRouter:
@@ -154,9 +154,9 @@ class ConfidenceRouter:
 
     def __init__(
         self,
-        thresholds: Optional[ConfidenceThresholds] = None,
-        manager_approvers: Optional[list[str]] = None,
-        multisig_approvers: Optional[list[str]] = None,
+        thresholds: ConfidenceThresholds | None = None,
+        manager_approvers: list[str] | None = None,
+        multisig_approvers: list[str] | None = None,
     ):
         """
         Initialize confidence router.
@@ -220,10 +220,10 @@ class ConfidenceRouter:
         self,
         agent_id: str,
         transaction: dict[str, Any],
-        policy: "SpendingPolicy",
+        policy: SpendingPolicy,
         *,
-        history: Optional[list[dict[str, Any]]] = None,
-        kya_level: Optional[str] = None,
+        history: list[dict[str, Any]] | None = None,
+        kya_level: str | None = None,
         violation_count: int = 0,
     ) -> TransactionConfidence:
         """
@@ -248,7 +248,7 @@ class ConfidenceRouter:
         # Extract transaction details
         amount = Decimal(str(transaction.get("amount", 0)))
         merchant_id = transaction.get("merchant_id") or transaction.get("merchant")
-        timestamp = transaction.get("timestamp", datetime.now(timezone.utc))
+        timestamp = transaction.get("timestamp", datetime.now(UTC))
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
 
@@ -443,7 +443,7 @@ class ApprovalWorkflow:
         approvers: list[str],
         timeout: int,
         quorum: int = 1,
-        merchant_id: Optional[str] = None,
+        merchant_id: str | None = None,
     ) -> str:
         """
         Create a new approval request.
@@ -461,7 +461,7 @@ class ApprovalWorkflow:
         Returns:
             Request ID (same as transaction_id)
         """
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=timeout)
+        expires_at = datetime.now(UTC) + timedelta(seconds=timeout)
 
         request = ApprovalRequest(
             transaction_id=transaction_id,

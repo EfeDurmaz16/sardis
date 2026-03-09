@@ -8,8 +8,8 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, status
@@ -27,8 +27,8 @@ class DispatchJobRequest(BaseModel):
     currency: str
     purpose: str
     options: dict[str, Any] = {}
-    secret_ref: Optional[str] = None
-    secret_expires_at: Optional[str] = None
+    secret_ref: str | None = None
+    secret_expires_at: str | None = None
 
 
 class DispatchJobResponse(BaseModel):
@@ -59,7 +59,7 @@ class InMemoryExecutorDispatchStore:
             existing = self._jobs_by_id.get(payload.job_id)
             if existing:
                 return dict(existing), True
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             item = {
                 "execution_id": f"exec_{uuid.uuid4().hex[:16]}",
                 "job_id": payload.job_id,
@@ -140,10 +140,10 @@ async def _verify_dispatch_request(
     *,
     request: Request,
     store: InMemoryExecutorDispatchStore,
-    authorization: Optional[str],
-    timestamp: Optional[str],
-    nonce: Optional[str],
-    signature: Optional[str],
+    authorization: str | None,
+    timestamp: str | None,
+    nonce: str | None,
+    signature: str | None,
     body_bytes: bytes,
 ) -> None:
     expected_token = _dispatch_token()
@@ -215,10 +215,10 @@ def create_executor_worker_router(store: InMemoryExecutorDispatchStore | None = 
     async def accept_dispatch_job(
         payload: DispatchJobRequest,
         request: Request,
-        authorization: Optional[str] = Header(default=None),
-        x_sardis_timestamp: Optional[str] = Header(default=None),
-        x_sardis_nonce: Optional[str] = Header(default=None),
-        x_sardis_signature: Optional[str] = Header(default=None),
+        authorization: str | None = Header(default=None),
+        x_sardis_timestamp: str | None = Header(default=None),
+        x_sardis_nonce: str | None = Header(default=None),
+        x_sardis_signature: str | None = Header(default=None),
     ):
         # Ensure signature validation uses the exact request body bytes.
         body = await request.body()

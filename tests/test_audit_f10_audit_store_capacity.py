@@ -1,7 +1,8 @@
 """Test F10: In-memory audit store warns when approaching capacity."""
 import logging
 from collections import deque
-from sardis_compliance.checks import ComplianceAuditStore, ComplianceAuditEntry
+
+from sardis_compliance.checks import ComplianceAuditEntry, ComplianceAuditStore
 
 
 def _make_store(max_entries):

@@ -4,10 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class ConnectionManager:
 
         # Add timestamp if not present
         if "timestamp" not in message:
-            message["timestamp"] = datetime.now(timezone.utc).isoformat()
+            message["timestamp"] = datetime.now(UTC).isoformat()
 
         # Send to matching connections, removing dead ones
         dead_connections = set()
@@ -111,7 +111,7 @@ class ConnectionManager:
         for org_id in all_orgs:
             await self.broadcast(org_id, message)
 
-    def get_connection_count(self, organization_id: Optional[str] = None) -> int:
+    def get_connection_count(self, organization_id: str | None = None) -> int:
         """Get number of active connections."""
         if organization_id:
             return len(self.active_connections.get(organization_id, set()))
@@ -179,7 +179,7 @@ async def websocket_alerts(
             "type": "system",
             "message": "Connected to Sardis alert stream",
             "organization_id": organization_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
         websocket,
     )
@@ -194,7 +194,7 @@ async def websocket_alerts(
             current_time = asyncio.get_event_loop().time()
             if current_time - last_heartbeat >= heartbeat_interval:
                 try:
-                    await websocket.send_json({"type": "ping", "timestamp": datetime.now(timezone.utc).isoformat()})
+                    await websocket.send_json({"type": "ping", "timestamp": datetime.now(UTC).isoformat()})
                     last_heartbeat = current_time
                 except Exception:
                     # Connection dead
@@ -242,7 +242,7 @@ async def websocket_alerts(
                 except json.JSONDecodeError:
                     logger.warning(f"Invalid JSON received from org={organization_id}")
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Timeout waiting for message, continue to send heartbeat
                 continue
 

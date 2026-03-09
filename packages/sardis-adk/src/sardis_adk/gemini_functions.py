@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -175,8 +175,8 @@ def get_sardis_gemini_tools() -> dict:
 
 async def handle_function_call(
     function_call: Any,
-    api_key: Optional[str] = None,
-    wallet_id: Optional[str] = None,
+    api_key: str | None = None,
+    wallet_id: str | None = None,
 ) -> dict:
     """Handle a Gemini function call response.
 

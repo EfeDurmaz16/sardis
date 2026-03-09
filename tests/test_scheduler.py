@@ -1,9 +1,10 @@
 """Tests for scheduler and background jobs."""
 from __future__ import annotations
 
-import pytest
 import asyncio
-from sardis_v2_core.scheduler import SardisScheduler, init_scheduler, get_scheduler
+
+import pytest
+from sardis_v2_core.scheduler import SardisScheduler, get_scheduler, init_scheduler
 
 
 @pytest.fixture

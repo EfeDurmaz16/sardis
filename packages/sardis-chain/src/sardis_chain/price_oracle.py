@@ -13,28 +13,27 @@ import asyncio
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 # CoinGecko IDs for native gas tokens
-COINGECKO_IDS: Dict[str, str] = {
+COINGECKO_IDS: dict[str, str] = {
     "ETH": "ethereum",
     "MATIC": "matic-network",
     "POL": "matic-network",
 }
 
 # Environment variable overrides (takes precedence over live pricing)
-ENV_PRICE_KEYS: Dict[str, str] = {
+ENV_PRICE_KEYS: dict[str, str] = {
     "ETH": "ETH_PRICE_USD",
     "MATIC": "MATIC_PRICE_USD",
     "POL": "MATIC_PRICE_USD",
 }
 
 # Chain → native gas token mapping
-CHAIN_NATIVE_TOKEN: Dict[str, str] = {
+CHAIN_NATIVE_TOKEN: dict[str, str] = {
     "ethereum": "ETH",
     "base": "ETH",
     "arbitrum": "ETH",
@@ -49,7 +48,7 @@ CHAIN_NATIVE_TOKEN: Dict[str, str] = {
 }
 
 # Last-resort hardcoded fallbacks (conservative estimates)
-FALLBACK_PRICES: Dict[str, Decimal] = {
+FALLBACK_PRICES: dict[str, Decimal] = {
     "ETH": Decimal("2000"),
     "MATIC": Decimal("0.50"),
     "POL": Decimal("0.50"),
@@ -81,7 +80,7 @@ class PriceOracle:
     """
 
     def __init__(self, cache_ttl: float = DEFAULT_CACHE_TTL):
-        self._cache: Dict[str, PriceEntry] = {}
+        self._cache: dict[str, PriceEntry] = {}
         self._cache_ttl = cache_ttl
         self._lock = asyncio.Lock()
 
@@ -175,7 +174,7 @@ class PriceOracle:
         cost_native = Decimal(gas_cost_wei) / Decimal(10**18)
         return cost_native * price
 
-    async def _fetch_live_price(self, token: str) -> Optional[Decimal]:
+    async def _fetch_live_price(self, token: str) -> Decimal | None:
         """Fetch live price from CoinGecko free API."""
         coingecko_id = COINGECKO_IDS.get(token)
         if not coingecko_id:
@@ -205,13 +204,13 @@ class PriceOracle:
 
         return None
 
-    def get_cached_price(self, token: str) -> Optional[PriceEntry]:
+    def get_cached_price(self, token: str) -> PriceEntry | None:
         """Get cached price info (for diagnostics)."""
         return self._cache.get(token.upper())
 
 
 # Global singleton
-_oracle: Optional[PriceOracle] = None
+_oracle: PriceOracle | None = None
 
 
 def get_price_oracle() -> PriceOracle:

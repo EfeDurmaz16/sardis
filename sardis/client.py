@@ -10,19 +10,19 @@ operations delegate to the real Sardis platform.
 """
 from __future__ import annotations
 
+import builtins
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from .agent import Agent
-from .wallet import Wallet
-from .transaction import Transaction, TransactionResult, TransactionStatus
-from .policy import PolicyResult
 from .group import AgentGroup
-
+from .policy import PolicyResult
+from .transaction import Transaction, TransactionResult, TransactionStatus
+from .wallet import Wallet
 
 # ---------------------------------------------------------------------------
 # Managed wallet — enriched Wallet with .pay() and .id
@@ -32,21 +32,21 @@ from .group import AgentGroup
 class ManagedWallet(Wallet):
     """A wallet managed by SardisClient with convenience methods."""
 
-    _client: Optional["SardisClient"] = None
+    _client: SardisClient | None = None
     _name: str = ""
     _chain: str = "base"
     _token: str = "USDC"
     _policy_text: str = ""
-    _group_id: Optional[str] = None
+    _group_id: str | None = None
 
     def __init__(
         self,
-        client: "SardisClient",
+        client: SardisClient,
         name: str,
         chain: str = "base",
         token: str = "USDC",
-        policy: Optional[str] = None,
-        group_id: Optional[str] = None,
+        policy: str | None = None,
+        group_id: str | None = None,
         initial_balance: float = 1000,
         limit_per_tx: float = 100,
         limit_total: float = 10000,
@@ -87,7 +87,7 @@ class ManagedWallet(Wallet):
         return self._token
 
     @property
-    def group_id(self) -> Optional[str]:
+    def group_id(self) -> str | None:
         return self._group_id
 
     @property
@@ -108,8 +108,8 @@ class ManagedWallet(Wallet):
         to: str,
         amount: float | str | Decimal,
         *,
-        token: Optional[str] = None,
-        purpose: Optional[str] = None,
+        token: str | None = None,
+        purpose: str | None = None,
     ) -> TransactionResult:
         """
         Pay from this wallet.
@@ -155,8 +155,8 @@ class ManagedGroup(AgentGroup):
         budget_per_tx: Decimal = Decimal("500.00"),
         budget_daily: Decimal = Decimal("5000.00"),
         budget_monthly: Decimal = Decimal("50000.00"),
-        policy: Optional[str] = None,
-        blocked_merchants: Optional[List[str]] = None,
+        policy: str | None = None,
+        blocked_merchants: list[str] | None = None,
     ):
         super().__init__(
             name=name,
@@ -209,8 +209,8 @@ class LedgerEntry:
     tx_id: str
     wallet_id: str
     currency: str = "USDC"
-    group_id: Optional[str] = None
-    purpose: Optional[str] = None
+    group_id: str | None = None
+    purpose: str | None = None
 
     @property
     def created_at(self) -> datetime:
@@ -290,15 +290,15 @@ def _parse_policy(text: str) -> dict:
 class AgentManager:
     """client.agents namespace."""
 
-    def __init__(self, client: "SardisClient"):
+    def __init__(self, client: SardisClient):
         self._client = client
 
     def create(
         self,
         *,
         name: str,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
         **_: Any,
     ) -> Agent:
         """Create an agent identity."""
@@ -320,7 +320,7 @@ class AgentManager:
             raise ValueError(f"Agent {agent_id} not found")
         return self._client._agents[agent_id]
 
-    def list(self, *, limit: int = 100, offset: Optional[int] = None) -> List[Agent]:
+    def list(self, *, limit: int = 100, offset: int | None = None) -> builtins.list[Agent]:
         """List agents."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
             return self._client._prod_client.agents.list(limit=limit, offset=offset)
@@ -332,9 +332,9 @@ class AgentManager:
         self,
         agent_id: str,
         *,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Agent:
         """Update mutable agent fields."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
@@ -350,32 +350,32 @@ class AgentManager:
         if description is not None:
             agent.description = description
         if metadata is not None:
-            setattr(agent, "metadata", metadata)
+            agent.metadata = metadata
         return agent
 
 
 class WalletManager:
     """client.wallets namespace."""
 
-    def __init__(self, client: "SardisClient"):
+    def __init__(self, client: SardisClient):
         self._client = client
 
     def create(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         *,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         mpc_provider: str = "local",
         account_type: str = "mpc_v1",
         chain: str = "base",
-        currency: Optional[str] = None,
-        token: Optional[str] = None,
-        policy: Optional[str] = None,
-        group_id: Optional[str] = None,
+        currency: str | None = None,
+        token: str | None = None,
+        policy: str | None = None,
+        group_id: str | None = None,
         initial_balance: float = 1000,
         limit_per_tx: float | Decimal = 100,
         limit_total: float | Decimal = 10000,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Any:
         """Create a wallet in simulation mode or delegate to production SDK."""
         token_value = token or currency or "USDC"
@@ -453,7 +453,7 @@ class WalletManager:
             "remaining": float(wallet.remaining_limit()),
         })
 
-    def list(self, *, agent_id: Optional[str] = None, limit: int = 100) -> List[Any]:
+    def list(self, *, agent_id: str | None = None, limit: int = 100) -> builtins.list[Any]:
         """List wallets."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
             return self._client._prod_client.wallets.list(agent_id=agent_id, limit=limit)
@@ -471,7 +471,7 @@ class WalletManager:
         token: str = "USDC",
         chain: str = "base_sepolia",
         domain: str = "localhost",
-        memo: Optional[str] = None,
+        memo: str | None = None,
     ) -> Any:
         """Transfer stablecoins from a wallet."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
@@ -500,7 +500,7 @@ class WalletManager:
 class PaymentManager:
     """client.payments namespace."""
 
-    def __init__(self, client: "SardisClient"):
+    def __init__(self, client: SardisClient):
         self._client = client
 
     def send(
@@ -510,8 +510,8 @@ class PaymentManager:
         amount: float | str | Decimal,
         *,
         token: str = "USDC",
-        memo: Optional[str] = None,
-        purpose: Optional[str] = None,
+        memo: str | None = None,
+        purpose: str | None = None,
     ) -> TransactionResult:
         """Execute a payment with policy enforcement.
 
@@ -544,7 +544,7 @@ class PaymentManager:
                     from_wallet=wallet_id,
                     to=to,
                     currency=token,
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     message="Group budget limit exceeded",
                     policy_result=PolicyResult(
                         approved=False,
@@ -569,7 +569,7 @@ class PaymentManager:
 
         # Record in ledger
         self._client._ledger.append(LedgerEntry(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             agent_name=wallet.name,
             amount=amount_d,
             merchant=to,
@@ -592,21 +592,21 @@ class PaymentManager:
 class GroupManager:
     """client.groups namespace."""
 
-    def __init__(self, client: "SardisClient"):
+    def __init__(self, client: SardisClient):
         self._client = client
 
     def create(
         self,
         name: str,
         *,
-        budget: Optional[Dict[str, Any]] = None,
+        budget: dict[str, Any] | None = None,
         budget_per_tx: float | Decimal = 500,
         budget_daily: float | Decimal = 5000,
         budget_monthly: float | Decimal = 50000,
-        merchant_policy: Optional[Dict[str, Any]] = None,
-        policy: Optional[str] = None,
-        blocked_merchants: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        merchant_policy: dict[str, Any] | None = None,
+        policy: str | None = None,
+        blocked_merchants: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Any:
         """Create a new agent group with shared budget."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
@@ -667,7 +667,7 @@ class GroupManager:
         group.remove_agent(agent_id)
         return group
 
-    def get_spending(self, group_id: str) -> Dict[str, Any]:
+    def get_spending(self, group_id: str) -> dict[str, Any]:
         """Return spending summary for a group."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
             return self._client._prod_client.groups.get_spending(group_id)
@@ -688,7 +688,7 @@ class GroupManager:
             "tx_count_daily": group.tx_count_daily,
         }
 
-    def get_status(self, group_id: str) -> Dict[str, Any]:
+    def get_status(self, group_id: str) -> dict[str, Any]:
         """Backward-compatible alias for group status."""
         if not self._client._simulation and hasattr(self._client, "_prod_client"):
             return self.get_spending(group_id)
@@ -708,16 +708,16 @@ class GroupManager:
 class LedgerManager:
     """client.ledger namespace."""
 
-    def __init__(self, client: "SardisClient"):
+    def __init__(self, client: SardisClient):
         self._client = client
 
     def list(
         self,
         *,
-        group_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        group_id: str | None = None,
+        wallet_id: str | None = None,
         limit: int = 50,
-    ) -> List[Any]:
+    ) -> builtins.list[Any]:
         """List ledger entries.
 
         Args:
@@ -745,10 +745,10 @@ class LedgerManager:
     def list_entries(
         self,
         *,
-        group_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        group_id: str | None = None,
+        wallet_id: str | None = None,
         limit: int = 50,
-    ) -> List[Any]:
+    ) -> builtins.list[Any]:
         """Compatibility alias used by framework examples."""
         return self.list(group_id=group_id, wallet_id=wallet_id, limit=limit)
 
@@ -786,25 +786,25 @@ class SardisClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         *,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
     ):
         self.api_key = api_key
         self.base_url = base_url
         self._simulation = True
 
         # Internal state for simulation mode
-        self._agents: Dict[str, Agent] = {}
-        self._wallets: Dict[str, ManagedWallet] = {}
-        self._groups: Dict[str, ManagedGroup] = {}
-        self._ledger: List[LedgerEntry] = []
+        self._agents: dict[str, Agent] = {}
+        self._wallets: dict[str, ManagedWallet] = {}
+        self._groups: dict[str, ManagedGroup] = {}
+        self._ledger: list[LedgerEntry] = []
 
         # Try to use production SDK if available and key looks real
         if api_key and api_key.startswith("sk_") and not api_key.startswith(("sk_test", "sk_demo")):
             try:
                 from sardis_sdk import SardisClient as _ProdClient
-                client_kwargs: Dict[str, Any] = {"api_key": api_key}
+                client_kwargs: dict[str, Any] = {"api_key": api_key}
                 if base_url:
                     client_kwargs["base_url"] = base_url
                 self._prod_client = _ProdClient(**client_kwargs)

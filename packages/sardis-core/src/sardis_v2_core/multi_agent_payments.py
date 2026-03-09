@@ -49,10 +49,10 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Protocol
 from uuid import uuid4
 
 from .mandates import PaymentMandate, VCProof
@@ -123,21 +123,21 @@ class PaymentLeg:
     token: str = "USDC"
     chain: str = "base"
     state: PaymentLegState = PaymentLegState.PENDING
-    tx_hash: Optional[str] = None
-    block_number: Optional[int] = None
-    explorer_url: Optional[str] = None
-    execution_path: Optional[str] = None
-    user_op_hash: Optional[str] = None
-    trust_approved: Optional[bool] = None
-    trust_reason: Optional[str] = None
-    trust_score: Optional[float] = None
-    error: Optional[str] = None
+    tx_hash: str | None = None
+    block_number: int | None = None
+    explorer_url: str | None = None
+    execution_path: str | None = None
+    user_op_hash: str | None = None
+    trust_approved: bool | None = None
+    trust_reason: str | None = None
+    trust_score: float | None = None
+    error: str | None = None
     order: int = 0  # Execution order for cascading
-    condition: Optional[str] = None  # Condition for cascading
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    condition: str | None = None  # Condition for cascading
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "payer_id": self.payer_id,
@@ -165,15 +165,15 @@ class PaymentFlow:
     id: str = field(default_factory=lambda: f"flow_{uuid4().hex[:12]}")
     flow_type: PaymentFlowType = PaymentFlowType.SPLIT
     state: FlowState = FlowState.CREATED
-    legs: List[PaymentLeg] = field(default_factory=list)
+    legs: list[PaymentLeg] = field(default_factory=list)
     total_amount: Decimal = Decimal("0")
     token: str = "USDC"
     chain: str = "base"
-    description: Optional[str] = None
+    description: str | None = None
     created_by: str = ""
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def completed_legs(self) -> int:
@@ -193,7 +193,7 @@ class PaymentFlow:
             return 0.0
         return self.completed_legs / len(self.legs)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "flow_type": self.flow_type.value,
@@ -224,15 +224,15 @@ class PaymentOrchestrator:
     def __init__(
         self,
         *,
-        chain_executor: Optional[ChainExecutorPort] = None,
-        wallet_repo: Optional[WalletRepositoryPort] = None,
-        trust_evaluator: Optional[TrustEvaluatorPort] = None,
+        chain_executor: ChainExecutorPort | None = None,
+        wallet_repo: WalletRepositoryPort | None = None,
+        trust_evaluator: TrustEvaluatorPort | None = None,
         domain: str = "sardis.sh",
-        require_chain_execution: Optional[bool] = None,
+        require_chain_execution: bool | None = None,
         enforce_trust: bool = False,
         trust_operation: str = "payment",
     ) -> None:
-        self._flows: Dict[str, PaymentFlow] = {}
+        self._flows: dict[str, PaymentFlow] = {}
         self._chain_executor = chain_executor
         self._wallet_repo = wallet_repo
         self._trust_evaluator = trust_evaluator
@@ -248,11 +248,11 @@ class PaymentOrchestrator:
     def configure_execution_dependencies(
         self,
         *,
-        chain_executor: Optional[ChainExecutorPort] = None,
-        wallet_repo: Optional[WalletRepositoryPort] = None,
-        trust_evaluator: Optional[TrustEvaluatorPort] = None,
-        domain: Optional[str] = None,
-        enforce_trust: Optional[bool] = None,
+        chain_executor: ChainExecutorPort | None = None,
+        wallet_repo: WalletRepositoryPort | None = None,
+        trust_evaluator: TrustEvaluatorPort | None = None,
+        domain: str | None = None,
+        enforce_trust: bool | None = None,
     ) -> None:
         """Inject/replace execution dependencies at runtime."""
         if chain_executor is not None:
@@ -269,11 +269,11 @@ class PaymentOrchestrator:
     async def create_split_payment(
         self,
         payer_id: str,
-        recipients: List[Tuple[str, Decimal]],
+        recipients: list[tuple[str, Decimal]],
         total_amount: Decimal,
         token: str = "USDC",
         chain: str = "base",
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> PaymentFlow:
         """Create a split payment from one payer to multiple recipients.
 
@@ -293,7 +293,7 @@ class PaymentOrchestrator:
         total_shares = sum(share for _, share in recipients)
         is_proportional = total_shares <= Decimal("1.01")
 
-        legs: List[PaymentLeg] = []
+        legs: list[PaymentLeg] = []
         allocated = Decimal("0")
 
         for i, (recipient_id, share) in enumerate(recipients):
@@ -334,11 +334,11 @@ class PaymentOrchestrator:
 
     async def create_group_payment(
         self,
-        payers: List[Tuple[str, Decimal]],
+        payers: list[tuple[str, Decimal]],
         recipient_id: str,
         token: str = "USDC",
         chain: str = "base",
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> PaymentFlow:
         """Create a group payment from multiple payers to one recipient.
 
@@ -383,10 +383,10 @@ class PaymentOrchestrator:
 
     async def create_cascade_payment(
         self,
-        steps: List[Dict[str, Any]],
+        steps: list[dict[str, Any]],
         token: str = "USDC",
         chain: str = "base",
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> PaymentFlow:
         """Create a cascading payment chain.
 
@@ -439,7 +439,7 @@ class PaymentOrchestrator:
 
     async def create_round_robin(
         self,
-        participants: List[str],
+        participants: list[str],
         amount_per_round: Decimal,
         recipient_id: str,
         rounds: int = 1,
@@ -525,7 +525,7 @@ class PaymentOrchestrator:
             flow.state = FlowState.FAILED
         elif flow.completed_legs == len(flow.legs):
             flow.state = FlowState.COMPLETED
-            flow.completed_at = datetime.now(timezone.utc)
+            flow.completed_at = datetime.now(UTC)
 
         return flow
 
@@ -594,7 +594,7 @@ class PaymentOrchestrator:
         # Default: condition met
         return True
 
-    async def execute_next_leg(self, flow_id: str) -> Optional[PaymentLeg]:
+    async def execute_next_leg(self, flow_id: str) -> PaymentLeg | None:
         """Execute the next pending leg in a flow (for round-robin)."""
         flow = self._flows.get(flow_id)
         if not flow:
@@ -631,16 +631,16 @@ class PaymentOrchestrator:
         logger.info("Flow cancelled", extra={"flow_id": flow_id, "reason": reason})
         return flow
 
-    async def get_flow(self, flow_id: str) -> Optional[PaymentFlow]:
+    async def get_flow(self, flow_id: str) -> PaymentFlow | None:
         """Get a payment flow by ID."""
         return self._flows.get(flow_id)
 
     async def list_flows(
         self,
-        agent_id: Optional[str] = None,
-        flow_type: Optional[PaymentFlowType] = None,
-        state: Optional[FlowState] = None,
-    ) -> List[PaymentFlow]:
+        agent_id: str | None = None,
+        flow_type: PaymentFlowType | None = None,
+        state: FlowState | None = None,
+    ) -> list[PaymentFlow]:
         """List payment flows with optional filters."""
         flows = list(self._flows.values())
 
@@ -673,7 +673,7 @@ class PaymentOrchestrator:
                 logger.warning("Using simulated tx_hash for multi-agent payment leg (non-prod)")
                 leg.tx_hash = self._simulated_tx_hash(flow.id, leg.id)
             leg.state = PaymentLegState.COMPLETED
-            leg.completed_at = datetime.now(timezone.utc)
+            leg.completed_at = datetime.now(UTC)
             logger.info(
                 "Payment leg completed",
                 extra={
@@ -792,7 +792,7 @@ class PaymentOrchestrator:
     @staticmethod
     def _normalize_trust_decision(
         decision: Any,
-    ) -> tuple[bool, Optional[str], Optional[float]]:
+    ) -> tuple[bool, str | None, float | None]:
         if isinstance(decision, bool):
             return decision, None if decision else "trust_evaluation_denied", None
         if isinstance(decision, dict):
@@ -806,7 +806,7 @@ class PaymentOrchestrator:
         return approved, reason, float(score) if score is not None else None
 
 
-def _explorer_url(chain: str, tx_hash: str) -> Optional[str]:
+def _explorer_url(chain: str, tx_hash: str) -> str | None:
     chain_key = (chain or "").strip().lower()
     if chain_key in {"base", "base-mainnet"}:
         return f"https://basescan.org/tx/{tx_hash}"

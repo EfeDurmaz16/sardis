@@ -9,16 +9,16 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
 class MerkleNode:
     """Node in a Merkle tree."""
     hash: str
-    left: Optional[MerkleNode] = None
-    right: Optional[MerkleNode] = None
-    data: Optional[bytes] = None  # Only leaf nodes have data
+    left: MerkleNode | None = None
+    right: MerkleNode | None = None
+    data: bytes | None = None  # Only leaf nodes have data
 
     def is_leaf(self) -> bool:
         """Check if this is a leaf node."""
@@ -44,7 +44,7 @@ class MerkleTree:
             hash_function: Hash function name (sha256, sha3_256, blake2b)
         """
         self.hash_function = hash_function
-        self._root: Optional[MerkleNode] = None
+        self._root: MerkleNode | None = None
         self._leaves: list[MerkleNode] = []
         self._leaf_count = 0
 
@@ -107,10 +107,7 @@ class MerkleTree:
                 left = current_level[i]
 
                 # If odd number of nodes, duplicate last node
-                if i + 1 >= len(current_level):
-                    right = left
-                else:
-                    right = current_level[i + 1]
+                right = left if i + 1 >= len(current_level) else current_level[i + 1]
 
                 # Create parent node
                 parent_hash = self._hash_pair(left.hash, right.hash)

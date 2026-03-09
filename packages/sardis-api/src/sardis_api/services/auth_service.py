@@ -12,7 +12,7 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +236,7 @@ class AuthService:
 
         return raw_key, key_id
 
-    async def verify_api_key(self, raw_key: str) -> Optional[dict[str, Any]]:
+    async def verify_api_key(self, raw_key: str) -> dict[str, Any] | None:
         """Verify an API key and return user/org info."""
         key_hash = _hash_api_key(raw_key)
 

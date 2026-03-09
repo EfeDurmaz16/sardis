@@ -82,7 +82,33 @@ select = [
 ignore = [
     "PLR0913",  # Too many arguments
     "PLR2004",  # Magic value comparison
+    "B008",     # Depends() in defaults, standard FastAPI pattern
+    "B904",     # raise from, too noisy for existing code
+    "E402",     # module-level import order, conditional imports
+    "N806",     # variable in function should be lowercase
+    "N801",     # class name should use CapWords
+    "N818",     # exception name should end with Error
+    "E501",     # line too long
+    "B017",     # assertRaises(Exception) too broad
+    "E741",     # ambiguous variable name
+    "E722",     # bare except
+    "N802",     # function name should be lowercase
+    "B027",     # empty method in abstract base class
+    "SIM102",   # collapsible if statements
+    "SIM105",   # use contextlib.suppress
+    "SIM108",   # ternary operator
+    "SIM113",   # use enumerate
+    "SIM103",   # return condition directly
+    "SIM117",   # merge with statements
+    "PLC0415",  # import outside top-level
+    "PLR0912",  # too many branches
+    "PLR0915",  # too many statements
+    "PLR0911",  # too many return statements
+    "UP035",    # deprecated import
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "F811"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["sardis_langchain"]

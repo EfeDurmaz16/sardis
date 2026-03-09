@@ -2,20 +2,19 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-
 from sardis_v2_core.organizations import (
+    MemberRole,
     Organization,
-    Team,
-    OrgMember,
     OrganizationManager,
     OrganizationPlan,
-    MemberRole,
+    OrgMember,
+    Team,
 )
 from sardis_v2_core.rbac import Permission, RBACEngine
+
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(prefix="/api/v2/orgs", tags=["organizations"])
@@ -28,18 +27,18 @@ class CreateOrganizationRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     slug: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-z0-9-]+$")
     plan: str = Field(default=OrganizationPlan.FREE)
-    billing_email: Optional[str] = None
-    settings: Optional[dict] = None
-    metadata: Optional[dict] = None
+    billing_email: str | None = None
+    settings: dict | None = None
+    metadata: dict | None = None
 
 
 class UpdateOrganizationRequest(BaseModel):
     """Request to update organization details."""
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    plan: Optional[str] = None
-    billing_email: Optional[str] = None
-    settings: Optional[dict] = None
-    metadata: Optional[dict] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    plan: str | None = None
+    billing_email: str | None = None
+    settings: dict | None = None
+    metadata: dict | None = None
 
 
 class OrganizationResponse(BaseModel):
@@ -48,15 +47,15 @@ class OrganizationResponse(BaseModel):
     name: str
     slug: str
     plan: str
-    billing_email: Optional[str]
-    subscription_status: Optional[str]
+    billing_email: str | None
+    subscription_status: str | None
     settings: dict
     metadata: dict
     created_at: str
     updated_at: str
 
     @classmethod
-    def from_org(cls, org: Organization) -> "OrganizationResponse":
+    def from_org(cls, org: Organization) -> OrganizationResponse:
         return cls(
             id=org.id,
             name=org.name,
@@ -74,18 +73,18 @@ class OrganizationResponse(BaseModel):
 class CreateTeamRequest(BaseModel):
     """Request to create a new team."""
     name: str = Field(..., min_length=1, max_length=100)
-    parent_team_id: Optional[str] = None
-    budget_limit: Optional[Decimal] = None
-    description: Optional[str] = None
-    metadata: Optional[dict] = None
+    parent_team_id: str | None = None
+    budget_limit: Decimal | None = None
+    description: str | None = None
+    metadata: dict | None = None
 
 
 class UpdateTeamRequest(BaseModel):
     """Request to update team details."""
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    budget_limit: Optional[Decimal] = None
-    description: Optional[str] = None
-    metadata: Optional[dict] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    budget_limit: Decimal | None = None
+    description: str | None = None
+    metadata: dict | None = None
 
 
 class TeamResponse(BaseModel):
@@ -93,15 +92,15 @@ class TeamResponse(BaseModel):
     id: str
     org_id: str
     name: str
-    parent_team_id: Optional[str]
-    budget_limit: Optional[str]  # Returned as string to preserve precision
-    description: Optional[str]
+    parent_team_id: str | None
+    budget_limit: str | None  # Returned as string to preserve precision
+    description: str | None
     metadata: dict
     created_at: str
     updated_at: str
 
     @classmethod
-    def from_team(cls, team: Team) -> "TeamResponse":
+    def from_team(cls, team: Team) -> TeamResponse:
         return cls(
             id=team.id,
             org_id=team.org_id,
@@ -119,13 +118,13 @@ class InviteMemberRequest(BaseModel):
     """Request to invite a member to an organization."""
     user_id: str
     role: str = Field(default=MemberRole.VIEWER)
-    teams: Optional[List[str]] = None
+    teams: list[str] | None = None
 
 
 class UpdateMemberRequest(BaseModel):
     """Request to update member role or team assignments."""
-    role: Optional[str] = None
-    teams: Optional[List[str]] = None
+    role: str | None = None
+    teams: list[str] | None = None
 
 
 class MemberResponse(BaseModel):
@@ -134,15 +133,15 @@ class MemberResponse(BaseModel):
     org_id: str
     user_id: str
     role: str
-    teams: List[str]
-    invited_by: Optional[str]
+    teams: list[str]
+    invited_by: str | None
     invited_at: str
-    joined_at: Optional[str]
+    joined_at: str | None
     invite_accepted: bool
     metadata: dict
 
     @classmethod
-    def from_member(cls, member: OrgMember) -> "MemberResponse":
+    def from_member(cls, member: OrgMember) -> MemberResponse:
         return cls(
             id=member.id,
             org_id=member.org_id,
@@ -311,10 +310,10 @@ async def update_organization(
 
 # ========== Team Endpoints ==========
 
-@router.get("/{org_id}/teams", response_model=List[TeamResponse])
+@router.get("/{org_id}/teams", response_model=list[TeamResponse])
 async def list_teams(
     org_id: str,
-    parent_team_id: Optional[str] = None,
+    parent_team_id: str | None = None,
     org_manager: OrganizationManager = Depends(get_org_manager),
     principal: Principal = Depends(require_principal),
 ):
@@ -466,7 +465,7 @@ async def delete_team(
 
 # ========== Member Endpoints ==========
 
-@router.get("/{org_id}/members", response_model=List[MemberResponse])
+@router.get("/{org_id}/members", response_model=list[MemberResponse])
 async def list_members(
     org_id: str,
     org_manager: OrganizationManager = Depends(get_org_manager),
@@ -693,7 +692,7 @@ async def get_spending_summary(
     )
 
 
-@router.get("/{org_id}/agents", response_model=List[str])
+@router.get("/{org_id}/agents", response_model=list[str])
 async def list_org_agents(
     org_id: str,
     org_manager: OrganizationManager = Depends(get_org_manager),

@@ -17,10 +17,11 @@ import logging
 import random
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, List, Optional, Set, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class RetryConfig:
     jitter_factor: float = 0.1  # Random jitter as fraction of delay
     backoff_multiplier: float = 2.0  # For exponential backoff
     retryable_exceptions: tuple = (Exception,)  # Which exceptions to retry
-    retryable_status_codes: Set[int] = field(default_factory=lambda: {429, 500, 502, 503, 504})
+    retryable_status_codes: set[int] = field(default_factory=lambda: {429, 500, 502, 503, 504})
     timeout_seconds: float = 30.0  # Per-request timeout
 
 
@@ -77,13 +78,13 @@ class RateLimitConfig:
 class RetryResult(Generic[T]):
     """Result of a retried operation."""
     success: bool
-    value: Optional[T] = None
-    error: Optional[Exception] = None
+    value: T | None = None
+    error: Exception | None = None
     attempts: int = 0
     total_time_seconds: float = 0.0
     final_delay_seconds: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "success": self.success,
@@ -147,14 +148,14 @@ class CircuitBreaker:
     def __init__(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
     ):
         self._name = name
         self._config = config or CircuitBreakerConfig()
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[datetime] = None
+        self._last_failure_time: datetime | None = None
         self._half_open_calls = 0
         self._lock = threading.Lock()
 
@@ -176,7 +177,7 @@ class CircuitBreaker:
         if self._state == CircuitState.OPEN:
             # Check if timeout has passed
             if self._last_failure_time:
-                elapsed = (datetime.now(timezone.utc) - self._last_failure_time).total_seconds()
+                elapsed = (datetime.now(UTC) - self._last_failure_time).total_seconds()
                 if elapsed >= self._config.timeout_seconds:
                     logger.info(f"Circuit breaker {self._name}: OPEN -> HALF_OPEN")
                     self._state = CircuitState.HALF_OPEN
@@ -200,7 +201,7 @@ class CircuitBreaker:
         """Record a failed call."""
         with self._lock:
             self._failure_count += 1
-            self._last_failure_time = datetime.now(timezone.utc)
+            self._last_failure_time = datetime.now(UTC)
 
             if self._state == CircuitState.HALF_OPEN:
                 logger.warning(f"Circuit breaker {self._name}: HALF_OPEN -> OPEN (failure during recovery)")
@@ -234,7 +235,7 @@ class CircuitBreaker:
 
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get circuit breaker statistics."""
         return {
             "name": self._name,
@@ -255,7 +256,7 @@ class RateLimiter:
     def __init__(
         self,
         name: str,
-        config: Optional[RateLimitConfig] = None,
+        config: RateLimitConfig | None = None,
     ):
         self._name = name
         self._config = config or RateLimitConfig()
@@ -311,7 +312,7 @@ class RateLimiter:
             wait_time = tokens / self._config.requests_per_second
             await asyncio.sleep(wait_time)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get rate limiter statistics."""
         with self._lock:
             self._refill()
@@ -333,8 +334,8 @@ class RequestDeduplicator:
 
     def __init__(self, ttl_seconds: float = 60.0):
         self._ttl_seconds = ttl_seconds
-        self._pending: Dict[str, asyncio.Future] = {}
-        self._results: Dict[str, tuple[Any, datetime]] = {}
+        self._pending: dict[str, asyncio.Future] = {}
+        self._results: dict[str, tuple[Any, datetime]] = {}
         self._lock = asyncio.Lock()
 
     def _make_key(self, func_name: str, args: tuple, kwargs: dict) -> str:
@@ -359,7 +360,7 @@ class RequestDeduplicator:
             # Check for cached result
             if key in self._results:
                 result, cached_at = self._results[key]
-                age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+                age = (datetime.now(UTC) - cached_at).total_seconds()
                 if age < self._ttl_seconds:
                     logger.debug(f"Request dedupe: returning cached result for {func.__name__}")
                     return result
@@ -382,7 +383,7 @@ class RequestDeduplicator:
 
             # Cache result
             async with self._lock:
-                self._results[key] = (result, datetime.now(timezone.utc))
+                self._results[key] = (result, datetime.now(UTC))
                 future.set_result(result)
                 del self._pending[key]
 
@@ -411,9 +412,9 @@ class RetryableClient:
     def __init__(
         self,
         name: str,
-        retry_config: Optional[RetryConfig] = None,
-        circuit_config: Optional[CircuitBreakerConfig] = None,
-        rate_config: Optional[RateLimitConfig] = None,
+        retry_config: RetryConfig | None = None,
+        circuit_config: CircuitBreakerConfig | None = None,
+        rate_config: RateLimitConfig | None = None,
         enable_dedup: bool = True,
     ):
         """
@@ -532,7 +533,7 @@ class RetryableClient:
                     final_delay_seconds=last_delay,
                 )
 
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 last_exception = e
                 logger.warning(
                     f"{self._name}: Request timeout (attempt {attempt + 1}/{self._retry_config.max_retries + 1})"
@@ -592,7 +593,7 @@ class RetryableClient:
 
         return wrapper
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get client statistics."""
         return {
             "name": self._name,
@@ -665,9 +666,9 @@ def retry(
 
 def create_retryable_client(
     name: str,
-    retry_config: Optional[RetryConfig] = None,
-    circuit_config: Optional[CircuitBreakerConfig] = None,
-    rate_config: Optional[RateLimitConfig] = None,
+    retry_config: RetryConfig | None = None,
+    circuit_config: CircuitBreakerConfig | None = None,
+    rate_config: RateLimitConfig | None = None,
 ) -> RetryableClient:
     """Factory function to create a RetryableClient."""
     return RetryableClient(

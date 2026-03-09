@@ -9,23 +9,18 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
-import json
 import os
-import pytest
+import sys
 import time
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from dataclasses import dataclass
+from pathlib import Path
+from unittest.mock import patch
 
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import Response, JSONResponse
-from httpx import AsyncClient, ASGITransport
-
-import sys
-from pathlib import Path
+from httpx import ASGITransport, AsyncClient
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -36,15 +31,15 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_api.middleware.security import (
-    SecurityConfig,
-    SecurityHeadersMiddleware,
-    RequestBodyLimitMiddleware,
-    RequestIdMiddleware,
-    WebhookSignatureVerifier,
-    verify_webhook_signature,
     API_VERSION,
     SECURITY_HEADERS_PERMISSIVE,
     SECURITY_HEADERS_STRICT,
+    RequestBodyLimitMiddleware,
+    RequestIdMiddleware,
+    SecurityConfig,
+    SecurityHeadersMiddleware,
+    WebhookSignatureVerifier,
+    verify_webhook_signature,
 )
 
 
@@ -526,7 +521,7 @@ class TestVerifyWebhookSignatureFunction:
         header = f"t={timestamp},v1={expected_sig}"
 
         with patch.dict(os.environ, {"WEBHOOK_SECRET": secret}):
-            is_valid = verify_webhook_signature(header, payload)
+            verify_webhook_signature(header, payload)
             # Note: May need to adjust based on actual implementation
             # assert is_valid is True
 

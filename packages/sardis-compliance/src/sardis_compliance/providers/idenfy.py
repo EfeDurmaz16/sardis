@@ -20,21 +20,20 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sardis_compliance.kyc import (
+    InquirySession,
     KYCProvider,
     KYCResult,
     KYCStatus,
-    InquirySession,
     VerificationRequest,
 )
 from sardis_compliance.retry import (
-    create_retryable_client,
-    RetryConfig,
     CircuitBreakerConfig,
     RateLimitConfig,
+    RetryConfig,
+    create_retryable_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,7 +55,7 @@ class IdenfyKYCProvider(KYCProvider):
         self,
         api_key: str,
         api_secret: str,
-        webhook_secret: Optional[str] = None,
+        webhook_secret: str | None = None,
         environment: str = "sandbox",
     ):
         """
@@ -167,7 +166,7 @@ class IdenfyKYCProvider(KYCProvider):
         expires_at = None
         if expiry_time:
             try:
-                expires_at = datetime.fromtimestamp(expiry_time, tz=timezone.utc)
+                expires_at = datetime.fromtimestamp(expiry_time, tz=UTC)
             except Exception as e:
                 logger.warning(f"Failed to parse iDenfy expiry time: {e}")
 
@@ -215,7 +214,7 @@ class IdenfyKYCProvider(KYCProvider):
         finish_time = result.get("finishTime")
         if finish_time:
             try:
-                verified_at = datetime.fromtimestamp(finish_time, tz=timezone.utc)
+                verified_at = datetime.fromtimestamp(finish_time, tz=UTC)
             except Exception as e:
                 logger.warning(f"Failed to parse iDenfy finish time: {e}")
 

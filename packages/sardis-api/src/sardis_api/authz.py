@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 from fastapi import Depends, HTTPException, Request, status
 
@@ -27,8 +27,8 @@ class Principal:
     kind: Literal["api_key", "jwt"]
     organization_id: str
     scopes: list[str]
-    user: Optional[UserInfo] = None
-    api_key: Optional[APIKey] = None
+    user: UserInfo | None = None
+    api_key: APIKey | None = None
 
     @property
     def is_admin(self) -> bool:
@@ -39,8 +39,8 @@ class Principal:
 
 async def require_principal(
     request: Request,
-    api_key: Optional[APIKey] = Depends(get_api_key),
-    user: Optional[UserInfo] = Depends(get_current_user),
+    api_key: APIKey | None = Depends(get_api_key),
+    user: UserInfo | None = Depends(get_current_user),
 ) -> Principal:
     """
     Require either API key or JWT.

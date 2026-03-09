@@ -1,16 +1,14 @@
 """Tests for settlement tracking and reconciliation."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.settlement import (
     InMemorySettlementStore,
     SettlementMode,
-    SettlementRecord,
     SettlementReconciler,
+    SettlementRecord,
     SettlementStatus,
 )
 

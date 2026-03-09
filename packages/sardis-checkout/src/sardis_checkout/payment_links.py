@@ -6,20 +6,18 @@ that can be shared with customers for completing payments.
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 import secrets
 import string
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
-import uuid
+from typing import Any
 
 from sardis_checkout.models import (
-    PaymentLink,
-    PaymentStatus,
     DEFAULT_PAYMENT_LINK_EXPIRATION_HOURS,
+    PaymentLink,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,12 +57,12 @@ class PaymentLinkStore(ABC):
         pass
 
     @abstractmethod
-    async def get(self, link_id: str) -> Optional[PaymentLink]:
+    async def get(self, link_id: str) -> PaymentLink | None:
         """Get a payment link by ID."""
         pass
 
     @abstractmethod
-    async def get_by_checkout(self, checkout_id: str) -> List[PaymentLink]:
+    async def get_by_checkout(self, checkout_id: str) -> list[PaymentLink]:
         """Get all payment links for a checkout."""
         pass
 
@@ -79,7 +77,7 @@ class PaymentLinkStore(ABC):
         pass
 
     @abstractmethod
-    async def find_by_short_code(self, short_code: str) -> Optional[PaymentLink]:
+    async def find_by_short_code(self, short_code: str) -> PaymentLink | None:
         """Find a payment link by its short code."""
         pass
 
@@ -98,8 +96,8 @@ class InMemoryPaymentLinkStore(PaymentLinkStore):
     """
 
     def __init__(self):
-        self._links: Dict[str, PaymentLink] = {}
-        self._short_codes: Dict[str, str] = {}  # short_code -> link_id
+        self._links: dict[str, PaymentLink] = {}
+        self._short_codes: dict[str, str] = {}  # short_code -> link_id
 
     async def create(self, link: PaymentLink) -> PaymentLink:
         self._links[link.link_id] = link
@@ -109,10 +107,10 @@ class InMemoryPaymentLinkStore(PaymentLinkStore):
             self._short_codes[short_code] = link.link_id
         return link
 
-    async def get(self, link_id: str) -> Optional[PaymentLink]:
+    async def get(self, link_id: str) -> PaymentLink | None:
         return self._links.get(link_id)
 
-    async def get_by_checkout(self, checkout_id: str) -> List[PaymentLink]:
+    async def get_by_checkout(self, checkout_id: str) -> list[PaymentLink]:
         return [
             link for link in self._links.values()
             if link.checkout_id == checkout_id
@@ -132,7 +130,7 @@ class InMemoryPaymentLinkStore(PaymentLinkStore):
             return True
         return False
 
-    async def find_by_short_code(self, short_code: str) -> Optional[PaymentLink]:
+    async def find_by_short_code(self, short_code: str) -> PaymentLink | None:
         link_id = self._short_codes.get(short_code)
         if link_id:
             return self._links.get(link_id)
@@ -193,10 +191,10 @@ class PaymentLinkManager:
         checkout_id: str,
         amount: Decimal,
         currency: str,
-        description: Optional[str] = None,
-        expiration_hours: Optional[int] = None,
+        description: str | None = None,
+        expiration_hours: int | None = None,
         max_uses: int = 1,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PaymentLink:
         """
         Create a new payment link for a checkout session.
@@ -250,7 +248,7 @@ class PaymentLinkManager:
             raise PaymentLinkNotFound(f"Payment link {link_id} not found")
         return link
 
-    async def get_checkout_links(self, checkout_id: str) -> List[PaymentLink]:
+    async def get_checkout_links(self, checkout_id: str) -> list[PaymentLink]:
         """Get all payment links for a checkout session."""
         return await self.store.get_by_checkout(checkout_id)
 
@@ -390,7 +388,7 @@ class PaymentLinkManager:
         await self.store.update(link)
         return link
 
-    async def get_link_status(self, link_id: str) -> Dict[str, Any]:
+    async def get_link_status(self, link_id: str) -> dict[str, Any]:
         """
         Get the current status of a payment link.
 

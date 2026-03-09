@@ -10,9 +10,9 @@ Tests the complete approval workflow including:
 Run with: pytest tests/e2e/test_approval_e2e.py -v
 """
 import os
-import pytest
-from datetime import datetime, timezone
 from decimal import Decimal
+
+import pytest
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -25,8 +25,8 @@ class TestApprovalFlow:
     async def test_create_approval_request(self, api_key, api_url):
         """Should create an approval request for high-value payment."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
             from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
 
             # Create approval repository
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
@@ -64,8 +64,8 @@ class TestApprovalFlow:
     async def test_approve_request(self, api_key, api_url):
         """Should approve a pending approval request."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
             from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -99,8 +99,8 @@ class TestApprovalFlow:
     async def test_deny_request(self, api_key, api_url):
         """Should deny a pending approval request."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
             from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -139,10 +139,10 @@ class TestApprovalWebhooks:
     async def test_webhook_on_approval_created(self, api_key, api_url):
         """Should send webhook when approval is created."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.approval_repository import ApprovalRepository
             from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.webhooks import WebhookService, WebhookRepository
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
+            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -204,10 +204,10 @@ class TestApprovalWebhooks:
     async def test_webhook_on_approval_approved(self, api_key, api_url):
         """Should send webhook when approval is approved."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.approval_repository import ApprovalRepository
             from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.webhooks import WebhookService, WebhookRepository
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
+            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -256,10 +256,10 @@ class TestApprovalWebhooks:
     async def test_webhook_on_approval_denied(self, api_key, api_url):
         """Should send webhook when approval is denied."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.approval_repository import ApprovalRepository
             from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.webhooks import WebhookService, WebhookRepository
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
+            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -313,9 +313,10 @@ class TestApprovalExpiration:
     async def test_expire_pending_approvals(self, api_key, api_url):
         """Should expire approvals past their expiration time."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.approval_repository import ApprovalRepository
             from datetime import timedelta
+
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -334,7 +335,7 @@ class TestApprovalExpiration:
 
             # Manually expire pending approvals
             # In production, this would be called by a background job
-            expired_count = await service.expire_pending()
+            await service.expire_pending()
 
             # Should not expire yet (expires in 1 hour)
             approval_after = await service.get_approval(approval.id)
@@ -347,10 +348,10 @@ class TestApprovalExpiration:
     async def test_webhook_on_expiration(self, api_key, api_url):
         """Should send webhook when approval expires."""
         try:
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.approval_repository import ApprovalRepository
             from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.webhooks import WebhookService, WebhookRepository
+            from sardis_v2_core.approval_repository import ApprovalRepository
+            from sardis_v2_core.approval_service import ApprovalService
+            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 

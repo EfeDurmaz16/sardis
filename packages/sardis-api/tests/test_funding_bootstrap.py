@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from sardis_v2_core.config import SardisSettings
 
 from sardis_api.main import create_app
-from sardis_v2_core.config import SardisSettings
 
 
 def test_funding_router_bootstraps_with_bridge_only() -> None:

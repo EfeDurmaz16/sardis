@@ -24,10 +24,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +73,11 @@ class StablecoinFinancialAccount:
     status: StablecoinAccountStatus = StablecoinAccountStatus.OPEN
     usdc_balance: Decimal = Decimal("0")
     usd_balance: Decimal = Decimal("0")
-    deposit_address: Optional[str] = None
+    deposit_address: str | None = None
     deposit_chain: str = "base"
-    supported_currencies: List[str] = field(default_factory=lambda: ["usdc", "usd"])
-    created_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    supported_currencies: list[str] = field(default_factory=lambda: ["usdc", "usd"])
+    created_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -88,10 +88,10 @@ class StablecoinDeposit:
     amount: Decimal
     currency: str = "usdc"
     chain: str = "base"
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     status: DepositStatus = DepositStatus.PENDING
-    confirmed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    confirmed_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -102,8 +102,8 @@ class StablecoinCardFunding:
     amount: Decimal
     from_currency: str = "usdc"
     status: FundingTransferStatus = FundingTransferStatus.PENDING
-    card_id: Optional[str] = None
-    created_at: Optional[datetime] = None
+    card_id: str | None = None
+    created_at: datetime | None = None
 
 
 class StripeStablecoinError(Exception):
@@ -150,10 +150,10 @@ class StripeStablecoinClient:
         self,
         business_name: str,
         *,
-        email: Optional[str] = None,
+        email: str | None = None,
         country: str = "US",
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Create a Stripe Connect account for an agent/organization.
 
         Each agent org gets its own connected account which holds
@@ -206,7 +206,7 @@ class StripeStablecoinClient:
         self,
         connected_account_id: str,
         *,
-        metadata: Optional[Dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> StablecoinFinancialAccount:
         """Create a Financial Account v2 with USDC support on Base.
 
@@ -251,7 +251,7 @@ class StripeStablecoinClient:
                 status=StablecoinAccountStatus.OPEN,
                 deposit_address=deposit_address,
                 deposit_chain="base",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 metadata=metadata or {},
             )
 
@@ -272,7 +272,7 @@ class StripeStablecoinClient:
         self,
         financial_account_id: str,
         connected_account_id: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get the USDC deposit address on Base for a financial account.
 
         Stripe assigns a unique Base address per financial account.
@@ -358,7 +358,7 @@ class StripeStablecoinClient:
         self,
         financial_account_id: str,
         connected_account_id: str,
-    ) -> Dict[str, Decimal]:
+    ) -> dict[str, Decimal]:
         """Get USDC and USD balances for a financial account.
 
         Returns:
@@ -380,9 +380,9 @@ class StripeStablecoinClient:
         connected_account_id: str,
         cardholder_id: str,
         *,
-        spending_limits: Optional[List[Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        spending_limits: list[dict[str, Any]] | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """Create a Visa prepaid card backed by stablecoin balance.
 
         The card draws from the USDC financial account balance.
@@ -442,9 +442,9 @@ class StripeStablecoinClient:
         *,
         name: str,
         email: str,
-        phone: Optional[str] = None,
-        billing_address: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        phone: str | None = None,
+        billing_address: dict[str, str] | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> str:
         """Create a cardholder on a connected account.
 
@@ -503,7 +503,7 @@ class StripeStablecoinClient:
         connected_account_id: str,
         *,
         limit: int = 20,
-    ) -> List[StablecoinDeposit]:
+    ) -> list[StablecoinDeposit]:
         """List USDC deposits received by a financial account.
 
         Monitors incoming USDC transfers on Base.
@@ -539,7 +539,7 @@ class StripeStablecoinClient:
                     tx_hash=credit_dict.get("network_details", {}).get("tx_hash"),
                     status=DepositStatus.CONFIRMED if credit_dict.get("status") == "succeeded" else DepositStatus.PENDING,
                     created_at=datetime.fromtimestamp(
-                        credit_dict.get("created", 0), tz=timezone.utc
+                        credit_dict.get("created", 0), tz=UTC
                     ) if credit_dict.get("created") else None,
                 ))
             return deposits
@@ -574,8 +574,8 @@ class StablecoinCardService:
         agent_name: str,
         email: str,
         *,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        wallet_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> StablecoinFinancialAccount:
         """Full onboarding: create connected account + financial account.
 
@@ -611,8 +611,8 @@ class StablecoinCardService:
         limit_per_tx: Decimal = Decimal("500"),
         limit_daily: Decimal = Decimal("2000"),
         limit_monthly: Decimal = Decimal("10000"),
-        wallet_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        wallet_id: str | None = None,
+    ) -> dict[str, Any]:
         """Create a cardholder and issue a stablecoin-backed virtual card.
 
         Args:
@@ -675,7 +675,7 @@ class StablecoinCardService:
         self,
         financial_account_id: str,
         connected_account_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get deposit instructions for funding the account with USDC.
 
         Returns the Base address where USDC should be sent,

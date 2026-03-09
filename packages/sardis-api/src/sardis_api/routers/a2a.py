@@ -10,33 +10,33 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
-from inspect import isawaitable
 import json
 import logging
 import os
 import time
 import uuid
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from inspect import isawaitable
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-
+from sardis_chain.executor import ChainExecutor
+from sardis_compliance.checks import ComplianceAuditEntry
+from sardis_ledger.records import LedgerStore
 from sardis_v2_core import AgentRepository, WalletRepository
 from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_chain.executor import ChainExecutor
-from sardis_ledger.records import LedgerStore
+from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+
 from sardis_api.authz import Principal, require_principal
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.operational_alerts import alert_payment_failure
 from sardis_api.payment_logger import log_payment_event
 from sardis_api.transaction_cap_dep import enforce_transaction_caps
-from sardis_api.kill_switch_dep import require_kill_switch_clear
-from sardis_api.idempotency import get_idempotency_key, run_idempotent
-from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.webhook_replay import run_with_replay_protection
-from sardis_compliance.checks import ComplianceAuditEntry
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,7 @@ def _check_a2a_trust_relation(sender_agent_id: str, recipient_agent_id: str) -> 
 
 async def _resolve_a2a_trust_table(
     *,
-    deps: "A2ADependencies",
+    deps: A2ADependencies,
     organization_id: str,
 ) -> tuple[dict[str, set[str]], str]:
     repo = getattr(deps, "trust_repo", None)
@@ -213,7 +213,7 @@ async def _resolve_a2a_trust_table(
 
 async def _check_a2a_trust_relation_with_deps(
     *,
-    deps: "A2ADependencies",
+    deps: A2ADependencies,
     organization_id: str,
     sender_agent_id: str,
     recipient_agent_id: str,
@@ -238,7 +238,7 @@ async def _check_a2a_trust_relation_with_deps(
 
 async def _append_a2a_trust_audit_entry(
     *,
-    deps: "A2ADependencies",
+    deps: A2ADependencies,
     organization_id: str,
     actor_org_id: str,
     action: str,
@@ -248,8 +248,8 @@ async def _append_a2a_trust_audit_entry(
     after_table_hash: str,
     source_before: str,
     source_after: str,
-    metadata: Optional[dict[str, Any]] = None,
-) -> Optional[str]:
+    metadata: dict[str, Any] | None = None,
+) -> str | None:
     if deps.audit_store is None:
         return None
     mandate_seed = (
@@ -284,13 +284,13 @@ async def _append_a2a_trust_audit_entry(
 
 async def _validate_single_trust_mutation_approval(
     *,
-    deps: "A2ADependencies",
+    deps: A2ADependencies,
     principal: Principal,
     operation: str,
     sender_agent_id: str,
     recipient_agent_id: str,
     approval_id: str,
-) -> tuple[bool, str, Optional[str]]:
+) -> tuple[bool, str, str | None]:
     if not approval_id:
         return False, "approval_required", None
     if deps.approval_service is None:
@@ -329,13 +329,13 @@ async def _validate_single_trust_mutation_approval(
 
 async def _validate_trust_mutation_approvals(
     *,
-    deps: "A2ADependencies",
+    deps: A2ADependencies,
     principal: Principal,
     operation: str,
     sender_agent_id: str,
     recipient_agent_id: str,
-    approval_id: Optional[str],
-    approval_ids: Optional[list[str]] = None,
+    approval_id: str | None,
+    approval_ids: list[str] | None = None,
 ) -> tuple[bool, str, list[str]]:
     if not _require_approval_for_trust_mutations():
         return True, "approval_not_required", []
@@ -407,7 +407,7 @@ def _decode_signature(signature_value: str) -> bytes:
     raise ValueError("invalid_signature_encoding")
 
 
-def _canonical_message_bytes(msg: "A2AMessageRequest") -> bytes:
+def _canonical_message_bytes(msg: A2AMessageRequest) -> bytes:
     payload_json = json.dumps(msg.payload or {}, separators=(",", ":"), sort_keys=True, ensure_ascii=True)
     canonical = "|".join(
         [
@@ -424,9 +424,9 @@ def _canonical_message_bytes(msg: "A2AMessageRequest") -> bytes:
 
 
 async def _verify_a2a_message_signature(
-    msg: "A2AMessageRequest",
-    deps: "A2ADependencies",
-) -> tuple[bool, Optional[str]]:
+    msg: A2AMessageRequest,
+    deps: A2ADependencies,
+) -> tuple[bool, str | None]:
     signature_present = bool((msg.signature or "").strip())
     if not signature_present:
         if _a2a_signature_required() or not _allow_unsigned_a2a_dev():
@@ -516,8 +516,8 @@ class A2APayRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Amount in token units (e.g. 10.50)")
     token: str = Field(default="USDC")
     chain: str = Field(default="base_sepolia")
-    memo: Optional[str] = Field(default=None, description="Optional memo for audit trail")
-    reference: Optional[str] = Field(default=None, description="External reference (order, invoice)")
+    memo: str | None = Field(default=None, description="Optional memo for audit trail")
+    reference: str | None = Field(default=None, description="External reference (order, invoice)")
 
 
 class A2APayResponse(BaseModel):
@@ -534,11 +534,11 @@ class A2APayResponse(BaseModel):
     amount: str
     token: str
     chain: str
-    memo: Optional[str] = None
-    reference: Optional[str] = None
-    ledger_tx_id: Optional[str] = None
-    audit_anchor: Optional[str] = None
-    receipt_id: Optional[str] = None
+    memo: str | None = None
+    reference: str | None = None
+    ledger_tx_id: str | None = None
+    audit_anchor: str | None = None
+    receipt_id: str | None = None
 
 
 class A2AMessageRequest(BaseModel):
@@ -547,10 +547,10 @@ class A2AMessageRequest(BaseModel):
     message_type: str
     sender_id: str
     recipient_id: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
-    correlation_id: Optional[str] = None
-    in_reply_to: Optional[str] = None
-    signature: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    correlation_id: str | None = None
+    in_reply_to: str | None = None
+    signature: str | None = None
     signature_algorithm: str = "Ed25519"
 
 
@@ -561,11 +561,11 @@ class A2AMessageResponse(BaseModel):
     sender_id: str
     recipient_id: str
     status: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
-    correlation_id: Optional[str] = None
-    in_reply_to: Optional[str] = None
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    correlation_id: str | None = None
+    in_reply_to: str | None = None
+    error: str | None = None
+    error_code: str | None = None
 
 
 class A2ATrustCheckRequest(BaseModel):
@@ -587,8 +587,8 @@ class A2ATrustTableResponse(BaseModel):
     enforced: bool
     source: str
     table_hash: str
-    audit_id: Optional[str] = None
-    approval_id: Optional[str] = None
+    audit_id: str | None = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
     relations: dict[str, list[str]] = Field(default_factory=dict)
 
@@ -596,7 +596,7 @@ class A2ATrustTableResponse(BaseModel):
 class A2ATrustRelationUpsertRequest(BaseModel):
     sender_agent_id: str
     recipient_agent_id: str
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -604,7 +604,7 @@ class A2ATrustRelationUpsertRequest(BaseModel):
 class A2ATrustRelationDeleteRequest(BaseModel):
     sender_agent_id: str
     recipient_agent_id: str
-    approval_id: Optional[str] = None
+    approval_id: str | None = None
     approval_ids: list[str] = Field(default_factory=list)
 
 
@@ -612,10 +612,10 @@ class A2APeerTrustEntry(BaseModel):
     agent_id: str
     owner_id: str
     is_active: bool
-    wallet_id: Optional[str] = None
+    wallet_id: str | None = None
     wallet_addresses: dict[str, str] = Field(default_factory=dict)
-    kya_level: Optional[str] = None
-    kya_status: Optional[str] = None
+    kya_level: str | None = None
+    kya_status: str | None = None
     trusted: bool
     is_broadcast_target: bool = False
     trust_reason: str
@@ -623,7 +623,7 @@ class A2APeerTrustEntry(BaseModel):
 
 class A2ATrustPeersResponse(BaseModel):
     sender_agent_id: str
-    sender_wallet_id: Optional[str] = None
+    sender_wallet_id: str | None = None
     sender_wallet_addresses: dict[str, str] = Field(default_factory=dict)
     enforced: bool
     source: str
@@ -639,11 +639,11 @@ class A2ATrustAuditEntryResponse(BaseModel):
     mandate_id: str
     subject: str
     allowed: bool
-    reason: Optional[str] = None
-    rule_id: Optional[str] = None
-    provider: Optional[str] = None
-    evaluated_at: Optional[str] = None
-    proof_path: Optional[str] = None
+    reason: str | None = None
+    rule_id: str | None = None
+    provider: str | None = None
+    evaluated_at: str | None = None
+    proof_path: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -803,10 +803,11 @@ async def a2a_pay(
         # Submit to ControlPlane (policy → compliance → chain → ledger → receipt)
         from sardis_v2_core.control_plane import ControlPlane
         from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
-        from sardis_api.domains.policy_engine import PolicyEngineAdapter
+
         from sardis_api.domains.compliance import ComplianceAdapter
         from sardis_api.domains.execution_engine import ExecutionEngineAdapter
         from sardis_api.domains.ledger_core import LedgerCoreAdapter
+        from sardis_api.domains.policy_engine import PolicyEngineAdapter
 
         if not deps.wallet_manager:
             raise HTTPException(
@@ -1111,8 +1112,8 @@ async def list_a2a_trust_peers(
     async def _resolve_wallet_snapshot(
         *,
         agent_id: str,
-        fallback_wallet_id: Optional[str],
-    ) -> tuple[Optional[str], dict[str, str]]:
+        fallback_wallet_id: str | None,
+    ) -> tuple[str | None, dict[str, str]]:
         wallet_id = str(fallback_wallet_id or "") or None
         addresses: dict[str, str] = {}
         if not include_wallet_addresses:
@@ -1606,16 +1607,16 @@ async def _handle_payment_request(
             error_code="configuration_error",
         )
 
-    from sardis_v2_core.control_plane import ControlPlane
-    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
-    from sardis_api.domains.policy_engine import PolicyEngineAdapter
-    from sardis_api.domains.compliance import ComplianceAdapter
-    from sardis_api.domains.execution_engine import ExecutionEngineAdapter
-    from sardis_api.domains.ledger_core import LedgerCoreAdapter
-
     from sardis_guardrails.anomaly_engine import get_anomaly_engine
     from sardis_guardrails.kill_switch import get_kill_switch
     from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+    from sardis_v2_core.control_plane import ControlPlane
+    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+
+    from sardis_api.domains.compliance import ComplianceAdapter
+    from sardis_api.domains.execution_engine import ExecutionEngineAdapter
+    from sardis_api.domains.ledger_core import LedgerCoreAdapter
+    from sardis_api.domains.policy_engine import PolicyEngineAdapter
 
     cp = ControlPlane(
         policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),

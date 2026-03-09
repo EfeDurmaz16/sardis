@@ -7,10 +7,10 @@ import hmac
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class WebhookEvent:
     event_id: str = field(default_factory=lambda: f"evt_{uuid4().hex[:16]}")
     event_type: EventType = EventType.PAYMENT_COMPLETED
     data: dict = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     api_version: str = "2024-01"
 
     def to_dict(self) -> dict:
@@ -140,16 +140,16 @@ class WebhookSubscription:
     subscription_id: str = field(default_factory=lambda: f"whsub_{uuid4().hex[:16]}")
     organization_id: str = ""
     url: str = ""
-    events: List[str] = field(default_factory=list)  # Empty = all events
+    events: list[str] = field(default_factory=list)  # Empty = all events
     secret: str = field(default_factory=lambda: f"whsec_{uuid4().hex}")
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
     # Stats
     total_deliveries: int = 0
     successful_deliveries: int = 0
     failed_deliveries: int = 0
-    last_delivery_at: Optional[datetime] = None
+    last_delivery_at: datetime | None = None
 
     def subscribes_to(self, event_type: str) -> bool:
         """Check if subscription wants this event type."""
@@ -166,13 +166,13 @@ class DeliveryAttempt:
     event_id: str = ""
     event_type: str = ""
     url: str = ""
-    status_code: Optional[int] = None
-    response_body: Optional[str] = None
-    error: Optional[str] = None
+    status_code: int | None = None
+    response_body: str | None = None
+    error: str | None = None
     duration_ms: int = 0
     success: bool = False
     attempt_number: int = 1
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class WebhookRepository:
@@ -184,7 +184,7 @@ class WebhookRepository:
         self._use_postgres = dsn.startswith("postgresql://") or dsn.startswith("postgres://")
         # In-memory fallback
         self._subscriptions: dict[str, WebhookSubscription] = {}
-        self._deliveries: List[DeliveryAttempt] = []
+        self._deliveries: list[DeliveryAttempt] = []
 
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
@@ -197,7 +197,7 @@ class WebhookRepository:
         self,
         organization_id: str,
         url: str,
-        events: Optional[List[str]] = None,
+        events: list[str] | None = None,
     ) -> WebhookSubscription:
         """Create a new webhook subscription."""
         sub = WebhookSubscription(
@@ -227,7 +227,7 @@ class WebhookRepository:
 
         return sub
 
-    async def get_subscription(self, subscription_id: str) -> Optional[WebhookSubscription]:
+    async def get_subscription(self, subscription_id: str) -> WebhookSubscription | None:
         """Get a subscription by ID."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -235,7 +235,7 @@ class WebhookRepository:
                 row = await conn.fetchrow(
                     """
                     SELECT external_id, organization_id, url, events, secret, is_active,
-                           created_at, total_deliveries, successful_deliveries, 
+                           created_at, total_deliveries, successful_deliveries,
                            failed_deliveries, last_delivery_at
                     FROM webhook_subscriptions WHERE external_id = $1
                     """,
@@ -249,9 +249,9 @@ class WebhookRepository:
 
     async def list_subscriptions(
         self,
-        organization_id: Optional[str] = None,
+        organization_id: str | None = None,
         active_only: bool = True,
-    ) -> List[WebhookSubscription]:
+    ) -> list[WebhookSubscription]:
         """List subscriptions."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -293,11 +293,11 @@ class WebhookRepository:
     async def update_subscription(
         self,
         subscription_id: str,
-        url: Optional[str] = None,
-        events: Optional[List[str]] = None,
-        is_active: Optional[bool] = None,
-        secret: Optional[str] = None,
-    ) -> Optional[WebhookSubscription]:
+        url: str | None = None,
+        events: list[str] | None = None,
+        is_active: bool | None = None,
+        secret: str | None = None,
+    ) -> WebhookSubscription | None:
         """Update a subscription."""
         sub = await self.get_subscription(subscription_id)
         if not sub:
@@ -405,14 +405,14 @@ class WebhookRepository:
                     sub.successful_deliveries += 1
                 else:
                     sub.failed_deliveries += 1
-                sub.last_delivery_at = datetime.now(timezone.utc)
+                sub.last_delivery_at = datetime.now(UTC)
 
     async def list_deliveries(
         self,
-        subscription_id: Optional[str] = None,
-        event_id: Optional[str] = None,
+        subscription_id: str | None = None,
+        event_id: str | None = None,
         limit: int = 50,
-    ) -> List[DeliveryAttempt]:
+    ) -> list[DeliveryAttempt]:
         """List delivery attempts."""
         if self._use_postgres:
             pool = await self._get_pool()
@@ -767,7 +767,7 @@ class WebhookOutbox:
         self._repo = repository
         self._use_postgres = repository._use_postgres
         # In-memory fallback for tests
-        self._queue: List[dict] = []
+        self._queue: list[dict] = []
 
     async def enqueue(self, conn, event: WebhookEvent) -> str:
         """Write a webhook event to the outbox table.
@@ -828,18 +828,18 @@ class WebhookOutbox:
         async with pool.acquire() as conn:
             # Claim a batch of pending entries (or stale "sending" ones)
             rows = await conn.fetch(
-                """
+                f"""
                 UPDATE webhook_outbox SET status = 'sending', attempts = attempts + 1
                 WHERE outbox_id IN (
                     SELECT outbox_id FROM webhook_outbox
                     WHERE (status = 'pending')
-                       OR (status = 'sending' AND updated_at < NOW() - INTERVAL '%s seconds')
+                       OR (status = 'sending' AND updated_at < NOW() - INTERVAL '{self.STALE_SECONDS} seconds')
                     ORDER BY created_at ASC
                     LIMIT $1
                     FOR UPDATE SKIP LOCKED
                 )
                 RETURNING outbox_id, event_id, event_type, payload, attempts
-                """ % self.STALE_SECONDS,
+                """,
                 self.BATCH_SIZE,
             )
 
@@ -923,7 +923,7 @@ def create_payment_event(
     fee: Decimal,
     currency: str,
     status: str,
-    error: Optional[str] = None,
+    error: str | None = None,
 ) -> WebhookEvent:
     """Create a payment event."""
     data = {
@@ -956,8 +956,8 @@ def create_deposit_event(
     to_address: str,
     status: str,
     confirmations: int = 0,
-    payment_request_id: Optional[str] = None,
-    ledger_entry_id: Optional[str] = None,
+    payment_request_id: str | None = None,
+    ledger_entry_id: str | None = None,
 ) -> WebhookEvent:
     """Create a deposit/inbound payment event."""
     data: dict = {
@@ -989,7 +989,7 @@ def create_hold_event(
     amount: Decimal,
     token: str,
     status: str,
-    merchant_id: Optional[str] = None,
+    merchant_id: str | None = None,
 ) -> WebhookEvent:
     """Create a hold event."""
     return WebhookEvent(

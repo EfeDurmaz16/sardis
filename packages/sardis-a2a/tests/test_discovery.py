@@ -1,18 +1,17 @@
 """Tests for A2A agent discovery service."""
 
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
-
 from sardis_a2a.agent_card import (
     AgentCapability,
     PaymentCapability,
     SardisAgentCard,
 )
 from sardis_a2a.discovery import (
-    DiscoveredAgent,
     AgentDiscoveryService,
+    DiscoveredAgent,
 )
 
 
@@ -20,15 +19,15 @@ class MockHttpClient:
     """Mock HTTP client for testing."""
 
     def __init__(self):
-        self.responses: Dict[str, tuple[int, Dict[str, Any]]] = {}
+        self.responses: dict[str, tuple[int, dict[str, Any]]] = {}
 
-    def add_response(self, url: str, status: int, data: Dict[str, Any]):
+    def add_response(self, url: str, status: int, data: dict[str, Any]):
         """Add a mock response for a URL."""
         self.responses[url] = (status, data)
 
     async def get(
-        self, url: str, headers: Dict[str, str] | None = None
-    ) -> tuple[int, Dict[str, Any]]:
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> tuple[int, dict[str, Any]]:
         """Mock GET request."""
         if url in self.responses:
             return self.responses[url]
@@ -76,7 +75,7 @@ class TestDiscoveredAgent:
 
     def test_cache_invalid_expired(self, agent):
         """Test cache validity for expired agent."""
-        agent.last_verified_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        agent.last_verified_at = datetime.now(UTC) - timedelta(hours=2)
         assert agent.is_cache_valid() is False
 
     def test_supports_capability(self, agent):
@@ -214,7 +213,7 @@ class TestAgentDiscoveryService:
             agent_card_data,
         )
 
-        agent1 = await discovery.discover_agent("https://agent.example.com")
+        await discovery.discover_agent("https://agent.example.com")
 
         # Modify response
         agent_card_data["name"] = "Updated Agent"

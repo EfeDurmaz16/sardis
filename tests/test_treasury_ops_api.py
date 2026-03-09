@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import pytest
-
 from sardis_api.authz import Principal, require_admin_principal
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
 from sardis_api.repositories.canonical_ledger_repository import CanonicalLedgerRepository

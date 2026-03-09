@@ -14,9 +14,9 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -56,16 +56,16 @@ class ReportMetadata:
     report_id: str
     report_type: ReportType
     format: ReportFormat
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    period_start: datetime | None = None
+    period_end: datetime | None = None
     generated_by: str = "system"
     status: ReportStatus = ReportStatus.PENDING
-    file_path: Optional[str] = None
-    file_size_bytes: Optional[int] = None
-    error_message: Optional[str] = None
+    file_path: str | None = None
+    file_size_bytes: int | None = None
+    error_message: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "report_id": self.report_id,
@@ -87,9 +87,9 @@ class ReportSection:
     """A section within a report."""
     title: str
     content: str
-    data: Dict[str, Any] = field(default_factory=dict)
-    tables: List[Dict[str, Any]] = field(default_factory=list)
-    charts: List[Dict[str, Any]] = field(default_factory=list)
+    data: dict[str, Any] = field(default_factory=dict)
+    tables: list[dict[str, Any]] = field(default_factory=list)
+    charts: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -98,12 +98,12 @@ class ComplianceReport:
     metadata: ReportMetadata
     title: str
     summary: str
-    sections: List[ReportSection] = field(default_factory=list)
-    findings: List[Dict[str, Any]] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    raw_data: Dict[str, Any] = field(default_factory=dict)
+    sections: list[ReportSection] = field(default_factory=list)
+    findings: list[dict[str, Any]] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    raw_data: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON export."""
         return {
             "metadata": self.metadata.to_dict(),
@@ -273,7 +273,7 @@ class HTMLReportGenerator(ReportGenerator):
 </html>
         """
 
-    def _render_table(self, table: Dict[str, Any]) -> str:
+    def _render_table(self, table: dict[str, Any]) -> str:
         """Render a table to HTML."""
         if not table:
             return ""
@@ -310,7 +310,7 @@ class PDFReportGenerator(ReportGenerator):
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import letter
             from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-            from reportlab.lib.units import inch
+            from reportlab.lib.units import inch  # noqa: F401
             from reportlab.platypus import (
                 Paragraph,
                 SimpleDocTemplate,
@@ -477,16 +477,16 @@ class ComplianceReportService:
 
     def generate_audit_trail_report(
         self,
-        entries: List[Dict[str, Any]],
-        period_start: Optional[datetime] = None,
-        period_end: Optional[datetime] = None,
+        entries: list[dict[str, Any]],
+        period_start: datetime | None = None,
+        period_end: datetime | None = None,
         format: ReportFormat = ReportFormat.PDF,
     ) -> tuple[bytes, ReportMetadata]:
         """Generate an audit trail report."""
         import uuid
 
         report_id = f"rpt_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Calculate statistics
         total_entries = len(entries)
@@ -494,13 +494,13 @@ class ComplianceReportService:
         denied_count = total_entries - allowed_count
 
         # Group by provider
-        by_provider: Dict[str, int] = {}
+        by_provider: dict[str, int] = {}
         for entry in entries:
             provider = entry.get("provider", "unknown")
             by_provider[provider] = by_provider.get(provider, 0) + 1
 
         # Group by rule
-        by_rule: Dict[str, int] = {}
+        by_rule: dict[str, int] = {}
         for entry in entries:
             rule = entry.get("rule_id", "unknown")
             by_rule[rule] = by_rule.get(rule, 0) + 1
@@ -585,14 +585,14 @@ class ComplianceReportService:
 
     def generate_risk_assessment_report(
         self,
-        risk_data: Dict[str, Any],
+        risk_data: dict[str, Any],
         format: ReportFormat = ReportFormat.PDF,
     ) -> tuple[bytes, ReportMetadata]:
         """Generate a risk assessment report."""
         import uuid
 
         report_id = f"rpt_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         metadata = ReportMetadata(
             report_id=report_id,
@@ -664,14 +664,14 @@ class ComplianceReportService:
 
     def generate_pep_screening_report(
         self,
-        screening_results: List[Dict[str, Any]],
+        screening_results: list[dict[str, Any]],
         format: ReportFormat = ReportFormat.PDF,
     ) -> tuple[bytes, ReportMetadata]:
         """Generate a PEP screening report."""
         import uuid
 
         report_id = f"rpt_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         metadata = ReportMetadata(
             report_id=report_id,
@@ -749,14 +749,14 @@ class ComplianceReportService:
 
     def generate_sanctions_report(
         self,
-        screening_results: List[Dict[str, Any]],
+        screening_results: list[dict[str, Any]],
         format: ReportFormat = ReportFormat.PDF,
     ) -> tuple[bytes, ReportMetadata]:
         """Generate a sanctions screening report."""
         import uuid
 
         report_id = f"rpt_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         metadata = ReportMetadata(
             report_id=report_id,
@@ -840,16 +840,16 @@ class ComplianceReportService:
         self,
         period_start: datetime,
         period_end: datetime,
-        audit_entries: List[Dict[str, Any]],
-        pep_results: List[Dict[str, Any]],
-        sanctions_results: List[Dict[str, Any]],
+        audit_entries: list[dict[str, Any]],
+        pep_results: list[dict[str, Any]],
+        sanctions_results: list[dict[str, Any]],
         format: ReportFormat = ReportFormat.PDF,
     ) -> tuple[bytes, ReportMetadata]:
         """Generate a comprehensive executive summary report."""
         import uuid
 
         report_id = f"rpt_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         metadata = ReportMetadata(
             report_id=report_id,

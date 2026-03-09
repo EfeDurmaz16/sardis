@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from decimal import Decimal
+from unittest.mock import MagicMock
 
 import pytest
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
-
 
 # ---------------------------------------------------------------------------
 # sardis-langchain integration tests
@@ -35,8 +34,8 @@ class TestLangChainIntegration:
 
     def test_tool_imports(self):
         from sardis_langchain.tools import (
-            SardisPayTool,
             SardisBalanceTool,
+            SardisPayTool,
             SardisPolicyCheckTool,
             SardisSetPolicyTool,
             SardisTransactionsTool,
@@ -91,8 +90,8 @@ class TestCrewAIIntegration:
 
     def test_tools_import(self):
         from sardis_crewai.tools import (
-            SardisPayTool,
             SardisBalanceTool,
+            SardisPayTool,
             SardisPolicyCheckTool,
             SardisSetPolicyTool,
             SardisTransactionsTool,
@@ -124,17 +123,17 @@ class TestCrewAIIntegration:
 
     def test_agent_factories_import(self):
         from sardis_crewai.agents import (
-            create_payment_agent,
             create_auditor_agent,
+            create_payment_agent,
             create_treasury_agent,
         )
         assert all([create_payment_agent, create_auditor_agent, create_treasury_agent])
 
     def test_task_templates_import(self):
         from sardis_crewai.tasks import (
-            create_purchase_task,
             create_audit_task,
             create_budget_review_task,
+            create_purchase_task,
         )
         assert all([create_purchase_task, create_audit_task, create_budget_review_task])
 
@@ -156,11 +155,11 @@ class TestADKIntegration:
 
     def test_tool_functions_import(self):
         from sardis_adk.tools import (
-            sardis_pay,
             sardis_check_balance,
             sardis_check_policy,
-            sardis_set_policy,
             sardis_list_transactions,
+            sardis_pay,
+            sardis_set_policy,
         )
         assert all([
             sardis_pay,

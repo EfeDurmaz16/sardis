@@ -2,8 +2,8 @@
 
 from .base import CardProvider
 from .issuer_adapter import REQUIRED_ISSUER_METHODS, IssuerAdapterShim, build_issuer_adapter
-from .issuing_ports import IssuerAdapter
 from .issuer_readiness import IssuerReadiness, evaluate_issuer_readiness
+from .issuing_ports import IssuerAdapter
 from .mock import MockProvider
 from .org_router import OrganizationCardProviderRouter
 from .partner_issuers import BridgeCardsProvider, RainCardsProvider

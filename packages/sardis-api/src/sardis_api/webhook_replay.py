@@ -10,7 +10,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from fastapi import HTTPException, Request, status
 
@@ -18,7 +19,7 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
-def _hash_body(body: Optional[bytes]) -> str:
+def _hash_body(body: bytes | None) -> str:
     if not body:
         return ""
     return hashlib.sha256(body).hexdigest()
@@ -29,7 +30,7 @@ async def run_with_replay_protection(
     request: Request,
     provider: str,
     event_id: str,
-    body: Optional[bytes] = None,
+    body: bytes | None = None,
     ttl_seconds: int = 24 * 60 * 60,
     lock_ttl_seconds: int = 30,
     response_on_duplicate: Any = None,

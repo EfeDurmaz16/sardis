@@ -8,14 +8,13 @@ Pattern follows ``policy_store_postgres.py``.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from .offramp import (
     MockOfframpProvider,
     OfframpProviderBase,
     OfframpQuote,
-    OfframpStatus,
     OfframpTransaction,
     VelocityLimitExceeded,
 )
@@ -38,10 +37,10 @@ class PostgresOfframpService:
     def __init__(
         self,
         dsn: str,
-        provider: Optional[OfframpProviderBase] = None,
-        daily_limit_cents: Optional[int] = None,
-        weekly_limit_cents: Optional[int] = None,
-        monthly_limit_cents: Optional[int] = None,
+        provider: OfframpProviderBase | None = None,
+        daily_limit_cents: int | None = None,
+        weekly_limit_cents: int | None = None,
+        monthly_limit_cents: int | None = None,
     ) -> None:
         self._dsn = dsn
         self._provider = provider or MockOfframpProvider()
@@ -78,7 +77,7 @@ class PostgresOfframpService:
     ) -> None:
         """Check velocity limits from DB."""
         pool = await self._get_pool()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with pool.acquire() as conn:
             # Daily
@@ -140,7 +139,7 @@ class PostgresOfframpService:
         quote: OfframpQuote,
         source_address: str,
         destination_account: str,
-        wallet_id: Optional[str] = None,
+        wallet_id: str | None = None,
     ) -> OfframpTransaction:
         """Execute off-ramp and persist transaction."""
         if wallet_id:
@@ -188,7 +187,7 @@ class PostgresOfframpService:
 
         return tx
 
-    async def get_pending_transactions(self) -> List[OfframpTransaction]:
+    async def get_pending_transactions(self) -> list[OfframpTransaction]:
         """Get all pending transactions from DB."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -208,10 +207,10 @@ class PostgresOfframpService:
                     pass
             return results
 
-    async def get_velocity_limits(self, wallet_id: str) -> Dict[str, Any]:
+    async def get_velocity_limits(self, wallet_id: str) -> dict[str, Any]:
         """Get velocity limit status from DB."""
         pool = await self._get_pool()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with pool.acquire() as conn:
             daily_vol = int(

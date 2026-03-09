@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # Skip all tests in this file if no PostgreSQL database
 pytestmark = pytest.mark.skipif(
-    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or
          os.environ.get("DATABASE_URL", "").startswith("postgres://")),
     reason="Requires PostgreSQL database (set DATABASE_URL env var)"
 )
@@ -19,7 +20,7 @@ async def test_create_hold(test_client, sample_hold_request):
         "/api/v2/holds",
         json=sample_hold_request,
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert "hold_id" in data
@@ -37,10 +38,10 @@ async def test_get_hold(test_client, sample_hold_request):
         json=sample_hold_request,
     )
     hold_id = create_response.json()["hold_id"]
-    
+
     # Then get it
     response = await test_client.get(f"/api/v2/holds/{hold_id}")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["hold_id"] == hold_id
@@ -55,13 +56,13 @@ async def test_capture_hold(test_client, sample_hold_request):
         json=sample_hold_request,
     )
     hold_id = create_response.json()["hold_id"]
-    
+
     # Capture it
     response = await test_client.post(
         f"/api/v2/holds/{hold_id}/capture",
         json={"amount": "500"},  # Partial capture
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "captured"
@@ -76,10 +77,10 @@ async def test_void_hold(test_client, sample_hold_request):
         json=sample_hold_request,
     )
     hold_id = create_response.json()["hold_id"]
-    
+
     # Void it
     response = await test_client.post(f"/api/v2/holds/{hold_id}/void")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "voided"
@@ -90,10 +91,10 @@ async def test_list_holds(test_client, sample_hold_request):
     """Test listing active holds."""
     # Create a hold first
     await test_client.post("/api/v2/holds", json=sample_hold_request)
-    
+
     # List holds
     response = await test_client.get("/api/v2/holds")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -103,5 +104,5 @@ async def test_list_holds(test_client, sample_hold_request):
 async def test_hold_not_found(test_client):
     """Test getting a non-existent hold."""
     response = await test_client.get("/api/v2/holds/nonexistent_hold")
-    
+
     assert response.status_code == 404

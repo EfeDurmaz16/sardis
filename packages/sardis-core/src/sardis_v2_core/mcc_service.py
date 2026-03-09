@@ -3,15 +3,14 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
-from typing import Optional
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 # Load MCC data from embedded JSON
 _MCC_DATA_PATH = Path(__file__).parent / "data" / "mcc_codes.json"
-_MCC_DATA: Optional[dict] = None
+_MCC_DATA: dict | None = None
 
 
 @dataclass
@@ -34,7 +33,7 @@ def _load_mcc_data() -> dict:
     return _MCC_DATA
 
 
-def get_mcc_info(mcc_code: str) -> Optional[MCCInfo]:
+def get_mcc_info(mcc_code: str) -> MCCInfo | None:
     """
     Look up MCC code information.
 
@@ -72,7 +71,7 @@ def get_category_codes(category: str) -> list[str]:
     return cat_info["codes"] if cat_info else []
 
 
-def get_category_info(category: str) -> Optional[dict]:
+def get_category_info(category: str) -> dict | None:
     """
     Get category metadata.
 

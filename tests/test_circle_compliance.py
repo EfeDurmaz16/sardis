@@ -9,18 +9,16 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_compliance.circle_compliance import (
     CircleComplianceClient,
     CircleComplianceError,
     CircleComplianceProvider,
+    CircleRiskLevel,
     CircleScreeningAction,
     CircleScreeningResponse,
-    CircleRiskLevel,
-    CIRCLE_CHAIN_MAP,
-    _map_chain,
-    _map_action_to_risk,
     _is_sanctioned,
+    _map_action_to_risk,
+    _map_chain,
     create_circle_compliance_provider,
 )
 from sardis_compliance.sanctions import (
@@ -28,13 +26,11 @@ from sardis_compliance.sanctions import (
     FailoverSanctionsProvider,
     MockSanctionsProvider,
     SanctionsRisk,
-    ScreeningResult,
     SanctionsService,
-    WalletScreeningRequest,
     TransactionScreeningRequest,
+    WalletScreeningRequest,
     create_sanctions_service,
 )
-
 
 # ── Chain Mapping ────────────────────────────────────────────────────
 

@@ -7,7 +7,7 @@ AI agents with different spending patterns and performance characteristics.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -105,7 +105,7 @@ class BudgetCycle:
     @property
     def is_expired(self) -> bool:
         """Check if cycle has passed its end date."""
-        return datetime.now(timezone.utc) > self.end_date
+        return datetime.now(UTC) > self.end_date
 
 
 class BaseAllocationStrategy(ABC):
@@ -389,7 +389,7 @@ class BudgetAllocator:
     ) -> tuple[datetime, datetime]:
         """Calculate start and end dates for a budget period."""
         if start_date is None:
-            start_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         if period == BudgetPeriod.WEEKLY:
             end_date = start_date + timedelta(days=7)
@@ -455,7 +455,7 @@ class BudgetAllocator:
                 currency=currency,
                 period=period,
                 strategy=strategy,
-                allocated_at=datetime.now(timezone.utc),
+                allocated_at=datetime.now(UTC),
                 expires_at=end_date,
                 cycle_id=cycle_id,
             )
@@ -474,7 +474,7 @@ class BudgetAllocator:
             strategy=strategy,
             allocations=allocations,
             status=CycleStatus.ACTIVE,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             rollover_from=rollover_from,
             rollover_amount=rollover_amount,
         )
@@ -492,7 +492,7 @@ class BudgetAllocator:
         Returns:
             Active BudgetCycle or None if no active cycle
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for cycle in self._cycles.values():
             if (
                 cycle.org_id == org_id
@@ -541,7 +541,7 @@ class BudgetAllocator:
 
         # Update cycle
         cycle.status = CycleStatus.CLOSED
-        cycle.closed_at = datetime.now(timezone.utc)
+        cycle.closed_at = datetime.now(UTC)
         cycle.metadata["unspent_total"] = str(unspent_total)
         cycle.metadata["spending_data"] = spending_data or []
 
@@ -645,7 +645,7 @@ class BudgetAllocator:
         allocation.metadata["adjustments"] = allocation.metadata.get("adjustments", [])
         allocation.metadata["adjustments"].append(
             {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "old_amount": str(old_amount),
                 "new_amount": str(new_amount),
                 "reason": reason,

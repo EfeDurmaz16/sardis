@@ -14,7 +14,7 @@ Usage::
 """
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from sardis import SardisClient
 
@@ -54,7 +54,7 @@ class SardisToolkit:
         # Bind the shared state so tool functions can access it
         _tools.configure(self.client, self.wallet_id)
 
-    def get_tools(self) -> List[Any]:
+    def get_tools(self) -> list[Any]:
         """Return a list of Google ADK ``FunctionTool`` instances.
 
         Each tool wraps one of the Sardis tool functions defined in

@@ -1,21 +1,17 @@
 """Tests for UCP checkout capability."""
 
-import time
 from decimal import Decimal
 
 import pytest
-
-from sardis_ucp.models.mandates import UCPCurrency, UCPLineItem, UCPDiscount, UCPDiscountType
 from sardis_ucp.capabilities.checkout import (
-    UCPCheckoutCapability,
     CheckoutSession,
-    CheckoutSessionStatus,
-    CheckoutResult,
     CheckoutSessionNotFoundError,
-    CheckoutSessionExpiredError,
-    InvalidCheckoutOperationError,
+    CheckoutSessionStatus,
     InMemoryCheckoutSessionStore,
+    InvalidCheckoutOperationError,
+    UCPCheckoutCapability,
 )
+from sardis_ucp.models.mandates import UCPCurrency, UCPDiscount, UCPDiscountType, UCPLineItem
 
 
 @pytest.fixture

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Literal, Optional
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -41,7 +41,7 @@ class CreateSupportTicketRequest(BaseModel):
 
 
 class ResolveSupportTicketRequest(BaseModel):
-    resolution_note: Optional[str] = Field(default=None, max_length=1000)
+    resolution_note: str | None = Field(default=None, max_length=1000)
 
 
 class SupportTicketResponse(BaseModel):
@@ -56,8 +56,8 @@ class SupportTicketResponse(BaseModel):
     status: str
     first_response_due_at: str
     resolution_due_at: str
-    acknowledged_at: Optional[str] = None
-    resolved_at: Optional[str] = None
+    acknowledged_at: str | None = None
+    resolved_at: str | None = None
     response_sla_breached: bool
     resolution_sla_breached: bool
     metadata: dict[str, Any]
@@ -65,34 +65,34 @@ class SupportTicketResponse(BaseModel):
     updated_at: str
 
 
-def _as_iso(value: Any) -> Optional[str]:
+def _as_iso(value: Any) -> str | None:
     if value is None:
         return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return value.isoformat()
     return str(value)
 
 
-def _to_utc_datetime(value: Any) -> Optional[datetime]:
+def _to_utc_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
     try:
         parsed = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _ticket_response(row: dict[str, Any]) -> SupportTicketResponse:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     response_due = _to_utc_datetime(row.get("first_response_due_at"))
     resolution_due = _to_utc_datetime(row.get("resolution_due_at"))
     acknowledged = _to_utc_datetime(row.get("acknowledged_at"))
@@ -153,8 +153,8 @@ async def get_support_profile(
 
 @router.get("/tickets", response_model=list[SupportTicketResponse])
 async def list_support_tickets(
-    status_filter: Optional[Literal["open", "acknowledged", "resolved", "closed"]] = Query(default=None),
-    priority: Optional[Literal["low", "medium", "high", "urgent"]] = Query(default=None),
+    status_filter: Literal["open", "acknowledged", "resolved", "closed"] | None = Query(default=None),
+    priority: Literal["low", "medium", "high", "urgent"] | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     deps: EnterpriseSupportDependencies = Depends(get_deps),

@@ -13,20 +13,19 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from ..models.mandates import (
     UCPCartMandate,
     UCPCheckoutMandate,
-    UCPPaymentMandate,
-    UCPLineItem,
-    UCPDiscount,
     UCPCurrency,
+    UCPDiscount,
+    UCPLineItem,
+    UCPPaymentMandate,
 )
-from ..models.orders import UCPOrder, UCPOrderStatus
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class CheckoutSessionStatus(str, Enum):
 class CheckoutError(Exception):
     """Base exception for checkout errors."""
 
-    def __init__(self, message: str, code: str, details: Dict[str, Any] | None = None):
+    def __init__(self, message: str, code: str, details: dict[str, Any] | None = None):
         super().__init__(message)
         self.code = code
         self.details = details or {}
@@ -99,8 +98,8 @@ class CheckoutSession:
     currency: UCPCurrency = UCPCurrency.USD
 
     # Cart contents
-    line_items: List[UCPLineItem] = field(default_factory=list)
-    discounts: List[UCPDiscount] = field(default_factory=list)
+    line_items: list[UCPLineItem] = field(default_factory=list)
+    discounts: list[UCPDiscount] = field(default_factory=list)
 
     # Pricing
     subtotal_minor: int = 0
@@ -110,25 +109,25 @@ class CheckoutSession:
     tax_rate: Decimal = Decimal("0.00")  # Applied tax rate
 
     # Mandates
-    cart_mandate: Optional[UCPCartMandate] = None
-    checkout_mandate: Optional[UCPCheckoutMandate] = None
-    payment_mandate: Optional[UCPPaymentMandate] = None
+    cart_mandate: UCPCartMandate | None = None
+    checkout_mandate: UCPCheckoutMandate | None = None
+    payment_mandate: UCPPaymentMandate | None = None
 
     # Result
-    order_id: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
+    order_id: str | None = None
+    chain_tx_hash: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: int = field(default_factory=lambda: int(time.time()) + 3600)  # 1 hour
 
     # Escalation
-    escalation_reason: Optional[str] = None
-    escalation_resolved_at: Optional[datetime] = None
+    escalation_reason: str | None = None
+    escalation_resolved_at: datetime | None = None
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_expired(self) -> bool:
         """Check if the session has expired."""
@@ -147,9 +146,9 @@ class CheckoutSession:
 
         # Calculate total
         self.total_minor = self.subtotal_minor + self.taxes_minor + self.shipping_minor - discount_minor
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "session_id": self.session_id,
@@ -185,13 +184,13 @@ class CheckoutResult:
 
     success: bool
     session_id: str
-    order_id: Optional[str] = None
-    payment_mandate: Optional[UCPPaymentMandate] = None
-    chain_tx_hash: Optional[str] = None
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    order_id: str | None = None
+    payment_mandate: UCPPaymentMandate | None = None
+    chain_tx_hash: str | None = None
+    error: str | None = None
+    error_code: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "success": self.success,
@@ -211,7 +210,7 @@ class CheckoutSessionStore(Protocol):
         """Save or update a checkout session."""
         ...
 
-    def get(self, session_id: str) -> Optional[CheckoutSession]:
+    def get(self, session_id: str) -> CheckoutSession | None:
         """Retrieve a checkout session by ID."""
         ...
 
@@ -243,13 +242,13 @@ class InMemoryCheckoutSessionStore:
     """
 
     def __init__(self) -> None:
-        self._sessions: Dict[str, CheckoutSession] = {}
+        self._sessions: dict[str, CheckoutSession] = {}
 
     def save(self, session: CheckoutSession) -> None:
         """Save or update a checkout session."""
         self._sessions[session.session_id] = session
 
-    def get(self, session_id: str) -> Optional[CheckoutSession]:
+    def get(self, session_id: str) -> CheckoutSession | None:
         """Retrieve a checkout session by ID."""
         return self._sessions.get(session_id)
 
@@ -298,11 +297,11 @@ class UCPCheckoutCapability:
         merchant_name: str,
         merchant_domain: str,
         customer_id: str,
-        line_items: List[UCPLineItem],
+        line_items: list[UCPLineItem],
         currency: UCPCurrency = UCPCurrency.USD,
         tax_rate: Decimal | None = None,
         shipping_minor: int = 0,
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CheckoutSession:
         """
         Create a new checkout session.
@@ -358,12 +357,12 @@ class UCPCheckoutCapability:
     def update_checkout(
         self,
         session_id: str,
-        add_items: List[UCPLineItem] | None = None,
-        remove_item_ids: List[str] | None = None,
-        add_discounts: List[UCPDiscount] | None = None,
-        remove_discount_ids: List[str] | None = None,
+        add_items: list[UCPLineItem] | None = None,
+        remove_item_ids: list[str] | None = None,
+        add_discounts: list[UCPDiscount] | None = None,
+        remove_discount_ids: list[str] | None = None,
         shipping_minor: int | None = None,
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> CheckoutSession:
         """
         Update a checkout session.
@@ -613,7 +612,7 @@ class UCPCheckoutCapability:
             raise InvalidCheckoutOperationError(session_id, "cancel", session.status)
 
         session.status = CheckoutSessionStatus.CANCELLED
-        session.updated_at = datetime.now(timezone.utc)
+        session.updated_at = datetime.now(UTC)
         self._store.save(session)
 
         logger.info(f"Checkout cancelled: session_id={session_id}")
@@ -637,7 +636,7 @@ class UCPCheckoutCapability:
 
         session.status = CheckoutSessionStatus.REQUIRES_ESCALATION
         session.escalation_reason = reason
-        session.updated_at = datetime.now(timezone.utc)
+        session.updated_at = datetime.now(UTC)
         self._store.save(session)
 
         logger.info(f"Checkout escalated: session_id={session_id}, reason={reason}")
@@ -655,8 +654,8 @@ class UCPCheckoutCapability:
             raise InvalidCheckoutOperationError(session_id, "resolve_escalation", session.status)
 
         session.status = CheckoutSessionStatus.OPEN
-        session.escalation_resolved_at = datetime.now(timezone.utc)
-        session.updated_at = datetime.now(timezone.utc)
+        session.escalation_resolved_at = datetime.now(UTC)
+        session.updated_at = datetime.now(UTC)
         self._store.save(session)
 
         logger.info(f"Escalation resolved: session_id={session_id}")

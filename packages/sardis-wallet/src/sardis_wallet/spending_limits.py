@@ -14,13 +14,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet, Transaction
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -73,30 +73,30 @@ class SpendingLimit:
     limit_amount: Decimal
     currency: str = "USD"  # Limit currency for normalization
     scope: LimitScope = LimitScope.GLOBAL
-    scope_value: Optional[str] = None  # Token name, chain, merchant, etc.
+    scope_value: str | None = None  # Token name, chain, merchant, etc.
     action: LimitAction = LimitAction.BLOCK
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    created_by: Optional[str] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_by: str | None = None
 
     # Current state
     current_spent: Decimal = field(default_factory=lambda: Decimal("0"))
-    last_reset_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_reset_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     transactions_count: int = 0
 
     # Soft limit (warning threshold)
-    warning_threshold: Optional[Decimal] = None  # Warn at this percentage
-    warning_sent_at: Optional[datetime] = None
+    warning_threshold: Decimal | None = None  # Warn at this percentage
+    warning_sent_at: datetime | None = None
 
     # Override settings
     can_be_overridden: bool = False
     override_requires_approval: bool = True
-    override_max_amount: Optional[Decimal] = None
+    override_max_amount: Decimal | None = None
 
     def reset_if_needed(self) -> bool:
         """Reset spending counter if the time window has passed."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if self.limit_type == LimitType.PER_TRANSACTION:
             return False
@@ -111,7 +111,7 @@ class SpendingLimit:
 
         return False
 
-    def _get_window_duration(self) -> Optional[timedelta]:
+    def _get_window_duration(self) -> timedelta | None:
         """Get the duration of the limit window."""
         durations = {
             LimitType.DAILY: timedelta(days=1),
@@ -135,7 +135,7 @@ class SpendingLimit:
         self.reset_if_needed()
         return float(self.current_spent / self.limit_amount * 100)
 
-    def check(self, amount: Decimal) -> Tuple[bool, str, LimitAction]:
+    def check(self, amount: Decimal) -> tuple[bool, str, LimitAction]:
         """
         Check if a transaction amount is within limit.
 
@@ -172,9 +172,9 @@ class SpendingLimit:
         self.reset_if_needed()
         self.current_spent += amount
         self.transactions_count += 1
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "limit_id": self.limit_id,
@@ -207,12 +207,12 @@ class VelocityRule:
 
     # Current state
     current_count: int = 0
-    window_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    window_start: datetime = field(default_factory=lambda: datetime.now(UTC))
     unique_values: set = field(default_factory=set)
 
     def reset_if_needed(self) -> bool:
         """Reset counter if window has passed."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         window = timedelta(minutes=self.window_minutes)
 
         if now >= self.window_start + window:
@@ -222,7 +222,7 @@ class VelocityRule:
             return True
         return False
 
-    def check(self, transaction_data: Dict[str, Any]) -> Tuple[bool, str]:
+    def check(self, transaction_data: dict[str, Any]) -> tuple[bool, str]:
         """
         Check if transaction triggers velocity rule.
 
@@ -252,7 +252,7 @@ class VelocityRule:
 
         return False, "OK"
 
-    def record(self, transaction_data: Dict[str, Any]) -> None:
+    def record(self, transaction_data: dict[str, Any]) -> None:
         """Record a transaction for velocity tracking."""
         self.reset_if_needed()
         self.current_count += 1
@@ -280,7 +280,7 @@ class DynamicLimitAdjustment:
 
     # Current state
     current_multiplier: float = 1.0
-    last_adjustment_at: Optional[datetime] = None
+    last_adjustment_at: datetime | None = None
     violation_count: int = 0
     clean_days: int = 0
 
@@ -299,17 +299,17 @@ class ComplianceLimit:
     current_kyc_level: int = 0
 
     # Restrictions
-    blocked_countries: List[str] = field(default_factory=list)
-    blocked_categories: List[str] = field(default_factory=list)
+    blocked_countries: list[str] = field(default_factory=list)
+    blocked_categories: list[str] = field(default_factory=list)
 
     is_active: bool = True
 
     def check(
         self,
         amount: Decimal,
-        recipient_country: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-    ) -> Tuple[bool, str]:
+        recipient_country: str | None = None,
+        merchant_category: str | None = None,
+    ) -> tuple[bool, str]:
         """Check compliance limits."""
         # Check KYC level
         if self.current_kyc_level < self.kyc_level_required:
@@ -365,14 +365,14 @@ class SpendingLimitsManager:
 
     def __init__(self):
         # Storage (in production, use database)
-        self._configs: Dict[str, SpendingLimitsConfig] = {}
-        self._limits: Dict[str, Dict[str, SpendingLimit]] = {}  # wallet_id -> limit_id -> limit
-        self._velocity_rules: Dict[str, Dict[str, VelocityRule]] = {}
-        self._compliance_limits: Dict[str, Dict[str, ComplianceLimit]] = {}
-        self._dynamic_adjustments: Dict[str, Dict[str, DynamicLimitAdjustment]] = {}
+        self._configs: dict[str, SpendingLimitsConfig] = {}
+        self._limits: dict[str, dict[str, SpendingLimit]] = {}  # wallet_id -> limit_id -> limit
+        self._velocity_rules: dict[str, dict[str, VelocityRule]] = {}
+        self._compliance_limits: dict[str, dict[str, ComplianceLimit]] = {}
+        self._dynamic_adjustments: dict[str, dict[str, DynamicLimitAdjustment]] = {}
 
         # Transaction history for velocity checks
-        self._transaction_history: Dict[str, List[Dict[str, Any]]] = {}
+        self._transaction_history: dict[str, list[dict[str, Any]]] = {}
 
         # Lock for concurrent access
         self._lock = asyncio.Lock()
@@ -380,7 +380,7 @@ class SpendingLimitsManager:
     async def setup_default_limits(
         self,
         wallet_id: str,
-        config: Optional[SpendingLimitsConfig] = None,
+        config: SpendingLimitsConfig | None = None,
     ) -> SpendingLimitsConfig:
         """
         Set up default spending limits for a wallet.
@@ -467,9 +467,9 @@ class SpendingLimitsManager:
         limit_type: LimitType,
         limit_amount: Decimal,
         scope: LimitScope = LimitScope.GLOBAL,
-        scope_value: Optional[str] = None,
+        scope_value: str | None = None,
         action: LimitAction = LimitAction.BLOCK,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> SpendingLimit:
         """Add a new spending limit."""
         import secrets
@@ -502,10 +502,10 @@ class SpendingLimitsManager:
         self,
         wallet_id: str,
         limit_id: str,
-        limit_amount: Optional[Decimal] = None,
-        is_active: Optional[bool] = None,
-        action: Optional[LimitAction] = None,
-    ) -> Optional[SpendingLimit]:
+        limit_amount: Decimal | None = None,
+        is_active: bool | None = None,
+        action: LimitAction | None = None,
+    ) -> SpendingLimit | None:
         """Update an existing limit."""
         limit = self._limits.get(wallet_id, {}).get(limit_id)
         if not limit:
@@ -518,7 +518,7 @@ class SpendingLimitsManager:
         if action is not None:
             limit.action = action
 
-        limit.updated_at = datetime.now(timezone.utc)
+        limit.updated_at = datetime.now(UTC)
 
         logger.info(f"Updated limit {limit_id} for wallet {wallet_id}")
         return limit
@@ -529,10 +529,10 @@ class SpendingLimitsManager:
         amount: Decimal,
         token: str = "USDC",
         chain: str = "base",
-        recipient: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        merchant_id: Optional[str] = None,
-    ) -> Tuple[bool, List[Dict[str, Any]]]:
+        recipient: str | None = None,
+        merchant_category: str | None = None,
+        merchant_id: str | None = None,
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """
         Check if a transaction is within all limits.
 
@@ -615,9 +615,9 @@ class SpendingLimitsManager:
         limit: SpendingLimit,
         token: str,
         chain: str,
-        merchant_category: Optional[str],
-        merchant_id: Optional[str],
-        recipient: Optional[str],
+        merchant_category: str | None,
+        merchant_id: str | None,
+        recipient: str | None,
     ) -> bool:
         """Check if a limit applies to a transaction."""
         if limit.scope == LimitScope.GLOBAL:
@@ -630,16 +630,14 @@ class SpendingLimitsManager:
             return True
         if limit.scope == LimitScope.MERCHANT and limit.scope_value == merchant_id:
             return True
-        if limit.scope == LimitScope.RECIPIENT and limit.scope_value == recipient:
-            return True
-        return False
+        return bool(limit.scope == LimitScope.RECIPIENT and limit.scope_value == recipient)
 
     async def _check_velocity(
         self,
         wallet_id: str,
         amount: Decimal,
-        recipient: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        recipient: str | None,
+    ) -> list[dict[str, Any]]:
         """Check velocity rules."""
         results = []
         rules = self._velocity_rules.get(wallet_id, {})
@@ -678,8 +676,8 @@ class SpendingLimitsManager:
         self,
         wallet_id: str,
         amount: Decimal,
-        merchant_category: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        merchant_category: str | None,
+    ) -> list[dict[str, Any]]:
         """Check compliance limits."""
         results = []
         compliance_limits = self._compliance_limits.get(wallet_id, {})
@@ -709,9 +707,9 @@ class SpendingLimitsManager:
         amount: Decimal,
         token: str = "USDC",
         chain: str = "base",
-        recipient: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        merchant_id: Optional[str] = None,
+        recipient: str | None = None,
+        merchant_category: str | None = None,
+        merchant_id: str | None = None,
     ) -> None:
         """Record a transaction against limits."""
         async with self._lock:
@@ -738,7 +736,7 @@ class SpendingLimitsManager:
             tx_data = {
                 "amount": amount,
                 "recipient": recipient,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             for rule in velocity_rules.values():
@@ -753,12 +751,12 @@ class SpendingLimitsManager:
             # Keep only last 100 transactions
             self._transaction_history[wallet_id] = self._transaction_history[wallet_id][-100:]
 
-    def get_limits(self, wallet_id: str) -> List[Dict[str, Any]]:
+    def get_limits(self, wallet_id: str) -> list[dict[str, Any]]:
         """Get all limits for a wallet."""
         limits = self._limits.get(wallet_id, {})
         return [limit.to_dict() for limit in limits.values()]
 
-    def get_limit_summary(self, wallet_id: str) -> Dict[str, Any]:
+    def get_limit_summary(self, wallet_id: str) -> dict[str, Any]:
         """Get a summary of limit utilization."""
         limits = self._limits.get(wallet_id, {})
 
@@ -801,7 +799,7 @@ class SpendingLimitsManager:
 
 
 # Singleton instance
-_spending_limits_manager: Optional[SpendingLimitsManager] = None
+_spending_limits_manager: SpendingLimitsManager | None = None
 
 
 def get_spending_limits_manager() -> SpendingLimitsManager:

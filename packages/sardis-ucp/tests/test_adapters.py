@@ -3,20 +3,19 @@
 import time
 
 import pytest
-
-from sardis_ucp.models.mandates import (
-    UCPCurrency,
-    UCPLineItem,
-    UCPCartMandate,
-    UCPCheckoutMandate,
-    UCPPaymentMandate,
-)
 from sardis_ucp.adapters.ap2 import (
-    AP2MandateAdapter,
-    AP2IntentMandate,
     AP2CartMandate,
+    AP2IntentMandate,
+    AP2MandateAdapter,
     AP2PaymentMandate,
     AP2VCProof,
+)
+from sardis_ucp.models.mandates import (
+    UCPCartMandate,
+    UCPCheckoutMandate,
+    UCPCurrency,
+    UCPLineItem,
+    UCPPaymentMandate,
 )
 
 

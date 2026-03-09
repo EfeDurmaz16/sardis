@@ -4,27 +4,24 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-
-from sardis_protocol.verifier import MandateVerifier
 from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import LedgerStore
+from sardis_protocol.verifier import MandateVerifier
+from sardis_v2_core import AgentRepository, SardisSettings
 from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_v2_core import SardisSettings
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 from sardis_v2_core.wallet_repository import WalletRepository
 
-from sardis_api.authz import require_principal
-from sardis_api.authz import Principal
+from sardis_api.authz import Principal, require_principal
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
 from sardis_api.kill_switch_dep import require_kill_switch_clear
-from sardis_api.transaction_cap_dep import enforce_transaction_caps
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
-from sardis_v2_core import AgentRepository
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -40,8 +37,8 @@ METRICS = {
 class IssueIdentityRequest(BaseModel):
     domain: str = Field(..., description="Domain binding for the agent")
     algorithm: str = Field(default="ed25519", pattern="^(ed25519|ecdsa-p256)$")
-    agent_id: Optional[str] = Field(default=None, description="Optional agent ID (hex-encoded pubkey). If omitted, generated.")
-    seed: Optional[str] = Field(default=None, description="Optional hex seed for deterministic testing (do not use in prod).")
+    agent_id: str | None = Field(default=None, description="Optional agent ID (hex-encoded pubkey). If omitted, generated.")
+    seed: str | None = Field(default=None, description="Optional hex seed for deterministic testing (do not use in prod).")
 
 
 class IssueIdentityResponse(BaseModel):
@@ -53,18 +50,18 @@ class IssueIdentityResponse(BaseModel):
     fingerprint: str
     created_at: int
     version: int
-    private_key: Optional[str] = Field(default=None, description="Sandbox-only hex private key (omitted if provided by caller).")
+    private_key: str | None = Field(default=None, description="Sandbox-only hex private key (omitted if provided by caller).")
 
 
 class MandatePayload(BaseModel):
-    mandate: Dict[str, Any]
+    mandate: dict[str, Any]
 
 
 class MandateValidationResponse(BaseModel):
     mandate_id: str
     accepted: bool
-    reason: Optional[str] = None
-    policy: Dict[str, Any] = Field(default_factory=dict)
+    reason: str | None = None
+    policy: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExecuteResponse(BaseModel):
@@ -72,7 +69,7 @@ class ExecuteResponse(BaseModel):
     tx_hash: str
     chain: str
     block_number: int
-    receipt: Dict[str, Any]
+    receipt: dict[str, Any]
 
 
 # --- Dependencies ---
@@ -99,7 +96,7 @@ ALLOWED_CHAIN = "base_sepolia"
 ALLOWED_TOKEN = "USDC"
 
 
-def _parse_payment_mandate(data: Dict[str, Any]) -> PaymentMandate:
+def _parse_payment_mandate(data: dict[str, Any]) -> PaymentMandate:
     try:
         proof = data.get("proof")
         if isinstance(proof, dict):
@@ -109,7 +106,7 @@ def _parse_payment_mandate(data: Dict[str, Any]) -> PaymentMandate:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"invalid_mandate_payload: {exc}") from exc
 
 
-def _policy_check(mandate: PaymentMandate, settings: SardisSettings) -> tuple[bool, Optional[str]]:
+def _policy_check(mandate: PaymentMandate, settings: SardisSettings) -> tuple[bool, str | None]:
     if mandate.chain != ALLOWED_CHAIN:
         return False, "unsupported_chain"
     if mandate.token != ALLOWED_TOKEN:

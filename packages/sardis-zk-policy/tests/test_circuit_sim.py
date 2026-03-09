@@ -5,24 +5,16 @@ the Python simulation produces identical results.
 """
 from __future__ import annotations
 
-import pytest
+from python.policy_circuit_sim import (
+    prepare_circuit_inputs,
+    simulate_circuit,
+)
 from python.types import (
     PolicyCircuitInputs,
     PolicyCircuitPublicInputs,
-    mcc_to_hash,
     evidence_hash_to_pair,
+    mcc_to_hash,
 )
-from python.policy_circuit_sim import (
-    simulate_circuit,
-    prepare_circuit_inputs,
-    check_amount,
-    check_daily_limit,
-    check_mcc,
-    check_time_window,
-    check_per_merchant_limit,
-    CircuitResult,
-)
-
 
 # ============ Helpers ============
 
@@ -36,19 +28,19 @@ def _inputs(**overrides) -> tuple[PolicyCircuitInputs, PolicyCircuitPublicInputs
     # Separate public input overrides from private
     pub_high = overrides.pop("evidence_hash_high", VALID_HIGH)
     pub_low = overrides.pop("evidence_hash_low", VALID_LOW)
-    defaults = dict(
-        amount=100,
-        daily_total=500,
-        merchant_total=200,
-        mcc_hash=12345,
-        hour=14,
-        max_per_transaction=1000,
-        daily_limit=10000,
-        per_merchant_limit=5000,
-        window_start=9,
-        window_end=17,
-        blocked_mcc_hashes=[0] * 8,
-    )
+    defaults = {
+        "amount": 100,
+        "daily_total": 500,
+        "merchant_total": 200,
+        "mcc_hash": 12345,
+        "hour": 14,
+        "max_per_transaction": 1000,
+        "daily_limit": 10000,
+        "per_merchant_limit": 5000,
+        "window_start": 9,
+        "window_end": 17,
+        "blocked_mcc_hashes": [0] * 8,
+    }
     defaults.update(overrides)
     private = PolicyCircuitInputs(**defaults)
     public = PolicyCircuitPublicInputs(

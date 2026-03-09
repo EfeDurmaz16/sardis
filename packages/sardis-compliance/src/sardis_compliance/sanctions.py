@@ -17,16 +17,16 @@ import hmac
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sardis_compliance.retry import (
-    create_retryable_client,
-    RetryConfig,
     CircuitBreakerConfig,
     RateLimitConfig,
+    RetryConfig,
+    create_retryable_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,11 +66,11 @@ class ScreeningResult:
     entity_id: str
     entity_type: EntityType
     provider: str = "elliptic"
-    screened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    matches: List[Dict[str, Any]] = field(default_factory=list)
-    reason: Optional[str] = None
-    lists_checked: List[SanctionsList] = field(default_factory=lambda: [SanctionsList.ALL])
-    
+    screened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    matches: list[dict[str, Any]] = field(default_factory=list)
+    reason: str | None = None
+    lists_checked: list[SanctionsList] = field(default_factory=lambda: [SanctionsList.ALL])
+
     @property
     def should_block(self) -> bool:
         """Check if transaction should be blocked."""
@@ -83,7 +83,7 @@ class WalletScreeningRequest:
     address: str
     chain: str = "ethereum"
     check_related: bool = True  # Check related addresses
-    lists: List[SanctionsList] = field(default_factory=lambda: [SanctionsList.ALL])
+    lists: list[SanctionsList] = field(default_factory=lambda: [SanctionsList.ALL])
 
 
 @dataclass
@@ -217,13 +217,13 @@ class FailoverSanctionsProvider(SanctionsProvider):
 class EllipticProvider(SanctionsProvider):
     """
     Elliptic sanctions screening provider implementation.
-    
+
     Elliptic provides:
     - Real-time wallet screening
     - Transaction monitoring
     - Risk scoring
     - Sanctions list coverage
-    
+
     API Reference: https://www.elliptic.co/solutions/connect
     """
 
@@ -237,7 +237,7 @@ class EllipticProvider(SanctionsProvider):
     ):
         """
         Initialize Elliptic provider.
-        
+
         Args:
             api_key: Elliptic API key
             api_secret: Elliptic API secret for request signing
@@ -279,19 +279,19 @@ class EllipticProvider(SanctionsProvider):
         method: str,
         path: str,
         body: str = "",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Sign request with HMAC."""
         import time
-        
+
         timestamp = str(int(time.time() * 1000))
         message = f"{timestamp}{method}{path}{body}"
-        
+
         signature = hmac.new(
             self._api_secret.encode(),
             message.encode(),
             hashlib.sha256,
         ).hexdigest()
-        
+
         return {
             "x-access-key": self._api_key,
             "x-access-sign": signature,
@@ -305,11 +305,11 @@ class EllipticProvider(SanctionsProvider):
     ) -> ScreeningResult:
         """Screen a wallet address via Elliptic."""
         client = await self._get_client()
-        
+
         # Map chain to Elliptic subject type
         subject_type = self._map_chain_to_subject(request.chain)
-        
-        path = f"/v2/wallet/synchronous"
+
+        path = "/v2/wallet/synchronous"
         body = {
             "subject": {
                 "asset": subject_type,
@@ -319,11 +319,11 @@ class EllipticProvider(SanctionsProvider):
             "type": "wallet_exposure",
             "customer_reference": f"sardis_{request.address[:16]}",
         }
-        
+
         import json
         body_str = json.dumps(body)
         headers = self._sign_request("POST", path, body_str)
-        
+
         async def _do_screen():
             response = await client.post(path, content=body_str, headers=headers)
             response.raise_for_status()
@@ -387,14 +387,14 @@ class EllipticProvider(SanctionsProvider):
                 chain=request.chain,
             )
         )
-        
+
         to_result = await self.screen_wallet(
             WalletScreeningRequest(
                 address=request.to_address,
                 chain=request.chain,
             )
         )
-        
+
         # Return worst result
         if from_result.should_block or to_result.should_block:
             return ScreeningResult(
@@ -406,14 +406,14 @@ class EllipticProvider(SanctionsProvider):
                 matches=from_result.matches + to_result.matches,
                 reason="Transaction involves sanctioned address",
             )
-        
+
         # Return higher risk
         risk_order = [SanctionsRisk.LOW, SanctionsRisk.MEDIUM, SanctionsRisk.HIGH, SanctionsRisk.SEVERE]
         from_idx = risk_order.index(from_result.risk_level) if from_result.risk_level in risk_order else 0
         to_idx = risk_order.index(to_result.risk_level) if to_result.risk_level in risk_order else 0
-        
+
         worst_result = from_result if from_idx >= to_idx else to_result
-        
+
         return ScreeningResult(
             risk_level=worst_result.risk_level,
             is_sanctioned=False,
@@ -496,7 +496,7 @@ class EllipticProvider(SanctionsProvider):
 class MockSanctionsProvider(SanctionsProvider):
     """
     Mock sanctions provider for development and testing.
-    
+
     Simulates Elliptic behavior with configurable responses.
     """
 
@@ -508,7 +508,7 @@ class MockSanctionsProvider(SanctionsProvider):
 
     def __init__(self):
         self._blocklist: set[str] = set()
-        self._custom_results: Dict[str, ScreeningResult] = {}
+        self._custom_results: dict[str, ScreeningResult] = {}
 
     async def screen_wallet(
         self,
@@ -516,11 +516,11 @@ class MockSanctionsProvider(SanctionsProvider):
     ) -> ScreeningResult:
         """Screen wallet with mock logic."""
         address = request.address.lower()
-        
+
         # Check custom results
         if address in self._custom_results:
             return self._custom_results[address]
-        
+
         # Check sanctioned addresses
         if address in self.SANCTIONED_ADDRESSES or address in self._blocklist:
             return ScreeningResult(
@@ -532,7 +532,7 @@ class MockSanctionsProvider(SanctionsProvider):
                 matches=[{"list": "OFAC", "name": "Test Sanctioned Entity"}],
                 reason="Address is on sanctions list",
             )
-        
+
         # Default: low risk
         return ScreeningResult(
             risk_level=SanctionsRisk.LOW,
@@ -554,14 +554,14 @@ class MockSanctionsProvider(SanctionsProvider):
                 chain=request.chain,
             )
         )
-        
+
         to_result = await self.screen_wallet(
             WalletScreeningRequest(
                 address=request.to_address,
                 chain=request.chain,
             )
         )
-        
+
         if from_result.should_block or to_result.should_block:
             return ScreeningResult(
                 risk_level=SanctionsRisk.BLOCKED,
@@ -571,7 +571,7 @@ class MockSanctionsProvider(SanctionsProvider):
                 provider="mock",
                 reason="Transaction involves blocked address",
             )
-        
+
         return ScreeningResult(
             risk_level=SanctionsRisk.LOW,
             is_sanctioned=False,
@@ -605,7 +605,7 @@ class MockSanctionsProvider(SanctionsProvider):
 class SanctionsService:
     """
     High-level sanctions screening service.
-    
+
     Features:
     - Pre-transaction screening
     - Address caching
@@ -615,19 +615,19 @@ class SanctionsService:
 
     def __init__(
         self,
-        provider: Optional[SanctionsProvider] = None,
+        provider: SanctionsProvider | None = None,
         cache_ttl_seconds: int = 3600,  # 1 hour
     ):
         """
         Initialize sanctions service.
-        
+
         Args:
             provider: Sanctions screening provider
             cache_ttl_seconds: How long to cache screening results
         """
         self._provider = provider or MockSanctionsProvider()
         self._cache_ttl = cache_ttl_seconds
-        self._cache: Dict[str, tuple[ScreeningResult, datetime]] = {}
+        self._cache: dict[str, tuple[ScreeningResult, datetime]] = {}
 
     async def screen_address(
         self,
@@ -637,18 +637,18 @@ class SanctionsService:
     ) -> ScreeningResult:
         """
         Screen an address for sanctions.
-        
+
         Uses cache if available and not expired.
         """
         cache_key = f"{chain}:{address.lower()}"
-        
+
         # Check cache
         if not force_refresh and cache_key in self._cache:
             result, cached_at = self._cache[cache_key]
-            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            age = (datetime.now(UTC) - cached_at).total_seconds()
             if age < self._cache_ttl:
                 return result
-        
+
         # Screen address
         result = await self._provider.screen_wallet(
             WalletScreeningRequest(
@@ -656,10 +656,10 @@ class SanctionsService:
                 chain=chain,
             )
         )
-        
+
         # Cache result
-        self._cache[cache_key] = (result, datetime.now(timezone.utc))
-        
+        self._cache[cache_key] = (result, datetime.now(UTC))
+
         return result
 
     async def screen_transaction(
@@ -699,12 +699,12 @@ class SanctionsService:
     ) -> bool:
         """Add address to blocklist."""
         success = await self._provider.add_to_blocklist(address, reason)
-        
+
         # Invalidate cache
         for key in list(self._cache.keys()):
             if address.lower() in key:
                 del self._cache[key]
-        
+
         return success
 
     async def unblock_address(
@@ -713,12 +713,12 @@ class SanctionsService:
     ) -> bool:
         """Remove address from blocklist."""
         success = await self._provider.remove_from_blocklist(address)
-        
+
         # Invalidate cache
         for key in list(self._cache.keys()):
             if address.lower() in key:
                 del self._cache[key]
-        
+
         return success
 
     def clear_cache(self) -> None:
@@ -727,10 +727,10 @@ class SanctionsService:
 
 
 def create_sanctions_service(
-    api_key: Optional[str] = None,
-    api_secret: Optional[str] = None,
-    provider_name: Optional[str] = None,
-    circle_api_key: Optional[str] = None,
+    api_key: str | None = None,
+    api_secret: str | None = None,
+    provider_name: str | None = None,
+    circle_api_key: str | None = None,
 ) -> SanctionsService:
     """
     Factory function to create sanctions service.

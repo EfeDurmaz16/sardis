@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sardis_v2_core.cache import create_cache_service
+
 from sardis_api.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from sardis_api.routers.secure_checkout import RepositoryBackedSecureCheckoutStore
 
 
 def _sample_job(intent_id: str = "intent_repo_1") -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return {
         "job_id": "scj_repo_1",
         "intent_id": intent_id,
@@ -82,7 +82,7 @@ async def test_repository_backed_store_shares_secret_refs_across_instances():
             "currency": "USD",
             "purpose": "agent_checkout",
         },
-        expires_at=datetime.now(timezone.utc) + timedelta(seconds=30),
+        expires_at=datetime.now(UTC) + timedelta(seconds=30),
     )
 
     consumed_first = await store_b.consume_secret(secret_ref)

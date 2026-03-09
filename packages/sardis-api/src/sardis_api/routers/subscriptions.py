@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, Literal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -25,18 +25,18 @@ class CreateSubscriptionRequest(BaseModel):
     destination_address: str
     token: str = "USDC"
     chain: str = "base_sepolia"
-    memo: Optional[str] = None
-    merchant_mcc: Optional[str] = None
-    card_id: Optional[str] = None
+    memo: str | None = None
+    merchant_mcc: str | None = None
+    card_id: str | None = None
     auto_approve: bool = True
     auto_approve_threshold: Decimal = Field(default=Decimal("100.00"))
     amount_tolerance: Decimal = Field(default=Decimal("5.00"))
     notify_owner: bool = True
-    notification_channel: Optional[str] = None
+    notification_channel: str | None = None
     max_failures: int = Field(default=3, ge=1, le=20)
     autofund_enabled: bool = False
-    autofund_amount: Optional[Decimal] = None
-    start_at: Optional[datetime] = None
+    autofund_amount: Decimal | None = None
+    start_at: datetime | None = None
 
 
 class SubscriptionResponse(BaseModel):
@@ -50,19 +50,19 @@ class SubscriptionResponse(BaseModel):
     billing_day: int
     next_billing: datetime
     status: str
-    destination_address: Optional[str] = None
+    destination_address: str | None = None
     token: str = "USDC"
     chain: str = "base_sepolia"
-    memo: Optional[str] = None
+    memo: str | None = None
     autofund_enabled: bool = False
-    autofund_amount_cents: Optional[int] = None
+    autofund_amount_cents: int | None = None
     failure_count: int = 0
     max_failures: int = 3
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_row(cls, row: dict) -> "SubscriptionResponse":
+    def from_row(cls, row: dict) -> SubscriptionResponse:
         return cls(
             id=str(row.get("id")),
             wallet_id=str(row.get("wallet_id")),
@@ -144,7 +144,7 @@ async def create_subscription(
         else None
     )
 
-    next_billing = payload.start_at or datetime.now(timezone.utc)
+    next_billing = payload.start_at or datetime.now(UTC)
     if payload.start_at is None:
         next_billing = compute_next_billing(
             current=next_billing,
@@ -181,8 +181,8 @@ async def create_subscription(
 
 @router.get("", response_model=list[SubscriptionResponse])
 async def list_subscriptions(
-    wallet_id: Optional[str] = Query(default=None),
-    status_filter: Optional[str] = Query(default=None, alias="status"),
+    wallet_id: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     deps: SubscriptionDependencies = Depends(get_deps),

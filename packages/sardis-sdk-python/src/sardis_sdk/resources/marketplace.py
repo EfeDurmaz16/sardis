@@ -5,8 +5,7 @@ This module provides both async and sync interfaces for A2A marketplace operatio
 """
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.marketplace import (
     CreateOfferRequest,
@@ -21,6 +20,8 @@ from ..models.marketplace import (
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
+    from decimal import Decimal
+
     from ..client import TimeoutConfig
 
 
@@ -46,8 +47,8 @@ class AsyncMarketplaceResource(AsyncBaseResource):
 
     async def list_categories(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[str]:
         """List all service categories.
 
         Args:
@@ -66,12 +67,12 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         name: str,
         category: ServiceCategory,
         price_amount: Decimal,
-        description: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
         price_token: str = "USDC",
-        capabilities: Optional[Dict[str, Any]] = None,
-        api_endpoint: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        capabilities: dict[str, Any] | None = None,
+        api_endpoint: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Service:
         """Create a new service listing.
 
@@ -104,11 +105,11 @@ class AsyncMarketplaceResource(AsyncBaseResource):
 
     async def list_services(
         self,
-        category: Optional[ServiceCategory] = None,
+        category: ServiceCategory | None = None,
         limit: int = 50,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Service]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Service]:
         """List services in the marketplace.
 
         Args:
@@ -120,7 +121,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         Returns:
             List of services
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if category:
             params["category"] = category.value
         response = await self._get("/api/v2/marketplace/services", params=params, timeout=timeout)
@@ -129,7 +130,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
     async def get_service(
         self,
         service_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Service:
         """Get a service by ID.
 
@@ -145,13 +146,13 @@ class AsyncMarketplaceResource(AsyncBaseResource):
 
     async def search_services(
         self,
-        query: Optional[str] = None,
-        category: Optional[ServiceCategory] = None,
-        min_price: Optional[Decimal] = None,
-        max_price: Optional[Decimal] = None,
-        tags: Optional[List[str]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Service]:
+        query: str | None = None,
+        category: ServiceCategory | None = None,
+        min_price: Decimal | None = None,
+        max_price: Decimal | None = None,
+        tags: list[str] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Service]:
         """Search for services.
 
         Args:
@@ -165,7 +166,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         Returns:
             List of matching services
         """
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         if query:
             data["query"] = query
         if category:
@@ -188,7 +189,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         consumer_agent_id: str,
         total_amount: Decimal,
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Create an offer for a service.
 
@@ -213,11 +214,11 @@ class AsyncMarketplaceResource(AsyncBaseResource):
 
     async def list_offers(
         self,
-        status: Optional[OfferStatus] = None,
+        status: OfferStatus | None = None,
         as_provider: bool = False,
         as_consumer: bool = False,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[ServiceOffer]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[ServiceOffer]:
         """List offers.
 
         Args:
@@ -229,7 +230,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         Returns:
             List of offers
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if status:
             params["status"] = status.value
         if as_provider:
@@ -242,7 +243,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
     async def accept_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Accept an offer (as provider).
 
@@ -259,7 +260,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
     async def reject_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Reject an offer (as provider).
 
@@ -276,7 +277,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
     async def complete_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Mark an offer as completed.
 
@@ -296,8 +297,8 @@ class AsyncMarketplaceResource(AsyncBaseResource):
         self,
         offer_id: str,
         rating: int,
-        comment: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        comment: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceReview:
         """Create a review for a completed offer.
 
@@ -341,8 +342,8 @@ class MarketplaceResource(SyncBaseResource):
 
     def list_categories(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[str]:
         """List all service categories.
 
         Args:
@@ -361,12 +362,12 @@ class MarketplaceResource(SyncBaseResource):
         name: str,
         category: ServiceCategory,
         price_amount: Decimal,
-        description: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
         price_token: str = "USDC",
-        capabilities: Optional[Dict[str, Any]] = None,
-        api_endpoint: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        capabilities: dict[str, Any] | None = None,
+        api_endpoint: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Service:
         """Create a new service listing.
 
@@ -399,11 +400,11 @@ class MarketplaceResource(SyncBaseResource):
 
     def list_services(
         self,
-        category: Optional[ServiceCategory] = None,
+        category: ServiceCategory | None = None,
         limit: int = 50,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Service]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Service]:
         """List services in the marketplace.
 
         Args:
@@ -415,7 +416,7 @@ class MarketplaceResource(SyncBaseResource):
         Returns:
             List of services
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if category:
             params["category"] = category.value
         response = self._get("/api/v2/marketplace/services", params=params, timeout=timeout)
@@ -424,7 +425,7 @@ class MarketplaceResource(SyncBaseResource):
     def get_service(
         self,
         service_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Service:
         """Get a service by ID.
 
@@ -440,13 +441,13 @@ class MarketplaceResource(SyncBaseResource):
 
     def search_services(
         self,
-        query: Optional[str] = None,
-        category: Optional[ServiceCategory] = None,
-        min_price: Optional[Decimal] = None,
-        max_price: Optional[Decimal] = None,
-        tags: Optional[List[str]] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Service]:
+        query: str | None = None,
+        category: ServiceCategory | None = None,
+        min_price: Decimal | None = None,
+        max_price: Decimal | None = None,
+        tags: list[str] | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[Service]:
         """Search for services.
 
         Args:
@@ -460,7 +461,7 @@ class MarketplaceResource(SyncBaseResource):
         Returns:
             List of matching services
         """
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         if query:
             data["query"] = query
         if category:
@@ -483,7 +484,7 @@ class MarketplaceResource(SyncBaseResource):
         consumer_agent_id: str,
         total_amount: Decimal,
         token: str = "USDC",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Create an offer for a service.
 
@@ -508,11 +509,11 @@ class MarketplaceResource(SyncBaseResource):
 
     def list_offers(
         self,
-        status: Optional[OfferStatus] = None,
+        status: OfferStatus | None = None,
         as_provider: bool = False,
         as_consumer: bool = False,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[ServiceOffer]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[ServiceOffer]:
         """List offers.
 
         Args:
@@ -524,7 +525,7 @@ class MarketplaceResource(SyncBaseResource):
         Returns:
             List of offers
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if status:
             params["status"] = status.value
         if as_provider:
@@ -537,7 +538,7 @@ class MarketplaceResource(SyncBaseResource):
     def accept_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Accept an offer (as provider).
 
@@ -554,7 +555,7 @@ class MarketplaceResource(SyncBaseResource):
     def reject_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Reject an offer (as provider).
 
@@ -571,7 +572,7 @@ class MarketplaceResource(SyncBaseResource):
     def complete_offer(
         self,
         offer_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceOffer:
         """Mark an offer as completed.
 
@@ -591,8 +592,8 @@ class MarketplaceResource(SyncBaseResource):
         self,
         offer_id: str,
         rating: int,
-        comment: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        comment: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ServiceReview:
         """Create a review for a completed offer.
 

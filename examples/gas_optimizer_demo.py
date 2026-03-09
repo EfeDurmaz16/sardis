@@ -113,7 +113,7 @@ async def demo_cache_behavior():
     print("Fetching again (cache expired, will fetch fresh)...")
     price3 = await optimizer._get_gas_price("base")
     print(f"Price: {price3} gwei")
-    print(f"May differ due to market conditions")
+    print("May differ due to market conditions")
 
 
 async def main():

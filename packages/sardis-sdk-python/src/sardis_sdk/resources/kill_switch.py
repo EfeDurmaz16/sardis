@@ -1,11 +1,9 @@
 """Kill switch resource for Sardis SDK."""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .base import AsyncBaseResource, SyncBaseResource
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..client import TimeoutConfig
@@ -16,8 +14,8 @@ class AsyncKillSwitchResource(AsyncBaseResource):
 
     async def status(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get current kill switch status for all rails and chains."""
         return await self._get("kill-switch/status", timeout=timeout)
 
@@ -26,10 +24,10 @@ class AsyncKillSwitchResource(AsyncBaseResource):
         rail: str,
         reason: str,
         *,
-        notes: Optional[str] = None,
-        auto_reactivate: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        auto_reactivate: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Activate (disable) a payment rail.
 
         Args:
@@ -39,7 +37,7 @@ class AsyncKillSwitchResource(AsyncBaseResource):
             auto_reactivate: Optional seconds until automatic reactivation.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {"rail": rail, "reason": reason}
+        payload: dict[str, Any] = {"rail": rail, "reason": reason}
         if notes:
             payload["notes"] = notes
         if auto_reactivate is not None:
@@ -49,8 +47,8 @@ class AsyncKillSwitchResource(AsyncBaseResource):
     async def deactivate_rail(
         self,
         rail: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Deactivate (re-enable) a payment rail.
 
         Args:
@@ -64,10 +62,10 @@ class AsyncKillSwitchResource(AsyncBaseResource):
         chain: str,
         reason: str,
         *,
-        notes: Optional[str] = None,
-        auto_reactivate: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        auto_reactivate: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Activate (disable) a blockchain chain.
 
         Args:
@@ -77,7 +75,7 @@ class AsyncKillSwitchResource(AsyncBaseResource):
             auto_reactivate: Optional seconds until automatic reactivation.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {"chain": chain, "reason": reason}
+        payload: dict[str, Any] = {"chain": chain, "reason": reason}
         if notes:
             payload["notes"] = notes
         if auto_reactivate is not None:
@@ -87,8 +85,8 @@ class AsyncKillSwitchResource(AsyncBaseResource):
     async def deactivate_chain(
         self,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Deactivate (re-enable) a blockchain chain.
 
         Args:
@@ -103,8 +101,8 @@ class KillSwitchResource(SyncBaseResource):
 
     def status(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get current kill switch status for all rails and chains."""
         return self._get("kill-switch/status", timeout=timeout)
 
@@ -113,10 +111,10 @@ class KillSwitchResource(SyncBaseResource):
         rail: str,
         reason: str,
         *,
-        notes: Optional[str] = None,
-        auto_reactivate: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        auto_reactivate: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Activate (disable) a payment rail.
 
         Args:
@@ -126,7 +124,7 @@ class KillSwitchResource(SyncBaseResource):
             auto_reactivate: Optional seconds until automatic reactivation.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {"rail": rail, "reason": reason}
+        payload: dict[str, Any] = {"rail": rail, "reason": reason}
         if notes:
             payload["notes"] = notes
         if auto_reactivate is not None:
@@ -136,8 +134,8 @@ class KillSwitchResource(SyncBaseResource):
     def deactivate_rail(
         self,
         rail: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Deactivate (re-enable) a payment rail.
 
         Args:
@@ -151,10 +149,10 @@ class KillSwitchResource(SyncBaseResource):
         chain: str,
         reason: str,
         *,
-        notes: Optional[str] = None,
-        auto_reactivate: Optional[int] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        auto_reactivate: int | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Activate (disable) a blockchain chain.
 
         Args:
@@ -164,7 +162,7 @@ class KillSwitchResource(SyncBaseResource):
             auto_reactivate: Optional seconds until automatic reactivation.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {"chain": chain, "reason": reason}
+        payload: dict[str, Any] = {"chain": chain, "reason": reason}
         if notes:
             payload["notes"] = notes
         if auto_reactivate is not None:
@@ -174,8 +172,8 @@ class KillSwitchResource(SyncBaseResource):
     def deactivate_chain(
         self,
         chain: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Deactivate (re-enable) a blockchain chain.
 
         Args:

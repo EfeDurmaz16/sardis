@@ -9,10 +9,9 @@ import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from .credential_store import CredentialStore
-from .delegated_credential import CredentialNetwork, DelegatedCredential
 from .execution_intent import ExecutionIntent
 from .merchant_capability import MerchantCapabilityStore, MerchantExecutionCapability
 
@@ -35,14 +34,14 @@ class ExecutionModeSelection:
     """Result of mode routing — includes reasoning trace for explainability."""
 
     mode: ExecutionMode
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
     reason: str = ""
     estimated_fee: Decimal = Decimal("0")
     settlement_time_seconds: int = 0
 
     # Fallback tracking
     fallback_applied: bool = False
-    original_mode: Optional[ExecutionMode] = None
+    original_mode: ExecutionMode | None = None
 
     # Explainability
     evaluated_modes: list[str] = field(default_factory=list)
@@ -89,7 +88,7 @@ class ExecutionModeRouter:
         self,
         credential_store: CredentialStore,
         merchant_capability_store: MerchantCapabilityStore,
-        thresholds: Optional[RoutingThresholds] = None,
+        thresholds: RoutingThresholds | None = None,
     ) -> None:
         self._cred_store = credential_store
         self._merchant_store = merchant_capability_store
@@ -111,7 +110,7 @@ class ExecutionModeRouter:
         )
 
         # Fetch merchant capabilities (may be None for unknown merchants)
-        merchant_cap: Optional[MerchantExecutionCapability] = None
+        merchant_cap: MerchantExecutionCapability | None = None
         if merchant_id:
             merchant_cap = await self._merchant_store.get(merchant_id)
 
@@ -156,7 +155,7 @@ class ExecutionModeRouter:
             )
 
         # ── Auto mode: evaluate candidates ───────────────────────
-        candidates: list[tuple[ExecutionMode, Decimal, int, Optional[str]]] = []
+        candidates: list[tuple[ExecutionMode, Decimal, int, str | None]] = []
 
         for mode in ExecutionMode:
             evaluated.append(mode.value)
@@ -177,7 +176,7 @@ class ExecutionModeRouter:
                     continue
 
             fee_rate, settle = _MODE_COST_RANK[mode]
-            cred_id: Optional[str] = None
+            cred_id: str | None = None
             if mode == ExecutionMode.DELEGATED_CARD:
                 creds = await self._cred_store.get_active_for_agent(intent.agent_id)
                 if creds:
@@ -218,7 +217,7 @@ class ExecutionModeRouter:
         agent_id: str,
         amount: Decimal,
         currency: str,
-        merchant_id: Optional[str] = None,
+        merchant_id: str | None = None,
     ) -> list[ExecutionModeSelection]:
         """List all viable modes for a given context."""
         merchant_cap = None
@@ -259,7 +258,7 @@ class ExecutionModeRouter:
         self,
         mode: ExecutionMode,
         intent: ExecutionIntent,
-        merchant_cap: Optional[MerchantExecutionCapability],
+        merchant_cap: MerchantExecutionCapability | None,
         credential_id: str,
     ) -> tuple[bool, str]:
         """Check whether a mode is viable for the given intent."""

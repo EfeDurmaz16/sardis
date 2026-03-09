@@ -23,12 +23,12 @@ __version__ = "1.0.0"
 # ---------------------------------------------------------------------------
 # Quick-start / simulation classes (always available)
 # ---------------------------------------------------------------------------
-from .wallet import Wallet
-from .transaction import Transaction, TransactionResult, TransactionStatus
-from .policy import Policy, PolicyResult
 from .agent import Agent
+from .client import LedgerEntry, ManagedGroup, ManagedWallet, SardisClient
 from .group import AgentGroup
-from .client import SardisClient, ManagedWallet, ManagedGroup, LedgerEntry
+from .policy import Policy, PolicyResult
+from .transaction import Transaction, TransactionResult, TransactionStatus
+from .wallet import Wallet
 
 # ---------------------------------------------------------------------------
 # Production SDK re-exports (available when sardis-sdk is installed)

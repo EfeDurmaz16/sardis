@@ -21,17 +21,13 @@ Run:
 """
 import asyncio
 from decimal import Decimal
-from datetime import datetime
 
 from sardis_ledger import (
     # Hybrid ledger
     HybridConfig,
     HybridLedger,
-    create_hybrid_ledger,
     # Models
     LedgerEntryType,
-    # Verification
-    VerificationStatus,
 )
 
 
@@ -102,7 +98,7 @@ async def main():
         actor_id="user_alice",
         metadata={"source": "deposit", "agent": "shopping_agent"},
     )
-    print(f"    ✓ Credit $1000 to agent_wallet_001")
+    print("    ✓ Credit $1000 to agent_wallet_001")
     print(f"      Entry ID: {receipt1.entry_id}")
     print(f"      Merkle Root: {receipt1.immudb_receipt.merkle_proof.root_hash[:32]}...")
 
@@ -118,11 +114,11 @@ async def main():
         actor_id="shopping_agent",
         metadata={"purchase": "electronics", "merchant": "amazon"},
     )
-    print(f"    ✓ Debit $150 from agent_wallet_001 (purchase)")
+    print("    ✓ Debit $150 from agent_wallet_001 (purchase)")
     print(f"      Entry ID: {receipt2.entry_id}")
 
     # Transaction fee
-    receipt3 = await ledger.create_entry(
+    await ledger.create_entry(
         account_id="agent_wallet_001",
         amount=Decimal("0.50"),
         entry_type=LedgerEntryType.FEE,
@@ -130,7 +126,7 @@ async def main():
         actor_id="system",
         metadata={"fee_type": "network"},
     )
-    print(f"    ✓ Fee $0.50 from agent_wallet_001")
+    print("    ✓ Fee $0.50 from agent_wallet_001")
 
     # 5. Check balance
     print("\n[4] Checking balance...")
@@ -159,7 +155,7 @@ async def main():
     immudb_proof = proof['stores']['immudb']
     if 'merkle_proof' in immudb_proof:
         mp = immudb_proof['merkle_proof']
-        print(f"    Merkle proof:")
+        print("    Merkle proof:")
         print(f"      - Transaction ID: {mp['tx_id']}")
         print(f"      - Tree size: {mp['tree_size']}")
         print(f"      - Proof nodes: {len(mp['proof_nodes'])}")

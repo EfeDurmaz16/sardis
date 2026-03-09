@@ -5,15 +5,14 @@ Flow: External Payer → Agent Wallet (on-chain) → AML Screen → Ledger Credi
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from .database import Database
 from .webhooks import (
     EventType,
-    WebhookEvent,
     create_deposit_event,
 )
 
@@ -87,7 +86,7 @@ class InboundPaymentService:
             getattr(deposit, "confirmations", 0),
             agent_id,
             wallet_id,
-            getattr(deposit, "detected_at", datetime.now(timezone.utc)),
+            getattr(deposit, "detected_at", datetime.now(UTC)),
         )
 
         if self._event_bus:
@@ -182,7 +181,7 @@ class InboundPaymentService:
         )
 
         # 4. Update deposit record → credited
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await Database.execute(
             """
             UPDATE deposits SET
@@ -216,20 +215,20 @@ class InboundPaymentService:
 
         # 6. Emit events: DEPOSIT_CONFIRMED + WALLET_FUNDED + PAYMENT_RECEIVED
         if self._event_bus:
-            base_kwargs = dict(
-                deposit_id=deposit.deposit_id,
-                wallet_id=wallet_id or "",
-                agent_id=agent_id or "",
-                tx_hash=deposit.tx_hash,
-                chain=deposit.chain,
-                token=deposit.token,
-                amount=Decimal(amount_str),
-                from_address=deposit.from_address,
-                to_address=deposit.to_address,
-                confirmations=getattr(deposit, "confirmations", 1),
-                payment_request_id=payment_request_id,
-                ledger_entry_id=ledger_entry_id,
-            )
+            base_kwargs = {
+                "deposit_id": deposit.deposit_id,
+                "wallet_id": wallet_id or "",
+                "agent_id": agent_id or "",
+                "tx_hash": deposit.tx_hash,
+                "chain": deposit.chain,
+                "token": deposit.token,
+                "amount": Decimal(amount_str),
+                "from_address": deposit.from_address,
+                "to_address": deposit.to_address,
+                "confirmations": getattr(deposit, "confirmations", 1),
+                "payment_request_id": payment_request_id,
+                "ledger_entry_id": ledger_entry_id,
+            }
 
             for evt_type in (
                 EventType.DEPOSIT_CONFIRMED,
@@ -305,7 +304,6 @@ class InboundPaymentService:
             return None
 
         try:
-            import inspect
 
             entry_id = f"le_{uuid4().hex[:16]}"
             account_id = wallet_id or agent_id or deposit.to_address
@@ -373,7 +371,7 @@ class InboundPaymentService:
                 return None
 
             request_id = row["request_id"]
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await Database.execute(
                 """
@@ -509,14 +507,11 @@ async def reconcile_invoice_with_deposit(
         if row["status"] == "paid":
             return True  # Already paid
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         invoice_amount = Decimal(row["amount"])
         paid_amount = Decimal(amount_paid)
 
-        if paid_amount >= invoice_amount:
-            new_status = "paid"
-        else:
-            new_status = "partial"
+        new_status = "paid" if paid_amount >= invoice_amount else "partial"
 
         await Database.execute(
             """

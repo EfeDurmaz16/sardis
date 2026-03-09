@@ -6,9 +6,8 @@ This keeps the demo/production API behavior identical.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from .policy_store import AsyncPolicyStore
 from .spending_policy import SpendingPolicy, create_default_policy
@@ -26,7 +25,7 @@ class PostgresPolicyStore(AsyncPolicyStore):
             self._pool = await Database.get_pool()
         return self._pool
 
-    async def fetch_policy(self, agent_id: str) -> Optional[SpendingPolicy]:
+    async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None:
         import json as _json
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -52,8 +51,8 @@ class PostgresPolicyStore(AsyncPolicyStore):
         agent_id: str,
         policy: SpendingPolicy,
         *,
-        created_by: Optional[str] = None,
-        policy_text: Optional[str] = None,
+        created_by: str | None = None,
+        policy_text: str | None = None,
     ) -> None:
         import json as _json
         pool = await self._get_pool()
@@ -138,7 +137,7 @@ class PostgresPolicyStore(AsyncPolicyStore):
                     window.record_spend(amount)
 
                 policy.spent_total += amount
-                policy.updated_at = datetime.now(timezone.utc)
+                policy.updated_at = datetime.now(UTC)
 
                 payload = spending_policy_to_json(policy)
                 await conn.execute(

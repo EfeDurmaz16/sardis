@@ -13,18 +13,16 @@ Production-grade Sardis API with:
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
-import json
 import time
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from sardis_v2_core import SardisSettings, load_settings, InMemoryPolicyStore, PostgresPolicyStore
+from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore, SardisSettings, load_settings
 
 
 def _bootstrap_monorepo_sys_path() -> None:
@@ -74,111 +72,117 @@ def _should_bootstrap_monorepo_sys_path() -> bool:
 if _should_bootstrap_monorepo_sys_path():
     _bootstrap_monorepo_sys_path()
 
-from sardis_v2_core.identity import IdentityRegistry
-from sardis_wallet.manager import WalletManager
-from sardis_protocol.verifier import MandateVerifier
-from sardis_protocol.storage import MandateArchive, SqliteReplayCache, ReplayCache, PostgresReplayCache
 from sardis_chain.executor import ChainExecutor
-from sardis_ledger.records import LedgerStore
 from sardis_compliance.checks import ComplianceEngine
-from sardis_v2_core.orchestrator import PaymentOrchestrator
-from sardis_v2_core.holds import HoldsRepository
-from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+from sardis_ledger.records import LedgerStore
+from sardis_protocol.storage import (
+    MandateArchive,
+    PostgresReplayCache,
+    ReplayCache,
+    SqliteReplayCache,
+)
+from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core.cache import create_cache_service
-from .routers import mandates, ap2, auth
-from .routers import mvp
-from .routers import ledger as ledger_router
-from .routers import holds as holds_router
-from .routers import webhooks as webhooks_router
-from .routers import transactions as transactions_router
-from .routers import marketplace as marketplace_router
-from .routers import wallets as wallets_router
-from .routers import subscriptions as subscriptions_router
-from .routers import onchain_payments as onchain_payments_router
-from .routers import agents as agents_router
-from .routers import api_keys as api_keys_router
-from .routers import cards as cards_router
-from .routers import partner_card_webhooks as partner_card_webhooks_router
-from .routers import stripe_webhooks as stripe_webhooks_router
-from .routers import stripe_funding as stripe_funding_router
-from .routers import funding_capabilities as funding_capabilities_router
-from .routers import checkout as checkout_router
-from .routers import secure_checkout as secure_checkout_router
-from .routers import policies as policies_router
-from .routers import compliance as compliance_router
-from .routers import admin as admin_router
-from .routers import admin_reconciliation as admin_reconciliation_router
-from .routers import evidence as evidence_router
-from .routers import simulation as simulation_router
-from .routers import invoices as invoices_router
-from .routers import ramp as ramp_router
-from .routers import treasury as treasury_router
-from .routers import treasury_ops as treasury_ops_router
-from .routers import cpn as cpn_router
-from .routers import dev as dev_router
+from sardis_v2_core.holds import HoldsRepository
+from sardis_v2_core.identity import IdentityRegistry
+from sardis_v2_core.orchestrator import PaymentOrchestrator
+from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+from sardis_wallet.manager import WalletManager
+
 from .routers import a2a as a2a_router
 from .routers import a2a_payments as a2a_payments_router
-from .routers import groups as groups_router
+from .routers import admin as admin_router
+from .routers import admin_reconciliation as admin_reconciliation_router
+from .routers import agents as agents_router
 from .routers import alerts as alerts_router
-from .routers import swap as swap_router
-from .routers import ws_alerts as ws_alerts_router
 from .routers import analytics as analytics_router
-from .routers import metrics as metrics_router
-from .routers import sandbox as sandbox_router
-from .routers import enterprise_support as enterprise_support_router
+from .routers import ap2, auth, mandates, mvp
+from .routers import api_keys as api_keys_router
 from .routers import audit_anchors as audit_anchors_router
-from .routers import merchants as merchants_router
-from .routers import merchant_checkout as merchant_checkout_router
+from .routers import cards as cards_router
+from .routers import checkout as checkout_router
+from .routers import compliance as compliance_router
+from .routers import cpn as cpn_router
 from .routers import credentials as credentials_router
+from .routers import dev as dev_router
+from .routers import enterprise_support as enterprise_support_router
+from .routers import evidence as evidence_router
 from .routers import execution_modes as execution_modes_router
-from .routers import settlements as settlements_router
-from .routers import policy_simulation as policy_simulation_router
-from .routers import receipts as receipts_router
+from .routers import funding_capabilities as funding_capabilities_router
+from .routers import groups as groups_router
+from .routers import holds as holds_router
+from .routers import invoices as invoices_router
+from .routers import ledger as ledger_router
+from .routers import marketplace as marketplace_router
+from .routers import merchant_checkout as merchant_checkout_router
+from .routers import merchants as merchants_router
+from .routers import metrics as metrics_router
+from .routers import onchain_payments as onchain_payments_router
 from .routers import outcomes as outcomes_router
+from .routers import partner_card_webhooks as partner_card_webhooks_router
+from .routers import policies as policies_router
+from .routers import policy_simulation as policy_simulation_router
+from .routers import ramp as ramp_router
+from .routers import receipts as receipts_router
 from .routers import reliability as reliability_router
+from .routers import sandbox as sandbox_router
+from .routers import secure_checkout as secure_checkout_router
+from .routers import settlements as settlements_router
+from .routers import simulation as simulation_router
+from .routers import stripe_funding as stripe_funding_router
+from .routers import stripe_webhooks as stripe_webhooks_router
+from .routers import subscriptions as subscriptions_router
+from .routers import swap as swap_router
+from .routers import transactions as transactions_router
+from .routers import treasury as treasury_router
+from .routers import treasury_ops as treasury_ops_router
+from .routers import wallets as wallets_router
+from .routers import webhooks as webhooks_router
+from .routers import ws_alerts as ws_alerts_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
     from .routers import approvals as approvals_router
 except ImportError:
     approvals_router = None  # type: ignore
-from sardis_v2_core.marketplace import MarketplaceRepository
-from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.agent_groups import AgentGroupRepository
-from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
+from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core.inbound_payment_service import InboundPaymentService
+from sardis_v2_core.marketplace import MarketplaceRepository
+from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
+
+from .card_adapter import CardProviderCompatAdapter
+from .health import create_health_router
+
+# Extracted modules
+from .lifespan import lifespan, shutdown_state
 from .middleware import (
-    RateLimitMiddleware,
-    RateLimitConfig,
-    StructuredLoggingMiddleware,
-    setup_logging,
+    API_VERSION,
     APIKeyManager,
-    set_api_key_manager,
-    register_exception_handlers,
-    SecurityHeadersMiddleware,
+    RateLimitConfig,
+    RateLimitMiddleware,
     RequestBodyLimitMiddleware,
     RequestIdMiddleware,
     SecurityConfig,
-    TapVerificationMiddleware,
+    SecurityHeadersMiddleware,
+    StructuredLoggingMiddleware,
     TapMiddlewareConfig,
-    API_VERSION,
+    TapVerificationMiddleware,
+    register_exception_handlers,
+    set_api_key_manager,
+    setup_logging,
 )
-
-# Extracted modules
-from .lifespan import lifespan, shutdown_state, get_shutdown_event
 from .openapi_schema import custom_openapi
-from .health import create_health_router
-from .card_adapter import CardProviderCompatAdapter
-from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from .repositories.treasury_repository import TreasuryRepository
-from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
-from .repositories.a2a_trust_repository import A2ATrustRepository
-from .repositories.subscriptions_repository import SubscriptionRepository
-from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .providers.lithic_treasury import LithicTreasuryClient
+from .repositories.a2a_trust_repository import A2ATrustRepository
+from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from .repositories.enterprise_support_repository import EnterpriseSupportRepository
+from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
+from .repositories.subscriptions_repository import SubscriptionRepository
+from .repositories.treasury_repository import TreasuryRepository
 from .services.recurring_billing import RecurringBillingService
-from sardis_v2_core.inbound_payment_service import InboundPaymentService
 
 # Configure structured logging
 setup_logging(
@@ -197,8 +201,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if sentry_dsn:
         try:
             import sentry_sdk
-            from sentry_sdk.integrations.fastapi import FastApiIntegration
             from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
 
             sentry_sdk.init(
                 dsn=sentry_dsn,
@@ -483,17 +487,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)
     from sardis_compliance import (
-        create_kyc_service,
-        create_sanctions_service,
-        create_kya_service,
-        KYCService,
-        SanctionsService,
+        EllipticProvider,
         FailoverKYCProvider,
         FailoverSanctionsProvider,
-        PersonaKYCProvider,
-        EllipticProvider,
+        KYCService,
         MockKYCProvider,
         MockSanctionsProvider,
+        PersonaKYCProvider,
+        SanctionsService,
+        create_kya_service,
+        create_kyc_service,
+        create_sanctions_service,
     )
     from sardis_compliance.providers import IdenfyKYCProvider, ScorechainProvider
 
@@ -913,7 +917,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Audit anchors - blockchain-anchored audit trail
     try:
-        from sardis_ledger.anchor import LedgerAnchor, AnchorConfig, AnchorChainProvider
+        from sardis_ledger.anchor import AnchorChainProvider, AnchorConfig, LedgerAnchor
         anchor_chain = os.getenv("SARDIS_ANCHOR_CHAIN", "base")
         anchor_config = AnchorConfig(chain=anchor_chain)
         # Wire real chain provider if contract address is configured
@@ -995,7 +999,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             )
             offramp_service = None
         else:
-            from sardis_cards.offramp import OfframpService, MockOfframpProvider
+            from sardis_cards.offramp import MockOfframpProvider, OfframpService
             offramp_service = OfframpService(provider=MockOfframpProvider())
             logger.info("OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)")
 
@@ -1452,8 +1456,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     environment="production" if settings.is_production else "sandbox",
                 )
 
-            from sardis_v2_core.funding import HttpTopupFundingAdapter, StripeIssuingFundingAdapter
             from sardis_v2_core.cpn_funding_adapter import CircleCPNFundingAdapter
+            from sardis_v2_core.funding import HttpTopupFundingAdapter, StripeIssuingFundingAdapter
 
             def _build_funding_adapter(adapter_name: str):
                 normalized = (adapter_name or "").strip().lower()
@@ -1681,8 +1685,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
 
     # Checkout routes (Agentic Checkout - Pivot D)
-    from sardis_checkout.orchestrator import CheckoutOrchestrator
     from sardis_checkout.connectors.stripe import StripeConnector
+    from sardis_checkout.orchestrator import CheckoutOrchestrator
 
     stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
     stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -1814,10 +1818,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # Merchant checkout ("Pay with Sardis")
     # -----------------------------------------------------------------------
-    from sardis_v2_core.merchant import MerchantRepository
     from sardis_checkout.connectors.sardis_native import SardisNativeConnector
-    from sardis_checkout.settlement import SettlementService
     from sardis_checkout.merchant_webhooks import MerchantWebhookService
+    from sardis_checkout.settlement import SettlementService
+    from sardis_v2_core.merchant import MerchantRepository
 
     merchant_repo = MerchantRepository()
     merchant_webhook_service = MerchantWebhookService(merchant_repo=merchant_repo)
@@ -1896,4 +1900,3 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
 
 # Required import for JSONResponse in readiness check
-from fastapi.responses import JSONResponse

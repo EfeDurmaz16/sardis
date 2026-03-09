@@ -1,12 +1,14 @@
 """Compliance Report Generator for Sardis."""
 from __future__ import annotations
-from dataclasses import dataclass, field
-from decimal import Decimal
-from enum import Enum
-from datetime import datetime, date
-from uuid import uuid4
+
 import hashlib
 import json
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from decimal import Decimal
+from enum import Enum
+from uuid import uuid4
+
 
 class ReportType(Enum):
     MONTHLY_SPENDING = "monthly_spending"

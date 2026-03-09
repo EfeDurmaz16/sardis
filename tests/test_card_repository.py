@@ -1,9 +1,10 @@
-import pytest
+# Import the module directly to avoid sardis_api.__init__ side effects
+import importlib.util
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-# Import the module directly to avoid sardis_api.__init__ side effects
-import importlib.util
+import pytest
+
 _repo_root = Path(__file__).resolve().parents[1]
 _module_path = (
     _repo_root

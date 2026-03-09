@@ -7,7 +7,7 @@ import os
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Deque
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -24,7 +24,7 @@ class AgentPaymentRateLimitConfig:
     window_seconds: int = 60
 
     @classmethod
-    def from_settings(cls, settings: Any | None) -> "AgentPaymentRateLimitConfig":
+    def from_settings(cls, settings: Any | None) -> AgentPaymentRateLimitConfig:
         def _setting(name: str, default: Any) -> Any:
             if settings is not None and hasattr(settings, name):
                 return getattr(settings, name)
@@ -60,7 +60,7 @@ class InMemoryAgentSlidingWindowLimiter:
 
     def __init__(self, config: AgentPaymentRateLimitConfig):
         self._config = config
-        self._events: dict[str, Deque[float]] = defaultdict(deque)
+        self._events: dict[str, deque[float]] = defaultdict(deque)
         self._lock = asyncio.Lock()
 
     async def check_and_record(self, agent_id: str) -> AgentPaymentRateLimitResult:
@@ -163,7 +163,7 @@ def get_agent_payment_rate_limiter(settings: Any | None = None):
     cfg = AgentPaymentRateLimitConfig.from_settings(settings)
     redis_url = ""
     if settings is not None and hasattr(settings, "redis_url"):
-        redis_url = str(getattr(settings, "redis_url") or "")
+        redis_url = str(settings.redis_url or "")
     if not redis_url:
         redis_url = os.getenv("SARDIS_REDIS_URL") or os.getenv("REDIS_URL") or os.getenv("UPSTASH_REDIS_URL") or ""
     signature = (cfg.enabled, cfg.max_requests, cfg.window_seconds, bool(redis_url))

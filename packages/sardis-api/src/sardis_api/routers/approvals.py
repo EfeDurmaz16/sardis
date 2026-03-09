@@ -8,20 +8,17 @@ Extended with confidence-based routing for tiered approvals.
 from __future__ import annotations
 
 import logging
-from typing import Optional, List, Any
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
+from sardis_v2_core.approval_repository import Approval, ApprovalRepository
 from sardis_v2_core.approval_service import ApprovalService, ApprovalStatus, ApprovalUrgency
-from sardis_v2_core.approval_repository import ApprovalRepository, Approval
 from sardis_v2_core.confidence_router import (
-    ConfidenceRouter,
     ApprovalWorkflow,
-    ConfidenceLevel,
-    TransactionConfidence,
+    ConfidenceRouter,
 )
 
 from sardis_api.authz import require_principal
@@ -48,31 +45,31 @@ class CreateApprovalRequest(BaseModel):
         ...,
         description="Agent ID that initiated the request",
     )
-    agent_id: Optional[str] = Field(
+    agent_id: str | None = Field(
         default=None,
         description="Agent ID for the action",
     )
-    wallet_id: Optional[str] = Field(
+    wallet_id: str | None = Field(
         default=None,
         description="Wallet ID for the action",
     )
-    vendor: Optional[str] = Field(
+    vendor: str | None = Field(
         default=None,
         description="Vendor name (for payments)",
     )
-    amount: Optional[Decimal] = Field(
+    amount: Decimal | None = Field(
         default=None,
         description="Payment amount",
     )
-    purpose: Optional[str] = Field(
+    purpose: str | None = Field(
         default=None,
         description="Purpose description",
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         default=None,
         description="Reason for approval request",
     )
-    card_limit: Optional[Decimal] = Field(
+    card_limit: Decimal | None = Field(
         default=None,
         description="Card limit (for create_card action)",
     )
@@ -86,11 +83,11 @@ class CreateApprovalRequest(BaseModel):
         ge=1,
         le=168,  # Max 1 week
     )
-    organization_id: Optional[str] = Field(
+    organization_id: str | None = Field(
         default=None,
         description="Organization ID",
     )
-    metadata: Optional[dict] = Field(
+    metadata: dict | None = Field(
         default=None,
         description="Additional metadata",
     )
@@ -104,22 +101,22 @@ class ApprovalResponse(BaseModel):
     status: ApprovalStatus
     urgency: ApprovalUrgency
     requested_by: str
-    reviewed_by: Optional[str] = None
+    reviewed_by: str | None = None
     created_at: datetime
-    reviewed_at: Optional[datetime] = None
+    reviewed_at: datetime | None = None
     expires_at: datetime
-    vendor: Optional[str] = None
-    amount: Optional[Decimal] = None
-    purpose: Optional[str] = None
-    reason: Optional[str] = None
-    card_limit: Optional[Decimal] = None
-    agent_id: Optional[str] = None
-    wallet_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    vendor: str | None = None
+    amount: Decimal | None = None
+    purpose: str | None = None
+    reason: str | None = None
+    card_limit: Decimal | None = None
+    agent_id: str | None = None
+    wallet_id: str | None = None
+    organization_id: str | None = None
     metadata: dict = {}
 
     @staticmethod
-    def from_approval(approval: Approval) -> "ApprovalResponse":
+    def from_approval(approval: Approval) -> ApprovalResponse:
         """Convert Approval to response model."""
         return ApprovalResponse(
             id=approval.id,
@@ -150,7 +147,7 @@ class ReviewApprovalRequest(BaseModel):
         ...,
         description="Email or ID of the reviewer",
     )
-    reason: Optional[str] = Field(
+    reason: str | None = Field(
         default=None,
         description="Reason for the decision (required for denial)",
     )
@@ -159,7 +156,7 @@ class ReviewApprovalRequest(BaseModel):
 class ApprovalListResponse(BaseModel):
     """Response for approval list."""
 
-    approvals: List[ApprovalResponse]
+    approvals: list[ApprovalResponse]
     total: int
     limit: int
     offset: int
@@ -170,6 +167,7 @@ class ApprovalListResponse(BaseModel):
 # ============================================================================
 
 from dataclasses import dataclass
+
 
 @dataclass
 class ApprovalsDependencies:
@@ -371,7 +369,7 @@ async def deny_approval(
 @router.post("/{approval_id}/cancel", response_model=ApprovalResponse)
 async def cancel_approval(
     approval_id: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     deps: ApprovalsDependencies = Depends(get_deps),
 ):
     """
@@ -399,12 +397,12 @@ async def cancel_approval(
 
 @router.get("/", response_model=ApprovalListResponse)
 async def list_approvals(
-    status: Optional[ApprovalStatus] = Query(default=None, description="Filter by status"),
-    agent_id: Optional[str] = Query(default=None, description="Filter by agent ID"),
-    wallet_id: Optional[str] = Query(default=None, description="Filter by wallet ID"),
-    organization_id: Optional[str] = Query(default=None, description="Filter by organization ID"),
-    requested_by: Optional[str] = Query(default=None, description="Filter by requester"),
-    urgency: Optional[ApprovalUrgency] = Query(default=None, description="Filter by urgency"),
+    status: ApprovalStatus | None = Query(default=None, description="Filter by status"),
+    agent_id: str | None = Query(default=None, description="Filter by agent ID"),
+    wallet_id: str | None = Query(default=None, description="Filter by wallet ID"),
+    organization_id: str | None = Query(default=None, description="Filter by organization ID"),
+    requested_by: str | None = Query(default=None, description="Filter by requester"),
+    urgency: ApprovalUrgency | None = Query(default=None, description="Filter by urgency"),
     limit: int = Query(default=50, ge=1, le=100, description="Max results to return"),
     offset: int = Query(default=0, ge=0, description="Pagination offset"),
     deps: ApprovalsDependencies = Depends(get_deps),
@@ -447,7 +445,7 @@ async def list_approvals(
 
 @router.get("/pending", response_model=ApprovalListResponse)
 async def list_pending_approvals(
-    urgency: Optional[ApprovalUrgency] = Query(default=None, description="Filter by urgency"),
+    urgency: ApprovalUrgency | None = Query(default=None, description="Filter by urgency"),
     limit: int = Query(default=50, ge=1, le=100, description="Max results to return"),
     deps: ApprovalsDependencies = Depends(get_deps),
 ):
@@ -499,9 +497,9 @@ class TransactionConfidenceRequest(BaseModel):
 
     agent_id: str = Field(..., description="Agent making the transaction")
     transaction: dict[str, Any] = Field(..., description="Transaction details (amount, merchant, etc.)")
-    kya_level: Optional[str] = Field(default=None, description="Agent KYA level (none/basic/verified/attested)")
+    kya_level: str | None = Field(default=None, description="Agent KYA level (none/basic/verified/attested)")
     violation_count: int = Field(default=0, description="Number of recent policy violations")
-    history: Optional[List[dict]] = Field(default=None, description="Recent transaction history")
+    history: list[dict] | None = Field(default=None, description="Recent transaction history")
 
 
 class TransactionConfidenceResponse(BaseModel):
@@ -520,7 +518,7 @@ class TransactionApprovalRequest(BaseModel):
     """Request to approve/reject a transaction."""
 
     approver_id: str = Field(..., description="ID of the approver")
-    reason: Optional[str] = Field(default=None, description="Reason for rejection (required if rejecting)")
+    reason: str | None = Field(default=None, description="Reason for rejection (required if rejecting)")
 
 
 @router.post("/transactions/{transaction_id}/confidence", response_model=TransactionConfidenceResponse)
@@ -545,7 +543,7 @@ async def calculate_transaction_confidence(
     """
     try:
         # Import policy store to get agent's policy
-        from sardis_v2_core.spending_policy import SpendingPolicy, create_default_policy, TrustLevel
+        from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
 
         # For now, create a default policy - in production, fetch from policy store
         policy = create_default_policy(request.agent_id, TrustLevel.MEDIUM)

@@ -26,27 +26,20 @@ Usage:
 """
 from __future__ import annotations
 
-import copy
 import json
 import logging
 import re
 import time
 import uuid
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
     ParamSpec,
-    Sequence,
     TypeVar,
-    Union,
 )
 
 from .constants import LoggingConfig
@@ -114,7 +107,7 @@ def is_sensitive_key(key: Any) -> bool:
 
 def mask_sensitive_data(
     data: Any,
-    additional_fields: Optional[Sequence[str]] = None,
+    additional_fields: Sequence[str] | None = None,
     mask_pattern: str = LoggingConfig.MASK_PATTERN,
     _depth: int = 0,
     _max_depth: int = 10,
@@ -225,7 +218,7 @@ def _mask_inline_patterns(text: str) -> str:
     return text
 
 
-def mask_headers(headers: Dict[str, str]) -> Dict[str, str]:
+def mask_headers(headers: dict[str, str]) -> dict[str, str]:
     """Mask sensitive HTTP headers.
 
     Args:
@@ -273,18 +266,18 @@ class RequestContext:
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     operation: str = ""
     started_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
-    user_id: Optional[str] = None
-    wallet_id: Optional[str] = None
-    extra: Dict[str, Any] = field(default_factory=dict)
+    user_id: str | None = None
+    wallet_id: str | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def elapsed_ms(self) -> float:
         """Get elapsed time in milliseconds."""
-        delta = datetime.now(timezone.utc) - self.started_at
+        delta = datetime.now(UTC) - self.started_at
         return delta.total_seconds() * 1000
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for logging."""
         result = {
             "request_id": self.request_id,
@@ -330,7 +323,7 @@ class StructuredLogger:
         self._context_stack: list[RequestContext] = []
 
     @property
-    def current_context(self) -> Optional[RequestContext]:
+    def current_context(self) -> RequestContext | None:
         """Get the current request context."""
         return self._context_stack[-1] if self._context_stack else None
 
@@ -338,9 +331,9 @@ class StructuredLogger:
     def context(
         self,
         operation: str,
-        request_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
+        request_id: str | None = None,
+        user_id: str | None = None,
+        wallet_id: str | None = None,
         **extra: Any,
     ) -> Iterator[RequestContext]:
         """Create a logging context for an operation.
@@ -378,7 +371,7 @@ class StructuredLogger:
         finally:
             self._context_stack.pop()
 
-    def _build_extra(self, **kwargs: Any) -> Dict[str, Any]:
+    def _build_extra(self, **kwargs: Any) -> dict[str, Any]:
         """Build extra data for log record."""
         extra = mask_sensitive_data(kwargs)
 
@@ -429,12 +422,12 @@ def get_logger(name: str) -> StructuredLogger:
 # =============================================================================
 
 def log_request(
-    logger: Union[logging.Logger, StructuredLogger],
+    logger: logging.Logger | StructuredLogger,
     method: str,
     url: str,
-    headers: Optional[Dict[str, str]] = None,
-    body: Optional[Any] = None,
-    request_id: Optional[str] = None,
+    headers: dict[str, str] | None = None,
+    body: Any | None = None,
+    request_id: str | None = None,
 ) -> None:
     """Log an outgoing HTTP request.
 
@@ -473,12 +466,12 @@ def log_request(
 
 
 def log_response(
-    logger: Union[logging.Logger, StructuredLogger],
+    logger: logging.Logger | StructuredLogger,
     status_code: int,
-    body: Optional[Any] = None,
-    duration_ms: Optional[float] = None,
-    request_id: Optional[str] = None,
-    error: Optional[str] = None,
+    body: Any | None = None,
+    duration_ms: float | None = None,
+    request_id: str | None = None,
+    error: str | None = None,
 ) -> None:
     """Log an HTTP response.
 
@@ -490,7 +483,7 @@ def log_response(
         request_id: Optional request ID for correlation
         error: Optional error message
     """
-    log_data: Dict[str, Any] = {
+    log_data: dict[str, Any] = {
         "direction": "response",
         "status_code": status_code,
     }
@@ -534,8 +527,8 @@ def log_response(
 # =============================================================================
 
 def log_operation(
-    operation_name: Optional[str] = None,
-    logger: Optional[StructuredLogger] = None,
+    operation_name: str | None = None,
+    logger: StructuredLogger | None = None,
     log_args: bool = True,
     log_result: bool = False,
     log_exceptions: bool = True,
@@ -564,7 +557,7 @@ def log_operation(
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             start_time = time.time()
 
-            extra: Dict[str, Any] = {"function": func.__name__}
+            extra: dict[str, Any] = {"function": func.__name__}
 
             if log_args:
                 # Mask arguments
@@ -604,8 +597,8 @@ def log_operation(
 
 
 def log_operation_sync(
-    operation_name: Optional[str] = None,
-    logger: Optional[StructuredLogger] = None,
+    operation_name: str | None = None,
+    logger: StructuredLogger | None = None,
     log_args: bool = True,
     log_result: bool = False,
     log_exceptions: bool = True,
@@ -626,7 +619,7 @@ def log_operation_sync(
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             start_time = time.time()
 
-            extra: Dict[str, Any] = {"function": func.__name__}
+            extra: dict[str, Any] = {"function": func.__name__}
 
             if log_args:
                 extra["args"] = mask_sensitive_data(
@@ -677,7 +670,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as JSON."""
         log_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -697,7 +690,7 @@ class JsonFormatter(logging.Formatter):
 def configure_logging(
     level: int = logging.INFO,
     json_format: bool = False,
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
 ) -> None:
     """Configure logging for the application.
 

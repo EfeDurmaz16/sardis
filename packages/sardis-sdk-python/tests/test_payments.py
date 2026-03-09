@@ -2,7 +2,6 @@
 Tests for PaymentsResource
 """
 import pytest
-from sardis_sdk import SardisClient
 
 
 class TestExecuteMandate:

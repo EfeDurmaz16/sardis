@@ -6,51 +6,50 @@ Agents are autonomous entities that can hold wallets and make payments.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional, List
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from .wallet import Wallet
 from .policy import Policy
 from .transaction import Transaction, TransactionResult
+from .wallet import Wallet
 
 
 @dataclass
 class Agent:
     """
     An AI agent with payment capabilities.
-    
+
     Agents can:
     - Hold one or more wallets
     - Make payments to other agents or merchants
     - Enforce spending policies
-    
+
     Example:
         >>> agent = Agent(name="Shopping Assistant")
         >>> agent.create_wallet(initial_balance=100)
         >>> result = agent.pay("openai:api", 5, purpose="API call")
         >>> print(result.success)  # True
     """
-    
+
     agent_id: str = field(default_factory=lambda: f"agent_{uuid4().hex[:12]}")
     name: str = "Unnamed Agent"
-    description: Optional[str] = None
-    wallets: List[Wallet] = field(default_factory=list)
+    description: str | None = None
+    wallets: list[Wallet] = field(default_factory=list)
     default_policy: Policy = field(default_factory=Policy)
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
     def __init__(
         self,
         name: str = "Unnamed Agent",
         *,
-        description: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        policy: Optional[Policy] = None,
+        description: str | None = None,
+        agent_id: str | None = None,
+        policy: Policy | None = None,
     ):
         """
         Create a new agent.
-        
+
         Args:
             name: Human-readable name
             description: Optional description
@@ -63,8 +62,8 @@ class Agent:
         self.wallets = []
         self.default_policy = policy or Policy()
         self.is_active = True
-        self.created_at = datetime.now(timezone.utc)
-    
+        self.created_at = datetime.now(UTC)
+
     def create_wallet(
         self,
         initial_balance: float = 0,
@@ -75,13 +74,13 @@ class Agent:
     ) -> Wallet:
         """
         Create a new wallet for this agent.
-        
+
         Args:
             initial_balance: Starting balance
             currency: Token type (default: USDC)
             limit_per_tx: Maximum per transaction
             limit_total: Maximum total spending
-            
+
         Returns:
             The created wallet
         """
@@ -94,41 +93,41 @@ class Agent:
         )
         self.wallets.append(wallet)
         return wallet
-    
+
     @property
-    def primary_wallet(self) -> Optional[Wallet]:
+    def primary_wallet(self) -> Wallet | None:
         """Get the agent's primary (first) wallet."""
         return self.wallets[0] if self.wallets else None
-    
+
     @property
     def total_balance(self) -> float:
         """Get total balance across all wallets."""
         return float(sum(w.balance for w in self.wallets))
-    
+
     def pay(
         self,
         to: str,
         amount: float,
         *,
-        purpose: Optional[str] = None,
-        wallet: Optional[Wallet] = None,
-        policy: Optional[Policy] = None,
+        purpose: str | None = None,
+        wallet: Wallet | None = None,
+        policy: Policy | None = None,
     ) -> TransactionResult:
         """
         Make a payment from this agent.
-        
+
         Args:
             to: Destination (address, agent ID, or merchant)
             amount: Amount to pay
             purpose: Optional payment purpose
             wallet: Specific wallet to use (default: primary wallet)
             policy: Policy to enforce (default: agent's default policy)
-            
+
         Returns:
             TransactionResult with success status
         """
         source_wallet = wallet or self.primary_wallet
-        
+
         if not source_wallet:
             from .transaction import TransactionResult, TransactionStatus
             return TransactionResult(
@@ -138,10 +137,10 @@ class Agent:
                 from_wallet="none",
                 to=to,
                 currency="USDC",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 message="No wallet available",
             )
-        
+
         tx = Transaction(
             from_wallet=source_wallet,
             to=to,
@@ -149,9 +148,9 @@ class Agent:
             purpose=purpose,
             policy=policy or self.default_policy,
         )
-        
+
         return tx.execute()
-    
+
     def __repr__(self) -> str:
         wallet_count = len(self.wallets)
         balance = self.total_balance

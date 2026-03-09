@@ -10,13 +10,11 @@ Reference: https://www.x402.org/
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
 
 # v2 header constants
 X402_PAYMENT_SIGNATURE_HEADER = "PAYMENT-SIGNATURE"

@@ -29,7 +29,7 @@ All exceptions have:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -38,28 +38,28 @@ E = TypeVar("E", bound="SardisException")
 
 class SardisException(Exception):
     """Base exception for all Sardis errors.
-    
+
     Attributes:
         message: Human-readable error message
         error_code: Machine-readable error code (e.g., "VALIDATION_ERROR")
         details: Optional additional context
     """
-    
+
     error_code: str = "SARDIS_ERROR"
     http_status: int = 500
-    
+
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
         if error_code:
             self.error_code = error_code
         self.details = details or {}
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to API response format."""
         result = {
@@ -77,15 +77,15 @@ class SardisException(Exception):
 
 class SardisValidationError(SardisException):
     """Invalid input data or parameters."""
-    
+
     error_code = "VALIDATION_ERROR"
     http_status = 400
-    
+
     def __init__(
         self,
         message: str,
-        field: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        field: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if field:
@@ -95,15 +95,15 @@ class SardisValidationError(SardisException):
 
 class SardisNotFoundError(SardisException):
     """Requested resource not found."""
-    
+
     error_code = "NOT_FOUND"
     http_status = 404
-    
+
     def __init__(
         self,
         resource_type: str,
         resource_id: str,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         message = f"{resource_type} '{resource_id}' not found"
         details = details or {}
@@ -114,21 +114,21 @@ class SardisNotFoundError(SardisException):
 
 class SardisAuthenticationError(SardisException):
     """Authentication failed."""
-    
+
     error_code = "AUTHENTICATION_ERROR"
     http_status = 401
 
 
 class SardisAuthorizationError(SardisException):
     """Authorization failed - insufficient permissions."""
-    
+
     error_code = "AUTHORIZATION_ERROR"
     http_status = 403
 
 
 class SardisConflictError(SardisException):
     """Resource conflict (e.g., duplicate, concurrent modification)."""
-    
+
     error_code = "CONFLICT"
     http_status = 409
 
@@ -139,23 +139,23 @@ class SardisConflictError(SardisException):
 
 class SardisPaymentError(SardisException):
     """Base class for payment-related errors."""
-    
+
     error_code = "PAYMENT_ERROR"
     http_status = 400
 
 
 class SardisPolicyViolationError(SardisPaymentError):
     """Payment violates spending policy."""
-    
+
     error_code = "POLICY_VIOLATION"
-    
+
     def __init__(
         self,
         message: str,
-        policy_type: Optional[str] = None,
-        limit: Optional[str] = None,
-        requested: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        policy_type: str | None = None,
+        limit: str | None = None,
+        requested: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if policy_type:
@@ -169,17 +169,17 @@ class SardisPolicyViolationError(SardisPaymentError):
 
 class SardisInsufficientBalanceError(SardisPaymentError):
     """Insufficient balance for transaction."""
-    
+
     error_code = "INSUFFICIENT_BALANCE"
-    
+
     def __init__(
         self,
         message: str,
-        available: Optional[str] = None,
-        required: Optional[str] = None,
-        token: Optional[str] = None,
-        chain: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        available: str | None = None,
+        required: str | None = None,
+        token: str | None = None,
+        chain: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if available:
@@ -195,16 +195,16 @@ class SardisInsufficientBalanceError(SardisPaymentError):
 
 class SardisTransactionFailedError(SardisPaymentError):
     """On-chain transaction failed."""
-    
+
     error_code = "TRANSACTION_FAILED"
-    
+
     def __init__(
         self,
         message: str,
-        tx_hash: Optional[str] = None,
-        chain: Optional[str] = None,
-        reason: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        tx_hash: str | None = None,
+        chain: str | None = None,
+        reason: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if tx_hash:
@@ -222,21 +222,21 @@ class SardisTransactionFailedError(SardisPaymentError):
 
 class SardisMandateError(SardisException):
     """Base class for mandate-related errors."""
-    
+
     error_code = "MANDATE_ERROR"
     http_status = 400
 
 
 class SardisSignatureError(SardisMandateError):
     """Invalid or missing signature."""
-    
+
     error_code = "SIGNATURE_ERROR"
-    
+
     def __init__(
         self,
         message: str,
-        algorithm: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        algorithm: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if algorithm:
@@ -246,15 +246,15 @@ class SardisSignatureError(SardisMandateError):
 
 class SardisMandateExpiredError(SardisMandateError):
     """Mandate has expired."""
-    
+
     error_code = "MANDATE_EXPIRED"
-    
+
     def __init__(
         self,
         message: str,
-        mandate_id: Optional[str] = None,
-        expired_at: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        mandate_id: str | None = None,
+        expired_at: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if mandate_id:
@@ -266,13 +266,13 @@ class SardisMandateExpiredError(SardisMandateError):
 
 class SardisMandateReplayError(SardisMandateError):
     """Mandate has already been processed (replay attack prevention)."""
-    
+
     error_code = "MANDATE_REPLAY"
 
 
 class SardisMandateChainError(SardisMandateError):
     """Invalid mandate chain (AP2 verification failed)."""
-    
+
     error_code = "MANDATE_CHAIN_INVALID"
 
 
@@ -282,15 +282,15 @@ class SardisMandateChainError(SardisMandateError):
 
 class SardisChainError(SardisException):
     """Base class for blockchain-related errors."""
-    
+
     error_code = "CHAIN_ERROR"
     http_status = 502
-    
+
     def __init__(
         self,
         message: str,
-        chain: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        chain: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if chain:
@@ -300,16 +300,16 @@ class SardisChainError(SardisException):
 
 class SardisRPCError(SardisChainError):
     """RPC call to blockchain node failed."""
-    
+
     error_code = "RPC_ERROR"
-    
+
     def __init__(
         self,
         message: str,
-        chain: Optional[str] = None,
-        method: Optional[str] = None,
-        rpc_error: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        chain: str | None = None,
+        method: str | None = None,
+        rpc_error: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if method:
@@ -321,15 +321,15 @@ class SardisRPCError(SardisChainError):
 
 class SardisDatabaseError(SardisException):
     """Database operation failed."""
-    
+
     error_code = "DATABASE_ERROR"
     http_status = 503
-    
+
     def __init__(
         self,
         message: str,
-        operation: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        operation: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if operation:
@@ -339,7 +339,7 @@ class SardisDatabaseError(SardisException):
 
 class SardisMPCError(SardisChainError):
     """MPC signing operation failed."""
-    
+
     error_code = "MPC_ERROR"
 
 
@@ -349,22 +349,22 @@ class SardisMPCError(SardisChainError):
 
 class SardisComplianceError(SardisException):
     """Base class for compliance-related errors."""
-    
+
     error_code = "COMPLIANCE_ERROR"
     http_status = 403
 
 
 class SardisKYCRequiredError(SardisComplianceError):
     """KYC verification required before operation."""
-    
+
     error_code = "KYC_REQUIRED"
-    
+
     def __init__(
         self,
         message: str = "KYC verification required",
-        agent_id: Optional[str] = None,
-        verification_url: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        agent_id: str | None = None,
+        verification_url: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if agent_id:
@@ -376,20 +376,20 @@ class SardisKYCRequiredError(SardisComplianceError):
 
 class SardisKYCExpiredError(SardisComplianceError):
     """KYC verification has expired."""
-    
+
     error_code = "KYC_EXPIRED"
 
 
 class SardisSanctionsHitError(SardisComplianceError):
     """Address or entity on sanctions list."""
-    
+
     error_code = "SANCTIONS_HIT"
-    
+
     def __init__(
         self,
         message: str = "Transaction blocked due to sanctions screening",
-        screening_id: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        screening_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if screening_id:
@@ -399,7 +399,7 @@ class SardisSanctionsHitError(SardisComplianceError):
 
 class SardisTravelRuleError(SardisComplianceError):
     """Travel rule compliance required."""
-    
+
     error_code = "TRAVEL_RULE_REQUIRED"
 
 
@@ -409,15 +409,15 @@ class SardisTravelRuleError(SardisComplianceError):
 
 class SardisAlgorithmNotSupportedError(SardisException):
     """Cryptographic algorithm not supported."""
-    
+
     error_code = "ALGORITHM_NOT_SUPPORTED"
     http_status = 400
-    
+
     def __init__(
         self,
         algorithm: str,
-        supported: Optional[list[str]] = None,
-        details: Optional[dict[str, Any]] = None,
+        supported: list[str] | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         message = f"Algorithm '{algorithm}' not supported"
         details = details or {}
@@ -434,35 +434,35 @@ class SardisAlgorithmNotSupportedError(SardisException):
 
 class SardisHoldError(SardisException):
     """Base class for hold-related errors."""
-    
+
     error_code = "HOLD_ERROR"
     http_status = 400
 
 
 class SardisHoldNotFoundError(SardisHoldError, SardisNotFoundError):
     """Hold not found."""
-    
+
     error_code = "HOLD_NOT_FOUND"
-    
+
     def __init__(self, hold_id: str) -> None:
         SardisNotFoundError.__init__(self, "Hold", hold_id)
 
 
 class SardisHoldExpiredError(SardisHoldError):
     """Hold has expired."""
-    
+
     error_code = "HOLD_EXPIRED"
 
 
 class SardisHoldAlreadyCapturedError(SardisHoldError):
     """Hold has already been captured."""
-    
+
     error_code = "HOLD_ALREADY_CAPTURED"
 
 
 class SardisHoldAlreadyVoidedError(SardisHoldError):
     """Hold has already been voided."""
-    
+
     error_code = "HOLD_ALREADY_VOIDED"
 
 
@@ -472,22 +472,22 @@ class SardisHoldAlreadyVoidedError(SardisHoldError):
 
 class SardisConfigurationError(SardisException):
     """Service configuration error."""
-    
+
     error_code = "CONFIGURATION_ERROR"
     http_status = 500
 
 
 class SardisDependencyNotConfiguredError(SardisConfigurationError):
     """Required dependency not configured."""
-    
+
     error_code = "DEPENDENCY_NOT_CONFIGURED"
     http_status = 503
-    
+
     def __init__(
         self,
         dependency: str,
-        message: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         message = message or f"Required dependency '{dependency}' is not configured"
         details = details or {}
@@ -508,8 +508,8 @@ class SardisRateLimitError(SardisException):
     def __init__(
         self,
         message: str = "Rate limit exceeded",
-        retry_after: Optional[int] = None,
-        details: Optional[dict[str, Any]] = None,
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if retry_after:
@@ -526,9 +526,9 @@ class SardisTimeoutError(SardisException):
     def __init__(
         self,
         message: str = "Operation timed out",
-        operation: Optional[str] = None,
-        timeout_seconds: Optional[float] = None,
-        details: Optional[dict[str, Any]] = None,
+        operation: str | None = None,
+        timeout_seconds: float | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if operation:
@@ -547,9 +547,9 @@ class SardisServiceUnavailableError(SardisException):
     def __init__(
         self,
         message: str = "Service temporarily unavailable",
-        service: Optional[str] = None,
-        retry_after: Optional[int] = None,
-        details: Optional[dict[str, Any]] = None,
+        service: str | None = None,
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         details = details or {}
         if service:
@@ -564,7 +564,7 @@ class SardisServiceUnavailableError(SardisException):
 # =============================================================================
 
 # Chain error patterns and their corresponding exception types
-CHAIN_ERROR_PATTERNS: dict[str, tuple[Type[SardisException], str]] = {
+CHAIN_ERROR_PATTERNS: dict[str, tuple[type[SardisException], str]] = {
     "execution reverted": (SardisTransactionFailedError, "Transaction execution reverted"),
     "insufficient funds": (SardisInsufficientBalanceError, "Insufficient funds for transaction"),
     "nonce too low": (SardisTransactionFailedError, "Transaction nonce too low"),
@@ -592,9 +592,9 @@ CHAIN_ERROR_PATTERNS: dict[str, tuple[Type[SardisException], str]] = {
 
 def exception_from_chain_error(
     error: BaseException,
-    chain: Optional[str] = None,
-    method: Optional[str] = None,
-    tx_hash: Optional[str] = None,
+    chain: str | None = None,
+    method: str | None = None,
+    tx_hash: str | None = None,
 ) -> SardisException:
     """Convert a chain/RPC error to the appropriate Sardis exception.
 
@@ -687,8 +687,8 @@ def exception_from_chain_error(
 
 def exception_from_mpc_error(
     error: BaseException,
-    provider: Optional[str] = None,
-    wallet_id: Optional[str] = None,
+    provider: str | None = None,
+    wallet_id: str | None = None,
 ) -> SardisException:
     """Convert an MPC provider error to the appropriate Sardis exception.
 
@@ -738,9 +738,9 @@ def exception_from_mpc_error(
 
 def exception_from_compliance_error(
     error: BaseException,
-    provider: Optional[str] = None,
-    check_type: Optional[str] = None,
-    agent_id: Optional[str] = None,
+    provider: str | None = None,
+    check_type: str | None = None,
+    agent_id: str | None = None,
 ) -> SardisException:
     """Convert a compliance provider error to the appropriate Sardis exception.
 
@@ -800,7 +800,7 @@ def exception_from_compliance_error(
 # =============================================================================
 
 # Map of error codes to exception classes for dynamic instantiation
-EXCEPTION_REGISTRY: dict[str, Type[SardisException]] = {
+EXCEPTION_REGISTRY: dict[str, type[SardisException]] = {
     "SARDIS_ERROR": SardisException,
     "VALIDATION_ERROR": SardisValidationError,
     "NOT_FOUND": SardisNotFoundError,
@@ -839,7 +839,7 @@ EXCEPTION_REGISTRY: dict[str, Type[SardisException]] = {
 }
 
 
-def get_exception_class(error_code: str) -> Type[SardisException]:
+def get_exception_class(error_code: str) -> type[SardisException]:
     """Get the exception class for an error code.
 
     Args:
@@ -854,7 +854,7 @@ def get_exception_class(error_code: str) -> Type[SardisException]:
 def create_exception(
     error_code: str,
     message: str,
-    details: Optional[dict[str, Any]] = None,
+    details: dict[str, Any] | None = None,
 ) -> SardisException:
     """Create an exception instance from an error code.
 

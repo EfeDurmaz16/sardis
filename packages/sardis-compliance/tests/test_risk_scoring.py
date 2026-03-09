@@ -12,15 +12,13 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from unittest.mock import Mock, patch
-import threading
-
 import sys
+import threading
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -31,12 +29,12 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_compliance.risk_scoring import (
-    RiskCategory,
-    RiskLevel,
     RiskAction,
-    RiskFactor,
     RiskAssessment,
+    RiskCategory,
     RiskConfig,
+    RiskFactor,
+    RiskLevel,
     TransactionVelocityMonitor,
 )
 
@@ -301,7 +299,7 @@ class TestTransactionVelocityMonitor:
 
     def test_multiple_transactions(self, monitor):
         """Should track multiple transactions."""
-        for i in range(5):
+        for _i in range(5):
             monitor.record_transaction(
                 subject_id="user_456",
                 amount=Decimal("50"),
@@ -312,7 +310,7 @@ class TestTransactionVelocityMonitor:
     def test_cleanup_old_transactions(self, monitor):
         """Should cleanup transactions outside window."""
         # Record old transaction
-        old_time = datetime.now(timezone.utc) - timedelta(hours=50)
+        old_time = datetime.now(UTC) - timedelta(hours=50)
         monitor._transactions["user_789"] = [
             (old_time, Decimal("100"))
         ]
@@ -326,7 +324,7 @@ class TestTransactionVelocityMonitor:
         # Old transaction should be cleaned up
         transactions = monitor._transactions["user_789"]
         for ts, _ in transactions:
-            age_hours = (datetime.now(timezone.utc) - ts).total_seconds() / 3600
+            age_hours = (datetime.now(UTC) - ts).total_seconds() / 3600
             assert age_hours < 48  # Within 2x window
 
     def test_thread_safety(self, monitor):
@@ -334,7 +332,7 @@ class TestTransactionVelocityMonitor:
         results = []
 
         def record_txs():
-            for i in range(100):
+            for _i in range(100):
                 monitor.record_transaction(
                     subject_id="concurrent_user",
                     amount=Decimal("10"),

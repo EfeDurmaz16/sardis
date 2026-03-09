@@ -20,69 +20,51 @@ import os
 import secrets
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
+from sardis_ledger.records import ChainReceipt
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate
-from sardis_ledger.records import ChainReceipt
 
 # Import new production modules
 from .config import (
-    get_config,
     get_chain_config,
-    validate_chain_id,
-    SardisChainConfig,
-    ChainConfig,
-)
-from .rpc_client import (
-    ProductionRPCClient,
-    get_rpc_client,
-    ChainIDMismatchError,
-    AllEndpointsFailedError,
-)
-from .nonce_manager import (
-    NonceManager,
-    get_nonce_manager,
-    TransactionReceiptStatus,
-    ReceiptValidation,
-    TransactionFailedError,
-    StuckTransactionError,
-)
-from .simulation import (
-    TransactionSimulator,
-    GasEstimator,
-    SimulationAndEstimation,
-    SimulationOutput,
-    SimulationResult,
-    GasEstimation,
-    SimulationError,
-    get_simulation_service,
 )
 from .confirmation import (
     ConfirmationTracker,
     get_confirmation_tracker,
-    ConfirmationStatus,
-    TrackedTransaction,
-    ReorgEvent,
-    ReorgError,
-)
-from .logging_utils import (
-    ChainLogger,
-    get_chain_logger,
-    OperationType,
-    setup_logging,
 )
 from .erc4337.bundler_client import BundlerClient, BundlerConfig
-from .erc4337.paymaster_client import PaymasterClient, PaymasterConfig, CirclePaymasterClient, PaymasterProvider
-from .erc4337.user_operation import UserOperation, zero_hex
 from .erc4337.entrypoint import get_entrypoint_v07
-from .erc4337.sponsor_caps import SponsorCapGuard
+from .erc4337.paymaster_client import (
+    CirclePaymasterClient,
+    PaymasterClient,
+    PaymasterConfig,
+)
 from .erc4337.proof_artifact import write_erc4337_proof_artifact
+from .erc4337.sponsor_caps import SponsorCapGuard
+from .erc4337.user_operation import UserOperation, zero_hex
+from .logging_utils import (
+    OperationType,
+    get_chain_logger,
+)
+from .nonce_manager import (
+    ReceiptValidation,
+    TransactionFailedError,
+    get_nonce_manager,
+)
+from .rpc_client import (
+    ProductionRPCClient,
+)
+from .simulation import (
+    SimulationError,
+    get_simulation_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -503,9 +485,9 @@ class SubmittedTx:
     chain: str
     audit_anchor: str
     status: TransactionStatus = TransactionStatus.SUBMITTED
-    block_number: Optional[int] = None
-    gas_used: Optional[int] = None
-    submitted_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    block_number: int | None = None
+    gas_used: int | None = None
+    submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -516,7 +498,7 @@ class GasEstimate:
     max_fee_gwei: Decimal
     max_priority_fee_gwei: Decimal
     estimated_cost_wei: int
-    estimated_cost_usd: Optional[Decimal] = None
+    estimated_cost_usd: Decimal | None = None
 
 
 # ============================================================================
@@ -547,7 +529,7 @@ class GasPriceProtectionConfig:
     max_transaction_cost_usd: Decimal = Decimal("50")
 
     # Chain-specific overrides (some chains have different gas economics)
-    chain_overrides: Dict[str, Dict[str, Decimal]] = field(default_factory=lambda: {
+    chain_overrides: dict[str, dict[str, Decimal]] = field(default_factory=lambda: {
         # Ethereum mainnet - allow higher due to higher typical gas prices
         "ethereum": {
             "max_gas_price_gwei": Decimal("1000"),
@@ -665,7 +647,7 @@ class GasPriceProtection:
     - Comprehensive logging for monitoring
     """
 
-    def __init__(self, config: Optional[GasPriceProtectionConfig] = None):
+    def __init__(self, config: GasPriceProtectionConfig | None = None):
         self.config = config or GasPriceProtectionConfig()
         from .price_oracle import get_price_oracle
         self._oracle = get_price_oracle()
@@ -676,9 +658,9 @@ class GasPriceProtection:
 
     async def check_gas_price(
         self,
-        gas_estimate: "GasEstimate",
+        gas_estimate: GasEstimate,
         chain: str,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Check if gas price is within acceptable limits.
 
@@ -782,9 +764,9 @@ class GasPriceProtection:
 
     def cap_gas_price(
         self,
-        gas_estimate: "GasEstimate",
+        gas_estimate: GasEstimate,
         chain: str,
-    ) -> "GasEstimate":
+    ) -> GasEstimate:
         """
         Cap gas price to maximum allowed values.
 
@@ -829,7 +811,7 @@ class GasPriceProtection:
 
 
 # Global gas price protection instance
-_gas_price_protection: Optional[GasPriceProtection] = None
+_gas_price_protection: GasPriceProtection | None = None
 
 
 def get_gas_price_protection() -> GasPriceProtection:
@@ -847,10 +829,10 @@ class TransactionRequest:
     to_address: str
     value: int = 0  # Native token value in wei
     data: bytes = b""
-    gas_limit: Optional[int] = None
-    max_fee_per_gas: Optional[int] = None
-    max_priority_fee_per_gas: Optional[int] = None
-    nonce: Optional[int] = None
+    gas_limit: int | None = None
+    max_fee_per_gas: int | None = None
+    max_priority_fee_per_gas: int | None = None
+    nonce: int | None = None
 
 
 class MPCSignerPort(ABC):
@@ -880,7 +862,7 @@ class SimulatedMPCSigner(MPCSignerPort):
     """Simulated MPC signer for development."""
 
     def __init__(self):
-        self._wallets: Dict[str, str] = {}
+        self._wallets: dict[str, str] = {}
 
     async def sign_transaction(
         self,
@@ -1043,9 +1025,9 @@ class TurnkeyMPCSigner(MPCSignerPort):
         self,
         method: str,
         path: str,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         retry_count: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make an API request via the shared TurnkeyClient with retry logic."""
         try:
             return await self._client.post(path, body)
@@ -1056,12 +1038,12 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 return await self._make_request(method, path, body, retry_count + 1)
             raise
 
-    async def _poll_activity(self, activity_id: str) -> Dict[str, Any]:
+    async def _poll_activity(self, activity_id: str) -> dict[str, Any]:
         """Poll for activity completion."""
         import time
-        
+
         start_time = time.time()
-        
+
         while time.time() - start_time < self.ACTIVITY_TIMEOUT:
             result = await self._make_request(
                 "POST",
@@ -1071,10 +1053,10 @@ class TurnkeyMPCSigner(MPCSignerPort):
                     "activityId": activity_id,
                 },
             )
-            
+
             activity = result.get("activity", {})
             status = activity.get("status", "")
-            
+
             if status == "ACTIVITY_STATUS_COMPLETED":
                 return activity
             elif status == "ACTIVITY_STATUS_FAILED":
@@ -1082,9 +1064,9 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 raise Exception(f"Turnkey activity failed: {failure_reason}")
             elif status == "ACTIVITY_STATUS_REJECTED":
                 raise Exception("Turnkey activity was rejected")
-            
+
             await asyncio.sleep(self.ACTIVITY_POLL_INTERVAL)
-        
+
         raise TimeoutError(f"Turnkey activity {activity_id} timed out")
 
     async def sign_transaction(
@@ -1093,14 +1075,14 @@ class TurnkeyMPCSigner(MPCSignerPort):
         tx: TransactionRequest,
     ) -> str:
         """Sign transaction via Turnkey API.
-        
+
         Turnkey expects unsigned transaction as RLP-encoded hex string.
         """
         import rlp
-        
+
         chain_config = CHAIN_CONFIGS.get(tx.chain, {})
         chain_id = chain_config.get("chain_id", 1)
-        
+
         # Build EIP-1559 transaction (Type 2)
         # Format: 0x02 || rlp([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList])
         nonce = tx.nonce if tx.nonce is not None else 0
@@ -1111,7 +1093,7 @@ class TurnkeyMPCSigner(MPCSignerPort):
         value = tx.value
         data = tx.data or b""
         access_list = []  # Empty access list for now
-        
+
         # RLP encode the transaction fields (without signature)
         tx_fields = [
             chain_id,
@@ -1124,11 +1106,11 @@ class TurnkeyMPCSigner(MPCSignerPort):
             data,
             access_list,
         ]
-        
+
         # Encode with EIP-1559 type prefix
         rlp_encoded = rlp.encode(tx_fields)
         unsigned_tx_hex = "02" + rlp_encoded.hex()  # 0x02 prefix for EIP-1559
-        
+
         # Turnkey expects signWith to identify the signing account.
         # For EVM wallets, this is typically the Ethereum address.
         sign_with = wallet_id
@@ -1144,44 +1126,44 @@ class TurnkeyMPCSigner(MPCSignerPort):
         activity_body = {
             "type": "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
             "organizationId": self._org_id,
-            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+            "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
             "parameters": {
                 "signWith": sign_with,
                 "type": "TRANSACTION_TYPE_ETHEREUM",
                 "unsignedTransaction": unsigned_tx_hex,
             },
         }
-        
+
         logger.info(f"Submitting sign transaction activity for wallet {wallet_id}")
-        
+
         # Submit the activity
         result = await self._make_request(
             "POST",
             "/public/v1/submit/sign_transaction",
             activity_body,
         )
-        
+
         activity = result.get("activity", {})
         activity_id = activity.get("id", "")
         status = activity.get("status", "")
-        
+
         # If not immediately completed, poll for completion
         if status != "ACTIVITY_STATUS_COMPLETED":
             logger.info(f"Polling for activity {activity_id} completion")
             activity = await self._poll_activity(activity_id)
-        
+
         # Extract signed transaction (Turnkey returns in signTransactionResult)
         sign_result = activity.get("result", {}).get("signTransactionResult", {})
         signed_tx = sign_result.get("signedTransaction", "")
-        
+
         if not signed_tx:
             # Fallback to old path
             signed_tx = activity.get("result", {}).get("signedTransaction", "")
-        
+
         if not signed_tx:
             raise Exception("No signed transaction returned from Turnkey")
-        
-        logger.info(f"Transaction signed successfully")
+
+        logger.info("Transaction signed successfully")
         return signed_tx
 
     @staticmethod
@@ -1194,7 +1176,7 @@ class TurnkeyMPCSigner(MPCSignerPort):
         return sig.lower()
 
     @classmethod
-    def _extract_userop_signature(cls, activity: Dict[str, Any]) -> str:
+    def _extract_userop_signature(cls, activity: dict[str, Any]) -> str:
         result = activity.get("result", {}) if isinstance(activity, dict) else {}
         sign_raw = (
             result.get("signRawPayloadResult")
@@ -1242,7 +1224,7 @@ class TurnkeyMPCSigner(MPCSignerPort):
         activity_body = {
             "type": "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
             "organizationId": self._org_id,
-            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+            "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
             "parameters": {
                 "signWith": sign_with,
                 "payload": payload_hex,
@@ -1277,27 +1259,27 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 "walletId": wallet_id,
             },
         )
-        
+
         # Extract address from accounts list
         accounts = result.get("accounts", [])
         for account in accounts:
             address_format = account.get("addressFormat", "")
             if address_format == "ADDRESS_FORMAT_ETHEREUM":
                 return account.get("address", "")
-        
+
         raise ValueError(f"No Ethereum address found for wallet {wallet_id}")
 
-    async def create_wallet(self, wallet_name: str) -> Dict[str, str]:
+    async def create_wallet(self, wallet_name: str) -> dict[str, str]:
         """
         Create a new wallet in Turnkey.
-        
+
         Returns:
             Dict with 'wallet_id' and 'address' keys
         """
         activity_body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET",
             "organizationId": self._org_id,
-            "timestampMs": str(int(datetime.now(timezone.utc).timestamp() * 1000)),
+            "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
             "parameters": {
                 "walletName": wallet_name,
                 "accounts": [
@@ -1310,36 +1292,36 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 ],
             },
         }
-        
+
         logger.info(f"Creating new Turnkey wallet: {wallet_name}")
-        
+
         result = await self._make_request(
             "POST",
             "/public/v1/submit/create_wallet",
             activity_body,
         )
-        
+
         activity = result.get("activity", {})
         activity_id = activity.get("id", "")
         status = activity.get("status", "")
-        
+
         if status != "ACTIVITY_STATUS_COMPLETED":
             activity = await self._poll_activity(activity_id)
-        
+
         wallet_result = activity.get("result", {}).get("createWalletResult", {})
         wallet_id = wallet_result.get("walletId", "")
         addresses = wallet_result.get("addresses", [])
-        
+
         address = addresses[0] if addresses else ""
-        
+
         logger.info(f"Created wallet {wallet_id} with address {address}")
-        
+
         return {
             "wallet_id": wallet_id,
             "address": address,
         }
 
-    async def list_wallets(self) -> List[Dict[str, Any]]:
+    async def list_wallets(self) -> list[dict[str, Any]]:
         """List all wallets in the organization."""
         result = await self._make_request(
             "POST",
@@ -1348,7 +1330,7 @@ class TurnkeyMPCSigner(MPCSignerPort):
                 "organizationId": self._org_id,
             },
         )
-        
+
         return result.get("wallets", [])
 
     async def close(self):
@@ -1365,8 +1347,9 @@ class LocalAccountSigner(MPCSignerPort):
 
     def __init__(self, private_key: str, address: str | None = None):
         import os
-        from web3 import Web3
+
         from eth_account import Account
+        from web3 import Web3
 
         if not private_key:
             raise ValueError("SARDIS_EOA_PRIVATE_KEY is required for local signer")
@@ -1414,33 +1397,33 @@ class RPCEndpoint:
     url: str
     priority: int = 0  # Lower is higher priority
     healthy: bool = True
-    last_check: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_check: datetime = field(default_factory=lambda: datetime.now(UTC))
     failure_count: int = 0
     latency_ms: float = 0.0
-    
+
     # Health thresholds
     MAX_FAILURES = 3
     HEALTH_CHECK_INTERVAL = 60  # seconds
-    
+
     def mark_success(self, latency_ms: float) -> None:
         """Mark endpoint as healthy after successful call."""
         self.healthy = True
         self.failure_count = 0
         self.latency_ms = latency_ms
-        self.last_check = datetime.now(timezone.utc)
-    
+        self.last_check = datetime.now(UTC)
+
     def mark_failure(self) -> None:
         """Mark endpoint as potentially unhealthy after failure."""
         self.failure_count += 1
         if self.failure_count >= self.MAX_FAILURES:
             self.healthy = False
-        self.last_check = datetime.now(timezone.utc)
-    
+        self.last_check = datetime.now(UTC)
+
     def needs_health_check(self) -> bool:
         """Check if this endpoint needs a health check."""
         if self.healthy:
             return False
-        elapsed = (datetime.now(timezone.utc) - self.last_check).total_seconds()
+        elapsed = (datetime.now(UTC) - self.last_check).total_seconds()
         return elapsed >= self.HEALTH_CHECK_INTERVAL
 
 
@@ -1489,7 +1472,7 @@ FALLBACK_RPC_URLS = {
 class ChainRPCClient:
     """
     JSON-RPC client with fallback RPC providers and health checking.
-    
+
     Features:
     - Multiple RPC endpoints per chain
     - Automatic failover on errors
@@ -1501,12 +1484,12 @@ class ChainRPCClient:
         self._chain = chain
         self._request_id = 0
         self._http_client = None
-        
+
         # Initialize endpoints with primary and fallbacks
-        self._endpoints: List[RPCEndpoint] = [
+        self._endpoints: list[RPCEndpoint] = [
             RPCEndpoint(url=rpc_url, priority=0)
         ]
-        
+
         # Add fallback endpoints
         if chain in FALLBACK_RPC_URLS:
             for i, url in enumerate(FALLBACK_RPC_URLS[chain]):
@@ -1519,21 +1502,21 @@ class ChainRPCClient:
             import httpx
             self._http_client = httpx.AsyncClient(timeout=30)
         return self._http_client
-    
+
     def _get_healthy_endpoint(self) -> RPCEndpoint:
         """Get the best healthy endpoint based on priority and latency."""
         healthy = [e for e in self._endpoints if e.healthy]
         if not healthy:
             # All unhealthy, return lowest priority one and hope for the best
             return min(self._endpoints, key=lambda e: e.priority)
-        
+
         # Sort by priority, then by latency
         return min(healthy, key=lambda e: (e.priority, e.latency_ms))
 
-    async def _call(self, method: str, params: List[Any] = None) -> Any:
+    async def _call(self, method: str, params: list[Any] = None) -> Any:
         """Make JSON-RPC call with automatic failover."""
         import time
-        
+
         self._request_id += 1
         payload = {
             "jsonrpc": "2.0",
@@ -1541,14 +1524,14 @@ class ChainRPCClient:
             "method": method,
             "params": params or [],
         }
-        
+
         # Try endpoints in order of health/priority
         last_error = None
         tried_endpoints = set()
-        
-        for attempt in range(len(self._endpoints)):
+
+        for _attempt in range(len(self._endpoints)):
             endpoint = self._get_healthy_endpoint()
-            
+
             # Skip if we've already tried this endpoint
             if endpoint.url in tried_endpoints:
                 # Try any untried endpoint
@@ -1556,45 +1539,45 @@ class ChainRPCClient:
                 if not untried:
                     break
                 endpoint = untried[0]
-            
+
             tried_endpoints.add(endpoint.url)
-            
+
             try:
                 client = await self._get_client()
                 start_time = time.time()
-                
+
                 response = await client.post(
                     endpoint.url,
                     json=payload,
                     headers={"Content-Type": "application/json"},
                 )
-                
+
                 latency_ms = (time.time() - start_time) * 1000
                 response.raise_for_status()
                 result = response.json()
-                
+
                 if "error" in result:
                     endpoint.mark_failure()
                     last_error = Exception(f"RPC error: {result['error']}")
                     continue
-                
+
                 # Success!
                 endpoint.mark_success(latency_ms)
                 return result.get("result")
-                
+
             except Exception as e:
                 endpoint.mark_failure()
                 last_error = e
                 logger.warning(f"RPC call to {endpoint.url} failed: {e}")
                 continue
-        
+
         # All endpoints failed
         raise last_error or Exception("All RPC endpoints failed")
-    
-    async def health_check(self) -> Dict[str, bool]:
+
+    async def health_check(self) -> dict[str, bool]:
         """Perform health check on all endpoints."""
         results = {}
-        
+
         for endpoint in self._endpoints:
             try:
                 # Simple block number check
@@ -1605,10 +1588,10 @@ class ChainRPCClient:
             except Exception:
                 endpoint.healthy = False
                 results[endpoint.url] = False
-        
+
         return results
-    
-    async def _call_endpoint(self, endpoint: RPCEndpoint, method: str, params: List[Any]) -> Any:
+
+    async def _call_endpoint(self, endpoint: RPCEndpoint, method: str, params: list[Any]) -> Any:
         """Make a call to a specific endpoint."""
         self._request_id += 1
         payload = {
@@ -1617,7 +1600,7 @@ class ChainRPCClient:
             "method": method,
             "params": params,
         }
-        
+
         client = await self._get_client()
         response = await client.post(
             endpoint.url,
@@ -1626,13 +1609,13 @@ class ChainRPCClient:
         )
         response.raise_for_status()
         result = response.json()
-        
+
         if "error" in result:
             raise Exception(f"RPC error: {result['error']}")
-        
+
         return result.get("result")
-    
-    def get_endpoint_stats(self) -> List[Dict[str, Any]]:
+
+    def get_endpoint_stats(self) -> list[dict[str, Any]]:
         """Get stats for all endpoints."""
         return [
             {
@@ -1659,7 +1642,7 @@ class ChainRPCClient:
             # Fallback for chains that don't support this
             return 1_000_000_000  # 1 gwei
 
-    async def estimate_gas(self, tx: Dict[str, Any]) -> int:
+    async def estimate_gas(self, tx: dict[str, Any]) -> int:
         """Estimate gas for a transaction."""
         result = await self._call("eth_estimateGas", [tx])
         return int(result, 16)
@@ -1687,7 +1670,7 @@ class ChainRPCClient:
         """Broadcast signed transaction (alias for send_raw_transaction)."""
         return await self.send_raw_transaction(signed_tx)
 
-    async def get_transaction_receipt(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+    async def get_transaction_receipt(self, tx_hash: str) -> dict[str, Any] | None:
         """Get transaction receipt."""
         return await self._call("eth_getTransactionReceipt", [tx_hash])
 
@@ -1707,13 +1690,13 @@ def encode_erc20_transfer(to_address: str, amount: int) -> bytes:
     """Encode ERC20 transfer function call."""
     # transfer(address,uint256) selector: 0xa9059cbb
     selector = bytes.fromhex("a9059cbb")
-    
+
     # Pad address to 32 bytes
     to_bytes = bytes.fromhex(to_address[2:].lower().zfill(64))
-    
+
     # Pad amount to 32 bytes
     amount_bytes = amount.to_bytes(32, "big")
-    
+
     return selector + to_bytes + amount_bytes
 
 
@@ -1771,13 +1754,13 @@ class ChainExecutor:
         self._erc4337_entrypoint = settings.erc4337_entrypoint_v07_address or get_entrypoint_v07("base_sepolia")
 
         # Production-grade RPC clients with failover
-        self._rpc_clients: Dict[str, ProductionRPCClient] = {}
+        self._rpc_clients: dict[str, ProductionRPCClient] = {}
 
         # Legacy ChainRPCClient support (for backward compatibility)
-        self._legacy_rpc_clients: Dict[str, ChainRPCClient] = {}
+        self._legacy_rpc_clients: dict[str, ChainRPCClient] = {}
 
         # MPC signer
-        self._mpc_signer: Optional[MPCSignerPort] = None
+        self._mpc_signer: MPCSignerPort | None = None
 
         # Compliance services (fail-closed: None means block all)
         self._compliance_engine = None
@@ -1793,10 +1776,10 @@ class ChainExecutor:
         self._chain_logger = get_chain_logger()
 
         # Confirmation trackers per chain
-        self._confirmation_trackers: Dict[str, ConfirmationTracker] = {}
-        self._bundler: Optional[BundlerClient] = None
-        self._paymaster: Optional[PaymasterClient | CirclePaymasterClient] = None
-        self._erc4337_sponsor_guard: Optional[SponsorCapGuard] = None
+        self._confirmation_trackers: dict[str, ConfirmationTracker] = {}
+        self._bundler: BundlerClient | None = None
+        self._paymaster: PaymasterClient | CirclePaymasterClient | None = None
+        self._erc4337_sponsor_guard: SponsorCapGuard | None = None
 
         if self._erc4337_enabled:
             self._erc4337_sponsor_guard = SponsorCapGuard(
@@ -1933,6 +1916,7 @@ class ChainExecutor:
         elif mpc_config.name == "circle":
             try:
                 from sardis_wallet.circle_client import CircleWalletClient
+
                 from .circle_signer import CircleWalletSigner
 
                 circle_api_key = os.getenv("SARDIS_CIRCLE_WALLET_API_KEY", "")
@@ -2151,7 +2135,7 @@ class ChainExecutor:
     async def _legacy_estimate_gas(
         self,
         rpc: ProductionRPCClient,
-        tx_params: Dict[str, Any],
+        tx_params: dict[str, Any],
     ) -> GasEstimate:
         """Legacy gas estimation fallback."""
         try:
@@ -2795,54 +2779,54 @@ class ChainExecutor:
         rpc: ChainRPCClient,
         tx_hash: str,
         chain: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Wait for transaction confirmation."""
         chain_config = CHAIN_CONFIGS.get(chain, {})
-        block_time = chain_config.get("block_time", 2)
-        
+        chain_config.get("block_time", 2)
+
         start_time = asyncio.get_event_loop().time()
         timeout = self.CONFIRMATION_TIMEOUT
-        
+
         while True:
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout:
                 raise TimeoutError(f"Transaction {tx_hash} not confirmed after {timeout}s")
-            
+
             receipt = await rpc.get_transaction_receipt(tx_hash)
-            
+
             if receipt:
                 # Check if transaction succeeded
                 status = int(receipt.get("status", "0x0"), 16)
                 if status == 0:
                     raise Exception(f"Transaction {tx_hash} failed on-chain")
-                
+
                 # Check confirmations
                 tx_block = int(receipt.get("blockNumber", "0x0"), 16)
                 current_block = await rpc.get_block_number()
                 confirmations = current_block - tx_block + 1
-                
+
                 required_confirmations = self.get_confirmations_required(chain)
                 if confirmations >= required_confirmations:
                     logger.info(f"Transaction {tx_hash} confirmed with {confirmations} confirmations")
                     return receipt
 
                 logger.debug(f"Transaction {tx_hash} has {confirmations} confirmations, waiting for {required_confirmations}")
-            
+
             await asyncio.sleep(self.POLL_INTERVAL)
 
     async def get_transaction_status(self, tx_hash: str, chain: str) -> TransactionStatus:
         """Get the status of a transaction."""
         rpc = self._get_rpc_client(chain)
-        
+
         receipt = await rpc.get_transaction_receipt(tx_hash)
-        
+
         if not receipt:
             return TransactionStatus.PENDING
-        
+
         status = int(receipt.get("status", "0x0"), 16)
         if status == 0:
             return TransactionStatus.FAILED
-        
+
         tx_block = int(receipt.get("blockNumber", "0x0"), 16)
         current_block = await rpc.get_block_number()
         confirmations = current_block - tx_block + 1
@@ -2872,7 +2856,7 @@ class ChainExecutor:
         await rpc.connect()
         return True
 
-    async def get_rpc_health(self, chain: str) -> Dict[str, Any]:
+    async def get_rpc_health(self, chain: str) -> dict[str, Any]:
         """
         Get health status of RPC endpoints for a chain.
 
@@ -2884,8 +2868,8 @@ class ChainExecutor:
 
     async def get_pending_transactions(
         self,
-        address: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        address: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Get list of pending transactions.
 
@@ -2912,8 +2896,8 @@ class ChainExecutor:
 
     async def get_stuck_transactions(
         self,
-        address: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        address: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Get list of stuck transactions that may need replacement.
 
@@ -2932,7 +2916,7 @@ class ChainExecutor:
                 "chain": p.chain,
                 "submitted_at": p.submitted_at.isoformat(),
                 "age_seconds": (
-                    datetime.now(timezone.utc) - p.submitted_at
+                    datetime.now(UTC) - p.submitted_at
                 ).total_seconds(),
             }
             for p in stuck
@@ -3006,7 +2990,7 @@ class ChainExecutor:
 
         return new_tx_hash
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get comprehensive metrics from all components.
 
@@ -3062,7 +3046,7 @@ class ChainExecutor:
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
         balances = []
-        for (chain, token), result in zip(query_params, results):
+        for (chain, token), result in zip(query_params, results, strict=False):
             balance = result if isinstance(result, Decimal) else Decimal("0")
             balances.append({
                 "chain": chain,

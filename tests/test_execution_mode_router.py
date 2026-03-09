@@ -4,7 +4,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
 from sardis_v2_core.delegated_credential import (
     CredentialNetwork,
@@ -17,14 +16,12 @@ from sardis_v2_core.execution_mode import (
     ExecutionMode,
     ExecutionModeRouter,
     ExecutionModeSelection,
-    FallbackPolicy,
     RoutingThresholds,
 )
 from sardis_v2_core.merchant_capability import (
     InMemoryMerchantCapabilityStore,
     MerchantExecutionCapability,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -136,7 +133,7 @@ class TestExecutionModeRouter:
         """Routes to DELEGATED_CARD when agent has active credential + merchant supports it."""
         cred_store = _make_cred_store()
         merchant_store = _make_merchant_store()
-        cred = await _seed_credential(cred_store)
+        await _seed_credential(cred_store)
         await _seed_merchant(merchant_store)
         router = _make_router(cred_store=cred_store, merchant_store=merchant_store)
 
@@ -202,7 +199,7 @@ class TestExecutionModeRouter:
         """Crypto < offramp < card in cost ranking."""
         cred_store = _make_cred_store()
         merchant_store = _make_merchant_store()
-        cred = await _seed_credential(cred_store)
+        await _seed_credential(cred_store)
         await _seed_merchant(
             merchant_store,
             accepts_native_crypto=True,

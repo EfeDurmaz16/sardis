@@ -7,12 +7,12 @@ allowing customers to pay for a checkout in multiple installments.
 from __future__ import annotations
 
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Dict, List, Optional
-import uuid
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from sardis_checkout.models import (
     PartialPayment,
@@ -55,13 +55,13 @@ class PartialPaymentState:
     amount_paid: Decimal = Decimal("0")
     amount_remaining: Decimal = Decimal("0")
     currency: str = "USD"
-    payments: List[PartialPayment] = field(default_factory=list)
+    payments: list[PartialPayment] = field(default_factory=list)
     allow_partial: bool = True
-    minimum_payment: Optional[Decimal] = None
+    minimum_payment: Decimal | None = None
     status: PaymentStatus = PaymentStatus.PENDING
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     def __post_init__(self):
         if self.amount_remaining == Decimal("0"):
@@ -72,7 +72,7 @@ class PartialPaymentStore(ABC):
     """Abstract interface for partial payment state storage."""
 
     @abstractmethod
-    async def get_state(self, checkout_id: str) -> Optional[PartialPaymentState]:
+    async def get_state(self, checkout_id: str) -> PartialPaymentState | None:
         """Get the partial payment state for a checkout."""
         pass
 
@@ -96,7 +96,7 @@ class PartialPaymentStore(ABC):
         pass
 
     @abstractmethod
-    async def get_payments(self, checkout_id: str) -> List[PartialPayment]:
+    async def get_payments(self, checkout_id: str) -> list[PartialPayment]:
         """Get all partial payments for a checkout."""
         pass
 
@@ -110,9 +110,9 @@ class InMemoryPartialPaymentStore(PartialPaymentStore):
     """
 
     def __init__(self):
-        self._states: Dict[str, PartialPaymentState] = {}
+        self._states: dict[str, PartialPaymentState] = {}
 
-    async def get_state(self, checkout_id: str) -> Optional[PartialPaymentState]:
+    async def get_state(self, checkout_id: str) -> PartialPaymentState | None:
         return self._states.get(checkout_id)
 
     async def create_state(self, state: PartialPaymentState) -> PartialPaymentState:
@@ -143,7 +143,7 @@ class InMemoryPartialPaymentStore(PartialPaymentStore):
 
         return state
 
-    async def get_payments(self, checkout_id: str) -> List[PartialPayment]:
+    async def get_payments(self, checkout_id: str) -> list[PartialPayment]:
         state = self._states.get(checkout_id)
         return state.payments if state else []
 
@@ -163,7 +163,7 @@ class PartialPaymentManager:
     def __init__(
         self,
         store: PartialPaymentStore,
-        default_minimum_payment: Optional[Decimal] = None,
+        default_minimum_payment: Decimal | None = None,
         default_minimum_percentage: Decimal = Decimal("0.1"),  # 10% minimum
     ):
         self.store = store
@@ -179,7 +179,7 @@ class PartialPaymentManager:
         self,
         total_amount: Decimal,
         amount_remaining: Decimal,
-        explicit_minimum: Optional[Decimal] = None,
+        explicit_minimum: Decimal | None = None,
     ) -> Decimal:
         """
         Calculate the minimum payment amount.
@@ -205,7 +205,7 @@ class PartialPaymentManager:
         total_amount: Decimal,
         currency: str,
         allow_partial: bool = True,
-        minimum_payment: Optional[Decimal] = None,
+        minimum_payment: Decimal | None = None,
     ) -> PartialPaymentState:
         """
         Initialize partial payment tracking for a checkout.
@@ -237,7 +237,7 @@ class PartialPaymentManager:
 
         return state
 
-    async def get_state(self, checkout_id: str) -> Optional[PartialPaymentState]:
+    async def get_state(self, checkout_id: str) -> PartialPaymentState | None:
         """Get the current partial payment state for a checkout."""
         return await self.store.get_state(checkout_id)
 
@@ -245,7 +245,7 @@ class PartialPaymentManager:
         self,
         checkout_id: str,
         amount: Decimal,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate a payment amount before processing.
 
@@ -314,8 +314,8 @@ class PartialPaymentManager:
         self,
         checkout_id: str,
         amount: Decimal,
-        psp_payment_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        psp_payment_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PartialPaymentState:
         """
         Record a partial payment for a checkout.
@@ -371,7 +371,7 @@ class PartialPaymentManager:
 
         return state
 
-    async def get_payment_summary(self, checkout_id: str) -> Dict[str, Any]:
+    async def get_payment_summary(self, checkout_id: str) -> dict[str, Any]:
         """
         Get a summary of payments for a checkout.
 
@@ -421,7 +421,7 @@ class PartialPaymentManager:
     async def get_next_payment_options(
         self,
         checkout_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get suggested payment amounts for the next partial payment.
 
@@ -479,7 +479,7 @@ class PartialPaymentManager:
         self,
         checkout_id: str,
         payment_id: str,
-        refund_amount: Optional[Decimal] = None,
+        refund_amount: Decimal | None = None,
     ) -> PartialPaymentState:
         """
         Process a refund for a partial payment.

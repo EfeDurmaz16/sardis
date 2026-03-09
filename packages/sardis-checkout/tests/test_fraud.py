@@ -10,14 +10,13 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
+import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock, AsyncMock, patch
-
-import sys
 from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -28,11 +27,10 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_checkout.fraud import (
-    FraudError,
+    FraudCheckContext,
     FraudCheckFailed,
     FraudDeclined,
-    FraudCheckContext,
-    FraudSignalProvider,
+    FraudError,
     VelocityCheckProvider,
 )
 from sardis_checkout.models import (

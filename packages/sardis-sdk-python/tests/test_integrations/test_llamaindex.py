@@ -1,7 +1,8 @@
 """Tests for LlamaIndex integration."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Mock llama_index before importing our module
 mock_llama_index_core = MagicMock()
@@ -14,12 +15,12 @@ sys.modules["llama_index.core"] = mock_llama_index_core
 sys.modules["llama_index.core.tools"] = mock_llama_index_core.tools
 
 from sardis_sdk.integrations.llamaindex import (
-    _generate_mandate_id,
-    _create_audit_hash,
+    LLAMA_INDEX_AVAILABLE,
     SardisPaymentTool,
+    _create_audit_hash,
+    _generate_mandate_id,
     create_sardis_tools,
     get_llamaindex_tool,
-    LLAMA_INDEX_AVAILABLE,
 )
 
 

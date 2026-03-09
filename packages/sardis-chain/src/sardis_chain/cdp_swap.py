@@ -12,10 +12,11 @@ Reference: https://docs.cdp.coinbase.com/onchain-data/docs/swap
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -112,8 +113,8 @@ class CDPSwapClient:
         method: str,
         path: str,
         *,
-        json: Optional[dict] = None,
-        params: Optional[dict] = None,
+        json: dict | None = None,
+        params: dict | None = None,
     ) -> dict:
         """Make an authenticated request to CDP API."""
         url = f"{self._base_url}{path}"
@@ -125,10 +126,8 @@ class CDPSwapClient:
             return resp.json()
         except httpx.HTTPStatusError as e:
             body = {}
-            try:
+            with contextlib.suppress(Exception):
                 body = e.response.json()
-            except Exception:
-                pass
             raise CDPSwapError(
                 f"CDP API error: {e.response.status_code} {body.get('message', '')}",
                 status_code=e.response.status_code,

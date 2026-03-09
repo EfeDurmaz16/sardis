@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.card import Card, CardTransaction, SimulateCardPurchaseResponse
 from .base import AsyncBaseResource, SyncBaseResource
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
+    import builtins
+
     from ..client import TimeoutConfig
 
 
@@ -22,11 +22,11 @@ class AsyncCardsResource(AsyncBaseResource):
         limit_per_tx: Decimal = Decimal("500.00"),
         limit_daily: Decimal = Decimal("2000.00"),
         limit_monthly: Decimal = Decimal("10000.00"),
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
         funding_source: str = "stablecoin",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "wallet_id": wallet_id,
             "card_type": card_type,
             "limit_per_tx": str(limit_per_tx),
@@ -40,10 +40,10 @@ class AsyncCardsResource(AsyncBaseResource):
 
     async def list(
         self,
-        wallet_id: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Card]:
-        params: Dict[str, Any] = {}
+        wallet_id: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Card]:
+        params: dict[str, Any] = {}
         if wallet_id:
             params["wallet_id"] = wallet_id
         data = await self._get("cards", params=params or None, timeout=timeout)
@@ -54,7 +54,7 @@ class AsyncCardsResource(AsyncBaseResource):
     async def get(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = await self._get(f"cards/{card_id}", timeout=timeout)
         return Card.model_validate(data)
@@ -62,7 +62,7 @@ class AsyncCardsResource(AsyncBaseResource):
     async def freeze(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = await self._post(f"cards/{card_id}/freeze", {}, timeout=timeout)
         return Card.model_validate(data)
@@ -70,7 +70,7 @@ class AsyncCardsResource(AsyncBaseResource):
     async def unfreeze(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = await self._post(f"cards/{card_id}/unfreeze", {}, timeout=timeout)
         return Card.model_validate(data)
@@ -78,7 +78,7 @@ class AsyncCardsResource(AsyncBaseResource):
     async def cancel(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         await self._delete(f"cards/{card_id}", timeout=timeout)
 
@@ -86,12 +86,12 @@ class AsyncCardsResource(AsyncBaseResource):
         self,
         card_id: str,
         *,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if limit_per_tx is not None:
             payload["limit_per_tx"] = str(limit_per_tx)
         if limit_daily is not None:
@@ -105,8 +105,8 @@ class AsyncCardsResource(AsyncBaseResource):
         self,
         card_id: str,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[CardTransaction]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[CardTransaction]:
         data = await self._get(f"cards/{card_id}/transactions", params={"limit": limit}, timeout=timeout)
         if isinstance(data, list):
             return [CardTransaction.model_validate(item) for item in data]
@@ -121,8 +121,8 @@ class AsyncCardsResource(AsyncBaseResource):
         merchant_name: str = "Demo Merchant",
         mcc_code: str = "5734",
         status: str = "approved",
-        decline_reason: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        decline_reason: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> SimulateCardPurchaseResponse:
         payload = {
             "amount": str(amount),
@@ -145,11 +145,11 @@ class CardsResource(SyncBaseResource):
         limit_per_tx: Decimal = Decimal("500.00"),
         limit_daily: Decimal = Decimal("2000.00"),
         limit_monthly: Decimal = Decimal("10000.00"),
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
         funding_source: str = "stablecoin",
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "wallet_id": wallet_id,
             "card_type": card_type,
             "limit_per_tx": str(limit_per_tx),
@@ -163,10 +163,10 @@ class CardsResource(SyncBaseResource):
 
     def list(
         self,
-        wallet_id: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Card]:
-        params: Dict[str, Any] = {}
+        wallet_id: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Card]:
+        params: dict[str, Any] = {}
         if wallet_id:
             params["wallet_id"] = wallet_id
         data = self._get("cards", params=params or None, timeout=timeout)
@@ -177,7 +177,7 @@ class CardsResource(SyncBaseResource):
     def get(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = self._get(f"cards/{card_id}", timeout=timeout)
         return Card.model_validate(data)
@@ -185,7 +185,7 @@ class CardsResource(SyncBaseResource):
     def freeze(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = self._post(f"cards/{card_id}/freeze", {}, timeout=timeout)
         return Card.model_validate(data)
@@ -193,7 +193,7 @@ class CardsResource(SyncBaseResource):
     def unfreeze(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
         data = self._post(f"cards/{card_id}/unfreeze", {}, timeout=timeout)
         return Card.model_validate(data)
@@ -201,7 +201,7 @@ class CardsResource(SyncBaseResource):
     def cancel(
         self,
         card_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         self._delete(f"cards/{card_id}", timeout=timeout)
 
@@ -209,12 +209,12 @@ class CardsResource(SyncBaseResource):
         self,
         card_id: str,
         *,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Card:
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if limit_per_tx is not None:
             payload["limit_per_tx"] = str(limit_per_tx)
         if limit_daily is not None:
@@ -228,8 +228,8 @@ class CardsResource(SyncBaseResource):
         self,
         card_id: str,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[CardTransaction]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[CardTransaction]:
         data = self._get(f"cards/{card_id}/transactions", params={"limit": limit}, timeout=timeout)
         if isinstance(data, list):
             return [CardTransaction.model_validate(item) for item in data]
@@ -244,8 +244,8 @@ class CardsResource(SyncBaseResource):
         merchant_name: str = "Demo Merchant",
         mcc_code: str = "5734",
         status: str = "approved",
-        decline_reason: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        decline_reason: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> SimulateCardPurchaseResponse:
         payload = {
             "amount": str(amount),

@@ -2,27 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from decimal import Decimal
-from typing import Optional, Literal, Any
-import uuid
 import hashlib
 import hmac
 import json
 import os
+import uuid
+from dataclasses import dataclass
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.idempotency import get_idempotency_key, run_idempotent
-from sardis_api.webhook_replay import run_with_replay_protection
 from sardis_api.canonical_state_machine import normalize_lithic_ach_event
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.providers.lithic_treasury import (
     CreateExternalBankAccountRequest,
     CreatePaymentRequest,
     LithicTreasuryClient,
 )
+from sardis_api.webhook_replay import run_with_replay_protection
 
 router = APIRouter(tags=["treasury"])
 public_router = APIRouter(tags=["treasury"])
@@ -31,7 +30,7 @@ public_router = APIRouter(tags=["treasury"])
 @dataclass
 class TreasuryDependencies:
     treasury_repo: Any
-    lithic_client: Optional[LithicTreasuryClient]
+    lithic_client: LithicTreasuryClient | None
     lithic_webhook_secret: str = ""
     canonical_repo: Any | None = None
 
@@ -41,18 +40,18 @@ def get_deps() -> TreasuryDependencies:
 
 
 class SyncAccountHolderRequest(BaseModel):
-    account_token: Optional[str] = None
+    account_token: str | None = None
 
 
 class FinancialAccountResponse(BaseModel):
     organization_id: str
     financial_account_token: str
-    account_token: Optional[str] = None
+    account_token: str | None = None
     account_role: str
     currency: str
     status: str
     is_program_level: bool = False
-    nickname: Optional[str] = None
+    nickname: str | None = None
 
 
 class CreateExternalBankAccountBody(BaseModel):
@@ -63,15 +62,15 @@ class CreateExternalBankAccountBody(BaseModel):
     account_type: Literal["CHECKING", "SAVINGS"] = "CHECKING"
     routing_number: str = Field(min_length=9, max_length=9)
     account_number: str = Field(min_length=4, max_length=32)
-    name: Optional[str] = None
+    name: str | None = None
     currency: str = "USD"
     country: str = "USA"
-    account_token: Optional[str] = None
-    company_id: Optional[str] = None
-    user_defined_id: Optional[str] = None
-    address: Optional[dict[str, Any]] = None
-    dob: Optional[str] = None
-    doing_business_as: Optional[str] = None
+    account_token: str | None = None
+    company_id: str | None = None
+    user_defined_id: str | None = None
+    address: dict[str, Any] | None = None
+    dob: str | None = None
+    doing_business_as: str | None = None
 
 
 class VerifyMicroDepositsBody(BaseModel):
@@ -84,9 +83,9 @@ class TreasuryPaymentRequest(BaseModel):
     amount_minor: int = Field(gt=0, description="Amount in currency minor units (e.g. cents for USD)")
     method: Literal["ACH_NEXT_DAY", "ACH_SAME_DAY"] = "ACH_NEXT_DAY"
     sec_code: Literal["CCD", "PPD", "WEB"] = "CCD"
-    memo: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    user_defined_id: Optional[str] = None
+    memo: str | None = None
+    idempotency_key: str | None = None
+    user_defined_id: str | None = None
 
 
 class TreasuryPaymentResponse(BaseModel):
@@ -100,7 +99,7 @@ class TreasuryPaymentResponse(BaseModel):
     settled_amount: int
     financial_account_token: str
     external_bank_account_token: str
-    user_defined_id: Optional[str] = None
+    user_defined_id: str | None = None
 
 
 class TreasuryBalanceResponse(BaseModel):
@@ -110,7 +109,7 @@ class TreasuryBalanceResponse(BaseModel):
     available_amount_minor: int
     pending_amount_minor: int
     total_amount_minor: int
-    as_of_event_token: Optional[str] = None
+    as_of_event_token: str | None = None
 
 
 def _to_financial_account_response(row: dict[str, Any]) -> FinancialAccountResponse:
@@ -142,7 +141,7 @@ def _to_payment_response(row: dict[str, Any]) -> TreasuryPaymentResponse:
     )
 
 
-def _map_event_type_to_status(event_type: str) -> Optional[str]:
+def _map_event_type_to_status(event_type: str) -> str | None:
     normalized = (event_type or "").strip().upper()
     mapping = {
         "ACH_ORIGINATION_INITIATED": "PENDING",
@@ -197,7 +196,7 @@ async def sync_account_holder_financial_accounts(
 
 @router.get("/financial-accounts", response_model=list[FinancialAccountResponse])
 async def list_financial_accounts(
-    account_token: Optional[str] = Query(default=None),
+    account_token: str | None = Query(default=None),
     refresh: bool = Query(default=False),
     deps: TreasuryDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),

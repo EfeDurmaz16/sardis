@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Optional
+from typing import Any
 
 
 def canonical_serialize(value: Any) -> bytes:
@@ -31,7 +31,7 @@ def compute_hash(obj_type: str, content: bytes) -> str:
 
     Mirrors agit's `compute_hash` in `hash.rs`.
     """
-    header = f"{obj_type} {len(content)}\0".encode("utf-8")
+    header = f"{obj_type} {len(content)}\0".encode()
     h = hashlib.sha256()
     h.update(header)
     h.update(content)
@@ -40,7 +40,7 @@ def compute_hash(obj_type: str, content: bytes) -> str:
 
 def compute_entry_hash(
     entry: dict[str, Any],
-    previous_hash: Optional[str] = None,
+    previous_hash: str | None = None,
 ) -> str:
     """Compute a content-addressed hash for a ledger entry.
 
@@ -76,7 +76,7 @@ def compute_entry_hash(
 
 def compute_audit_hash(
     audit: dict[str, Any],
-    previous_hash: Optional[str] = None,
+    previous_hash: str | None = None,
 ) -> str:
     """Compute a content-addressed hash for an audit log entry."""
     payload = {
@@ -105,7 +105,7 @@ def verify_entry_chain(entries: list[dict[str, Any]]) -> bool:
     Raises:
         HashChainError: If any entry's hash doesn't match its content.
     """
-    prev_hash: Optional[str] = None
+    prev_hash: str | None = None
     for i, entry in enumerate(entries):
         expected = compute_entry_hash(entry, previous_hash=prev_hash)
         actual = entry.get("entry_hash", "")

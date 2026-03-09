@@ -4,6 +4,12 @@ Provides circuit breakers, kill switches, rate limiting, input validation,
 and behavioral monitoring for safe agent payment execution.
 """
 
+from sardis_guardrails.anomaly_engine import (
+    AnomalyEngine,
+    RiskAction,
+    RiskAssessment,
+    RiskSignal,
+)
 from sardis_guardrails.behavioral_monitor import (
     AlertSeverity,
     BehavioralAlert,
@@ -40,12 +46,6 @@ from sardis_guardrails.rate_limiter import (
     RateLimitError,
     TokenBucket,
     TransactionRecord,
-)
-from sardis_guardrails.anomaly_engine import (
-    AnomalyEngine,
-    RiskAction,
-    RiskAssessment,
-    RiskSignal,
 )
 
 __version__ = "0.1.0"

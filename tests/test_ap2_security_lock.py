@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import os
 import time
-import pytest
 from unittest.mock import patch
 
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import IntentMandate, CartMandate, PaymentMandate, VCProof
-from sardis_protocol.verifier import MandateVerifier, VerificationError
+import pytest
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
+from sardis_protocol.verifier import MandateVerifier, VerificationError
+from sardis_v2_core import SardisSettings
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 

@@ -9,7 +9,6 @@ Pattern follows ``policy_store_postgres.py``.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
 
 from .auto_conversion import UnifiedBalance, WalletProvider
 
@@ -106,29 +105,27 @@ class PostgresUnifiedBalanceService:
         Returns True if deduction succeeded, False if insufficient.
         """
         pool = await self._get_pool()
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                """
                     SELECT tb.balance
                     FROM token_balances tb
                     JOIN wallets w ON w.id = tb.wallet_id
                     WHERE w.external_id = $1 AND tb.token = 'USD'
                     FOR UPDATE
                     """,
-                    wallet_id,
-                )
-                if not row:
-                    return False
+                wallet_id,
+            )
+            if not row:
+                return False
 
-                from decimal import Decimal
 
-                current_cents = int(row["balance"] * 100)
-                if current_cents < amount_cents:
-                    return False
+            current_cents = int(row["balance"] * 100)
+            if current_cents < amount_cents:
+                return False
 
-                await conn.execute(
-                    """
+            await conn.execute(
+                """
                     UPDATE token_balances
                     SET balance = balance - ($2::numeric / 100),
                         updated_at = NOW()
@@ -136,9 +133,9 @@ class PostgresUnifiedBalanceService:
                         SELECT id FROM wallets WHERE external_id = $1 LIMIT 1
                     ) AND token = 'USD'
                     """,
-                    wallet_id,
-                    amount_cents,
-                )
+                wallet_id,
+                amount_cents,
+            )
 
         logger.info(
             "Deducted $%.2f USD from wallet %s (persisted)",

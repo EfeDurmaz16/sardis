@@ -12,18 +12,17 @@ Provides secure session management for wallet access with:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import hmac
 import logging
 import os
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -61,13 +60,13 @@ class DeviceInfo:
     device_id: str
     device_type: str  # "mobile", "desktop", "browser"
     user_agent: str = ""
-    fingerprint: Optional[str] = None  # Browser/device fingerprint
-    push_token: Optional[str] = None  # For push notifications
+    fingerprint: str | None = None  # Browser/device fingerprint
+    push_token: str | None = None  # For push notifications
     is_trusted: bool = False
-    first_seen_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_seen_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_seen_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_seen_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "device_id": self.device_id,
@@ -84,49 +83,47 @@ class Session:
     session_id: str
     wallet_id: str
     user_id: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=24)
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=24)
     )
-    last_activity_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     status: SessionStatus = SessionStatus.ACTIVE
 
     # Device and location info
-    device_info: Optional[DeviceInfo] = None
-    ip_address: Optional[str] = None
-    geo_location: Optional[str] = None
+    device_info: DeviceInfo | None = None
+    ip_address: str | None = None
+    geo_location: str | None = None
 
     # Authentication info
     mfa_verified: bool = False
-    mfa_method: Optional[MFAMethod] = None
-    mfa_verified_at: Optional[datetime] = None
+    mfa_method: MFAMethod | None = None
+    mfa_verified_at: datetime | None = None
 
     # Permissions
-    allowed_actions: Set[SessionAction] = field(
+    allowed_actions: set[SessionAction] = field(
         default_factory=lambda: {SessionAction.READ}
     )
-    max_transaction_amount: Optional[str] = None
+    max_transaction_amount: str | None = None
 
     # Session metadata
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
     refresh_count: int = 0
     max_refreshes: int = 10
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_valid(self) -> bool:
         """Check if session is valid."""
         if self.status != SessionStatus.ACTIVE:
             return False
-        if datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not datetime.now(UTC) > self.expires_at
 
     def is_mfa_required(self, action: SessionAction) -> bool:
         """Check if MFA is required for an action."""
         mfa_required_actions = {SessionAction.SIGN, SessionAction.TRANSFER, SessionAction.ADMIN}
         return action in mfa_required_actions and not self.mfa_verified
 
-    def can_perform(self, action: SessionAction) -> Tuple[bool, str]:
+    def can_perform(self, action: SessionAction) -> tuple[bool, str]:
         """Check if session can perform an action."""
         if not self.is_valid():
             return False, "Session is not valid"
@@ -141,20 +138,20 @@ class Session:
 
     def record_activity(self) -> None:
         """Record session activity."""
-        self.last_activity_at = datetime.now(timezone.utc)
+        self.last_activity_at = datetime.now(UTC)
 
     def extend(self, hours: int = 24) -> None:
         """Extend session expiration."""
-        self.expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+        self.expires_at = datetime.now(UTC) + timedelta(hours=hours)
         self.refresh_count += 1
 
     def revoke(self, reason: str = "") -> None:
         """Revoke the session."""
         self.status = SessionStatus.REVOKED
         self.metadata["revocation_reason"] = reason
-        self.metadata["revoked_at"] = datetime.now(timezone.utc).isoformat()
+        self.metadata["revoked_at"] = datetime.now(UTC).isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "session_id": self.session_id,
@@ -178,9 +175,9 @@ class MFAChallenge:
     session_id: str
     method: MFAMethod
     challenge_data: str  # TOTP code, OTP, or challenge nonce
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(minutes=5)
+        default_factory=lambda: datetime.now(UTC) + timedelta(minutes=5)
     )
     attempts: int = 0
     max_attempts: int = 3
@@ -192,9 +189,7 @@ class MFAChallenge:
             return False
         if self.attempts >= self.max_attempts:
             return False
-        if datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not datetime.now(UTC) > self.expires_at
 
 
 @dataclass
@@ -220,8 +215,8 @@ class SessionPolicy:
     allow_same_device_sessions: bool = False
 
     # IP restrictions
-    allowed_ips: Optional[List[str]] = None
-    blocked_ips: List[str] = field(default_factory=list)
+    allowed_ips: list[str] | None = None
+    blocked_ips: list[str] = field(default_factory=list)
     allow_ip_change: bool = True
 
     # Security settings
@@ -236,15 +231,15 @@ class SessionAuditEvent:
     session_id: str
     wallet_id: str
     event_type: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    ip_address: Optional[str] = None
-    device_id: Optional[str] = None
-    action: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    ip_address: str | None = None
+    device_id: str | None = None
+    action: str | None = None
     success: bool = True
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "event_id": self.event_id,
@@ -295,21 +290,21 @@ class SessionManager:
 
     def __init__(
         self,
-        policy: Optional[SessionPolicy] = None,
-        mfa_provider: Optional[MFAProvider] = None,
+        policy: SessionPolicy | None = None,
+        mfa_provider: MFAProvider | None = None,
     ):
         self._policy = policy or SessionPolicy()
         self._mfa_provider = mfa_provider
 
         # Storage (in production, use database/Redis)
-        self._sessions: Dict[str, Session] = {}  # session_id -> session
-        self._wallet_sessions: Dict[str, List[str]] = {}  # wallet_id -> [session_ids]
-        self._devices: Dict[str, Dict[str, DeviceInfo]] = {}  # wallet_id -> device_id -> device
-        self._mfa_challenges: Dict[str, MFAChallenge] = {}  # challenge_id -> challenge
-        self._audit_log: List[SessionAuditEvent] = []
+        self._sessions: dict[str, Session] = {}  # session_id -> session
+        self._wallet_sessions: dict[str, list[str]] = {}  # wallet_id -> [session_ids]
+        self._devices: dict[str, dict[str, DeviceInfo]] = {}  # wallet_id -> device_id -> device
+        self._mfa_challenges: dict[str, MFAChallenge] = {}  # challenge_id -> challenge
+        self._audit_log: list[SessionAuditEvent] = []
 
         # Token storage
-        self._refresh_tokens: Dict[str, str] = {}  # refresh_token -> session_id
+        self._refresh_tokens: dict[str, str] = {}  # refresh_token -> session_id
 
         # Lock for concurrent operations
         self._lock = asyncio.Lock()
@@ -326,10 +321,10 @@ class SessionManager:
         self,
         wallet_id: str,
         user_id: str,
-        device_info: Optional[DeviceInfo] = None,
-        ip_address: Optional[str] = None,
-        allowed_actions: Optional[Set[SessionAction]] = None,
-        duration_hours: Optional[int] = None,
+        device_info: DeviceInfo | None = None,
+        ip_address: str | None = None,
+        allowed_actions: set[SessionAction] | None = None,
+        duration_hours: int | None = None,
     ) -> Session:
         """
         Create a new session for wallet access.
@@ -362,7 +357,7 @@ class SessionManager:
                 session_id=session_id,
                 wallet_id=wallet_id,
                 user_id=user_id,
-                expires_at=datetime.now(timezone.utc) + timedelta(hours=duration),
+                expires_at=datetime.now(UTC) + timedelta(hours=duration),
                 device_info=device_info,
                 ip_address=ip_address,
                 allowed_actions=allowed_actions or {SessionAction.READ},
@@ -378,7 +373,7 @@ class SessionManager:
                 )
                 if trusted_device:
                     session.mfa_verified = True
-                    session.mfa_verified_at = datetime.now(timezone.utc)
+                    session.mfa_verified_at = datetime.now(UTC)
 
             # Store session
             self._sessions[session_id] = session
@@ -406,7 +401,7 @@ class SessionManager:
             logger.info(f"Created session {session_id} for wallet {wallet_id}")
             return session
 
-    def _check_ip_allowed(self, ip_address: Optional[str]) -> bool:
+    def _check_ip_allowed(self, ip_address: str | None) -> bool:
         """Check if IP address is allowed."""
         if not ip_address:
             return True
@@ -424,7 +419,7 @@ class SessionManager:
     async def _enforce_session_limits(
         self,
         wallet_id: str,
-        device_info: Optional[DeviceInfo],
+        device_info: DeviceInfo | None,
     ) -> None:
         """Enforce concurrent session limits."""
         existing_sessions = self._wallet_sessions.get(wallet_id, [])
@@ -451,8 +446,8 @@ class SessionManager:
         self,
         wallet_id: str,
         device_id: str,
-        presented_fingerprint: Optional[str] = None,
-    ) -> Optional[DeviceInfo]:
+        presented_fingerprint: str | None = None,
+    ) -> DeviceInfo | None:
         """Get a trusted device with additional security checks.
 
         SECURITY: A device_id alone is a client-provided string that can be
@@ -466,7 +461,7 @@ class SessionManager:
             return None
 
         # Check trust expiry: devices trusted more than 90 days ago must re-MFA
-        trust_age = datetime.now(timezone.utc) - device.first_seen_at
+        trust_age = datetime.now(UTC) - device.first_seen_at
         if trust_age > timedelta(days=90):
             logger.info(
                 "Trusted device %s for wallet %s expired (age=%s days), requiring re-MFA",
@@ -496,15 +491,15 @@ class SessionManager:
         if wallet_id not in self._devices:
             self._devices[wallet_id] = {}
 
-        device_info.last_seen_at = datetime.now(timezone.utc)
+        device_info.last_seen_at = datetime.now(UTC)
         self._devices[wallet_id][device_info.device_id] = device_info
 
     async def validate_session(
         self,
         session_id: str,
-        action: Optional[SessionAction] = None,
-        ip_address: Optional[str] = None,
-    ) -> Tuple[bool, str, Optional[Session]]:
+        action: SessionAction | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[bool, str, Session | None]:
         """
         Validate a session and optionally check action permission.
 
@@ -531,7 +526,7 @@ class SessionManager:
                 return False, "IP address changed", session
 
         # Check idle timeout
-        idle_time = datetime.now(timezone.utc) - session.last_activity_at
+        idle_time = datetime.now(UTC) - session.last_activity_at
         if idle_time > timedelta(minutes=self._policy.idle_timeout_minutes):
             session.status = SessionStatus.EXPIRED
             return False, "Session expired due to inactivity", session
@@ -550,8 +545,8 @@ class SessionManager:
     async def refresh_session(
         self,
         refresh_token: str,
-        ip_address: Optional[str] = None,
-    ) -> Tuple[Optional[Session], Optional[str]]:
+        ip_address: str | None = None,
+    ) -> tuple[Session | None, str | None]:
         """
         Refresh a session using refresh token.
 
@@ -603,7 +598,7 @@ class SessionManager:
         self,
         session_id: str,
         method: MFAMethod,
-        destination: Optional[str] = None,
+        destination: str | None = None,
     ) -> MFAChallenge:
         """
         Initiate MFA verification for a session.
@@ -665,7 +660,7 @@ class SessionManager:
         self,
         challenge_id: str,
         response: str,
-    ) -> Tuple[bool, Optional[Session]]:
+    ) -> tuple[bool, Session | None]:
         """
         Verify MFA challenge response.
 
@@ -705,7 +700,7 @@ class SessionManager:
             if session:
                 session.mfa_verified = True
                 session.mfa_method = challenge.method
-                session.mfa_verified_at = datetime.now(timezone.utc)
+                session.mfa_verified_at = datetime.now(UTC)
                 session.status = SessionStatus.ACTIVE
 
                 # Grant elevated permissions
@@ -786,7 +781,7 @@ class SessionManager:
         self,
         wallet_id: str,
         reason: str = "",
-        exclude_session_id: Optional[str] = None,
+        exclude_session_id: str | None = None,
     ) -> int:
         """Revoke all sessions for a wallet."""
         session_ids = self._wallet_sessions.get(wallet_id, [])
@@ -800,7 +795,7 @@ class SessionManager:
 
         return revoked
 
-    def get_active_sessions(self, wallet_id: str) -> List[Dict[str, Any]]:
+    def get_active_sessions(self, wallet_id: str) -> list[dict[str, Any]]:
         """Get all active sessions for a wallet."""
         session_ids = self._wallet_sessions.get(wallet_id, [])
         sessions = []
@@ -812,7 +807,7 @@ class SessionManager:
 
         return sessions
 
-    def get_trusted_devices(self, wallet_id: str) -> List[Dict[str, Any]]:
+    def get_trusted_devices(self, wallet_id: str) -> list[dict[str, Any]]:
         """Get all trusted devices for a wallet."""
         devices = self._devices.get(wallet_id, {})
         return [d.to_dict() for d in devices.values() if d.is_trusted]
@@ -822,12 +817,12 @@ class SessionManager:
         session_id: str,
         wallet_id: str,
         event_type: str,
-        ip_address: Optional[str] = None,
-        device_id: Optional[str] = None,
-        action: Optional[str] = None,
+        ip_address: str | None = None,
+        device_id: str | None = None,
+        action: str | None = None,
         success: bool = True,
-        error_message: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log a session audit event."""
         event = SessionAuditEvent(
@@ -853,18 +848,18 @@ class SessionManager:
         self,
         wallet_id: str,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get audit log for a wallet."""
         events = [e for e in self._audit_log if e.wallet_id == wallet_id]
         return [e.to_dict() for e in sorted(events, key=lambda e: e.timestamp, reverse=True)[:limit]]
 
 
 # Singleton instance
-_session_manager: Optional[SessionManager] = None
+_session_manager: SessionManager | None = None
 
 
 def get_session_manager(
-    policy: Optional[SessionPolicy] = None,
+    policy: SessionPolicy | None = None,
 ) -> SessionManager:
     """Get the global session manager instance."""
     global _session_manager

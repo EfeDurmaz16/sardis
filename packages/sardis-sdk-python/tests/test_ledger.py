@@ -1,7 +1,5 @@
 """Tests for LedgerResource."""
-import pytest
 from decimal import Decimal
-
 
 MOCK_LEDGER_ENTRY = {
     "tx_id": "ltx_123",

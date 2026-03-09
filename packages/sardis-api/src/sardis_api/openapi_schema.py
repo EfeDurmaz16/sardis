@@ -1,7 +1,7 @@
 """Custom OpenAPI schema generation with security schemes and metadata."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -9,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from .middleware import API_VERSION
 
 
-def custom_openapi(app: FastAPI) -> Dict[str, Any]:
+def custom_openapi(app: FastAPI) -> dict[str, Any]:
     """Generate custom OpenAPI schema with security schemes."""
     if app.openapi_schema:
         return app.openapi_schema

@@ -1,6 +1,7 @@
 """Test thread-safety of ReplayCache with concurrent access."""
 import threading
 import time
+
 from sardis_protocol.storage import ReplayCache
 
 

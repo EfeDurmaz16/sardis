@@ -7,7 +7,7 @@ import hmac
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .spending_policy import SpendingPolicy
@@ -88,7 +88,7 @@ class PolicyDecisionReceipt:
     decision_hash: str = ""
     merkle_root: str = ""
     audit_anchor: str = ""
-    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    issued_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     context: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -120,7 +120,7 @@ class SignedPolicySnapshot:
     chain_hash: str = ""
     signer_kid: str = "policy-signer"
     signature: str = ""
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -180,7 +180,7 @@ def build_signed_policy_snapshot(
         source_hash=source_hash,
         prev_chain_hash=(prev_chain_hash or "").strip().lower(),
         signer_kid=signer_kid,
-        created_at=created_at or datetime.now(timezone.utc),
+        created_at=created_at or datetime.now(UTC),
     )
     signable_json = _stable_json(_snapshot_signable_payload(snapshot))
     signature = hmac.new(signer_secret.encode("utf-8"), signable_json.encode("utf-8"), hashlib.sha256).hexdigest()

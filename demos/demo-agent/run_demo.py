@@ -5,7 +5,6 @@ Sardis Demo Agent - Interactive CLI Runner
 Demonstrates AI agent payment capabilities with policy enforcement.
 """
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -13,16 +12,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import click
+from agent import SardisAgent
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Prompt, Confirm
-from rich.markdown import Markdown
-from rich import box
-
-from agent import SardisAgent
-from scenarios import DEMO_SCENARIOS, DEFAULT_POLICY, PaymentScenario
+from rich.prompt import Prompt
+from rich.table import Table
+from scenarios import DEFAULT_POLICY, DEMO_SCENARIOS, PaymentScenario
 
 console = Console()
 
@@ -92,7 +89,7 @@ async def run_scenario(agent: SardisAgent, scenario: PaymentScenario) -> None:
     ) as progress:
         # Check policy
         task = progress.add_task("Checking policy...", total=None)
-        policy_result = await agent.check_policy(
+        await agent.check_policy(
             scenario.vendor,
             scenario.amount,
             scenario.category,

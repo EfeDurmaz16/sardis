@@ -9,7 +9,7 @@ import hashlib
 import hmac
 import logging
 from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import httpx
 
@@ -31,13 +31,13 @@ def _mask(s: str | None, head: int = 4, tail: int = 4) -> str:
 @dataclass
 class LithicFinancialAccount:
     token: str
-    account_token: Optional[str]
+    account_token: str | None
     account_type: str
     status: str
     currency: str = "USD"
-    routing_number: Optional[str] = None
-    account_number: Optional[str] = None
-    nickname: Optional[str] = None
+    routing_number: str | None = None
+    account_number: str | None = None
+    nickname: str | None = None
     raw: dict[str, Any] | None = None
 
 
@@ -69,7 +69,7 @@ class LithicPayment:
     settled_amount: int
     financial_account_token: str
     external_bank_account_token: str
-    user_defined_id: Optional[str]
+    user_defined_id: str | None
     method_attributes: dict[str, Any]
     events: list[dict[str, Any]]
     raw: dict[str, Any] | None = None
@@ -84,15 +84,15 @@ class CreateExternalBankAccountRequest:
     account_type: Literal["CHECKING", "SAVINGS"]
     routing_number: str
     account_number: str
-    name: Optional[str] = None
+    name: str | None = None
     currency: str = "USD"
     country: str = "USA"
-    account_token: Optional[str] = None
-    company_id: Optional[str] = None
-    user_defined_id: Optional[str] = None
-    address: Optional[dict[str, Any]] = None
-    dob: Optional[str] = None
-    doing_business_as: Optional[str] = None
+    account_token: str | None = None
+    company_id: str | None = None
+    user_defined_id: str | None = None
+    address: dict[str, Any] | None = None
+    dob: str | None = None
+    doing_business_as: str | None = None
 
 
 @dataclass
@@ -103,9 +103,9 @@ class CreatePaymentRequest:
     amount: int
     method: _METHOD = "ACH_NEXT_DAY"
     sec_code: _SEC_CODE = "CCD"
-    memo: Optional[str] = None
-    idempotency_token: Optional[str] = None
-    user_defined_id: Optional[str] = None
+    memo: str | None = None
+    idempotency_token: str | None = None
+    user_defined_id: str | None = None
 
 
 class LithicTreasuryClient:
@@ -155,8 +155,8 @@ class LithicTreasuryClient:
         method: str,
         path: str,
         *,
-        params: Optional[dict[str, Any]] = None,
-        json: Optional[dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         client = await self._get_client()
         try:
@@ -177,7 +177,7 @@ class LithicTreasuryClient:
             )
             raise
 
-    async def list_financial_accounts(self, account_token: Optional[str] = None) -> list[LithicFinancialAccount]:
+    async def list_financial_accounts(self, account_token: str | None = None) -> list[LithicFinancialAccount]:
         params: dict[str, Any] = {}
         if account_token:
             params["account_token"] = account_token
@@ -299,12 +299,12 @@ class LithicTreasuryClient:
     async def list_payments(
         self,
         *,
-        financial_account_token: Optional[str] = None,
-        status: Optional[str] = None,
-        result: Optional[str] = None,
+        financial_account_token: str | None = None,
+        status: str | None = None,
+        result: str | None = None,
         page_size: int = 100,
-        starting_after: Optional[str] = None,
-        ending_before: Optional[str] = None,
+        starting_after: str | None = None,
+        ending_before: str | None = None,
     ) -> list[LithicPayment]:
         params: dict[str, Any] = {"page_size": max(1, min(page_size, 100))}
         if financial_account_token:
@@ -326,8 +326,8 @@ class LithicTreasuryClient:
         payment_token: str,
         event_type: str,
         *,
-        decline_reason: Optional[str] = None,
-        return_reason_code: Optional[str] = None,
+        decline_reason: str | None = None,
+        return_reason_code: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "event_type": event_type,

@@ -1,13 +1,12 @@
 """Virtual card abstraction reused by wallets."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal
-from enum import Enum
-from typing import Optional
 import secrets
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
+from enum import Enum
 
 SARDIS_BIN = "489031"
 
@@ -59,21 +58,21 @@ def _generate_cvv() -> str:
 
 
 def _generate_expiry() -> tuple[int, int]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.month, now.year + 3
 
 
 @dataclass(slots=True)
 class VirtualCard:
     """Virtual card linked to an agent wallet with provider integration."""
-    
+
     card_id: str = field(default_factory=lambda: f"vc_{uuid.uuid4().hex[:16]}")
     wallet_id: str = ""
-    
+
     # Provider integration fields
     provider: str = "internal"  # internal, lithic, marqeta, stripe
     provider_card_id: str = ""  # External provider's card ID
-    
+
     # Card details
     card_number: str = field(default_factory=_generate_card_number)
     masked_number: str = ""
@@ -82,36 +81,36 @@ class VirtualCard:
     expiry_year: int = 0
     card_type: CardType = CardType.MULTI_USE
     status: CardStatus = CardStatus.ACTIVE
-    locked_merchant_id: Optional[str] = None
-    
+    locked_merchant_id: str | None = None
+
     # Funding fields
     funding_source: FundingSource = FundingSource.STABLECOIN
     funded_amount: Decimal = field(default_factory=lambda: Decimal("0.00"))
     pending_funds: Decimal = field(default_factory=lambda: Decimal("0.00"))
-    
+
     # Spending limits
     limit_per_tx: Decimal = field(default_factory=lambda: Decimal("500.00"))
     limit_daily: Decimal = field(default_factory=lambda: Decimal("2000.00"))
     limit_monthly: Decimal = field(default_factory=lambda: Decimal("10000.00"))
-    
+
     # Spending tracking
     spent_today: Decimal = field(default_factory=lambda: Decimal("0.00"))
     spent_this_month: Decimal = field(default_factory=lambda: Decimal("0.00"))
     total_spent: Decimal = field(default_factory=lambda: Decimal("0.00"))
     pending_authorizations: Decimal = field(default_factory=lambda: Decimal("0.00"))
     authorization_count: int = 0
-    
+
     # Status flags
     is_active: bool = True
     is_used: bool = False
-    
+
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    activated_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    frozen_at: Optional[datetime] = None
-    suspended_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    activated_at: datetime | None = None
+    last_used_at: datetime | None = None
+    frozen_at: datetime | None = None
+    suspended_at: datetime | None = None
+    cancelled_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.masked_number and self.card_number:
@@ -125,12 +124,10 @@ class VirtualCard:
             return False
         if self.card_type == CardType.SINGLE_USE and self.is_used:
             return False
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if self.expiry_year < now.year:
             return False
-        if self.expiry_year == now.year and self.expiry_month < now.month:
-            return False
-        return True
+        return not (self.expiry_year == now.year and self.expiry_month < now.month)
 
     @property
     def available_balance(self) -> Decimal:
@@ -142,7 +139,7 @@ class VirtualCard:
             return max(Decimal("0"), min(daily_available, funded_available))
         return max(Decimal("0"), daily_available)
 
-    def can_authorize(self, amount: Decimal, merchant_id: Optional[str] = None) -> tuple[bool, str]:
+    def can_authorize(self, amount: Decimal, merchant_id: str | None = None) -> tuple[bool, str]:
         if not self.is_valid:
             return False, f"card invalid ({self.status.value})"
         if self.card_type == CardType.SINGLE_USE and self.is_used:

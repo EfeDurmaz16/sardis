@@ -1,8 +1,14 @@
 """Test MandateChain __post_init__ validation."""
 import time
-import pytest
 
-from sardis_v2_core.mandates import IntentMandate, CartMandate, PaymentMandate, MandateChain, VCProof
+import pytest
+from sardis_v2_core.mandates import (
+    CartMandate,
+    IntentMandate,
+    MandateChain,
+    PaymentMandate,
+    VCProof,
+)
 
 
 def create_test_proof():

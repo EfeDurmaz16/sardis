@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # Skip database-dependent tests if no PostgreSQL database
 _requires_db = pytest.mark.skipif(
-    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or 
+    not (os.environ.get("DATABASE_URL", "").startswith("postgresql://") or
          os.environ.get("DATABASE_URL", "").startswith("postgres://")),
     reason="Requires PostgreSQL database (set DATABASE_URL env var)"
 )
@@ -16,7 +17,7 @@ _requires_db = pytest.mark.skipif(
 async def test_list_categories(test_client):
     """Test listing marketplace categories."""
     response = await test_client.get("/api/v2/marketplace/categories")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "categories" in data
@@ -31,7 +32,7 @@ async def test_create_service(test_client, sample_service_request):
         "/api/v2/marketplace/services",
         json=sample_service_request,
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert "service_id" in data
@@ -48,10 +49,10 @@ async def test_list_services(test_client, sample_service_request):
         "/api/v2/marketplace/services",
         json=sample_service_request,
     )
-    
+
     # List services
     response = await test_client.get("/api/v2/marketplace/services")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -67,10 +68,10 @@ async def test_get_service(test_client, sample_service_request):
         json=sample_service_request,
     )
     service_id = create_response.json()["service_id"]
-    
+
     # Get it
     response = await test_client.get(f"/api/v2/marketplace/services/{service_id}")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["service_id"] == service_id
@@ -85,13 +86,13 @@ async def test_search_services(test_client, sample_service_request):
         "/api/v2/marketplace/services",
         json=sample_service_request,
     )
-    
+
     # Search for it
     response = await test_client.post(
         "/api/v2/marketplace/services/search",
         json={"query": "AI"},
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -107,7 +108,7 @@ async def test_create_offer(test_client, sample_service_request):
         json=sample_service_request,
     )
     service_id = create_response.json()["service_id"]
-    
+
     # Create offer
     response = await test_client.post(
         "/api/v2/marketplace/offers",
@@ -117,7 +118,7 @@ async def test_create_offer(test_client, sample_service_request):
             "token": "USDC",
         },
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert "offer_id" in data
@@ -134,7 +135,7 @@ async def test_accept_offer(test_client, sample_service_request):
         json=sample_service_request,
     )
     service_id = service_response.json()["service_id"]
-    
+
     # Create offer
     offer_response = await test_client.post(
         "/api/v2/marketplace/offers",
@@ -144,10 +145,10 @@ async def test_accept_offer(test_client, sample_service_request):
         },
     )
     offer_id = offer_response.json()["offer_id"]
-    
+
     # Accept offer
     response = await test_client.post(f"/api/v2/marketplace/offers/{offer_id}/accept")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "accepted"
@@ -158,5 +159,5 @@ async def test_accept_offer(test_client, sample_service_request):
 async def test_service_not_found(test_client):
     """Test getting a non-existent service."""
     response = await test_client.get("/api/v2/marketplace/services/nonexistent_service")
-    
+
     assert response.status_code == 404

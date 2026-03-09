@@ -9,8 +9,9 @@ Tests the complete compliance flow including:
 Run with: pytest tests/e2e/test_compliance_flow.py -v
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -28,7 +29,7 @@ class TestKYCFlow:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create agent first
                 wallet = await client.wallets.create(
-                    agent_id=f"kyc_test_agent_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"kyc_test_agent_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -80,13 +81,13 @@ class TestKYCFlow:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet
                 wallet = await client.wallets.create(
-                    agent_id=f"kyc_threshold_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"kyc_threshold_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
                 # Try large payment without KYC
                 mandate = {
-                    "mandate_id": f"kyc_test_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"kyc_test_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:enterprise",
                     "amount_minor": "15000000000",  # $15,000 - above threshold
@@ -97,7 +98,7 @@ class TestKYCFlow:
                 }
 
                 try:
-                    result = await client.payments.execute_mandate(mandate)
+                    await client.payments.execute_mandate(mandate)
                     # If it succeeds, might be in simulated mode
                 except Exception as e:
                     # Should be blocked due to KYC requirement
@@ -140,13 +141,13 @@ class TestAMLScreening:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"aml_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"aml_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
                 # Try payment to known sanctioned address (mock)
                 mandate = {
-                    "mandate_id": f"aml_test_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"aml_test_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "0x0000000000000000000000000000000000000bad",
                     "amount_minor": "10000000",
@@ -157,7 +158,7 @@ class TestAMLScreening:
                 }
 
                 try:
-                    result = await client.payments.execute_mandate(mandate)
+                    await client.payments.execute_mandate(mandate)
                     # Should be blocked in production
                 except Exception as e:
                     assert any(kw in str(e).lower() for kw in [

@@ -7,7 +7,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from ..api import SardisAPIClient, APIError
+from ..api import APIError, SardisAPIClient
 
 console = Console()
 
@@ -114,7 +114,7 @@ def check(ctx, agent: str, amount: float, destination: str | None, token: str, p
         checks_passed = result.get("checks_passed", [])
         checks_failed = result.get("checks_failed", [])
 
-        console.print(f"\n[bold blue]Policy Check Result[/bold blue]\n")
+        console.print("\n[bold blue]Policy Check Result[/bold blue]\n")
 
         if allowed:
             console.print("[bold green]ALLOWED[/bold green]")
@@ -200,7 +200,7 @@ def set_policy(
     try:
         result = client.post("/api/v2/policies/apply", payload)
 
-        console.print(f"\n[green]Policy applied successfully[/green]")
+        console.print("\n[green]Policy applied successfully[/green]")
         console.print(f"  Agent: [cyan]{agent}[/cyan]")
         console.print(f"  Policy ID: [cyan]{result.get('policy_id', 'N/A')}[/cyan]")
 
@@ -215,7 +215,7 @@ def set_policy(
         if allowed_tokens is not None:
             console.print(f"  Allowed Tokens: {allowed_tokens}")
         if require_purpose:
-            console.print(f"  Require Purpose: Yes")
+            console.print("  Require Purpose: Yes")
         if approval_threshold is not None:
             console.print(f"  Approval Threshold: {approval_threshold}")
         if policy_text is not None:

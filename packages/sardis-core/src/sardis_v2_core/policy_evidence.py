@@ -18,10 +18,10 @@ import hashlib
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 
 def _nanoid() -> str:
@@ -43,13 +43,13 @@ class PolicyDecisionLog:
     """Complete evidence bundle for a policy evaluation."""
     decision_id: str
     agent_id: str
-    mandate_id: Optional[str]
+    mandate_id: str | None
     timestamp: datetime
-    policy_version_id: Optional[str]
+    policy_version_id: str | None
     steps: list[PolicyStepResult]
     final_verdict: str  # "approved" | "denied" | "escalated"
     evidence_hash: str
-    group_hierarchy_applied: Optional[list[str]] = None
+    group_hierarchy_applied: list[str] | None = None
 
 
 def compute_evidence_hash(steps: list[PolicyStepResult]) -> str:
@@ -76,17 +76,17 @@ async def evaluate_with_evidence(
     *,
     chain: str,
     token: Any,
-    merchant_id: Optional[str] = None,
-    merchant_category: Optional[str] = None,
-    mcc_code: Optional[str] = None,
+    merchant_id: str | None = None,
+    merchant_category: str | None = None,
+    mcc_code: str | None = None,
     scope: Any = None,
     rpc_client: Any = None,
-    drift_score: Optional[Decimal] = None,
+    drift_score: Decimal | None = None,
     policy_store: Any = None,
     kya_client: Any = None,
-    mandate_id: Optional[str] = None,
-    policy_version_id: Optional[str] = None,
-    group_hierarchy: Optional[list[str]] = None,
+    mandate_id: str | None = None,
+    policy_version_id: str | None = None,
+    group_hierarchy: list[str] | None = None,
 ) -> tuple[tuple[bool, str], PolicyDecisionLog]:
     """Evaluate policy and capture step-by-step evidence.
 
@@ -218,9 +218,9 @@ def _ms(t0: float) -> float:
 def _finalize(
     steps: list[PolicyStepResult],
     policy: Any,
-    mandate_id: Optional[str],
-    policy_version_id: Optional[str],
-    group_hierarchy: Optional[list[str]],
+    mandate_id: str | None,
+    policy_version_id: str | None,
+    group_hierarchy: list[str] | None,
     approved: bool,
     reason: str,
 ) -> tuple[tuple[bool, str], PolicyDecisionLog]:
@@ -237,7 +237,7 @@ def _finalize(
         decision_id=_nanoid(),
         agent_id=policy.agent_id,
         mandate_id=mandate_id,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         policy_version_id=policy_version_id,
         steps=steps,
         final_verdict=verdict,

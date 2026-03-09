@@ -8,15 +8,14 @@ import signal
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
-from contextlib import asynccontextmanager
-from typing import Optional
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
-
-from sardis_v2_core.jobs.spending_reset import reset_spending_limits
-from sardis_v2_core.jobs.hold_expiry import expire_holds
 from sardis_v2_core.jobs.approval_expiry import expire_approvals
+from sardis_v2_core.jobs.hold_expiry import expire_holds
+from sardis_v2_core.jobs.spending_reset import reset_spending_limits
+
 from .middleware import API_VERSION
 
 logger = logging.getLogger("sardis.api")
@@ -24,7 +23,7 @@ logger = logging.getLogger("sardis.api")
 # ---------------------------------------------------------------------------
 # Shutdown primitives
 # ---------------------------------------------------------------------------
-_shutdown_event: Optional[asyncio.Event] = None
+_shutdown_event: asyncio.Event | None = None
 
 
 def get_shutdown_event() -> asyncio.Event:
@@ -41,7 +40,7 @@ class GracefulShutdownState:
     def __init__(self) -> None:
         self.is_shutting_down = False
         self.active_requests = 0
-        self.shutdown_started_at: Optional[float] = None
+        self.shutdown_started_at: float | None = None
         self.max_shutdown_wait_seconds = 30
 
     def start_shutdown(self) -> None:
@@ -220,8 +219,8 @@ async def lifespan(app: FastAPI):
                     logger.exception("Treasury reconciliation job failed: %s", e)
 
             async def _treasury_retry_returns_job() -> None:
-                from .routers.metrics import background_jobs_total
                 from .providers.lithic_treasury import CreatePaymentRequest
+                from .routers.metrics import background_jobs_total
 
                 repo = getattr(app.state, "treasury_repo", None)
                 lithic_client = getattr(app.state, "lithic_treasury_client", None)
@@ -318,11 +317,11 @@ async def lifespan(app: FastAPI):
                             elif state_value in {"processing", "authorized", "created"}:
                                 last_event_at = journey.get("last_event_at")
                                 if isinstance(last_event_at, datetime):
-                                    age_minutes = (datetime.now(timezone.utc) - last_event_at).total_seconds() / 60.0
+                                    age_minutes = (datetime.now(UTC) - last_event_at).total_seconds() / 60.0
                                 elif isinstance(last_event_at, str):
                                     try:
                                         parsed = datetime.fromisoformat(last_event_at.replace("Z", "+00:00"))
-                                        age_minutes = (datetime.now(timezone.utc) - parsed).total_seconds() / 60.0
+                                        age_minutes = (datetime.now(UTC) - parsed).total_seconds() / 60.0
                                     except Exception:
                                         age_minutes = 0.0
                                 else:
@@ -392,7 +391,6 @@ async def lifespan(app: FastAPI):
                 if svc is None:
                     return
                 try:
-                    from sardis_v2_core.merchant import MerchantRepository
                     repo = getattr(app.state, "settlement_service", None)
                     if repo and hasattr(repo, "_merchant_repo"):
                         merchants = await repo._merchant_repo.list_merchants("default")
@@ -539,10 +537,8 @@ async def lifespan(app: FastAPI):
     # Stop side-effect worker
     if _side_effect_task is not None and not _side_effect_task.done():
         _side_effect_task.cancel()
-        try:
+        with suppress(asyncio.CancelledError):
             await _side_effect_task
-        except asyncio.CancelledError:
-            pass
         logger.info("Side-effect worker stopped")
 
     # Stop deposit monitor

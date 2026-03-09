@@ -27,23 +27,28 @@ os.chdir(project_root)
 
 async def test_simple_eth_transfer():
     """Test a simple ETH transfer via Turnkey."""
-    from sardis_chain.executor import TurnkeyMPCSigner, ChainRPCClient, TransactionRequest, CHAIN_CONFIGS
+    from sardis_chain.executor import (
+        CHAIN_CONFIGS,
+        ChainRPCClient,
+        TransactionRequest,
+        TurnkeyMPCSigner,
+    )
     from sardis_v2_core.config import load_settings
-    
+
     print("\n🧪 Simple ETH Transfer Test\n")
     print("=" * 50)
-    
+
     # Load settings
     settings = load_settings()
-    
+
     print(f"Turnkey Org ID: {settings.turnkey.organization_id}")
     print(f"Turnkey Wallet ID: {settings.turnkey.default_wallet_id}")
     print(f"Chain Mode: {settings.chain_mode}")
-    
+
     if settings.chain_mode != "live":
         print("\n⚠️  Simulated mode - skipping real transaction")
         return True
-    
+
     # Initialize Turnkey signer
     print("\n1. Initializing Turnkey signer...")
     try:
@@ -57,7 +62,7 @@ async def test_simple_eth_transfer():
     except Exception as e:
         print(f"   ❌ Failed to initialize signer: {e}")
         return False
-    
+
     # Get wallet address
     print("\n2. Getting wallet address...")
     try:
@@ -67,17 +72,17 @@ async def test_simple_eth_transfer():
     except Exception as e:
         print(f"   ❌ Failed to get address: {e}")
         return False
-    
+
     # Check balance
     print("\n3. Checking balance...")
     chain_config = CHAIN_CONFIGS["ethereum_sepolia"]
     rpc_client = ChainRPCClient(chain_config["rpc_url"], chain="ethereum_sepolia")
-    
+
     try:
         balance = await rpc_client.get_balance(address)
         balance_eth = balance / 10**18
         print(f"   ✅ Balance: {balance_eth:.6f} ETH")
-        
+
         if balance_eth < 0.001:
             print("   ⚠️  Balance too low for test")
             await rpc_client.close()
@@ -86,7 +91,7 @@ async def test_simple_eth_transfer():
         print(f"   ❌ Failed to get balance: {e}")
         await rpc_client.close()
         return False
-    
+
     # Get nonce
     print("\n4. Getting nonce...")
     try:
@@ -96,7 +101,7 @@ async def test_simple_eth_transfer():
         print(f"   ❌ Failed to get nonce: {e}")
         await rpc_client.close()
         return False
-    
+
     # Get gas price
     print("\n5. Getting gas parameters...")
     try:
@@ -106,7 +111,7 @@ async def test_simple_eth_transfer():
     except Exception as e:
         print(f"   ⚠️  Could not get gas price: {e}")
         gas_data = {"max_fee": 50_000_000_000, "max_priority_fee": 1_000_000_000}
-    
+
     # Create transaction request - send 0.0001 ETH to self
     print("\n6. Creating transaction...")
     tx = TransactionRequest(
@@ -119,8 +124,8 @@ async def test_simple_eth_transfer():
         max_priority_fee_per_gas=gas_data.get("max_priority_fee", 1_000_000_000),
         nonce=nonce,
     )
-    print(f"   ✅ TX: Send 0.0001 ETH to self")
-    
+    print("   ✅ TX: Send 0.0001 ETH to self")
+
     # Sign transaction
     print("\n7. Signing transaction with Turnkey...")
     try:
@@ -131,7 +136,7 @@ async def test_simple_eth_transfer():
         print(f"   ❌ Failed to sign: {e}")
         await rpc_client.close()
         return False
-    
+
     # Broadcast transaction
     print("\n8. Broadcasting transaction...")
     try:
@@ -142,7 +147,7 @@ async def test_simple_eth_transfer():
         print(f"   ❌ Failed to broadcast: {e}")
         await rpc_client.close()
         return False
-    
+
     await rpc_client.close()
     print("\n✨ Test completed successfully!")
     return True

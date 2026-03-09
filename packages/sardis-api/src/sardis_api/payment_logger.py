@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 _logger = logging.getLogger("sardis.payments")
 
@@ -25,7 +25,7 @@ def log_payment_event(
     tx_hash: str = "",
     latency_ms: int = 0,
     error: str = "",
-    extra: Optional[dict[str, Any]] = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """Emit a structured payment event log entry."""
     record = {

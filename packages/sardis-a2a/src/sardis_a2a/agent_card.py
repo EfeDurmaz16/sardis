@@ -12,9 +12,9 @@ Sardis agent cards declare:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class AgentCapability(str, Enum):
@@ -46,12 +46,12 @@ class PaymentCapability:
     """Payment-specific capability declaration."""
 
     # Supported tokens
-    supported_tokens: List[str] = field(
+    supported_tokens: list[str] = field(
         default_factory=lambda: ["USDC", "USDT", "PYUSD", "EURC"]
     )
 
     # Supported chains
-    supported_chains: List[str] = field(
+    supported_chains: list[str] = field(
         default_factory=lambda: ["base", "polygon", "ethereum", "arbitrum", "optimism"]
     )
 
@@ -64,7 +64,7 @@ class PaymentCapability:
     x402_compliant: bool = True
     ucp_compliant: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "supported_tokens": self.supported_tokens,
@@ -84,9 +84,9 @@ class ServiceEndpoint:
     url: str
     protocol: str = "https"  # https, wss, mcp
     auth_required: bool = False
-    auth_type: Optional[str] = None  # bearer, api_key, signature
+    auth_type: str | None = None  # bearer, api_key, signature
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "url": self.url,
@@ -116,10 +116,10 @@ class SardisAgentCard:
     # Operator information
     operator_name: str = "Sardis"
     operator_url: str = "https://sardis.sh"
-    operator_contact: Optional[str] = None
+    operator_contact: str | None = None
 
     # Capabilities
-    capabilities: List[AgentCapability] = field(
+    capabilities: list[AgentCapability] = field(
         default_factory=lambda: [
             AgentCapability.PAYMENT_EXECUTE,
             AgentCapability.PAYMENT_VERIFY,
@@ -133,20 +133,20 @@ class SardisAgentCard:
     payment_capability: PaymentCapability = field(default_factory=PaymentCapability)
 
     # Service endpoints
-    api_endpoint: Optional[ServiceEndpoint] = None
-    mcp_endpoint: Optional[str] = None  # MCP server command/args
-    webhook_endpoint: Optional[ServiceEndpoint] = None
-    a2a_endpoint: Optional[ServiceEndpoint] = None
+    api_endpoint: ServiceEndpoint | None = None
+    mcp_endpoint: str | None = None  # MCP server command/args
+    webhook_endpoint: ServiceEndpoint | None = None
+    a2a_endpoint: ServiceEndpoint | None = None
 
     # Verification
-    signing_key_id: Optional[str] = None
-    public_key: Optional[str] = None
+    signing_key_id: str | None = None
+    public_key: str | None = None
     key_algorithm: str = "Ed25519"
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def supports_capability(self, capability: AgentCapability) -> bool:
         """Check if this agent supports a specific capability."""
@@ -160,7 +160,7 @@ class SardisAgentCard:
         """Check if this agent supports a specific chain."""
         return chain.lower() in self.payment_capability.supported_chains
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary for JSON serialization.
 
@@ -212,9 +212,9 @@ def create_sardis_agent_card(
     agent_id: str,
     agent_name: str,
     api_base_url: str,
-    mcp_command: Optional[str] = None,
-    signing_key_id: Optional[str] = None,
-    public_key: Optional[str] = None,
+    mcp_command: str | None = None,
+    signing_key_id: str | None = None,
+    public_key: str | None = None,
 ) -> SardisAgentCard:
     """
     Create a standard Sardis agent card with default capabilities.

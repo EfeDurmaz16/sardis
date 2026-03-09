@@ -19,10 +19,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
-from web3 import Web3
 from eth_abi import encode
+from web3 import Web3
 
 logger = logging.getLogger(__name__)
 

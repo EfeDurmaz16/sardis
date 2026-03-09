@@ -13,20 +13,16 @@ Tests middleware integration with FastAPI:
 from __future__ import annotations
 
 import time
-from typing import Callable
-from unittest.mock import Mock
+from collections.abc import Callable
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
-
 from sardis_api.middleware import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
     register_exception_handlers,
 )
-from sardis_protocol.tap import TapVerificationResult
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.tap]
 

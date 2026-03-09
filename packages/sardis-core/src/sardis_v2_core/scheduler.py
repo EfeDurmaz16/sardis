@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 try:
     from apscheduler.executors.asyncio import AsyncIOExecutor  # type: ignore
@@ -31,7 +32,7 @@ JobCallable = Callable[[], Awaitable[object] | object]
 class _IntervalJob:
     func: JobCallable
     seconds: int
-    task: Optional[asyncio.Task[None]] = None
+    task: asyncio.Task[None] | None = None
 
 
 class SardisScheduler:
@@ -39,7 +40,7 @@ class SardisScheduler:
 
     def __init__(
         self,
-        database_url: Optional[str] = None,
+        database_url: str | None = None,
         timezone: str = "UTC",
     ):
         self._database_url = database_url
@@ -190,7 +191,7 @@ class SardisScheduler:
 
 
 # Singleton instance
-_scheduler: Optional[SardisScheduler] = None
+_scheduler: SardisScheduler | None = None
 
 
 def get_scheduler() -> SardisScheduler:
@@ -201,7 +202,7 @@ def get_scheduler() -> SardisScheduler:
     return _scheduler
 
 
-def init_scheduler(database_url: Optional[str] = None) -> SardisScheduler:
+def init_scheduler(database_url: str | None = None) -> SardisScheduler:
     """Initialize the global scheduler."""
     global _scheduler
     _scheduler = SardisScheduler(database_url=database_url)

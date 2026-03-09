@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from sardis_api.middleware.logging import StructuredLoggingMiddleware
 from sardis_api.routers.metrics import (
     approval_queue_depth,
     payment_execution_duration_seconds,
     policy_denial_burst_window,
     policy_denial_spikes_total,
     provider_errors_total,
-    record_payment_execution_latency,
     record_funding_attempt,
+    record_payment_execution_latency,
     record_policy_denial_spike,
     set_approval_queue_depth,
 )
-from sardis_api.middleware.logging import StructuredLoggingMiddleware
 
 
 def test_record_funding_attempt_failed_increments_provider_error_counter():

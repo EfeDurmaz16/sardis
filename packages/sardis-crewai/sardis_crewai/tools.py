@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, Type
 
 from pydantic import BaseModel, Field
+
 from sardis import SardisClient
 
 
-def _get_client(api_key: Optional[str] = None, wallet_id: Optional[str] = None):
+def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     client = SardisClient(api_key=key)
@@ -36,12 +36,12 @@ try:
     class SardisPaymentTool(BaseTool):
         name: str = "sardis_pay"
         description: str = "Execute a policy-controlled payment from the agent's Sardis wallet. Checks spending limits and policies before executing."
-        args_schema: Type[BaseModel] = SardisPaymentInput
+        args_schema: type[BaseModel] = SardisPaymentInput
 
-        _client: Optional[SardisClient] = None
-        _wallet_id: Optional[str] = None
+        _client: SardisClient | None = None
+        _wallet_id: str | None = None
 
-        def __init__(self, api_key: Optional[str] = None, wallet_id: Optional[str] = None, **kwargs):
+        def __init__(self, api_key: str | None = None, wallet_id: str | None = None, **kwargs):
             super().__init__(**kwargs)
             self._client, self._wallet_id = _get_client(api_key, wallet_id)
 
@@ -57,12 +57,12 @@ try:
     class SardisBalanceTool(BaseTool):
         name: str = "sardis_balance"
         description: str = "Check the current wallet balance and remaining spending limits."
-        args_schema: Type[BaseModel] = SardisBalanceInput
+        args_schema: type[BaseModel] = SardisBalanceInput
 
-        _client: Optional[SardisClient] = None
-        _wallet_id: Optional[str] = None
+        _client: SardisClient | None = None
+        _wallet_id: str | None = None
 
-        def __init__(self, api_key: Optional[str] = None, wallet_id: Optional[str] = None, **kwargs):
+        def __init__(self, api_key: str | None = None, wallet_id: str | None = None, **kwargs):
             super().__init__(**kwargs)
             self._client, self._wallet_id = _get_client(api_key, wallet_id)
 
@@ -76,12 +76,12 @@ try:
     class SardisPolicyCheckTool(BaseTool):
         name: str = "sardis_check_policy"
         description: str = "Check if a payment would be allowed by spending policy before executing it."
-        args_schema: Type[BaseModel] = SardisPolicyCheckInput
+        args_schema: type[BaseModel] = SardisPolicyCheckInput
 
-        _client: Optional[SardisClient] = None
-        _wallet_id: Optional[str] = None
+        _client: SardisClient | None = None
+        _wallet_id: str | None = None
 
-        def __init__(self, api_key: Optional[str] = None, wallet_id: Optional[str] = None, **kwargs):
+        def __init__(self, api_key: str | None = None, wallet_id: str | None = None, **kwargs):
             super().__init__(**kwargs)
             self._client, self._wallet_id = _get_client(api_key, wallet_id)
 
@@ -111,7 +111,7 @@ except ImportError:
             raise ImportError("crewai_tools is required: pip install crewai-tools")
 
 
-def create_sardis_toolkit(api_key: Optional[str] = None, wallet_id: Optional[str] = None) -> list:
+def create_sardis_toolkit(api_key: str | None = None, wallet_id: str | None = None) -> list:
     """Create all Sardis tools for a CrewAI agent."""
     return [
         SardisPaymentTool(api_key=api_key, wallet_id=wallet_id),

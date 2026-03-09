@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -83,8 +83,8 @@ async def test_security_incident_emits_severity_and_ops_approval_pending(monkeyp
         "wallet_id": "wallet_1",
         "card_id": "card_1",
         "merchant_origin": "https://merchant.example",
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
     await secure_checkout._handle_security_incident(

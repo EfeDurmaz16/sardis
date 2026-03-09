@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
-from .behavioral_monitor import BehavioralAlert, AlertSeverity
+from .behavioral_monitor import AlertSeverity, BehavioralAlert
 
 
 class RiskAction(Enum):
@@ -165,7 +164,7 @@ class AnomalyEngine:
             overall_score=overall_score,
             action=self._determine_action(overall_score),
             signals=signals,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             transaction_amount=amount,
             transaction_merchant=merchant_id,
         )

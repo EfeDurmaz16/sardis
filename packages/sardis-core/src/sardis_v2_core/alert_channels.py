@@ -7,7 +7,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from sardis_v2_core.alert_rules import Alert, AlertSeverity
 
@@ -46,7 +46,7 @@ class ChannelConfig:
 class WebSocketChannel(AlertChannel):
     """WebSocket channel for real-time alerts to connected clients."""
 
-    def __init__(self, connection_manager: Optional[Any] = None) -> None:
+    def __init__(self, connection_manager: Any | None = None) -> None:
         self.connection_manager = connection_manager
 
     async def send(self, alert: Alert) -> bool:
@@ -128,21 +128,20 @@ class SlackChannel(AlertChannel):
                 "attachments": [attachment],
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as response:
-                    if response.status == 200:
-                        logger.info(f"SlackChannel: Sent alert {alert.id}")
-                        return True
-                    else:
-                        logger.error(
-                            f"SlackChannel: Failed to send alert {alert.id}, "
-                            f"status={response.status}"
-                        )
-                        return False
+            async with aiohttp.ClientSession() as session, session.post(
+                self.webhook_url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 200:
+                    logger.info(f"SlackChannel: Sent alert {alert.id}")
+                    return True
+                else:
+                    logger.error(
+                        f"SlackChannel: Failed to send alert {alert.id}, "
+                        f"status={response.status}"
+                    )
+                    return False
 
         except ImportError:
             logger.error("SlackChannel: aiohttp not installed")
@@ -213,21 +212,20 @@ class DiscordChannel(AlertChannel):
                 "embeds": [embed],
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as response:
-                    if response.status in [200, 204]:
-                        logger.info(f"DiscordChannel: Sent alert {alert.id}")
-                        return True
-                    else:
-                        logger.error(
-                            f"DiscordChannel: Failed to send alert {alert.id}, "
-                            f"status={response.status}"
-                        )
-                        return False
+            async with aiohttp.ClientSession() as session, session.post(
+                self.webhook_url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status in [200, 204]:
+                    logger.info(f"DiscordChannel: Sent alert {alert.id}")
+                    return True
+                else:
+                    logger.error(
+                        f"DiscordChannel: Failed to send alert {alert.id}, "
+                        f"status={response.status}"
+                    )
+                    return False
 
         except ImportError:
             logger.error("DiscordChannel: aiohttp not installed")
@@ -392,30 +390,29 @@ class PagerDutyChannel(AlertChannel):
                 },
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "https://events.pagerduty.com/v2/enqueue",
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as response:
-                    if response.status not in [200, 202]:
-                        logger.error(
-                            "PagerDutyChannel: Failed to send alert %s, status=%s",
-                            alert.id,
-                            response.status,
-                        )
-                        return False
-                    body = await response.json(content_type=None)
-                    status_value = str(body.get("status", "")).lower() if isinstance(body, dict) else ""
-                    if status_value not in {"success", "ok", ""}:
-                        logger.error(
-                            "PagerDutyChannel: Non-success response for alert %s: %s",
-                            alert.id,
-                            body,
-                        )
-                        return False
-                    logger.info("PagerDutyChannel: Sent alert %s", alert.id)
-                    return True
+            async with aiohttp.ClientSession() as session, session.post(
+                "https://events.pagerduty.com/v2/enqueue",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status not in [200, 202]:
+                    logger.error(
+                        "PagerDutyChannel: Failed to send alert %s, status=%s",
+                        alert.id,
+                        response.status,
+                    )
+                    return False
+                body = await response.json(content_type=None)
+                status_value = str(body.get("status", "")).lower() if isinstance(body, dict) else ""
+                if status_value not in {"success", "ok", ""}:
+                    logger.error(
+                        "PagerDutyChannel: Non-success response for alert %s: %s",
+                        alert.id,
+                        body,
+                    )
+                    return False
+                logger.info("PagerDutyChannel: Sent alert %s", alert.id)
+                return True
         except ImportError:
             logger.error("PagerDutyChannel: aiohttp not installed")
             return False
@@ -482,7 +479,7 @@ class AlertDispatcher:
                 parsed[str(channel_name).strip()] = value
         self._channel_cooldowns_seconds = parsed
 
-    def _resolve_target_channels(self, alert: Alert, channels: Optional[list[str]]) -> list[str]:
+    def _resolve_target_channels(self, alert: Alert, channels: list[str] | None) -> list[str]:
         if channels:
             return channels
         severity_channels = self._severity_channel_map.get(alert.severity)
@@ -512,7 +509,7 @@ class AlertDispatcher:
         key = self._cooldown_key(channel_name, alert)
         await self._last_sent_store.set(key, {"sent_at": time.time()}, ttl=3600)
 
-    async def dispatch(self, alert: Alert, channels: Optional[list[str]] = None) -> dict[str, bool]:
+    async def dispatch(self, alert: Alert, channels: list[str] | None = None) -> dict[str, bool]:
         """
         Dispatch an alert to specified channels.
 

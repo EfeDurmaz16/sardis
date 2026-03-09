@@ -8,17 +8,18 @@ import os
 from dataclasses import dataclass
 
 _CHECKOUT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
+from datetime import UTC
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 from sardis_api.authz import require_principal
 from sardis_api.kill_switch_dep import require_kill_switch_clear_checkout
 from sardis_api.operational_alerts import alert_payment_failure
-from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,11 @@ class CreateSessionRequest(BaseModel):
     merchant_id: str
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="USDC")
-    description: Optional[str] = None
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
+    description: str | None = None
+    success_url: str | None = None
+    cancel_url: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    embed_origin: Optional[str] = None
+    embed_origin: str | None = None
 
 
 class SessionResponse(BaseModel):
@@ -50,28 +51,28 @@ class SessionResponse(BaseModel):
     merchant_id: str
     amount: str
     currency: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str
-    payment_method: Optional[str] = None
-    tx_hash: Optional[str] = None
+    payment_method: str | None = None
+    tx_hash: str | None = None
     redirect_url: str
-    platform_fee: Optional[str] = None
-    net_amount: Optional[str] = None
-    expires_at: Optional[str] = None
+    platform_fee: str | None = None
+    net_amount: str | None = None
+    expires_at: str | None = None
     created_at: str
 
 
 class SessionDetailsResponse(BaseModel):
     session_id: str
     merchant_name: str
-    merchant_logo_url: Optional[str] = None
+    merchant_logo_url: str | None = None
     amount: str
     currency: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str
-    expires_at: Optional[str] = None
-    embed_origin: Optional[str] = None
-    settlement_address: Optional[str] = None
+    expires_at: str | None = None
+    embed_origin: str | None = None
+    settlement_address: str | None = None
 
 
 class ConnectWalletRequest(BaseModel):
@@ -85,12 +86,12 @@ class PayRequest(BaseModel):
 class PaymentResultResponse(BaseModel):
     session_id: str
     status: str
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     amount: str
     currency: str
     merchant_id: str
-    platform_fee: Optional[str] = None
-    net_amount: Optional[str] = None
+    platform_fee: str | None = None
+    net_amount: str | None = None
 
 
 class ConnectExternalWalletRequest(BaseModel):
@@ -98,9 +99,9 @@ class ConnectExternalWalletRequest(BaseModel):
     signature: str
     message: str = ""  # Legacy EIP-191 message (deprecated, use EIP-712 fields)
     # EIP-712 fields (preferred)
-    session_id: Optional[str] = None
-    chain_id: Optional[int] = None
-    nonce: Optional[str] = None
+    session_id: str | None = None
+    chain_id: int | None = None
+    nonce: str | None = None
 
 
 class ConfirmExternalPaymentRequest(BaseModel):
@@ -228,7 +229,7 @@ async def get_session_details(
         raise HTTPException(status_code=404, detail="Merchant not found")
 
     # Resolve merchant's settlement wallet address for external wallet payments
-    settlement_address: Optional[str] = None
+    settlement_address: str | None = None
     if merchant.settlement_wallet_id and deps.wallet_manager:
         try:
             wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
@@ -262,8 +263,8 @@ async def connect_wallet(
     if session.status != "pending":
         raise HTTPException(status_code=400, detail=f"Session status is '{session.status}'")
 
-    from datetime import datetime, timezone
-    if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
+    from datetime import datetime
+    if session.expires_at and datetime.now(UTC) > session.expires_at:
         await deps.merchant_repo.update_session(session.session_id, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
@@ -383,16 +384,16 @@ async def get_connect_params(
     """
     from sardis_api.services.eip712_checkout import (
         build_connect_typed_data,
-        get_checkout_chain_id,
         generate_nonce,
+        get_checkout_chain_id,
     )
 
     session = await _get_session_by_secret(client_secret, deps)
     if session.status != "pending":
         raise HTTPException(status_code=400, detail=f"Session status is '{session.status}'")
 
-    from datetime import datetime, timezone
-    if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
+    from datetime import datetime
+    if session.expires_at and datetime.now(UTC) > session.expires_at:
         await deps.merchant_repo.update_session(session.session_id, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
@@ -437,8 +438,8 @@ async def connect_external_wallet(
     if session.status != "pending":
         raise HTTPException(status_code=400, detail=f"Session status is '{session.status}'")
 
-    from datetime import datetime, timezone
-    if session.expires_at and datetime.now(timezone.utc) > session.expires_at:
+    from datetime import datetime
+    if session.expires_at and datetime.now(UTC) > session.expires_at:
         await deps.merchant_repo.update_session(session.session_id, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
@@ -493,8 +494,8 @@ async def connect_external_wallet(
             )
 
         try:
-            from eth_account.messages import encode_defunct
             from eth_account import Account
+            from eth_account.messages import encode_defunct
 
             msg = encode_defunct(text=body.message)
             recovered = Account.recover_message(msg, signature=body.signature)
@@ -571,7 +572,7 @@ async def confirm_external_payment(
     # On-chain verification: verify the tx actually transferred the correct
     # amount to the merchant's settlement address before marking as paid
     merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
-    settlement_address: Optional[str] = None
+    settlement_address: str | None = None
     if merchant and merchant.settlement_wallet_id and deps.wallet_manager:
         try:
             wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)

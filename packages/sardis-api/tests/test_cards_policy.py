@@ -1,13 +1,11 @@
 """Tests for sardis-cards: offramp service, quote caching, and policy enforcement."""
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from sardis_cards.offramp import (
     MockOfframpProvider,
     OfframpProvider,
@@ -16,7 +14,6 @@ from sardis_cards.offramp import (
     OfframpStatus,
     VelocityLimitExceeded,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,7 +31,7 @@ def _make_expired_quote(quote_id: str = "expired_1") -> OfframpQuote:
         output_amount_cents=995,
         exchange_rate=Decimal("1.0"),
         fee_cents=5,
-        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        expires_at=datetime.now(UTC) - timedelta(minutes=1),
     )
 
 
@@ -209,7 +206,7 @@ class TestVelocityLimits:
         tx = await service.execute(quote, "0xabc", "bank_123", wallet_id="w1")
         # Mark as completed so velocity checker counts it
         tx.status = OfframpStatus.COMPLETED
-        tx.completed_at = datetime.now(timezone.utc)
+        tx.completed_at = datetime.now(UTC)
 
         # Second transaction: output ≈ 19_900; total ≈ 109_450 > 100_000 -> should fail
         quote2 = await service.get_quote("USDC", 20_000, "base", "USD")
@@ -516,6 +513,6 @@ class TestPendingTransactionTracking:
         quote = await service.get_quote("USDC", _SMALL_AMOUNT_MINOR, "base", "USD")
         tx = await service.execute(quote, "0xabc", "bank_123", wallet_id="wp2")
         tx.status = OfframpStatus.COMPLETED
-        tx.completed_at = datetime.now(timezone.utc)
+        tx.completed_at = datetime.now(UTC)
         pending = service.get_pending_transactions()
         assert not any(t.transaction_id == tx.transaction_id for t in pending)

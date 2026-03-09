@@ -1,15 +1,16 @@
 """Tests for OpenAI integration."""
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from sardis_sdk.integrations.openai import (
+    _create_audit_hash,
+    _generate_mandate_id,
+    create_tool_response,
     get_openai_function_schema,
     get_openai_tools,
     handle_function_call,
-    create_tool_response,
-    _generate_mandate_id,
-    _create_audit_hash,
 )
 
 

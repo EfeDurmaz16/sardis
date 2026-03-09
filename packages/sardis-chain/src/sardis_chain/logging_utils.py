@@ -14,13 +14,14 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from .config import LoggingConfig, get_config
 
@@ -59,23 +60,23 @@ class OperationContext:
     operation_id: str
     operation_type: OperationType
     chain: str
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    duration_ms: float | None = None
     success: bool = False
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def complete(self, success: bool = True, error: Optional[str] = None) -> None:
+    def complete(self, success: bool = True, error: str | None = None) -> None:
         """Mark operation as complete."""
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.duration_ms = (
             (self.completed_at - self.started_at).total_seconds() * 1000
         )
         self.success = success
         self.error = error
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for logging."""
         return {
             "operation_id": self.operation_id,
@@ -98,14 +99,14 @@ class RPCCallLog:
     chain: str
     request_id: int
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    completed_at: datetime | None = None
+    duration_ms: float | None = None
     success: bool = False
-    error_code: Optional[int] = None
-    error_message: Optional[str] = None
+    error_code: int | None = None
+    error_message: str | None = None
     retry_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "method": self.method,
@@ -144,13 +145,13 @@ class TransactionLog:
     priority_fee_gwei: Decimal
     submitted_at: datetime
     status: str = "pending"
-    block_number: Optional[int] = None
+    block_number: int | None = None
     confirmations: int = 0
-    gas_used: Optional[int] = None
-    effective_gas_price: Optional[int] = None
-    error: Optional[str] = None
+    gas_used: int | None = None
+    effective_gas_price: int | None = None
+    error: str | None = None
 
-    def to_dict(self, mask_addresses: bool = False) -> Dict[str, Any]:
+    def to_dict(self, mask_addresses: bool = False) -> dict[str, Any]:
         """Convert to dictionary."""
         from_addr = self._mask_address(self.from_address) if mask_addresses else self.from_address
         to_addr = self._mask_address(self.to_address) if mask_addresses else self.to_address
@@ -196,15 +197,15 @@ class ChainLogger:
     def __init__(
         self,
         name: str = "sardis_chain",
-        config: Optional[LoggingConfig] = None,
+        config: LoggingConfig | None = None,
     ):
         self._logger = logging.getLogger(name)
         self._config = config or get_config().logging
         self._operation_counter = 0
 
         # Metrics collection
-        self._rpc_calls: List[RPCCallLog] = []
-        self._transactions: Dict[str, TransactionLog] = {}
+        self._rpc_calls: list[RPCCallLog] = []
+        self._transactions: dict[str, TransactionLog] = {}
         self._max_history = 1000
 
     def _generate_operation_id(self) -> str:
@@ -217,7 +218,7 @@ class ChainLogger:
         """Convert level string to logging level."""
         return getattr(logging, level_str.upper(), logging.INFO)
 
-    def _format_log_data(self, data: Dict[str, Any]) -> str:
+    def _format_log_data(self, data: dict[str, Any]) -> str:
         """Format data for logging."""
         # Convert Decimals to floats for JSON serialization
         def convert(obj):
@@ -288,8 +289,8 @@ class ChainLogger:
         request_id: int,
         duration_ms: float,
         success: bool,
-        error_code: Optional[int] = None,
-        error_message: Optional[str] = None,
+        error_code: int | None = None,
+        error_message: str | None = None,
         retry_count: int = 0,
     ) -> None:
         """Log an RPC call."""
@@ -301,7 +302,7 @@ class ChainLogger:
             endpoint_url=endpoint_url,
             chain=chain,
             request_id=request_id,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             duration_ms=duration_ms,
             success=success,
             error_code=error_code,
@@ -349,7 +350,7 @@ class ChainLogger:
             gas_limit=gas_limit,
             max_fee_gwei=max_fee_gwei,
             priority_fee_gwei=priority_fee_gwei,
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             status="submitted",
         )
 
@@ -371,7 +372,7 @@ class ChainLogger:
         block_number: int,
         confirmations: int,
         gas_used: int,
-        effective_gas_price: Optional[int] = None,
+        effective_gas_price: int | None = None,
     ) -> None:
         """Log transaction confirmation."""
         if tx_hash in self._transactions:
@@ -404,7 +405,7 @@ class ChainLogger:
         self,
         tx_hash: str,
         error: str,
-        revert_reason: Optional[str] = None,
+        revert_reason: str | None = None,
     ) -> None:
         """Log transaction failure."""
         if tx_hash in self._transactions:
@@ -448,7 +449,7 @@ class ChainLogger:
                     "failed_endpoint": failed_endpoint,
                     "new_endpoint": new_endpoint,
                     "error": error,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
             },
         )
@@ -458,7 +459,7 @@ class ChainLogger:
         chain: str,
         depth: int,
         severity: str,
-        affected_txs: List[str],
+        affected_txs: list[str],
     ) -> None:
         """Log chain reorganization detection."""
         level = (
@@ -477,7 +478,7 @@ class ChainLogger:
                     "depth": depth,
                     "severity": severity,
                     "affected_transactions": affected_txs,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
             },
         )
@@ -497,7 +498,7 @@ class ChainLogger:
         gas_limit: int,
         max_fee_gwei: Decimal,
         priority_fee_gwei: Decimal,
-        estimated_cost_usd: Optional[Decimal] = None,
+        estimated_cost_usd: Decimal | None = None,
         is_capped: bool = False,
     ) -> None:
         """Log gas estimation."""
@@ -527,7 +528,7 @@ class ChainLogger:
         address: str,
         action: str,
         nonce: int,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Log nonce management operation."""
         if not self._config.log_nonces:
@@ -558,10 +559,10 @@ class ChainLogger:
             return address
         return f"{address[:6]}...{address[-4:]}"
 
-    def _write_audit_log(self, event_type: str, data: Dict[str, Any]) -> None:
+    def _write_audit_log(self, event_type: str, data: dict[str, Any]) -> None:
         """Write to audit log."""
         audit_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "event_type": event_type,
             "data": data,
         }
@@ -580,7 +581,7 @@ class ChainLogger:
                 extra={"audit": audit_entry},
             )
 
-    def get_rpc_metrics(self) -> Dict[str, Any]:
+    def get_rpc_metrics(self) -> dict[str, Any]:
         """Get RPC call metrics."""
         if not self._rpc_calls:
             return {"total_calls": 0}
@@ -601,7 +602,7 @@ class ChainLogger:
             "min_latency_ms": min(latencies) if latencies else 0,
         }
 
-    def get_transaction_metrics(self) -> Dict[str, Any]:
+    def get_transaction_metrics(self) -> dict[str, Any]:
         """Get transaction metrics."""
         if not self._transactions:
             return {"total_transactions": 0}
@@ -617,12 +618,12 @@ class ChainLogger:
 
 
 # Global logger instance
-_chain_logger: Optional[ChainLogger] = None
+_chain_logger: ChainLogger | None = None
 
 
 def get_chain_logger(
     name: str = "sardis_chain",
-    config: Optional[LoggingConfig] = None,
+    config: LoggingConfig | None = None,
 ) -> ChainLogger:
     """Get the global chain logger instance."""
     global _chain_logger
@@ -652,7 +653,7 @@ def log_operation(operation_type: OperationType, chain: str = "unknown"):
 
 def setup_logging(
     level: str = "INFO",
-    format_string: Optional[str] = None,
+    format_string: str | None = None,
     json_format: bool = False,
 ) -> None:
     """

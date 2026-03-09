@@ -6,8 +6,8 @@ and waits for user response.
 """
 
 import asyncio
-from typing import Any, Optional
 from datetime import datetime
+from typing import Any
 
 try:
     import aiohttp
@@ -28,8 +28,8 @@ class SlackApprovalPlugin(ApprovalPlugin):
     def __init__(self):
         """Initialize Slack approval plugin."""
         super().__init__()
-        self._webhook_url: Optional[str] = None
-        self._channel: Optional[str] = None
+        self._webhook_url: str | None = None
+        self._channel: str | None = None
         self._timeout_seconds: int = 300  # 5 minutes default
         self._pending_approvals: dict[str, asyncio.Future] = {}
 
@@ -109,7 +109,7 @@ class SlackApprovalPlugin(ApprovalPlugin):
                     response_future, timeout=self._timeout_seconds
                 )
                 return result
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return ApprovalResult(
                     approved=False,
                     approver=None,

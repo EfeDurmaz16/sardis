@@ -14,13 +14,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +52,12 @@ class HealthCheckResult:
     category: CheckCategory
     status: HealthStatus
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     duration_ms: float = 0.0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    remediation: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    remediation: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "check_id": self.check_id,
@@ -77,12 +77,12 @@ class WalletHealthReport:
     """Complete health report for a wallet."""
     wallet_id: str
     overall_status: HealthStatus
-    generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    check_results: List[HealthCheckResult] = field(default_factory=list)
-    summary: Dict[str, Any] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    check_results: list[HealthCheckResult] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "wallet_id": self.wallet_id,
@@ -124,11 +124,11 @@ class HealthCheckConfig:
 class MPCProviderChecker(Protocol):
     """Protocol for MPC provider health checks."""
 
-    async def check_connectivity(self) -> Tuple[bool, float]:
+    async def check_connectivity(self) -> tuple[bool, float]:
         """Check MPC provider connectivity, returns (success, latency_ms)."""
         ...
 
-    async def check_key_status(self, key_reference: str) -> Dict[str, Any]:
+    async def check_key_status(self, key_reference: str) -> dict[str, Any]:
         """Check status of an MPC key."""
         ...
 
@@ -136,7 +136,7 @@ class MPCProviderChecker(Protocol):
 class ChainConnectivityChecker(Protocol):
     """Protocol for chain connectivity checks."""
 
-    async def check_chain(self, chain: str) -> Tuple[bool, float, int]:
+    async def check_chain(self, chain: str) -> tuple[bool, float, int]:
         """Check chain connectivity, returns (success, latency_ms, block_number)."""
         ...
 
@@ -165,25 +165,25 @@ class HealthChecker:
 
     def __init__(
         self,
-        config: Optional[HealthCheckConfig] = None,
-        mpc_checker: Optional[MPCProviderChecker] = None,
-        chain_checker: Optional[ChainConnectivityChecker] = None,
+        config: HealthCheckConfig | None = None,
+        mpc_checker: MPCProviderChecker | None = None,
+        chain_checker: ChainConnectivityChecker | None = None,
     ):
         self._config = config or HealthCheckConfig()
         self._mpc_checker = mpc_checker
         self._chain_checker = chain_checker
 
         # Cache for check results
-        self._last_results: Dict[str, WalletHealthReport] = {}
-        self._check_history: Dict[str, List[HealthCheckResult]] = {}
+        self._last_results: dict[str, WalletHealthReport] = {}
+        self._check_history: dict[str, list[HealthCheckResult]] = {}
 
         # Background check task
-        self._background_task: Optional[asyncio.Task] = None
+        self._background_task: asyncio.Task | None = None
 
     async def check_wallet_health(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
+        wallet_data: dict[str, Any],
         deep_check: bool = False,
     ) -> WalletHealthReport:
         """
@@ -197,7 +197,7 @@ class HealthChecker:
         Returns:
             WalletHealthReport with all check results
         """
-        results: List[HealthCheckResult] = []
+        results: list[HealthCheckResult] = []
 
         # MPC connectivity check
         if self._config.check_mpc_connectivity:
@@ -268,7 +268,7 @@ class HealthChecker:
     async def _check_mpc_connectivity(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
+        wallet_data: dict[str, Any],
     ) -> HealthCheckResult:
         """Check MPC provider connectivity."""
         import time
@@ -320,15 +320,15 @@ class HealthChecker:
     async def _check_chain_connectivity(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Check blockchain connectivity for all configured chains."""
         import time
 
         results = []
         addresses = wallet_data.get("addresses", {})
 
-        for chain in addresses.keys():
+        for chain in addresses:
             start_time = time.time()
 
             try:
@@ -378,8 +378,8 @@ class HealthChecker:
     async def _check_key_validity(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Check validity of MPC keys."""
         results = []
 
@@ -398,7 +398,7 @@ class HealthChecker:
                 if isinstance(expires_at, str):
                     expires_at = datetime.fromisoformat(expires_at)
 
-                days_until_expiry = (expires_at - datetime.now(timezone.utc)).days
+                days_until_expiry = (expires_at - datetime.now(UTC)).days
 
                 if days_until_expiry < 0:
                     status = HealthStatus.CRITICAL
@@ -438,8 +438,8 @@ class HealthChecker:
     async def _check_balances(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Check wallet balances."""
         results = []
         addresses = wallet_data.get("addresses", {})
@@ -487,8 +487,8 @@ class HealthChecker:
     async def _check_security(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Check security configuration."""
         results = []
 
@@ -566,8 +566,8 @@ class HealthChecker:
     async def _check_compliance(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Check compliance status."""
         results = []
 
@@ -578,7 +578,7 @@ class HealthChecker:
         if kyc_status == "verified":
             if kyc_expiry:
                 expiry_date = datetime.fromisoformat(kyc_expiry) if isinstance(kyc_expiry, str) else kyc_expiry
-                days_until_expiry = (expiry_date - datetime.now(timezone.utc)).days
+                days_until_expiry = (expiry_date - datetime.now(UTC)).days
 
                 if days_until_expiry < 0:
                     status = HealthStatus.UNHEALTHY
@@ -619,8 +619,8 @@ class HealthChecker:
     async def _perform_deep_checks(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
-    ) -> List[HealthCheckResult]:
+        wallet_data: dict[str, Any],
+    ) -> list[HealthCheckResult]:
         """Perform deeper, more comprehensive checks."""
         results = []
 
@@ -644,7 +644,7 @@ class HealthChecker:
 
         return results
 
-    def _calculate_overall_status(self, results: List[HealthCheckResult]) -> HealthStatus:
+    def _calculate_overall_status(self, results: list[HealthCheckResult]) -> HealthStatus:
         """Calculate overall health status from individual checks."""
         if not results:
             return HealthStatus.UNKNOWN
@@ -668,7 +668,7 @@ class HealthChecker:
 
         return worst_status
 
-    def _generate_recommendations(self, results: List[HealthCheckResult]) -> List[str]:
+    def _generate_recommendations(self, results: list[HealthCheckResult]) -> list[str]:
         """Generate recommendations based on check results."""
         recommendations = []
 
@@ -678,7 +678,7 @@ class HealthChecker:
 
         return list(set(recommendations))  # Remove duplicates
 
-    def _generate_summary(self, results: List[HealthCheckResult]) -> Dict[str, Any]:
+    def _generate_summary(self, results: list[HealthCheckResult]) -> dict[str, Any]:
         """Generate summary statistics from check results."""
         status_counts = {status.value: 0 for status in HealthStatus}
         category_counts = {cat.value: 0 for cat in CheckCategory}
@@ -697,16 +697,16 @@ class HealthChecker:
             "avg_duration_ms": total_duration / len(results) if results else 0,
         }
 
-    def get_last_report(self, wallet_id: str) -> Optional[WalletHealthReport]:
+    def get_last_report(self, wallet_id: str) -> WalletHealthReport | None:
         """Get the last health report for a wallet."""
         return self._last_results.get(wallet_id)
 
     def get_check_history(
         self,
         wallet_id: str,
-        category: Optional[CheckCategory] = None,
+        category: CheckCategory | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get check history for a wallet."""
         history = self._check_history.get(wallet_id, [])
 
@@ -717,11 +717,11 @@ class HealthChecker:
 
 
 # Singleton instance
-_health_checker: Optional[HealthChecker] = None
+_health_checker: HealthChecker | None = None
 
 
 def get_health_checker(
-    config: Optional[HealthCheckConfig] = None,
+    config: HealthCheckConfig | None = None,
 ) -> HealthChecker:
     """Get the global health checker instance."""
     global _health_checker

@@ -11,18 +11,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Protocol
 
 from .models import (
-    AuditAction,
     CurrencyRate,
     LedgerEntry,
-    LedgerEntryStatus,
     ReconciliationRecord,
     ReconciliationStatus,
     to_ledger_decimal,
@@ -67,15 +65,15 @@ class ChainTransaction:
     block_number: int
     block_timestamp: datetime
     status: str  # "confirmed", "pending", "failed"
-    gas_used: Optional[int] = None
-    gas_price: Optional[Decimal] = None
+    gas_used: int | None = None
+    gas_price: Decimal | None = None
 
     # Token-specific fields
-    token_address: Optional[str] = None
+    token_address: str | None = None
     token_decimals: int = 18
 
     # Raw data for debugging
-    raw_data: Optional[Dict[str, Any]] = None
+    raw_data: dict[str, Any] | None = None
 
     def __post_init__(self):
         self.amount = to_ledger_decimal(self.amount)
@@ -92,30 +90,30 @@ class Discrepancy:
     discrepancy_type: DiscrepancyType
 
     # References
-    ledger_entry_id: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    chain: Optional[str] = None
+    ledger_entry_id: str | None = None
+    chain_tx_hash: str | None = None
+    chain: str | None = None
 
     # Details
-    ledger_amount: Optional[Decimal] = None
-    chain_amount: Optional[Decimal] = None
-    difference: Optional[Decimal] = None
+    ledger_amount: Decimal | None = None
+    chain_amount: Decimal | None = None
+    difference: Decimal | None = None
 
     # Context
     description: str = ""
     severity: str = "medium"  # "low", "medium", "high", "critical"
 
     # Resolution
-    resolution_strategy: Optional[ResolutionStrategy] = None
+    resolution_strategy: ResolutionStrategy | None = None
     is_resolved: bool = False
-    resolution_notes: Optional[str] = None
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[str] = None
+    resolution_notes: str | None = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
 
     # Timing
-    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "discrepancy_id": self.discrepancy_id,
             "discrepancy_type": self.discrepancy_type.value,
@@ -136,7 +134,7 @@ class Discrepancy:
 class ChainProvider(Protocol):
     """Protocol for blockchain data providers."""
 
-    async def get_transaction(self, tx_hash: str, chain: str) -> Optional[ChainTransaction]:
+    async def get_transaction(self, tx_hash: str, chain: str) -> ChainTransaction | None:
         """Fetch a single transaction from chain."""
         ...
 
@@ -144,9 +142,9 @@ class ChainProvider(Protocol):
         self,
         address: str,
         chain: str,
-        from_block: Optional[int] = None,
-        to_block: Optional[int] = None,
-    ) -> List[ChainTransaction]:
+        from_block: int | None = None,
+        to_block: int | None = None,
+    ) -> list[ChainTransaction]:
         """Fetch transactions for an address."""
         ...
 
@@ -159,21 +157,21 @@ class MockChainProvider:
     """Mock chain provider for testing."""
 
     def __init__(self):
-        self._transactions: Dict[str, ChainTransaction] = {}
+        self._transactions: dict[str, ChainTransaction] = {}
 
     def add_transaction(self, tx: ChainTransaction) -> None:
         self._transactions[f"{tx.chain}:{tx.tx_hash}"] = tx
 
-    async def get_transaction(self, tx_hash: str, chain: str) -> Optional[ChainTransaction]:
+    async def get_transaction(self, tx_hash: str, chain: str) -> ChainTransaction | None:
         return self._transactions.get(f"{chain}:{tx_hash}")
 
     async def get_transactions(
         self,
         address: str,
         chain: str,
-        from_block: Optional[int] = None,
-        to_block: Optional[int] = None,
-    ) -> List[ChainTransaction]:
+        from_block: int | None = None,
+        to_block: int | None = None,
+    ) -> list[ChainTransaction]:
         results = []
         for tx in self._transactions.values():
             if tx.chain != chain:
@@ -220,8 +218,8 @@ class ReconciliationEngine:
         self.auto_resolve_threshold = auto_resolve_threshold
 
         # Storage
-        self._records: Dict[str, ReconciliationRecord] = {}
-        self._discrepancies: Dict[str, Discrepancy] = {}
+        self._records: dict[str, ReconciliationRecord] = {}
+        self._discrepancies: dict[str, Discrepancy] = {}
 
         # Statistics
         self._stats = {
@@ -239,7 +237,7 @@ class ReconciliationEngine:
     async def reconcile_entry(
         self,
         entry: LedgerEntry,
-        actor_id: Optional[str] = None,
+        actor_id: str | None = None,
     ) -> ReconciliationRecord:
         """
         Reconcile a single ledger entry with blockchain.
@@ -323,14 +321,14 @@ class ReconciliationEngine:
                     discrepancy.resolution_strategy = ResolutionStrategy.IGNORE
                     discrepancy.is_resolved = True
                     discrepancy.resolution_notes = "Auto-resolved: below threshold"
-                    discrepancy.resolved_at = datetime.now(timezone.utc)
+                    discrepancy.resolved_at = datetime.now(UTC)
                     record.status = ReconciliationStatus.RESOLVED
                     self._stats["auto_resolved"] += 1
                 else:
                     discrepancy.resolution_strategy = ResolutionStrategy.MANUAL_REVIEW
                     self._stats["discrepancies_found"] += 1
 
-        record.reconciled_at = datetime.now(timezone.utc)
+        record.reconciled_at = datetime.now(UTC)
         self._records[record.reconciliation_id] = record
         self._stats["total_reconciled"] += 1
 
@@ -343,10 +341,10 @@ class ReconciliationEngine:
 
     async def reconcile_batch(
         self,
-        entries: List[LedgerEntry],
-        actor_id: Optional[str] = None,
+        entries: list[LedgerEntry],
+        actor_id: str | None = None,
         concurrency: int = 10,
-    ) -> List[ReconciliationRecord]:
+    ) -> list[ReconciliationRecord]:
         """
         Reconcile multiple entries concurrently.
 
@@ -391,12 +389,12 @@ class ReconciliationEngine:
     def _create_discrepancy(
         self,
         discrepancy_type: DiscrepancyType,
-        ledger_entry_id: Optional[str] = None,
-        chain_tx_hash: Optional[str] = None,
-        chain: Optional[str] = None,
-        ledger_amount: Optional[Decimal] = None,
-        chain_amount: Optional[Decimal] = None,
-        difference: Optional[Decimal] = None,
+        ledger_entry_id: str | None = None,
+        chain_tx_hash: str | None = None,
+        chain: str | None = None,
+        ledger_amount: Decimal | None = None,
+        chain_amount: Decimal | None = None,
+        difference: Decimal | None = None,
         description: str = "",
         severity: str = "medium",
     ) -> Discrepancy:
@@ -462,7 +460,7 @@ class ReconciliationEngine:
         discrepancy.resolution_strategy = strategy
         discrepancy.is_resolved = True
         discrepancy.resolution_notes = notes
-        discrepancy.resolved_at = datetime.now(timezone.utc)
+        discrepancy.resolved_at = datetime.now(UTC)
         discrepancy.resolved_by = resolved_by
 
         logger.info(
@@ -475,9 +473,9 @@ class ReconciliationEngine:
     def get_discrepancies(
         self,
         include_resolved: bool = False,
-        severity: Optional[str] = None,
-        discrepancy_type: Optional[DiscrepancyType] = None,
-    ) -> List[Discrepancy]:
+        severity: str | None = None,
+        discrepancy_type: DiscrepancyType | None = None,
+    ) -> list[Discrepancy]:
         """Get discrepancies with filtering."""
         results = []
         for d in self._discrepancies.values():
@@ -491,7 +489,7 @@ class ReconciliationEngine:
 
         return sorted(results, key=lambda d: d.detected_at, reverse=True)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get reconciliation statistics."""
         return {
             **self._stats,
@@ -520,11 +518,11 @@ class CurrencyConverter:
         self.cache_ttl = cache_ttl
 
         # Rate storage
-        self._rates: Dict[str, CurrencyRate] = {}
-        self._rate_history: List[CurrencyRate] = []
+        self._rates: dict[str, CurrencyRate] = {}
+        self._rate_history: list[CurrencyRate] = []
 
         # Conversion history
-        self._conversions: List[Dict[str, Any]] = []
+        self._conversions: list[dict[str, Any]] = []
 
         # Initialize with common stablecoin rates
         self._initialize_default_rates()
@@ -554,10 +552,10 @@ class CurrencyConverter:
         from_currency: str,
         to_currency: str,
         rate: Decimal,
-        source: Optional[str] = None,
-        bid: Optional[Decimal] = None,
-        ask: Optional[Decimal] = None,
-        valid_until: Optional[datetime] = None,
+        source: str | None = None,
+        bid: Decimal | None = None,
+        ask: Decimal | None = None,
+        valid_until: datetime | None = None,
     ) -> CurrencyRate:
         """
         Set exchange rate for a currency pair.
@@ -583,7 +581,7 @@ class CurrencyConverter:
             rate=rate,
             inverse_rate=inverse_rate,
             source=source or self.default_source,
-            valid_until=valid_until or datetime.now(timezone.utc) + self.cache_ttl,
+            valid_until=valid_until or datetime.now(UTC) + self.cache_ttl,
             bid=to_ledger_decimal(bid) if bid else None,
             ask=to_ledger_decimal(ask) if ask else None,
         )
@@ -604,7 +602,7 @@ class CurrencyConverter:
             rate=inverse_rate,
             inverse_rate=rate,
             source=source or self.default_source,
-            valid_until=valid_until or datetime.now(timezone.utc) + self.cache_ttl,
+            valid_until=valid_until or datetime.now(UTC) + self.cache_ttl,
         )
         self._rates[reverse_key] = inverse_currency_rate
 
@@ -619,8 +617,8 @@ class CurrencyConverter:
         self,
         from_currency: str,
         to_currency: str,
-        at_time: Optional[datetime] = None,
-    ) -> Optional[CurrencyRate]:
+        at_time: datetime | None = None,
+    ) -> CurrencyRate | None:
         """
         Get exchange rate for currency pair.
 
@@ -654,9 +652,9 @@ class CurrencyConverter:
         amount: Decimal,
         from_currency: str,
         to_currency: str,
-        at_time: Optional[datetime] = None,
+        at_time: datetime | None = None,
         record_conversion: bool = True,
-    ) -> Tuple[Decimal, CurrencyRate]:
+    ) -> tuple[Decimal, CurrencyRate]:
         """
         Convert amount between currencies.
 
@@ -683,7 +681,7 @@ class CurrencyConverter:
 
         if record_conversion:
             self._conversions.append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "from_currency": from_currency,
                 "to_currency": to_currency,
                 "from_amount": str(amount),
@@ -698,10 +696,10 @@ class CurrencyConverter:
 
     def get_conversion_history(
         self,
-        from_currency: Optional[str] = None,
-        to_currency: Optional[str] = None,
+        from_currency: str | None = None,
+        to_currency: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get conversion history with optional filtering."""
         results = []
         for conv in reversed(self._conversions):
@@ -718,9 +716,9 @@ class CurrencyConverter:
         self,
         from_currency: str,
         to_currency: str,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
-    ) -> List[CurrencyRate]:
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> list[CurrencyRate]:
         """Get historical rates for a currency pair."""
         from_curr = from_currency.upper()
         to_curr = to_currency.upper()
@@ -739,7 +737,7 @@ class CurrencyConverter:
 
     def clear_expired_rates(self) -> int:
         """Remove expired rates from cache. Returns count of removed rates."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired_keys = [
             key for key, rate in self._rates.items()
             if not rate.is_valid(now)
@@ -774,17 +772,17 @@ class ReconciliationScheduler:
         self.rate_refresh_interval = rate_refresh_interval
 
         self._running = False
-        self._tasks: List[asyncio.Task] = []
+        self._tasks: list[asyncio.Task] = []
 
         # Callbacks for fetching data
-        self._entry_fetcher: Optional[Callable[[], List[LedgerEntry]]] = None
-        self._rate_fetcher: Optional[Callable[[], List[Tuple[str, str, Decimal]]]] = None
+        self._entry_fetcher: Callable[[], list[LedgerEntry]] | None = None
+        self._rate_fetcher: Callable[[], list[tuple[str, str, Decimal]]] | None = None
 
-    def set_entry_fetcher(self, fetcher: Callable[[], List[LedgerEntry]]) -> None:
+    def set_entry_fetcher(self, fetcher: Callable[[], list[LedgerEntry]]) -> None:
         """Set callback to fetch entries needing reconciliation."""
         self._entry_fetcher = fetcher
 
-    def set_rate_fetcher(self, fetcher: Callable[[], List[Tuple[str, str, Decimal]]]) -> None:
+    def set_rate_fetcher(self, fetcher: Callable[[], list[tuple[str, str, Decimal]]]) -> None:
         """Set callback to fetch current exchange rates."""
         self._rate_fetcher = fetcher
 

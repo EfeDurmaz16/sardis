@@ -2,19 +2,18 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from sardis import SardisClient
 
 
-def _get_client(api_key: Optional[str] = None, wallet_id: Optional[str] = None):
+def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     client = SardisClient(api_key=key)
     return client, wid
 
 
-def register_sardis_actions(controller, *, api_key: Optional[str] = None, wallet_id: Optional[str] = None):
+def register_sardis_actions(controller, *, api_key: str | None = None, wallet_id: str | None = None):
     """Register all Sardis payment actions on a Browser Use controller.
 
     Args:

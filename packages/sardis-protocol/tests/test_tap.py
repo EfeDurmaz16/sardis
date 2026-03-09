@@ -2,7 +2,6 @@
 import time
 
 import pytest
-
 from sardis_protocol.tap import (
     TapSignatureInput,
     build_signature_base,

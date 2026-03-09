@@ -2,24 +2,20 @@
 from __future__ import annotations
 
 import time
-from decimal import Decimal
-from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
-from sardis_v2_core.erc8004 import (
-    AgentIdentity,
-    AgentMetadata,
-    ReputationEntry,
-    ValidationResult,
-    InMemoryERC8004Registry,
-)
 from sardis_v2_core.agent_card import (
     generate_agent_card,
     verify_agent_card,
-    bind_ens_name,
 )
+from sardis_v2_core.erc8004 import (
+    AgentMetadata,
+    InMemoryERC8004Registry,
+    ReputationEntry,
+    ValidationResult,
+)
+
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -36,10 +32,10 @@ class AgentMetadataRequest(BaseModel):
     description: str = Field(..., description="Agent description")
     version: str = Field(default="1.0.0", description="Agent version")
     model_type: str = Field(..., description="AI model type (e.g., gpt-4, claude-3-opus)")
-    capabilities: List[str] = Field(default_factory=list, description="Agent capabilities")
+    capabilities: list[str] = Field(default_factory=list, description="Agent capabilities")
     service_endpoints: dict[str, str] = Field(default_factory=dict, description="Service endpoints")
     trust_config: dict[str, str] = Field(default_factory=dict, description="Trust configuration")
-    protocols_supported: List[str] = Field(default_factory=lambda: ["a2a", "ap2"], description="Supported protocols")
+    protocols_supported: list[str] = Field(default_factory=lambda: ["a2a", "ap2"], description="Supported protocols")
 
 
 class AgentIdentityResponse(BaseModel):
@@ -52,7 +48,7 @@ class AgentIdentityResponse(BaseModel):
     created_at: int
     chain_id: int
     did: str
-    ens_name: Optional[str] = None
+    ens_name: str | None = None
 
 
 class ReputationRequest(BaseModel):
@@ -92,7 +88,7 @@ class ValidationResponse(BaseModel):
     validation_type: str
     evidence_uri: str
     timestamp: int
-    transaction_hash: Optional[str] = None
+    transaction_hash: str | None = None
 
 
 class AgentCardResponse(BaseModel):
@@ -105,13 +101,13 @@ class AgentCardResponse(BaseModel):
     description: str
     version: str
     owner: str
-    capabilities: List[str]
-    protocols: List[str]
+    capabilities: list[str]
+    protocols: list[str]
     endpoints: dict[str, str]
     chain_id: int
     created_at: int
-    public_key: Optional[str] = None
-    ens_name: Optional[str] = None
+    public_key: str | None = None
+    ens_name: str | None = None
 
     class Config:
         populate_by_name = True
@@ -302,7 +298,7 @@ async def submit_reputation(
 
 @router.get(
     "/api/v2/agents/identity/{agent_id}/reputation",
-    response_model=List[ReputationResponse],
+    response_model=list[ReputationResponse],
 )
 async def get_reputation(
     agent_id: str,
@@ -409,7 +405,7 @@ async def submit_validation(
 
 @router.get(
     "/api/v2/agents/identity/{agent_id}/validations",
-    response_model=List[ValidationResponse],
+    response_model=list[ValidationResponse],
 )
 async def get_validations(
     agent_id: str,

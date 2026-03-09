@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING
 from .executor import MPCSignerPort
 
 if TYPE_CHECKING:
-    from .executor import TransactionRequest
     from sardis_wallet.circle_client import CircleWalletClient
+
+    from .executor import TransactionRequest
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class CircleWalletSigner(MPCSignerPort):
 
     def __init__(
         self,
-        circle_client: "CircleWalletClient",
+        circle_client: CircleWalletClient,
         wallet_id: str,
         address: str,
     ):
@@ -39,7 +40,7 @@ class CircleWalletSigner(MPCSignerPort):
     async def sign_transaction(
         self,
         wallet_id: str,
-        tx: "TransactionRequest",
+        tx: TransactionRequest,
     ) -> str:
         """Sign a transaction via Circle and return the tx hash.
 

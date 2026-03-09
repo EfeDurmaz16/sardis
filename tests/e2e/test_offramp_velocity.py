@@ -10,9 +10,9 @@ Tests the complete off-ramp flow with velocity control enforcement:
 Run with: pytest tests/e2e/test_offramp_velocity.py -v
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
-from decimal import Decimal
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -30,7 +30,7 @@ class TestOfframpVelocity:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet for off-ramp testing
                 wallet = await client.wallets.create(
-                    agent_id=f"offramp_velocity_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"offramp_velocity_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                     metadata={"test": "velocity_check", "purpose": "offramp"},
                 )
@@ -53,7 +53,7 @@ class TestOfframpVelocity:
 
                 for i in range(num_transactions):
                     mandate = {
-                        "mandate_id": f"velocity_test_{datetime.now(timezone.utc).timestamp()}_{i}",
+                        "mandate_id": f"velocity_test_{datetime.now(UTC).timestamp()}_{i}",
                         "subject": wallet.id,
                         "destination": f"vendor:merchant_{i % 5}",  # 5 different merchants
                         "amount_minor": "5000000",  # $5 each
@@ -115,7 +115,7 @@ class TestOfframpVelocity:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet
                 wallet = await client.wallets.create(
-                    agent_id=f"offramp_unique_recipients_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"offramp_unique_recipients_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -125,7 +125,7 @@ class TestOfframpVelocity:
 
                 for i in range(num_unique_recipients):
                     mandate = {
-                        "mandate_id": f"unique_recipient_test_{datetime.now(timezone.utc).timestamp()}_{i}",
+                        "mandate_id": f"unique_recipient_test_{datetime.now(UTC).timestamp()}_{i}",
                         "subject": wallet.id,
                         "destination": f"vendor:unique_merchant_{i}",  # Unique each time
                         "amount_minor": "3000000",  # $3
@@ -136,7 +136,7 @@ class TestOfframpVelocity:
                     }
 
                     try:
-                        result = await client.payments.execute_mandate(mandate)
+                        await client.payments.execute_mandate(mandate)
                         transaction_results.append({"success": True, "index": i})
                     except Exception as e:
                         error_msg = str(e).lower()
@@ -157,18 +157,19 @@ class TestOfframpVelocity:
     async def test_offramp_velocity_reset_after_window(self, api_key, api_url):
         """Should reset velocity counters after time window."""
         try:
-            from sardis_sdk import SardisClient
             import asyncio
+
+            from sardis_sdk import SardisClient
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"offramp_velocity_reset_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"offramp_velocity_reset_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
                 # Execute transaction
                 mandate1 = {
-                    "mandate_id": f"velocity_reset_1_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"velocity_reset_1_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:test_merchant",
                     "amount_minor": "5000000",
@@ -190,7 +191,7 @@ class TestOfframpVelocity:
 
                 # Execute second transaction (in production, would be after window)
                 mandate2 = {
-                    "mandate_id": f"velocity_reset_2_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"velocity_reset_2_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:test_merchant",
                     "amount_minor": "5000000",
@@ -203,7 +204,7 @@ class TestOfframpVelocity:
                 try:
                     await client.payments.execute_mandate(mandate2)
                     # If this succeeds, velocity window handling is working
-                except Exception as e:
+                except Exception:
                     # Expected in some test configurations
                     pass
 
@@ -218,7 +219,7 @@ class TestOfframpVelocity:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"offramp_spike_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"offramp_spike_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -226,7 +227,7 @@ class TestOfframpVelocity:
                 baseline_transactions = 3
                 for i in range(baseline_transactions):
                     mandate = {
-                        "mandate_id": f"baseline_{datetime.now(timezone.utc).timestamp()}_{i}",
+                        "mandate_id": f"baseline_{datetime.now(UTC).timestamp()}_{i}",
                         "subject": wallet.id,
                         "destination": "vendor:baseline_merchant",
                         "amount_minor": "2000000",  # $2 baseline
@@ -244,7 +245,7 @@ class TestOfframpVelocity:
 
                 # Try large spike transaction (10x baseline)
                 spike_mandate = {
-                    "mandate_id": f"spike_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"spike_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:spike_merchant",
                     "amount_minor": "20000000",  # $20 - significant spike
@@ -255,7 +256,7 @@ class TestOfframpVelocity:
                 }
 
                 try:
-                    result = await client.payments.execute_mandate(spike_mandate)
+                    await client.payments.execute_mandate(spike_mandate)
                     # May succeed or require additional verification
                     # In production with velocity checks, might trigger MFA/approval
                 except Exception as e:

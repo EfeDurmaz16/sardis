@@ -11,10 +11,8 @@ import logging
 import os
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 import httpx
-
 from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
 
 logger = logging.getLogger(__name__)
@@ -33,9 +31,9 @@ _USDC_ADDRESSES: dict[str, str] = {
 class VerificationResult:
     """Result of on-chain transfer verification."""
     verified: bool
-    error: Optional[str] = None
-    block_number: Optional[int] = None
-    actual_amount: Optional[Decimal] = None
+    error: str | None = None
+    block_number: int | None = None
+    actual_amount: Decimal | None = None
 
 
 def _get_rpc_url(chain: str = "base") -> str:

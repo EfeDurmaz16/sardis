@@ -7,11 +7,11 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Dict, Optional, TypeVar, Generic, AsyncIterator
+from typing import TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +112,12 @@ class CacheBackend(ABC):
     """Abstract cache backend interface."""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Get a value from cache."""
         pass
 
     @abstractmethod
-    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         """Set a value in cache with optional TTL in seconds."""
         pass
 
@@ -190,11 +190,11 @@ class InMemoryCache(CacheBackend):
     """In-memory cache for development."""
 
     def __init__(self):
-        self._store: Dict[str, tuple[str, Optional[float]]] = {}  # key -> (value, expires_at)
+        self._store: dict[str, tuple[str, float | None]] = {}  # key -> (value, expires_at)
         import time
         self._time = time
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         if key not in self._store:
             return None
         value, expires_at = self._store[key]
@@ -203,7 +203,7 @@ class InMemoryCache(CacheBackend):
             return None
         return value
 
-    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         expires_at = self._time.time() + ttl if ttl else None
         self._store[key] = (value, expires_at)
         return True
@@ -276,7 +276,7 @@ class RedisCache(CacheBackend):
                 raise
         return self._client
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         try:
             client = await self._get_client()
             return await client.get(key)
@@ -284,7 +284,7 @@ class RedisCache(CacheBackend):
             logger.error(f"Redis get error: {e}")
             return None
 
-    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         try:
             client = await self._get_client()
             if ttl:
@@ -405,7 +405,7 @@ class CacheService:
         self._backend = backend
         self._metrics = CacheMetrics() if enable_metrics else None
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Get a raw value from cache (for health checks)."""
         start = time.time()
         try:
@@ -419,12 +419,12 @@ class CacheService:
                     self._metrics.record_miss(latency_ms)
 
             return result
-        except Exception as e:
+        except Exception:
             if self._metrics:
                 self._metrics.record_error()
             raise
 
-    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         """Set a raw value in cache with optional TTL (seconds)."""
         start = time.time()
         try:
@@ -470,7 +470,7 @@ class CacheService:
             raise
 
     @classmethod
-    def create(cls, redis_url: Optional[str] = None, enable_metrics: bool = True) -> "CacheService":
+    def create(cls, redis_url: str | None = None, enable_metrics: bool = True) -> CacheService:
         """Create a cache service with appropriate backend."""
         if redis_url:
             try:
@@ -521,7 +521,7 @@ class CacheService:
 
     # Balance caching
 
-    async def get_balance(self, wallet_id: str, token: str) -> Optional[Decimal]:
+    async def get_balance(self, wallet_id: str, token: str) -> Decimal | None:
         """Get cached wallet balance."""
         version = await self._get_balance_version(wallet_id)
         key = self._balance_key(wallet_id, token, version)
@@ -543,13 +543,13 @@ class CacheService:
             if legacy is not None:
                 return Decimal(legacy)
             return None
-        except Exception as e:
+        except Exception:
             if self._metrics:
                 self._metrics.record_error()
             raise
 
     async def set_balance(
-        self, wallet_id: str, token: str, balance: Decimal, ttl: Optional[int] = None
+        self, wallet_id: str, token: str, balance: Decimal, ttl: int | None = None
     ) -> bool:
         """Cache wallet balance."""
         version = await self._get_balance_version(wallet_id)
@@ -563,7 +563,7 @@ class CacheService:
                 self._metrics.record_set(latency_ms)
 
             return result
-        except Exception as e:
+        except Exception:
             if self._metrics:
                 self._metrics.record_error()
             raise
@@ -583,7 +583,7 @@ class CacheService:
                 self._metrics.record_delete(latency_ms)
 
             return result
-        except Exception as e:
+        except Exception:
             if self._metrics:
                 self._metrics.record_error()
             raise
@@ -607,7 +607,7 @@ class CacheService:
 
     # Wallet caching
 
-    async def get_wallet(self, wallet_id: str) -> Optional[dict]:
+    async def get_wallet(self, wallet_id: str) -> dict | None:
         """Get cached wallet data."""
         key = self._key(self.PREFIX_WALLET, wallet_id)
         value = await self._backend.get(key)
@@ -615,7 +615,7 @@ class CacheService:
             return json.loads(value)
         return None
 
-    async def set_wallet(self, wallet_id: str, wallet_data: dict, ttl: Optional[int] = None) -> bool:
+    async def set_wallet(self, wallet_id: str, wallet_data: dict, ttl: int | None = None) -> bool:
         """Cache wallet data."""
         key = self._key(self.PREFIX_WALLET, wallet_id)
         return await self._backend.set(key, json.dumps(wallet_data, default=str), ttl or self.TTL_WALLET)
@@ -627,7 +627,7 @@ class CacheService:
 
     # Agent caching
 
-    async def get_agent(self, agent_id: str) -> Optional[dict]:
+    async def get_agent(self, agent_id: str) -> dict | None:
         """Get cached agent data."""
         key = self._key(self.PREFIX_AGENT, agent_id)
         value = await self._backend.get(key)
@@ -635,7 +635,7 @@ class CacheService:
             return json.loads(value)
         return None
 
-    async def set_agent(self, agent_id: str, agent_data: dict, ttl: Optional[int] = None) -> bool:
+    async def set_agent(self, agent_id: str, agent_data: dict, ttl: int | None = None) -> bool:
         """Cache agent data."""
         key = self._key(self.PREFIX_AGENT, agent_id)
         return await self._backend.set(key, json.dumps(agent_data, default=str), ttl or self.TTL_AGENT)
@@ -652,19 +652,19 @@ class CacheService:
     ) -> tuple[bool, int]:
         """
         Check rate limit for an identifier.
-        
+
         Returns:
             (allowed, current_count)
         """
         key = self._key(self.PREFIX_RATE_LIMIT, identifier)
-        
+
         # Increment counter
         count = await self._backend.incr(key)
-        
+
         # Set expiry on first request
         if count == 1:
             await self._backend.expire(key, window_seconds)
-        
+
         return count <= limit, count
 
     async def get_rate_limit_remaining(self, identifier: str, limit: int) -> int:
@@ -680,8 +680,8 @@ class CacheService:
         self,
         resource: str,
         ttl_seconds: int = 10,
-        owner: Optional[str] = None,
-    ) -> Optional[str]:
+        owner: str | None = None,
+    ) -> str | None:
         """
         Acquire a distributed lock on a resource.
 
@@ -781,7 +781,7 @@ class CacheService:
                     f"Failed to release lock on '{resource}' (owner: {owner[:8]}...)"
                 )
 
-    def get_metrics(self) -> Optional[dict]:
+    def get_metrics(self) -> dict | None:
         """Get cache performance metrics."""
         if self._metrics:
             return self._metrics.to_dict()
@@ -798,6 +798,6 @@ class CacheService:
             await self._backend.close()
 
 
-def create_cache_service(redis_url: Optional[str] = None) -> CacheService:
+def create_cache_service(redis_url: str | None = None) -> CacheService:
     """Factory function to create cache service."""
     return CacheService.create(redis_url)

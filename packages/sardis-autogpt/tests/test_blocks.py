@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from sardis_autogpt.blocks import (
     BLOCKS,
     SardisBalanceBlock,
@@ -14,7 +12,6 @@ from sardis_autogpt.blocks import (
     SardisPolicyCheckBlock,
     SardisPolicyCheckBlockInput,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -79,7 +76,7 @@ class TestSardisPayBlock:
         assert outputs[0].status == "BLOCKED"
 
     def test_missing_wallet_id(self):
-        with patch("sardis_autogpt.blocks.SardisClient") as mock_cls, \
+        with patch("sardis_autogpt.blocks.SardisClient"), \
              patch("sardis_autogpt.blocks.os.getenv", return_value=None):
             input_data = SardisPayBlockInput(
                 api_key="sk_test",

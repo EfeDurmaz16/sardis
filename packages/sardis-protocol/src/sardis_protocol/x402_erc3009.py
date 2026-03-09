@@ -8,10 +8,9 @@ USDC Implementation: https://github.com/circlefin/stablecoin-evm
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from typing import Any
-
 
 USDC_TRANSFER_WITH_AUTHORIZATION_SELECTOR = "0xe3ee160e"
 

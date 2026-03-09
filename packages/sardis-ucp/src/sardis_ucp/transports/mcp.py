@@ -5,7 +5,7 @@ Maps UCP checkout operations to Model Context Protocol (MCP) tool calls.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..capabilities.checkout import UCPCheckoutCapability
 
@@ -165,7 +165,7 @@ class UCPMcpTransport:
     def __init__(
         self,
         tool_prefix: str = "sardis",
-        capability: Optional[UCPCheckoutCapability] = None,
+        capability: UCPCheckoutCapability | None = None,
     ) -> None:
         """Initialize MCP transport.
 
@@ -187,7 +187,7 @@ class UCPMcpTransport:
         """
         return f"{self._tool_prefix}_{base_name}"
 
-    def get_tool_schemas(self) -> list[Dict[str, Any]]:
+    def get_tool_schemas(self) -> list[dict[str, Any]]:
         """Get all MCP tool schemas with the configured prefix.
 
         Returns:
@@ -210,7 +210,7 @@ class UCPMcpTransport:
             for schema in schemas
         ]
 
-    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def create_checkout(self, cart_mandate_id: str, **kwargs: Any) -> dict[str, Any]:
         """Create a new checkout session via MCP tool call.
 
         Args:
@@ -243,7 +243,7 @@ class UCPMcpTransport:
             f"Use the local capability constructor or configure an MCP client for: {tool_name}"
         )
 
-    async def update_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def update_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Update a checkout session via MCP tool call.
 
         Args:
@@ -272,7 +272,7 @@ class UCPMcpTransport:
             f"Use the local capability constructor or configure an MCP client for: {tool_name}"
         )
 
-    async def complete_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def complete_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Complete a checkout via MCP tool call.
 
         Args:
@@ -301,7 +301,7 @@ class UCPMcpTransport:
             f"Use the local capability constructor or configure an MCP client for: {tool_name}"
         )
 
-    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def cancel_checkout(self, session_id: str, **kwargs: Any) -> dict[str, Any]:
         """Cancel a checkout via MCP tool call.
 
         Args:
@@ -322,7 +322,7 @@ class UCPMcpTransport:
             f"Use the local capability constructor or configure an MCP client for: {tool_name}"
         )
 
-    async def get_checkout(self, session_id: str) -> Dict[str, Any]:
+    async def get_checkout(self, session_id: str) -> dict[str, Any]:
         """Get a checkout session via MCP tool call.
 
         Args:

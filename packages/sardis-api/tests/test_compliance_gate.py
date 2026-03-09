@@ -4,11 +4,10 @@ from __future__ import annotations
 import time
 import uuid
 from unittest.mock import MagicMock
+
 import pytest
-
-from sardis_compliance.checks import ComplianceEngine, ComplianceAuditStore
+from sardis_compliance.checks import ComplianceAuditStore, ComplianceEngine
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-
 
 # ============ Mock Services ============
 
@@ -401,6 +400,7 @@ class TestComplianceInRouters:
 
     def test_mandates_has_compliance(self):
         import inspect
+
         from sardis_api.routers import mandates
         source = inspect.getsource(mandates)
         assert "compliance" in source
@@ -408,6 +408,7 @@ class TestComplianceInRouters:
 
     def test_mvp_has_compliance(self):
         import inspect
+
         from sardis_api.routers import mvp
         source = inspect.getsource(mvp)
         assert "compliance" in source
@@ -415,6 +416,7 @@ class TestComplianceInRouters:
 
     def test_a2a_has_compliance_in_both_paths(self):
         import inspect
+
         from sardis_api.routers import a2a
         source = inspect.getsource(a2a)
         count = source.count("preflight")
@@ -424,6 +426,7 @@ class TestComplianceInRouters:
 
     def test_wallets_has_compliance(self):
         import inspect
+
         from sardis_api.routers import wallets
         source = inspect.getsource(wallets)
         assert "compliance" in source
@@ -431,6 +434,7 @@ class TestComplianceInRouters:
 
     def test_mandates_has_multiple_preflight_calls(self):
         import inspect
+
         from sardis_api.routers import mandates
         source = inspect.getsource(mandates)
         count = source.count("preflight")

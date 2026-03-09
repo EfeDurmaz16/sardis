@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from decimal import Decimal
 
 import pytest
 
@@ -103,8 +102,8 @@ class TestConcurrentPayments:
         responses = await asyncio.gather(*tasks)
 
         # Count successful transactions
-        successful = [r for r in responses if r.status_code == 200]
-        failed = [r for r in responses if r.status_code != 200]
+        [r for r in responses if r.status_code == 200]
+        [r for r in responses if r.status_code != 200]
 
         # Total successful amount should not exceed wallet limits
         # (This is a simulation mode test - actual balance checks
@@ -234,7 +233,7 @@ class TestRaceConditions:
         Concurrent wallet creation for the same agent should be handled safely.
         """
         tasks = []
-        for i in range(5):
+        for _i in range(5):
             payload = {
                 "agent_id": test_agent_id,
                 "mpc_provider": "turnkey",
@@ -315,7 +314,7 @@ class TestLockingBehavior:
         responses = await asyncio.gather(*tasks)
 
         # All should complete without deadlock or timeout
-        success_count = sum(1 for r in responses if r.status_code == 200)
+        sum(1 for r in responses if r.status_code == 200)
         error_count = sum(1 for r in responses if r.status_code >= 500)
 
         # No server errors (deadlocks would cause 500s)
@@ -334,7 +333,7 @@ class TestLockingBehavior:
                 "merchant": f"merchant_{i}",
             }
             # Assuming there's a policy check endpoint
-            tasks.append(client.get("/api/v2/wallets/{}/policy/check".format(test_wallet_id), params=params))
+            tasks.append(client.get(f"/api/v2/wallets/{test_wallet_id}/policy/check", params=params))
 
         responses = await asyncio.gather(*tasks)
 

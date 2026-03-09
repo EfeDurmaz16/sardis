@@ -4,13 +4,19 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
+from sardis_v2_core.alert_channels import (
+    AlertDispatcher,
+    DiscordChannel,
+    EmailChannel,
+    PagerDutyChannel,
+    SlackChannel,
+    WebSocketChannel,
+)
 from sardis_v2_core.alert_rules import (
     Alert,
     AlertRule,
@@ -19,14 +25,7 @@ from sardis_v2_core.alert_rules import (
     AlertType,
     ConditionType,
 )
-from sardis_v2_core.alert_channels import (
-    AlertDispatcher,
-    SlackChannel,
-    DiscordChannel,
-    EmailChannel,
-    PagerDutyChannel,
-    WebSocketChannel,
-)
+
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers.ws_alerts import get_connection_manager
 
@@ -39,30 +38,30 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 class CreateAlertRuleRequest(BaseModel):
     name: str = Field(..., description="Rule name")
     condition_type: str = Field(..., description="Condition type (amount_exceeds, budget_percentage, etc.)")
-    threshold: Optional[Decimal] = Field(None, description="Threshold value")
-    channels: List[str] = Field(default_factory=list, description="Channel names to send alerts to")
+    threshold: Decimal | None = Field(None, description="Threshold value")
+    channels: list[str] = Field(default_factory=list, description="Channel names to send alerts to")
     enabled: bool = Field(default=True, description="Whether the rule is enabled")
-    agent_id: Optional[str] = Field(None, description="Specific agent ID to apply rule to")
+    agent_id: str | None = Field(None, description="Specific agent ID to apply rule to")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class UpdateAlertRuleRequest(BaseModel):
-    name: Optional[str] = None
-    threshold: Optional[Decimal] = None
-    channels: Optional[List[str]] = None
-    enabled: Optional[bool] = None
-    metadata: Optional[dict[str, Any]] = None
+    name: str | None = None
+    threshold: Decimal | None = None
+    channels: list[str] | None = None
+    enabled: bool | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class AlertRuleResponse(BaseModel):
     id: str
     name: str
     condition_type: str
-    threshold: Optional[str]
-    channels: List[str]
+    threshold: str | None
+    channels: list[str]
     enabled: bool
-    organization_id: Optional[str]
-    agent_id: Optional[str]
+    organization_id: str | None
+    agent_id: str | None
     metadata: dict[str, Any]
     created_at: str
 
@@ -72,8 +71,8 @@ class AlertResponse(BaseModel):
     alert_type: str
     severity: str
     message: str
-    agent_id: Optional[str]
-    organization_id: Optional[str]
+    agent_id: str | None
+    organization_id: str | None
     timestamp: str
     data: dict[str, Any]
 
@@ -94,7 +93,7 @@ class TestAlertRequest(BaseModel):
     alert_type: str = Field(default="payment_executed", description="Alert type to test")
     severity: str = Field(default="info", description="Alert severity (info, warning, critical)")
     message: str = Field(default="Test alert", description="Alert message")
-    channels: Optional[List[str]] = Field(None, description="Channels to send to (default: all)")
+    channels: list[str] | None = Field(None, description="Channels to send to (default: all)")
 
 
 # Dependencies
@@ -109,8 +108,8 @@ class AlertDependencies:
 
 
 # Global instances (initialized at startup)
-_rule_engine: Optional[AlertRuleEngine] = None
-_dispatcher: Optional[AlertDispatcher] = None
+_rule_engine: AlertRuleEngine | None = None
+_dispatcher: AlertDispatcher | None = None
 _alert_store: dict[str, Alert] = {}  # In-memory store for recent alerts
 
 
@@ -194,16 +193,16 @@ def get_deps() -> AlertDependencies:
 
 
 # Endpoints
-@router.get("", response_model=List[AlertResponse])
+@router.get("", response_model=list[AlertResponse])
 async def list_alerts(
-    severity: Optional[str] = Query(None, description="Filter by severity"),
-    alert_type: Optional[str] = Query(None, description="Filter by alert type"),
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    severity: str | None = Query(None, description="Filter by severity"),
+    alert_type: str | None = Query(None, description="Filter by alert type"),
+    agent_id: str | None = Query(None, description="Filter by agent ID"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     deps: AlertDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
-) -> List[AlertResponse]:
+) -> list[AlertResponse]:
     """List recent alerts with optional filtering."""
     # Filter alerts from in-memory store
     alerts = list(_alert_store.values())
@@ -245,12 +244,12 @@ async def list_alerts(
     ]
 
 
-@router.get("/rules", response_model=List[AlertRuleResponse])
+@router.get("/rules", response_model=list[AlertRuleResponse])
 async def list_alert_rules(
     enabled_only: bool = Query(default=False),
     deps: AlertDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
-) -> List[AlertRuleResponse]:
+) -> list[AlertRuleResponse]:
     """List all alert rules."""
     rules = deps.rule_engine.list_rules(
         organization_id=principal.organization_id if not principal.is_admin else None,
@@ -446,11 +445,11 @@ async def send_test_alert(
     }
 
 
-@router.get("/channels", response_model=List[ChannelConfigResponse])
+@router.get("/channels", response_model=list[ChannelConfigResponse])
 async def list_channels(
     deps: AlertDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
-) -> List[ChannelConfigResponse]:
+) -> list[ChannelConfigResponse]:
     """List configured alert channels."""
     channels = []
 

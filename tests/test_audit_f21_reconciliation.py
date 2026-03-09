@@ -1,16 +1,15 @@
 """Tests for F21: Fix reconciliation agent:unknown."""
-import pytest
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 
 def test_reconciliation_preserves_original_subject():
     """Reconciliation should preserve original mandate subject, not use agent:unknown."""
-    from sardis_ledger.records import LedgerStore, ChainReceipt
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-
     import tempfile
+
+    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
@@ -18,7 +17,7 @@ def test_reconciliation_preserves_original_subject():
         # Create test mandate with specific subject
         proof = VCProof(
             verification_method="test#key-1",
-            created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            created=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             proof_value="test_proof",
         )
 
@@ -70,8 +69,8 @@ def test_reconciliation_preserves_original_subject():
 
 def test_reconciliation_restores_original_mandate_data():
     """Reconciliation should reconstruct mandate with original data."""
-    from sardis_ledger.records import LedgerStore, ChainReceipt, PendingReconciliation
-    import hashlib
+
+    from sardis_ledger.records import PendingReconciliation
 
     # Create a mock pending reconciliation with metadata
     entry = PendingReconciliation(

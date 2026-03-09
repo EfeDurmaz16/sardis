@@ -1,27 +1,30 @@
 """Tests for policy decision evidence — step-by-step audit trail of evaluate()."""
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
-from datetime import datetime, timezone
 
-from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, SpendingScope, TimeWindowLimit, MerchantRule
+import pytest
 from sardis_v2_core.policy_evidence import (
     PolicyStepResult,
-    PolicyDecisionLog,
     compute_evidence_hash,
     evaluate_with_evidence,
     export_evidence_bundle,
 )
+from sardis_v2_core.spending_policy import (
+    SpendingPolicy,
+    SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
+)
 
 
 def _simple_policy(**kwargs) -> SpendingPolicy:
-    defaults = dict(
-        agent_id="agent_test",
-        trust_level=TrustLevel.LOW,
-        limit_per_tx=Decimal("500"),
-        limit_total=Decimal("5000"),
-    )
+    defaults = {
+        "agent_id": "agent_test",
+        "trust_level": TrustLevel.LOW,
+        "limit_per_tx": Decimal("500"),
+        "limit_total": Decimal("5000"),
+    }
     defaults.update(kwargs)
     return SpendingPolicy(**defaults)
 

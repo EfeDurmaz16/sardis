@@ -26,14 +26,14 @@ from decimal import Decimal
 
 # Try to import rich for beautiful output, fallback to basic prints
 try:
+    from rich import box
     from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
     from rich.layout import Layout
     from rich.markdown import Markdown
+    from rich.panel import Panel
+    from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
     from rich.syntax import Syntax
-    from rich import box
+    from rich.table import Table
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -330,7 +330,7 @@ def main():
     display.progress_bar("Fetching audit records")
 
     # Get audit trail
-    ledger = client.ledger.list(wallet_id=wallet.wallet_id)
+    client.ledger.list(wallet_id=wallet.wallet_id)
 
     if RICH_AVAILABLE:
         audit_table = Table(title="Audit Trail", box=box.ROUNDED)
@@ -389,7 +389,7 @@ def main():
 
     # Progress bar for daily limit
     if RICH_AVAILABLE:
-        from rich.progress import Progress, BarColumn, TextColumn
+        from rich.progress import BarColumn, Progress, TextColumn
 
         display.console.print("\n[bold]Daily Spending Progress:[/bold]")
         progress = Progress(
@@ -399,7 +399,7 @@ def main():
             console=display.console
         )
         with progress:
-            task = progress.add_task(
+            progress.add_task(
                 f"${daily_spent} / ${daily_limit}",
                 total=float(daily_limit),
                 completed=float(daily_spent)

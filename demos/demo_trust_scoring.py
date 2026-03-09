@@ -23,18 +23,18 @@ Usage:
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 # Try to import rich for beautiful output
 try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.progress import Progress, BarColumn, TextColumn
-    from rich.tree import Tree
     from rich import box
+    from rich.console import Console
     from rich.markdown import Markdown
+    from rich.panel import Panel
+    from rich.progress import BarColumn, Progress, TextColumn
+    from rich.table import Table
+    from rich.tree import Tree
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -44,7 +44,6 @@ except ImportError:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from sardis import SardisClient
-
 
 # Trust tier definitions
 TRUST_TIERS = {
@@ -234,7 +233,7 @@ class DemoDisplay:
                 console=self.console
             )
             with progress:
-                task = progress.add_task(
+                progress.add_task(
                     f"{tier_config['emoji']} Trust Score",
                     total=100,
                     completed=score
@@ -341,7 +340,7 @@ def main():
 
     # Initialize client
     api_key = os.getenv('SARDIS_API_KEY', 'mock_key')
-    client = SardisClient(api_key=api_key)
+    SardisClient(api_key=api_key)
 
     # ================================================================
     # Step 1: Register New Agent
@@ -350,7 +349,6 @@ def main():
 
     display.simulate_activity("Creating agent identity")
 
-    agent_id = "did:web:example.com:agents:shopping-bot-001"
     agent_data = {
         "tx_count": 0,
         "total_volume": Decimal("0"),
@@ -364,7 +362,7 @@ def main():
     result = TrustScoreCalculator.calculate_score(**agent_data)
 
     if RICH_AVAILABLE:
-        display.console.print(f"\n[bold]Agent Registered:[/bold] shopping-bot-001")
+        display.console.print("\n[bold]Agent Registered:[/bold] shopping-bot-001")
         display.console.print(f"[bold]Registration Date:[/bold] {datetime.now().strftime('%Y-%m-%d')}")
     else:
         print("\nAgent Registered: shopping-bot-001")
@@ -377,11 +375,11 @@ def main():
 
     tier_config = TRUST_TIERS[result["tier"]]
     if RICH_AVAILABLE:
-        display.console.print(f"\n[bold]Current Spending Limits:[/bold]")
+        display.console.print("\n[bold]Current Spending Limits:[/bold]")
         display.console.print(f"  • Daily: [green]${tier_config['daily_limit']}[/green]")
         display.console.print(f"  • Per Transaction: [green]${tier_config['tx_limit']}[/green]")
     else:
-        print(f"\nCurrent Spending Limits:")
+        print("\nCurrent Spending Limits:")
         print(f"  • Daily: ${tier_config['daily_limit']}")
         print(f"  • Per Transaction: ${tier_config['tx_limit']}")
 
@@ -412,12 +410,12 @@ def main():
     tier_config = TRUST_TIERS[result["tier"]]
     if RICH_AVAILABLE:
         display.console.print(f"\n[bold green]✓ Tier Upgrade![/bold green] {TRUST_TIERS['NEW']['emoji']} NEW → {tier_config['emoji']} {result['tier']}")
-        display.console.print(f"\n[bold]New Spending Limits:[/bold]")
+        display.console.print("\n[bold]New Spending Limits:[/bold]")
         display.console.print(f"  • Daily: [green]${tier_config['daily_limit']}[/green] (was ${TRUST_TIERS['NEW']['daily_limit']})")
         display.console.print(f"  • Per Transaction: [green]${tier_config['tx_limit']}[/green] (was ${TRUST_TIERS['NEW']['tx_limit']})")
     else:
         print(f"\n✓ Tier Upgrade! NEW → {result['tier']}")
-        print(f"\nNew Spending Limits:")
+        print("\nNew Spending Limits:")
         print(f"  • Daily: ${tier_config['daily_limit']} (was ${TRUST_TIERS['NEW']['daily_limit']})")
         print(f"  • Per Transaction: ${tier_config['tx_limit']} (was ${TRUST_TIERS['NEW']['tx_limit']})")
 
@@ -439,7 +437,7 @@ def main():
     display.trust_breakdown(result["factors"])
 
     if RICH_AVAILABLE:
-        display.console.print(f"\n[bold green]✓ KYC Verified![/bold green] +15 trust points")
+        display.console.print("\n[bold green]✓ KYC Verified![/bold green] +15 trust points")
     else:
         print("\n✓ KYC Verified! +15 trust points")
 
@@ -470,12 +468,12 @@ def main():
     tier_config = TRUST_TIERS[result["tier"]]
     if RICH_AVAILABLE:
         display.console.print(f"\n[bold green]✓ Tier Upgrade![/bold green] {TRUST_TIERS['BASIC']['emoji']} BASIC → {tier_config['emoji']} {result['tier']}")
-        display.console.print(f"\n[bold]New Spending Limits:[/bold]")
+        display.console.print("\n[bold]New Spending Limits:[/bold]")
         display.console.print(f"  • Daily: [green]${tier_config['daily_limit']:,}[/green]")
         display.console.print(f"  • Per Transaction: [green]${tier_config['tx_limit']:,}[/green]")
     else:
         print(f"\n✓ Tier Upgrade! BASIC → {result['tier']}")
-        print(f"\nNew Spending Limits:")
+        print("\nNew Spending Limits:")
         print(f"  • Daily: ${tier_config['daily_limit']:,}")
         print(f"  • Per Transaction: ${tier_config['tx_limit']:,}")
 

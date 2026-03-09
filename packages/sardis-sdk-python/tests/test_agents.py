@@ -1,5 +1,4 @@
 """Tests for AgentsResource."""
-import pytest
 
 
 class TestCreateAgent:

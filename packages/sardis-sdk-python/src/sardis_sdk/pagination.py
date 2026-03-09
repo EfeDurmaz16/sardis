@@ -6,21 +6,16 @@ including automatic iteration, cursor management, and bulk fetching.
 """
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import (
+    TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
     Generic,
-    Iterator,
-    List,
-    Optional,
     TypeVar,
-    Union,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 
 # Type variable for paginated items
 T = TypeVar("T")
@@ -43,15 +38,15 @@ class PageInfo:
 
     has_next: bool = False
     has_previous: bool = False
-    total_count: Optional[int] = None
+    total_count: int | None = None
     page_size: int = 0
     current_page: int = 1
-    total_pages: Optional[int] = None
-    next_cursor: Optional[str] = None
-    previous_cursor: Optional[str] = None
+    total_pages: int | None = None
+    next_cursor: str | None = None
+    previous_cursor: str | None = None
 
     @classmethod
-    def from_response(cls, data: Dict[str, Any]) -> "PageInfo":
+    def from_response(cls, data: dict[str, Any]) -> PageInfo:
         """Create PageInfo from API response.
 
         Args:
@@ -84,9 +79,9 @@ class Page(Generic[T]):
         raw_response: The raw API response (for debugging)
     """
 
-    items: List[T]
+    items: list[T]
     page_info: PageInfo
-    raw_response: Optional[Dict[str, Any]] = None
+    raw_response: dict[str, Any] | None = None
 
     def __len__(self) -> int:
         return len(self.items)
@@ -113,7 +108,7 @@ class Page(Generic[T]):
         return len(self.items) == 0
 
     @property
-    def total_count(self) -> Optional[int]:
+    def total_count(self) -> int | None:
         """Get total count if available."""
         return self.page_info.total_count
 
@@ -143,9 +138,9 @@ class AsyncPaginator(Generic[T]):
     def __init__(
         self,
         fetch_page: Callable[..., Awaitable[Page[T]]],
-        initial_params: Optional[Dict[str, Any]] = None,
-        max_items: Optional[int] = None,
-        max_pages: Optional[int] = None,
+        initial_params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+        max_pages: int | None = None,
     ):
         """Initialize the paginator.
 
@@ -159,7 +154,7 @@ class AsyncPaginator(Generic[T]):
         self._initial_params = initial_params or {}
         self._max_items = max_items
         self._max_pages = max_pages
-        self._current_page: Optional[Page[T]] = None
+        self._current_page: Page[T] | None = None
         self._items_fetched = 0
         self._pages_fetched = 0
 
@@ -175,7 +170,7 @@ class AsyncPaginator(Generic[T]):
     async def pages(self) -> AsyncIterator[Page[T]]:
         """Async iterator over pages."""
         params = self._initial_params.copy()
-        cursor: Optional[str] = None
+        cursor: str | None = None
 
         while True:
             if self._max_pages and self._pages_fetched >= self._max_pages:
@@ -217,7 +212,7 @@ class AsyncPaginator(Generic[T]):
             return page
         return Page(items=[], page_info=PageInfo())
 
-    async def all(self) -> List[T]:
+    async def all(self) -> list[T]:
         """Fetch all items across all pages.
 
         Returns:
@@ -227,12 +222,12 @@ class AsyncPaginator(Generic[T]):
             This can be slow and memory-intensive for large datasets.
             Consider using the async iterator or setting max_items.
         """
-        items: List[T] = []
+        items: list[T] = []
         async for item in self:
             items.append(item)
         return items
 
-    async def take(self, n: int) -> List[T]:
+    async def take(self, n: int) -> list[T]:
         """Fetch up to n items.
 
         Args:
@@ -241,7 +236,7 @@ class AsyncPaginator(Generic[T]):
         Returns:
             List of up to n items
         """
-        items: List[T] = []
+        items: list[T] = []
         count = 0
         async for item in self:
             items.append(item)
@@ -297,9 +292,9 @@ class SyncPaginator(Generic[T]):
     def __init__(
         self,
         fetch_page: Callable[..., Page[T]],
-        initial_params: Optional[Dict[str, Any]] = None,
-        max_items: Optional[int] = None,
-        max_pages: Optional[int] = None,
+        initial_params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+        max_pages: int | None = None,
     ):
         """Initialize the paginator.
 
@@ -313,7 +308,7 @@ class SyncPaginator(Generic[T]):
         self._initial_params = initial_params or {}
         self._max_items = max_items
         self._max_pages = max_pages
-        self._current_page: Optional[Page[T]] = None
+        self._current_page: Page[T] | None = None
         self._items_fetched = 0
         self._pages_fetched = 0
 
@@ -329,7 +324,7 @@ class SyncPaginator(Generic[T]):
     def pages(self) -> Iterator[Page[T]]:
         """Iterator over pages."""
         params = self._initial_params.copy()
-        cursor: Optional[str] = None
+        cursor: str | None = None
 
         while True:
             if self._max_pages and self._pages_fetched >= self._max_pages:
@@ -371,7 +366,7 @@ class SyncPaginator(Generic[T]):
             return page
         return Page(items=[], page_info=PageInfo())
 
-    def all(self) -> List[T]:
+    def all(self) -> list[T]:
         """Fetch all items across all pages.
 
         Returns:
@@ -383,7 +378,7 @@ class SyncPaginator(Generic[T]):
         """
         return list(self)
 
-    def take(self, n: int) -> List[T]:
+    def take(self, n: int) -> list[T]:
         """Fetch up to n items.
 
         Args:
@@ -392,7 +387,7 @@ class SyncPaginator(Generic[T]):
         Returns:
             List of up to n items
         """
-        items: List[T] = []
+        items: list[T] = []
         count = 0
         for item in self:
             items.append(item)
@@ -424,9 +419,9 @@ class SyncPaginator(Generic[T]):
 
 
 def create_page_from_response(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     items_key: str,
-    item_parser: Callable[[Dict[str, Any]], T],
+    item_parser: Callable[[dict[str, Any]], T],
 ) -> Page[T]:
     """Create a Page from an API response.
 
@@ -454,9 +449,9 @@ def create_page_from_response(
 
 
 __all__ = [
-    "PageInfo",
-    "Page",
     "AsyncPaginator",
+    "Page",
+    "PageInfo",
     "SyncPaginator",
     "create_page_from_response",
 ]

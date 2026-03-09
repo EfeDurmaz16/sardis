@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
-
 from sardis_protocol.schemas import X402PaymentExecuteRequest
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.x402]

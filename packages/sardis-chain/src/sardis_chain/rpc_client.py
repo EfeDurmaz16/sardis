@@ -11,20 +11,17 @@ Features:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .config import (
     ChainConfig,
     RPCEndpointConfig,
     get_chain_config,
-    validate_chain_id,
-    CHAIN_ID_MAP,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,11 +44,11 @@ class EndpointHealth:
     consecutive_successes: int = 0
     total_requests: int = 0
     total_failures: int = 0
-    last_success: Optional[datetime] = None
-    last_failure: Optional[datetime] = None
+    last_success: datetime | None = None
+    last_failure: datetime | None = None
     last_latency_ms: float = 0.0
     avg_latency_ms: float = 0.0
-    last_error: Optional[str] = None
+    last_error: str | None = None
     chain_id_verified: bool = False
 
     # Thresholds
@@ -64,7 +61,7 @@ class EndpointHealth:
         self.consecutive_failures = 0
         self.consecutive_successes += 1
         self.total_requests += 1
-        self.last_success = datetime.now(timezone.utc)
+        self.last_success = datetime.now(UTC)
         self.last_latency_ms = latency_ms
 
         # Update rolling average
@@ -86,7 +83,7 @@ class EndpointHealth:
         self.consecutive_successes = 0
         self.total_requests += 1
         self.total_failures += 1
-        self.last_failure = datetime.now(timezone.utc)
+        self.last_failure = datetime.now(UTC)
         self.last_error = error
 
         if self.consecutive_failures >= self.max_consecutive_failures:
@@ -99,7 +96,7 @@ class EndpointHealth:
         if self.status == EndpointStatus.UNHEALTHY:
             if self.last_failure is None:
                 return True
-            elapsed = (datetime.now(timezone.utc) - self.last_failure).total_seconds()
+            elapsed = (datetime.now(UTC) - self.last_failure).total_seconds()
             return elapsed >= self.health_check_interval_seconds
         return False
 
@@ -143,7 +140,7 @@ class ChainIDMismatchError(Exception):
 class RPCError(Exception):
     """Base exception for RPC errors."""
 
-    def __init__(self, message: str, code: Optional[int] = None, data: Any = None):
+    def __init__(self, message: str, code: int | None = None, data: Any = None):
         self.code = code
         self.data = data
         super().__init__(message)
@@ -152,7 +149,7 @@ class RPCError(Exception):
 class AllEndpointsFailedError(Exception):
     """Raised when all RPC endpoints have failed."""
 
-    def __init__(self, chain: str, errors: List[Tuple[str, str]]):
+    def __init__(self, chain: str, errors: list[tuple[str, str]]):
         self.chain = chain
         self.errors = errors
         error_summary = "; ".join([f"{url}: {err}" for url, err in errors[:3]])
@@ -177,7 +174,7 @@ class ProductionRPCClient:
     def __init__(
         self,
         chain: str,
-        chain_config: Optional[ChainConfig] = None,
+        chain_config: ChainConfig | None = None,
         validate_chain_id_on_connect: bool = True,
     ):
         self._chain = chain
@@ -186,10 +183,10 @@ class ProductionRPCClient:
         self._request_id = 0
         self._http_client = None
         self._connected = False
-        self._verified_chain_id: Optional[int] = None
+        self._verified_chain_id: int | None = None
 
         # Initialize endpoint health tracking
-        self._endpoints: List[Tuple[RPCEndpointConfig, EndpointHealth]] = []
+        self._endpoints: list[tuple[RPCEndpointConfig, EndpointHealth]] = []
         for endpoint_config in self._config.rpc_endpoints:
             health = EndpointHealth(
                 url=endpoint_config.url,
@@ -252,7 +249,7 @@ class ProductionRPCClient:
         result = await self._call_internal("eth_chainId", [], skip_chain_validation=True)
         return int(result, 16)
 
-    def _select_endpoint(self) -> Tuple[RPCEndpointConfig, EndpointHealth]:
+    def _select_endpoint(self) -> tuple[RPCEndpointConfig, EndpointHealth]:
         """Select the best endpoint based on health and priority."""
         # Calculate scores for all endpoints
         scored = [
@@ -270,7 +267,7 @@ class ProductionRPCClient:
     async def _call_internal(
         self,
         method: str,
-        params: List[Any],
+        params: list[Any],
         skip_chain_validation: bool = False,
     ) -> Any:
         """Internal call implementation with endpoint selection and failover."""
@@ -285,12 +282,12 @@ class ProductionRPCClient:
             "params": params,
         }
 
-        errors: List[Tuple[str, str]] = []
+        errors: list[tuple[str, str]] = []
         tried_endpoints: set = set()
 
         # Try endpoints in priority order with failover
         max_attempts = len(self._endpoints)
-        for attempt in range(max_attempts):
+        for _attempt in range(max_attempts):
             config, health = self._select_endpoint()
 
             # Skip already tried endpoints
@@ -365,7 +362,7 @@ class ProductionRPCClient:
         # All endpoints failed
         raise AllEndpointsFailedError(chain=self._chain, errors=errors)
 
-    async def call(self, method: str, params: Optional[List[Any]] = None) -> Any:
+    async def call(self, method: str, params: list[Any] | None = None) -> Any:
         """
         Make a JSON-RPC call with automatic failover.
 
@@ -411,7 +408,7 @@ class ProductionRPCClient:
             # Fallback for chains that don't support this
             return 1_500_000_000  # 1.5 gwei
 
-    async def get_base_fee(self) -> Optional[int]:
+    async def get_base_fee(self) -> int | None:
         """Get current base fee from latest block."""
         try:
             block = await self.call("eth_getBlockByNumber", ["latest", False])
@@ -421,7 +418,7 @@ class ProductionRPCClient:
         except Exception:
             return None
 
-    async def estimate_gas(self, tx: Dict[str, Any]) -> int:
+    async def estimate_gas(self, tx: dict[str, Any]) -> int:
         """Estimate gas for a transaction."""
         result = await self.call("eth_estimateGas", [tx])
         return int(result, 16)
@@ -444,11 +441,11 @@ class ProductionRPCClient:
 
     async def get_transaction_receipt(
         self, tx_hash: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get transaction receipt."""
         return await self.call("eth_getTransactionReceipt", [tx_hash])
 
-    async def get_transaction(self, tx_hash: str) -> Optional[Dict[str, Any]]:
+    async def get_transaction(self, tx_hash: str) -> dict[str, Any] | None:
         """Get transaction by hash."""
         return await self.call("eth_getTransactionByHash", [tx_hash])
 
@@ -456,7 +453,7 @@ class ProductionRPCClient:
         self,
         block_number: int | str,
         include_transactions: bool = False,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get block by number."""
         if isinstance(block_number, int):
             block_number = hex(block_number)
@@ -464,20 +461,20 @@ class ProductionRPCClient:
 
     async def get_logs(
         self,
-        filter_params: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        filter_params: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """Get logs matching filter."""
         return await self.call("eth_getLogs", [filter_params]) or []
 
     async def eth_call(
         self,
-        tx: Dict[str, Any],
+        tx: dict[str, Any],
         block: str = "latest",
     ) -> str:
         """Execute a call without creating a transaction."""
         return await self.call("eth_call", [tx, block])
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform health check on all endpoints.
 
@@ -538,7 +535,7 @@ class ProductionRPCClient:
 
         return results
 
-    def get_endpoint_stats(self) -> List[Dict[str, Any]]:
+    def get_endpoint_stats(self) -> list[dict[str, Any]]:
         """Get statistics for all endpoints."""
         return [
             {
@@ -563,7 +560,7 @@ class ProductionRPCClient:
             self._http_client = None
         self._connected = False
 
-    async def __aenter__(self) -> "ProductionRPCClient":
+    async def __aenter__(self) -> ProductionRPCClient:
         """Async context manager entry."""
         await self.connect()
         return self
@@ -574,12 +571,12 @@ class ProductionRPCClient:
 
 
 # Factory function for creating RPC clients
-_rpc_clients: Dict[str, ProductionRPCClient] = {}
+_rpc_clients: dict[str, ProductionRPCClient] = {}
 
 
 def get_rpc_client(
     chain: str,
-    chain_config: Optional[ChainConfig] = None,
+    chain_config: ChainConfig | None = None,
     validate_chain_id: bool = True,
 ) -> ProductionRPCClient:
     """

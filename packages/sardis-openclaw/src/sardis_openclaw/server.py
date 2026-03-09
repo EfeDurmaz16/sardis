@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from sardis_openclaw import SKILL_REGISTRY, get_executable_skill
-from sardis_openclaw.base import SkillContext, SkillResult
+from sardis_openclaw.base import SkillContext
 
 app = FastAPI(title="Sardis OpenClaw Skill Server", version="0.1.0")
 
@@ -34,7 +34,7 @@ class ExecuteResponse(BaseModel):
 async def list_skills():
     """Discover available skills."""
     result = []
-    for name, cls in SKILL_REGISTRY.items():
+    for _name, cls in SKILL_REGISTRY.items():
         instance = cls()
         result.append(SkillInfo(
             name=instance.name,

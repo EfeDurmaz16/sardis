@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -27,8 +26,8 @@ def _get_settlement_store(request: Request):
 @router.get("")
 async def list_settlements(
     request: Request,
-    mode: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    mode: str | None = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(50, le=200),
     store=Depends(_get_settlement_store),
 ):

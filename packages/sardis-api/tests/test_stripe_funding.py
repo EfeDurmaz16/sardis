@@ -5,18 +5,18 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sardis_v2_core.funding import FundingRequest, FundingResult
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.routers.metrics import (
+    funding_failover_events_total,
+    funding_provider_attempts_total,
+)
 from sardis_api.routers.stripe_funding import (
     StripeFundingDeps,
     get_deps,
     router,
 )
-from sardis_api.routers.metrics import (
-    funding_failover_events_total,
-    funding_provider_attempts_total,
-)
-from sardis_v2_core.funding import FundingRequest, FundingResult
 
 
 class _FakeTreasuryProvider:

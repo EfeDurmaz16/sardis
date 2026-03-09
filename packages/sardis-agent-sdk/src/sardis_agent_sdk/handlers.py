@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from sardis import SardisClient
@@ -151,7 +151,7 @@ class SardisToolHandler:
     def _handle_check_balance(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Return the wallet's current balance and limits."""
         token = input_data.get("token", "USDC")
-        wallet = self.client.wallets.get(self.wallet_id)
+        self.client.wallets.get(self.wallet_id)
 
         balance_info = self.client.wallets.get_balance(
             self.wallet_id,
@@ -292,7 +292,7 @@ class SardisToolHandler:
 
         # Reserve the funds (reduce balance without recording a spend)
         hold_id = f"hold_{uuid4().hex[:16]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         self._holds[hold_id] = {
             "hold_id": hold_id,
@@ -305,7 +305,7 @@ class SardisToolHandler:
             "created_at": now.isoformat(),
             "expires_at": (
                 datetime.fromtimestamp(
-                    now.timestamp() + expires_in, tz=timezone.utc
+                    now.timestamp() + expires_in, tz=UTC
                 ).isoformat()
             ),
         }

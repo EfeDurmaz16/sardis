@@ -4,12 +4,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import HTTPException, status
 
 from .authz import Principal
-
 
 SIMULATED_MODE = "simulated"
 STAGING_LIVE_MODE = "staging_live"
@@ -23,7 +22,7 @@ class PilotExecutionPolicy:
     mode: str
     allowed_orgs: set[str]
     allowed_merchants: set[str]
-    max_amount: Optional[Decimal]
+    max_amount: Decimal | None
 
 
 def resolve_execution_mode(settings: Any | None = None) -> str:
@@ -62,7 +61,7 @@ def get_pilot_execution_policy(settings: Any | None = None) -> PilotExecutionPol
     allowed_merchants = _parse_csv_env("SARDIS_PILOT_ALLOWLIST_MERCHANTS")
 
     raw_max = os.getenv("SARDIS_PILOT_MAX_AMOUNT", "100.00").strip()
-    max_amount: Optional[Decimal] = None
+    max_amount: Decimal | None = None
     if raw_max:
         try:
             parsed = Decimal(raw_max)
@@ -84,7 +83,7 @@ def enforce_staging_live_guard(
     policy: PilotExecutionPolicy,
     principal: Principal,
     merchant_domain: str | None,
-    amount: Optional[Decimal],
+    amount: Decimal | None,
     operation: str,
 ) -> None:
     """

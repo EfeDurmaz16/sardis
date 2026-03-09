@@ -2,17 +2,16 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
 from sardis_v2_core.agent_groups import (
     AgentGroup,
     AgentGroupRepository,
-    GroupSpendingLimits,
     GroupMerchantPolicy,
+    GroupSpendingLimits,
 )
+
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -28,24 +27,24 @@ class GroupBudgetRequest(BaseModel):
 
 
 class GroupMerchantPolicyRequest(BaseModel):
-    allowed_merchants: Optional[List[str]] = None
-    blocked_merchants: List[str] = Field(default_factory=list)
-    allowed_categories: Optional[List[str]] = None
-    blocked_categories: List[str] = Field(default_factory=list)
+    allowed_merchants: list[str] | None = None
+    blocked_merchants: list[str] = Field(default_factory=list)
+    allowed_categories: list[str] | None = None
+    blocked_categories: list[str] = Field(default_factory=list)
 
 
 class CreateGroupRequest(BaseModel):
     name: str
-    budget: Optional[GroupBudgetRequest] = None
-    merchant_policy: Optional[GroupMerchantPolicyRequest] = None
-    metadata: Optional[dict] = None
+    budget: GroupBudgetRequest | None = None
+    merchant_policy: GroupMerchantPolicyRequest | None = None
+    metadata: dict | None = None
 
 
 class UpdateGroupRequest(BaseModel):
-    name: Optional[str] = None
-    budget: Optional[GroupBudgetRequest] = None
-    merchant_policy: Optional[GroupMerchantPolicyRequest] = None
-    metadata: Optional[dict] = None
+    name: str | None = None
+    budget: GroupBudgetRequest | None = None
+    merchant_policy: GroupMerchantPolicyRequest | None = None
+    metadata: dict | None = None
 
 
 class AgentGroupResponse(BaseModel):
@@ -54,13 +53,13 @@ class AgentGroupResponse(BaseModel):
     owner_id: str
     budget: dict
     merchant_policy: dict
-    agent_ids: List[str]
+    agent_ids: list[str]
     metadata: dict
     created_at: str
     updated_at: str
 
     @classmethod
-    def from_group(cls, group: AgentGroup) -> "AgentGroupResponse":
+    def from_group(cls, group: AgentGroup) -> AgentGroupResponse:
         return cls(
             group_id=group.group_id,
             name=group.name,
@@ -83,7 +82,7 @@ class GroupSpendingResponse(BaseModel):
     name: str
     budget: dict
     agent_count: int
-    agent_ids: List[str]
+    agent_ids: list[str]
 
 
 # Dependency
@@ -136,7 +135,7 @@ async def create_group(
     return AgentGroupResponse.from_group(group)
 
 
-@router.get("", response_model=List[AgentGroupResponse])
+@router.get("", response_model=list[AgentGroupResponse])
 async def list_groups(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),

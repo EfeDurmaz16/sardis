@@ -9,8 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class ExecutionSideEffect:
         return asdict(self)
 
 
-async def queue_side_effect(effect: ExecutionSideEffect) -> Optional[int]:
+async def queue_side_effect(effect: ExecutionSideEffect) -> int | None:
     """Insert a side effect into the database queue.
 
     Returns the row ID on success, None if DB is unavailable.

@@ -16,14 +16,11 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections import defaultdict
+from collections.abc import Callable, MutableSet
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Callable, List, MutableSet, Optional, Set
 
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from sardis_protocol.tap import (
     TAP_ALLOWED_MESSAGE_ALGS,
     TAP_MAX_TIME_WINDOW_SECONDS,
@@ -32,6 +29,7 @@ from sardis_protocol.tap import (
     validate_tap_headers,
 )
 from sardis_protocol.tap_keys import select_jwk_by_kid, verify_signature_with_jwk
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .exceptions import create_error_response, get_request_id
 
@@ -51,7 +49,7 @@ class NonceCache:
         self._redis_available = False
         self._init_redis()
         # In-memory fallback
-        self._nonces: Set[str] = set()
+        self._nonces: set[str] = set()
         self._timestamps: dict[str, int] = {}
         self._lock = Lock()
         self._last_cleanup: int = int(time.time())
@@ -126,7 +124,7 @@ class TapMiddlewareConfig:
 
     # Paths requiring TAP verification (prefix match)
     # Must match actual mount paths from main.py (e.g. /api/v2/ap2/, /api/v2/a2a/)
-    protected_paths: List[str] = field(default_factory=lambda: [
+    protected_paths: list[str] = field(default_factory=lambda: [
         "/api/v2/ap2/",
         "/api/v2/a2a/",
         "/api/v2/payments/",
@@ -137,14 +135,14 @@ class TapMiddlewareConfig:
 
     # TAP validation parameters
     max_time_window_seconds: int = TAP_MAX_TIME_WINDOW_SECONDS
-    allowed_algs: List[str] = field(default_factory=lambda: list(TAP_ALLOWED_MESSAGE_ALGS))
+    allowed_algs: list[str] = field(default_factory=lambda: list(TAP_ALLOWED_MESSAGE_ALGS))
 
     # Nonce cache TTL (should be > max_time_window_seconds)
     nonce_ttl_seconds: int = 600
 
     # JWKS provider (callable that returns JWKS dict given a keyid)
     # Signature: jwks_provider(kid: str) -> dict | None
-    jwks_provider: Optional[Callable[[str], dict]] = None
+    jwks_provider: Callable[[str], dict] | None = None
 
     # When True (default), dev/test environments bypass signature verification
     # when no JWKS provider is configured. In prod, verification always fails
@@ -152,7 +150,7 @@ class TapMiddlewareConfig:
     fail_open_in_dev: bool = True
 
     @classmethod
-    def from_environment(cls) -> "TapMiddlewareConfig":
+    def from_environment(cls) -> TapMiddlewareConfig:
         """Load TAP middleware configuration from environment."""
         enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", "true").lower() == "true"
         env = os.getenv("SARDIS_ENVIRONMENT", "dev")
@@ -196,8 +194,8 @@ class TapVerificationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        config: Optional[TapMiddlewareConfig] = None,
-        jwks_provider: Optional[Callable[[str], dict]] = None,
+        config: TapMiddlewareConfig | None = None,
+        jwks_provider: Callable[[str], dict] | None = None,
     ):
         super().__init__(app)
         self.config = config or TapMiddlewareConfig.from_environment()
@@ -282,12 +280,12 @@ class TapVerificationMiddleware(BaseHTTPMiddleware):
 
                 if verified:
                     logger.info(
-                        f"TAP signature verified successfully",
+                        "TAP signature verified successfully",
                         extra={"request_id": request_id, "keyid": keyid, "alg": alg},
                     )
                 else:
                     logger.warning(
-                        f"TAP signature verification failed",
+                        "TAP signature verification failed",
                         extra={"request_id": request_id, "keyid": keyid, "alg": alg},
                     )
 
@@ -316,7 +314,7 @@ class TapVerificationMiddleware(BaseHTTPMiddleware):
         # Skip verification if enforcement disabled
         if not self.config.enforcement_enabled:
             logger.debug(
-                f"TAP verification skipped (enforcement disabled)",
+                "TAP verification skipped (enforcement disabled)",
                 extra={"path": path},
             )
             # Still inject empty result for downstream handlers

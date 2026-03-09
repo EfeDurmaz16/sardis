@@ -9,12 +9,12 @@ Implements the baseline checks described by TAP merchant guidance:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import re
 import time
-from typing import Any, Mapping, MutableSet, Sequence
-
+from collections.abc import Mapping, MutableSet, Sequence
+from dataclasses import dataclass
+from typing import Any
 
 TAP_ALLOWED_TAGS = {"agent-browser-auth", "agent-payer-auth"}
 TAP_MAX_TIME_WINDOW_SECONDS = 8 * 60

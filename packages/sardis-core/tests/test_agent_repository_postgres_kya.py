@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
@@ -20,7 +20,7 @@ def test_postgres_agent_repo_update_accepts_kya_fields():
 
 
 def test_agent_from_row_maps_kya_fields_from_metadata():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     row = {
         "external_id": "agent_1",
         "name": "Agent One",

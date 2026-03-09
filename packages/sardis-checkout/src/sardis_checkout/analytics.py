@@ -11,14 +11,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, TypeVar
 from functools import wraps
-import uuid
+from typing import Any, Callable, TypeVar
 
 from sardis_checkout.models import (
     CheckoutAnalyticsEvent,
@@ -40,20 +40,20 @@ class AnalyticsBackend(ABC):
         pass
 
     @abstractmethod
-    async def publish_batch(self, events: List[CheckoutAnalyticsEvent]) -> None:
+    async def publish_batch(self, events: list[CheckoutAnalyticsEvent]) -> None:
         """Publish a batch of analytics events."""
         pass
 
     @abstractmethod
     async def query(
         self,
-        event_types: Optional[List[CheckoutEventType]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        event_types: list[CheckoutEventType] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+        checkout_id: str | None = None,
         limit: int = 100,
-    ) -> List[CheckoutAnalyticsEvent]:
+    ) -> list[CheckoutAnalyticsEvent]:
         """Query analytics events."""
         pass
 
@@ -67,7 +67,7 @@ class InMemoryAnalyticsBackend(AnalyticsBackend):
     """
 
     def __init__(self, max_events: int = 100000):
-        self._events: List[CheckoutAnalyticsEvent] = []
+        self._events: list[CheckoutAnalyticsEvent] = []
         self._max_events = max_events
         self._lock = asyncio.Lock()
 
@@ -78,7 +78,7 @@ class InMemoryAnalyticsBackend(AnalyticsBackend):
             if len(self._events) > self._max_events:
                 self._events = self._events[-self._max_events:]
 
-    async def publish_batch(self, events: List[CheckoutAnalyticsEvent]) -> None:
+    async def publish_batch(self, events: list[CheckoutAnalyticsEvent]) -> None:
         async with self._lock:
             self._events.extend(events)
             if len(self._events) > self._max_events:
@@ -86,13 +86,13 @@ class InMemoryAnalyticsBackend(AnalyticsBackend):
 
     async def query(
         self,
-        event_types: Optional[List[CheckoutEventType]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        event_types: list[CheckoutEventType] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+        checkout_id: str | None = None,
         limit: int = 100,
-    ) -> List[CheckoutAnalyticsEvent]:
+    ) -> list[CheckoutAnalyticsEvent]:
         async with self._lock:
             results = []
             for event in reversed(self._events):
@@ -128,19 +128,19 @@ class LoggingAnalyticsBackend(AnalyticsBackend):
             event.amount,
         )
 
-    async def publish_batch(self, events: List[CheckoutAnalyticsEvent]) -> None:
+    async def publish_batch(self, events: list[CheckoutAnalyticsEvent]) -> None:
         for event in events:
             await self.publish(event)
 
     async def query(
         self,
-        event_types: Optional[List[CheckoutEventType]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        event_types: list[CheckoutEventType] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+        checkout_id: str | None = None,
         limit: int = 100,
-    ) -> List[CheckoutAnalyticsEvent]:
+    ) -> list[CheckoutAnalyticsEvent]:
         # Logging backend doesn't support queries
         return []
 
@@ -148,7 +148,7 @@ class LoggingAnalyticsBackend(AnalyticsBackend):
 class CompositeAnalyticsBackend(AnalyticsBackend):
     """Analytics backend that publishes to multiple backends."""
 
-    def __init__(self, backends: List[AnalyticsBackend]):
+    def __init__(self, backends: list[AnalyticsBackend]):
         self._backends = backends
 
     async def publish(self, event: CheckoutAnalyticsEvent) -> None:
@@ -157,7 +157,7 @@ class CompositeAnalyticsBackend(AnalyticsBackend):
             return_exceptions=True,
         )
 
-    async def publish_batch(self, events: List[CheckoutAnalyticsEvent]) -> None:
+    async def publish_batch(self, events: list[CheckoutAnalyticsEvent]) -> None:
         await asyncio.gather(
             *[backend.publish_batch(events) for backend in self._backends],
             return_exceptions=True,
@@ -165,13 +165,13 @@ class CompositeAnalyticsBackend(AnalyticsBackend):
 
     async def query(
         self,
-        event_types: Optional[List[CheckoutEventType]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        event_types: list[CheckoutEventType] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+        checkout_id: str | None = None,
         limit: int = 100,
-    ) -> List[CheckoutAnalyticsEvent]:
+    ) -> list[CheckoutAnalyticsEvent]:
         # Query from first backend that supports it
         for backend in self._backends:
             try:
@@ -201,9 +201,9 @@ class BufferedAnalyticsBackend(AnalyticsBackend):
         self._backend = backend
         self._buffer_size = buffer_size
         self._flush_interval = flush_interval_seconds
-        self._buffer: List[CheckoutAnalyticsEvent] = []
+        self._buffer: list[CheckoutAnalyticsEvent] = []
         self._lock = asyncio.Lock()
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start the background flush task."""
@@ -254,7 +254,7 @@ class BufferedAnalyticsBackend(AnalyticsBackend):
         if len(events) >= self._buffer_size:
             await self._backend.publish_batch(events)
 
-    async def publish_batch(self, events: List[CheckoutAnalyticsEvent]) -> None:
+    async def publish_batch(self, events: list[CheckoutAnalyticsEvent]) -> None:
         async with self._lock:
             self._buffer.extend(events)
             if len(self._buffer) >= self._buffer_size:
@@ -268,13 +268,13 @@ class BufferedAnalyticsBackend(AnalyticsBackend):
 
     async def query(
         self,
-        event_types: Optional[List[CheckoutEventType]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-        checkout_id: Optional[str] = None,
+        event_types: list[CheckoutEventType] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+        checkout_id: str | None = None,
         limit: int = 100,
-    ) -> List[CheckoutAnalyticsEvent]:
+    ) -> list[CheckoutAnalyticsEvent]:
         # Flush before querying to include recent events
         await self.flush()
         return await self._backend.query(
@@ -291,12 +291,12 @@ class CheckoutAnalytics:
 
     def __init__(
         self,
-        backend: Optional[AnalyticsBackend] = None,
+        backend: AnalyticsBackend | None = None,
         enabled: bool = True,
     ):
         self._backend = backend or InMemoryAnalyticsBackend()
         self._enabled = enabled
-        self._context: Dict[str, Any] = {}
+        self._context: dict[str, Any] = {}
 
     def set_context(self, **kwargs: Any) -> None:
         """Set global context that will be added to all events."""
@@ -309,18 +309,18 @@ class CheckoutAnalytics:
     async def track(
         self,
         event_type: CheckoutEventType,
-        checkout_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        customer_id: Optional[str] = None,
-        psp_name: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        currency: Optional[str] = None,
-        status: Optional[str] = None,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
-        duration_ms: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        checkout_id: str | None = None,
+        session_id: str | None = None,
+        agent_id: str | None = None,
+        customer_id: str | None = None,
+        psp_name: str | None = None,
+        amount: Decimal | None = None,
+        currency: str | None = None,
+        status: str | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        duration_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """
@@ -382,7 +382,7 @@ class CheckoutAnalytics:
         agent_id: str,
         amount: Decimal,
         currency: str,
-        psp_name: Optional[str] = None,
+        psp_name: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track checkout session creation."""
@@ -403,8 +403,8 @@ class CheckoutAnalytics:
         agent_id: str,
         amount: Decimal,
         currency: str,
-        psp_name: Optional[str] = None,
-        duration_ms: Optional[int] = None,
+        psp_name: str | None = None,
+        duration_ms: int | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track checkout session completion."""
@@ -423,7 +423,7 @@ class CheckoutAnalytics:
     async def track_session_expired(
         self,
         checkout_id: str,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track checkout session expiration."""
@@ -441,7 +441,7 @@ class CheckoutAnalytics:
         agent_id: str,
         amount: Decimal,
         currency: str,
-        psp_name: Optional[str] = None,
+        psp_name: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track successful payment."""
@@ -459,9 +459,9 @@ class CheckoutAnalytics:
     async def track_payment_failed(
         self,
         checkout_id: str,
-        agent_id: Optional[str] = None,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
+        agent_id: str | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track failed payment."""
@@ -480,7 +480,7 @@ class CheckoutAnalytics:
         checkout_id: str,
         decision: str,
         risk_score: float,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track fraud check result."""
@@ -501,9 +501,9 @@ class CheckoutAnalytics:
     async def track_webhook(
         self,
         event_type: CheckoutEventType,
-        checkout_id: Optional[str] = None,
-        psp_name: Optional[str] = None,
-        webhook_event_type: Optional[str] = None,
+        checkout_id: str | None = None,
+        psp_name: str | None = None,
+        webhook_event_type: str | None = None,
         **kwargs: Any,
     ) -> CheckoutAnalyticsEvent:
         """Track webhook events."""
@@ -542,10 +542,10 @@ class CheckoutAnalytics:
 
     async def get_conversion_rate(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Calculate checkout conversion rate.
 
@@ -583,10 +583,10 @@ class CheckoutAnalytics:
 
     async def get_payment_metrics(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        agent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        agent_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Get payment metrics.
 
@@ -614,7 +614,7 @@ class CheckoutAnalytics:
             if event.amount is not None
         )
 
-        amounts_by_currency: Dict[str, Decimal] = defaultdict(Decimal)
+        amounts_by_currency: dict[str, Decimal] = defaultdict(Decimal)
         for event in succeeded:
             if event.amount and event.currency:
                 amounts_by_currency[event.currency] += event.amount
@@ -640,12 +640,12 @@ class AnalyticsTimer:
 
     analytics: CheckoutAnalytics
     event_type: CheckoutEventType
-    checkout_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    _start_time: Optional[float] = None
+    checkout_id: str | None = None
+    agent_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    _start_time: float | None = None
 
-    async def __aenter__(self) -> "AnalyticsTimer":
+    async def __aenter__(self) -> AnalyticsTimer:
         self._start_time = time.monotonic()
         return self
 
@@ -671,8 +671,8 @@ class AnalyticsTimer:
 
 def track_analytics(
     event_type: CheckoutEventType,
-    checkout_id_param: Optional[str] = None,
-    agent_id_param: Optional[str] = None,
+    checkout_id_param: str | None = None,
+    agent_id_param: str | None = None,
 ):
     """
     Decorator to automatically track analytics for a method.
@@ -685,7 +685,7 @@ def track_analytics(
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @wraps(fn)
         async def wrapper(self, *args, **kwargs) -> T:
-            analytics: Optional[CheckoutAnalytics] = getattr(self, "analytics", None)
+            analytics: CheckoutAnalytics | None = getattr(self, "analytics", None)
             if not analytics:
                 return await fn(self, *args, **kwargs)
 

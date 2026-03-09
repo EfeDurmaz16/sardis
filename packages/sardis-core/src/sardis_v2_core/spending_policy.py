@@ -66,18 +66,18 @@ See also:
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Any, TYPE_CHECKING
-import uuid
+from typing import TYPE_CHECKING, Any
 
 from .mcc_service import get_mcc_info, is_blocked_category
 
 if TYPE_CHECKING:
-    from .wallets import Wallet
     from .tokens import TokenType
+    from .wallets import Wallet
 
 
 class TrustLevel(str, Enum):
@@ -111,10 +111,10 @@ class TimeWindowLimit:
     limit_amount: Decimal
     currency: str = "USDC"
     current_spent: Decimal = field(default_factory=lambda: Decimal("0"))
-    window_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    window_start: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def reset_if_expired(self) -> bool:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if self.window_type == "daily":
             duration = timedelta(days=1)
         elif self.window_type == "weekly":
@@ -159,28 +159,24 @@ class MerchantRule:
 
     rule_id: str = field(default_factory=lambda: f"rule_{uuid.uuid4().hex[:12]}")
     rule_type: str = "allow"
-    merchant_id: Optional[str] = None
-    category: Optional[str] = None
-    max_per_tx: Optional[Decimal] = None
-    daily_limit: Optional[Decimal] = None
-    reason: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    merchant_id: str | None = None
+    category: str | None = None
+    max_per_tx: Decimal | None = None
+    daily_limit: Decimal | None = None
+    reason: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     def is_active(self) -> bool:
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
 
-    def matches_merchant(self, merchant_id: str, merchant_category: Optional[str] = None) -> bool:
+    def matches_merchant(self, merchant_id: str, merchant_category: str | None = None) -> bool:
         if not self.is_active():
             return False
         # SECURITY: Case-insensitive matching prevents bypass via casing tricks
         if self.merchant_id and self.merchant_id.lower() == merchant_id.lower():
             return True
-        if self.category and merchant_category and self.category.lower() == merchant_category.lower():
-            return True
-        return False
+        return bool(self.category and merchant_category and self.category.lower() == merchant_category.lower())
 
 
 @dataclass(slots=True)
@@ -224,9 +220,9 @@ class SpendingPolicy:
     limit_per_tx: Decimal = field(default_factory=lambda: Decimal("100.00"))
     limit_total: Decimal = field(default_factory=lambda: Decimal("1000.00"))
     spent_total: Decimal = field(default_factory=lambda: Decimal("0"))
-    daily_limit: Optional[TimeWindowLimit] = None
-    weekly_limit: Optional[TimeWindowLimit] = None
-    monthly_limit: Optional[TimeWindowLimit] = None
+    daily_limit: TimeWindowLimit | None = None
+    weekly_limit: TimeWindowLimit | None = None
+    monthly_limit: TimeWindowLimit | None = None
     merchant_rules: list[MerchantRule] = field(default_factory=list)
     allowed_scopes: list[SpendingScope] = field(default_factory=lambda: [SpendingScope.ALL])
     blocked_merchant_categories: list[str] = field(default_factory=list)
@@ -235,11 +231,11 @@ class SpendingPolicy:
     allowed_destination_addresses: list[str] = field(default_factory=list)
     blocked_destination_addresses: list[str] = field(default_factory=list)
     require_preauth: bool = False
-    approval_threshold: Optional[Decimal] = None
-    max_drift_score: Optional[Decimal] = field(default_factory=lambda: Decimal("0.5"))
+    approval_threshold: Decimal | None = None
+    max_drift_score: Decimal | None = field(default_factory=lambda: Decimal("0.5"))
     max_hold_hours: int = 168
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Handle setting _spent_total as an alias for spent_total (for backward compatibility)."""
@@ -249,21 +245,21 @@ class SpendingPolicy:
 
     async def evaluate(
         self,
-        wallet: "Wallet",  # Forward reference to avoid circular import
+        wallet: Wallet,  # Forward reference to avoid circular import
         amount: Decimal,
         fee: Decimal,
         *,
         chain: str,
-        token: "TokenType",  # Forward reference
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        mcc_code: Optional[str] = None,
+        token: TokenType,  # Forward reference
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
+        mcc_code: str | None = None,
         scope: SpendingScope = SpendingScope.ALL,
-        rpc_client: Optional[Any] = None,  # ChainRPCClient for balance queries
-        drift_score: Optional[Decimal] = None,
-        policy_store: Optional[Any] = None,  # SpendingPolicyStore for DB-backed enforcement
-        kya_client: Optional[Any] = None,  # EASKYAClient for attestation verification
-        merchant_trust_service: Optional[Any] = None,  # MerchantTrustService for trust-based checks
+        rpc_client: Any | None = None,  # ChainRPCClient for balance queries
+        drift_score: Decimal | None = None,
+        policy_store: Any | None = None,  # SpendingPolicyStore for DB-backed enforcement
+        kya_client: Any | None = None,  # EASKYAClient for attestation verification
+        merchant_trust_service: Any | None = None,  # MerchantTrustService for trust-based checks
     ) -> tuple[bool, str]:
         """
         Evaluate a payment request against this policy.
@@ -446,23 +442,23 @@ class SpendingPolicy:
         return True, "OK"
 
     @staticmethod
-    def _normalize_chain(value: Optional[str]) -> str:
+    def _normalize_chain(value: str | None) -> str:
         return (value or "").strip().lower()
 
     @staticmethod
-    def _normalize_token(value: Optional[str]) -> str:
+    def _normalize_token(value: str | None) -> str:
         return (value or "").strip().upper()
 
     @staticmethod
-    def _normalize_destination(value: Optional[str]) -> str:
+    def _normalize_destination(value: str | None) -> str:
         return (value or "").strip().lower()
 
     def validate_execution_context(
         self,
         *,
-        destination: Optional[str],
-        chain: Optional[str],
-        token: Optional[str],
+        destination: str | None,
+        chain: str | None,
+        token: str | None,
     ) -> tuple[bool, str]:
         """
         Deterministic execution guard rails for on-chain payments.
@@ -498,17 +494,17 @@ class SpendingPolicy:
             return False, "destination_required_for_allowlist"
 
         return True, "OK"
-    
+
     def validate_payment(
         self,
         amount: Decimal,
         fee: Decimal,
         *,
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        mcc_code: Optional[str] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
+        mcc_code: str | None = None,
         scope: SpendingScope = SpendingScope.ALL,
-        drift_score: Optional[Decimal] = None,
+        drift_score: Decimal | None = None,
     ) -> tuple[bool, str]:
         """
         Synchronous policy check — runs the same checks as evaluate() but
@@ -588,8 +584,8 @@ class SpendingPolicy:
 
     def _get_effective_per_tx_limit(
         self,
-        mcc_code: Optional[str] = None,
-        merchant_category: Optional[str] = None,
+        mcc_code: str | None = None,
+        merchant_category: str | None = None,
     ) -> Decimal:
         """Return effective per-tx limit, considering category-specific overrides."""
         if not self.merchant_rules:
@@ -617,7 +613,7 @@ class SpendingPolicy:
     def _check_merchant_rules(
         self,
         merchant_id: str,
-        merchant_category: Optional[str],
+        merchant_category: str | None,
         amount: Decimal,
     ) -> tuple[bool, str]:
         for rule in self.merchant_rules:
@@ -657,7 +653,7 @@ class SpendingPolicy:
 
     async def _check_kya_attestation(
         self,
-        wallet: "Wallet",
+        wallet: Wallet,
         kya_client: Any,
     ) -> tuple[bool, str]:
         """Check KYA attestation for the agent's wallet.
@@ -696,7 +692,7 @@ class SpendingPolicy:
         self.spent_total += amount
         for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
             window_limit.record_spend(amount)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def remaining_total(self) -> Decimal:
         return max(Decimal("0"), self.limit_total - self.spent_total)
@@ -704,27 +700,27 @@ class SpendingPolicy:
     def add_merchant_allow(
         self,
         *,
-        merchant_id: Optional[str] = None,
-        category: Optional[str] = None,
-        max_per_tx: Optional[Decimal] = None,
-        reason: Optional[str] = None,
+        merchant_id: str | None = None,
+        category: str | None = None,
+        max_per_tx: Decimal | None = None,
+        reason: str | None = None,
     ) -> MerchantRule:
         rule = MerchantRule(rule_type="allow", merchant_id=merchant_id, category=category, max_per_tx=max_per_tx, reason=reason)
         self.merchant_rules.append(rule)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         return rule
 
     def add_merchant_deny(
         self,
         *,
-        merchant_id: Optional[str] = None,
-        category: Optional[str] = None,
-        reason: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
+        merchant_id: str | None = None,
+        category: str | None = None,
+        reason: str | None = None,
+        expires_at: datetime | None = None,
     ) -> MerchantRule:
         rule = MerchantRule(rule_type="deny", merchant_id=merchant_id, category=category, reason=reason, expires_at=expires_at)
         self.merchant_rules.insert(0, rule)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         return rule
 
     def block_merchant_category(self, category: str) -> None:
@@ -736,7 +732,7 @@ class SpendingPolicy:
         """
         if category not in self.blocked_merchant_categories:
             self.blocked_merchant_categories.append(category)
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
     def unblock_merchant_category(self, category: str) -> None:
         """
@@ -747,7 +743,7 @@ class SpendingPolicy:
         """
         if category in self.blocked_merchant_categories:
             self.blocked_merchant_categories.remove(category)
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
 
 # Preset spending limits per trust level.

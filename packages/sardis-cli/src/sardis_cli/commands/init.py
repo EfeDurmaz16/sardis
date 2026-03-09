@@ -5,7 +5,7 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
-from ..api import SardisAPIClient, APIError
+from ..api import APIError, SardisAPIClient
 from ..config import save_config
 
 console = Console()

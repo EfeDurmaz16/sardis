@@ -4,18 +4,16 @@ from __future__ import annotations
 import os
 import time
 from collections import deque
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, Response
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
     Counter,
-    Histogram,
     Gauge,
+    Histogram,
     Info,
     generate_latest,
-    CONTENT_TYPE_LATEST,
-    CollectorRegistry,
-    REGISTRY,
 )
 
 from sardis_api.authz import Principal, metrics_auth_required, require_principal
@@ -282,7 +280,7 @@ def record_payment(chain: str, token: str, amount_usd: float, status: str) -> No
         payment_amount_usd.labels(chain=chain, token=token).observe(amount_usd)
 
 
-def record_policy_check(allowed: bool, reason: Optional[str] = None) -> None:
+def record_policy_check(allowed: bool, reason: str | None = None) -> None:
     """Record a policy check metric."""
     result = "allowed" if allowed else "denied"
     policy_checks_total.labels(result=result).inc()
@@ -334,7 +332,7 @@ def record_http_request(method: str, endpoint: str, status: int, duration: float
     http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
 
 
-def record_approval(action: str, status: str, response_time: Optional[float] = None) -> None:
+def record_approval(action: str, status: str, response_time: float | None = None) -> None:
     """Record approval request metrics."""
     approvals_total.labels(action=action, status=status).inc()
     if response_time and status in ("approved", "denied"):

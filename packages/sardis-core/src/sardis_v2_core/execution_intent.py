@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class IntentSource(str, Enum):
@@ -42,7 +42,7 @@ class ExecutionIntent:
     intent_id: str = field(default_factory=lambda: f"int_{uuid.uuid4().hex[:16]}")
     source: IntentSource = IntentSource.A2A
     status: IntentStatus = IntentStatus.CREATED
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Principal context
     org_id: str = ""
@@ -70,8 +70,8 @@ class ExecutionIntent:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     # Pipeline results (filled during execution)
-    policy_result: Optional[dict[str, Any]] = None
-    compliance_result: Optional[dict[str, Any]] = None
+    policy_result: dict[str, Any] | None = None
+    compliance_result: dict[str, Any] | None = None
     tx_hash: str = ""
     ledger_entry_id: str = ""
     receipt_id: str = ""
@@ -117,8 +117,8 @@ class SimulationResult:
     intent_id: str
     would_succeed: bool
     failure_reasons: list[str] = field(default_factory=list)
-    policy_result: Optional[dict[str, Any]] = None
-    compliance_result: Optional[dict[str, Any]] = None
-    cap_check: Optional[dict[str, Any]] = None
-    kill_switch_status: Optional[dict[str, Any]] = None
-    estimated_gas: Optional[str] = None
+    policy_result: dict[str, Any] | None = None
+    compliance_result: dict[str, Any] | None = None
+    cap_check: dict[str, Any] | None = None
+    kill_switch_status: dict[str, Any] | None = None
+    estimated_gas: str | None = None

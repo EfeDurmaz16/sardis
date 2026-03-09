@@ -25,20 +25,14 @@ from __future__ import annotations
 
 import logging
 import os
-import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional, Sequence
-from urllib.parse import urlparse
 
 from .constants import (
     APIConfig,
     CacheTTL,
-    CircuitBreakerDefaults,
-    PaymentLimits,
     PoolLimits,
-    RetryConfig,
-    SecurityConfig,
     Timeouts,
 )
 from .exceptions import SardisConfigurationError
@@ -113,7 +107,7 @@ class CacheConfig:
         wallet_ttl: Wallet cache TTL
     """
 
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
     default_ttl: int = CacheTTL.WALLET
     balance_ttl: int = CacheTTL.BALANCE
     wallet_ttl: int = CacheTTL.WALLET
@@ -122,9 +116,8 @@ class CacheConfig:
         """Validate cache configuration."""
         errors = []
 
-        if self.redis_url:
-            if not self.redis_url.startswith(("redis://", "rediss://")):
-                errors.append("REDIS_URL must be a valid Redis URL")
+        if self.redis_url and not self.redis_url.startswith(("redis://", "rediss://")):
+            errors.append("REDIS_URL must be a valid Redis URL")
 
         if self.default_ttl <= 0:
             errors.append("Cache default_ttl must be positive")
@@ -569,8 +562,8 @@ def require_service_config(
 # =============================================================================
 
 def validate_startup(
-    config: Optional[SardisConfig] = None,
-    required_services: Optional[Sequence[str]] = None,
+    config: SardisConfig | None = None,
+    required_services: Sequence[str] | None = None,
 ) -> SardisConfig:
     """Validate configuration at application startup.
 

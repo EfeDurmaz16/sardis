@@ -5,18 +5,19 @@ This module provides both async and sync interfaces for webhook management.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
 from ..models.webhook import (
     CreateWebhookRequest,
     UpdateWebhookRequest,
     Webhook,
     WebhookDelivery,
-    WebhookEventType,
 )
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
+    import builtins
+
     from ..client import TimeoutConfig
 
 
@@ -42,8 +43,8 @@ class AsyncWebhooksResource(AsyncBaseResource):
 
     async def list_event_types(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[str]:
         """List all available webhook event types.
 
         Args:
@@ -58,11 +59,11 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def create(
         self,
         url: str,
-        events: List[str],
-        organization_id: Optional[str] = None,
-        description: Optional[str] = None,
+        events: builtins.list[str],
+        organization_id: str | None = None,
+        description: str | None = None,
         is_active: bool = True,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Create a webhook subscription.
 
@@ -88,8 +89,8 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def list(
         self,
         limit: int = 100,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Webhook]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Webhook]:
         """List all webhook subscriptions.
 
         Args:
@@ -105,7 +106,7 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def get(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Get a webhook subscription by ID.
 
@@ -122,10 +123,10 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def update(
         self,
         webhook_id: str,
-        url: Optional[str] = None,
-        events: Optional[List[str]] = None,
-        is_active: Optional[bool] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        url: str | None = None,
+        events: builtins.list[str] | None = None,
+        is_active: bool | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Update a webhook subscription.
 
@@ -151,7 +152,7 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def delete(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete a webhook subscription.
 
@@ -164,7 +165,7 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def test(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WebhookDelivery:
         """Send a test event to a webhook.
 
@@ -182,8 +183,8 @@ class AsyncWebhooksResource(AsyncBaseResource):
         self,
         webhook_id: str,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[WebhookDelivery]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[WebhookDelivery]:
         """List delivery attempts for a webhook.
 
         Args:
@@ -204,8 +205,8 @@ class AsyncWebhooksResource(AsyncBaseResource):
     async def rotate_secret(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, str]:
         """Rotate the webhook signing secret.
 
         Args:
@@ -240,8 +241,8 @@ class WebhooksResource(SyncBaseResource):
 
     def list_event_types(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[str]:
         """List all available webhook event types.
 
         Args:
@@ -256,11 +257,11 @@ class WebhooksResource(SyncBaseResource):
     def create(
         self,
         url: str,
-        events: List[str],
-        organization_id: Optional[str] = None,
-        description: Optional[str] = None,
+        events: builtins.list[str],
+        organization_id: str | None = None,
+        description: str | None = None,
         is_active: bool = True,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Create a webhook subscription.
 
@@ -286,8 +287,8 @@ class WebhooksResource(SyncBaseResource):
     def list(
         self,
         limit: int = 100,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Webhook]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[Webhook]:
         """List all webhook subscriptions.
 
         Args:
@@ -303,7 +304,7 @@ class WebhooksResource(SyncBaseResource):
     def get(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Get a webhook subscription by ID.
 
@@ -320,10 +321,10 @@ class WebhooksResource(SyncBaseResource):
     def update(
         self,
         webhook_id: str,
-        url: Optional[str] = None,
-        events: Optional[List[str]] = None,
-        is_active: Optional[bool] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        url: str | None = None,
+        events: builtins.list[str] | None = None,
+        is_active: bool | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> Webhook:
         """Update a webhook subscription.
 
@@ -349,7 +350,7 @@ class WebhooksResource(SyncBaseResource):
     def delete(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> None:
         """Delete a webhook subscription.
 
@@ -362,7 +363,7 @@ class WebhooksResource(SyncBaseResource):
     def test(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> WebhookDelivery:
         """Send a test event to a webhook.
 
@@ -380,8 +381,8 @@ class WebhooksResource(SyncBaseResource):
         self,
         webhook_id: str,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[WebhookDelivery]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[WebhookDelivery]:
         """List delivery attempts for a webhook.
 
         Args:
@@ -402,8 +403,8 @@ class WebhooksResource(SyncBaseResource):
     def rotate_secret(
         self,
         webhook_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, str]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, str]:
         """Rotate the webhook signing secret.
 
         Args:

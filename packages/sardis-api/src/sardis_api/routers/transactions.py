@@ -2,16 +2,17 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-
-from sardis_chain.executor import ChainExecutor, TransactionStatus, CHAIN_CONFIGS, STABLECOIN_ADDRESSES
+from sardis_chain.executor import (
+    CHAIN_CONFIGS,
+    STABLECOIN_ADDRESSES,
+    ChainExecutor,
+)
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
-
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["transactions"])
 
@@ -41,9 +42,9 @@ class TransactionStatusResponse(BaseModel):
     tx_hash: str
     chain: str
     status: str
-    block_number: Optional[int] = None
-    confirmations: Optional[int] = None
-    explorer_url: Optional[str] = None
+    block_number: int | None = None
+    confirmations: int | None = None
+    explorer_url: str | None = None
 
 
 class ChainInfoResponse(BaseModel):
@@ -65,7 +66,7 @@ class BatchTransferItem(BaseModel):
     """Single transfer in a batch."""
     destination: str = Field(..., description="Destination address")
     amount: str = Field(..., description="Amount in minor units (e.g., cents for USDC)")
-    reference: Optional[str] = Field(None, description="Optional reference ID for this transfer")
+    reference: str | None = Field(None, description="Optional reference ID for this transfer")
 
 
 class BatchTransferRequest(BaseModel):
@@ -73,17 +74,17 @@ class BatchTransferRequest(BaseModel):
     wallet_id: str = Field(..., description="Wallet ID to transfer from")
     chain: str = Field(default="base", description="Chain to execute on")
     token: str = Field(default="USDC", description="Token to transfer")
-    transfers: List[BatchTransferItem] = Field(..., description="List of transfers to execute")
+    transfers: list[BatchTransferItem] = Field(..., description="List of transfers to execute")
 
 
 class BatchTransferItemResult(BaseModel):
     """Result of a single transfer in a batch."""
-    reference: Optional[str] = None
+    reference: str | None = None
     destination: str
     amount: str
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     status: str  # "success", "failed", "pending"
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class BatchTransferResponse(BaseModel):
@@ -95,7 +96,7 @@ class BatchTransferResponse(BaseModel):
     total_transfers: int
     successful: int
     failed: int
-    results: List[BatchTransferItemResult]
+    results: list[BatchTransferItemResult]
 
 
 # Dependencies
@@ -138,14 +139,14 @@ async def estimate_gas(
 ):
     """Estimate gas for a stablecoin transfer."""
     from sardis_v2_core.mandates import PaymentMandate
-    
+
     # Validate chain
     if request.chain not in CHAIN_CONFIGS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported chain: {request.chain}. Supported: {list(CHAIN_CONFIGS.keys())}",
         )
-    
+
     # Validate token
     supported_tokens = STABLECOIN_ADDRESSES.get(request.chain, {})
     if request.token not in supported_tokens:
@@ -153,17 +154,18 @@ async def estimate_gas(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Token {request.token} not supported on {request.chain}. Supported: {list(supported_tokens.keys())}",
         )
-    
+
     # Create a mock mandate for gas estimation
-    from sardis_v2_core.mandates import VCProof
     import time
-    
+
+    from sardis_v2_core.mandates import VCProof
+
     proof = VCProof(
         verification_method="did:key:system#key-1",
         created="2025-01-01T00:00:00Z",
         proof_value="mock_signature",
     )
-    
+
     mandate = PaymentMandate(
         mandate_id="gas_estimate",
         mandate_type="payment",
@@ -180,10 +182,10 @@ async def estimate_gas(
         chain=request.chain,
         audit_hash="gas_estimate_hash",
     )
-    
+
     try:
         estimate = await deps.chain_executor.estimate_gas(mandate)
-        
+
         return GasEstimateResponse(
             gas_limit=estimate.gas_limit,
             gas_price_gwei=str(estimate.gas_price_gwei),
@@ -212,7 +214,7 @@ async def get_transaction_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported chain: {chain}",
         )
-    
+
     try:
         tx_status = await deps.chain_executor.get_transaction_status(tx_hash, chain)
         status_value = tx_status.value
@@ -298,8 +300,9 @@ async def batch_transfer(
     - Bulk payments to multiple recipients
     - Multi-recipient airdrops
     """
-    import uuid
     import time
+    import uuid
+
     from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     # Validate inputs

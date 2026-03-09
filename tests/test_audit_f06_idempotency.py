@@ -1,11 +1,16 @@
 """Test that execute_chain() is idempotent on mandate_id."""
 import time
-import pytest
 from unittest.mock import AsyncMock, Mock
-from sardis_v2_core.orchestrator import PaymentOrchestrator
+
+import pytest
 from sardis_v2_core.mandates import (
-    MandateChain, PaymentMandate, IntentMandate, CartMandate, VCProof,
+    CartMandate,
+    IntentMandate,
+    MandateChain,
+    PaymentMandate,
+    VCProof,
 )
+from sardis_v2_core.orchestrator import PaymentOrchestrator
 
 
 def _proof():
@@ -17,17 +22,17 @@ def _proof():
 
 
 def _base(mid, mtype, purpose):
-    return dict(
-        mandate_id=mid,
-        mandate_type=mtype,
-        issuer="agent:test",
-        subject="agent:test",
-        expires_at=int(time.time()) + 3600,
-        nonce="nonce-1",
-        proof=_proof(),
-        domain="example.com",
-        purpose=purpose,
-    )
+    return {
+        "mandate_id": mid,
+        "mandate_type": mtype,
+        "issuer": "agent:test",
+        "subject": "agent:test",
+        "expires_at": int(time.time()) + 3600,
+        "nonce": "nonce-1",
+        "proof": _proof(),
+        "domain": "example.com",
+        "purpose": purpose,
+    }
 
 
 def make_chain(payment_id="pay-1"):
@@ -74,12 +79,12 @@ def mock_components():
     ledger = Mock()
     ledger.append = Mock(return_value=Mock(tx_id="ledger_tx_001"))
 
-    return dict(
-        wallet_manager=wallet_manager,
-        compliance=compliance,
-        chain_executor=chain_executor,
-        ledger=ledger,
-    )
+    return {
+        "wallet_manager": wallet_manager,
+        "compliance": compliance,
+        "chain_executor": chain_executor,
+        "ledger": ledger,
+    }
 
 
 @pytest.mark.asyncio

@@ -6,7 +6,7 @@ sub-executor based on ExecutionModeRouter output.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from sardis_v2_core.execution_intent import ExecutionIntent
 from sardis_v2_core.execution_mode import ExecutionMode, ExecutionModeRouter
@@ -21,7 +21,7 @@ class MultiModalExecutionAdapter:
         self,
         crypto_executor=None,
         delegated_executor=None,
-        mode_router: Optional[ExecutionModeRouter] = None,
+        mode_router: ExecutionModeRouter | None = None,
     ) -> None:
         self._crypto = crypto_executor
         self._delegated = delegated_executor

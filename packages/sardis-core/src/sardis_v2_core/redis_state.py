@@ -10,8 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class RedisStateStore:
     def _key(self, key: str) -> str:
         return f"sardis:{self._namespace}:{key}"
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         """Get a value by key. Returns None if not found."""
         r = await _get_redis()
         if r is not None:
@@ -77,7 +76,7 @@ class RedisStateStore:
                 logger.warning(f"Redis get failed for {key}: {e}")
         return self._memory.get(key)
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set a value with optional TTL in seconds."""
         r = await _get_redis()
         if r is not None:
@@ -114,7 +113,7 @@ class RedisStateStore:
                 logger.warning(f"Redis get_list failed for {key}: {e}")
         return self._memory_lists.get(key, [])
 
-    async def append_list(self, key: str, value: Any, max_len: Optional[int] = None, ttl: Optional[int] = None) -> None:
+    async def append_list(self, key: str, value: Any, max_len: int | None = None, ttl: int | None = None) -> None:
         """Append to a list with optional max length and TTL."""
         r = await _get_redis()
         if r is not None:

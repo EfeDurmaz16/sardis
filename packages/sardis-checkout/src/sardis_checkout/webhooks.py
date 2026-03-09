@@ -16,11 +16,11 @@ import hmac
 import json
 import logging
 import time
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Set
 import uuid
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
 import httpx
 
@@ -28,7 +28,6 @@ from sardis_checkout.models import (
     WebhookDelivery,
     WebhookDeliveryStatus,
     WebhookEndpoint,
-    CheckoutEventType,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,7 +83,7 @@ class WebhookStore(ABC):
         pass
 
     @abstractmethod
-    async def get_endpoint(self, endpoint_id: str) -> Optional[WebhookEndpoint]:
+    async def get_endpoint(self, endpoint_id: str) -> WebhookEndpoint | None:
         """Get a webhook endpoint by ID."""
         pass
 
@@ -92,7 +91,7 @@ class WebhookStore(ABC):
     async def list_endpoints(
         self,
         enabled_only: bool = True,
-    ) -> List[WebhookEndpoint]:
+    ) -> list[WebhookEndpoint]:
         """List all webhook endpoints."""
         pass
 
@@ -112,7 +111,7 @@ class WebhookStore(ABC):
         pass
 
     @abstractmethod
-    async def get_delivery(self, delivery_id: str) -> Optional[WebhookDelivery]:
+    async def get_delivery(self, delivery_id: str) -> WebhookDelivery | None:
         """Get a webhook delivery by ID."""
         pass
 
@@ -122,7 +121,7 @@ class WebhookStore(ABC):
         pass
 
     @abstractmethod
-    async def get_pending_deliveries(self, limit: int = 100) -> List[WebhookDelivery]:
+    async def get_pending_deliveries(self, limit: int = 100) -> list[WebhookDelivery]:
         """Get deliveries that need to be retried."""
         pass
 
@@ -131,7 +130,7 @@ class WebhookStore(ABC):
         self,
         endpoint_id: str,
         limit: int = 100,
-    ) -> List[WebhookDelivery]:
+    ) -> list[WebhookDelivery]:
         """Get delivery history for an endpoint."""
         pass
 
@@ -145,20 +144,20 @@ class InMemoryWebhookStore(WebhookStore):
     """
 
     def __init__(self):
-        self._endpoints: Dict[str, WebhookEndpoint] = {}
-        self._deliveries: Dict[str, WebhookDelivery] = {}
+        self._endpoints: dict[str, WebhookEndpoint] = {}
+        self._deliveries: dict[str, WebhookDelivery] = {}
 
     async def create_endpoint(self, endpoint: WebhookEndpoint) -> WebhookEndpoint:
         self._endpoints[endpoint.endpoint_id] = endpoint
         return endpoint
 
-    async def get_endpoint(self, endpoint_id: str) -> Optional[WebhookEndpoint]:
+    async def get_endpoint(self, endpoint_id: str) -> WebhookEndpoint | None:
         return self._endpoints.get(endpoint_id)
 
     async def list_endpoints(
         self,
         enabled_only: bool = True,
-    ) -> List[WebhookEndpoint]:
+    ) -> list[WebhookEndpoint]:
         endpoints = list(self._endpoints.values())
         if enabled_only:
             endpoints = [e for e in endpoints if e.enabled]
@@ -178,14 +177,14 @@ class InMemoryWebhookStore(WebhookStore):
         self._deliveries[delivery.delivery_id] = delivery
         return delivery
 
-    async def get_delivery(self, delivery_id: str) -> Optional[WebhookDelivery]:
+    async def get_delivery(self, delivery_id: str) -> WebhookDelivery | None:
         return self._deliveries.get(delivery_id)
 
     async def update_delivery(self, delivery: WebhookDelivery) -> WebhookDelivery:
         self._deliveries[delivery.delivery_id] = delivery
         return delivery
 
-    async def get_pending_deliveries(self, limit: int = 100) -> List[WebhookDelivery]:
+    async def get_pending_deliveries(self, limit: int = 100) -> list[WebhookDelivery]:
         now = datetime.utcnow()
         pending = [
             d for d in self._deliveries.values()
@@ -198,7 +197,7 @@ class InMemoryWebhookStore(WebhookStore):
         self,
         endpoint_id: str,
         limit: int = 100,
-    ) -> List[WebhookDelivery]:
+    ) -> list[WebhookDelivery]:
         deliveries = [
             d for d in self._deliveries.values()
             if d.webhook_id == endpoint_id
@@ -225,7 +224,7 @@ class WebhookSigner:
         self,
         payload: bytes,
         secret: str,
-        timestamp: Optional[int] = None,
+        timestamp: int | None = None,
     ) -> tuple[str, int]:
         """
         Generate a signature for a webhook payload.
@@ -270,7 +269,7 @@ class WebhookSigner:
         self,
         payload: bytes,
         secret: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Generate webhook headers including signature."""
         signature, timestamp = self.sign(payload, secret)
         return {
@@ -295,8 +294,8 @@ class WebhookDeliveryManager:
     def __init__(
         self,
         store: WebhookStore,
-        signer: Optional[WebhookSigner] = None,
-        retry_config: Optional[RetryConfig] = None,
+        signer: WebhookSigner | None = None,
+        retry_config: RetryConfig | None = None,
         http_timeout: float = 30.0,
         max_concurrent_deliveries: int = 10,
     ):
@@ -305,8 +304,8 @@ class WebhookDeliveryManager:
         self.retry_config = retry_config or RetryConfig()
         self.http_timeout = http_timeout
         self.max_concurrent = max_concurrent_deliveries
-        self._client: Optional[httpx.AsyncClient] = None
-        self._delivery_task: Optional[asyncio.Task] = None
+        self._client: httpx.AsyncClient | None = None
+        self._delivery_task: asyncio.Task | None = None
         self._running = False
         self._semaphore = asyncio.Semaphore(max_concurrent_deliveries)
 
@@ -334,9 +333,9 @@ class WebhookDeliveryManager:
     async def register_endpoint(
         self,
         url: str,
-        events: List[str],
-        secret: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        events: list[str],
+        secret: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> WebhookEndpoint:
         """
         Register a new webhook endpoint.
@@ -378,10 +377,10 @@ class WebhookDeliveryManager:
     async def update_endpoint(
         self,
         endpoint_id: str,
-        url: Optional[str] = None,
-        events: Optional[List[str]] = None,
-        enabled: Optional[bool] = None,
-        secret: Optional[str] = None,
+        url: str | None = None,
+        events: list[str] | None = None,
+        enabled: bool | None = None,
+        secret: str | None = None,
     ) -> WebhookEndpoint:
         """Update a webhook endpoint."""
         endpoint = await self.get_endpoint(endpoint_id)
@@ -402,7 +401,7 @@ class WebhookDeliveryManager:
         """Delete a webhook endpoint."""
         return await self.store.delete_endpoint(endpoint_id)
 
-    async def list_endpoints(self) -> List[WebhookEndpoint]:
+    async def list_endpoints(self) -> list[WebhookEndpoint]:
         """List all webhook endpoints."""
         return await self.store.list_endpoints(enabled_only=False)
 
@@ -411,9 +410,9 @@ class WebhookDeliveryManager:
     async def queue_delivery(
         self,
         event_type: str,
-        payload: Dict[str, Any],
-        endpoint_ids: Optional[List[str]] = None,
-    ) -> List[WebhookDelivery]:
+        payload: dict[str, Any],
+        endpoint_ids: list[str] | None = None,
+    ) -> list[WebhookDelivery]:
         """
         Queue webhook delivery to matching endpoints.
 
@@ -618,7 +617,7 @@ class WebhookDeliveryManager:
 
     # Delivery Status
 
-    async def get_delivery_status(self, delivery_id: str) -> Dict[str, Any]:
+    async def get_delivery_status(self, delivery_id: str) -> dict[str, Any]:
         """Get detailed status of a delivery."""
         delivery = await self.store.get_delivery(delivery_id)
         if not delivery:
@@ -644,7 +643,7 @@ class WebhookDeliveryManager:
         self,
         endpoint_id: str,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get delivery history for an endpoint."""
         deliveries = await self.store.get_deliveries_for_endpoint(endpoint_id, limit)
         return [

@@ -6,13 +6,13 @@ import threading
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from inspect import isawaitable
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate
-from sardis_v2_core.tokens import normalize_token_amount, TokenType
+from sardis_v2_core.tokens import TokenType, normalize_token_amount
 
 logger = logging.getLogger(__name__)
 
@@ -40,17 +40,17 @@ class ComplianceAuditEntry:
 
     # Decision result
     allowed: bool = False
-    reason: Optional[str] = None
-    rule_id: Optional[str] = None
-    provider: Optional[str] = None
+    reason: str | None = None
+    rule_id: str | None = None
+    provider: str | None = None
 
     # Timing
-    evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    evaluated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Additional context for audit
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage/serialization."""
         return {
             "audit_id": self.audit_id,
@@ -98,7 +98,7 @@ class ComplianceAuditStore:
             )
         self._entries: deque[ComplianceAuditEntry] = deque(maxlen=self.MAX_ENTRIES)
         self._lock = threading.Lock()
-        self._by_mandate: Dict[str, List[str]] = {}  # mandate_id -> [audit_ids]
+        self._by_mandate: dict[str, list[str]] = {}  # mandate_id -> [audit_ids]
 
     def append(self, entry: ComplianceAuditEntry) -> str:
         """
@@ -132,13 +132,13 @@ class ComplianceAuditStore:
 
         return entry.audit_id
 
-    def get_by_mandate(self, mandate_id: str) -> List[ComplianceAuditEntry]:
+    def get_by_mandate(self, mandate_id: str) -> list[ComplianceAuditEntry]:
         """Get all audit entries for a mandate."""
         with self._lock:
             audit_ids = self._by_mandate.get(mandate_id, [])
             return [e for e in self._entries if e.audit_id in audit_ids]
 
-    def get_recent(self, limit: int = 100) -> List[ComplianceAuditEntry]:
+    def get_recent(self, limit: int = 100) -> list[ComplianceAuditEntry]:
         """Get most recent audit entries."""
         with self._lock:
             return list(self._entries)[-limit:]
@@ -148,7 +148,7 @@ class ComplianceAuditStore:
         with self._lock:
             return len(self._entries)
 
-    def export_all(self) -> List[Dict[str, Any]]:
+    def export_all(self) -> list[dict[str, Any]]:
         """Export all entries as dictionaries (for backup/persistence)."""
         with self._lock:
             return [e.to_dict() for e in self._entries]
@@ -280,7 +280,7 @@ class PostgresAuditStore:
         logger.debug(f"Audit entry persisted: audit_id={entry.audit_id}")
         return entry.audit_id
 
-    async def get_by_mandate(self, mandate_id: str) -> List[ComplianceAuditEntry]:
+    async def get_by_mandate(self, mandate_id: str) -> list[ComplianceAuditEntry]:
         """Get all audit entries for a mandate."""
         await self._ensure_initialized()
 
@@ -292,7 +292,7 @@ class PostgresAuditStore:
 
         return [self._row_to_entry(row) for row in rows]
 
-    async def get_recent(self, limit: int = 100) -> List[ComplianceAuditEntry]:
+    async def get_recent(self, limit: int = 100) -> list[ComplianceAuditEntry]:
         """Get most recent audit entries."""
         await self._ensure_initialized()
 
@@ -313,7 +313,7 @@ class PostgresAuditStore:
 
         return result
 
-    async def verify_chain_integrity(self) -> tuple[bool, Optional[str]]:
+    async def verify_chain_integrity(self) -> tuple[bool, str | None]:
         """Verify the hash chain integrity of the audit trail."""
         await self._ensure_initialized()
 
@@ -353,7 +353,7 @@ class PostgresAuditStore:
 # ============ Audit Store Factory ============
 
 
-def create_audit_store(dsn: Optional[str] = None) -> ComplianceAuditStore:
+def create_audit_store(dsn: str | None = None) -> ComplianceAuditStore:
     """
     Factory function to create the appropriate audit store.
 
@@ -394,7 +394,7 @@ def create_audit_store(dsn: Optional[str] = None) -> ComplianceAuditStore:
 
 
 # Global audit store singleton
-_audit_store: Optional[ComplianceAuditStore] = None
+_audit_store: ComplianceAuditStore | None = None
 
 
 def get_audit_store() -> ComplianceAuditStore:
@@ -418,7 +418,7 @@ class ComplianceResult:
     reason: str | None = None
     provider: str | None = None
     rule_id: str | None = None
-    reviewed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    reviewed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     audit_id: str | None = None  # Link to audit entry
 
 
@@ -450,14 +450,14 @@ class NLPolicyProvider:
 
     def __init__(self, settings: SardisSettings):
         self._settings = settings
-        self._policies: Dict[str, Any] = {}  # agent_id -> SpendingPolicy
+        self._policies: dict[str, Any] = {}  # agent_id -> SpendingPolicy
         self._fallback = SimpleRuleProvider(settings)
 
     def set_policy_for_agent(self, agent_id: str, policy: Any) -> None:
         """Set a spending policy for an agent."""
         self._policies[agent_id] = policy
 
-    def get_policy_for_agent(self, agent_id: str) -> Optional[Any]:
+    def get_policy_for_agent(self, agent_id: str) -> Any | None:
         """Get the spending policy for an agent."""
         return self._policies.get(agent_id)
 
@@ -680,12 +680,12 @@ class ComplianceEngine:
 
         return result
 
-    async def get_audit_history(self, mandate_id: str) -> List[ComplianceAuditEntry]:
+    async def get_audit_history(self, mandate_id: str) -> list[ComplianceAuditEntry]:
         """Get audit history for a mandate."""
         entries_or_awaitable = self._audit_store.get_by_mandate(mandate_id)
         return await entries_or_awaitable if isawaitable(entries_or_awaitable) else entries_or_awaitable
 
-    async def get_recent_audits(self, limit: int = 100) -> List[ComplianceAuditEntry]:
+    async def get_recent_audits(self, limit: int = 100) -> list[ComplianceAuditEntry]:
         """Get recent audit entries."""
         entries_or_awaitable = self._audit_store.get_recent(limit)
         return await entries_or_awaitable if isawaitable(entries_or_awaitable) else entries_or_awaitable

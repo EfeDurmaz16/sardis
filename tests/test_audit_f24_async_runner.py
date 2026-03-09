@@ -1,6 +1,7 @@
 """Tests for F24: Async runner should log and re-raise exceptions."""
 import asyncio
 import logging
+
 import pytest
 
 

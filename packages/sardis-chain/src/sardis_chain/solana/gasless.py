@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from .client import SolanaClient, SolanaConfig
+from .client import SolanaClient
 from .transfer import SolanaTransferParams, build_spl_transfer
 
 logger = logging.getLogger(__name__)

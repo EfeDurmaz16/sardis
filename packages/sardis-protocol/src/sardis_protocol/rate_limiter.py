@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +18,18 @@ class RateLimitConfig:
     """Rate limit configuration."""
     # Maximum mandates per minute per agent
     max_per_minute: int = 60
-    
+
     # Maximum mandates per hour per agent
     max_per_hour: int = 1000
-    
+
     # Maximum mandates per day per agent
     max_per_day: int = 10000
-    
+
     # Window sizes in seconds
     minute_window: int = 60
     hour_window: int = 3600
     day_window: int = 86400
-    
+
     # Whether to enable rate limiting
     enabled: bool = True
 
@@ -39,27 +38,27 @@ class RateLimitConfig:
 class RateLimitResult:
     """Result of rate limit check."""
     allowed: bool
-    reason: Optional[str] = None
-    remaining_minute: Optional[int] = None
-    remaining_hour: Optional[int] = None
-    remaining_day: Optional[int] = None
-    reset_at: Optional[float] = None
+    reason: str | None = None
+    remaining_minute: int | None = None
+    remaining_hour: int | None = None
+    remaining_day: int | None = None
+    reset_at: float | None = None
 
 
 @dataclass
 class AgentRateState:
     """Rate limit state for an agent."""
     # Sliding window counters: (count, window_start_time)
-    minute_counter: Tuple[int, float] = field(default_factory=lambda: (0, time.time()))
-    hour_counter: Tuple[int, float] = field(default_factory=lambda: (0, time.time()))
-    day_counter: Tuple[int, float] = field(default_factory=lambda: (0, time.time()))
-    
+    minute_counter: tuple[int, float] = field(default_factory=lambda: (0, time.time()))
+    hour_counter: tuple[int, float] = field(default_factory=lambda: (0, time.time()))
+    day_counter: tuple[int, float] = field(default_factory=lambda: (0, time.time()))
+
     # Last request timestamp
     last_request: float = 0.0
-    
+
     # Total requests (for stats)
     total_requests: int = 0
-    
+
     # Total rejections
     total_rejections: int = 0
 
@@ -67,32 +66,32 @@ class AgentRateState:
 class AgentRateLimiter:
     """
     Per-agent rate limiter using sliding window counters.
-    
+
     Supports in-memory state (for single instance) or can be backed
     by Redis for distributed deployments.
     """
-    
+
     def __init__(
         self,
-        config: Optional[RateLimitConfig] = None,
-        redis_client: Optional[object] = None,
+        config: RateLimitConfig | None = None,
+        redis_client: object | None = None,
     ):
         self._config = config or RateLimitConfig()
         self._redis = redis_client
-        self._state: Dict[str, AgentRateState] = {}
-    
+        self._state: dict[str, AgentRateState] = {}
+
     def check(self, agent_id: str) -> RateLimitResult:
         """
         Check if an agent is within rate limits.
-        
+
         Does NOT increment counters. Use check_and_increment for that.
         """
         if not self._config.enabled:
             return RateLimitResult(allowed=True)
-        
+
         state = self._get_state(agent_id)
         now = time.time()
-        
+
         # Check minute limit
         minute_count, minute_start = self._get_window_count(
             state.minute_counter, now, self._config.minute_window
@@ -105,7 +104,7 @@ class AgentRateLimiter:
                 remaining_minute=0,
                 reset_at=reset_at,
             )
-        
+
         # Check hour limit
         hour_count, hour_start = self._get_window_count(
             state.hour_counter, now, self._config.hour_window
@@ -118,7 +117,7 @@ class AgentRateLimiter:
                 remaining_hour=0,
                 reset_at=reset_at,
             )
-        
+
         # Check day limit
         day_count, day_start = self._get_window_count(
             state.day_counter, now, self._config.day_window
@@ -131,22 +130,22 @@ class AgentRateLimiter:
                 remaining_day=0,
                 reset_at=reset_at,
             )
-        
+
         return RateLimitResult(
             allowed=True,
             remaining_minute=self._config.max_per_minute - minute_count,
             remaining_hour=self._config.max_per_hour - hour_count,
             remaining_day=self._config.max_per_day - day_count,
         )
-    
+
     def check_and_increment(self, agent_id: str) -> RateLimitResult:
         """
         Check rate limits and increment counters if allowed.
-        
+
         This is the main method to use for rate limiting.
         """
         result = self.check(agent_id)
-        
+
         if result.allowed:
             self._increment(agent_id)
         else:
@@ -155,61 +154,61 @@ class AgentRateLimiter:
             logger.warning(
                 f"Rate limit exceeded for agent {agent_id}: {result.reason}"
             )
-        
+
         return result
-    
+
     def _get_state(self, agent_id: str) -> AgentRateState:
         """Get or create state for an agent."""
         if agent_id not in self._state:
             self._state[agent_id] = AgentRateState()
         return self._state[agent_id]
-    
+
     def _get_window_count(
         self,
-        counter: Tuple[int, float],
+        counter: tuple[int, float],
         now: float,
         window_size: int,
-    ) -> Tuple[int, float]:
+    ) -> tuple[int, float]:
         """Get the count for a sliding window, resetting if needed."""
         count, window_start = counter
-        
+
         if now - window_start >= window_size:
             # Window expired, start new one
             return (0, now)
-        
+
         return (count, window_start)
-    
+
     def _increment(self, agent_id: str) -> None:
         """Increment counters for an agent."""
         state = self._get_state(agent_id)
         now = time.time()
-        
+
         # Update minute counter
         minute_count, minute_start = self._get_window_count(
             state.minute_counter, now, self._config.minute_window
         )
         state.minute_counter = (minute_count + 1, minute_start if minute_count > 0 else now)
-        
+
         # Update hour counter
         hour_count, hour_start = self._get_window_count(
             state.hour_counter, now, self._config.hour_window
         )
         state.hour_counter = (hour_count + 1, hour_start if hour_count > 0 else now)
-        
+
         # Update day counter
         day_count, day_start = self._get_window_count(
             state.day_counter, now, self._config.day_window
         )
         state.day_counter = (day_count + 1, day_start if day_count > 0 else now)
-        
+
         state.last_request = now
         state.total_requests += 1
-    
-    def get_stats(self, agent_id: str) -> Dict[str, int]:
+
+    def get_stats(self, agent_id: str) -> dict[str, int]:
         """Get rate limit stats for an agent."""
         state = self._get_state(agent_id)
         now = time.time()
-        
+
         minute_count, _ = self._get_window_count(
             state.minute_counter, now, self._config.minute_window
         )
@@ -219,7 +218,7 @@ class AgentRateLimiter:
         day_count, _ = self._get_window_count(
             state.day_counter, now, self._config.day_window
         )
-        
+
         return {
             "requests_this_minute": minute_count,
             "requests_this_hour": hour_count,
@@ -227,12 +226,12 @@ class AgentRateLimiter:
             "total_requests": state.total_requests,
             "total_rejections": state.total_rejections,
         }
-    
+
     def reset(self, agent_id: str) -> None:
         """Reset rate limit state for an agent."""
         if agent_id in self._state:
             del self._state[agent_id]
-    
+
     def reset_all(self) -> None:
         """Reset all rate limit state."""
         self._state.clear()
@@ -241,30 +240,30 @@ class AgentRateLimiter:
 class RedisAgentRateLimiter:
     """
     Redis-backed per-agent rate limiter for distributed deployments.
-    
+
     Uses Redis INCR with EXPIRE for atomic sliding window counters.
     Falls back to in-memory rate limiting if Redis is unavailable.
-    
+
     Key format: rl:{agent_id}:{window}:{bucket}
     where bucket is the current time window identifier.
     """
-    
+
     KEY_PREFIX = "rl"
-    
+
     def __init__(
         self,
-        config: Optional[RateLimitConfig] = None,
-        redis_url: Optional[str] = None,
+        config: RateLimitConfig | None = None,
+        redis_url: str | None = None,
     ):
         self._config = config or RateLimitConfig()
         self._redis_url = redis_url
-        self._redis_client: Optional[object] = None
+        self._redis_client: object | None = None
         self._fallback = AgentRateLimiter(config)
         self._redis_available = False
-        
+
         if redis_url:
             self._init_redis(redis_url)
-    
+
     def _init_redis(self, redis_url: str) -> None:
         """Initialize Redis connection."""
         try:
@@ -285,15 +284,15 @@ class RedisAgentRateLimiter:
         except Exception as e:
             logger.warning(f"Redis connection failed, using in-memory fallback: {e}")
             self._redis_available = False
-    
+
     def _get_key(self, agent_id: str, window: str, bucket: int) -> str:
         """Generate Redis key for a rate limit bucket."""
         return f"{self.KEY_PREFIX}:{agent_id}:{window}:{bucket}"
-    
+
     def _get_bucket(self, window_size: int) -> int:
         """Get current time bucket for a window size."""
         return int(time.time() // window_size)
-    
+
     def _get_redis_count(
         self,
         agent_id: str,
@@ -303,7 +302,7 @@ class RedisAgentRateLimiter:
         """Get current count from Redis for a window."""
         if not self._redis_available or not self._redis_client:
             return 0
-        
+
         try:
             bucket = self._get_bucket(window_size)
             key = self._get_key(agent_id, window, bucket)
@@ -312,7 +311,7 @@ class RedisAgentRateLimiter:
         except Exception as e:
             logger.warning(f"Redis get failed: {e}")
             return 0
-    
+
     def _increment_redis(
         self,
         agent_id: str,
@@ -322,34 +321,34 @@ class RedisAgentRateLimiter:
         """Increment counter in Redis and return new count."""
         if not self._redis_available or not self._redis_client:
             return 0
-        
+
         try:
             bucket = self._get_bucket(window_size)
             key = self._get_key(agent_id, window, bucket)
-            
+
             # Use pipeline for atomic increment + expire
             pipe = self._redis_client.pipeline()
             pipe.incr(key)
             # Set expiry slightly longer than window to handle clock skew
             pipe.expire(key, window_size + 60)
             results = pipe.execute()
-            
+
             return results[0]  # Return the new count
         except Exception as e:
             logger.warning(f"Redis increment failed: {e}")
             return 0
-    
+
     def check(self, agent_id: str) -> RateLimitResult:
         """Check if an agent is within rate limits."""
         if not self._config.enabled:
             return RateLimitResult(allowed=True)
-        
+
         # Fall back to in-memory if Redis not available
         if not self._redis_available:
             return self._fallback.check(agent_id)
-        
-        now = time.time()
-        
+
+        time.time()
+
         # Check minute limit
         minute_count = self._get_redis_count(
             agent_id, "m", self._config.minute_window
@@ -363,7 +362,7 @@ class RedisAgentRateLimiter:
                 remaining_minute=0,
                 reset_at=reset_at,
             )
-        
+
         # Check hour limit
         hour_count = self._get_redis_count(
             agent_id, "h", self._config.hour_window
@@ -377,7 +376,7 @@ class RedisAgentRateLimiter:
                 remaining_hour=0,
                 reset_at=reset_at,
             )
-        
+
         # Check day limit
         day_count = self._get_redis_count(
             agent_id, "d", self._config.day_window
@@ -391,25 +390,25 @@ class RedisAgentRateLimiter:
                 remaining_day=0,
                 reset_at=reset_at,
             )
-        
+
         return RateLimitResult(
             allowed=True,
             remaining_minute=self._config.max_per_minute - minute_count,
             remaining_hour=self._config.max_per_hour - hour_count,
             remaining_day=self._config.max_per_day - day_count,
         )
-    
+
     def check_and_increment(self, agent_id: str) -> RateLimitResult:
         """Check rate limits and increment counters if allowed."""
         if not self._config.enabled:
             return RateLimitResult(allowed=True)
-        
+
         # Fall back to in-memory if Redis not available
         if not self._redis_available:
             return self._fallback.check_and_increment(agent_id)
-        
+
         result = self.check(agent_id)
-        
+
         if result.allowed:
             # Increment all windows
             self._increment_redis(agent_id, "m", self._config.minute_window)
@@ -419,14 +418,14 @@ class RedisAgentRateLimiter:
             logger.warning(
                 f"Rate limit exceeded for agent {agent_id}: {result.reason}"
             )
-        
+
         return result
-    
-    def get_stats(self, agent_id: str) -> Dict[str, int]:
+
+    def get_stats(self, agent_id: str) -> dict[str, int]:
         """Get rate limit stats for an agent."""
         if not self._redis_available:
             return self._fallback.get_stats(agent_id)
-        
+
         return {
             "requests_this_minute": self._get_redis_count(
                 agent_id, "m", self._config.minute_window
@@ -440,13 +439,13 @@ class RedisAgentRateLimiter:
             "total_requests": -1,  # Not tracked in Redis version
             "total_rejections": -1,  # Not tracked in Redis version
         }
-    
+
     def reset(self, agent_id: str) -> None:
         """Reset rate limit state for an agent."""
         if not self._redis_available or not self._redis_client:
             self._fallback.reset(agent_id)
             return
-        
+
         try:
             # Delete all keys for this agent
             pattern = f"{self.KEY_PREFIX}:{agent_id}:*"
@@ -455,13 +454,13 @@ class RedisAgentRateLimiter:
                 self._redis_client.delete(*keys)
         except Exception as e:
             logger.warning(f"Redis reset failed: {e}")
-    
+
     def reset_all(self) -> None:
         """Reset all rate limit state."""
         if not self._redis_available or not self._redis_client:
             self._fallback.reset_all()
             return
-        
+
         try:
             pattern = f"{self.KEY_PREFIX}:*"
             keys = self._redis_client.keys(pattern)
@@ -472,37 +471,37 @@ class RedisAgentRateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[AgentRateLimiter] = None
+_rate_limiter: AgentRateLimiter | None = None
 
 
 def get_rate_limiter(
-    config: Optional[RateLimitConfig] = None,
-    redis_url: Optional[str] = None,
+    config: RateLimitConfig | None = None,
+    redis_url: str | None = None,
 ) -> AgentRateLimiter | RedisAgentRateLimiter:
     """
     Get the global rate limiter instance.
-    
+
     If redis_url is provided, uses Redis-backed rate limiter.
     Otherwise uses in-memory rate limiter.
     """
     global _rate_limiter
-    
+
     if _rate_limiter is None:
         if redis_url:
             _rate_limiter = RedisAgentRateLimiter(config, redis_url)
         else:
             _rate_limiter = AgentRateLimiter(config)
-    
+
     return _rate_limiter
 
 
 def create_rate_limiter(
-    config: Optional[RateLimitConfig] = None,
-    redis_url: Optional[str] = None,
+    config: RateLimitConfig | None = None,
+    redis_url: str | None = None,
 ) -> AgentRateLimiter | RedisAgentRateLimiter:
     """
     Create a new rate limiter instance (does not use global).
-    
+
     Use this when you need independent rate limiters.
     """
     if redis_url:

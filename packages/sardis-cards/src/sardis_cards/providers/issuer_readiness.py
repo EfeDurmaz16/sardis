@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -15,7 +14,7 @@ class IssuerReadiness:
     card_issuing: bool
     required_env: tuple[str, ...]
     missing_env: tuple[str, ...]
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 def _readiness(name: str, stablecoin_native: bool, card_issuing: bool, required_env: tuple[str, ...], notes: str | None = None) -> IssuerReadiness:
@@ -38,7 +37,7 @@ def evaluate_issuer_readiness() -> list[IssuerReadiness]:
     This is intentionally lightweight: it does not call remote APIs.
     """
     stripe_api_key = os.getenv("STRIPE_API_KEY") or os.getenv("STRIPE_SECRET_KEY")
-    stripe_missing: tuple[str, ...] = tuple() if stripe_api_key else ("STRIPE_API_KEY|STRIPE_SECRET_KEY",)
+    stripe_missing: tuple[str, ...] = () if stripe_api_key else ("STRIPE_API_KEY|STRIPE_SECRET_KEY",)
     rows = [
         IssuerReadiness(
             name="stripe_issuing",

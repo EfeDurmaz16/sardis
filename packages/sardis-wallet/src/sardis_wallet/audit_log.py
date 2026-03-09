@@ -18,12 +18,16 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, Iterator, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Protocol,
+)
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet, Transaction
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -116,27 +120,27 @@ class AuditEntry:
     level: AuditLevel = AuditLevel.INFO
 
     # Actor information
-    actor_id: Optional[str] = None
+    actor_id: str | None = None
     actor_type: str = "user"  # "user", "system", "agent", "admin"
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
     # Context
-    ip_address: Optional[str] = None
-    device_id: Optional[str] = None
-    user_agent: Optional[str] = None
-    geo_location: Optional[str] = None
+    ip_address: str | None = None
+    device_id: str | None = None
+    user_agent: str | None = None
+    geo_location: str | None = None
 
     # Details
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
-    old_value: Optional[str] = None  # For changes
-    new_value: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    resource_type: str | None = None
+    resource_id: str | None = None
+    old_value: str | None = None  # For changes
+    new_value: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
     # Result
     success: bool = True
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
+    error_code: str | None = None
+    error_message: str | None = None
 
     # Hash chain for tamper detection
     previous_hash: str = ""
@@ -158,7 +162,7 @@ class AuditEntry:
         content = json.dumps(data, sort_keys=True)
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def to_dict(self, include_hash: bool = True) -> Dict[str, Any]:
+    def to_dict(self, include_hash: bool = True) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "entry_id": self.entry_id,
@@ -185,7 +189,7 @@ class AuditEntry:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AuditEntry":
+    def from_dict(cls, data: dict[str, Any]) -> AuditEntry:
         """Create from dictionary."""
         return cls(
             entry_id=data["entry_id"],
@@ -212,17 +216,17 @@ class AuditEntry:
 @dataclass
 class AuditQuery:
     """Query parameters for audit log search."""
-    wallet_id: Optional[str] = None
-    categories: Optional[List[AuditCategory]] = None
-    actions: Optional[List[AuditAction]] = None
-    levels: Optional[List[AuditLevel]] = None
-    actor_id: Optional[str] = None
-    resource_id: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    success_only: Optional[bool] = None
-    ip_address: Optional[str] = None
-    session_id: Optional[str] = None
+    wallet_id: str | None = None
+    categories: list[AuditCategory] | None = None
+    actions: list[AuditAction] | None = None
+    levels: list[AuditLevel] | None = None
+    actor_id: str | None = None
+    resource_id: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    success_only: bool | None = None
+    ip_address: str | None = None
+    session_id: str | None = None
 
     # Pagination
     offset: int = 0
@@ -250,9 +254,7 @@ class AuditQuery:
             return False
         if self.ip_address and entry.ip_address != self.ip_address:
             return False
-        if self.session_id and entry.session_id != self.session_id:
-            return False
-        return True
+        return not (self.session_id and entry.session_id != self.session_id)
 
 
 @dataclass
@@ -262,9 +264,9 @@ class AuditStats:
     period_start: datetime
     period_end: datetime
     total_entries: int = 0
-    entries_by_category: Dict[str, int] = field(default_factory=dict)
-    entries_by_action: Dict[str, int] = field(default_factory=dict)
-    entries_by_level: Dict[str, int] = field(default_factory=dict)
+    entries_by_category: dict[str, int] = field(default_factory=dict)
+    entries_by_action: dict[str, int] = field(default_factory=dict)
+    entries_by_level: dict[str, int] = field(default_factory=dict)
     success_count: int = 0
     failure_count: int = 0
     unique_actors: int = 0
@@ -310,11 +312,11 @@ class AuditStorageBackend(Protocol):
         """Store an audit entry."""
         ...
 
-    async def query(self, query: AuditQuery) -> List[AuditEntry]:
+    async def query(self, query: AuditQuery) -> list[AuditEntry]:
         """Query audit entries."""
         ...
 
-    async def get_entry(self, entry_id: str) -> Optional[AuditEntry]:
+    async def get_entry(self, entry_id: str) -> AuditEntry | None:
         """Get a specific entry."""
         ...
 
@@ -327,9 +329,9 @@ class InMemoryAuditStorage:
     """In-memory audit storage for testing/development."""
 
     def __init__(self):
-        self._entries: List[AuditEntry] = []
-        self._by_wallet: Dict[str, List[int]] = defaultdict(list)
-        self._by_id: Dict[str, int] = {}
+        self._entries: list[AuditEntry] = []
+        self._by_wallet: dict[str, list[int]] = defaultdict(list)
+        self._by_id: dict[str, int] = {}
 
     async def store(self, entry: AuditEntry) -> bool:
         """Store an audit entry."""
@@ -339,7 +341,7 @@ class InMemoryAuditStorage:
         self._by_id[entry.entry_id] = index
         return True
 
-    async def query(self, query: AuditQuery) -> List[AuditEntry]:
+    async def query(self, query: AuditQuery) -> list[AuditEntry]:
         """Query audit entries."""
         if query.wallet_id:
             indices = self._by_wallet.get(query.wallet_id, [])
@@ -356,7 +358,7 @@ class InMemoryAuditStorage:
         # Paginate
         return results[query.offset:query.offset + query.limit]
 
-    async def get_entry(self, entry_id: str) -> Optional[AuditEntry]:
+    async def get_entry(self, entry_id: str) -> AuditEntry | None:
         """Get a specific entry."""
         index = self._by_id.get(entry_id)
         if index is not None:
@@ -385,14 +387,14 @@ class AuditLogger:
 
     def __init__(
         self,
-        storage: Optional[AuditStorageBackend] = None,
-        retention_policy: Optional[RetentionPolicy] = None,
+        storage: AuditStorageBackend | None = None,
+        retention_policy: RetentionPolicy | None = None,
     ):
         self._storage = storage or InMemoryAuditStorage()
         self._retention = retention_policy or RetentionPolicy()
 
         # Hash chain tracking
-        self._last_hash: Dict[str, str] = {}  # wallet_id -> last hash
+        self._last_hash: dict[str, str] = {}  # wallet_id -> last hash
         self._entry_counter: int = 0
 
         # Lock for thread safety
@@ -402,7 +404,7 @@ class AuditLogger:
         """Generate a unique entry ID."""
         import secrets
         self._entry_counter += 1
-        return f"audit_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(6)}"
+        return f"audit_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(6)}"
 
     async def log(
         self,
@@ -410,19 +412,19 @@ class AuditLogger:
         category: AuditCategory,
         action: AuditAction,
         level: AuditLevel = AuditLevel.INFO,
-        actor_id: Optional[str] = None,
+        actor_id: str | None = None,
         actor_type: str = "user",
-        session_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        device_id: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        old_value: Optional[str] = None,
-        new_value: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        session_id: str | None = None,
+        ip_address: str | None = None,
+        device_id: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        old_value: str | None = None,
+        new_value: str | None = None,
+        details: dict[str, Any] | None = None,
         success: bool = True,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
     ) -> AuditEntry:
         """
         Log an audit event.
@@ -451,7 +453,7 @@ class AuditLogger:
         """
         async with self._lock:
             entry_id = self._generate_entry_id()
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
             # Get previous hash for chain
             previous_hash = self._last_hash.get(wallet_id, "genesis")
@@ -506,10 +508,10 @@ class AuditLogger:
         self,
         wallet_id: str,
         action: AuditAction,
-        tx_hash: Optional[str] = None,
-        amount: Optional[str] = None,
-        token: Optional[str] = None,
-        to_address: Optional[str] = None,
+        tx_hash: str | None = None,
+        amount: str | None = None,
+        token: str | None = None,
+        to_address: str | None = None,
         **kwargs,
     ) -> AuditEntry:
         """Convenience method for logging transactions."""
@@ -562,7 +564,7 @@ class AuditLogger:
         self,
         wallet_id: str,
         action: AuditAction,
-        method: Optional[str] = None,
+        method: str | None = None,
         **kwargs,
     ) -> AuditEntry:
         """Convenience method for logging authentication events."""
@@ -581,7 +583,7 @@ class AuditLogger:
             **kwargs,
         )
 
-    async def query(self, query: AuditQuery) -> List[Dict[str, Any]]:
+    async def query(self, query: AuditQuery) -> list[dict[str, Any]]:
         """
         Query audit logs.
 
@@ -594,12 +596,12 @@ class AuditLogger:
         entries = await self._storage.query(query)
         return [e.to_dict() for e in entries]
 
-    async def get_entry(self, entry_id: str) -> Optional[Dict[str, Any]]:
+    async def get_entry(self, entry_id: str) -> dict[str, Any] | None:
         """Get a specific audit entry."""
         entry = await self._storage.get_entry(entry_id)
         return entry.to_dict() if entry else None
 
-    async def verify_chain(self, wallet_id: str) -> Tuple[bool, List[str]]:
+    async def verify_chain(self, wallet_id: str) -> tuple[bool, list[str]]:
         """
         Verify the hash chain integrity for a wallet.
 
@@ -638,14 +640,14 @@ class AuditLogger:
     async def get_stats(
         self,
         wallet_id: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> AuditStats:
         """Get statistics for audit logs."""
         if not start_time:
-            start_time = datetime.now(timezone.utc) - timedelta(days=30)
+            start_time = datetime.now(UTC) - timedelta(days=30)
         if not end_time:
-            end_time = datetime.now(timezone.utc)
+            end_time = datetime.now(UTC)
 
         query = AuditQuery(
             wallet_id=wallet_id,
@@ -702,8 +704,8 @@ class AuditLogger:
     async def export(
         self,
         wallet_id: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         format: str = "json",
         compress: bool = False,
     ) -> bytes:
@@ -762,7 +764,7 @@ class AuditLogger:
         Returns:
             Number of entries deleted
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         total_deleted = 0
 
         for level in AuditLevel:
@@ -779,7 +781,7 @@ class AuditLogger:
 
 
 # Singleton instance
-_audit_logger: Optional[AuditLogger] = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_audit_logger() -> AuditLogger:

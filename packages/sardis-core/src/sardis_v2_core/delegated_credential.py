@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class CredentialNetwork(str, Enum):
@@ -100,7 +100,7 @@ class CredentialScope:
     daily_limit: Decimal = Decimal("2000")
     allowed_mccs: list[str] = field(default_factory=list)
     allowed_merchant_ids: list[str] = field(default_factory=list)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -171,26 +171,24 @@ class DelegatedCredential:
     consent_id: str = ""
 
     # Timestamps
-    last_used_at: Optional[datetime] = None
+    last_used_at: datetime | None = None
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     @property
     def is_valid(self) -> bool:
         """Status + expiry check."""
         if self.status != CredentialStatus.ACTIVE:
             return False
-        if self.expires_at and datetime.now(timezone.utc) >= self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) >= self.expires_at)
 
     def can_execute(
         self,
         amount: Decimal,
-        merchant_id: Optional[str] = None,
-        mcc_code: Optional[str] = None,
+        merchant_id: str | None = None,
+        mcc_code: str | None = None,
     ) -> tuple[bool, str]:
         """Local scope check — mirrors VirtualCard.can_authorize()."""
         if not self.is_valid:
@@ -215,7 +213,7 @@ class DelegatedCredential:
         ):
             return False, f"MCC {mcc_code} not in allowed list"
 
-        if self.scope.expires_at and datetime.now(timezone.utc) >= self.scope.expires_at:
+        if self.scope.expires_at and datetime.now(UTC) >= self.scope.expires_at:
             return False, "credential scope expired"
 
         return True, "OK"

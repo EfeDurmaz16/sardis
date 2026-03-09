@@ -19,10 +19,10 @@ import logging
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +53,10 @@ class OriginatorInfo:
     """FATF-required originator information."""
     name: str
     account_id: str  # wallet address or agent ID
-    address: Optional[str] = None
-    country: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    national_id: Optional[str] = None
+    address: str | None = None
+    country: str | None = None
+    date_of_birth: str | None = None
+    national_id: str | None = None
 
 
 @dataclass
@@ -64,26 +64,26 @@ class BeneficiaryInfo:
     """FATF-required beneficiary information."""
     name: str
     account_id: str  # wallet address
-    vasp_id: Optional[str] = None
-    address: Optional[str] = None
-    country: Optional[str] = None
+    vasp_id: str | None = None
+    address: str | None = None
+    country: str | None = None
 
 
 @dataclass
 class TravelRuleTransfer:
     """A transfer subject to Travel Rule compliance."""
     transfer_id: str = field(default_factory=lambda: f"tr_{uuid.uuid4().hex[:16]}")
-    tx_id: Optional[str] = None
+    tx_id: str | None = None
     amount: Decimal = Decimal("0")
     currency: str = "USDC"
-    chain: Optional[str] = None
-    originator: Optional[OriginatorInfo] = None
-    beneficiary: Optional[BeneficiaryInfo] = None
+    chain: str | None = None
+    originator: OriginatorInfo | None = None
+    beneficiary: BeneficiaryInfo | None = None
     status: TravelRuleStatus = TravelRuleStatus.PENDING
     protocol: VASPProtocol = VASPProtocol.MANUAL
-    vasp_response: Optional[Dict[str, Any]] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    vasp_response: dict[str, Any] | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
 
 class TravelRuleProvider(ABC):
@@ -129,13 +129,13 @@ class TravelRuleService:
 
     def __init__(
         self,
-        provider: Optional[TravelRuleProvider] = None,
+        provider: TravelRuleProvider | None = None,
         threshold_usd: Decimal = TRAVEL_RULE_THRESHOLD_USD,
-        dsn: Optional[str] = None,
+        dsn: str | None = None,
     ):
         self._provider = provider or ManualTravelRuleProvider()
         self._threshold = threshold_usd
-        self._transfers: Dict[str, TravelRuleTransfer] = {}
+        self._transfers: dict[str, TravelRuleTransfer] = {}
         self._dsn = dsn
         self._pool = None
 
@@ -156,7 +156,7 @@ class TravelRuleService:
         chain: str,
         originator: OriginatorInfo,
         beneficiary: BeneficiaryInfo,
-        tx_id: Optional[str] = None,
+        tx_id: str | None = None,
     ) -> TravelRuleTransfer:
         """Create a Travel Rule transfer record and initiate VASP messaging."""
         transfer = TravelRuleTransfer(
@@ -241,8 +241,8 @@ class TravelRuleService:
 
 
 def create_travel_rule_service(
-    dsn: Optional[str] = None,
-    threshold_usd: Optional[Decimal] = None,
+    dsn: str | None = None,
+    threshold_usd: Decimal | None = None,
 ) -> TravelRuleService:
     """Factory function to create Travel Rule service."""
     return TravelRuleService(

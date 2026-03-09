@@ -1,7 +1,9 @@
 """Tests for sardis-browser-use tools."""
 import os
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+
 from sardis import SardisClient
 
 

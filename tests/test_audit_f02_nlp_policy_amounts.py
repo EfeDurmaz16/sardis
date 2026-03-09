@@ -1,7 +1,8 @@
 """Test F02: NLPolicyProvider uses normalize_token_amount instead of hardcoded /100."""
 import time
 from decimal import Decimal
-from sardis_compliance.checks import NLPolicyProvider, ComplianceResult
+
+from sardis_compliance.checks import NLPolicyProvider
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 

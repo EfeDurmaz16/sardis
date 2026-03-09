@@ -24,11 +24,11 @@ import asyncio
 import hashlib
 import os
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 try:
-    from llama_index.core.tools import FunctionTool, AsyncBaseTool, ToolMetadata
+    from llama_index.core.tools import AsyncBaseTool, FunctionTool, ToolMetadata
     LLAMA_INDEX_AVAILABLE = True
 except ImportError:
     FunctionTool = None
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 def _generate_mandate_id() -> str:
     """Generate a unique mandate ID."""
-    timestamp = hex(int(datetime.now(timezone.utc).timestamp() * 1000))[2:]
+    timestamp = hex(int(datetime.now(UTC).timestamp() * 1000))[2:]
     random_part = uuid.uuid4().hex[:8]
     return f"mnd_{timestamp}{random_part}"
 
@@ -62,9 +62,9 @@ class SardisPaymentTool:
 
     def __init__(
         self,
-        client: "SardisClient",
+        client: SardisClient,
         wallet_id: str,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         chain: str = "base_sepolia",
     ):
         self.client = client
@@ -77,7 +77,7 @@ class SardisPaymentTool:
         amount: float,
         merchant: str,
         purpose: str = "Service payment",
-        merchant_address: Optional[str] = None,
+        merchant_address: str | None = None,
         token: str = "USDC",
     ) -> str:
         """
@@ -117,7 +117,7 @@ class SardisPaymentTool:
         amount: float,
         merchant: str,
         purpose: str,
-        merchant_address: Optional[str],
+        merchant_address: str | None,
         token: str,
     ) -> str:
         """Async implementation of payment."""
@@ -129,7 +129,7 @@ class SardisPaymentTool:
 
         try:
             mandate_id = _generate_mandate_id()
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(UTC).isoformat()
             amount_minor = str(int(amount * 1_000_000))
 
             audit_data = f"{mandate_id}:{self.wallet_id}:{merchant_address or merchant}:{amount_minor}:{token}:{timestamp}"
@@ -176,7 +176,7 @@ class SardisPaymentTool:
                 )
             return f"Error: Payment failed - {error_msg}"
 
-    def check_balance(self, token: str = "USDC", chain: Optional[str] = None) -> str:
+    def check_balance(self, token: str = "USDC", chain: str | None = None) -> str:
         """
         Check wallet balance.
 
@@ -219,7 +219,7 @@ class SardisPaymentTool:
                 f"  Address: {balance.address}"
             )
         except Exception as e:
-            return f"Error checking balance: {str(e)}"
+            return f"Error checking balance: {e!s}"
 
     def check_policy(self, amount: float, merchant: str) -> str:
         """
@@ -277,13 +277,13 @@ class SardisPaymentTool:
             return f"{status}: Payment of ${amount} to {merchant}\nPolicy checks:\n{checks_str}"
 
         except Exception as e:
-            return f"Error checking policy: {str(e)}"
+            return f"Error checking policy: {e!s}"
 
 
 def create_sardis_tools(
-    client: "SardisClient",
+    client: SardisClient,
     wallet_id: str,
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     chain: str = "base_sepolia",
 ) -> list[Any]:
     """
@@ -359,9 +359,9 @@ def create_sardis_tools(
 
 
 def get_llamaindex_tool(
-    client: Optional["SardisClient"] = None,
-    wallet_id: Optional[str] = None,
-    agent_id: Optional[str] = None,
+    client: SardisClient | None = None,
+    wallet_id: str | None = None,
+    agent_id: str | None = None,
     chain: str = "base_sepolia",
 ) -> Any:
     """

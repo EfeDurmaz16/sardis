@@ -18,10 +18,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from .database import Database
 
@@ -53,9 +52,9 @@ class MerchantProfile:
     """Snapshot of a merchant's trust state."""
 
     merchant_id: str
-    merchant_name: Optional[str]
-    category: Optional[str]
-    mcc_code: Optional[str]
+    merchant_name: str | None
+    category: str | None
+    mcc_code: str | None
     trust_level: MerchantTrustLevel
     trust_score: float          # 0.0 – 1.0
     first_seen: datetime
@@ -82,7 +81,7 @@ class MerchantTrustService:
     # Public read API
     # ------------------------------------------------------------------
 
-    async def get_profile(self, merchant_id: str) -> Optional[MerchantProfile]:
+    async def get_profile(self, merchant_id: str) -> MerchantProfile | None:
         """Return the stored profile for *merchant_id*, or ``None`` if absent."""
         row = await Database.fetchrow(
             """
@@ -102,9 +101,9 @@ class MerchantTrustService:
     async def get_or_create_profile(
         self,
         merchant_id: str,
-        merchant_name: Optional[str] = None,
-        category: Optional[str] = None,
-        mcc_code: Optional[str] = None,
+        merchant_name: str | None = None,
+        category: str | None = None,
+        mcc_code: str | None = None,
     ) -> MerchantProfile:
         """Return the existing profile or insert a new one with UNKNOWN trust.
 
@@ -116,7 +115,7 @@ class MerchantTrustService:
             existing.is_first_seen = False
             return existing
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await Database.execute(
             """
             INSERT INTO merchant_trust_profiles (
@@ -176,7 +175,7 @@ class MerchantTrustService:
 
         new_count = profile.transaction_count + 1
         new_volume = profile.total_volume + amount if success else profile.total_volume
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Recompute dispute rate with the new count denominator
         new_dispute_rate = (
@@ -242,7 +241,7 @@ class MerchantTrustService:
             if profile.transaction_count > 0
             else 1.0
         )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         updated = MerchantProfile(
             merchant_id=profile.merchant_id,
@@ -293,7 +292,7 @@ class MerchantTrustService:
     async def verify_merchant(self, merchant_id: str) -> MerchantProfile:
         """Manually elevate a merchant to VERIFIED trust (admin action)."""
         profile = await self.get_or_create_profile(merchant_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         updated = MerchantProfile(
             merchant_id=profile.merchant_id,
@@ -393,9 +392,7 @@ class MerchantTrustService:
 
         # Volume-of-money bonuses
         volume_float = float(profile.total_volume)
-        if volume_float > 10_000:
-            score += 0.1
-        elif volume_float > 1_000:
+        if volume_float > 10_000 or volume_float > 1_000:
             score += 0.1
 
         # Dispute rate penalties (cumulative levels)

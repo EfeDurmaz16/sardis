@@ -1,13 +1,15 @@
 """Webhook models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from .base import SardisModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class WebhookEventType(str, Enum):
@@ -37,7 +39,7 @@ class Webhook(SardisModel):
     total_deliveries: int = 0
     successful_deliveries: int = 0
     failed_deliveries: int = 0
-    last_delivery_at: Optional[datetime] = None
+    last_delivery_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -59,9 +61,9 @@ class WebhookDelivery(SardisModel):
     event_id: str
     event_type: str
     url: str
-    status_code: Optional[int] = None
+    status_code: int | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     duration_ms: int = 0
     attempt_number: int = 1
     created_at: datetime
@@ -72,12 +74,12 @@ class CreateWebhookRequest(SardisModel):
     
     url: str
     events: list[str]
-    organization_id: Optional[str] = None
+    organization_id: str | None = None
 
 
 class UpdateWebhookRequest(SardisModel):
     """Request to update a webhook subscription."""
     
-    url: Optional[str] = None
-    events: Optional[list[str]] = None
-    is_active: Optional[bool] = None
+    url: str | None = None
+    events: list[str] | None = None
+    is_active: bool | None = None

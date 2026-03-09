@@ -13,9 +13,8 @@ References:
 
 from __future__ import annotations
 
-from web3 import Web3
 from eth_abi import encode
-
+from web3 import Web3
 
 # ============ Canonical Safe Addresses ============
 # Same on all EVM chains (CREATE2 deterministic deployment)

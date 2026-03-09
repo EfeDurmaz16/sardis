@@ -11,9 +11,9 @@ Tests the complete on-ramp flow including:
 Run with: pytest tests/e2e/test_onramp_e2e.py -v
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
-from decimal import Decimal
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -37,7 +37,7 @@ class TestOnrampFunding:
             )
 
             # Fund wallet from bank (ACH)
-            wallet_id = f"wallet_onramp_test_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_onramp_test_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 result = await ramp.fund_wallet(
@@ -85,7 +85,7 @@ class TestOnrampFunding:
                 environment="sandbox",
             )
 
-            wallet_id = f"wallet_card_test_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_card_test_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 result = await ramp.fund_wallet(
@@ -122,7 +122,7 @@ class TestOnrampFunding:
                 environment="sandbox",
             )
 
-            wallet_id = f"wallet_crypto_test_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_crypto_test_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 result = await ramp.fund_wallet(
@@ -156,7 +156,7 @@ class TestOnrampKYC:
     async def test_kyc_required_for_large_onramp(self, api_key, api_url):
         """Should require KYC for on-ramp above threshold."""
         try:
-            from sardis_ramp import SardisFiatRamp, KYCRequired
+            from sardis_ramp import KYCRequired, SardisFiatRamp
             from sardis_ramp.ramp_types import FundingMethod
 
             # Set a low KYC threshold for testing
@@ -167,12 +167,12 @@ class TestOnrampKYC:
                 kyc_threshold_usd=1000.00,
             )
 
-            wallet_id = f"wallet_kyc_test_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_kyc_test_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 # Try to fund with amount above threshold
                 # In sandbox mode, this may bypass KYC, but in production it would require it
-                result = await ramp.fund_wallet(
+                await ramp.fund_wallet(
                     wallet_id=wallet_id,
                     amount_usd=5000.00,
                     method=FundingMethod.BANK,
@@ -209,7 +209,7 @@ class TestOnrampKYC:
                 kyc_threshold_usd=1000.00,
             )
 
-            wallet_id = f"wallet_below_kyc_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_below_kyc_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 # Amount below threshold - should not require KYC
@@ -316,11 +316,12 @@ class TestOnrampWebhook:
     async def test_onramp_webhook_completion(self, api_key, api_url):
         """Should handle Onramper completion webhook."""
         try:
-            import httpx
             import hashlib
             import hmac
             import json
             import time
+
+            import httpx
 
             # Simulate Onramper webhook payload
             payload = {
@@ -389,7 +390,7 @@ class TestOnrampIntegration:
                 environment="sandbox",
             )
 
-            wallet_id = f"wallet_e2e_test_{int(datetime.now(timezone.utc).timestamp())}"
+            wallet_id = f"wallet_e2e_test_{int(datetime.now(UTC).timestamp())}"
 
             try:
                 # Step 1: Initiate funding

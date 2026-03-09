@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
 
 import httpx
 
@@ -44,9 +43,9 @@ class VerificationResult:
 
     address: str
     is_verified: bool
-    attestation_uid: Optional[str] = None
-    attester: Optional[str] = None
-    timestamp: Optional[int] = None
+    attestation_uid: str | None = None
+    attester: str | None = None
+    timestamp: int | None = None
 
 
 @dataclass

@@ -14,11 +14,17 @@ import hashlib
 import json
 import logging
 import uuid
+from collections.abc import Sequence
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
+from .engine import (
+    InsufficientBalanceError,
+    LedgerError,
+    ValidationError,
+)
 from .models import (
     AuditAction,
     AuditLog,
@@ -29,12 +35,6 @@ from .models import (
     LedgerEntryType,
     to_ledger_decimal,
     validate_amount,
-)
-from .engine import (
-    BatchProcessingError,
-    InsufficientBalanceError,
-    LedgerError,
-    ValidationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class PostgresLedgerEngine:
         self,
         account_id: str,
         currency: str = "USDC",
-        at_time: Optional[datetime] = None,
+        at_time: datetime | None = None,
     ) -> Decimal:
         """Get account balance by aggregating ledger entries."""
         pool = await self._get_pool()
@@ -140,15 +140,15 @@ class PostgresLedgerEngine:
         amount: Decimal,
         entry_type: LedgerEntryType,
         currency: str = "USDC",
-        tx_id: Optional[str] = None,
-        chain: Optional[str] = None,
-        chain_tx_hash: Optional[str] = None,
-        block_number: Optional[int] = None,
-        audit_anchor: Optional[str] = None,
+        tx_id: str | None = None,
+        chain: str | None = None,
+        chain_tx_hash: str | None = None,
+        block_number: int | None = None,
+        audit_anchor: str | None = None,
         fee: Decimal = Decimal("0"),
-        metadata: Optional[Dict[str, Any]] = None,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> LedgerEntry:
         """Create a ledger entry with advisory lock concurrency."""
         amount = to_ledger_decimal(amount)
@@ -160,31 +160,30 @@ class PostgresLedgerEngine:
 
         entry_id = f"le_{uuid.uuid4().hex[:20]}"
         final_tx_id = tx_id or self._generate_tx_id()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pool = await self._get_pool()
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                async with self._advisory_lock(conn, account_id):
-                    # Balance check for debits
-                    if entry_type in (LedgerEntryType.DEBIT, LedgerEntryType.FEE):
-                        current = await self._get_balance_in_tx(conn, account_id, currency)
-                        required = amount + fee
-                        if current < required:
-                            raise InsufficientBalanceError(account_id, required, current)
-
-                    # Calculate running balance
+        async with pool.acquire() as conn, conn.transaction():
+            async with self._advisory_lock(conn, account_id):
+                # Balance check for debits
+                if entry_type in (LedgerEntryType.DEBIT, LedgerEntryType.FEE):
                     current = await self._get_balance_in_tx(conn, account_id, currency)
-                    if entry_type in (LedgerEntryType.CREDIT, LedgerEntryType.REFUND):
-                        running = current + amount
-                    elif entry_type in (LedgerEntryType.DEBIT, LedgerEntryType.FEE):
-                        running = current - amount - fee
-                    else:
-                        running = current
+                    required = amount + fee
+                    if current < required:
+                        raise InsufficientBalanceError(account_id, required, current)
 
-                    # Insert
-                    await conn.execute(
-                        """
+                # Calculate running balance
+                current = await self._get_balance_in_tx(conn, account_id, currency)
+                if entry_type in (LedgerEntryType.CREDIT, LedgerEntryType.REFUND):
+                    running = current + amount
+                elif entry_type in (LedgerEntryType.DEBIT, LedgerEntryType.FEE):
+                    running = current - amount - fee
+                else:
+                    running = current
+
+                # Insert
+                await conn.execute(
+                    """
                         INSERT INTO ledger_entries_v2
                             (entry_id, tx_id, account_id, entry_type, amount, fee,
                              running_balance, currency, chain, chain_tx_hash,
@@ -192,33 +191,33 @@ class PostgresLedgerEngine:
                              metadata, created_at)
                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
                         """,
-                        entry_id,
-                        final_tx_id,
-                        account_id,
-                        entry_type.value,
-                        float(amount),
-                        float(fee),
-                        float(running),
-                        currency,
-                        chain,
-                        chain_tx_hash,
-                        block_number,
-                        audit_anchor,
-                        LedgerEntryStatus.CONFIRMED.value,
-                        now,
-                        json.dumps(metadata or {}),
-                        now,
-                    )
+                    entry_id,
+                    final_tx_id,
+                    account_id,
+                    entry_type.value,
+                    float(amount),
+                    float(fee),
+                    float(running),
+                    currency,
+                    chain,
+                    chain_tx_hash,
+                    block_number,
+                    audit_anchor,
+                    LedgerEntryStatus.CONFIRMED.value,
+                    now,
+                    json.dumps(metadata or {}),
+                    now,
+                )
 
-                    # Audit log
-                    if self.enable_audit:
-                        await self._add_audit_log(
-                            conn,
-                            action=AuditAction.CREATE,
-                            entity_type="ledger_entry",
-                            entity_id=entry_id,
-                            actor_id=actor_id,
-                        )
+                # Audit log
+                if self.enable_audit:
+                    await self._add_audit_log(
+                        conn,
+                        action=AuditAction.CREATE,
+                        entity_type="ledger_entry",
+                        entity_id=entry_id,
+                        actor_id=actor_id,
+                    )
 
         entry = LedgerEntry(
             entry_id=entry_id,
@@ -269,7 +268,7 @@ class PostgresLedgerEngine:
         )
         return to_ledger_decimal(row["balance"]) if row else Decimal("0")
 
-    async def get_entry(self, entry_id: str) -> Optional[LedgerEntry]:
+    async def get_entry(self, entry_id: str) -> LedgerEntry | None:
         """Get a ledger entry by ID."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -284,14 +283,14 @@ class PostgresLedgerEngine:
     async def get_entries(
         self,
         account_id: str,
-        currency: Optional[str] = None,
-        entry_type: Optional[LedgerEntryType] = None,
-        status: Optional[LedgerEntryStatus] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        currency: str | None = None,
+        entry_type: LedgerEntryType | None = None,
+        status: LedgerEntryStatus | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[LedgerEntry]:
+    ) -> list[LedgerEntry]:
         """Get ledger entries with filtering."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -330,8 +329,8 @@ class PostgresLedgerEngine:
         self,
         entry_id: str,
         reason: str,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> LedgerEntry:
         """Rollback a ledger entry by creating a reversal."""
         original = await self.get_entry(entry_id)
@@ -371,14 +370,14 @@ class PostgresLedgerEngine:
 
     async def get_audit_logs(
         self,
-        entity_type: Optional[str] = None,
-        entity_id: Optional[str] = None,
-        action: Optional[AuditAction] = None,
-        actor_id: Optional[str] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        entity_type: str | None = None,
+        entity_id: str | None = None,
+        action: AuditAction | None = None,
+        actor_id: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 100,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """Get audit logs from DB."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -439,13 +438,13 @@ class PostgresLedgerEngine:
 
     async def create_batch(
         self,
-        entries: Sequence[Dict[str, Any]],
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        entries: Sequence[dict[str, Any]],
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> BatchTransaction:
         """Create and process a batch of entries atomically."""
         batch_id = f"batch_{uuid.uuid4().hex[:16]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -463,7 +462,7 @@ class PostgresLedgerEngine:
                     now,
                 )
 
-                created: List[LedgerEntry] = []
+                created: list[LedgerEntry] = []
                 for i, spec in enumerate(entries):
                     entry_type = spec.get("entry_type")
                     if isinstance(entry_type, str):
@@ -493,7 +492,7 @@ class PostgresLedgerEngine:
                         i,
                     )
 
-                completed_at = datetime.now(timezone.utc)
+                completed_at = datetime.now(UTC)
                 await conn.execute(
                     "UPDATE ledger_batches SET status = $1, completed_at = $2 WHERE batch_id = $3",
                     LedgerEntryStatus.CONFIRMED.value,
@@ -524,8 +523,8 @@ class PostgresLedgerEngine:
         self,
         batch_id: str,
         reason: str,
-        actor_id: Optional[str] = None,
-        request_id: Optional[str] = None,
+        actor_id: str | None = None,
+        request_id: str | None = None,
     ) -> BatchTransaction:
         """Rollback an entire batch."""
         pool = await self._get_pool()
@@ -558,7 +557,7 @@ class PostgresLedgerEngine:
                         request_id,
                     )
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             async with conn.transaction():
                 await conn.execute(
                     """
@@ -592,7 +591,7 @@ class PostgresLedgerEngine:
         logger.info("Rolled back batch (DB): %s, entries=%d", batch_id, len(entries))
         return batch
 
-    async def get_batch(self, batch_id: str) -> Optional[BatchTransaction]:
+    async def get_batch(self, batch_id: str) -> BatchTransaction | None:
         """Get a batch by ID."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -629,9 +628,9 @@ class PostgresLedgerEngine:
         self,
         account_id: str,
         currency: str = "USDC",
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
-    ) -> List[BalanceSnapshot]:
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> list[BalanceSnapshot]:
         """Get balance snapshots for an account."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -667,7 +666,7 @@ class PostgresLedgerEngine:
     # Audit chain verification
     # ------------------------------------------------------------------
 
-    async def verify_audit_chain(self) -> Tuple[bool, Optional[str]]:
+    async def verify_audit_chain(self) -> tuple[bool, str | None]:
         """Verify integrity of audit log hash chain."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -710,11 +709,11 @@ class PostgresLedgerEngine:
         action: AuditAction,
         entity_type: str,
         entity_id: str,
-        actor_id: Optional[str] = None,
+        actor_id: str | None = None,
     ) -> None:
         """Insert hash-chained audit log entry into ledger_audit_log."""
         audit_id = f"aud_{uuid.uuid4().hex[:16]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Get previous hash for chain
         prev = await conn.fetchval(

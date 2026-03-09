@@ -38,9 +38,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 from .stripe_treasury import StripeTreasuryProvider
 from .sub_ledger import SubLedgerManager
@@ -62,7 +62,7 @@ class FiatPaymentResult:
     card_tx_id: str = ""
     ramp_session_id: str = ""
     error: str = ""
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class FiatPaymentOrchestrator:
@@ -112,8 +112,8 @@ class FiatPaymentOrchestrator:
         self,
         treasury: StripeTreasuryProvider,
         sub_ledger: SubLedgerManager,
-        ramp_router: Optional[object] = None,  # RampRouter type hint avoided for circular import
-        issuing_provider: Optional[object] = None,  # StripeIssuingProvider
+        ramp_router: object | None = None,  # RampRouter type hint avoided for circular import
+        issuing_provider: object | None = None,  # StripeIssuingProvider
     ):
         """Initialize the fiat payment orchestrator.
 
@@ -372,7 +372,7 @@ class FiatPaymentOrchestrator:
                     agent_id=agent_id,
                     amount=amount_usd,
                     reference_id=destination_account,
-                    description=description or f"Withdrawal to bank",
+                    description=description or "Withdrawal to bank",
                     sub_ledger_tx_id=tx.tx_id,
                     treasury_tx_id=payment.id,
                 )
@@ -544,7 +544,7 @@ class FiatPaymentOrchestrator:
                     agent_id=agent_id,
                     amount=amount_usd,
                     reference_id=wallet_address,
-                    description=f"Funded from crypto, pending Issuing transfer",
+                    description="Funded from crypto, pending Issuing transfer",
                     sub_ledger_tx_id=tx.tx_id,
                     ramp_session_id=ramp_session.session_id,
                     error=f"Issuing funding failed: {e}",
@@ -627,7 +627,7 @@ class FiatPaymentOrchestrator:
     async def handle_treasury_credit(
         self,
         event_data: dict,
-    ) -> Optional[FiatPaymentResult]:
+    ) -> FiatPaymentResult | None:
         """Handle incoming Treasury credit webhook - auto-credit agent.
 
         When fiat arrives in Treasury (wire/ACH), this webhook fires.

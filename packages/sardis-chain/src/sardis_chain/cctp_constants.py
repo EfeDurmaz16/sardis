@@ -29,15 +29,11 @@ DOMAIN_TO_CHAIN: dict[int, str] = {v: k for k, v in CCTP_DOMAINS.items()}
 
 # CCTP V2 TokenMessengerV2 — same address on all EVM chains
 _TOKEN_MESSENGER_V2 = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
-TOKEN_MESSENGER_ADDRESSES: dict[str, str] = {
-    chain: _TOKEN_MESSENGER_V2 for chain in CCTP_DOMAINS
-}
+TOKEN_MESSENGER_ADDRESSES: dict[str, str] = dict.fromkeys(CCTP_DOMAINS, _TOKEN_MESSENGER_V2)
 
 # CCTP V2 MessageTransmitterV2 — same address on all EVM chains
 _MESSAGE_TRANSMITTER_V2 = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
-MESSAGE_TRANSMITTER_ADDRESSES: dict[str, str] = {
-    chain: _MESSAGE_TRANSMITTER_V2 for chain in CCTP_DOMAINS
-}
+MESSAGE_TRANSMITTER_ADDRESSES: dict[str, str] = dict.fromkeys(CCTP_DOMAINS, _MESSAGE_TRANSMITTER_V2)
 
 # CCTP V2 TokenMinterV2 — same address on all EVM chains
 TOKEN_MINTER_V2 = "0xfd78EE919681417d192449715b2594ab58f5D002"

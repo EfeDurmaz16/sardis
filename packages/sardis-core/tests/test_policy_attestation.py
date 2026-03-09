@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sardis_v2_core.policy_attestation import (
@@ -23,7 +23,7 @@ def test_policy_hash_ignores_mutable_spend_state():
     hash_a = compute_policy_hash(policy)
 
     policy.spent_total = Decimal("999")
-    policy.updated_at = datetime.now(timezone.utc)
+    policy.updated_at = datetime.now(UTC)
     hash_b = compute_policy_hash(policy)
 
     assert hash_a == hash_b

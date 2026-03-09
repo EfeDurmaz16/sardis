@@ -5,21 +5,17 @@ Circle signer, Turnkey fallback, and multi-chain support.
 """
 from __future__ import annotations
 
-from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from sardis_wallet.circle_client import (
-    CircleAPIError,
-    CircleWallet,
-    CircleWalletClient,
-    CircleTransaction,
-    CIRCLE_BLOCKCHAIN_IDS,
-)
 from sardis_chain.circle_signer import CircleWalletSigner
 from sardis_chain.executor import MPCSignerPort
-
+from sardis_wallet.circle_client import (
+    CIRCLE_BLOCKCHAIN_IDS,
+    CircleAPIError,
+    CircleTransaction,
+    CircleWalletClient,
+)
 
 # ── CircleWalletClient ───────────────────────────────────────────────────
 
@@ -254,8 +250,8 @@ class TestTurnkeyFallback:
     @pytest.mark.asyncio
     async def test_fallback_to_turnkey_on_circle_failure(self):
         """When Circle fails and Turnkey is available, wallet creation falls back."""
-        from sardis_wallet.manager import EnhancedWalletManager
         from sardis_v2_core.config import SardisSettings
+        from sardis_wallet.manager import EnhancedWalletManager
 
         settings = MagicMock(spec=SardisSettings)
         settings.circle_wallet_api_key = "test-key"

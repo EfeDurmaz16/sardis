@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class RetentionResult:
     rows_anonymized: int = 0
     retention_days: int = 0
     duration_ms: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -32,7 +31,7 @@ class ClassifiedColumn:
     table_name: str
     column_name: str
     classification: str  # public, internal, confidential, restricted
-    pii_type: Optional[str]
+    pii_type: str | None
     retention_days: int
     anonymize_on_expiry: bool
 
@@ -190,7 +189,7 @@ class DataRetentionEngine:
 
         return result
 
-    async def _find_timestamp_column(self, conn: Any, table_name: str) -> Optional[str]:
+    async def _find_timestamp_column(self, conn: Any, table_name: str) -> str | None:
         """Find the timestamp column for a table (validated against allowlist)."""
         for candidate in _ALLOWED_TIMESTAMP_COLUMNS:
             exists = await conn.fetchval(
@@ -257,7 +256,7 @@ class DataRetentionEngine:
                 )
                 return {"export_id": export_id, "data": export_data}
 
-            except Exception as e:
+            except Exception:
                 await conn.execute(
                     "UPDATE tenant_data_exports SET status = 'failed' WHERE id = $1",
                     export_id,
@@ -330,7 +329,7 @@ class DataRetentionEngine:
                     "rows_deleted": total_deleted,
                 }
 
-            except Exception as e:
+            except Exception:
                 await conn.execute(
                     "UPDATE tenant_data_deletions SET status = 'failed' WHERE id = $1",
                     deletion_id,

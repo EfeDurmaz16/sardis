@@ -31,10 +31,10 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger("sardis.core.trust_scoring")
 
@@ -105,8 +105,8 @@ class TrustSignal:
     name: str
     score: float  # 0.0 to 1.0
     weight: float
-    details: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    details: dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -117,17 +117,17 @@ class TrustScore:
     tier: TrustTier
     max_per_tx: Decimal
     max_per_day: Decimal
-    signals: List[TrustSignal] = field(default_factory=list)
-    calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    signals: list[TrustSignal] = field(default_factory=list)
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
 
     @property
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "overall": round(self.overall, 4),
@@ -158,7 +158,7 @@ class TransactionRecord:
     avg_amount: Decimal = Decimal("0")
     unique_merchants: int = 0
     days_active: int = 0
-    last_transaction_at: Optional[datetime] = None
+    last_transaction_at: datetime | None = None
 
 
 @dataclass
@@ -167,7 +167,7 @@ class ComplianceRecord:
     kyc_verified: bool = False
     sanctions_clear: bool = True
     violation_count: int = 0
-    last_violation_at: Optional[datetime] = None
+    last_violation_at: datetime | None = None
     aml_flagged: bool = False
     pep_flagged: bool = False
 
@@ -204,10 +204,10 @@ class TrustScorer:
 
     def __init__(
         self,
-        weights: Optional[Dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
         cache_ttl_seconds: int = 300,
-        trust_graph: Optional["TrustGraphService"] = None,
-        platform_did: Optional[str] = None,
+        trust_graph: TrustGraphService | None = None,
+        platform_did: str | None = None,
     ):
         self._weights = weights or DEFAULT_WEIGHTS.copy()
         self._cache_ttl = cache_ttl_seconds
@@ -225,11 +225,11 @@ class TrustScorer:
         self,
         agent_id: str,
         kya_level: KYALevel = KYALevel.NONE,
-        history: Optional[TransactionRecord] = None,
-        compliance: Optional[ComplianceRecord] = None,
-        reputation: Optional[ReputationRecord] = None,
-        behavioral: Optional[BehavioralRecord] = None,
-        agent_did: Optional[str] = None,
+        history: TransactionRecord | None = None,
+        compliance: ComplianceRecord | None = None,
+        reputation: ReputationRecord | None = None,
+        behavioral: BehavioralRecord | None = None,
+        agent_did: str | None = None,
         use_cache: bool = True,
     ) -> TrustScore:
         """Calculate unified trust score for an agent.
@@ -273,7 +273,7 @@ class TrustScorer:
                 except Exception:
                     pass  # Fall through to recalculate
 
-        signals: List[TrustSignal] = []
+        signals: list[TrustSignal] = []
 
         # 1. KYA Level Score
         kya_score = self._score_kya_level(kya_level)
@@ -314,7 +314,7 @@ class TrustScorer:
             max_per_tx=limits["max_per_tx"],
             max_per_day=limits["max_per_day"],
             signals=signals,
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=self._cache_ttl),
+            expires_at=datetime.now(UTC) + timedelta(seconds=self._cache_ttl),
         )
 
         # Cache the score
@@ -331,7 +331,7 @@ class TrustScorer:
 
         return score
 
-    async def invalidate_cache(self, agent_id: Optional[str] = None) -> None:
+    async def invalidate_cache(self, agent_id: str | None = None) -> None:
         """Invalidate cached trust scores."""
         if agent_id:
             await self._cache_store.delete(agent_id)
@@ -436,7 +436,7 @@ class TrustScorer:
 
         # Recency penalty for recent violations
         if compliance.last_violation_at:
-            days_since = (datetime.now(timezone.utc) - compliance.last_violation_at).days
+            days_since = (datetime.now(UTC) - compliance.last_violation_at).days
             if days_since < 7:
                 score *= 0.5
             elif days_since < 30:
@@ -532,7 +532,7 @@ class TrustScorer:
             },
         )
 
-    def _score_transitive_trust(self, agent_did: Optional[str]) -> TrustSignal:
+    def _score_transitive_trust(self, agent_did: str | None) -> TrustSignal:
         """Score based on transitive trust path from platform to agent.
 
         Uses FIDES trust graph BFS traversal with 0.85 decay per hop.

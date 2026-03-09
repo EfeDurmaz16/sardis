@@ -1,14 +1,16 @@
 """Payment models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from .base import SardisModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class PaymentStatus(str, Enum):
@@ -32,12 +34,12 @@ class Payment(SardisModel):
     token: str = "USDC"
     chain: str = "base"
     status: PaymentStatus
-    purpose: Optional[str] = None
-    tx_hash: Optional[str] = None
-    block_number: Optional[int] = None
-    error_message: Optional[str] = None
+    purpose: str | None = None
+    tx_hash: str | None = None
+    block_number: int | None = None
+    error_message: str | None = None
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class ExecutePaymentRequest(SardisModel):
@@ -48,8 +50,8 @@ class ExecutePaymentRequest(SardisModel):
     amount: Decimal
     token: str = "USDC"
     chain: str = "base"
-    purpose: Optional[str] = None
-    idempotency_key: Optional[str] = None
+    purpose: str | None = None
+    idempotency_key: str | None = None
 
 
 class ExecutePaymentResponse(SardisModel):
@@ -57,10 +59,10 @@ class ExecutePaymentResponse(SardisModel):
     
     payment_id: str
     status: PaymentStatus
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     chain: str
-    audit_anchor: Optional[str] = None
-    ledger_tx_id: Optional[str] = None
+    audit_anchor: str | None = None
+    ledger_tx_id: str | None = None
 
 
 class ExecuteMandateRequest(SardisModel):
@@ -86,7 +88,7 @@ class ExecuteAP2Response(SardisModel):
     chain: str
     audit_anchor: str
     status: str
-    compliance_provider: Optional[str] = None
-    compliance_rule: Optional[str] = None
+    compliance_provider: str | None = None
+    compliance_rule: str | None = None
 # Aliases / Placeholders for models used in resources but not fully defined here
 PaymentMandate = dict[str, Any]  # Mandates are currently raw dicts in SDK

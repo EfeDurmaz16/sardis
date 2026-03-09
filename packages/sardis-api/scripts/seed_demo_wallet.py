@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 # Add the src directory to the path
@@ -119,10 +119,10 @@ async def seed_demo_wallet():
             print("SEED COMPLETE!")
             print("=" * 60)
             print(f"\nDemo wallet ready with ${DEMO_BALANCE} USDC")
-            print(f"\nAPI endpoints to test:")
+            print("\nAPI endpoints to test:")
             print(f"  GET  /api/v2/wallets/{DEMO_WALLET_ID}")
             print(f"  GET  /api/v2/wallets/{DEMO_WALLET_ID}/balance")
-            print(f"  POST /api/v2/mandates/execute")
+            print("  POST /api/v2/mandates/execute")
             print("\nExample mandate payload:")
             print("""
 {
@@ -157,7 +157,7 @@ async def seed_demo_wallet():
             "balance": str(DEMO_BALANCE),
             "token": "USDC",
             "chain": "base_sepolia",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         print("\nSeed configuration:")

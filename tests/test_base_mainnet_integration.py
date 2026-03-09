@@ -6,19 +6,16 @@ EAS attestations, Tenderly simulation, and production config.
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from sardis_v2_core.config import SardisSettings, ChainConfig
+from sardis_v2_core.config import SardisSettings
 from sardis_v2_core.spending_policy import (
-    SpendingPolicy,
     TrustLevel,
     create_default_policy,
 )
-from sardis_v2_core.wallets import Wallet
 from sardis_v2_core.tokens import TokenType
-
+from sardis_v2_core.wallets import Wallet
 
 # ── Config validation ────────────────────────────────────────────────────
 
@@ -69,7 +66,6 @@ class TestCirclePaymasterWiring:
         from sardis_chain.erc4337.paymaster_client import (
             CIRCLE_PAYMASTER_ADDRESSES,
             USDC_FOR_PAYMASTER,
-            CirclePaymasterClient,
         )
         assert "base" in CIRCLE_PAYMASTER_ADDRESSES
         assert "base" in USDC_FOR_PAYMASTER

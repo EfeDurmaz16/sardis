@@ -5,15 +5,14 @@ Basic analytics tracking for wallets, transactions, and API usage.
 Designed for monitoring and investor metrics dashboard.
 """
 
-import os
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-import asyncio
+import os
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +62,12 @@ class AnalyticsEvent:
     """Structured analytics event."""
     event_type: EventType
     timestamp: datetime
-    properties: Dict[str, Any] = field(default_factory=dict)
-    user_id: Optional[str] = None
-    wallet_id: Optional[str] = None
-    session_id: Optional[str] = None
+    properties: dict[str, Any] = field(default_factory=dict)
+    user_id: str | None = None
+    wallet_id: str | None = None
+    session_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_type": self.event_type.value,
             "timestamp": self.timestamp.isoformat(),
@@ -134,17 +133,17 @@ class AnalyticsService:
     def __init__(
         self,
         storage_backend: str = "memory",
-        redis_url: Optional[str] = None,
-        posthog_api_key: Optional[str] = None,
+        redis_url: str | None = None,
+        posthog_api_key: str | None = None,
     ):
         self.storage_backend = storage_backend
         self.redis_url = redis_url or os.getenv("REDIS_URL")
         self.posthog_api_key = posthog_api_key or os.getenv("POSTHOG_API_KEY")
 
         # In-memory storage
-        self._events: List[AnalyticsEvent] = []
-        self._metrics: Dict[str, int] = defaultdict(int)
-        self._volumes: Dict[str, float] = defaultdict(float)
+        self._events: list[AnalyticsEvent] = []
+        self._metrics: dict[str, int] = defaultdict(int)
+        self._volumes: dict[str, float] = defaultdict(float)
 
         # Initialize backends
         self._redis = None
@@ -182,10 +181,10 @@ class AnalyticsService:
     async def track(
         self,
         event_type: EventType,
-        properties: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        session_id: Optional[str] = None,
+        properties: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        wallet_id: str | None = None,
+        session_id: str | None = None,
     ) -> None:
         """Track an analytics event."""
         event = AnalyticsEvent(
@@ -248,8 +247,8 @@ class AnalyticsService:
 
     async def get_metrics_summary(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> MetricsSummary:
         """Get aggregated metrics for a time period."""
         end_date = end_date or datetime.utcnow()
@@ -337,7 +336,7 @@ class AnalyticsService:
 
         return summary
 
-    async def get_realtime_stats(self) -> Dict[str, Any]:
+    async def get_realtime_stats(self) -> dict[str, Any]:
         """Get real-time stats for dashboard."""
         now = datetime.utcnow()
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -360,7 +359,7 @@ class AnalyticsService:
 
 
 # Global analytics instance
-_analytics: Optional[AnalyticsService] = None
+_analytics: AnalyticsService | None = None
 
 
 def get_analytics() -> AnalyticsService:
@@ -376,7 +375,7 @@ def get_analytics() -> AnalyticsService:
 
 
 # Convenience functions
-async def track_wallet_created(wallet_id: str, chain: str, user_id: Optional[str] = None):
+async def track_wallet_created(wallet_id: str, chain: str, user_id: str | None = None):
     """Track wallet creation."""
     await get_analytics().track(
         EventType.WALLET_CREATED,
@@ -391,7 +390,7 @@ async def track_transaction(
     amount_usd: float,
     success: bool,
     chain: str,
-    tx_hash: Optional[str] = None,
+    tx_hash: str | None = None,
     blocked_by_policy: bool = False,
 ):
     """Track transaction."""
@@ -413,7 +412,7 @@ async def track_transaction(
     )
 
 
-async def track_mcp_tool_call(tool_name: str, session_id: Optional[str] = None):
+async def track_mcp_tool_call(tool_name: str, session_id: str | None = None):
     """Track MCP tool call."""
     await get_analytics().track(
         EventType.MCP_TOOL_CALLED,

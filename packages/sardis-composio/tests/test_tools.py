@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import os
-import pytest
 
 # Use simulation mode - no real API key needed
 os.environ.setdefault("SARDIS_API_KEY", "test-simulation-key")
 os.environ.setdefault("SARDIS_WALLET_ID", "wallet_sim_001")
 
-from sardis_composio.tools import sardis_pay, sardis_check_balance, sardis_check_policy, SARDIS_TOOLS
+from sardis_composio.tools import (
+    SARDIS_TOOLS,
+    sardis_check_balance,
+    sardis_check_policy,
+    sardis_pay,
+)
 
 
 class TestSardisPay:

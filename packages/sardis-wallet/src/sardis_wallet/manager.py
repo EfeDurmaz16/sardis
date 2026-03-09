@@ -18,89 +18,78 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
 from sardis_v2_core import (
-    SardisSettings,
     PaymentMandate,
+    SardisSettings,
     SpendingPolicy,
     SpendingScope,
-    create_default_policy,
     Wallet,
+    create_default_policy,
 )
 from sardis_v2_core.tokens import TokenType, normalize_token_amount
 
-# Import all new modules
-from .key_rotation import (
-    MPCKeyRotationManager,
-    MPCKeyRotationPolicy,
-    MPCKeyInfo,
-    KeyRotationEvent,
-    get_mpc_key_rotation_manager,
-)
-from .social_recovery import (
-    SocialRecoveryManager,
-    SocialRecoveryConfig,
-    Guardian,
-    RecoveryRequest,
-    get_social_recovery_manager,
-)
-from .hd_wallet import (
-    HDWalletManager,
-    HDWalletConfig,
-    HDPath,
-    DerivedAddress,
-    get_hd_wallet_manager,
-)
-from .backup_restore import (
-    WalletBackupManager,
-    BackupConfig,
-    BackupRecord,
-    RestoreRequest as BackupRestoreRequest,
-    get_backup_manager,
-)
-from .multisig import (
-    MultisigManager,
-    MultisigConfig,
-    MultisigSigner,
-    PendingTransaction,
-    get_multisig_manager,
-)
-from .spending_limits import (
-    SpendingLimitsManager,
-    SpendingLimitsConfig,
-    SpendingLimit,
-    get_spending_limits_manager,
-)
 from .activity_monitor import (
     ActivityMonitor,
-    MonitoringConfig,
-    WalletActivity,
     Alert,
+    WalletActivity,
     get_activity_monitor,
 )
-from .session_manager import (
-    SessionManager,
-    SessionPolicy,
-    Session,
-    DeviceInfo,
-    get_session_manager,
-)
 from .audit_log import (
-    AuditLogger,
-    AuditCategory,
     AuditAction,
-    AuditLevel,
-    AuditEntry,
+    AuditCategory,
+    AuditLogger,
     get_audit_logger,
+)
+from .backup_restore import (
+    BackupRecord,
+    WalletBackupManager,
+    get_backup_manager,
+)
+from .backup_restore import (
+    RestoreRequest as BackupRestoreRequest,
+)
+from .hd_wallet import (
+    DerivedAddress,
+    HDWalletManager,
+    get_hd_wallet_manager,
 )
 from .health_check import (
     HealthChecker,
-    HealthCheckConfig,
     WalletHealthReport,
     get_health_checker,
+)
+
+# Import all new modules
+from .key_rotation import (
+    KeyRotationEvent,
+    MPCKeyRotationManager,
+    get_mpc_key_rotation_manager,
+)
+from .multisig import (
+    MultisigConfig,
+    MultisigManager,
+    get_multisig_manager,
+)
+from .session_manager import (
+    DeviceInfo,
+    Session,
+    SessionManager,
+    get_session_manager,
+)
+from .social_recovery import (
+    RecoveryRequest,
+    SocialRecoveryManager,
+    get_social_recovery_manager,
+)
+from .spending_limits import (
+    SpendingLimit,
+    SpendingLimitsConfig,
+    SpendingLimitsManager,
+    get_spending_limits_manager,
 )
 
 
@@ -109,7 +98,7 @@ class PolicyEvaluation:
     """Result of policy evaluation."""
     allowed: bool
     reason: str | None = None
-    warnings: List[str] | None = None
+    warnings: list[str] | None = None
     risk_score: float = 0.0
     required_approvals: int = 0
 
@@ -142,7 +131,7 @@ class EnhancedWalletManager:
         settings: SardisSettings,
         policy_store: PolicyStore | None = None,
         async_policy_store: AsyncPolicyStore | None = None,
-        turnkey_client: Optional[Any] = None,
+        turnkey_client: Any | None = None,
         # Optional component overrides
         key_rotation_manager: MPCKeyRotationManager | None = None,
         recovery_manager: SocialRecoveryManager | None = None,
@@ -192,7 +181,7 @@ class EnhancedWalletManager:
     # Conservative gas fee estimates in USD per chain for ERC-20 transfers.
     # Used in policy checks so spending limits account for total transaction cost.
     # These are upper-bound estimates; actual fees are typically lower on L2s.
-    _GAS_FEE_ESTIMATES_USD: Dict[str, Decimal] = {
+    _GAS_FEE_ESTIMATES_USD: dict[str, Decimal] = {
         "ethereum": Decimal("5.00"),
         "base": Decimal("0.01"),
         "base_sepolia": Decimal("0.01"),
@@ -312,8 +301,8 @@ class EnhancedWalletManager:
         mandate: PaymentMandate,
         chain: str,
         token: Any,
-        rpc_client: Optional[Any] = None,
-        session_id: Optional[str] = None,
+        rpc_client: Any | None = None,
+        session_id: str | None = None,
     ) -> PolicyEvaluation:
         """
         Comprehensive policy evaluation — the most thorough check available.
@@ -434,7 +423,7 @@ class EnhancedWalletManager:
         self,
         wallet_name: str,
         agent_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a non-custodial MPC wallet via Turnkey.
 
         Requires turnkey_client to be configured.
@@ -487,7 +476,7 @@ class EnhancedWalletManager:
         wallet_name: str,
         agent_id: str,
         chains: list[str] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a non-custodial wallet via Circle Programmable Wallets.
 
         Circle provides free developer-controlled wallets for <1,000 wallets
@@ -501,7 +490,7 @@ class EnhancedWalletManager:
         Returns:
             Dict with wallet_id, circle_wallet_id, addresses, and provider info.
         """
-        from .circle_client import CircleWalletClient, CircleAPIError
+        from .circle_client import CircleAPIError, CircleWalletClient
 
         api_key = self._settings.circle_wallet_api_key
         entity_secret = self._settings.circle_entity_secret
@@ -556,7 +545,7 @@ class EnhancedWalletManager:
                 "wallet_id": circle_wallet.wallet_id,
                 "circle_wallet_id": circle_wallet.wallet_id,
                 "address": circle_wallet.address,
-                "addresses": {chain: circle_wallet.address for chain in target_chains},
+                "addresses": dict.fromkeys(target_chains, circle_wallet.address),
                 "provider": "circle",
                 "account_type": circle_wallet.account_type,
             }
@@ -573,7 +562,7 @@ class EnhancedWalletManager:
         agent_id: str,
         provider: str | None = None,
         chains: list[str] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a wallet using the specified or default provider.
 
         Default provider is Circle. Falls back to Turnkey on failure
@@ -665,10 +654,10 @@ class EnhancedWalletManager:
     async def setup_social_recovery(
         self,
         wallet_id: str,
-        guardians: List[Dict[str, Any]],
+        guardians: list[dict[str, Any]],
         recovery_secret: bytes,
-        threshold: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        threshold: int | None = None,
+    ) -> dict[str, Any]:
         """Set up social recovery for a wallet."""
         result = await self._recovery.setup_recovery(
             wallet_id=wallet_id,
@@ -719,7 +708,7 @@ class EnhancedWalletManager:
         master_key_ref: str,
         chain: str,
         account: int = 0,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> DerivedAddress:
         """Derive a new address for a wallet."""
         address = await self._hd_wallet.derive_address(
@@ -748,7 +737,7 @@ class EnhancedWalletManager:
     async def create_backup(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
+        wallet_data: dict[str, Any],
         password: str,
         recovery_hint: str = "",
     ) -> BackupRecord:
@@ -798,8 +787,8 @@ class EnhancedWalletManager:
     async def setup_multisig(
         self,
         wallet_id: str,
-        signers: List[Dict[str, Any]],
-        config: Optional[MultisigConfig] = None,
+        signers: list[dict[str, Any]],
+        config: MultisigConfig | None = None,
     ) -> MultisigConfig:
         """Set up multi-signature for a wallet."""
         multisig_config = await self._multisig.setup_multisig(
@@ -826,7 +815,7 @@ class EnhancedWalletManager:
         pending_tx_id: str,
         signer_id: str,
         signature: bytes,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Approve a pending multi-sig transaction."""
         approval = await self._multisig.approve_transaction(
             pending_tx_id=pending_tx_id,
@@ -853,7 +842,7 @@ class EnhancedWalletManager:
     async def setup_spending_limits(
         self,
         wallet_id: str,
-        config: Optional[SpendingLimitsConfig] = None,
+        config: SpendingLimitsConfig | None = None,
     ) -> SpendingLimitsConfig:
         """Set up spending limits for a wallet."""
         return await self._spending_limits.setup_default_limits(
@@ -865,9 +854,9 @@ class EnhancedWalletManager:
         self,
         wallet_id: str,
         limit_id: str,
-        limit_amount: Optional[Decimal] = None,
-        is_active: Optional[bool] = None,
-    ) -> Optional[SpendingLimit]:
+        limit_amount: Decimal | None = None,
+        is_active: bool | None = None,
+    ) -> SpendingLimit | None:
         """Update a spending limit."""
         limit = await self._spending_limits.update_limit(
             wallet_id=wallet_id,
@@ -896,7 +885,7 @@ class EnhancedWalletManager:
     async def record_activity(
         self,
         activity: WalletActivity,
-    ) -> tuple[WalletActivity, List[Alert]]:
+    ) -> tuple[WalletActivity, list[Alert]]:
         """Record and analyze wallet activity."""
         return await self._activity_monitor.record_activity(activity)
 
@@ -904,7 +893,7 @@ class EnhancedWalletManager:
         self,
         wallet_id: str,
         days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get activity summary for a wallet."""
         return self._activity_monitor.get_activity_summary(wallet_id, days)
 
@@ -916,8 +905,8 @@ class EnhancedWalletManager:
         self,
         wallet_id: str,
         user_id: str,
-        device_info: Optional[DeviceInfo] = None,
-        ip_address: Optional[str] = None,
+        device_info: DeviceInfo | None = None,
+        ip_address: str | None = None,
     ) -> Session:
         """Create a new wallet access session."""
         session = await self._session.create_session(
@@ -941,8 +930,8 @@ class EnhancedWalletManager:
     async def validate_session(
         self,
         session_id: str,
-        ip_address: Optional[str] = None,
-    ) -> tuple[bool, str, Optional[Session]]:
+        ip_address: str | None = None,
+    ) -> tuple[bool, str, Session | None]:
         """Validate a session."""
         return await self._session.validate_session(
             session_id=session_id,
@@ -975,7 +964,7 @@ class EnhancedWalletManager:
     async def check_wallet_health(
         self,
         wallet_id: str,
-        wallet_data: Dict[str, Any],
+        wallet_data: dict[str, Any],
         deep_check: bool = False,
     ) -> WalletHealthReport:
         """Perform comprehensive health check on a wallet."""
@@ -993,8 +982,8 @@ class EnhancedWalletManager:
         self,
         wallet_id: str,
         limit: int = 100,
-        categories: Optional[List[AuditCategory]] = None,
-    ) -> List[Dict[str, Any]]:
+        categories: list[AuditCategory] | None = None,
+    ) -> list[dict[str, Any]]:
         """Get audit log for a wallet."""
         from .audit_log import AuditQuery
 

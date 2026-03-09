@@ -3,12 +3,12 @@
 Loads negative test cases from fixtures and validates rejection behavior.
 """
 import json
-import pytest
 from pathlib import Path
 
-from sardis_v2_core import SardisSettings
-from sardis_protocol.verifier import MandateVerifier, MandateChainVerification
+import pytest
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
+from sardis_protocol.verifier import MandateChainVerification, MandateVerifier
+from sardis_v2_core import SardisSettings
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "ap2_negative_interop.json"
 

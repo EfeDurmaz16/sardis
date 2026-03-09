@@ -1,21 +1,20 @@
 """Policies resource for Sardis SDK."""
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from ..models.policy import (
-    ParsedPolicy,
-    PolicyPreviewResponse,
     ApplyPolicyFromNLResponse,
+    ParsedPolicy,
     PolicyCheckResponse,
     PolicyExample,
+    PolicyPreviewResponse,
 )
 from .base import AsyncBaseResource, SyncBaseResource
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
+    from decimal import Decimal
+
     from ..client import TimeoutConfig
 
 
@@ -23,10 +22,10 @@ class AsyncPoliciesResource(AsyncBaseResource):
     async def parse(
         self,
         natural_language: str,
-        agent_id: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        agent_id: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ParsedPolicy:
-        payload: Dict[str, Any] = {"natural_language": natural_language}
+        payload: dict[str, Any] = {"natural_language": natural_language}
         if agent_id:
             payload["agent_id"] = agent_id
         data = await self._post("policies/parse", payload, timeout=timeout)
@@ -36,7 +35,7 @@ class AsyncPoliciesResource(AsyncBaseResource):
         self,
         natural_language: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> PolicyPreviewResponse:
         data = await self._post(
             "policies/preview",
@@ -49,7 +48,7 @@ class AsyncPoliciesResource(AsyncBaseResource):
         self,
         natural_language: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ApplyPolicyFromNLResponse:
         data = await self._post(
             "policies/apply",
@@ -61,8 +60,8 @@ class AsyncPoliciesResource(AsyncBaseResource):
     async def get(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         return await self._get(f"policies/{agent_id}", timeout=timeout)
 
     async def check(
@@ -71,12 +70,12 @@ class AsyncPoliciesResource(AsyncBaseResource):
         agent_id: str,
         amount: Decimal,
         currency: str = "USD",
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        mcc_code: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
+        mcc_code: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> PolicyCheckResponse:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "agent_id": agent_id,
             "amount": str(amount),
             "currency": currency,
@@ -89,8 +88,8 @@ class AsyncPoliciesResource(AsyncBaseResource):
 
     async def examples(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[PolicyExample]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[PolicyExample]:
         data = await self._get("policies/examples", timeout=timeout)
         if isinstance(data, list):
             return [PolicyExample.model_validate(item) for item in data]
@@ -100,7 +99,7 @@ class AsyncPoliciesResource(AsyncBaseResource):
         self,
         agent_id: str,
         natural_language: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ApplyPolicyFromNLResponse:
         """Create and immediately apply a policy from natural language."""
         data = await self._post(
@@ -113,8 +112,8 @@ class AsyncPoliciesResource(AsyncBaseResource):
     async def get_recommendations(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get policy recommendations for an agent based on its transaction history."""
         return await self._get(f"policies/{agent_id}/recommendations", timeout=timeout)
 
@@ -123,10 +122,10 @@ class PoliciesResource(SyncBaseResource):
     def parse(
         self,
         natural_language: str,
-        agent_id: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        agent_id: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ParsedPolicy:
-        payload: Dict[str, Any] = {"natural_language": natural_language}
+        payload: dict[str, Any] = {"natural_language": natural_language}
         if agent_id:
             payload["agent_id"] = agent_id
         data = self._post("policies/parse", payload, timeout=timeout)
@@ -136,7 +135,7 @@ class PoliciesResource(SyncBaseResource):
         self,
         natural_language: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> PolicyPreviewResponse:
         data = self._post(
             "policies/preview",
@@ -149,7 +148,7 @@ class PoliciesResource(SyncBaseResource):
         self,
         natural_language: str,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ApplyPolicyFromNLResponse:
         data = self._post(
             "policies/apply",
@@ -161,8 +160,8 @@ class PoliciesResource(SyncBaseResource):
     def get(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         return self._get(f"policies/{agent_id}", timeout=timeout)
 
     def check(
@@ -171,12 +170,12 @@ class PoliciesResource(SyncBaseResource):
         agent_id: str,
         amount: Decimal,
         currency: str = "USD",
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
-        mcc_code: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
+        mcc_code: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> PolicyCheckResponse:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "agent_id": agent_id,
             "amount": str(amount),
             "currency": currency,
@@ -189,8 +188,8 @@ class PoliciesResource(SyncBaseResource):
 
     def examples(
         self,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[PolicyExample]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[PolicyExample]:
         data = self._get("policies/examples", timeout=timeout)
         if isinstance(data, list):
             return [PolicyExample.model_validate(item) for item in data]
@@ -200,7 +199,7 @@ class PoliciesResource(SyncBaseResource):
         self,
         agent_id: str,
         natural_language: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> ApplyPolicyFromNLResponse:
         """Create and immediately apply a policy from natural language."""
         data = self._post(
@@ -213,8 +212,8 @@ class PoliciesResource(SyncBaseResource):
     def get_recommendations(
         self,
         agent_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get policy recommendations for an agent based on its transaction history."""
         return self._get(f"policies/{agent_id}/recommendations", timeout=timeout)
 

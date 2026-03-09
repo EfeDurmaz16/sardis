@@ -16,9 +16,7 @@ Usage::
 """
 from __future__ import annotations
 
-from typing import Any
-
-from langchain_core.tools import BaseTool
+from typing import TYPE_CHECKING, Any
 
 from .tools import (
     SardisCheckBalanceTool,
@@ -27,6 +25,9 @@ from .tools import (
     SardisPayTool,
     SardisSetPolicyTool,
 )
+
+if TYPE_CHECKING:
+    from langchain_core.tools import BaseTool
 
 
 class SardisToolkit:

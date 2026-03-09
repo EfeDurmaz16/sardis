@@ -8,7 +8,6 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -44,7 +43,7 @@ class ReceiptResponse(BaseModel):
 class VerifyResponse(BaseModel):
     """Receipt verification result."""
     valid: bool
-    receipt: Optional[ReceiptResponse] = None
+    receipt: ReceiptResponse | None = None
 
 
 class ReceiptListResponse(BaseModel):
@@ -62,7 +61,6 @@ async def get_receipt(
     principal: Principal = Depends(require_principal),
 ):
     """Get a receipt by ID."""
-    from sardis_v2_core.receipt_store import InMemoryReceiptStore
 
     store = _get_receipt_store()
     receipt = await store.get(receipt_id)
@@ -99,8 +97,8 @@ async def verify_receipt(
 
 @router.get("/", response_model=ReceiptListResponse)
 async def list_receipts(
-    agent_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
+    agent_id: str | None = Query(None),
+    org_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     principal: Principal = Depends(require_principal),
 ):

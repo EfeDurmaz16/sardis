@@ -13,55 +13,51 @@ Tests cover:
 """
 from __future__ import annotations
 
-import pytest
-from decimal import Decimal
-from datetime import datetime, timezone
-import time
-
 # Import the validators module
 import sys
+import time
+from decimal import Decimal
 from pathlib import Path
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from sardis_v2_core.exceptions import SardisValidationError
 from sardis_v2_core.validators import (
-    # Core validators
-    validate_not_none,
-    validate_not_empty,
-    validate_string,
-    validate_integer,
-    validate_decimal,
-    # Domain validators
-    validate_wallet_id,
-    validate_agent_id,
-    validate_transaction_id,
-    validate_hold_id,
-    validate_mandate_id,
-    validate_eth_address,
-    validate_solana_address,
-    validate_chain_address,
-    validate_tx_hash,
-    validate_amount,
-    validate_token,
-    validate_chain,
-    validate_url,
-    validate_email,
-    validate_domain,
-    validate_timestamp,
-    validate_hex_string,
-    validate_public_key,
-    validate_signature,
-    # Composite validators
-    validate_payment_request,
-    validate_hold_request,
     # Utilities
     ValidationResult,
+    validate_agent_id,
+    validate_amount,
+    validate_chain,
+    validate_chain_address,
+    validate_decimal,
+    validate_domain,
+    validate_email,
+    validate_eth_address,
+    validate_hex_string,
+    validate_hold_id,
+    validate_hold_request,
     validate_inputs,
-    # Patterns
-    ETH_ADDRESS_PATTERN,
-    WALLET_ID_PATTERN,
-    AGENT_ID_PATTERN,
+    validate_integer,
+    validate_mandate_id,
+    validate_not_empty,
+    # Core validators
+    validate_not_none,
+    # Composite validators
+    validate_payment_request,
+    validate_public_key,
+    validate_signature,
+    validate_solana_address,
+    validate_string,
+    validate_timestamp,
+    validate_token,
+    validate_transaction_id,
+    validate_tx_hash,
+    validate_url,
+    # Domain validators
+    validate_wallet_id,
 )
-from sardis_v2_core.exceptions import SardisValidationError
 
 
 class TestValidateNotNone:

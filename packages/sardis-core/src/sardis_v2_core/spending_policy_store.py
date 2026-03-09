@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class SpendingPolicyStore:
     races between concurrent workers.
     """
 
-    def __init__(self, dsn: Optional[str] = None):
+    def __init__(self, dsn: str | None = None):
         self._dsn = dsn or os.getenv("DATABASE_URL", "")
         self._pool = None
 
@@ -40,7 +39,7 @@ class SpendingPolicyStore:
         agent_id: str,
         amount: Decimal,
         currency: str = "USDC",
-        merchant_id: Optional[str] = None,
+        merchant_id: str | None = None,
     ) -> tuple[bool, str]:
         """Atomically check limits and record a spend.
 
@@ -51,93 +50,92 @@ class SpendingPolicyStore:
             return False, "amount_must_be_positive"
 
         pool = await self._get_pool()
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                # Lock the policy row for this agent
-                policy = await conn.fetchrow(
-                    """
+        async with pool.acquire() as conn, conn.transaction():
+            # Lock the policy row for this agent
+            policy = await conn.fetchrow(
+                """
                     SELECT id, limit_per_tx, limit_total, spent_total
                     FROM spending_policies
                     WHERE agent_id = $1::uuid
                     FOR UPDATE
                     """,
-                    agent_id,
-                )
+                agent_id,
+            )
 
-                if not policy:
-                    return False, "no_policy_found"
+            if not policy:
+                return False, "no_policy_found"
 
-                limit_per_tx = Decimal(str(policy["limit_per_tx"]))
-                limit_total = Decimal(str(policy["limit_total"]))
-                spent_total = Decimal(str(policy["spent_total"]))
+            limit_per_tx = Decimal(str(policy["limit_per_tx"]))
+            limit_total = Decimal(str(policy["limit_total"]))
+            spent_total = Decimal(str(policy["spent_total"]))
 
-                # Per-transaction limit
-                if amount > limit_per_tx:
-                    return False, "per_transaction_limit"
+            # Per-transaction limit
+            if amount > limit_per_tx:
+                return False, "per_transaction_limit"
 
-                # Lifetime total limit
-                if spent_total + amount > limit_total:
-                    return False, "total_limit_exceeded"
+            # Lifetime total limit
+            if spent_total + amount > limit_total:
+                return False, "total_limit_exceeded"
 
-                # Check time window limits (with row locking)
-                windows = await conn.fetch(
-                    """
+            # Check time window limits (with row locking)
+            windows = await conn.fetch(
+                """
                     SELECT id, window_type, limit_amount, current_spent, window_start
                     FROM time_window_limits
                     WHERE policy_id = $1
                     FOR UPDATE
                     """,
-                    policy["id"],
-                )
+                policy["id"],
+            )
 
-                now = datetime.now(timezone.utc)
-                window_updates: list[tuple[object, Decimal, datetime]] = []
-                for window in windows:
-                    window_type = window["window_type"]
-                    limit_amount = Decimal(str(window["limit_amount"]))
-                    current_spent = Decimal(str(window["current_spent"]))
-                    window_start = window["window_start"]
+            now = datetime.now(UTC)
+            window_updates: list[tuple[object, Decimal, datetime]] = []
+            for window in windows:
+                window_type = window["window_type"]
+                limit_amount = Decimal(str(window["limit_amount"]))
+                current_spent = Decimal(str(window["current_spent"]))
+                window_start = window["window_start"]
 
-                    # Determine window duration
-                    if window_type == "daily":
-                        duration = timedelta(days=1)
-                    elif window_type == "weekly":
-                        duration = timedelta(weeks=1)
-                    elif window_type == "monthly":
-                        duration = timedelta(days=30)
-                    else:
-                        continue
+                # Determine window duration
+                if window_type == "daily":
+                    duration = timedelta(days=1)
+                elif window_type == "weekly":
+                    duration = timedelta(weeks=1)
+                elif window_type == "monthly":
+                    duration = timedelta(days=30)
+                else:
+                    continue
 
-                    # Compute effective spend for this window. If expired, reset in-memory first.
-                    if now >= window_start + duration:
-                        current_spent = Decimal("0")
-                        window_start = now
+                # Compute effective spend for this window. If expired, reset in-memory first.
+                if now >= window_start + duration:
+                    current_spent = Decimal("0")
+                    window_start = now
 
-                    # Check window limit
-                    if current_spent + amount > limit_amount:
-                        return False, f"{window_type}_limit_exceeded"
+                # Check window limit
+                if current_spent + amount > limit_amount:
+                    return False, f"{window_type}_limit_exceeded"
 
-                    # Store final value to persist in one batch statement.
-                    window_updates.append((window["id"], current_spent + amount, window_start))
+                # Store final value to persist in one batch statement.
+                window_updates.append((window["id"], current_spent + amount, window_start))
 
-                # All checks passed — record the spend atomically
-                await conn.execute(
-                    """
+            # All checks passed — record the spend atomically
+            await conn.execute(
+                """
                     UPDATE spending_policies
                     SET spent_total = spent_total + $1, updated_at = NOW()
                     WHERE id = $2
                     """,
-                    amount,
-                    policy["id"],
-                )
+                amount,
+                policy["id"],
+            )
 
-                # Update all windows in one statement to minimize lock hold time.
-                if window_updates:
-                    window_ids = [w[0] for w in window_updates]
-                    window_spent = [w[1] for w in window_updates]
-                    window_starts = [w[2] for w in window_updates]
-                    await conn.execute(
-                        """
+            # Update all windows in one statement to minimize lock hold time.
+            if window_updates:
+                window_ids = [w[0] for w in window_updates]
+                window_spent = [w[1] for w in window_updates]
+                window_starts = [w[2] for w in window_updates]
+                await conn.execute(
+                    """
                         UPDATE time_window_limits tw
                         SET current_spent = u.current_spent,
                             window_start = u.window_start
@@ -149,31 +147,31 @@ class SpendingPolicyStore:
                         ) AS u
                         WHERE tw.id = u.id
                         """,
-                        window_ids,
-                        window_spent,
-                        window_starts,
-                    )
+                    window_ids,
+                    window_spent,
+                    window_starts,
+                )
 
-                # Record velocity entry
-                await conn.execute(
-                    """
+            # Record velocity entry
+            await conn.execute(
+                """
                     INSERT INTO spending_velocity (policy_id, tx_timestamp, amount, merchant_id)
                     VALUES ($1, NOW(), $2, $3)
                     """,
-                    policy["id"],
-                    amount,
-                    merchant_id,
-                )
+                policy["id"],
+                amount,
+                merchant_id,
+            )
 
-                logger.info(
-                    "Spend recorded atomically",
-                    extra={
-                        "agent_id": agent_id,
-                        "amount": str(amount),
-                        "new_spent_total": str(spent_total + amount),
-                    },
-                )
-                return True, "OK"
+            logger.info(
+                "Spend recorded atomically",
+                extra={
+                    "agent_id": agent_id,
+                    "amount": str(amount),
+                    "new_spent_total": str(spent_total + amount),
+                },
+            )
+            return True, "OK"
 
     async def check_velocity(
         self,
@@ -217,7 +215,7 @@ class SpendingPolicyStore:
 
             return True, "OK"
 
-    async def load_state(self, agent_id: str) -> Optional[dict]:
+    async def load_state(self, agent_id: str) -> dict | None:
         """Load current spending state from the database.
 
         Returns dict with spent_total and per-window current_spent,
@@ -259,7 +257,7 @@ class SpendingPolicyStore:
                 }
             return state
 
-    async def get_remaining(self, agent_id: str) -> Optional[dict]:
+    async def get_remaining(self, agent_id: str) -> dict | None:
         """Get remaining spend capacity for an agent."""
         pool = await self._get_pool()
         async with pool.acquire() as conn:

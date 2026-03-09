@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
+import pytest
 from sardis_chain.redis_nonce_manager import RedisNonceManager
 
 
@@ -55,7 +55,7 @@ class MockRedisClient:
             # Simulate the Lua script behavior
             key = keys[0]
             on_chain_nonce = int(args[0])
-            ttl = int(args[1])
+            int(args[1])
 
             current = self._store.get(key)
             if current is None:
@@ -291,7 +291,7 @@ class TestRedisNonceManager:
 
         # Reserve two nonces
         nonce1 = await manager.reserve_nonce("0x1234", rpc_client)
-        nonce2 = await manager.reserve_nonce("0x1234", rpc_client)
+        await manager.reserve_nonce("0x1234", rpc_client)
 
         # Try to release the first one (stale, won't decrement)
         await manager.release_nonce("0x1234", nonce1)

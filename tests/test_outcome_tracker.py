@@ -1,8 +1,8 @@
 """Tests for the outcome tracker — decision recording, outcome resolution, risk profiles."""
 
-import pytest
 from decimal import Decimal
 
+import pytest
 from sardis_v2_core.outcome_tracker import OutcomeTracker
 
 

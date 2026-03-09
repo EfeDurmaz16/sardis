@@ -12,7 +12,6 @@ import logging
 import os
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

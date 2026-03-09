@@ -6,12 +6,11 @@ exceed policy limits or require manual review.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, List, Literal
-from dataclasses import dataclass, field
+from typing import Literal
 
-from .approval_repository import ApprovalRepository, Approval
+from .approval_repository import Approval, ApprovalRepository
 
 logger = logging.getLogger("sardis.approval_service")
 
@@ -31,17 +30,17 @@ class ApprovalService:
         *,
         action: str,
         requested_by: str,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        vendor: Optional[str] = None,
-        amount: Optional[Decimal] = None,
-        purpose: Optional[str] = None,
-        reason: Optional[str] = None,
-        card_limit: Optional[Decimal] = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        vendor: str | None = None,
+        amount: Decimal | None = None,
+        purpose: str | None = None,
+        reason: str | None = None,
+        card_limit: Decimal | None = None,
         urgency: ApprovalUrgency = 'medium',
         expires_in_hours: int = 24,
-        organization_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        organization_id: str | None = None,
+        metadata: dict | None = None,
     ) -> Approval:
         """Create a new approval request.
 
@@ -64,7 +63,7 @@ class ApprovalService:
             Created Approval object
         """
         # Calculate expiration time
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
+        expires_at = datetime.now(UTC) + timedelta(hours=expires_in_hours)
 
         # Create approval via repository
         approval = await self._repository.create(
@@ -94,7 +93,7 @@ class ApprovalService:
         self,
         approval_id: str,
         reviewed_by: str,
-    ) -> Optional[Approval]:
+    ) -> Approval | None:
         """Approve a pending approval request.
 
         Args:
@@ -116,7 +115,7 @@ class ApprovalService:
             return None
 
         # Update status via repository
-        reviewed_at = datetime.now(timezone.utc)
+        reviewed_at = datetime.now(UTC)
         updated = await self._repository.update(
             approval_id,
             status='approved',
@@ -135,8 +134,8 @@ class ApprovalService:
         self,
         approval_id: str,
         reviewed_by: str,
-        reason: Optional[str] = None,
-    ) -> Optional[Approval]:
+        reason: str | None = None,
+    ) -> Approval | None:
         """Deny a pending approval request.
 
         Args:
@@ -164,7 +163,7 @@ class ApprovalService:
             metadata['denial_reason'] = reason
 
         # Update status via repository
-        reviewed_at = datetime.now(timezone.utc)
+        reviewed_at = datetime.now(UTC)
         updated = await self._repository.update(
             approval_id,
             status='denied',
@@ -183,8 +182,8 @@ class ApprovalService:
     async def cancel(
         self,
         approval_id: str,
-        reason: Optional[str] = None,
-    ) -> Optional[Approval]:
+        reason: str | None = None,
+    ) -> Approval | None:
         """Cancel a pending approval request.
 
         Args:
@@ -245,22 +244,22 @@ class ApprovalService:
 
         return count
 
-    async def get_approval(self, approval_id: str) -> Optional[Approval]:
+    async def get_approval(self, approval_id: str) -> Approval | None:
         """Get an approval by ID."""
         return await self._repository.get(approval_id)
 
     async def list_approvals(
         self,
         *,
-        status: Optional[ApprovalStatus] = None,
-        agent_id: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        organization_id: Optional[str] = None,
-        requested_by: Optional[str] = None,
-        urgency: Optional[ApprovalUrgency] = None,
+        status: ApprovalStatus | None = None,
+        agent_id: str | None = None,
+        wallet_id: str | None = None,
+        organization_id: str | None = None,
+        requested_by: str | None = None,
+        urgency: ApprovalUrgency | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Approval]:
+    ) -> list[Approval]:
         """List approvals with optional filters.
 
         Args:
@@ -290,9 +289,9 @@ class ApprovalService:
     async def list_pending(
         self,
         *,
-        urgency: Optional[ApprovalUrgency] = None,
+        urgency: ApprovalUrgency | None = None,
         limit: int = 50,
-    ) -> List[Approval]:
+    ) -> list[Approval]:
         """List pending approvals."""
         return await self.list_approvals(
             status='pending',

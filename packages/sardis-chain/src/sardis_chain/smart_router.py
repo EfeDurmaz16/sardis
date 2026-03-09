@@ -6,7 +6,7 @@ weighted by availability, latency, error rate trends, and cost.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .provider_tracker import ProviderTracker
@@ -38,8 +38,8 @@ class SmartRouter:
 
     def __init__(
         self,
-        tracker: Optional["ProviderTracker"] = None,
-        default_providers: Optional[dict[str, str]] = None,
+        tracker: ProviderTracker | None = None,
+        default_providers: dict[str, str] | None = None,
     ) -> None:
         self._tracker = tracker
         self._defaults = default_providers or dict(_DEFAULT_PROVIDERS)

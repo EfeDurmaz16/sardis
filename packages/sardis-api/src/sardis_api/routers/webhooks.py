@@ -4,13 +4,12 @@ from __future__ import annotations
 import ipaddress
 import logging
 from datetime import datetime
-from typing import List, Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
-from sardis_api.middleware.auth import require_api_key, APIKey
+from sardis_api.middleware.auth import APIKey, require_api_key
 
 _logger = logging.getLogger("sardis.api.webhooks")
 
@@ -69,14 +68,13 @@ def _validate_webhook_url(url: str) -> str:
 
     return url
 from sardis_v2_core.webhooks import (
+    DeliveryAttempt,
+    EventType,
+    WebhookEvent,
     WebhookRepository,
     WebhookService,
     WebhookSubscription,
-    WebhookEvent,
-    EventType,
-    DeliveryAttempt,
 )
-
 
 router = APIRouter(tags=["webhooks"])
 
@@ -86,7 +84,7 @@ router = APIRouter(tags=["webhooks"])
 class CreateWebhookRequest(BaseModel):
     """Request to create a webhook subscription."""
     url: str = Field(..., description="Endpoint URL to receive events")
-    events: Optional[List[str]] = Field(
+    events: list[str] | None = Field(
         None,
         description="Event types to subscribe to. Empty/null = all events.",
         example=["payment.completed", "hold.created"],
@@ -95,28 +93,28 @@ class CreateWebhookRequest(BaseModel):
 
 class UpdateWebhookRequest(BaseModel):
     """Request to update a webhook subscription."""
-    url: Optional[str] = None
-    events: Optional[List[str]] = None
-    is_active: Optional[bool] = None
+    url: str | None = None
+    events: list[str] | None = None
+    is_active: bool | None = None
 
 
 class WebhookResponse(BaseModel):
     """Webhook subscription response."""
     subscription_id: str
     url: str
-    events: List[str]
-    secret: Optional[str] = None  # Only shown on create
+    events: list[str]
+    secret: str | None = None  # Only shown on create
     is_active: bool
     total_deliveries: int
     successful_deliveries: int
     failed_deliveries: int
-    last_delivery_at: Optional[datetime]
+    last_delivery_at: datetime | None
     created_at: datetime
 
     @classmethod
     def from_subscription(
         cls, sub: WebhookSubscription, show_secret: bool = False
-    ) -> "WebhookResponse":
+    ) -> WebhookResponse:
         return cls(
             subscription_id=sub.subscription_id,
             url=sub.url,
@@ -138,15 +136,15 @@ class DeliveryResponse(BaseModel):
     event_id: str
     event_type: str
     url: str
-    status_code: Optional[int]
-    error: Optional[str]
+    status_code: int | None
+    error: str | None
     duration_ms: int
     success: bool
     attempt_number: int
     created_at: datetime
 
     @classmethod
-    def from_attempt(cls, attempt: DeliveryAttempt) -> "DeliveryResponse":
+    def from_attempt(cls, attempt: DeliveryAttempt) -> DeliveryResponse:
         return cls(
             attempt_id=attempt.attempt_id,
             subscription_id=attempt.subscription_id,
@@ -165,14 +163,14 @@ class DeliveryResponse(BaseModel):
 class TestWebhookResponse(BaseModel):
     """Response from testing a webhook."""
     success: bool
-    status_code: Optional[int] = None
-    error: Optional[str] = None
+    status_code: int | None = None
+    error: str | None = None
     duration_ms: int = 0
 
 
 class EventTypesResponse(BaseModel):
     """List of available event types."""
-    event_types: List[str]
+    event_types: list[str]
 
 
 # Dependencies
@@ -228,7 +226,7 @@ async def create_webhook(
     return WebhookResponse.from_subscription(subscription, show_secret=True)
 
 
-@router.get("", response_model=List[WebhookResponse])
+@router.get("", response_model=list[WebhookResponse])
 async def list_webhooks(
     deps: WebhookDependencies = Depends(get_deps),
     api_key: APIKey = Depends(require_api_key),
@@ -362,7 +360,7 @@ async def test_webhook(
     )
 
 
-@router.get("/{subscription_id}/deliveries", response_model=List[DeliveryResponse])
+@router.get("/{subscription_id}/deliveries", response_model=list[DeliveryResponse])
 async def list_deliveries(
     subscription_id: str,
     limit: int = Query(default=50, ge=1, le=500),

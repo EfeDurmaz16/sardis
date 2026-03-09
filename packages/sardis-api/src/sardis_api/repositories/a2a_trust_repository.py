@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Optional
 import os
 import uuid
+from collections import defaultdict
+from datetime import UTC, datetime
+from typing import Any
 
 
 class A2ATrustRepository:
@@ -83,7 +83,7 @@ class A2ATrustRepository:
         organization_id: str,
         sender_agent_id: str,
         recipient_agent_id: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         org_id = self._normalize(organization_id)
         sender = self._normalize(sender_agent_id)
@@ -94,7 +94,7 @@ class A2ATrustRepository:
             raise ValueError("sender_and_recipient_required")
 
         meta = metadata or {}
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         if not self._use_postgres():
             self._relations_mem[org_id].add((sender, recipient))
             return {

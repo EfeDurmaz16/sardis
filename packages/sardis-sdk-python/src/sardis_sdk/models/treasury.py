@@ -1,7 +1,7 @@
 """Treasury models for Sardis SDK."""
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -13,18 +13,18 @@ class FinancialAccount(SardisModel):
 
     organization_id: str
     financial_account_token: str
-    account_token: Optional[str] = None
+    account_token: str | None = None
     account_role: str
     currency: str = "USD"
     status: str
     is_program_level: bool = False
-    nickname: Optional[str] = None
+    nickname: str | None = None
 
 
 class SyncAccountHolderRequest(SardisModel):
     """Request payload for account holder sync."""
 
-    account_token: Optional[str] = None
+    account_token: str | None = None
 
 
 class TreasuryAddress(SardisModel):
@@ -35,7 +35,7 @@ class TreasuryAddress(SardisModel):
     state: str
     postal_code: str
     country: str = "USA"
-    address2: Optional[str] = None
+    address2: str | None = None
 
 
 class CreateExternalBankAccountRequest(SardisModel):
@@ -48,15 +48,15 @@ class CreateExternalBankAccountRequest(SardisModel):
     account_type: Literal["CHECKING", "SAVINGS"] = "CHECKING"
     routing_number: str
     account_number: str
-    name: Optional[str] = None
+    name: str | None = None
     currency: str = "USD"
     country: str = "USA"
-    account_token: Optional[str] = None
-    company_id: Optional[str] = None
-    user_defined_id: Optional[str] = None
-    address: Optional[TreasuryAddress] = None
-    dob: Optional[str] = None
-    doing_business_as: Optional[str] = None
+    account_token: str | None = None
+    company_id: str | None = None
+    user_defined_id: str | None = None
+    address: TreasuryAddress | None = None
+    dob: str | None = None
+    doing_business_as: str | None = None
 
 
 class VerifyMicroDepositsRequest(SardisModel):
@@ -70,7 +70,7 @@ class ExternalBankAccount(SardisModel):
 
     organization_id: str
     external_bank_account_token: str
-    financial_account_token: Optional[str] = None
+    financial_account_token: str | None = None
     owner_type: str
     owner: str
     account_type: str
@@ -79,14 +79,14 @@ class ExternalBankAccount(SardisModel):
     state: str
     currency: str = "USD"
     country: str = "USA"
-    name: Optional[str] = None
-    routing_number: Optional[str] = None
-    last_four: Optional[str] = None
-    user_defined_id: Optional[str] = None
-    company_id: Optional[str] = None
+    name: str | None = None
+    routing_number: str | None = None
+    last_four: str | None = None
+    user_defined_id: str | None = None
+    company_id: str | None = None
     is_paused: bool = False
-    pause_reason: Optional[str] = None
-    last_return_reason_code: Optional[str] = None
+    pause_reason: str | None = None
+    last_return_reason_code: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -98,9 +98,9 @@ class TreasuryPaymentRequest(SardisModel):
     amount_minor: int = Field(gt=0)
     method: Literal["ACH_NEXT_DAY", "ACH_SAME_DAY"] = "ACH_NEXT_DAY"
     sec_code: Literal["CCD", "PPD", "WEB"] = "CCD"
-    memo: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    user_defined_id: Optional[str] = None
+    memo: str | None = None
+    idempotency_key: str | None = None
+    user_defined_id: str | None = None
 
 
 class TreasuryPaymentResponse(SardisModel):
@@ -116,7 +116,7 @@ class TreasuryPaymentResponse(SardisModel):
     settled_amount: int = 0
     financial_account_token: str
     external_bank_account_token: str
-    user_defined_id: Optional[str] = None
+    user_defined_id: str | None = None
 
 
 class TreasuryBalance(SardisModel):
@@ -128,4 +128,4 @@ class TreasuryBalance(SardisModel):
     available_amount_minor: int = 0
     pending_amount_minor: int = 0
     total_amount_minor: int = 0
-    as_of_event_token: Optional[str] = None
+    as_of_event_token: str | None = None

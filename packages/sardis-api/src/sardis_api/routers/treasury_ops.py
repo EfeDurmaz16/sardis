@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from io import StringIO
-from typing import Any, Optional
 import csv
 import json
+from dataclasses import dataclass
+from io import StringIO
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
@@ -29,14 +29,14 @@ def get_deps() -> TreasuryOpsDependencies:
 
 class ResolveReviewRequest(BaseModel):
     status: str = Field(pattern="^(in_review|resolved|dismissed)$")
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 @router.get("/journeys")
 async def list_canonical_journeys(
-    rail: Optional[str] = Query(default=None),
-    canonical_state: Optional[str] = Query(default=None),
-    break_status: Optional[str] = Query(default=None),
+    rail: str | None = Query(default=None),
+    canonical_state: str | None = Query(default=None),
+    break_status: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=1000),
     deps: TreasuryOpsDependencies = Depends(get_deps),
     principal: Principal = Depends(require_admin_principal),
@@ -121,7 +121,7 @@ async def resolve_manual_review(
 
 @router.get("/audit-evidence/export")
 async def export_audit_evidence(
-    journey_id: Optional[str] = Query(default=None),
+    journey_id: str | None = Query(default=None),
     format: str = Query(default="json", pattern="^(json|csv)$"),
     limit: int = Query(default=500, ge=1, le=5000),
     deps: TreasuryOpsDependencies = Depends(get_deps),

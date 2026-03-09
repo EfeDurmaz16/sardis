@@ -10,12 +10,8 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, AsyncMock, patch
-
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add source to path
@@ -27,11 +23,11 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_wallet.key_rotation import (
+    KeyRotationEvent,
+    MPCKeyInfo,
+    MPCKeyRotationPolicy,
     MPCKeyStatus,
     RotationReason,
-    MPCKeyInfo,
-    KeyRotationEvent,
-    MPCKeyRotationPolicy,
 )
 
 
@@ -93,7 +89,7 @@ class TestMPCKeyInfo:
 
     def test_is_valid_expired_key(self):
         """Should invalidate expired key."""
-        past_time = datetime.now(timezone.utc) - timedelta(days=1)
+        past_time = datetime.now(UTC) - timedelta(days=1)
 
         key = MPCKeyInfo(
             key_id="key_2",
@@ -132,7 +128,7 @@ class TestMPCKeyInfo:
 
     def test_days_until_expiry(self):
         """Should calculate days until expiry."""
-        future_time = datetime.now(timezone.utc) + timedelta(days=30)
+        future_time = datetime.now(UTC) + timedelta(days=30)
 
         key = MPCKeyInfo(
             key_id="key_5",
@@ -206,7 +202,7 @@ class TestKeyRotationEvent:
             old_key_id="old_key",
             new_key_id="new_key",
             reason=RotationReason.SCHEDULED,
-            initiated_at=datetime.now(timezone.utc),
+            initiated_at=datetime.now(UTC),
             initiated_by="system",
         )
 
@@ -222,7 +218,7 @@ class TestKeyRotationEvent:
             old_key_id="key_old",
             new_key_id="key_new",
             reason=RotationReason.SECURITY_INCIDENT,
-            initiated_at=datetime.now(timezone.utc),
+            initiated_at=datetime.now(UTC),
             initiated_by="security",
         )
 
@@ -240,9 +236,9 @@ class TestKeyRotationEvent:
             old_key_id="old",
             new_key_id="new",
             reason=RotationReason.MANUAL,
-            initiated_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+            initiated_at=datetime.now(UTC) - timedelta(minutes=5),
             initiated_by="user",
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
             status="completed",
         )
 
@@ -287,14 +283,14 @@ class TestKeyRotationIntegration:
 
         # Start rotation
         key.status = MPCKeyStatus.ROTATING
-        key.rotation_started_at = datetime.now(timezone.utc)
+        key.rotation_started_at = datetime.now(UTC)
 
         assert key.is_valid is True  # Still valid during rotation
         assert key.is_in_grace_period is True
 
         # Complete rotation
         key.status = MPCKeyStatus.EXPIRED
-        key.rotation_completed_at = datetime.now(timezone.utc)
+        key.rotation_completed_at = datetime.now(UTC)
 
         assert key.is_valid is False
 
@@ -306,7 +302,7 @@ class TestKeyRotationIntegration:
             old_key_id="compromised_key",
             new_key_id="new_secure_key",
             reason=RotationReason.SECURITY_INCIDENT,
-            initiated_at=datetime.now(timezone.utc),
+            initiated_at=datetime.now(UTC),
             initiated_by="security",
             metadata={"incident_id": "INC-001", "severity": "high"},
         )
@@ -334,7 +330,7 @@ class TestKeyRotationEdgeCases:
     def test_key_expiry_boundary(self):
         """Should handle key at expiry boundary."""
         # Key expiring right now
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         key = MPCKeyInfo(
             key_id="expiring_key",
@@ -356,7 +352,7 @@ class TestKeyRotationEdgeCases:
                 old_key_id=f"key_{i}",
                 new_key_id=f"key_{i+1}",
                 reason=RotationReason.SCHEDULED,
-                initiated_at=datetime.now(timezone.utc),
+                initiated_at=datetime.now(UTC),
                 initiated_by="system",
             )
             for i in range(5)

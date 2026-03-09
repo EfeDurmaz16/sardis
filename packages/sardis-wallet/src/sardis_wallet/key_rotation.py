@@ -15,12 +15,12 @@ import hashlib
 import logging
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -53,18 +53,18 @@ class MPCKeyInfo:
     mpc_provider: str
     mpc_key_reference: str  # Provider-specific key identifier
     algorithm: str = "ecdsa-secp256k1"  # Default for EVM chains
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
     status: MPCKeyStatus = MPCKeyStatus.ACTIVE
 
     # Rotation tracking
-    previous_key_id: Optional[str] = None
-    rotation_started_at: Optional[datetime] = None
-    rotation_completed_at: Optional[datetime] = None
+    previous_key_id: str | None = None
+    rotation_started_at: datetime | None = None
+    rotation_completed_at: datetime | None = None
 
     # Security metadata
-    key_fingerprint: Optional[str] = None
-    last_used_at: Optional[datetime] = None
+    key_fingerprint: str | None = None
+    last_used_at: datetime | None = None
     use_count: int = 0
 
     @property
@@ -72,9 +72,7 @@ class MPCKeyInfo:
         """Check if key is valid for signing."""
         if self.status not in (MPCKeyStatus.ACTIVE, MPCKeyStatus.ROTATING):
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
 
     @property
     def is_in_grace_period(self) -> bool:
@@ -82,19 +80,19 @@ class MPCKeyInfo:
         return self.status == MPCKeyStatus.ROTATING
 
     @property
-    def days_until_expiry(self) -> Optional[int]:
+    def days_until_expiry(self) -> int | None:
         """Get days until key expires."""
         if not self.expires_at:
             return None
-        delta = self.expires_at - datetime.now(timezone.utc)
+        delta = self.expires_at - datetime.now(UTC)
         return max(0, delta.days)
 
     def record_use(self) -> None:
         """Record key usage."""
-        self.last_used_at = datetime.now(timezone.utc)
+        self.last_used_at = datetime.now(UTC)
         self.use_count += 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "key_id": self.key_id,
@@ -123,12 +121,12 @@ class KeyRotationEvent:
     reason: RotationReason
     initiated_at: datetime
     initiated_by: str  # "system", "user", "security"
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     status: str = "in_progress"  # "in_progress", "completed", "failed", "cancelled"
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "event_id": self.event_id,
@@ -156,7 +154,7 @@ class MPCKeyRotationPolicy:
 
     # Notification settings
     notification_threshold_days: int = 14
-    warn_before_days: Optional[int] = None  # Backwards-compatible alias
+    warn_before_days: int | None = None  # Backwards-compatible alias
     send_expiry_warnings: bool = True
 
     # Security settings
@@ -165,15 +163,15 @@ class MPCKeyRotationPolicy:
     max_concurrent_rotations: int = 1
 
     # Provider-specific settings
-    turnkey_settings: Dict[str, Any] = field(default_factory=dict)
-    fireblocks_settings: Dict[str, Any] = field(default_factory=dict)
+    turnkey_settings: dict[str, Any] = field(default_factory=dict)
+    fireblocks_settings: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Normalize backwards-compatible aliases."""
         if self.warn_before_days is not None:
             self.notification_threshold_days = self.warn_before_days
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate policy configuration."""
         errors = []
         if self.rotation_interval_days < 30:
@@ -192,7 +190,7 @@ class MPCSignerPort(Protocol):
         self,
         wallet_id: str,
         algorithm: str = "ecdsa-secp256k1",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new signing key."""
         ...
 
@@ -204,7 +202,7 @@ class MPCSignerPort(Protocol):
         self,
         old_key_reference: str,
         new_key_reference: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Rotate from old key to new key."""
         ...
 
@@ -253,19 +251,19 @@ class MPCKeyRotationManager:
 
     def __init__(
         self,
-        policy: Optional[MPCKeyRotationPolicy] = None,
-        mpc_signer: Optional[MPCSignerPort] = None,
-        callback: Optional[KeyRotationCallback] = None,
+        policy: MPCKeyRotationPolicy | None = None,
+        mpc_signer: MPCSignerPort | None = None,
+        callback: KeyRotationCallback | None = None,
     ):
         self._policy = policy or MPCKeyRotationPolicy()
         self._mpc_signer = mpc_signer
         self._callback = callback
 
         # Storage (in production, use database)
-        self._keys: Dict[str, Dict[str, MPCKeyInfo]] = {}  # wallet_id -> key_id -> key
-        self._active_keys: Dict[str, str] = {}  # wallet_id -> active_key_id
-        self._rotation_events: List[KeyRotationEvent] = []
-        self._pending_rotations: Dict[str, KeyRotationEvent] = {}  # wallet_id -> event
+        self._keys: dict[str, dict[str, MPCKeyInfo]] = {}  # wallet_id -> key_id -> key
+        self._active_keys: dict[str, str] = {}  # wallet_id -> active_key_id
+        self._rotation_events: list[KeyRotationEvent] = []
+        self._pending_rotations: dict[str, KeyRotationEvent] = {}  # wallet_id -> event
 
         # Lock for concurrent operations
         self._rotation_lock = asyncio.Lock()
@@ -276,8 +274,8 @@ class MPCKeyRotationManager:
         mpc_provider: str,
         mpc_key_reference: str,
         algorithm: str = "ecdsa-secp256k1",
-        expires_at: Optional[datetime] = None,
-        public_key: Optional[bytes] = None,
+        expires_at: datetime | None = None,
+        public_key: bytes | None = None,
     ) -> MPCKeyInfo:
         """
         Register a new MPC key for a wallet.
@@ -293,7 +291,7 @@ class MPCKeyRotationManager:
         Returns:
             MPCKeyInfo for the registered key
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Generate key ID
         key_id = f"mpckey_{secrets.token_hex(12)}"
@@ -346,7 +344,7 @@ class MPCKeyRotationManager:
 
         return new_key
 
-    def get_active_key(self, wallet_id: str) -> Optional[MPCKeyInfo]:
+    def get_active_key(self, wallet_id: str) -> MPCKeyInfo | None:
         """Get the currently active key for a wallet."""
         key_id = self._active_keys.get(wallet_id)
         if not key_id:
@@ -359,7 +357,7 @@ class MPCKeyRotationManager:
             return key
         return None
 
-    def get_valid_keys(self, wallet_id: str) -> List[MPCKeyInfo]:
+    def get_valid_keys(self, wallet_id: str) -> list[MPCKeyInfo]:
         """Get all valid keys for a wallet (including grace period keys)."""
         wallet_keys = self._keys.get(wallet_id, {})
         return [k for k in wallet_keys.values() if k.is_valid]
@@ -370,7 +368,7 @@ class MPCKeyRotationManager:
         reason: RotationReason = RotationReason.SCHEDULED,
         initiated_by: str = "system",
         force: bool = False,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> KeyRotationEvent:
         """
         Perform a key rotation for a wallet.
@@ -400,7 +398,7 @@ class MPCKeyRotationManager:
             if not current_key:
                 raise ValueError(f"No active key found for wallet {wallet_id}")
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             # Create rotation event
             event = KeyRotationEvent(
@@ -448,7 +446,7 @@ class MPCKeyRotationManager:
 
                 # Update event
                 event.new_key_id = new_key.key_id
-                event.completed_at = datetime.now(timezone.utc)
+                event.completed_at = datetime.now(UTC)
                 event.status = "completed"
 
                 # Store event
@@ -471,7 +469,7 @@ class MPCKeyRotationManager:
             except Exception as e:
                 event.status = "failed"
                 event.error_message = str(e)
-                event.completed_at = datetime.now(timezone.utc)
+                event.completed_at = datetime.now(UTC)
                 self._rotation_events.append(event)
 
                 # Notify callback
@@ -551,7 +549,7 @@ class MPCKeyRotationManager:
 
         Returns the number of keys affected.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         count = 0
         grace_period = timedelta(hours=self._policy.grace_period_hours)
 
@@ -565,28 +563,26 @@ class MPCKeyRotationManager:
                         logger.info(f"Key {key_id} for wallet {wallet_id} expired")
 
                 # Check grace period end
-                if key.status == MPCKeyStatus.ROTATING:
-                    if key.rotation_started_at:
-                        if now > key.rotation_started_at + grace_period:
-                            key.status = MPCKeyStatus.REVOKED
-                            count += 1
-                            logger.info(
-                                f"Key {key_id} for wallet {wallet_id} grace period ended"
-                            )
+                if key.status == MPCKeyStatus.ROTATING and key.rotation_started_at:
+                    if now > key.rotation_started_at + grace_period:
+                        key.status = MPCKeyStatus.REVOKED
+                        count += 1
+                        logger.info(
+                            f"Key {key_id} for wallet {wallet_id} grace period ended"
+                        )
 
         return count
 
-    def get_keys_needing_rotation(self) -> List[tuple]:
+    def get_keys_needing_rotation(self) -> list[tuple]:
         """Get list of (wallet_id, key_id, expires_at) that should be rotated soon."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         threshold = timedelta(days=self._policy.notification_threshold_days)
         result = []
 
         for wallet_id, key_id in self._active_keys.items():
             key = self._keys[wallet_id][key_id]
-            if key.expires_at:
-                if key.expires_at - now <= threshold:
-                    result.append((wallet_id, key_id, key.expires_at))
+            if key.expires_at and key.expires_at - now <= threshold:
+                result.append((wallet_id, key_id, key.expires_at))
 
         return result
 
@@ -594,12 +590,12 @@ class MPCKeyRotationManager:
         self,
         wallet_id: str,
         limit: int = 100,
-    ) -> List[KeyRotationEvent]:
+    ) -> list[KeyRotationEvent]:
         """Get rotation event history for a wallet."""
         events = [e for e in self._rotation_events if e.wallet_id == wallet_id]
         return sorted(events, key=lambda e: e.initiated_at, reverse=True)[:limit]
 
-    def get_key_usage_stats(self, wallet_id: str) -> Dict[str, Any]:
+    def get_key_usage_stats(self, wallet_id: str) -> dict[str, Any]:
         """Get key usage statistics for a wallet."""
         wallet_keys = self._keys.get(wallet_id, {})
 
@@ -627,12 +623,12 @@ class MPCKeyRotationManager:
 
 
 # Singleton instance
-_mpc_key_rotation_manager: Optional[MPCKeyRotationManager] = None
+_mpc_key_rotation_manager: MPCKeyRotationManager | None = None
 
 
 def get_mpc_key_rotation_manager(
-    policy: Optional[MPCKeyRotationPolicy] = None,
-    mpc_signer: Optional[MPCSignerPort] = None,
+    policy: MPCKeyRotationPolicy | None = None,
+    mpc_signer: MPCSignerPort | None = None,
 ) -> MPCKeyRotationManager:
     """Get the global MPC key rotation manager instance."""
     global _mpc_key_rotation_manager

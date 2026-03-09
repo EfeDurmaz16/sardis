@@ -9,17 +9,16 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from .spending_policy import (
-    SpendingPolicy,
-    TimeWindowLimit,
-    MerchantRule,
-    TrustLevel,
-    SpendingScope,
     DEFAULT_LIMITS,
+    SpendingPolicy,
+    SpendingScope,
+    TimeWindowLimit,
+    TrustLevel,
 )
 
 
@@ -37,7 +36,7 @@ class PolicyDefinition:
     rules: list[PolicyRule] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)  # name, description, created_by, etc.
     definition_id: str = field(default_factory=lambda: f"pdef_{uuid.uuid4().hex[:16]}")
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,7 +48,7 @@ class PolicyDefinition:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PolicyDefinition":
+    def from_dict(cls, data: dict[str, Any]) -> PolicyDefinition:
         rules = [PolicyRule(type=r["type"], params=r.get("params", {})) for r in data.get("rules", [])]
         return cls(
             version=data.get("version", "1.0"),
@@ -99,13 +98,7 @@ def validate_definition(definition: PolicyDefinition) -> list[str]:
             errors.append(f"{prefix}: unknown rule type '{rule.type}'")
             continue
 
-        if rule.type == "limit_per_tx":
-            if "amount" not in rule.params:
-                errors.append(f"{prefix}: missing 'amount' param")
-            elif not _is_positive_number(rule.params["amount"]):
-                errors.append(f"{prefix}: 'amount' must be a positive number")
-
-        elif rule.type == "limit_total":
+        if rule.type == "limit_per_tx" or rule.type == "limit_total":
             if "amount" not in rule.params:
                 errors.append(f"{prefix}: missing 'amount' param")
             elif not _is_positive_number(rule.params["amount"]):

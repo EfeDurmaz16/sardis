@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 
 class IssuerAdapter(Protocol):
@@ -17,10 +17,10 @@ class IssuerAdapter(Protocol):
         self,
         *,
         wallet_id: str,
-        cardholder_name: Optional[str] = None,
-        cardholder_email: Optional[str] = None,
-        cardholder_phone: Optional[str] = None,
-        metadata: Optional[dict[str, str]] = None,
+        cardholder_name: str | None = None,
+        cardholder_email: str | None = None,
+        cardholder_phone: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -32,8 +32,8 @@ class IssuerAdapter(Protocol):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
-        metadata: Optional[dict[str, str]] = None,
+        locked_merchant_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         ...
 
@@ -42,9 +42,9 @@ class IssuerAdapter(Protocol):
         *,
         provider_card_id: str,
         amount: Decimal,
-        merchant_name: Optional[str] = None,
-        mcc_code: Optional[str] = None,
-        metadata: Optional[dict[str, str]] = None,
+        merchant_name: str | None = None,
+        mcc_code: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         ...
 

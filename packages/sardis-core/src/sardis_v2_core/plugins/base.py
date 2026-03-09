@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class PluginType(str, Enum):
@@ -50,7 +50,7 @@ class ApprovalResult:
     """Result of approval request."""
 
     approved: bool
-    approver: Optional[str]
+    approver: str | None
     reason: str
     plugin_name: str
     timestamp: datetime = field(default_factory=datetime.utcnow)

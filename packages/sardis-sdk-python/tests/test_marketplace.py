@@ -1,9 +1,7 @@
 """Tests for MarketplaceResource."""
-import pytest
 from decimal import Decimal
 
 from sardis_sdk.models.marketplace import ServiceCategory
-
 
 MOCK_SERVICE = {
     "id": "svc_123",

@@ -1,27 +1,28 @@
 """Wallet API endpoints."""
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, List, Literal
+from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-
-from sardis_v2_core import AgentRepository, Wallet, WalletRepository
-from sardis_v2_core.tokens import TokenType, normalize_token_amount
-from sardis_v2_core.database import Database
-from sardis_chain.executor import ChainExecutor, ChainRPCClient, STABLECOIN_ADDRESSES, CHAIN_CONFIGS
-from sardis_api.authz import Principal, require_principal
-from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis_chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
 from sardis_ledger.records import LedgerStore
-from sardis_api.idempotency import get_idempotency_key, run_idempotent
-from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_v2_core import AgentRepository, Wallet, WalletRepository
+from sardis_v2_core.database import Database
+from sardis_v2_core.tokens import TokenType
+from sardis_v2_core.transactions import validate_wallet_not_frozen
+
+from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
+from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -37,19 +38,19 @@ class CreateWalletRequest(BaseModel):
     currency: str = "USDC"
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
     limit_total: Decimal = Field(default=Decimal("1000.00"))
-    wallet_name: Optional[str] = Field(default=None, description="Optional provider wallet name")
-    chains: Optional[list[str]] = Field(default=None, description="Target chains for Circle wallets")
+    wallet_name: str | None = Field(default=None, description="Optional provider wallet name")
+    chains: list[str] | None = Field(default=None, description="Target chains for Circle wallets")
 
 
 class UpdateWalletRequest(BaseModel):
-    limit_per_tx: Optional[Decimal] = None
-    limit_total: Optional[Decimal] = None
-    is_active: Optional[bool] = None
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
+    is_active: bool | None = None
 
 
 class SetLimitsRequest(BaseModel):
-    limit_per_tx: Optional[Decimal] = None
-    limit_total: Optional[Decimal] = None
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
 
 
 class SetAddressRequest(BaseModel):
@@ -59,7 +60,7 @@ class SetAddressRequest(BaseModel):
 
 class UpgradeSmartAccountRequest(BaseModel):
     smart_account_address: str = Field(description="Deployed ERC-4337 smart account address (0x...)")
-    entrypoint_address: Optional[str] = Field(
+    entrypoint_address: str | None = Field(
         default="0x0000000071727De22E5E9d8BAf0edAc6f37da032",
         description="EntryPoint v0.7 address",
     )
@@ -80,7 +81,7 @@ class TransferRequest(BaseModel):
     token: str = Field(default="USDC")
     chain: str = Field(default="base_sepolia")
     domain: str = Field(default="localhost", description="Logical merchant/domain label for policy enforcement")
-    memo: Optional[str] = Field(default=None, description="Optional memo for audit/logging")
+    memo: str | None = Field(default=None, description="Optional memo for audit/logging")
 
 
 class TransferResponse(BaseModel):
@@ -91,16 +92,16 @@ class TransferResponse(BaseModel):
     amount: str
     token: str
     chain: str
-    fee_amount: Optional[str] = None
-    fee_bps: Optional[int] = None
-    net_amount: Optional[str] = None
-    fee_tx_hash: Optional[str] = None
-    ledger_tx_id: Optional[str] = None
-    audit_anchor: Optional[str] = None
+    fee_amount: str | None = None
+    fee_bps: int | None = None
+    net_amount: str | None = None
+    fee_tx_hash: str | None = None
+    ledger_tx_id: str | None = None
+    audit_anchor: str | None = None
     execution_path: Literal["legacy_tx", "erc4337_userop"] = "legacy_tx"
-    user_op_hash: Optional[str] = None
-    proof_artifact_path: Optional[str] = None
-    proof_artifact_sha256: Optional[str] = None
+    user_op_hash: str | None = None
+    proof_artifact_path: str | None = None
+    proof_artifact_sha256: str | None = None
 
 
 class WalletResponse(BaseModel):
@@ -112,16 +113,16 @@ class WalletResponse(BaseModel):
     currency: str
     limit_per_tx: str
     limit_total: str
-    smart_account_address: Optional[str] = None
-    entrypoint_address: Optional[str] = None
+    smart_account_address: str | None = None
+    entrypoint_address: str | None = None
     paymaster_enabled: bool = False
-    bundler_profile: Optional[str] = None
+    bundler_profile: str | None = None
     is_active: bool
     created_at: str
     updated_at: str
 
     @classmethod
-    def from_wallet(cls, wallet: Wallet) -> "WalletResponse":
+    def from_wallet(cls, wallet: Wallet) -> WalletResponse:
         return cls(
             wallet_id=wallet.wallet_id,
             agent_id=wallet.agent_id,
@@ -241,7 +242,6 @@ async def create_wallet(
         raise
     wallet_id_override: str | None = None
     addresses: dict[str, str] | None = None
-    circle_wallet_id: str | None = None
 
     if request.mpc_provider == "circle":
         if not deps.wallet_manager:
@@ -264,7 +264,7 @@ async def create_wallet(
             ) from e
 
         wallet_id_override = provider.get("wallet_id")
-        circle_wallet_id = provider.get("circle_wallet_id")
+        provider.get("circle_wallet_id")
         addr = provider.get("address")
         addresses = provider.get("addresses")
         if not addresses and addr:
@@ -370,10 +370,10 @@ async def create_wallet(
     return WalletResponse.from_wallet(wallet)
 
 
-@router.get("", response_model=List[WalletResponse])
+@router.get("", response_model=list[WalletResponse])
 async def list_wallets(
-    agent_id: Optional[str] = Query(None),
-    is_active: Optional[bool] = Query(None),
+    agent_id: str | None = Query(None),
+    is_active: bool | None = Query(None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     deps: WalletDependencies = Depends(get_deps),
@@ -490,7 +490,7 @@ async def get_wallet_balance(
 
     # Validate token
     try:
-        token_enum = TokenType(token)
+        TokenType(token)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -524,10 +524,8 @@ async def get_wallet_balance(
 
     # Populate cache on successful query
     if cache is not None:
-        try:
+        with contextlib.suppress(Exception):
             await cache.set_balance(wallet_id, token, balance)
-        except Exception:
-            pass
 
     return BalanceResponse(
         wallet_id=wallet_id,
@@ -603,7 +601,7 @@ async def get_wallet_balances(
         total_usd=str(total_usd),
         total_eur=str(total_eur),
         balances=balance_items,
-        queried_at=datetime.now(timezone.utc).isoformat(),
+        queried_at=datetime.now(UTC).isoformat(),
     )
 
 
@@ -724,8 +722,9 @@ async def transfer_crypto(
             )
 
         # Build a PaymentMandate for the chain executor
-        import time
         import hashlib
+        import time
+
         from sardis_v2_core.mandates import PaymentMandate, VCProof
         from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
@@ -1029,14 +1028,14 @@ class ReceiveAddressInfo(BaseModel):
 
 class ReceiveInfoResponse(BaseModel):
     wallet_id: str
-    addresses: List[ReceiveAddressInfo]
+    addresses: list[ReceiveAddressInfo]
 
 
 class CreatePaymentRequestModel(BaseModel):
     amount: str = Field(description="Amount to receive (e.g. '25.00')")
     token: str = Field(default="USDC")
-    chain: Optional[str] = Field(default=None, description="Preferred chain (optional)")
-    memo: Optional[str] = Field(default=None, description="Payment memo/reference")
+    chain: str | None = Field(default=None, description="Preferred chain (optional)")
+    memo: str | None = Field(default=None, description="Payment memo/reference")
 
 
 class PaymentRequestResponse(BaseModel):
@@ -1046,14 +1045,14 @@ class PaymentRequestResponse(BaseModel):
     amount: str
     currency: str
     token: str
-    chain: Optional[str]
+    chain: str | None
     receive_address: str
-    memo: Optional[str]
-    invoice_id: Optional[str]
+    memo: str | None
+    invoice_id: str | None
     status: str
     amount_received: str
-    deposit_id: Optional[str]
-    expires_at: Optional[str]
+    deposit_id: str | None
+    expires_at: str | None
     created_at: str
 
 
@@ -1067,14 +1066,14 @@ class DepositResponse(BaseModel):
     amount: str
     status: str
     confirmations: int
-    agent_id: Optional[str]
-    wallet_id: Optional[str]
-    payment_request_id: Optional[str]
-    ledger_entry_id: Optional[str]
-    aml_screening_result: Optional[str]
-    detected_at: Optional[str]
-    confirmed_at: Optional[str]
-    credited_at: Optional[str]
+    agent_id: str | None
+    wallet_id: str | None
+    payment_request_id: str | None
+    ledger_entry_id: str | None
+    aml_screening_result: str | None
+    detected_at: str | None
+    confirmed_at: str | None
+    credited_at: str | None
 
 
 class X402ChallengeRequest(BaseModel):
@@ -1108,7 +1107,7 @@ class X402VerifyRequest(BaseModel):
 
 class X402VerifyResponse(BaseModel):
     accepted: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class X402SettleRequest(BaseModel):
@@ -1118,15 +1117,15 @@ class X402SettleRequest(BaseModel):
 class X402SettleResponse(BaseModel):
     payment_id: str
     status: str
-    tx_hash: Optional[str] = None
-    settled_at: Optional[str] = None
-    error: Optional[str] = None
+    tx_hash: str | None = None
+    settled_at: str | None = None
+    error: str | None = None
 
 
 class BridgeRequest(BaseModel):
     to_chain: str = Field(description="Destination chain (e.g., 'ethereum', 'polygon')")
     amount: Decimal = Field(gt=0, description="Amount in USDC")
-    recipient: Optional[str] = Field(default=None, description="Destination address (defaults to wallet's address on target chain)")
+    recipient: str | None = Field(default=None, description="Destination address (defaults to wallet's address on target chain)")
 
 
 class BridgeResponse(BaseModel):
@@ -1136,12 +1135,12 @@ class BridgeResponse(BaseModel):
     to_chain: str
     amount: str
     token: str = "USDC"
-    message_hash: Optional[str] = None
-    source_tx_hash: Optional[str] = None
-    destination_tx_hash: Optional[str] = None
+    message_hash: str | None = None
+    source_tx_hash: str | None = None
+    destination_tx_hash: str | None = None
     status: str
-    estimated_time_seconds: Optional[int] = None
-    error: Optional[str] = None
+    estimated_time_seconds: int | None = None
+    error: str | None = None
     created_at: str
 
 
@@ -1154,18 +1153,18 @@ async def _cleanup_expired_x402_challenges() -> None:
 
 async def _save_x402_challenge(wallet_id: str, challenge: object) -> None:
     """Persist an x402 challenge for later verification."""
-    expires_at_ts = getattr(challenge, "expires_at")
-    expires_at = datetime.fromtimestamp(expires_at_ts, tz=timezone.utc)
+    expires_at_ts = challenge.expires_at
+    expires_at = datetime.fromtimestamp(expires_at_ts, tz=UTC)
     payload = {
-        "payment_id": getattr(challenge, "payment_id"),
-        "resource_uri": getattr(challenge, "resource_uri"),
-        "amount": getattr(challenge, "amount"),
-        "currency": getattr(challenge, "currency"),
-        "payee_address": getattr(challenge, "payee_address"),
-        "network": getattr(challenge, "network"),
-        "token_address": getattr(challenge, "token_address"),
+        "payment_id": challenge.payment_id,
+        "resource_uri": challenge.resource_uri,
+        "amount": challenge.amount,
+        "currency": challenge.currency,
+        "payee_address": challenge.payee_address,
+        "network": challenge.network,
+        "token_address": challenge.token_address,
         "expires_at": expires_at_ts,
-        "nonce": getattr(challenge, "nonce"),
+        "nonce": challenge.nonce,
     }
     await Database.execute(
         """
@@ -1281,7 +1280,7 @@ async def get_receive_addresses(
     """Get all receive addresses with EIP-681 payment URIs for QR codes."""
     wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
 
-    addresses: List[ReceiveAddressInfo] = []
+    addresses: list[ReceiveAddressInfo] = []
     token_addresses = {
         "base": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
         "base_sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -1343,7 +1342,7 @@ async def create_payment_request(
 
     request_id = f"preq_{uuid4().hex[:12]}"
     invoice_id = f"inv_{uuid4().hex[:12]}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = now + timedelta(hours=24)
     org_id = principal.organization_id
 
@@ -1407,10 +1406,10 @@ async def create_payment_request(
     )
 
 
-@router.get("/{wallet_id}/payment-requests", response_model=List[PaymentRequestResponse])
+@router.get("/{wallet_id}/payment-requests", response_model=list[PaymentRequestResponse])
 async def list_payment_requests(
     wallet_id: str,
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     deps: WalletDependencies = Depends(get_deps),
@@ -1463,12 +1462,12 @@ async def list_payment_requests(
     ]
 
 
-@router.get("/{wallet_id}/deposits", response_model=List[DepositResponse])
+@router.get("/{wallet_id}/deposits", response_model=list[DepositResponse])
 async def list_deposits(
     wallet_id: str,
-    chain: Optional[str] = Query(None),
-    token: Optional[str] = Query(None),
-    status_filter: Optional[str] = Query(None, alias="status"),
+    chain: str | None = Query(None),
+    token: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     deps: WalletDependencies = Depends(get_deps),
@@ -1651,9 +1650,9 @@ async def verify_x402_payment(
 
     try:
         from sardis_protocol.x402_settlement import (
-            X402Settler,
             DatabaseSettlementStore,
             X402SettlementStatus,
+            X402Settler,
         )
     except ImportError:
         raise HTTPException(
@@ -1731,7 +1730,9 @@ async def settle_x402_payment(
 
     try:
         from sardis_protocol.x402_settlement import (
-            X402Settler, DatabaseSettlementStore, X402SettlementStatus,
+            DatabaseSettlementStore,
+            X402SettlementStatus,
+            X402Settler,
         )
     except ImportError:
         raise HTTPException(
@@ -1771,7 +1772,7 @@ async def settle_x402_payment(
                 intent_payload = _build_circle_payment_intent_payload(settlement)
                 created_intent = await circle_client.create_payment_intent(intent_payload)
                 settled_intent = await circle_client.settle_payment_intent(created_intent.payment_intent_id)
-            settled_at = datetime.now(timezone.utc)
+            settled_at = datetime.now(UTC)
             await store.update_status(
                 request.payment_id,
                 X402SettlementStatus.SETTLED,
@@ -1906,10 +1907,8 @@ async def get_bridge_status(
             bridge_service = CCTPBridgeService()
             # V2 API uses source_domain + tx_hash for attestation lookup
             source_domain = None
-            try:
+            with contextlib.suppress(ValueError):
                 source_domain = get_cctp_domain(row["from_chain"])
-            except ValueError:
-                pass
             attestation_status = await bridge_service.get_bridge_status(
                 row["message_hash"],
                 source_domain=source_domain,
@@ -1946,7 +1945,7 @@ async def get_bridge_status(
 class OnrampRequest(BaseModel):
     """Request to generate a fiat on-ramp URL."""
     destination_chain: str = Field(default="base", description="Target chain for USDC")
-    preset_amount: Optional[str] = Field(default=None, description="Pre-filled USD amount")
+    preset_amount: str | None = Field(default=None, description="Pre-filled USD amount")
 
 
 class OnrampResponse(BaseModel):
@@ -2040,8 +2039,8 @@ async def generate_onramp_url(
 class OfframpRequest(BaseModel):
     """Request to generate a fiat off-ramp URL."""
     source_chain: str = Field(default="base", description="Chain holding the USDC")
-    amount: Optional[str] = Field(default=None, description="USDC amount to cash out")
-    redirect_url: Optional[str] = Field(default=None, description="URL to redirect after offramp")
+    amount: str | None = Field(default=None, description="USDC amount to cash out")
+    redirect_url: str | None = Field(default=None, description="URL to redirect after offramp")
 
 
 class OfframpResponse(BaseModel):
@@ -2059,11 +2058,11 @@ class OfframpStatusResponse(BaseModel):
     """Offramp transaction status from Coinbase."""
     offramp_id: str
     status: str  # initiated | pending_send | sending | completed | failed
-    to_address: Optional[str] = None
-    sell_amount: Optional[str] = None
-    asset: Optional[str] = None
-    network: Optional[str] = None
-    next_step: Optional[str] = None
+    to_address: str | None = None
+    sell_amount: str | None = None
+    asset: str | None = None
+    network: str | None = None
+    next_step: str | None = None
 
 
 class OfframpExecuteResponse(BaseModel):

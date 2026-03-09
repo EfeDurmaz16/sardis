@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import time
-import pytest
+
 from sardis_v2_core.mandates import (
-    IntentMandate,
     CartMandate,
-    PaymentMandate,
+    IntentMandate,
     MandateChain,
+    PaymentMandate,
     VCProof,
 )
 
@@ -28,7 +28,7 @@ class TestMandateExpiration:
         """Test that a mandate with future expiration is not expired."""
         future_time = int(time.time()) + 3600  # 1 hour from now
         proof = create_vc_proof()
-        
+
         mandate = IntentMandate(
             mandate_id="test_intent_001",
             mandate_type="intent",
@@ -41,14 +41,14 @@ class TestMandateExpiration:
             purpose="intent",
             scope=["payments"],
         )
-        
+
         assert mandate.is_expired() is False
 
     def test_mandate_expired(self):
         """Test that a mandate with past expiration is expired."""
         past_time = int(time.time()) - 100  # 100 seconds ago
         proof = create_vc_proof()
-        
+
         mandate = IntentMandate(
             mandate_id="test_intent_002",
             mandate_type="intent",
@@ -61,14 +61,14 @@ class TestMandateExpiration:
             purpose="intent",
             scope=["payments"],
         )
-        
+
         assert mandate.is_expired() is True
 
     def test_mandate_expired_at_exact_time(self):
         """Test that a mandate expired at current time is considered expired."""
         now = int(time.time())
         proof = create_vc_proof()
-        
+
         mandate = PaymentMandate(
             mandate_id="test_payment_001",
             mandate_type="payment",
@@ -85,7 +85,7 @@ class TestMandateExpiration:
             destination="0x1234567890123456789012345678901234567890",
             audit_hash="abc123",
         )
-        
+
         assert mandate.is_expired() is True
 
 
@@ -95,7 +95,7 @@ class TestIntentMandate:
     def test_intent_mandate_creation(self):
         """Test creating an IntentMandate."""
         proof = create_vc_proof()
-        
+
         mandate = IntentMandate(
             mandate_id="intent_001",
             mandate_type="intent",
@@ -109,7 +109,7 @@ class TestIntentMandate:
             scope=["payments", "shopping"],
             requested_amount=50000,  # $500.00
         )
-        
+
         assert mandate.mandate_id == "intent_001"
         assert mandate.mandate_type == "intent"
         assert mandate.scope == ["payments", "shopping"]
@@ -118,7 +118,7 @@ class TestIntentMandate:
     def test_intent_mandate_default_scope(self):
         """Test IntentMandate with default empty scope."""
         proof = create_vc_proof()
-        
+
         mandate = IntentMandate(
             mandate_id="intent_002",
             mandate_type="intent",
@@ -130,7 +130,7 @@ class TestIntentMandate:
             domain="sardis.network",
             purpose="browsing",
         )
-        
+
         assert mandate.scope == []
         assert mandate.requested_amount is None
 
@@ -141,12 +141,12 @@ class TestCartMandate:
     def test_cart_mandate_creation(self):
         """Test creating a CartMandate."""
         proof = create_vc_proof()
-        
+
         line_items = [
             {"sku": "PROD001", "quantity": 2, "price_minor": 1500},
             {"sku": "PROD002", "quantity": 1, "price_minor": 2000},
         ]
-        
+
         mandate = CartMandate(
             mandate_id="cart_001",
             mandate_type="cart",
@@ -163,7 +163,7 @@ class TestCartMandate:
             subtotal_minor=5000,
             taxes_minor=500,
         )
-        
+
         assert mandate.mandate_id == "cart_001"
         assert len(mandate.line_items) == 2
         assert mandate.subtotal_minor == 5000
@@ -176,7 +176,7 @@ class TestPaymentMandate:
     def test_payment_mandate_creation(self):
         """Test creating a PaymentMandate."""
         proof = create_vc_proof()
-        
+
         mandate = PaymentMandate(
             mandate_id="payment_001",
             mandate_type="payment",
@@ -193,7 +193,7 @@ class TestPaymentMandate:
             destination="0xRecipientAddress12345678901234567890",
             audit_hash="sha256:abc123def456",
         )
-        
+
         assert mandate.mandate_id == "payment_001"
         assert mandate.chain == "base_sepolia"
         assert mandate.token == "USDC"
@@ -202,7 +202,7 @@ class TestPaymentMandate:
     def test_payment_mandate_various_tokens(self):
         """Test PaymentMandate with various stablecoin tokens."""
         proof = create_vc_proof()
-        
+
         for token in ["USDC", "USDT", "PYUSD", "EURC"]:
             mandate = PaymentMandate(
                 mandate_id=f"payment_{token}",
@@ -230,7 +230,7 @@ class TestMandateChain:
         """Test creating a complete MandateChain."""
         proof = create_vc_proof()
         expires = int(time.time()) + 300
-        
+
         intent = IntentMandate(
             mandate_id="intent_chain",
             mandate_type="intent",
@@ -244,7 +244,7 @@ class TestMandateChain:
             scope=["payments"],
             requested_amount=10000,
         )
-        
+
         cart = CartMandate(
             mandate_id="cart_chain",
             mandate_type="cart",
@@ -261,7 +261,7 @@ class TestMandateChain:
             subtotal_minor=10000,
             taxes_minor=0,
         )
-        
+
         payment = PaymentMandate(
             mandate_id="payment_chain",
             mandate_type="payment",
@@ -278,13 +278,13 @@ class TestMandateChain:
             destination="0xMerchantAddress1234567890123456789012",
             audit_hash="chain_hash",
         )
-        
+
         chain = MandateChain(
             intent=intent,
             cart=cart,
             payment=payment,
         )
-        
+
         assert chain.intent.mandate_id == "intent_chain"
         assert chain.cart.mandate_id == "cart_chain"
         assert chain.payment.mandate_id == "payment_chain"
@@ -302,7 +302,7 @@ class TestVCProof:
             proof_purpose="assertionMethod",
             proof_value="base64EncodedSignatureValue",
         )
-        
+
         assert proof.type == "DataIntegrityProof"
         assert "did:key" in proof.verification_method
         assert proof.proof_purpose == "assertionMethod"
@@ -314,7 +314,7 @@ class TestVCProof:
             created="2025-12-08T00:00:00Z",
             proof_value="signature",
         )
-        
+
         assert proof.type == "DataIntegrityProof"
         assert proof.proof_purpose == "assertionMethod"
 

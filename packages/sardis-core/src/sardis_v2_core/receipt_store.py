@@ -6,7 +6,7 @@ Receipts are immutable once stored — write-once, read-many.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from .execution_receipt import ExecutionReceipt
 
@@ -17,8 +17,8 @@ class ReceiptStore(Protocol):
     """Interface for receipt persistence."""
 
     async def save(self, receipt: ExecutionReceipt) -> None: ...
-    async def get(self, receipt_id: str) -> Optional[ExecutionReceipt]: ...
-    async def get_by_tx_hash(self, tx_hash: str) -> Optional[ExecutionReceipt]: ...
+    async def get(self, receipt_id: str) -> ExecutionReceipt | None: ...
+    async def get_by_tx_hash(self, tx_hash: str) -> ExecutionReceipt | None: ...
     async def list_by_agent(self, agent_id: str, limit: int = 50) -> list[ExecutionReceipt]: ...
     async def list_by_org(self, org_id: str, limit: int = 50) -> list[ExecutionReceipt]: ...
     async def verify(self, receipt_id: str) -> bool: ...
@@ -39,10 +39,10 @@ class InMemoryReceiptStore:
             self._by_tx_hash[receipt.tx_hash] = receipt.receipt_id
         logger.info("Receipt saved: %s", receipt.receipt_id)
 
-    async def get(self, receipt_id: str) -> Optional[ExecutionReceipt]:
+    async def get(self, receipt_id: str) -> ExecutionReceipt | None:
         return self._receipts.get(receipt_id)
 
-    async def get_by_tx_hash(self, tx_hash: str) -> Optional[ExecutionReceipt]:
+    async def get_by_tx_hash(self, tx_hash: str) -> ExecutionReceipt | None:
         receipt_id = self._by_tx_hash.get(tx_hash)
         if receipt_id:
             return self._receipts.get(receipt_id)
@@ -91,7 +91,7 @@ class PostgresReceiptStore:
             )
         logger.info("Receipt persisted: %s", receipt.receipt_id)
 
-    async def get(self, receipt_id: str) -> Optional[ExecutionReceipt]:
+    async def get(self, receipt_id: str) -> ExecutionReceipt | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM execution_receipts WHERE receipt_id = $1",
@@ -99,7 +99,7 @@ class PostgresReceiptStore:
             )
         return _row_to_receipt(row) if row else None
 
-    async def get_by_tx_hash(self, tx_hash: str) -> Optional[ExecutionReceipt]:
+    async def get_by_tx_hash(self, tx_hash: str) -> ExecutionReceipt | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM execution_receipts WHERE tx_hash = $1",

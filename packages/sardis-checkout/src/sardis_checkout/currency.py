@@ -7,12 +7,12 @@ multi-currency checkout capabilities.
 from __future__ import annotations
 
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Dict, List, Optional, Tuple
-import uuid
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from sardis_checkout.models import (
     CurrencyConversion,
@@ -43,7 +43,7 @@ class RateNotAvailable(CurrencyError):
 
 
 # Default supported currencies
-DEFAULT_CURRENCIES: Dict[str, SupportedCurrency] = {
+DEFAULT_CURRENCIES: dict[str, SupportedCurrency] = {
     "USD": SupportedCurrency(
         code="USD", name="US Dollar", symbol="$", decimal_places=2
     ),
@@ -97,9 +97,9 @@ class ExchangeRate:
     rate: Decimal
     source: str
     timestamp: datetime
-    bid: Optional[Decimal] = None  # Best buy rate
-    ask: Optional[Decimal] = None  # Best sell rate
-    expires_at: Optional[datetime] = None
+    bid: Decimal | None = None  # Best buy rate
+    ask: Decimal | None = None  # Best sell rate
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if the rate has expired."""
@@ -130,8 +130,8 @@ class ExchangeRateProvider(ABC):
     async def get_rates(
         self,
         base_currency: str,
-        target_currencies: List[str],
-    ) -> Dict[str, ExchangeRate]:
+        target_currencies: list[str],
+    ) -> dict[str, ExchangeRate]:
         """Get exchange rates from base currency to multiple targets."""
         pass
 
@@ -194,8 +194,8 @@ class StaticExchangeRateProvider(ExchangeRateProvider):
     async def get_rates(
         self,
         base_currency: str,
-        target_currencies: List[str],
-    ) -> Dict[str, ExchangeRate]:
+        target_currencies: list[str],
+    ) -> dict[str, ExchangeRate]:
         rates = {}
         for target in target_currencies:
             if target != base_currency:
@@ -217,7 +217,7 @@ class CachedExchangeRateProvider(ExchangeRateProvider):
     ):
         self._provider = provider
         self._cache_ttl = cache_ttl_seconds
-        self._cache: Dict[str, ExchangeRate] = {}
+        self._cache: dict[str, ExchangeRate] = {}
 
     @property
     def name(self) -> str:
@@ -246,8 +246,8 @@ class CachedExchangeRateProvider(ExchangeRateProvider):
     async def get_rates(
         self,
         base_currency: str,
-        target_currencies: List[str],
-    ) -> Dict[str, ExchangeRate]:
+        target_currencies: list[str],
+    ) -> dict[str, ExchangeRate]:
         # Check cache first
         uncached = []
         rates = {}
@@ -285,8 +285,8 @@ class CurrencyConverter:
 
     def __init__(
         self,
-        rate_provider: Optional[ExchangeRateProvider] = None,
-        supported_currencies: Optional[Dict[str, SupportedCurrency]] = None,
+        rate_provider: ExchangeRateProvider | None = None,
+        supported_currencies: dict[str, SupportedCurrency] | None = None,
         conversion_fee_percentage: Decimal = Decimal("0.0"),  # No fee by default
     ):
         self._rate_provider = rate_provider or StaticExchangeRateProvider()
@@ -297,11 +297,11 @@ class CurrencyConverter:
         """Check if a currency is supported."""
         return currency_code.upper() in self._currencies
 
-    def get_supported_currencies(self) -> List[SupportedCurrency]:
+    def get_supported_currencies(self) -> list[SupportedCurrency]:
         """Get list of supported currencies."""
         return list(self._currencies.values())
 
-    def get_currency_info(self, currency_code: str) -> Optional[SupportedCurrency]:
+    def get_currency_info(self, currency_code: str) -> SupportedCurrency | None:
         """Get information about a currency."""
         return self._currencies.get(currency_code.upper())
 
@@ -412,8 +412,8 @@ class CurrencyConverter:
         self,
         amount: Decimal,
         from_currency: str,
-        to_currencies: List[str],
-    ) -> Dict[str, Dict[str, Any]]:
+        to_currencies: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """
         Convert an amount to multiple currencies for display purposes.
 
@@ -471,7 +471,7 @@ class CurrencyConverter:
         self,
         amount: Decimal,
         currency_code: str,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Validate an amount for a currency.
 
@@ -514,14 +514,14 @@ class MultiCurrencyCheckout:
         self.converter = converter
         self.default_currency = default_currency
         self.lock_rate_seconds = lock_rate_seconds
-        self._locked_rates: Dict[str, Tuple[ExchangeRate, datetime]] = {}
+        self._locked_rates: dict[str, tuple[ExchangeRate, datetime]] = {}
 
     async def get_checkout_currencies(
         self,
         amount: Decimal,
         base_currency: str,
-        accepted_currencies: List[str],
-    ) -> Dict[str, Dict[str, Any]]:
+        accepted_currencies: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """
         Get available currencies for checkout with converted amounts.
 
@@ -568,7 +568,7 @@ class MultiCurrencyCheckout:
         checkout_id: str,
         from_currency: str,
         to_currency: str,
-    ) -> Optional[ExchangeRate]:
+    ) -> ExchangeRate | None:
         """
         Get the locked rate for a checkout session.
 

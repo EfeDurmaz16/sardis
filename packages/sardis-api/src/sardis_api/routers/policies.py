@@ -24,17 +24,15 @@ How these endpoints relate to enforcement:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-
-from sardis_api.authz import require_principal
-from sardis_api.authz import Principal
 from sardis_v2_core import AgentRepository
+
+from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 logger = logging.getLogger(__name__)
@@ -72,7 +70,7 @@ class ParsePolicyRequest(BaseModel):
             "Only allow cloud services (AWS, GCP, Azure) with $1000 monthly limit",
         ],
     )
-    agent_id: Optional[str] = Field(
+    agent_id: str | None = Field(
         default=None,
         description="Agent ID to associate with the parsed policy",
     )
@@ -90,8 +88,8 @@ class SpendingLimitResponse(BaseModel):
 class CategoryRestrictionsResponse(BaseModel):
     """Category-based restrictions."""
 
-    allowed_categories: List[str] = []
-    blocked_categories: List[str] = []
+    allowed_categories: list[str] = []
+    blocked_categories: list[str] = []
 
 
 class TimeRestrictionsResponse(BaseModel):
@@ -99,7 +97,7 @@ class TimeRestrictionsResponse(BaseModel):
 
     allowed_hours_start: int = 0
     allowed_hours_end: int = 23
-    allowed_days: List[str] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    allowed_days: list[str] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
     timezone: str = "UTC"
 
 
@@ -108,20 +106,20 @@ class ParsedPolicyResponse(BaseModel):
 
     name: str
     description: str
-    spending_limits: List[SpendingLimitResponse] = []
-    category_restrictions: Optional[CategoryRestrictionsResponse] = None
-    time_restrictions: Optional[TimeRestrictionsResponse] = None
-    requires_approval_above: Optional[float] = None
-    global_daily_limit: Optional[float] = None
-    global_monthly_limit: Optional[float] = None
+    spending_limits: list[SpendingLimitResponse] = []
+    category_restrictions: CategoryRestrictionsResponse | None = None
+    time_restrictions: TimeRestrictionsResponse | None = None
+    requires_approval_above: float | None = None
+    global_daily_limit: float | None = None
+    global_monthly_limit: float | None = None
     is_active: bool = True
 
     # The converted SpendingPolicy (if agent_id provided)
-    policy_id: Optional[str] = None
-    agent_id: Optional[str] = None
+    policy_id: str | None = None
+    agent_id: str | None = None
 
     # SECURITY: Warnings from post-LLM validation or regex fallback
-    warnings: List[str] = Field(
+    warnings: list[str] = Field(
         default_factory=list,
         description="Security or parsing warnings (e.g. injection detected, compound policy loss)",
     )
@@ -148,7 +146,7 @@ class PolicyPreviewResponse(BaseModel):
     """Preview of a policy before applying."""
 
     parsed: ParsedPolicyResponse
-    warnings: List[str] = []
+    warnings: list[str] = []
     requires_confirmation: bool = True
     confirmation_message: str = ""
 
@@ -159,12 +157,12 @@ class PolicyCheckRequest(BaseModel):
     agent_id: str
     amount: Decimal = Field(gt=0)
     currency: str = Field(default="USD")
-    merchant_id: Optional[str] = None
-    merchant_category: Optional[str] = Field(
+    merchant_id: str | None = None
+    merchant_category: str | None = Field(
         default=None,
         description="Optional category name (e.g., 'gambling'). Prefer mcc_code when available.",
     )
-    mcc_code: Optional[str] = Field(
+    mcc_code: str | None = Field(
         default=None,
         description="4-digit MCC code (e.g., 7995 for gambling).",
     )
@@ -173,7 +171,7 @@ class PolicyCheckRequest(BaseModel):
 class PolicyCheckResponse(BaseModel):
     allowed: bool
     reason: str
-    policy_id: Optional[str] = None
+    policy_id: str | None = None
 
 
 class PolicyRecommendationResponse(BaseModel):
@@ -210,9 +208,9 @@ async def parse_natural_language_policy(
     try:
         # Import here to handle optional dependency
         from sardis_v2_core.nl_policy_parser import (
+            HAS_INSTRUCTOR,
             NLPolicyParser,
             RegexPolicyParser,
-            HAS_INSTRUCTOR,
         )
 
         # Try LLM parser first, fall back to regex
@@ -432,7 +430,12 @@ async def apply_policy_from_nl(
 
     async def _apply() -> tuple[int, object]:
         from sardis_v2_core.nl_policy_parser import create_policy_parser
-        from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, MerchantRule, TrustLevel
+        from sardis_v2_core.spending_policy import (
+            MerchantRule,
+            SpendingPolicy,
+            TimeWindowLimit,
+            TrustLevel,
+        )
 
         parser = create_policy_parser(use_llm=True)
         if hasattr(parser, "parse_and_convert"):
@@ -579,7 +582,7 @@ async def get_policy_templates():
         }
 
 
-@router.get("/examples", response_model=List[dict])
+@router.get("/examples", response_model=list[dict])
 async def get_policy_examples():
     """
     Get example natural language policies.
@@ -724,8 +727,8 @@ async def get_policy_recommendations(
     deps: PolicyDependencies = Depends(get_deps),
 ):
     """Get policy recommendations based on agent's transaction history."""
-    from sardis_v2_core.policy_recommendations import PolicyRecommendationEngine
     from sardis_v2_core.database import Database
+    from sardis_v2_core.policy_recommendations import PolicyRecommendationEngine
 
     engine = PolicyRecommendationEngine(db=Database)
     recommendations = await engine.get_recommendations(agent_id)

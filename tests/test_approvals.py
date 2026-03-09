@@ -1,16 +1,14 @@
 """Tests for approval service and repository."""
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 from sardis_v2_core.approval_repository import (
     Approval,
     ApprovalRepository,
-    ApprovalStatus,
-    ApprovalUrgency,
 )
 from sardis_v2_core.approval_service import ApprovalService
 
@@ -33,7 +31,7 @@ class TestApprovalModel:
 
     def test_approval_creation(self):
         """Test creating an Approval object."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires = now + timedelta(hours=24)
 
         approval = Approval(
@@ -76,7 +74,7 @@ class TestApprovalRepository:
     @pytest.mark.anyio
     async def test_create_approval(self, repository, mock_database):
         """Test creating an approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires = now + timedelta(hours=24)
 
         mock_database.execute = AsyncMock()
@@ -109,9 +107,9 @@ class TestApprovalRepository:
             "urgency": "medium",
             "requested_by": "agent_002",
             "reviewed_by": "admin@example.com",
-            "created_at": datetime.now(timezone.utc),
-            "reviewed_at": datetime.now(timezone.utc),
-            "expires_at": datetime.now(timezone.utc) + timedelta(hours=24),
+            "created_at": datetime.now(UTC),
+            "reviewed_at": datetime.now(UTC),
+            "expires_at": datetime.now(UTC) + timedelta(hours=24),
             "vendor": None,
             "amount": None,
             "purpose": "New virtual card",
@@ -145,7 +143,7 @@ class TestApprovalRepository:
     @pytest.mark.anyio
     async def test_update_approval(self, repository, mock_database):
         """Test updating an approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         mock_row = {
             "id": "appr_test_003",
@@ -185,7 +183,7 @@ class TestApprovalRepository:
     @pytest.mark.anyio
     async def test_list_approvals(self, repository, mock_database):
         """Test listing approvals with filters."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         mock_rows = [
             {
@@ -225,7 +223,7 @@ class TestApprovalRepository:
     @pytest.mark.anyio
     async def test_get_expired_pending(self, repository, mock_database):
         """Test retrieving expired pending approvals."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         past = now - timedelta(hours=1)
 
         mock_rows = [
@@ -276,7 +274,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_create_approval(self, service, mock_repository):
         """Test creating an approval through service."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         created_approval = Approval(
             id="appr_new_001",
@@ -313,7 +311,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_approve_approval(self, service, mock_repository):
         """Test approving a pending approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pending_approval = Approval(
             id="appr_pending_001",
@@ -358,7 +356,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_approve_already_approved(self, service, mock_repository):
         """Test approving already approved approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         approved_approval = Approval(
             id="appr_already_001",
@@ -381,7 +379,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_deny_approval(self, service, mock_repository):
         """Test denying a pending approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pending_approval = Approval(
             id="appr_pending_002",
@@ -423,7 +421,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_cancel_approval(self, service, mock_repository):
         """Test cancelling a pending approval."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pending_approval = Approval(
             id="appr_pending_003",
@@ -461,7 +459,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_expire_pending(self, service, mock_repository):
         """Test expiring pending approvals."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         past = now - timedelta(hours=1)
 
         expired_approvals = [
@@ -489,7 +487,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_list_pending(self, service, mock_repository):
         """Test listing pending approvals."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         pending_approvals = [
             Approval(
@@ -524,7 +522,7 @@ class TestApprovalService:
     @pytest.mark.anyio
     async def test_get_approval(self, service, mock_repository):
         """Test getting approval by ID."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         approval = Approval(
             id="appr_get_001",

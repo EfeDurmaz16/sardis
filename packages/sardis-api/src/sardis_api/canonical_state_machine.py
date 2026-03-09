@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Optional
-
+from datetime import UTC, datetime
+from typing import Any
 
 CANONICAL_STATE_RANK = {
     "created": 10,
@@ -21,22 +20,22 @@ CANONICAL_STATE_RANK = {
 class CanonicalEvent:
     organization_id: str
     provider: str
-    provider_event_id: Optional[str]
+    provider_event_id: str | None
     provider_event_type: str
     canonical_event_type: str
     rail: str
     external_reference: str
-    canonical_state: Optional[str] = None
-    direction: Optional[str] = None
-    amount_minor: Optional[int] = None
-    currency: Optional[str] = None
-    return_code: Optional[str] = None
-    event_ts: Optional[datetime] = None
-    metadata: Optional[dict[str, Any]] = None
-    raw_payload: Optional[dict[str, Any]] = None
+    canonical_state: str | None = None
+    direction: str | None = None
+    amount_minor: int | None = None
+    currency: str | None = None
+    return_code: str | None = None
+    event_ts: datetime | None = None
+    metadata: dict[str, Any] | None = None
+    raw_payload: dict[str, Any] | None = None
 
 
-def _safe_int(value: Any) -> Optional[int]:
+def _safe_int(value: Any) -> int | None:
     if value is None:
         return None
     try:
@@ -45,16 +44,16 @@ def _safe_int(value: Any) -> Optional[int]:
         return None
 
 
-def _parse_ts(value: Any) -> Optional[datetime]:
+def _parse_ts(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if isinstance(value, (int, float)):
         raw = float(value)
         if raw > 1e12:
             raw = raw / 1000.0
-        return datetime.fromtimestamp(raw, tz=timezone.utc)
+        return datetime.fromtimestamp(raw, tz=UTC)
     if isinstance(value, str):
         s = value.strip()
         if not s:
@@ -63,13 +62,13 @@ def _parse_ts(value: Any) -> Optional[datetime]:
             s = s[:-1] + "+00:00"
         try:
             parsed = datetime.fromisoformat(s)
-            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
         except ValueError:
             return None
     return None
 
 
-def _extract_return_code(payload: dict[str, Any]) -> Optional[str]:
+def _extract_return_code(payload: dict[str, Any]) -> str | None:
     direct = payload.get("return_reason_code")
     if direct:
         return str(direct)
@@ -87,7 +86,7 @@ def _extract_return_code(payload: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def apply_state_transition(current_state: Optional[str], incoming_state: Optional[str]) -> tuple[Optional[str], bool]:
+def apply_state_transition(current_state: str | None, incoming_state: str | None) -> tuple[str | None, bool]:
     """
     Return (next_state, out_of_order).
 
@@ -129,7 +128,7 @@ def normalize_lithic_ach_event(
     event_ts = (
         _parse_ts(payload.get("created"))
         or _parse_ts(data.get("created"))
-        or datetime.now(timezone.utc)
+        or datetime.now(UTC)
     )
     amount_minor = (
         _safe_int(payload.get("amount"))
@@ -170,7 +169,7 @@ def normalize_lithic_card_event(
     data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
     status = str(data.get("status") or payload.get("status") or "").lower()
     canonical_event_type = "fiat.card.transaction_observed"
-    canonical_state: Optional[str] = "processing"
+    canonical_state: str | None = "processing"
     if "declined" in et or status in {"declined", "denied"}:
         canonical_event_type = "fiat.card.declined"
         canonical_state = "failed"
@@ -186,7 +185,7 @@ def normalize_lithic_card_event(
         _parse_ts(data.get("created"))
         or _parse_ts(data.get("settled_at"))
         or _parse_ts(payload.get("created"))
-        or datetime.now(timezone.utc)
+        or datetime.now(UTC)
     )
     provider_event_id = str(payload.get("event_token") or payload.get("token") or "") or None
     return CanonicalEvent(
@@ -223,7 +222,7 @@ def normalize_partner_card_event(
     data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
     status = str(data.get("status") or payload.get("status") or "").lower()
     canonical_event_type = "fiat.card.transaction_observed"
-    canonical_state: Optional[str] = "processing"
+    canonical_state: str | None = "processing"
     if "declined" in et or status in {"declined", "denied"}:
         canonical_event_type = "fiat.card.declined"
         canonical_state = "failed"
@@ -239,7 +238,7 @@ def normalize_partner_card_event(
         _parse_ts(data.get("created"))
         or _parse_ts(data.get("settled_at"))
         or _parse_ts(payload.get("created"))
-        or datetime.now(timezone.utc)
+        or datetime.now(UTC)
     )
     provider_event_id = str(payload.get("event_id") or payload.get("token") or payload.get("id") or "") or None
     merchant_obj = data.get("merchant") if isinstance(data.get("merchant"), dict) else {}
@@ -274,12 +273,12 @@ def normalize_stablecoin_event(
     provider_event_id: str,
     provider_event_type: str,
     canonical_event_type: str,
-    canonical_state: Optional[str],
-    amount_minor: Optional[int],
+    canonical_state: str | None,
+    amount_minor: int | None,
     currency: str,
-    metadata: Optional[dict[str, Any]] = None,
-    raw_payload: Optional[dict[str, Any]] = None,
-    event_ts: Optional[datetime] = None,
+    metadata: dict[str, Any] | None = None,
+    raw_payload: dict[str, Any] | None = None,
+    event_ts: datetime | None = None,
 ) -> CanonicalEvent:
     return CanonicalEvent(
         organization_id=organization_id,
@@ -293,7 +292,7 @@ def normalize_stablecoin_event(
         direction="debit",
         amount_minor=amount_minor,
         currency=currency,
-        event_ts=event_ts or datetime.now(timezone.utc),
+        event_ts=event_ts or datetime.now(UTC),
         metadata=metadata or {},
         raw_payload=raw_payload or {},
     )
@@ -304,7 +303,7 @@ def normalize_stripe_issuing_funding_event(
     organization_id: str,
     payload: dict[str, Any],
     transfer_id: str,
-    connected_account_id: Optional[str] = None,
+    connected_account_id: str | None = None,
 ) -> CanonicalEvent:
     """
     Normalize Stripe Issuing funding events into canonical journey records.
@@ -329,7 +328,7 @@ def normalize_stripe_issuing_funding_event(
         ("fiat.card_funding.observed", "processing"),
     )
     amount_minor = _safe_int(payload.get("amount_minor"))
-    event_ts = _parse_ts(payload.get("created_at")) or datetime.now(timezone.utc)
+    event_ts = _parse_ts(payload.get("created_at")) or datetime.now(UTC)
     return CanonicalEvent(
         organization_id=organization_id,
         provider="stripe",

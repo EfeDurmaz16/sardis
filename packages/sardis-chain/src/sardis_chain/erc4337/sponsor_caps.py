@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .user_operation import UserOperation
@@ -87,7 +87,7 @@ class SponsorCapGuard:
                 f"erc4337_sponsor_per_op_cap_exceeded: estimated={estimated_cost_wei} cap={caps.per_op_wei} stage={self._stage}"
             )
 
-        day_bucket = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        day_bucket = datetime.now(UTC).strftime("%Y-%m-%d")
         usage_key = (chain, day_bucket)
         current = self._daily_usage_wei.get(usage_key, 0)
         projected = current + estimated_cost_wei

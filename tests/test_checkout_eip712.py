@@ -11,22 +11,18 @@ Covers:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from eth_account import Account
 from eth_account.messages import encode_defunct, encode_typed_data
-
 from sardis_api.services.eip712_checkout import (
-    CHECKOUT_CHAIN_IDS,
     EIP712_DOMAIN_NAME,
     EIP712_DOMAIN_VERSION,
     build_connect_typed_data,
     generate_nonce,
-    get_checkout_chain_id,
     verify_eip712_connect_signature,
 )
 
@@ -58,18 +54,18 @@ class FakeSession:
     currency: str = "USDC"
     description: str = "Test checkout"
     status: str = "pending"
-    payment_method: Optional[str] = None
-    tx_hash: Optional[str] = None
-    payer_wallet_id: Optional[str] = None
-    payer_wallet_address: Optional[str] = None
-    platform_fee_amount: Optional[Decimal] = None
-    net_amount: Optional[Decimal] = None
-    embed_origin: Optional[str] = None
-    expires_at: Optional[datetime] = field(
-        default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=1)
+    payment_method: str | None = None
+    tx_hash: str | None = None
+    payer_wallet_id: str | None = None
+    payer_wallet_address: str | None = None
+    platform_fee_amount: Decimal | None = None
+    net_amount: Decimal | None = None
+    embed_origin: str | None = None
+    expires_at: datetime | None = field(
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=1)
     )
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
 
@@ -284,7 +280,7 @@ def mock_deps():
 def app(mock_deps):
     """Create a test FastAPI app with the public checkout router."""
     from fastapi import FastAPI
-    from sardis_api.routers.merchant_checkout import public_router, get_deps
+    from sardis_api.routers.merchant_checkout import get_deps, public_router
 
     test_app = FastAPI()
     test_app.include_router(public_router, prefix="/checkout")
@@ -517,7 +513,7 @@ class TestConnectParams:
     def test_expired_session_rejected(self, client, mock_deps):
         """connect-params rejects expired sessions."""
         expired = FakeSession(
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1)
+            expires_at=datetime.now(UTC) - timedelta(hours=1)
         )
         mock_deps.merchant_repo.get_session_by_secret = AsyncMock(return_value=expired)
 

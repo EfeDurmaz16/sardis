@@ -11,13 +11,15 @@ Features:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
-from .config import ReorgDetectionConfig, get_config, get_chain_config
+from .config import ReorgDetectionConfig, get_chain_config, get_config
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +50,9 @@ class BlockInfo:
     parent_hash: str
     timestamp: int
     transaction_count: int
-    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def is_child_of(self, parent: "BlockInfo") -> bool:
+    def is_child_of(self, parent: BlockInfo) -> bool:
         """Check if this block is a child of another."""
         return self.parent_hash == parent.hash
 
@@ -67,9 +69,9 @@ class ReorgEvent:
     new_head_number: int
     new_head_hash: str
     common_ancestor_number: int
-    affected_transactions: List[str] = field(default_factory=list)
+    affected_transactions: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "chain": self.chain,
@@ -89,16 +91,16 @@ class TrackedTransaction:
     tx_hash: str
     chain: str
     submitted_at: datetime
-    block_number: Optional[int] = None
-    block_hash: Optional[str] = None
+    block_number: int | None = None
+    block_hash: str | None = None
     confirmations: int = 0
     status: ConfirmationStatus = ConfirmationStatus.PENDING
     required_confirmations: int = 1
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Reorg tracking
-    original_block_number: Optional[int] = None
-    original_block_hash: Optional[str] = None
+    original_block_number: int | None = None
+    original_block_hash: str | None = None
     reorg_count: int = 0
 
     def update_confirmations(self, current_block: int) -> None:
@@ -108,7 +110,7 @@ class TrackedTransaction:
             return
 
         self.confirmations = max(0, current_block - self.block_number + 1)
-        self.last_updated = datetime.now(timezone.utc)
+        self.last_updated = datetime.now(UTC)
 
         # Update status
         if self.confirmations >= self.required_confirmations:
@@ -155,28 +157,28 @@ class ConfirmationTracker:
     def __init__(
         self,
         chain: str,
-        config: Optional[ReorgDetectionConfig] = None,
+        config: ReorgDetectionConfig | None = None,
     ):
         self._chain = chain
         self._config = config or get_config().reorg_detection
         self._chain_config = get_chain_config(chain)
 
         # Block history for reorg detection
-        self._block_history: Dict[int, BlockInfo] = {}
-        self._current_head: Optional[BlockInfo] = None
+        self._block_history: dict[int, BlockInfo] = {}
+        self._current_head: BlockInfo | None = None
         self._max_history = self._config.max_block_history
 
         # Transaction tracking
-        self._tracked_txs: Dict[str, TrackedTransaction] = {}
-        self._tx_by_block: Dict[int, Set[str]] = {}  # block_number -> tx_hashes
+        self._tracked_txs: dict[str, TrackedTransaction] = {}
+        self._tx_by_block: dict[int, set[str]] = {}  # block_number -> tx_hashes
 
         # Callbacks
-        self._reorg_callbacks: List[ReorgCallback] = []
-        self._confirmation_callbacks: List[ConfirmationCallback] = []
+        self._reorg_callbacks: list[ReorgCallback] = []
+        self._confirmation_callbacks: list[ConfirmationCallback] = []
 
         # Monitoring state
         self._running = False
-        self._poll_task: Optional[asyncio.Task] = None
+        self._poll_task: asyncio.Task | None = None
 
         # Statistics
         self._reorg_count = 0
@@ -193,7 +195,7 @@ class ConfirmationTracker:
     async def track_transaction(
         self,
         tx_hash: str,
-        required_confirmations: Optional[int] = None,
+        required_confirmations: int | None = None,
     ) -> TrackedTransaction:
         """
         Start tracking a transaction for confirmation.
@@ -211,7 +213,7 @@ class ConfirmationTracker:
         tracked = TrackedTransaction(
             tx_hash=tx_hash,
             chain=self._chain,
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             required_confirmations=required_confirmations,
         )
 
@@ -293,8 +295,8 @@ class ConfirmationTracker:
         self,
         tx_hash: str,
         rpc_client: Any,
-        timeout_seconds: Optional[float] = None,
-        poll_interval: Optional[float] = None,
+        timeout_seconds: float | None = None,
+        poll_interval: float | None = None,
     ) -> TrackedTransaction:
         """
         Wait for a transaction to be confirmed.
@@ -394,7 +396,7 @@ class ConfirmationTracker:
         self,
         new_block: BlockInfo,
         rpc_client: Any,
-    ) -> Optional[ReorgEvent]:
+    ) -> ReorgEvent | None:
         """Check for chain reorganization."""
         if not self._current_head:
             return None
@@ -449,7 +451,7 @@ class ConfirmationTracker:
         # Create reorg event
         event = ReorgEvent(
             chain=self._chain,
-            detected_at=datetime.now(timezone.utc),
+            detected_at=datetime.now(UTC),
             severity=severity,
             depth=reorg_depth,
             old_head_number=old_block.number,
@@ -562,10 +564,8 @@ class ConfirmationTracker:
         self._running = False
         if self._poll_task:
             self._poll_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._poll_task
-            except asyncio.CancelledError:
-                pass
         logger.info(f"Stopped block monitoring for {self._chain}")
 
     async def _monitoring_loop(self, rpc_client: Any) -> None:
@@ -586,15 +586,15 @@ class ConfirmationTracker:
 
             await asyncio.sleep(self._config.block_poll_interval_seconds)
 
-    def get_transaction(self, tx_hash: str) -> Optional[TrackedTransaction]:
+    def get_transaction(self, tx_hash: str) -> TrackedTransaction | None:
         """Get a tracked transaction."""
         return self._tracked_txs.get(tx_hash)
 
-    def get_all_tracked(self) -> List[TrackedTransaction]:
+    def get_all_tracked(self) -> list[TrackedTransaction]:
         """Get all tracked transactions."""
         return list(self._tracked_txs.values())
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get tracker statistics."""
         return {
             "chain": self._chain,
@@ -625,12 +625,12 @@ class ConfirmationTracker:
 
 
 # Global trackers per chain
-_trackers: Dict[str, ConfirmationTracker] = {}
+_trackers: dict[str, ConfirmationTracker] = {}
 
 
 def get_confirmation_tracker(
     chain: str,
-    config: Optional[ReorgDetectionConfig] = None,
+    config: ReorgDetectionConfig | None = None,
 ) -> ConfirmationTracker:
     """Get or create a confirmation tracker for a chain."""
     if chain not in _trackers:

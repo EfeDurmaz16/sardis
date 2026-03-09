@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class DomainRegistry:
     def __init__(self) -> None:
         self._domains: dict[str, ChainDomain] = {}
 
-    def register(self, chain: str, risk_profile: Optional[DomainRiskProfile] = None) -> ChainDomain:
+    def register(self, chain: str, risk_profile: DomainRiskProfile | None = None) -> ChainDomain:
         """Register a chain domain with its risk profile."""
         profile = risk_profile or DEFAULT_RISK_PROFILES.get(chain, DomainRiskProfile())
         domain = ChainDomain(chain=chain, risk_profile=profile)
@@ -149,7 +149,7 @@ class DomainRegistry:
         logger.info("Registered chain domain '%s'", chain)
         return domain
 
-    def get(self, chain: str) -> Optional[ChainDomain]:
+    def get(self, chain: str) -> ChainDomain | None:
         """Get a chain domain."""
         return self._domains.get(chain)
 
@@ -183,7 +183,7 @@ class DomainRegistry:
 
 
 # Global registry singleton
-_registry: Optional[DomainRegistry] = None
+_registry: DomainRegistry | None = None
 
 
 def get_domain_registry() -> DomainRegistry:

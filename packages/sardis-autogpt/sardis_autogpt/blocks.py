@@ -2,16 +2,16 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
 
 from pydantic import BaseModel, Field
-from sardis import SardisClient
 
+from sardis import SardisClient
 
 _cached_clients: dict[str, SardisClient] = {}
 
 
-def _get_client(api_key: Optional[str] = None, wallet_id: Optional[str] = None):
+def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY") or ""
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     if key not in _cached_clients:

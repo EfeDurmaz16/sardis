@@ -1,29 +1,27 @@
 """Tests for A2A client."""
 
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 import pytest
-
 from sardis_a2a.agent_card import (
     AgentCapability,
     PaymentCapability,
     SardisAgentCard,
     ServiceEndpoint,
 )
-from sardis_a2a.messages import (
-    A2AMessage,
-    A2AMessageType,
-    A2AMessageStatus,
-)
-from sardis_a2a.discovery import (
-    DiscoveredAgent,
-    AgentDiscoveryService,
-)
 from sardis_a2a.client import (
     A2AClient,
     A2AClientConfig,
     A2AClientError,
+)
+from sardis_a2a.discovery import (
+    AgentDiscoveryService,
+)
+from sardis_a2a.messages import (
+    A2AMessage,
+    A2AMessageStatus,
+    A2AMessageType,
 )
 
 
@@ -31,21 +29,21 @@ class MockHttpClient:
     """Mock HTTP client for testing."""
 
     def __init__(self):
-        self.get_responses: Dict[str, tuple[int, Dict[str, Any]]] = {}
-        self.post_responses: Dict[str, tuple[int, Dict[str, Any]]] = {}
-        self.post_calls: list[tuple[str, Dict[str, Any]]] = []
+        self.get_responses: dict[str, tuple[int, dict[str, Any]]] = {}
+        self.post_responses: dict[str, tuple[int, dict[str, Any]]] = {}
+        self.post_calls: list[tuple[str, dict[str, Any]]] = []
 
-    def add_get_response(self, url: str, status: int, data: Dict[str, Any]):
+    def add_get_response(self, url: str, status: int, data: dict[str, Any]):
         """Add a mock GET response."""
         self.get_responses[url] = (status, data)
 
-    def add_post_response(self, url: str, status: int, data: Dict[str, Any]):
+    def add_post_response(self, url: str, status: int, data: dict[str, Any]):
         """Add a mock POST response."""
         self.post_responses[url] = (status, data)
 
     async def get(
-        self, url: str, headers: Dict[str, str] | None = None
-    ) -> tuple[int, Dict[str, Any]]:
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> tuple[int, dict[str, Any]]:
         """Mock GET request."""
         if url in self.get_responses:
             return self.get_responses[url]
@@ -54,9 +52,9 @@ class MockHttpClient:
     async def post(
         self,
         url: str,
-        json: Dict[str, Any],
-        headers: Dict[str, str] | None = None,
-    ) -> tuple[int, Dict[str, Any]]:
+        json: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
         """Mock POST request."""
         self.post_calls.append((url, json))
         if url in self.post_responses:
@@ -222,7 +220,7 @@ class TestA2AClient:
                 "message_type": "payment_response",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "completed",
                 "payload": {
                     "response_id": "resp_123",
@@ -262,7 +260,7 @@ class TestA2AClient:
                 "message_type": "payment_response",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "failed",
                 "payload": {
                     "success": False,
@@ -328,7 +326,7 @@ class TestA2AClient:
                 "message_type": "payment_response",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "completed",
                 "payload": {
                     "success": True,
@@ -365,7 +363,7 @@ class TestA2AClient:
                 "message_type": "credential_response",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "completed",
                 "payload": {
                     "valid": True,
@@ -399,7 +397,7 @@ class TestA2AClient:
                 "message_type": "credential_response",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "failed",
                 "payload": {
                     "valid": False,
@@ -431,7 +429,7 @@ class TestA2AClient:
                 "message_type": "ack",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "received",
                 "payload": {},
             },
@@ -515,7 +513,7 @@ class TestA2AClient:
                 "message_type": "ack",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "received",
                 "payload": {},
             },
@@ -542,7 +540,7 @@ class TestA2AClient:
                 "message_type": "error",
                 "sender_id": "agent_recipient",
                 "recipient_id": "agent_sender",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "failed",
                 "error": "Rate limit exceeded",
                 "error_code": "rate_limited",

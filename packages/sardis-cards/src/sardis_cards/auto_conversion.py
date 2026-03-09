@@ -24,13 +24,13 @@ Architecture:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class UnifiedBalance:
 
     # Optional breakdown
     chain: str = "base"
-    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def usdc_balance(self) -> Decimal:
@@ -93,7 +93,7 @@ class UnifiedBalance:
         """Human-readable unified balance."""
         return f"${self.total_balance:,.2f}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "wallet_id": self.wallet_id,
@@ -129,11 +129,11 @@ class ConversionRecord:
     fee_cents: int = 0
     status: ConversionStatus = ConversionStatus.PENDING
     trigger: str = "card_payment"  # card_payment, manual, auto_top_up
-    provider_tx_id: Optional[str] = None
-    card_transaction_id: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    provider_tx_id: str | None = None
+    card_transaction_id: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
 
 class WalletProvider(Protocol):
@@ -197,7 +197,7 @@ class UnifiedBalanceService:
         wallet_provider: WalletProvider,
     ):
         self._wallet_provider = wallet_provider
-        self._usd_balances: Dict[str, int] = {}  # wallet_id -> cents
+        self._usd_balances: dict[str, int] = {}  # wallet_id -> cents
 
     async def get_unified_balance(
         self,
@@ -287,22 +287,22 @@ class AutoConversionService:
     def __init__(
         self,
         balance_service: UnifiedBalanceService,
-        offramp_provider: Optional[OfframpProvider] = None,
-        onramp_provider: Optional[OnrampProvider] = None,
-        on_conversion_complete: Optional[Callable[[ConversionRecord], None]] = None,
+        offramp_provider: OfframpProvider | None = None,
+        onramp_provider: OnrampProvider | None = None,
+        on_conversion_complete: Callable[[ConversionRecord], None] | None = None,
     ):
         self._balance_service = balance_service
         self._offramp_provider = offramp_provider
         self._onramp_provider = onramp_provider
         self._on_conversion_complete = on_conversion_complete
-        self._conversions: Dict[str, ConversionRecord] = {}
+        self._conversions: dict[str, ConversionRecord] = {}
         self._conversion_counter = 0
 
     async def convert_for_card_payment(
         self,
         wallet_id: str,
         amount_cents: int,
-        card_transaction_id: Optional[str] = None,
+        card_transaction_id: str | None = None,
         chain: str = "base",
     ) -> ConversionRecord:
         """
@@ -374,7 +374,7 @@ class AutoConversionService:
 
                 record.provider_tx_id = provider_tx_id
                 record.status = ConversionStatus.COMPLETED
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
 
                 # Update USD balance in balance service
                 self._balance_service.add_usd_balance(wallet_id, amount_cents)
@@ -386,7 +386,7 @@ class AutoConversionService:
             else:
                 # Mock conversion for testing
                 record.status = ConversionStatus.COMPLETED
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
                 record.provider_tx_id = f"mock_{conversion_id}"
 
                 # Update USD balance
@@ -487,7 +487,7 @@ class AutoConversionService:
 
                 record.provider_tx_id = provider_tx_id
                 record.status = ConversionStatus.COMPLETED
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
 
                 logger.info(
                     f"Auto-conversion completed: conversion_id={conversion_id}, "
@@ -496,7 +496,7 @@ class AutoConversionService:
             else:
                 # Mock conversion
                 record.status = ConversionStatus.COMPLETED
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
                 record.provider_tx_id = f"mock_{conversion_id}"
 
                 logger.info(
@@ -513,16 +513,16 @@ class AutoConversionService:
 
         return record
 
-    def get_conversion(self, conversion_id: str) -> Optional[ConversionRecord]:
+    def get_conversion(self, conversion_id: str) -> ConversionRecord | None:
         """Get conversion record by ID."""
         return self._conversions.get(conversion_id)
 
     def list_conversions(
         self,
-        wallet_id: Optional[str] = None,
-        status: Optional[ConversionStatus] = None,
+        wallet_id: str | None = None,
+        status: ConversionStatus | None = None,
         limit: int = 50,
-    ) -> List[ConversionRecord]:
+    ) -> list[ConversionRecord]:
         """List conversion records with optional filters."""
         records = list(self._conversions.values())
 
@@ -549,7 +549,7 @@ class CardPaymentAutoConverter:
     def __init__(
         self,
         auto_conversion_service: AutoConversionService,
-        card_to_wallet_mapping: Dict[str, str],  # card_id -> wallet_id
+        card_to_wallet_mapping: dict[str, str],  # card_id -> wallet_id
     ):
         self._auto_conversion = auto_conversion_service
         self._card_wallet_map = card_to_wallet_mapping
@@ -560,7 +560,7 @@ class CardPaymentAutoConverter:
         amount_cents: int,
         merchant_name: str,
         transaction_id: str,
-    ) -> Optional[ConversionRecord]:
+    ) -> ConversionRecord | None:
         """
         Handle card authorization event.
 

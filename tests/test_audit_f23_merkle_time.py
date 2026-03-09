@@ -1,16 +1,15 @@
 """Tests for F23: Deterministic Merkle timestamps."""
-import pytest
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 
 def test_merkle_receipt_uses_chain_timestamp():
     """Merkle receipt should use chain receipt timestamp when available."""
-    from sardis_ledger.records import LedgerStore, ChainReceipt
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-
     import tempfile
+
+    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
@@ -18,7 +17,7 @@ def test_merkle_receipt_uses_chain_timestamp():
         # Create test mandate
         proof = VCProof(
             verification_method="test#key-1",
-            created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            created=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             proof_value="test_proof",
         )
 
@@ -41,7 +40,7 @@ def test_merkle_receipt_uses_chain_timestamp():
         )
 
         # Create receipt with explicit timestamp
-        chain_timestamp = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        chain_timestamp = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
         receipt = ChainReceipt(
             tx_hash="0xtesthash",
             chain="base",
@@ -59,10 +58,10 @@ def test_merkle_receipt_uses_chain_timestamp():
 
 def test_merkle_receipt_deterministic_with_same_inputs():
     """Two receipts with identical inputs should produce identical Merkle roots."""
-    from sardis_ledger.records import LedgerStore, ChainReceipt
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-
     import tempfile
+
+    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     # Create first ledger
     with tempfile.TemporaryDirectory() as tmpdir1:
@@ -94,7 +93,7 @@ def test_merkle_receipt_deterministic_with_same_inputs():
         )
 
         # Use fixed timestamp for determinism
-        chain_timestamp = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        chain_timestamp = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
         receipt1 = ChainReceipt(
             tx_hash="0xsametxhash",
             chain="base",
@@ -145,17 +144,17 @@ def test_merkle_receipt_deterministic_with_same_inputs():
 
 def test_merkle_receipt_without_chain_timestamp_fallback():
     """Merkle receipt should fall back gracefully when chain timestamp is not available."""
-    from sardis_ledger.records import LedgerStore, ChainReceipt
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-
     import tempfile
+
+    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
 
         proof = VCProof(
             verification_method="test#key-1",
-            created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            created=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             proof_value="test_proof",
         )
 

@@ -8,7 +8,7 @@ and velocity limits defined as JSON rules.
 from datetime import datetime, time, timedelta
 from typing import Any
 
-from ..base import PolicyDecision, PolicyPlugin, PluginMetadata, PluginType
+from ..base import PluginMetadata, PluginType, PolicyDecision, PolicyPlugin
 
 
 class CustomPolicyPlugin(PolicyPlugin):
@@ -133,25 +133,23 @@ class CustomPolicyPlugin(PolicyPlugin):
         now = datetime.utcnow()
 
         # Check weekends
-        if config.get("no_weekends", False):
-            if now.weekday() >= 5:  # Saturday=5, Sunday=6
-                return PolicyDecision(
-                    approved=False,
-                    reason="Transactions not allowed on weekends",
-                    plugin_name=self.metadata.name,
-                    metadata={"day": now.strftime("%A")},
-                )
+        if config.get("no_weekends", False) and now.weekday() >= 5:  # Saturday=5, Sunday=6
+            return PolicyDecision(
+                approved=False,
+                reason="Transactions not allowed on weekends",
+                plugin_name=self.metadata.name,
+                metadata={"day": now.strftime("%A")},
+            )
 
         # Check allowed days
         allowed_days = config.get("allowed_days")
-        if allowed_days is not None:
-            if now.weekday() not in allowed_days:
-                return PolicyDecision(
-                    approved=False,
-                    reason=f"Transactions not allowed on {now.strftime('%A')}",
-                    plugin_name=self.metadata.name,
-                    metadata={"day": now.strftime("%A")},
-                )
+        if allowed_days is not None and now.weekday() not in allowed_days:
+            return PolicyDecision(
+                approved=False,
+                reason=f"Transactions not allowed on {now.strftime('%A')}",
+                plugin_name=self.metadata.name,
+                metadata={"day": now.strftime("%A")},
+            )
 
         # Check business hours
         if config.get("business_hours_only", False):

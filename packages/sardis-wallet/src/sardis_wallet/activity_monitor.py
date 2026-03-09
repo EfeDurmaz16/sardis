@@ -19,13 +19,13 @@ import logging
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_v2_core import Wallet, Transaction
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +72,10 @@ class WalletActivity:
     activity_id: str
     wallet_id: str
     activity_type: ActivityType
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Transaction details
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     from_address: str = ""
     to_address: str = ""
     amount: Decimal = field(default_factory=lambda: Decimal("0"))
@@ -83,20 +83,20 @@ class WalletActivity:
     chain: str = "base"
 
     # Additional context
-    merchant_id: Optional[str] = None
-    merchant_category: Optional[str] = None
-    ip_address: Optional[str] = None
-    device_id: Optional[str] = None
-    geo_location: Optional[str] = None
+    merchant_id: str | None = None
+    merchant_category: str | None = None
+    ip_address: str | None = None
+    device_id: str | None = None
+    geo_location: str | None = None
 
     # Risk assessment
     risk_score: float = 0.0
-    risk_factors: List[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "activity_id": self.activity_id,
@@ -123,38 +123,38 @@ class Alert:
     severity: AlertSeverity
     title: str
     description: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Related data
-    related_activity_id: Optional[str] = None
-    related_tx_hash: Optional[str] = None
+    related_activity_id: str | None = None
+    related_tx_hash: str | None = None
 
     # Alert state
     is_acknowledged: bool = False
-    acknowledged_at: Optional[datetime] = None
-    acknowledged_by: Optional[str] = None
+    acknowledged_at: datetime | None = None
+    acknowledged_by: str | None = None
     is_resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = None
 
     # Alert metadata
     risk_score: float = 0.0
-    recommended_actions: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    recommended_actions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def acknowledge(self, by: str) -> None:
         """Acknowledge the alert."""
         self.is_acknowledged = True
-        self.acknowledged_at = datetime.now(timezone.utc)
+        self.acknowledged_at = datetime.now(UTC)
         self.acknowledged_by = by
 
     def resolve(self, notes: str = "") -> None:
         """Resolve the alert."""
         self.is_resolved = True
-        self.resolved_at = datetime.now(timezone.utc)
+        self.resolved_at = datetime.now(UTC)
         self.resolution_notes = notes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "alert_id": self.alert_id,
@@ -179,10 +179,10 @@ class WatchlistEntry:
     value: str
     reason: str
     severity: AlertSeverity = AlertSeverity.HIGH
-    added_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    added_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     added_by: str = "system"
     is_active: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -193,11 +193,11 @@ class ActivityPattern:
     pattern_type: str
     description: str
     confidence: float = 0.0
-    first_detected: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_detected: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
     occurrence_count: int = 1
     is_normal: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -237,7 +237,7 @@ class AlertNotificationService(Protocol):
     async def send_alert(
         self,
         alert: Alert,
-        channels: List[str],
+        channels: list[str],
     ) -> bool:
         """Send an alert notification."""
         ...
@@ -257,20 +257,20 @@ class ActivityMonitor:
 
     def __init__(
         self,
-        notification_service: Optional[AlertNotificationService] = None,
+        notification_service: AlertNotificationService | None = None,
     ):
         self._notifications = notification_service
 
         # Storage (in production, use database)
-        self._configs: Dict[str, MonitoringConfig] = {}
-        self._activities: Dict[str, List[WalletActivity]] = {}  # wallet_id -> activities
-        self._alerts: Dict[str, List[Alert]] = {}  # wallet_id -> alerts
-        self._patterns: Dict[str, Dict[str, ActivityPattern]] = {}  # wallet_id -> pattern_id -> pattern
-        self._watchlist: Dict[str, WatchlistEntry] = {}  # entry_id -> entry
+        self._configs: dict[str, MonitoringConfig] = {}
+        self._activities: dict[str, list[WalletActivity]] = {}  # wallet_id -> activities
+        self._alerts: dict[str, list[Alert]] = {}  # wallet_id -> alerts
+        self._patterns: dict[str, dict[str, ActivityPattern]] = {}  # wallet_id -> pattern_id -> pattern
+        self._watchlist: dict[str, WatchlistEntry] = {}  # entry_id -> entry
 
         # Statistics for anomaly detection
-        self._wallet_stats: Dict[str, Dict[str, Any]] = {}  # wallet_id -> stats
-        self._notification_timestamps: Dict[str, datetime] = {}  # wallet_id -> last notification
+        self._wallet_stats: dict[str, dict[str, Any]] = {}  # wallet_id -> stats
+        self._notification_timestamps: dict[str, datetime] = {}  # wallet_id -> last notification
 
         # Locks
         self._monitor_lock = asyncio.Lock()
@@ -278,7 +278,7 @@ class ActivityMonitor:
     async def setup_monitoring(
         self,
         wallet_id: str,
-        config: Optional[MonitoringConfig] = None,
+        config: MonitoringConfig | None = None,
     ) -> MonitoringConfig:
         """Set up monitoring for a wallet."""
         monitoring_config = config or MonitoringConfig(wallet_id=wallet_id)
@@ -293,7 +293,7 @@ class ActivityMonitor:
         logger.info(f"Set up activity monitoring for wallet {wallet_id}")
         return monitoring_config
 
-    def _initialize_stats(self) -> Dict[str, Any]:
+    def _initialize_stats(self) -> dict[str, Any]:
         """Initialize statistics tracking."""
         return {
             "total_transactions": 0,
@@ -311,7 +311,7 @@ class ActivityMonitor:
     async def record_activity(
         self,
         activity: WalletActivity,
-    ) -> Tuple[WalletActivity, List[Alert]]:
+    ) -> tuple[WalletActivity, list[Alert]]:
         """
         Record and analyze a wallet activity.
 
@@ -409,7 +409,7 @@ class ActivityMonitor:
         self,
         activity: WalletActivity,
         config: MonitoringConfig,
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """Check for alert conditions."""
         import secrets
 
@@ -505,14 +505,14 @@ class ActivityMonitor:
 
     def _count_recent_activities(self, wallet_id: str, hours: int) -> int:
         """Count activities in the last N hours."""
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         activities = self._activities.get(wallet_id, [])
         return sum(1 for a in activities if a.timestamp > cutoff)
 
     async def _check_watchlist(
         self,
         activity: WalletActivity,
-    ) -> Optional[WatchlistEntry]:
+    ) -> WatchlistEntry | None:
         """Check if activity matches any watchlist entries."""
         for entry in self._watchlist.values():
             if not entry.is_active:
@@ -580,7 +580,6 @@ class ActivityMonitor:
 
     async def _detect_patterns(self, activity: WalletActivity) -> None:
         """Detect activity patterns."""
-        import secrets
 
         wallet_id = activity.wallet_id
         stats = self._wallet_stats.get(wallet_id, {})
@@ -597,7 +596,7 @@ class ActivityMonitor:
             if pattern_id in self._patterns.get(wallet_id, {}):
                 pattern = self._patterns[wallet_id][pattern_id]
                 pattern.occurrence_count += 1
-                pattern.last_seen = datetime.now(timezone.utc)
+                pattern.last_seen = datetime.now(UTC)
             else:
                 pattern = ActivityPattern(
                     pattern_id=pattern_id,
@@ -626,7 +625,7 @@ class ActivityMonitor:
         last_notification = self._notification_timestamps.get(wallet_id)
         if last_notification:
             cooldown = timedelta(minutes=config.notification_cooldown_minutes)
-            if datetime.now(timezone.utc) - last_notification < cooldown:
+            if datetime.now(UTC) - last_notification < cooldown:
                 return False
 
         return True
@@ -639,7 +638,7 @@ class ActivityMonitor:
                 channels=["email", "push"],
             )
 
-        self._notification_timestamps[alert.wallet_id] = datetime.now(timezone.utc)
+        self._notification_timestamps[alert.wallet_id] = datetime.now(UTC)
         logger.info(f"Sent notification for alert {alert.alert_id}")
 
     async def add_to_watchlist(
@@ -680,9 +679,9 @@ class ActivityMonitor:
         self,
         wallet_id: str,
         include_resolved: bool = False,
-        severity: Optional[AlertSeverity] = None,
+        severity: AlertSeverity | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get alerts for a wallet."""
         alerts = self._alerts.get(wallet_id, [])
 
@@ -698,13 +697,13 @@ class ActivityMonitor:
         self,
         wallet_id: str,
         days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get activity summary for a wallet."""
         stats = self._wallet_stats.get(wallet_id, {})
         activities = self._activities.get(wallet_id, [])
         alerts = self._alerts.get(wallet_id, [])
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         recent_activities = [a for a in activities if a.timestamp > cutoff]
         recent_alerts = [a for a in alerts if a.created_at > cutoff]
 
@@ -729,7 +728,7 @@ class ActivityMonitor:
 
 
 # Singleton instance
-_activity_monitor: Optional[ActivityMonitor] = None
+_activity_monitor: ActivityMonitor | None = None
 
 
 def get_activity_monitor() -> ActivityMonitor:

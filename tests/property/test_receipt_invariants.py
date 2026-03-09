@@ -10,7 +10,8 @@ from __future__ import annotations
 import pytest
 
 try:
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
     HAS_HYPOTHESIS = True
 except ImportError:
     HAS_HYPOTHESIS = False
@@ -18,7 +19,8 @@ except ImportError:
         def decorator(fn):
             return pytest.mark.skip(reason="hypothesis not installed")(fn)
         return decorator
-    settings = lambda **kw: lambda fn: fn
+    def settings(**kw):
+        return lambda fn: fn
     class st:
         text = staticmethod(lambda **kw: None)
 

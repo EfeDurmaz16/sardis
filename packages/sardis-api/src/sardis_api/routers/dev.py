@@ -10,11 +10,9 @@ from __future__ import annotations
 import logging
 import os
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
-
 from sardis_chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,

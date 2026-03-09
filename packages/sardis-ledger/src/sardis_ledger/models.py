@@ -1,14 +1,12 @@
 """Ledger data models with production-grade precision and typing."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence
-import hashlib
 import uuid
-
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from enum import Enum
+from typing import Any
 
 # Decimal precision constants for financial accuracy
 # 38 total digits, 18 decimal places (matches Ethereum uint256 / 10^18)
@@ -144,21 +142,21 @@ class LedgerEntry:
     currency: str = "USDC"
 
     # Chain reference
-    chain: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    block_number: Optional[int] = None
+    chain: str | None = None
+    chain_tx_hash: str | None = None
+    block_number: int | None = None
 
     # Audit fields
-    audit_anchor: Optional[str] = None
-    merkle_root: Optional[str] = None
+    audit_anchor: str | None = None
+    merkle_root: str | None = None
 
     # Status and timing
     status: LedgerEntryStatus = LedgerEntryStatus.PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    confirmed_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    confirmed_at: datetime | None = None
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Lock version for optimistic concurrency
     version: int = 1
@@ -174,10 +172,10 @@ class LedgerEntry:
         return self.amount + self.fee
 
     # Content-addressed hash chain fields
-    entry_hash: Optional[str] = None
-    previous_hash: Optional[str] = None
+    entry_hash: str | None = None
+    previous_hash: str | None = None
 
-    def compute_hash(self, previous_hash: Optional[str] = None) -> str:
+    def compute_hash(self, previous_hash: str | None = None) -> str:
         """Compute content-addressed hash using agit-style canonical serialization.
 
         When `previous_hash` is provided, it forms a hash chain for tamper evidence.
@@ -187,13 +185,13 @@ class LedgerEntry:
         prev = previous_hash if previous_hash is not None else self.previous_hash
         return compute_entry_hash(self.to_dict(), previous_hash=prev)
 
-    def seal(self, previous_hash: Optional[str] = None) -> str:
+    def seal(self, previous_hash: str | None = None) -> str:
         """Compute and store the content-addressed hash, linking to chain."""
         self.previous_hash = previous_hash
         self.entry_hash = self.compute_hash(previous_hash)
         return self.entry_hash
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "entry_id": self.entry_id,
@@ -235,20 +233,20 @@ class BalanceSnapshot:
 
     # Reference to last entry included
     last_entry_id: str = ""
-    last_entry_created_at: Optional[datetime] = None
+    last_entry_created_at: datetime | None = None
 
     # Entry count for validation
     entry_count: int = 0
 
     # Snapshot metadata
-    snapshot_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    merkle_root: Optional[str] = None
+    snapshot_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    merkle_root: str | None = None
 
     def __post_init__(self):
         """Normalize balance."""
         self.balance = to_ledger_decimal(self.balance)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "snapshot_id": self.snapshot_id,
@@ -279,24 +277,24 @@ class AuditLog:
     entity_id: str = ""
 
     # Actor information
-    actor_id: Optional[str] = None
-    actor_type: Optional[str] = None  # "system", "user", "agent"
+    actor_id: str | None = None
+    actor_type: str | None = None  # "system", "user", "agent"
 
     # Change details
-    old_value: Optional[Dict[str, Any]] = None
-    new_value: Optional[Dict[str, Any]] = None
+    old_value: dict[str, Any] | None = None
+    new_value: dict[str, Any] | None = None
 
     # Context
-    request_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    request_id: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Hash chain for tamper evidence
-    previous_hash: Optional[str] = None
-    entry_hash: Optional[str] = None
+    previous_hash: str | None = None
+    entry_hash: str | None = None
 
     def compute_hash(self) -> str:
         """Compute content-addressed hash using agit-style canonical serialization."""
@@ -304,7 +302,7 @@ class AuditLog:
 
         return compute_audit_hash(self.to_dict(), previous_hash=self.previous_hash)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "audit_id": self.audit_id,
@@ -341,17 +339,17 @@ class ReconciliationRecord:
     chain: str = ""
     chain_tx_hash: str = ""
     chain_amount: Decimal = field(default_factory=lambda: Decimal("0"))
-    chain_block_number: Optional[int] = None
-    chain_timestamp: Optional[datetime] = None
+    chain_block_number: int | None = None
+    chain_timestamp: datetime | None = None
 
     # Reconciliation result
     status: ReconciliationStatus = ReconciliationStatus.PENDING
     discrepancy_amount: Decimal = field(default_factory=lambda: Decimal("0"))
-    discrepancy_reason: Optional[str] = None
+    discrepancy_reason: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    reconciled_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    reconciled_at: datetime | None = None
 
     def __post_init__(self):
         """Normalize decimal amounts."""
@@ -364,7 +362,7 @@ class ReconciliationRecord:
         self.discrepancy_amount = abs(self.ledger_amount - self.chain_amount)
         return self.discrepancy_amount
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "reconciliation_id": self.reconciliation_id,
@@ -395,20 +393,20 @@ class BatchTransaction:
     batch_id: str = field(default_factory=lambda: f"batch_{uuid.uuid4().hex[:16]}")
 
     # Entries in this batch
-    entries: List[LedgerEntry] = field(default_factory=list)
+    entries: list[LedgerEntry] = field(default_factory=list)
 
     # Batch status
     status: LedgerEntryStatus = LedgerEntryStatus.PENDING
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
 
     # Rollback support
     is_rolled_back: bool = False
-    rollback_reason: Optional[str] = None
-    rollback_at: Optional[datetime] = None
+    rollback_reason: str | None = None
+    rollback_at: datetime | None = None
 
     def total_amount(self) -> Decimal:
         """Calculate total amount across all entries."""
@@ -422,7 +420,7 @@ class BatchTransaction:
         """Get number of entries in batch."""
         return len(self.entries)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "batch_id": self.batch_id,
@@ -457,13 +455,13 @@ class CurrencyRate:
 
     # Source and validity
     source: str = "internal"  # e.g., "coingecko", "chainlink", "internal"
-    valid_from: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    valid_until: Optional[datetime] = None
+    valid_from: datetime = field(default_factory=lambda: datetime.now(UTC))
+    valid_until: datetime | None = None
 
     # Market data
-    bid: Optional[Decimal] = None
-    ask: Optional[Decimal] = None
-    spread: Optional[Decimal] = None
+    bid: Decimal | None = None
+    ask: Decimal | None = None
+    spread: Decimal | None = None
 
     def __post_init__(self):
         """Normalize rates."""
@@ -484,16 +482,14 @@ class CurrencyRate:
         """Convert amount from target to source currency."""
         return to_ledger_decimal(amount * self.inverse_rate)
 
-    def is_valid(self, at_time: Optional[datetime] = None) -> bool:
+    def is_valid(self, at_time: datetime | None = None) -> bool:
         """Check if rate is valid at given time."""
-        check_time = at_time or datetime.now(timezone.utc)
+        check_time = at_time or datetime.now(UTC)
         if check_time < self.valid_from:
             return False
-        if self.valid_until and check_time > self.valid_until:
-            return False
-        return True
+        return not (self.valid_until and check_time > self.valid_until)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "rate_id": self.rate_id,
@@ -529,9 +525,9 @@ class LockRecord:
     holder_type: str = "transaction"
 
     # Lock status
-    acquired_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
-    released_at: Optional[datetime] = None
+    acquired_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
+    released_at: datetime | None = None
 
     # Lock mode
     is_exclusive: bool = True
@@ -540,11 +536,9 @@ class LockRecord:
         """Check if lock is still active."""
         if self.released_at:
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "lock_id": self.lock_id,

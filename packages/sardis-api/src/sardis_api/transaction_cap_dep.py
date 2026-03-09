@@ -4,10 +4,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
-
 from sardis_guardrails.transaction_caps import get_transaction_cap_engine
 
 from .authz import Principal, require_principal
@@ -62,7 +60,7 @@ async def enforce_transaction_caps(
         )
 
 
-async def _extract_amount(request: Request) -> Optional[Decimal]:
+async def _extract_amount(request: Request) -> Decimal | None:
     """Best-effort extraction of transaction amount from request body."""
     try:
         body = await request.json()
@@ -84,7 +82,7 @@ async def _extract_amount(request: Request) -> Optional[Decimal]:
     return None
 
 
-def _extract_agent_id(request: Request) -> Optional[str]:
+def _extract_agent_id(request: Request) -> str | None:
     """Best-effort agent ID extraction from request state or path params."""
     if hasattr(request.state, "agent_id"):
         return request.state.agent_id

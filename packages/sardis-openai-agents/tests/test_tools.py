@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import sys
-from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -134,7 +133,6 @@ def test_configure_sets_client():
     mock_sardis.SardisClient.return_value = mock_client_instance
 
     with patch.dict(sys.modules, {"sardis": mock_sardis}):
-        import importlib
         import sardis_openai_agents.tools as tools_mod
 
         tools_mod.configure(api_key="sk_test", wallet_id="wid_configured")

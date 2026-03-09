@@ -1,13 +1,13 @@
 """Exceptions resource for Sardis SDK."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .base import AsyncBaseResource, SyncBaseResource
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
+    import builtins
+
     from ..client import TimeoutConfig
 
 
@@ -17,11 +17,11 @@ class AsyncExceptionsResource(AsyncBaseResource):
     async def list(
         self,
         *,
-        agent_id: Optional[str] = None,
-        status: Optional[str] = None,
+        agent_id: str | None = None,
+        status: str | None = None,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[dict[str, Any]]:
         """List exceptions with optional filters.
 
         Args:
@@ -30,7 +30,7 @@ class AsyncExceptionsResource(AsyncBaseResource):
             limit: Maximum number of exceptions to return.
             timeout: Optional timeout override.
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
         if status:
@@ -43,8 +43,8 @@ class AsyncExceptionsResource(AsyncBaseResource):
     async def get(
         self,
         exception_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get exception details.
 
         Args:
@@ -57,9 +57,9 @@ class AsyncExceptionsResource(AsyncBaseResource):
         self,
         exception_id: str,
         *,
-        notes: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Mark an exception as resolved.
 
         Args:
@@ -67,7 +67,7 @@ class AsyncExceptionsResource(AsyncBaseResource):
             notes: Optional resolution notes.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if notes:
             payload["notes"] = notes
         return await self._post(f"exceptions/{exception_id}/resolve", payload, timeout=timeout)
@@ -76,9 +76,9 @@ class AsyncExceptionsResource(AsyncBaseResource):
         self,
         exception_id: str,
         *,
-        notes: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Escalate an exception for higher-level review.
 
         Args:
@@ -86,7 +86,7 @@ class AsyncExceptionsResource(AsyncBaseResource):
             notes: Optional escalation notes.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if notes:
             payload["notes"] = notes
         return await self._post(f"exceptions/{exception_id}/escalate", payload, timeout=timeout)
@@ -94,8 +94,8 @@ class AsyncExceptionsResource(AsyncBaseResource):
     async def retry(
         self,
         exception_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Retry the failed operation associated with an exception.
 
         Args:
@@ -111,11 +111,11 @@ class ExceptionsResource(SyncBaseResource):
     def list(
         self,
         *,
-        agent_id: Optional[str] = None,
-        status: Optional[str] = None,
+        agent_id: str | None = None,
+        status: str | None = None,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> builtins.list[dict[str, Any]]:
         """List exceptions with optional filters.
 
         Args:
@@ -124,7 +124,7 @@ class ExceptionsResource(SyncBaseResource):
             limit: Maximum number of exceptions to return.
             timeout: Optional timeout override.
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
         if status:
@@ -137,8 +137,8 @@ class ExceptionsResource(SyncBaseResource):
     def get(
         self,
         exception_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get exception details.
 
         Args:
@@ -151,9 +151,9 @@ class ExceptionsResource(SyncBaseResource):
         self,
         exception_id: str,
         *,
-        notes: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Mark an exception as resolved.
 
         Args:
@@ -161,7 +161,7 @@ class ExceptionsResource(SyncBaseResource):
             notes: Optional resolution notes.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if notes:
             payload["notes"] = notes
         return self._post(f"exceptions/{exception_id}/resolve", payload, timeout=timeout)
@@ -170,9 +170,9 @@ class ExceptionsResource(SyncBaseResource):
         self,
         exception_id: str,
         *,
-        notes: Optional[str] = None,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Escalate an exception for higher-level review.
 
         Args:
@@ -180,7 +180,7 @@ class ExceptionsResource(SyncBaseResource):
             notes: Optional escalation notes.
             timeout: Optional timeout override.
         """
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if notes:
             payload["notes"] = notes
         return self._post(f"exceptions/{exception_id}/escalate", payload, timeout=timeout)
@@ -188,8 +188,8 @@ class ExceptionsResource(SyncBaseResource):
     def retry(
         self,
         exception_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Retry the failed operation associated with an exception.
 
         Args:

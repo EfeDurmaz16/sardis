@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ class TransactionCapEngine:
         # In-memory fallback
         self._mem_spend[key] = self._mem_spend.get(key, Decimal("0")) + amount
 
-    async def _get_cap(self, scope: str, scope_id: str | None, cap_type: str) -> Optional[Decimal]:
+    async def _get_cap(self, scope: str, scope_id: str | None, cap_type: str) -> Decimal | None:
         """Get configured cap from Redis or DB."""
         redis = self._get_redis()
         if redis and scope_id:

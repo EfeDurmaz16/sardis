@@ -11,26 +11,24 @@ Flow:
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from .cctp_constants import (
-    CCTP_DOMAINS,
-    TOKEN_MESSENGER_ADDRESSES,
-    MESSAGE_TRANSMITTER_ADDRESSES,
-    USDC_ADDRESSES,
-    CIRCLE_ATTESTATION_API_URL,
     CIRCLE_ATTESTATION_API_SANDBOX_URL,
+    CIRCLE_ATTESTATION_API_URL,
+    MESSAGE_TRANSMITTER_ADDRESSES,
+    TOKEN_MESSENGER_ADDRESSES,
+    USDC_ADDRESSES,
+    get_bridge_estimate_seconds,
     get_cctp_domain,
     is_cctp_supported,
-    get_bridge_estimate_seconds,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,18 +50,18 @@ class BridgeTransfer:
     """Tracks a CCTP bridge transfer."""
     transfer_id: str = field(default_factory=lambda: f"bridge_{uuid.uuid4().hex[:16]}")
     wallet_id: str = ""
-    agent_id: Optional[str] = None
+    agent_id: str | None = None
     from_chain: str = ""
     to_chain: str = ""
     amount: Decimal = Decimal("0")
     token: str = "USDC"
-    source_domain: Optional[int] = None
-    message_hash: Optional[str] = None
-    source_tx_hash: Optional[str] = None
-    destination_tx_hash: Optional[str] = None
+    source_domain: int | None = None
+    message_hash: str | None = None
+    source_tx_hash: str | None = None
+    destination_tx_hash: str | None = None
     status: BridgeStatus = BridgeStatus.INITIATED
-    error: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    error: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict:
         return {
@@ -107,7 +105,7 @@ class CCTPBridgeService:
         amount: Decimal,
         recipient: str,
         wallet_id: str,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
     ) -> BridgeTransfer:
         """
         Initiate a cross-chain USDC transfer via CCTP.
@@ -167,7 +165,7 @@ class CCTPBridgeService:
 
             # Step 1: Approve USDC to TokenMessenger
             logger.info(f"Bridge {transfer.transfer_id}: approving USDC to TokenMessenger")
-            approve_tx = await self._chain_executor.send_raw_transaction(
+            await self._chain_executor.send_raw_transaction(
                 chain=from_chain,
                 wallet_id=wallet_id,
                 to=usdc_address,

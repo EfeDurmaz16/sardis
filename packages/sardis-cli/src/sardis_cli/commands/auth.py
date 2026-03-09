@@ -18,7 +18,7 @@ def auth():
 def status(ctx):
     """Check authentication status."""
     config = ctx.obj["config"]
-    
+
     api_key = config.get("api_key")
     if api_key:
         console.print("[green]✓ Authenticated[/green]")
@@ -33,23 +33,23 @@ def status(ctx):
 @click.pass_context
 def whoami(ctx):
     """Show current user information."""
-    from ..api import SardisAPIClient, APIError
-    
+    from ..api import APIError, SardisAPIClient
+
     config = ctx.obj["config"]
     api_key = config.get("api_key")
-    
+
     if not api_key:
         console.print("[yellow]Not authenticated[/yellow]")
         return
-    
+
     client = SardisAPIClient(
         base_url=config.get("api_base_url", "https://api.sardis.sh"),
         api_key=api_key,
     )
-    
+
     try:
         result = client.get("/api/v2/auth/me")
-        console.print(f"\n[bold]User Information[/bold]")
+        console.print("\n[bold]User Information[/bold]")
         console.print(f"  Organization: {result.get('organization_id', 'N/A')}")
         console.print(f"  Scopes: {', '.join(result.get('scopes', []))}")
     except APIError as e:

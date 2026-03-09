@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +29,7 @@ def write_erc4337_proof_artifact(
     tx_hash: str,
     receipt: dict[str, Any],
 ) -> ERC4337ProofArtifact:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     output_dir = Path(base_dir).expanduser() / chain / now.strftime("%Y-%m-%d")
     output_dir.mkdir(parents=True, exist_ok=True)
 

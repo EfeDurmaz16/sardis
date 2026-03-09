@@ -3,15 +3,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
-from sardis_v2_core.holds import HoldsRepository, Hold
+from sardis_v2_core.holds import Hold, HoldsRepository
 
 from sardis_api.authz import Principal, require_admin_principal, require_principal
-
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["holds"])
 
@@ -23,34 +20,34 @@ class CreateHoldRequest(BaseModel):
     wallet_id: str = Field(..., description="Wallet to hold funds from")
     amount: Decimal = Field(..., gt=0, description="Amount to hold")
     token: str = Field(default="USDC", description="Token to hold")
-    merchant_id: Optional[str] = Field(None, description="Merchant this hold is for")
-    purpose: Optional[str] = Field(None, description="Purpose of the hold")
-    expiration_hours: Optional[int] = Field(None, ge=1, le=720, description="Hours until expiration (default: 168)")
+    merchant_id: str | None = Field(None, description="Merchant this hold is for")
+    purpose: str | None = Field(None, description="Purpose of the hold")
+    expiration_hours: int | None = Field(None, ge=1, le=720, description="Hours until expiration (default: 168)")
 
 
 class CaptureHoldRequest(BaseModel):
     """Request to capture a hold."""
-    amount: Optional[Decimal] = Field(None, gt=0, description="Amount to capture (default: full amount)")
-    tx_id: Optional[str] = Field(None, description="Transaction ID for the capture")
+    amount: Decimal | None = Field(None, gt=0, description="Amount to capture (default: full amount)")
+    tx_id: str | None = Field(None, description="Transaction ID for the capture")
 
 
 class HoldResponse(BaseModel):
     """Hold response model."""
     hold_id: str
     wallet_id: str
-    merchant_id: Optional[str]
+    merchant_id: str | None
     amount: str
     token: str
     status: str
-    purpose: Optional[str]
+    purpose: str | None
     created_at: datetime
-    expires_at: Optional[datetime]
-    captured_amount: Optional[str]
-    captured_at: Optional[datetime]
-    voided_at: Optional[datetime]
+    expires_at: datetime | None
+    captured_amount: str | None
+    captured_at: datetime | None
+    voided_at: datetime | None
 
     @classmethod
-    def from_hold(cls, hold: Hold) -> "HoldResponse":
+    def from_hold(cls, hold: Hold) -> HoldResponse:
         return cls(
             hold_id=hold.hold_id,
             wallet_id=hold.wallet_id,
@@ -70,8 +67,8 @@ class HoldResponse(BaseModel):
 class HoldOperationResponse(BaseModel):
     """Response for hold operations."""
     success: bool
-    hold: Optional[HoldResponse] = None
-    error: Optional[str] = None
+    hold: HoldResponse | None = None
+    error: str | None = None
 
 
 # Dependencies
@@ -134,7 +131,7 @@ async def get_hold(
 @router.post("/{hold_id}/capture", response_model=HoldOperationResponse)
 async def capture_hold(
     hold_id: str,
-    request: Optional[CaptureHoldRequest] = None,
+    request: CaptureHoldRequest | None = None,
     deps: HoldsDependencies = Depends(get_deps),
 ):
     """Capture (complete) a hold."""
@@ -175,10 +172,10 @@ async def void_hold(
     )
 
 
-@router.get("/wallet/{wallet_id}", response_model=List[HoldResponse])
+@router.get("/wallet/{wallet_id}", response_model=list[HoldResponse])
 async def list_wallet_holds(
     wallet_id: str,
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=500),
     deps: HoldsDependencies = Depends(get_deps),
 ):
@@ -191,7 +188,7 @@ async def list_wallet_holds(
     return [HoldResponse.from_hold(h) for h in holds]
 
 
-@router.get("", response_model=List[HoldResponse])
+@router.get("", response_model=list[HoldResponse])
 async def list_active_holds(
     limit: int = Query(default=100, ge=1, le=500),
     deps: HoldsDependencies = Depends(get_deps),

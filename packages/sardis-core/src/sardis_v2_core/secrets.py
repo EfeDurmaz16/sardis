@@ -24,7 +24,6 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class SecretsProvider(ABC):
     """Abstract base class for secrets providers."""
 
     @abstractmethod
-    async def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get(self, key: str, default: str | None = None) -> str | None:
         """Retrieve a secret by key."""
         ...
 
@@ -53,7 +52,7 @@ class EnvSecretsProvider(SecretsProvider):
     def __init__(self, prefix: str = ""):
         self._prefix = prefix
 
-    async def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get(self, key: str, default: str | None = None) -> str | None:
         return os.getenv(f"{self._prefix}{key}", default)
 
     async def get_required(self, key: str) -> str:
@@ -86,7 +85,7 @@ class GCPSecretsProvider(SecretsProvider):
                 )
         return self._client
 
-    async def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get(self, key: str, default: str | None = None) -> str | None:
         secret_id = f"{self._prefix}{key}".replace("_", "-").lower()
         name = f"projects/{self._project_id}/secrets/{secret_id}/versions/latest"
         try:
@@ -132,7 +131,7 @@ class AWSSecretsProvider(SecretsProvider):
                 )
         return self._client
 
-    async def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get(self, key: str, default: str | None = None) -> str | None:
         param_name = f"/{self._prefix}{key}" if self._prefix else f"/{key}"
         try:
             import asyncio

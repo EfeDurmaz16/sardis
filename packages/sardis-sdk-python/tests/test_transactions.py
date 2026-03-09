@@ -1,7 +1,5 @@
 """Tests for TransactionsResource."""
-import pytest
 from decimal import Decimal
-
 
 MOCK_CHAIN_INFO = {
     "name": "Base Sepolia",

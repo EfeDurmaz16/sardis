@@ -14,14 +14,12 @@ Tests cover:
 from __future__ import annotations
 
 import asyncio
-import pytest
-import time
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from dataclasses import dataclass
-
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -31,17 +29,16 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
+from sardis_chain.config import NonceManagerConfig
 from sardis_chain.nonce_manager import (
-    NonceManager,
-    TransactionReceiptStatus,
-    ReceiptValidation,
-    PendingTransaction,
     NonceConflictError,
-    StuckTransactionError,
+    NonceManager,
+    PendingTransaction,
+    ReceiptValidation,
     TransactionFailedError,
+    TransactionReceiptStatus,
     get_nonce_manager,
 )
-from sardis_chain.config import NonceManagerConfig, get_config
 
 
 class TestTransactionReceiptStatus:
@@ -104,7 +101,7 @@ class TestPendingTransaction:
             nonce=5,
             address="0x1234567890123456789012345678901234567890",
             chain="ethereum",
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             gas_price=50_000_000_000,
             priority_fee=2_000_000_000,
             data_hash="hash123",
@@ -121,7 +118,7 @@ class TestPendingTransaction:
             nonce=10,
             address="0x1234567890123456789012345678901234567890",
             chain="ethereum",
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             gas_price=50_000_000_000,
             priority_fee=2_000_000_000,
             data_hash="hash456",
@@ -131,7 +128,7 @@ class TestPendingTransaction:
 
     def test_is_stuck_after_timeout(self):
         """Should be stuck after timeout."""
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
         pending = PendingTransaction(
             tx_hash="0xghi",
             nonce=15,
@@ -389,7 +386,7 @@ class TestNonceManager:
     async def test_get_stuck_transactions(self, manager):
         """Should return stuck transactions."""
         address = "0x1234567890123456789012345678901234567890"
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
 
         # Register old pending transaction
         manager._pending_txs["0xstuck"] = PendingTransaction(
@@ -417,7 +414,7 @@ class TestNonceManager:
             nonce=5,
             address="0x123",
             chain="ethereum",
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
             gas_price=50_000_000_000,  # 50 gwei
             priority_fee=2_000_000_000,  # 2 gwei
             data_hash="hash",

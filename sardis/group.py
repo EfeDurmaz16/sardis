@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import List, Optional
 
 
 @dataclass
@@ -23,8 +22,8 @@ class AgentGroup:
     budget_daily: Decimal = Decimal("5000.00")
     budget_monthly: Decimal = Decimal("50000.00")
     budget_total: Decimal = Decimal("500000.00")
-    blocked_merchants: List[str] = field(default_factory=list)
-    agent_ids: List[str] = field(default_factory=list)
+    blocked_merchants: list[str] = field(default_factory=list)
+    agent_ids: list[str] = field(default_factory=list)
     _spent_daily: Decimal = field(default=Decimal("0"), repr=False)
     _spent_monthly: Decimal = field(default=Decimal("0"), repr=False)
     _spent_total: Decimal = field(default=Decimal("0"), repr=False)
@@ -42,7 +41,7 @@ class AgentGroup:
     def can_spend(
         self,
         amount: Decimal,
-        merchant_id: Optional[str] = None,
+        merchant_id: str | None = None,
     ) -> bool:
         """Check if a spend is allowed under group policy."""
         if amount > self.budget_per_tx:
@@ -53,9 +52,7 @@ class AgentGroup:
             return False
         if self._spent_total + amount > self.budget_total:
             return False
-        if merchant_id and merchant_id.lower() in [m.lower() for m in self.blocked_merchants]:
-            return False
-        return True
+        return not (merchant_id and merchant_id.lower() in [m.lower() for m in self.blocked_merchants])
 
     def record_spend(self, amount: Decimal) -> None:
         """Record a successful spend against group budget."""

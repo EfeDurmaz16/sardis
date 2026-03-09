@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from sardis_ramp.ramp import SardisFiatRamp, KYCRequired
+from sardis_ramp.ramp import KYCRequired, SardisFiatRamp
 
 
 class MockHTTPResponse:

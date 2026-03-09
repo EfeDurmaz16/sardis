@@ -12,14 +12,11 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
-from decimal import Decimal
-
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -30,14 +27,14 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_compliance.pep import (
-    PEPCategory,
-    PEPRiskLevel,
-    PEPStatus,
-    PEPMatch,
-    PEPScreeningResult,
-    PEPScreeningRequest,
-    PEPProvider,
     ComplyAdvantagePEPProvider,
+    PEPCategory,
+    PEPMatch,
+    PEPProvider,
+    PEPRiskLevel,
+    PEPScreeningRequest,
+    PEPScreeningResult,
+    PEPStatus,
 )
 
 
@@ -417,7 +414,7 @@ class TestComplyAdvantagePEPProvider:
         ))
 
         with patch.object(provider, "_get_client", return_value=mock_client):
-            request = PEPScreeningRequest(
+            PEPScreeningRequest(
                 subject_id="s1",
                 name="John Smith",
             )

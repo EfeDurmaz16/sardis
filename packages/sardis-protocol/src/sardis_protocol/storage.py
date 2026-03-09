@@ -6,9 +6,8 @@ import sqlite3
 import threading
 import time
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from sardis_v2_core.mandates import MandateChain
 
@@ -25,12 +24,12 @@ class MandateArchive:
     """Stores verified mandate chains for audit trail."""
 
     def __init__(self, dsn: str | None = None):
-        self._sqlite_conn: Optional[sqlite3.Connection] = None
+        self._sqlite_conn: sqlite3.Connection | None = None
         self._pg_pool = None
         self._use_postgres = False
         self._dsn = dsn
         self._buffer: list[MandateChain] = []
-        
+
         if dsn and dsn.startswith("sqlite:///"):
             path = _path_from_dsn(dsn)
             self._sqlite_conn = sqlite3.connect(path, check_same_thread=False)
@@ -46,7 +45,7 @@ class MandateArchive:
             self._sqlite_conn.commit()
         elif dsn and (dsn.startswith("postgresql://") or dsn.startswith("postgres://")):
             self._use_postgres = True
-    
+
     async def _get_pg_pool(self):
         """Lazy initialization of PostgreSQL pool."""
         if self._pg_pool is None:
@@ -65,7 +64,7 @@ class MandateArchive:
             (chain.payment.mandate_id, payload, int(time.time())),
         )
         self._sqlite_conn.commit()
-    
+
     async def store_async(self, chain: MandateChain) -> None:
         """Store mandate chain (async version for PostgreSQL)."""
         if self._use_postgres:
@@ -100,15 +99,15 @@ class MandateArchive:
 
 class ReplayCache:
     """In-memory replay cache with TTL cleanup.
-    
+
     Prevents memory leaks by automatically cleaning up expired entries.
-    
+
     Args:
         default_ttl_seconds: Default TTL for entries (24 hours).
         cleanup_interval_seconds: How often to run cleanup (5 minutes).
         max_entries: Maximum entries before forced cleanup (100,000).
     """
-    
+
     DEFAULT_TTL_SECONDS = 24 * 60 * 60  # 24 hours
     CLEANUP_INTERVAL_SECONDS = 5 * 60  # 5 minutes
     MAX_ENTRIES = 100000
@@ -144,7 +143,7 @@ class ReplayCache:
 
             self._seen[mandate_id] = expires_at
             return True
-    
+
     def _maybe_cleanup(self, now: int) -> None:
         """Run cleanup if interval has passed or at max capacity."""
         should_cleanup = (
@@ -153,8 +152,8 @@ class ReplayCache:
         )
         if should_cleanup:
             self.cleanup(now)
-    
-    def cleanup(self, now: Optional[int] = None) -> int:
+
+    def cleanup(self, now: int | None = None) -> int:
         """Remove expired entries.
 
         Returns:
@@ -174,7 +173,7 @@ class ReplayCache:
 
             self._last_cleanup = now
             return len(expired)
-    
+
     def stats(self) -> dict:
         """Return cache statistics."""
         now = int(time.time())
@@ -186,7 +185,7 @@ class ReplayCache:
             "max_entries": self._max_entries,
             "last_cleanup": self._last_cleanup,
         }
-    
+
     def clear(self) -> None:
         """Clear all entries."""
         self._seen.clear()
@@ -248,12 +247,12 @@ class SqliteReplayCache(ReplayCache):
             )
             self._conn.commit()
             return True
-    
-    def cleanup(self, now: Optional[int] = None) -> int:
+
+    def cleanup(self, now: int | None = None) -> int:
         """Remove expired entries from database."""
         if now is None:
             now = int(time.time())
-        
+
         cursor = self._conn.execute(
             "DELETE FROM replay_cache WHERE expires_at <= ?",
             (now,),
@@ -261,7 +260,7 @@ class SqliteReplayCache(ReplayCache):
         self._conn.commit()
         self._last_cleanup = now
         return cursor.rowcount
-    
+
     def stats(self) -> dict:
         """Return cache statistics from database."""
         now = int(time.time())
@@ -278,7 +277,7 @@ class SqliteReplayCache(ReplayCache):
             "active_entries": total - expired,
             "last_cleanup": self._last_cleanup,
         }
-    
+
     def clear(self) -> None:
         """Clear all entries from database."""
         self._conn.execute("DELETE FROM replay_cache")
@@ -301,7 +300,7 @@ class PostgresReplayCache(ReplayCache):
         )
         self._dsn = dsn
         self._pool = None
-    
+
     async def _get_pool(self):
         if self._pool is None:
             from sardis_v2_core.database import Database
@@ -316,14 +315,14 @@ class PostgresReplayCache(ReplayCache):
         (new mandate) vs. updated (already seen).
         """
         pool = await self._get_pool()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         now_ts = int(now.timestamp())
 
         # Use default TTL if expires_at is not set
         if expires_at <= now_ts:
             expires_at = now_ts + self._default_ttl
 
-        expires_dt = datetime.fromtimestamp(expires_at, tz=timezone.utc)
+        expires_dt = datetime.fromtimestamp(expires_at, tz=UTC)
 
         async with pool.acquire() as conn:
             # Periodic cleanup (not on every call)
@@ -358,12 +357,12 @@ class PostgresReplayCache(ReplayCache):
                 return True
             # Existing row with a future expiry — mandate already seen
             return False
-    
+
     async def cleanup_async(self) -> int:
         """Remove expired entries from database."""
         pool = await self._get_pool()
-        now = datetime.now(timezone.utc)
-        
+        now = datetime.now(UTC)
+
         async with pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM replay_cache WHERE expires_at <= $1",
@@ -371,15 +370,15 @@ class PostgresReplayCache(ReplayCache):
             )
             # Parse "DELETE N" to get count
             count = int(result.split()[-1]) if result else 0
-        
+
         self._last_cleanup = int(now.timestamp())
         return count
-    
+
     async def stats_async(self) -> dict:
         """Return cache statistics from database."""
         pool = await self._get_pool()
-        now = datetime.now(timezone.utc)
-        
+        now = datetime.now(UTC)
+
         async with pool.acquire() as conn:
             total = await conn.fetchval(
                 "SELECT COUNT(*) FROM replay_cache"
@@ -388,14 +387,14 @@ class PostgresReplayCache(ReplayCache):
                 "SELECT COUNT(*) FROM replay_cache WHERE expires_at <= $1",
                 now,
             )
-        
+
         return {
             "total_entries": total or 0,
             "expired_entries": expired or 0,
             "active_entries": (total or 0) - (expired or 0),
             "last_cleanup": self._last_cleanup,
         }
-    
+
     async def clear_async(self) -> None:
         """Clear all entries from database."""
         pool = await self._get_pool()

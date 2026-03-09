@@ -1,120 +1,114 @@
 """Protocol adapters for AP2/TAP/x402 compliance."""
 
-from .schemas import (
-    IngestMandateRequest,
-    MandateExecutionResponse,
-    AP2PaymentExecuteRequest,
-    AP2PaymentExecuteResponse,
-    X402PaymentExecuteRequest,
-    X402PaymentExecuteResponse,
-)
-from .verifier import MandateVerifier, VerificationResult, MandateChainVerification
-from .storage import MandateArchive, SqliteReplayCache, ReplayCache
-from .payment_methods import (
-    PaymentMethod,
-    PaymentMethodConfig,
-    X402PaymentType,
-    X402PaymentRequest,
-    X402PaymentResponse,
-    get_default_payment_methods,
-    parse_payment_method_from_mandate,
-)
-from .rate_limiter import (
-    AgentRateLimiter,
-    RedisAgentRateLimiter,
-    RateLimitConfig,
-    RateLimitResult,
-    get_rate_limiter,
-    create_rate_limiter,
-)
-from .tap import (
-    TAP_ALLOWED_TAGS,
-    TAP_MAX_TIME_WINDOW_SECONDS,
-    TAP_ALLOWED_MESSAGE_ALGS,
-    TAP_ALLOWED_OBJECT_ALGS,
-    TAP_PROTOCOL_VERSION,
-    TAP_SUPPORTED_VERSIONS,
-    TapSignatureInput,
-    TapVerificationResult,
-    parse_signature_input,
-    parse_signature_header,
-    build_signature_base,
-    build_object_signature_base,
-    validate_tap_headers,
-    validate_agentic_consumer_object,
-    validate_agentic_payment_container,
-    validate_tap_version,
-)
-from .tap_keys import (
-    select_jwk_by_kid,
-    verify_signature_with_jwk,
-)
+import contextlib
+
 from .mandate_cache import (
-    MandateCacheConfig,
-    MandateCache,
     InMemoryMandateCache,
+    MandateCache,
+    MandateCacheConfig,
 )
 from .nonce_registry import (
     NonceConfig,
     NonceRegistry,
     RedisNonceRegistry,
 )
+from .payment_methods import (
+    PaymentMethod,
+    PaymentMethodConfig,
+    X402PaymentRequest,
+    X402PaymentResponse,
+    X402PaymentType,
+    get_default_payment_methods,
+    parse_payment_method_from_mandate,
+)
+from .rate_limiter import (
+    AgentRateLimiter,
+    RateLimitConfig,
+    RateLimitResult,
+    RedisAgentRateLimiter,
+    create_rate_limiter,
+    get_rate_limiter,
+)
+from .schemas import (
+    AP2PaymentExecuteRequest,
+    AP2PaymentExecuteResponse,
+    IngestMandateRequest,
+    MandateExecutionResponse,
+    X402PaymentExecuteRequest,
+    X402PaymentExecuteResponse,
+)
+from .storage import MandateArchive, ReplayCache, SqliteReplayCache
+from .tap import (
+    TAP_ALLOWED_MESSAGE_ALGS,
+    TAP_ALLOWED_OBJECT_ALGS,
+    TAP_ALLOWED_TAGS,
+    TAP_MAX_TIME_WINDOW_SECONDS,
+    TAP_PROTOCOL_VERSION,
+    TAP_SUPPORTED_VERSIONS,
+    TapSignatureInput,
+    TapVerificationResult,
+    build_object_signature_base,
+    build_signature_base,
+    parse_signature_header,
+    parse_signature_input,
+    validate_agentic_consumer_object,
+    validate_agentic_payment_container,
+    validate_tap_headers,
+    validate_tap_version,
+)
+from .tap_keys import (
+    select_jwk_by_kid,
+    verify_signature_with_jwk,
+)
+from .verifier import MandateChainVerification, MandateVerifier, VerificationResult
 
 # x402 protocol
-try:
+with contextlib.suppress(ImportError):
     from .x402 import (
+        X402_PAYMENT_REQUIRED_HEADER,
+        X402_PAYMENT_RESPONSE_HEADER,
+        X402_PAYMENT_SIGNATURE_HEADER,
         X402Challenge,
         X402ChallengeResponse,
+        X402HeaderBuilder,
         X402PaymentPayload,
         X402VerificationResult,
-        X402HeaderBuilder,
         generate_challenge,
-        serialize_challenge_header,
         parse_challenge_header,
-        verify_payment_payload,
+        serialize_challenge_header,
         validate_x402_version,
-        X402_PAYMENT_SIGNATURE_HEADER,
-        X402_PAYMENT_RESPONSE_HEADER,
-        X402_PAYMENT_REQUIRED_HEADER,
+        verify_payment_payload,
     )
-except ImportError:
-    pass
 
 # x402 ERC-3009 authorization
-try:
+with contextlib.suppress(ImportError):
     from .x402_erc3009 import (
         ERC3009Authorization,
         build_transfer_authorization,
-        validate_authorization_timing,
         encode_authorization_params,
+        validate_authorization_timing,
     )
-except ImportError:
-    pass
 
 # x402 settlement
-try:
+with contextlib.suppress(ImportError):
     from .x402_settlement import (
+        InMemorySettlementStore,
         X402Settlement,
-        X402Settler,
         X402SettlementStatus,
         X402SettlementStore,
-        InMemorySettlementStore,
+        X402Settler,
     )
-except ImportError:
-    pass
 
 # Protocol reason codes
-try:
+with contextlib.suppress(ImportError):
     from .reason_codes import (
+        REASON_CODE_TABLE,
         ProtocolReasonCode,
         ReasonCodeMapping,
-        REASON_CODE_TABLE,
         get_reason,
         map_exception_to_reason,
         map_legacy_reason_to_code,
     )
-except ImportError:
-    pass
 
 __all__ = [
     # Schemas

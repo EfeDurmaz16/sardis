@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -25,12 +25,12 @@ router = APIRouter()
 class TransactionEvidenceResponse(BaseModel):
     """Full execution trace for a transaction."""
     tx_id: str
-    receipt: Optional[dict[str, Any]] = None
+    receipt: dict[str, Any] | None = None
     ledger_entries: list[dict[str, Any]] = Field(default_factory=list)
-    compliance_result: Optional[dict[str, Any]] = None
-    policy_evaluation: Optional[dict[str, Any]] = None
+    compliance_result: dict[str, Any] | None = None
+    policy_evaluation: dict[str, Any] | None = None
     side_effects: list[dict[str, Any]] = Field(default_factory=list)
-    idempotency_record: Optional[dict[str, Any]] = None
+    idempotency_record: dict[str, Any] | None = None
 
 
 class WebhookEvidenceResponse(BaseModel):
@@ -43,7 +43,7 @@ class PolicyDecisionSummary(BaseModel):
     """Summary of a policy decision for list endpoints."""
     decision_id: str
     agent_id: str
-    mandate_id: Optional[str] = None
+    mandate_id: str | None = None
     verdict: str
     evidence_hash: str
     created_at: str
@@ -53,12 +53,12 @@ class PolicyDecisionDetailResponse(BaseModel):
     """Full policy decision evidence bundle."""
     decision_id: str
     agent_id: str
-    mandate_id: Optional[str] = None
-    policy_version_id: Optional[str] = None
+    mandate_id: str | None = None
+    policy_version_id: str | None = None
     verdict: str
     steps: list[dict[str, Any]] = Field(default_factory=list)
     evidence_hash: str
-    group_hierarchy: Optional[list[str]] = None
+    group_hierarchy: list[str] | None = None
     created_at: str
 
 

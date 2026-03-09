@@ -12,13 +12,13 @@ Provides comprehensive risk assessment with:
 from __future__ import annotations
 
 import logging
+import threading
+from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
-from collections import defaultdict
-import threading
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class RiskFactor:
     score: float  # 0-100
     weight: float = 1.0  # Multiplier for importance
     description: str = ""
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
 
     @property
     def weighted_score(self) -> float:
@@ -75,14 +75,14 @@ class RiskAssessment:
     overall_score: float  # 0-100
     risk_level: RiskLevel
     recommended_action: RiskAction
-    factors: List[RiskFactor] = field(default_factory=list)
-    assessed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    factors: list[RiskFactor] = field(default_factory=list)
+    assessed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
-    def by_category(self) -> Dict[RiskCategory, List[RiskFactor]]:
+    def by_category(self) -> dict[RiskCategory, list[RiskFactor]]:
         """Group factors by category."""
-        result: Dict[RiskCategory, List[RiskFactor]] = {}
+        result: dict[RiskCategory, list[RiskFactor]] = {}
         for factor in self.factors:
             if factor.category not in result:
                 result[factor.category] = []
@@ -90,11 +90,11 @@ class RiskAssessment:
         return result
 
     @property
-    def highest_risk_factors(self) -> List[RiskFactor]:
+    def highest_risk_factors(self) -> list[RiskFactor]:
         """Get factors with highest weighted scores."""
         return sorted(self.factors, key=lambda f: f.weighted_score, reverse=True)[:5]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "subject_id": self.subject_id,
@@ -121,7 +121,7 @@ class RiskAssessment:
 class RiskConfig:
     """Configuration for risk scoring."""
     # Category weights (how important each category is)
-    category_weights: Dict[RiskCategory, float] = field(default_factory=lambda: {
+    category_weights: dict[RiskCategory, float] = field(default_factory=lambda: {
         RiskCategory.SANCTIONS: 2.0,  # Highest priority
         RiskCategory.PEP: 1.5,
         RiskCategory.REGULATORY: 1.3,
@@ -132,7 +132,7 @@ class RiskConfig:
     })
 
     # Thresholds for risk levels
-    level_thresholds: Dict[RiskLevel, float] = field(default_factory=lambda: {
+    level_thresholds: dict[RiskLevel, float] = field(default_factory=lambda: {
         RiskLevel.MINIMAL: 20,
         RiskLevel.LOW: 40,
         RiskLevel.MEDIUM: 60,
@@ -141,7 +141,7 @@ class RiskConfig:
     })
 
     # Thresholds for actions
-    action_thresholds: Dict[RiskAction, float] = field(default_factory=lambda: {
+    action_thresholds: dict[RiskAction, float] = field(default_factory=lambda: {
         RiskAction.APPROVE: 30,
         RiskAction.REVIEW: 50,
         RiskAction.ENHANCED_DUE_DILIGENCE: 70,
@@ -156,11 +156,11 @@ class RiskConfig:
     max_amount_per_window: Decimal = Decimal("100000")  # $100,000
 
     # Geographic risk
-    high_risk_countries: Set[str] = field(default_factory=lambda: {
+    high_risk_countries: set[str] = field(default_factory=lambda: {
         "KP", "IR", "SY", "CU", "VE", "MM", "BY", "RU",  # Sanctioned countries
         "AF", "YE", "SO", "LY", "SD", "SS", "CF",  # High-risk jurisdictions
     })
-    medium_risk_countries: Set[str] = field(default_factory=lambda: {
+    medium_risk_countries: set[str] = field(default_factory=lambda: {
         "PK", "NG", "BD", "KH", "LA", "VN", "PH",  # Elevated risk
     })
 
@@ -173,19 +173,19 @@ class TransactionVelocityMonitor:
     to detect structuring and unusual patterns.
     """
 
-    def __init__(self, config: Optional[RiskConfig] = None):
+    def __init__(self, config: RiskConfig | None = None):
         self._config = config or RiskConfig()
-        self._transactions: Dict[str, List[tuple[datetime, Decimal]]] = defaultdict(list)
+        self._transactions: dict[str, list[tuple[datetime, Decimal]]] = defaultdict(list)
         self._lock = threading.Lock()
 
     def record_transaction(
         self,
         subject_id: str,
         amount: Decimal,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> None:
         """Record a transaction for velocity tracking."""
-        timestamp = timestamp or datetime.now(timezone.utc)
+        timestamp = timestamp or datetime.now(UTC)
 
         with self._lock:
             self._transactions[subject_id].append((timestamp, amount))
@@ -194,7 +194,7 @@ class TransactionVelocityMonitor:
 
     def _cleanup_old_transactions(self, subject_id: str) -> None:
         """Remove transactions outside the monitoring window."""
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=self._config.velocity_window_hours * 2)
+        cutoff = datetime.now(UTC) - timedelta(hours=self._config.velocity_window_hours * 2)
         self._transactions[subject_id] = [
             (ts, amt) for ts, amt in self._transactions[subject_id]
             if ts > cutoff
@@ -203,11 +203,11 @@ class TransactionVelocityMonitor:
     def get_velocity_metrics(
         self,
         subject_id: str,
-        window_hours: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        window_hours: int | None = None,
+    ) -> dict[str, Any]:
         """Get velocity metrics for a subject."""
         window = window_hours or self._config.velocity_window_hours
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=window)
+        cutoff = datetime.now(UTC) - timedelta(hours=window)
 
         with self._lock:
             recent = [
@@ -265,7 +265,7 @@ class TransactionVelocityMonitor:
             evidence=metrics,
         )
 
-    def _detect_structuring(self, amounts: List[Decimal]) -> bool:
+    def _detect_structuring(self, amounts: list[Decimal]) -> bool:
         """Detect potential structuring (breaking up transactions)."""
         if len(amounts) < 5:
             return False
@@ -285,7 +285,7 @@ class GeographicRiskAssessor:
     Assesses geographic risk based on jurisdiction.
     """
 
-    def __init__(self, config: Optional[RiskConfig] = None):
+    def __init__(self, config: RiskConfig | None = None):
         self._config = config or RiskConfig()
 
     def assess_country_risk(self, country_code: str) -> RiskFactor:
@@ -352,7 +352,7 @@ class RiskScorer:
     Aggregates multiple risk factors into a comprehensive assessment.
     """
 
-    def __init__(self, config: Optional[RiskConfig] = None):
+    def __init__(self, config: RiskConfig | None = None):
         self._config = config or RiskConfig()
         self._velocity_monitor = TransactionVelocityMonitor(config)
         self._geo_assessor = GeographicRiskAssessor(config)
@@ -363,10 +363,10 @@ class RiskScorer:
         amount: Decimal,
         source_country: str = "US",
         destination_country: str = "US",
-        counterparty_id: Optional[str] = None,
-        pep_result: Optional[Dict[str, Any]] = None,
-        sanctions_result: Optional[Dict[str, Any]] = None,
-        additional_factors: Optional[List[RiskFactor]] = None,
+        counterparty_id: str | None = None,
+        pep_result: dict[str, Any] | None = None,
+        sanctions_result: dict[str, Any] | None = None,
+        additional_factors: list[RiskFactor] | None = None,
     ) -> RiskAssessment:
         """
         Perform comprehensive risk assessment for a transaction.
@@ -384,7 +384,7 @@ class RiskScorer:
         Returns:
             Complete RiskAssessment with all factors and recommendations
         """
-        factors: List[RiskFactor] = []
+        factors: list[RiskFactor] = []
 
         # 1. Transaction amount risk
         amount_factor = self._assess_amount_risk(amount)
@@ -440,10 +440,10 @@ class RiskScorer:
         subject_id: str,
         entity_type: str = "individual",
         country: str = "US",
-        pep_result: Optional[Dict[str, Any]] = None,
-        sanctions_result: Optional[Dict[str, Any]] = None,
-        kyc_status: Optional[str] = None,
-        additional_factors: Optional[List[RiskFactor]] = None,
+        pep_result: dict[str, Any] | None = None,
+        sanctions_result: dict[str, Any] | None = None,
+        kyc_status: str | None = None,
+        additional_factors: list[RiskFactor] | None = None,
     ) -> RiskAssessment:
         """
         Assess risk for an entity (customer/counterparty).
@@ -460,7 +460,7 @@ class RiskScorer:
         Returns:
             Complete RiskAssessment
         """
-        factors: List[RiskFactor] = []
+        factors: list[RiskFactor] = []
 
         # 1. Geographic risk
         geo_factor = self._geo_assessor.assess_country_risk(country)
@@ -534,7 +534,7 @@ class RiskScorer:
             evidence={"amount": str(amount), "threshold": str(threshold)},
         )
 
-    def _assess_pep_risk(self, pep_result: Dict[str, Any]) -> RiskFactor:
+    def _assess_pep_risk(self, pep_result: dict[str, Any]) -> RiskFactor:
         """Assess risk based on PEP screening result."""
         if not pep_result.get("is_pep", False):
             return RiskFactor(
@@ -563,7 +563,7 @@ class RiskScorer:
             evidence=pep_result,
         )
 
-    def _assess_sanctions_risk(self, sanctions_result: Dict[str, Any]) -> RiskFactor:
+    def _assess_sanctions_risk(self, sanctions_result: dict[str, Any]) -> RiskFactor:
         """Assess risk based on sanctions screening result."""
         if sanctions_result.get("is_sanctioned", False):
             return RiskFactor(
@@ -638,7 +638,7 @@ class RiskScorer:
             evidence={"type": entity_type},
         )
 
-    def _calculate_overall_score(self, factors: List[RiskFactor]) -> float:
+    def _calculate_overall_score(self, factors: list[RiskFactor]) -> float:
         """Calculate overall risk score from all factors."""
         if not factors:
             return 0.0
@@ -677,7 +677,7 @@ class RiskScorer:
     def _determine_action(
         self,
         score: float,
-        factors: List[RiskFactor],
+        factors: list[RiskFactor],
     ) -> RiskAction:
         """Determine recommended action based on score and factors."""
         # Check for hard blocks first
@@ -703,6 +703,6 @@ class RiskScorer:
         return self._velocity_monitor
 
 
-def create_risk_scorer(config: Optional[RiskConfig] = None) -> RiskScorer:
+def create_risk_scorer(config: RiskConfig | None = None) -> RiskScorer:
     """Factory function to create a RiskScorer instance."""
     return RiskScorer(config=config)

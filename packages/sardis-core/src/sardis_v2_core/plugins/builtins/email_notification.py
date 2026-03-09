@@ -4,10 +4,9 @@ Email notification plugin for sending event notifications via email.
 Sends email notifications for transaction events using SMTP.
 """
 
-import asyncio
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Optional
+from typing import Any
 
 try:
     import aiosmtplib
@@ -27,13 +26,13 @@ class EmailNotificationPlugin(NotificationPlugin):
     def __init__(self):
         """Initialize email notification plugin."""
         super().__init__()
-        self._smtp_host: Optional[str] = None
+        self._smtp_host: str | None = None
         self._smtp_port: int = 587
-        self._from_email: Optional[str] = None
+        self._from_email: str | None = None
         self._to_emails: list[str] = []
         self._use_tls: bool = True
-        self._username: Optional[str] = None
-        self._password: Optional[str] = None
+        self._username: str | None = None
+        self._password: str | None = None
 
     @property
     def metadata(self) -> PluginMetadata:

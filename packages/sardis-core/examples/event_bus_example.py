@@ -6,16 +6,16 @@ This demonstrates how to:
 3. Integrate with the webhook service
 """
 import asyncio
+
 from sardis_v2_core import (
-    EventBus,
     EventType,
     WebhookEvent,
-    get_default_bus,
-    emit_policy_event,
-    emit_spend_event,
     emit_approval_event,
     emit_card_event,
     emit_compliance_event,
+    emit_policy_event,
+    emit_spend_event,
+    get_default_bus,
 )
 
 
@@ -30,7 +30,7 @@ async def spending_monitor(event: WebhookEvent):
         percentage = event.data.get("percentage", 0)
         print(f"[WARNING] Spending at {percentage}% of limit")
     elif event.event_type == EventType.SPEND_THRESHOLD_REACHED:
-        print(f"[ALERT] Spending limit reached!")
+        print("[ALERT] Spending limit reached!")
 
 
 async def audit_logger(event: WebhookEvent):

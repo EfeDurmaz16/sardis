@@ -1,8 +1,7 @@
 """Tests for provider reliability tracking and scorecards."""
 
-import pytest
-from datetime import datetime, timezone
 
+import pytest
 from sardis_chain.provider_tracker import ProviderTracker
 
 

@@ -4,17 +4,24 @@ from __future__ import annotations
 import base64
 import logging
 import os
-import time
 from dataclasses import MISSING, dataclass, fields
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 from sardis_v2_core import SardisSettings
 from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateBase, MandateChain, PaymentMandate, VCProof
-from .schemas import AP2PaymentExecuteRequest
-from .storage import MandateArchive, ReplayCache
+from sardis_v2_core.mandates import (
+    CartMandate,
+    IntentMandate,
+    MandateBase,
+    MandateChain,
+    PaymentMandate,
+    VCProof,
+)
+
 from .rate_limiter import AgentRateLimiter, RateLimitConfig, get_rate_limiter
 from .reason_codes import ProtocolReasonCode, map_legacy_reason_to_code
+from .schemas import AP2PaymentExecuteRequest
+from .storage import MandateArchive, ReplayCache
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +265,7 @@ class MandateVerifier:
         )
 
     # Scope-to-domain mapping for goal drift detection
-    _SCOPE_DOMAINS: Dict[str, list[str]] = {
+    _SCOPE_DOMAINS: dict[str, list[str]] = {
         "cloud": ["aws.amazon.com", "cloud.google.com", "azure.microsoft.com", "digitalocean.com", "vercel.com", "netlify.com", "heroku.com"],
         "compute": ["aws.amazon.com", "cloud.google.com", "azure.microsoft.com", "digitalocean.com", "linode.com", "vultr.com"],
         "ai": ["openai.com", "anthropic.com", "cohere.com", "replicate.com", "huggingface.co", "together.ai"],
@@ -274,7 +281,7 @@ class MandateVerifier:
     ]
 
     @staticmethod
-    def _compute_drift(intent: "IntentMandate", payment: "PaymentMandate") -> tuple[float, list[str]]:
+    def _compute_drift(intent: IntentMandate, payment: PaymentMandate) -> tuple[float, list[str]]:
         """Compute goal drift score between intent and payment.
 
         Returns:
@@ -317,7 +324,7 @@ class MandateVerifier:
 
         return drift_score, drift_reasons
 
-    def _parse_mandate(self, data: Dict[str, Any], model: Type[MandateBase]) -> MandateBase:
+    def _parse_mandate(self, data: dict[str, Any], model: type[MandateBase]) -> MandateBase:
         proof_payload = data.get("proof")
         if not isinstance(proof_payload, dict):
             raise ValueError("mandate_missing_proof")
@@ -327,7 +334,7 @@ class MandateVerifier:
             logger.info(f"SD-JWT detected in {model.__name__} mandate")
 
         proof = VCProof(**proof_payload)
-        init_values: Dict[str, Any] = {}
+        init_values: dict[str, Any] = {}
         for field in fields(model):
             if field.name == "proof":
                 continue

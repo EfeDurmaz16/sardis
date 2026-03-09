@@ -5,15 +5,16 @@ This module provides both async and sync interfaces for ledger operations.
 """
 from __future__ import annotations
 
-from datetime import datetime
-from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
+    from datetime import datetime
+    from decimal import Decimal
+
     from ..client import TimeoutConfig
 
 
@@ -21,14 +22,14 @@ class LedgerEntry(BaseModel):
     """A ledger entry."""
 
     tx_id: str
-    mandate_id: Optional[str] = None
-    from_wallet: Optional[str] = None
-    to_wallet: Optional[str] = None
+    mandate_id: str | None = None
+    from_wallet: str | None = None
+    to_wallet: str | None = None
     amount: Decimal
     currency: str
-    chain: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    audit_anchor: Optional[str] = None
+    chain: str | None = None
+    chain_tx_hash: str | None = None
+    audit_anchor: str | None = None
     created_at: datetime
 
 
@@ -48,11 +49,11 @@ class AsyncLedgerResource(AsyncBaseResource):
 
     async def list_entries(
         self,
-        wallet_id: Optional[str] = None,
+        wallet_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[LedgerEntry]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[LedgerEntry]:
         """List ledger entries.
 
         Args:
@@ -64,7 +65,7 @@ class AsyncLedgerResource(AsyncBaseResource):
         Returns:
             List of ledger entries
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if wallet_id:
             params["wallet_id"] = wallet_id
         response = await self._get("/api/v2/ledger/entries", params=params, timeout=timeout)
@@ -73,7 +74,7 @@ class AsyncLedgerResource(AsyncBaseResource):
     async def get_entry(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> LedgerEntry:
         """Get a ledger entry by transaction ID.
 
@@ -90,8 +91,8 @@ class AsyncLedgerResource(AsyncBaseResource):
     async def verify_entry(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, bool]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, bool]:
         """Verify a ledger entry's audit anchor.
 
         Args:
@@ -120,11 +121,11 @@ class LedgerResource(SyncBaseResource):
 
     def list_entries(
         self,
-        wallet_id: Optional[str] = None,
+        wallet_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[LedgerEntry]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[LedgerEntry]:
         """List ledger entries.
 
         Args:
@@ -136,7 +137,7 @@ class LedgerResource(SyncBaseResource):
         Returns:
             List of ledger entries
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if wallet_id:
             params["wallet_id"] = wallet_id
         response = self._get("/api/v2/ledger/entries", params=params, timeout=timeout)
@@ -145,7 +146,7 @@ class LedgerResource(SyncBaseResource):
     def get_entry(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
+        timeout: float | TimeoutConfig | None = None,
     ) -> LedgerEntry:
         """Get a ledger entry by transaction ID.
 
@@ -162,8 +163,8 @@ class LedgerResource(SyncBaseResource):
     def verify_entry(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, bool]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, bool]:
         """Verify a ledger entry's audit anchor.
 
         Args:
@@ -177,7 +178,7 @@ class LedgerResource(SyncBaseResource):
 
 
 __all__ = [
-    "LedgerEntry",
     "AsyncLedgerResource",
+    "LedgerEntry",
     "LedgerResource",
 ]

@@ -11,12 +11,12 @@ Provides centralized configuration for:
 """
 from __future__ import annotations
 
-import os
 import logging
+import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class TurnkeyConfig:
     organization_id: str = ""
 
 
-def load_chain_config(chain: str = "base_sepolia") -> "ChainConfig":
+def load_chain_config(chain: str = "base_sepolia") -> ChainConfig:
     """Load chain configuration (alias for get_chain_config)."""
     return get_chain_config(chain)
 
@@ -99,7 +99,7 @@ class RPCEndpointConfig:
     max_consecutive_failures: int = 3
 
     # Rate limiting
-    requests_per_second: Optional[float] = None  # None = unlimited
+    requests_per_second: float | None = None  # None = unlimited
 
 
 @dataclass
@@ -110,7 +110,7 @@ class ChainConfig:
     display_name: str
 
     # RPC endpoints (primary + fallbacks)
-    rpc_endpoints: List[RPCEndpointConfig] = field(default_factory=list)
+    rpc_endpoints: list[RPCEndpointConfig] = field(default_factory=list)
 
     # Block timing
     block_time_seconds: float = 2.0
@@ -146,7 +146,7 @@ class ChainConfig:
         sorted_endpoints = sorted(self.rpc_endpoints, key=lambda e: e.priority)
         return sorted_endpoints[0].url
 
-    def get_all_rpc_urls(self) -> List[str]:
+    def get_all_rpc_urls(self) -> list[str]:
         """Get all RPC URLs in priority order."""
         sorted_endpoints = sorted(self.rpc_endpoints, key=lambda e: e.priority)
         return [e.url for e in sorted_endpoints]
@@ -245,7 +245,7 @@ class LoggingConfig:
 
     # Audit logging
     audit_log_enabled: bool = True
-    audit_log_path: Optional[str] = None  # None = use default logger
+    audit_log_path: str | None = None  # None = use default logger
 
 
 @dataclass
@@ -256,7 +256,7 @@ class SardisChainConfig:
     Supports loading from environment variables with prefix SARDIS_CHAIN_.
     """
     # Chain configurations (populated with defaults or from settings)
-    chains: Dict[str, ChainConfig] = field(default_factory=dict)
+    chains: dict[str, ChainConfig] = field(default_factory=dict)
 
     # Component configurations
     nonce_manager: NonceManagerConfig = field(default_factory=NonceManagerConfig)
@@ -286,7 +286,7 @@ def _get_env(key: str, default: Any = None, prefix: str = "SARDIS_CHAIN_") -> An
     return os.getenv(f"{prefix}{key}", default)
 
 
-def _get_env_list(key: str, default: List[str] = None, prefix: str = "SARDIS_CHAIN_") -> List[str]:
+def _get_env_list(key: str, default: list[str] = None, prefix: str = "SARDIS_CHAIN_") -> list[str]:
     """Get list environment variable (comma-separated)."""
     value = os.getenv(f"{prefix}{key}")
     if value:
@@ -299,7 +299,7 @@ def _build_chain_config(
     name: str,
     display_name: str,
     default_rpc: str,
-    fallback_rpcs: List[str],
+    fallback_rpcs: list[str],
     block_time: float,
     native_token: str,
     explorer_url: str,
@@ -533,7 +533,7 @@ def build_default_config() -> SardisChainConfig:
 
 
 # Global configuration instance
-_global_config: Optional[SardisChainConfig] = None
+_global_config: SardisChainConfig | None = None
 
 
 def get_config() -> SardisChainConfig:
@@ -556,7 +556,7 @@ def get_chain_config(chain: str) -> ChainConfig:
 
 
 # Export chain ID mapping for validation
-CHAIN_ID_MAP: Dict[str, int] = {
+CHAIN_ID_MAP: dict[str, int] = {
     "ethereum": 1,
     "base": 8453,
     "polygon": 137,

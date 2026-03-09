@@ -5,7 +5,6 @@ Demonstrates all allocation strategies and key features of the budget allocation
 """
 
 import sys
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -288,7 +287,7 @@ def demo_auto_rollover():
     print("\n" + "-" * 70)
     print("\nCycle 2 - After Rollover:")
     print_cycle(cycle2)
-    print(f"\nNote: Unused budget from Cycle 1 (2500 USDC) rolled over to Cycle 2")
+    print("\nNote: Unused budget from Cycle 1 (2500 USDC) rolled over to Cycle 2")
 
 
 def main():

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -20,44 +20,44 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 
 class CreateMerchantRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    logo_url: Optional[str] = None
-    webhook_url: Optional[str] = None
+    logo_url: str | None = None
+    webhook_url: str | None = None
     settlement_preference: str = Field(default="usdc", pattern="^(usdc|fiat)$")
-    mcc_code: Optional[str] = Field(default=None, max_length=4)
-    category: Optional[str] = None
+    mcc_code: str | None = Field(default=None, max_length=4)
+    category: str | None = None
     platform_fee_bps: int = Field(default=0, ge=0, le=500)
 
 
 class UpdateMerchantRequest(BaseModel):
-    name: Optional[str] = Field(default=None, max_length=255)
-    logo_url: Optional[str] = None
-    webhook_url: Optional[str] = None
-    settlement_preference: Optional[str] = Field(default=None, pattern="^(usdc|fiat)$")
-    mcc_code: Optional[str] = Field(default=None, max_length=4)
-    category: Optional[str] = None
-    platform_fee_bps: Optional[int] = Field(default=None, ge=0, le=500)
+    name: str | None = Field(default=None, max_length=255)
+    logo_url: str | None = None
+    webhook_url: str | None = None
+    settlement_preference: str | None = Field(default=None, pattern="^(usdc|fiat)$")
+    mcc_code: str | None = Field(default=None, max_length=4)
+    category: str | None = None
+    platform_fee_bps: int | None = Field(default=None, ge=0, le=500)
 
 
 class SetBankAccountRequest(BaseModel):
     account_holder_name: str
-    routing_number: Optional[str] = None
-    account_number: Optional[str] = None
-    iban: Optional[str] = None
-    swift_bic: Optional[str] = None
-    bank_name: Optional[str] = None
-    bridge_account_id: Optional[str] = None
+    routing_number: str | None = None
+    account_number: str | None = None
+    iban: str | None = None
+    swift_bic: str | None = None
+    bank_name: str | None = None
+    bridge_account_id: str | None = None
 
 
 class MerchantResponse(BaseModel):
     merchant_id: str
     name: str
-    logo_url: Optional[str] = None
-    webhook_url: Optional[str] = None
+    logo_url: str | None = None
+    webhook_url: str | None = None
     settlement_preference: str
-    settlement_wallet_id: Optional[str] = None
+    settlement_wallet_id: str | None = None
     has_bank_account: bool = False
-    mcc_code: Optional[str] = None
-    category: Optional[str] = None
+    mcc_code: str | None = None
+    category: str | None = None
     platform_fee_bps: int = 0
     is_active: bool = True
     created_at: str
@@ -69,9 +69,9 @@ class SettlementResponse(BaseModel):
     amount: str
     currency: str
     status: str
-    settlement_status: Optional[str] = None
-    offramp_id: Optional[str] = None
-    tx_hash: Optional[str] = None
+    settlement_status: str | None = None
+    offramp_id: str | None = None
+    tx_hash: str | None = None
     created_at: str
 
 
@@ -80,16 +80,16 @@ class SettlementResponse(BaseModel):
 class CreateCheckoutLinkRequest(BaseModel):
     amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="USDC")
-    description: Optional[str] = None
+    description: str | None = None
     slug: str = Field(..., min_length=1, max_length=100, pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$")
 
 
 class UpdateCheckoutLinkRequest(BaseModel):
-    amount: Optional[Decimal] = Field(default=None, gt=0)
-    currency: Optional[str] = None
-    description: Optional[str] = None
-    slug: Optional[str] = Field(default=None, max_length=100, pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$")
-    is_active: Optional[bool] = None
+    amount: Decimal | None = Field(default=None, gt=0)
+    currency: str | None = None
+    description: str | None = None
+    slug: str | None = Field(default=None, max_length=100, pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+    is_active: bool | None = None
 
 
 class CheckoutLinkResponse(BaseModel):
@@ -97,7 +97,7 @@ class CheckoutLinkResponse(BaseModel):
     merchant_id: str
     amount: str
     currency: str
-    description: Optional[str] = None
+    description: str | None = None
     slug: str
     checkout_url: str
     is_active: bool

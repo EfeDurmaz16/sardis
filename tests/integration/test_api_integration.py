@@ -68,7 +68,7 @@ async def test_create_card():
             "limit_daily": 2000,
             "limit_monthly": 10000,
         }
-        
+
         try:
             resp = await client.post("/api/v2/cards", json=card_data)
             if resp.status_code in (200, 201):
@@ -86,57 +86,57 @@ async def run_all_tests():
     print(f"\nAPI Base: {API_BASE}")
     print(f"Zaman: {datetime.now().isoformat()}")
     print("-" * 70)
-    
+
     tests = [
         ("Health Check", test_health_check),
         ("API Docs", test_api_docs),
         ("Cards List", test_cards_endpoint),
         ("Create Card", test_create_card),
     ]
-    
+
     results = []
-    
+
     for name, test_func in tests:
         print(f"\n📋 {name}...")
         try:
             success, data = await test_func()
             results.append((name, success))
-            
+
             if success:
-                print(f"   ✅ BAŞARILI")
+                print("   ✅ BAŞARILI")
                 if isinstance(data, dict):
                     for key, value in list(data.items())[:3]:
                         print(f"      {key}: {value}")
             else:
-                print(f"   ❌ BAŞARISIZ")
+                print("   ❌ BAŞARISIZ")
                 print(f"      {data}")
         except Exception as e:
             results.append((name, False))
             print(f"   ❌ HATA: {e}")
-    
+
     # Özet
     print("\n" + "=" * 70)
     print("ÖZET")
     print("-" * 70)
-    
+
     passed = sum(1 for _, success in results if success)
     total = len(results)
-    
+
     for name, success in results:
         status = "✅ PASSED" if success else "❌ FAILED"
         print(f"  {status}  {name}")
-    
+
     print("-" * 70)
     print(f"Sonuç: {passed}/{total} test başarılı")
     print("=" * 70)
-    
+
     return passed == total
 
 
 if __name__ == "__main__":
     print("\n⚠️  Not: API sunucusunun çalıştığından emin olun!")
     print("   Başlatmak için: uvicorn sardis_api.main:create_app --factory --port 8000\n")
-    
+
     success = asyncio.run(run_all_tests())
     sys.exit(0 if success else 1)
 

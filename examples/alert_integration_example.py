@@ -11,6 +11,7 @@ import asyncio
 import os
 from decimal import Decimal
 
+
 # Example: Emitting alerts from payment execution
 async def payment_with_alerts_example():
     """
@@ -18,8 +19,8 @@ async def payment_with_alerts_example():
 
     This would typically be integrated into the payment orchestrator or API routes.
     """
-    from sardis_v2_core.alert_rules import Alert, AlertType, AlertSeverity
-    from sardis_v2_core.alert_channels import AlertDispatcher, SlackChannel, WebSocketChannel
+    from sardis_v2_core.alert_channels import AlertDispatcher, SlackChannel
+    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # Initialize dispatcher
     dispatcher = AlertDispatcher()
@@ -58,8 +59,8 @@ async def budget_threshold_alert_example():
     """
     Example showing budget threshold alerts.
     """
-    from sardis_v2_core.alert_rules import Alert, AlertType, AlertSeverity
     from sardis_api.routers.alerts import dispatch_alert
+    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # Simulate budget tracking
     budget_total = Decimal("10000.00")
@@ -90,7 +91,7 @@ async def policy_violation_alert_example():
     """
     Example showing policy violation alerts.
     """
-    from sardis_v2_core.alert_rules import Alert, AlertType, AlertSeverity
+    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     alert = Alert(
         alert_type=AlertType.POLICY_VIOLATION,
@@ -115,8 +116,9 @@ async def websocket_client_example():
 
     This shows how to connect to the alert stream from a Python client.
     """
-    import websockets
     import json
+
+    import websockets
 
     api_url = "ws://localhost:8000"
     token = "org_xyz789"  # Your organization token
@@ -147,7 +149,7 @@ async def websocket_client_example():
                         if data['severity'] == 'critical':
                             print("   ⚠️  CRITICAL ALERT - Immediate attention required!")
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
                 except Exception as e:
                     print(f"Error: {e}")
@@ -225,8 +227,9 @@ async def rule_engine_example():
     """
     Example showing how to use the alert rule engine directly.
     """
-    from sardis_v2_core.alert_rules import AlertRuleEngine, AlertRule, ConditionType
     from decimal import Decimal
+
+    from sardis_v2_core.alert_rules import AlertRule, AlertRuleEngine, ConditionType
 
     # Initialize engine
     engine = AlertRuleEngine()
@@ -265,8 +268,8 @@ async def integrate_alerts_in_orchestrator():
 
     This would be added to sardis_v2_core/orchestrator.py
     """
-    from sardis_v2_core.alert_rules import Alert, AlertType, AlertSeverity
     from sardis_api.routers.alerts import dispatch_alert
+    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # After successful payment execution:
     async def after_payment_success(

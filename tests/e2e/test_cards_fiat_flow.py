@@ -8,8 +8,9 @@ Tests the complete flow for:
 Run with: pytest tests/e2e/test_cards_fiat_flow.py -v
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
 TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
@@ -27,7 +28,7 @@ class TestVirtualCardOperations:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet first
                 wallet = await client.wallets.create(
-                    agent_id=f"card_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"card_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -56,7 +57,7 @@ class TestVirtualCardOperations:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"card_merchant_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"card_merchant_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -84,7 +85,7 @@ class TestVirtualCardOperations:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"card_lifecycle_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"card_lifecycle_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -145,7 +146,7 @@ class TestFiatOnRamp:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"fiat_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"fiat_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -197,7 +198,7 @@ class TestFiatOffRamp:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 wallet = await client.wallets.create(
-                    agent_id=f"withdrawal_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"withdrawal_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 
@@ -251,7 +252,7 @@ class TestCardFiatIntegration:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Create wallet
                 wallet = await client.wallets.create(
-                    agent_id=f"integration_test_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"integration_test_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                 )
 

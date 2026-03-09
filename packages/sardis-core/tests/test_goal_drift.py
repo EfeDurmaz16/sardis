@@ -1,12 +1,14 @@
 """Unit tests for goal drift detection."""
 
-import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+
+import pytest
+
 from sardis_v2_core.goal_drift_detector import (
-    GoalDriftDetector,
-    DriftType,
     DriftSeverity,
+    DriftType,
+    GoalDriftDetector,
     VelocityGovernor,
 )
 
@@ -19,7 +21,7 @@ class TestGoalDriftDetector:
         """Test building spending profile from transaction history."""
         detector = GoalDriftDetector()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         transactions = [
             {
                 "amount": Decimal("100"),
@@ -46,7 +48,7 @@ class TestGoalDriftDetector:
         """Test detecting shift in merchant preferences."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline: all AWS transactions
         baseline_txs = [
@@ -88,7 +90,7 @@ class TestGoalDriftDetector:
         """Test detecting abnormal transaction amounts."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline: consistent $50 transactions
         baseline_txs = [
@@ -129,7 +131,7 @@ class TestGoalDriftDetector:
         """Test detecting changes in transaction velocity."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline: 1 transaction per day
         baseline_txs = [
@@ -170,7 +172,7 @@ class TestGoalDriftDetector:
         """Test detecting changes in spending categories."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline: all infrastructure
         baseline_txs = [
@@ -211,7 +213,7 @@ class TestGoalDriftDetector:
         """Test detecting changes in time-of-day patterns."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline: all during business hours (9-17)
         baseline_txs = [
@@ -252,7 +254,7 @@ class TestGoalDriftDetector:
         """Test no alerts for consistent behavior."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Baseline transactions
         baseline_txs = [
@@ -293,7 +295,7 @@ class TestGoalDriftDetector:
         """Test updating baseline profile with new transactions."""
         detector = GoalDriftDetector()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         initial_txs = [
             {
@@ -329,7 +331,7 @@ class TestGoalDriftDetector:
         """Test drift detection with no recent transactions."""
         detector = GoalDriftDetector()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         baseline_txs = [
             {
@@ -356,7 +358,7 @@ class TestGoalDriftDetector:
         """Test different severity levels based on drift magnitude."""
         detector = GoalDriftDetector(sensitivity=0.05)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         baseline_txs = [
             {

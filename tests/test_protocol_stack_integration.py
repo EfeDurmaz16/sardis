@@ -10,22 +10,28 @@ Validates data integrity, fail-closed behavior, and proper layer transitions.
 """
 from __future__ import annotations
 
-import pytest
-import time
 import hashlib
+import time
 import uuid
-from typing import Any, Dict
 
-from sardis_protocol.tap import validate_tap_headers, TapVerificationResult, TAP_PROTOCOL_VERSION
-from sardis_protocol.verifier import MandateVerifier
+import pytest
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
+from sardis_protocol.tap import TAP_PROTOCOL_VERSION, validate_tap_headers
+from sardis_protocol.verifier import MandateVerifier
 from sardis_protocol.x402 import (
-    generate_challenge, verify_payment_payload, X402PaymentPayload, X402Challenge,
+    X402Challenge,
+    X402PaymentPayload,
+    generate_challenge,
+    verify_payment_payload,
 )
-from sardis_protocol.x402_erc3009 import build_transfer_authorization, validate_authorization_timing, ERC3009Authorization
-from sardis_ucp.capabilities.checkout import UCPCheckoutCapability, CheckoutSessionStatus
+from sardis_protocol.x402_erc3009 import (
+    ERC3009Authorization,
+    build_transfer_authorization,
+    validate_authorization_timing,
+)
 from sardis_ucp.adapters.ap2 import AP2MandateAdapter
-from sardis_ucp.models.mandates import UCPLineItem, UCPCurrency
+from sardis_ucp.capabilities.checkout import CheckoutSessionStatus, UCPCheckoutCapability
+from sardis_ucp.models.mandates import UCPCurrency, UCPLineItem
 from sardis_v2_core import load_settings
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.integration]
@@ -293,7 +299,7 @@ def test_full_protocol_stack_flow_success(mock_tap_headers, mock_ap2_mandates, s
 
     # Final Assertion: Data integrity across all layers
     assert tap_nonce is not None  # TAP provided nonce
-    assert mandate_result.chain or True  # AP2 verified mandates (or mock accepted)
+    assert True  # AP2 verified mandates (or mock accepted)
     assert checkout_session.total_minor == 10000  # UCP calculated correct total
     assert payment_payload.amount == "10000"  # x402 matched amount
     assert erc3009_auth.value == 10000  # ERC-3009 matched amount
@@ -392,7 +398,7 @@ def test_protocol_stack_data_integrity_across_layers(mock_ap2_mandates, checkout
     # Extract values from AP2 layer
     ap2_amount = mock_ap2_mandates["payment"]["amount_minor"]
     ap2_subject = mock_ap2_mandates["payment"]["subject"]
-    ap2_nonce = mock_ap2_mandates["payment"]["nonce"]
+    mock_ap2_mandates["payment"]["nonce"]
 
     # Create UCP checkout with same values
     ucp_line_items = [
@@ -457,7 +463,7 @@ def test_protocol_stack_performance_under_5_seconds(mock_tap_headers, mock_ap2_m
         cart=mock_ap2_mandates["cart"],
         payment=mock_ap2_mandates["payment"],
     )
-    mandate_result = verifier.verify_chain(ap2_request)
+    verifier.verify_chain(ap2_request)
 
     ucp_line_items = [
         UCPLineItem(

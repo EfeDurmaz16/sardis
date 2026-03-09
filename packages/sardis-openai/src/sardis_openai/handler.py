@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,9 @@ class SardisToolHandler:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        wallet_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        api_key: str | None = None,
+        wallet_id: str | None = None,
+        agent_id: str | None = None,
     ):
         self._api_key = api_key
         self._default_wallet_id = wallet_id
@@ -185,8 +185,8 @@ class SardisToolHandler:
 
 async def handle_tool_call(
     tool_call: Any,
-    api_key: Optional[str] = None,
-    wallet_id: Optional[str] = None,
+    api_key: str | None = None,
+    wallet_id: str | None = None,
 ) -> str:
     """Convenience function to handle a single tool call.
 

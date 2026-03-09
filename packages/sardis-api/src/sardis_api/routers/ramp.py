@@ -5,16 +5,14 @@ import hashlib
 import hmac
 import logging
 import time
-import uuid
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sardis_v2_core import AgentRepository
 
 from sardis_api.authz import Principal, require_principal
-from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.webhook_replay import run_with_replay_protection
 
@@ -30,7 +28,7 @@ public_router = APIRouter()
 class OnrampWidgetRequest(BaseModel):
     """Request to generate an Onramper widget URL."""
     wallet_id: str
-    amount_usd: Optional[Decimal] = None
+    amount_usd: Decimal | None = None
     chain: str = Field(default="base")
     token: str = Field(default="USDC")
 
@@ -79,7 +77,7 @@ class OfframpExecuteResponse(BaseModel):
     status: str
     input_amount: str
     output_amount: str
-    provider_reference: Optional[str] = None
+    provider_reference: str | None = None
 
 
 class OfframpStatusResponse(BaseModel):
@@ -90,8 +88,8 @@ class OfframpStatusResponse(BaseModel):
     output_currency: str
     output_amount: str
     created_at: str
-    completed_at: Optional[str] = None
-    failure_reason: Optional[str] = None
+    completed_at: str | None = None
+    failure_reason: str | None = None
 
 
 class BankAccountModel(BaseModel):
@@ -99,14 +97,14 @@ class BankAccountModel(BaseModel):
     account_number: str
     routing_number: str
     account_type: str = Field(default="checking", pattern="^(checking|savings)$")
-    bank_name: Optional[str] = None
+    bank_name: str | None = None
 
 
 class MerchantAccountModel(BaseModel):
     name: str
     bank_account: BankAccountModel
-    merchant_id: Optional[str] = None
-    category: Optional[str] = None
+    merchant_id: str | None = None
+    category: str | None = None
 
 
 class WithdrawRequest(BaseModel):
@@ -118,7 +116,7 @@ class WithdrawRequest(BaseModel):
 class WithdrawResponse(BaseModel):
     tx_hash: str
     payout_id: str
-    estimated_arrival: Optional[str] = None
+    estimated_arrival: str | None = None
     fee: str
     status: str
 
@@ -131,11 +129,11 @@ class PayMerchantRequest(BaseModel):
 
 class PayMerchantResponse(BaseModel):
     status: str
-    payment_id: Optional[str] = None
-    merchant_received: Optional[str] = None
-    fee: Optional[str] = None
-    tx_hash: Optional[str] = None
-    approval_request: Optional[dict] = None
+    payment_id: str | None = None
+    merchant_received: str | None = None
+    fee: str | None = None
+    tx_hash: str | None = None
+    approval_request: dict | None = None
 
 
 # ---- Dependencies ----
@@ -513,7 +511,7 @@ async def execute_offramp(
     source_address = wallet.get_address("base") or ""
     if not source_address:
         # Try any available address
-        for chain, addr in wallet.addresses.items():
+        for _chain, addr in wallet.addresses.items():
             if addr:
                 source_address = addr
                 break

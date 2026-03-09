@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sardis_v2_core.key_rotation import KeyRotationManager, KeyRotationPolicy, KeyStatus
 
@@ -40,7 +40,7 @@ def test_cleanup_expired_keys_moves_rotating_key_to_revoked():
     manager.rotate_key("agent_1", _pub(2), "ed25519")
 
     # Force old key out of grace period.
-    first.rotation_started_at = datetime.now(timezone.utc) - timedelta(hours=2)
+    first.rotation_started_at = datetime.now(UTC) - timedelta(hours=2)
     first.status = KeyStatus.ROTATING
 
     affected = manager.cleanup_expired_keys()
@@ -55,8 +55,8 @@ def test_get_keys_needing_rotation_returns_threshold_matches():
             notification_threshold_days=7,
         )
     )
-    soon = datetime.now(timezone.utc) + timedelta(days=2)
-    later = datetime.now(timezone.utc) + timedelta(days=30)
+    soon = datetime.now(UTC) + timedelta(days=2)
+    later = datetime.now(UTC) + timedelta(days=30)
 
     manager.register_key("agent_soon", "key_soon", _pub(3), "ed25519", expires_at=soon)
     manager.register_key("agent_later", "key_later", _pub(4), "ed25519", expires_at=later)

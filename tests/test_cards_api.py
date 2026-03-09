@@ -1,16 +1,17 @@
 import hashlib
 import hmac as hmac_mod
 import json
-
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
-from fastapi.testclient import TestClient
+
+import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 def _load_cards_module(module_name: str):
-    import importlib.util, sys
+    import importlib.util
+    import sys
 
     repo_root = Path(__file__).resolve().parents[1]
     cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
@@ -25,6 +26,7 @@ def _auth_headers() -> dict[str, str]:
     # Uses the same JWT implementation as the API (no external dependency).
     import secrets
     import time
+
     from sardis_api.routers.auth import create_jwt_token
 
     now = int(time.time())

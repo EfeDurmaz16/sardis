@@ -1,9 +1,10 @@
 """Unit tests for rate limiter."""
 
-import os
-import pytest
 import asyncio
 from decimal import Decimal
+
+import pytest
+
 from sardis_guardrails.rate_limiter import (
     RateLimiter,
     RateLimitError,

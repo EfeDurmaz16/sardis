@@ -11,20 +11,16 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from .models.errors import SardisError
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Sequence
 
 # Type variables
 T = TypeVar("T")  # Input type
@@ -55,9 +51,9 @@ class OperationResult(Generic[T, R]):
     """
 
     input: T
-    output: Optional[R] = None
+    output: R | None = None
     status: OperationStatus = OperationStatus.PENDING
-    error: Optional[SardisError] = None
+    error: SardisError | None = None
     duration_ms: float = 0
     index: int = 0
 
@@ -71,7 +67,7 @@ class OperationResult(Generic[T, R]):
         """Check if operation failed."""
         return self.status == OperationStatus.FAILED
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         result = {
             "index": self.index,
@@ -104,8 +100,8 @@ class BulkOperationSummary:
     failed: int = 0
     skipped: int = 0
     total_duration_ms: float = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     @property
     def success_rate(self) -> float:
@@ -124,7 +120,7 @@ class BulkOperationSummary:
         """Check if any operations failed."""
         return self.failed > 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "total": self.total,
@@ -147,30 +143,30 @@ class BulkOperationResult(Generic[T, R]):
         summary: Summary statistics
     """
 
-    results: List[OperationResult[T, R]] = field(default_factory=list)
+    results: list[OperationResult[T, R]] = field(default_factory=list)
     summary: BulkOperationSummary = field(default_factory=BulkOperationSummary)
 
     @property
-    def successful_results(self) -> List[OperationResult[T, R]]:
+    def successful_results(self) -> list[OperationResult[T, R]]:
         """Get only successful results."""
         return [r for r in self.results if r.is_success]
 
     @property
-    def failed_results(self) -> List[OperationResult[T, R]]:
+    def failed_results(self) -> list[OperationResult[T, R]]:
         """Get only failed results."""
         return [r for r in self.results if r.is_failed]
 
     @property
-    def outputs(self) -> List[R]:
+    def outputs(self) -> list[R]:
         """Get all successful outputs."""
         return [r.output for r in self.results if r.output is not None]
 
     @property
-    def errors(self) -> List[Tuple[int, SardisError]]:
+    def errors(self) -> list[tuple[int, SardisError]]:
         """Get all errors with their indices."""
         return [(r.index, r.error) for r in self.results if r.error is not None]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "results": [r.to_dict() for r in self.results],
@@ -228,9 +224,9 @@ class AsyncBulkExecutor(Generic[T, R]):
     def __init__(
         self,
         operation: Callable[[T], Awaitable[R]],
-        config: Optional[BulkConfig] = None,
-        on_progress: Optional[Callable[[int, int], None]] = None,
-        on_item_complete: Optional[Callable[[OperationResult[T, R]], None]] = None,
+        config: BulkConfig | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+        on_item_complete: Callable[[OperationResult[T, R]], None] | None = None,
     ):
         """Initialize the bulk executor.
 
@@ -244,7 +240,7 @@ class AsyncBulkExecutor(Generic[T, R]):
         self._config = config or BulkConfig()
         self._on_progress = on_progress
         self._on_item_complete = on_item_complete
-        self._semaphore: Optional[asyncio.Semaphore] = None
+        self._semaphore: asyncio.Semaphore | None = None
 
     async def execute(self, items: Sequence[T]) -> BulkOperationResult[T, R]:
         """Execute the bulk operation on all items.
@@ -264,7 +260,7 @@ class AsyncBulkExecutor(Generic[T, R]):
         self._semaphore = asyncio.Semaphore(self._config.max_concurrency)
 
         # Create operation results
-        results: List[OperationResult[T, R]] = [
+        results: list[OperationResult[T, R]] = [
             OperationResult(input=item, index=i) for i, item in enumerate(items)
         ]
 
@@ -285,12 +281,11 @@ class AsyncBulkExecutor(Generic[T, R]):
             completed += len(batch_results)
 
             # Check for stop on error
-            if self._config.stop_on_error:
-                if any(r.is_failed for r in batch_results):
-                    # Mark remaining as skipped
-                    for r in results[batch_end:]:
-                        r.status = OperationStatus.SKIPPED
-                    break
+            if self._config.stop_on_error and any(r.is_failed for r in batch_results):
+                # Mark remaining as skipped
+                for r in results[batch_end:]:
+                    r.status = OperationStatus.SKIPPED
+                break
 
             # Progress callback
             if self._on_progress:
@@ -381,9 +376,9 @@ class SyncBulkExecutor(Generic[T, R]):
     def __init__(
         self,
         operation: Callable[[T], R],
-        config: Optional[BulkConfig] = None,
-        on_progress: Optional[Callable[[int, int], None]] = None,
-        on_item_complete: Optional[Callable[[OperationResult[T, R]], None]] = None,
+        config: BulkConfig | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+        on_item_complete: Callable[[OperationResult[T, R]], None] | None = None,
     ):
         """Initialize the bulk executor.
 
@@ -413,7 +408,7 @@ class SyncBulkExecutor(Generic[T, R]):
         start_monotonic = time.monotonic()
 
         # Create operation results
-        results: List[OperationResult[T, R]] = [
+        results: list[OperationResult[T, R]] = [
             OperationResult(input=item, index=i) for i, item in enumerate(items)
         ]
 
@@ -495,7 +490,7 @@ class SyncBulkExecutor(Generic[T, R]):
 async def bulk_execute_async(
     operation: Callable[[T], Awaitable[R]],
     items: Sequence[T],
-    config: Optional[BulkConfig] = None,
+    config: BulkConfig | None = None,
 ) -> BulkOperationResult[T, R]:
     """Convenience function to execute a bulk async operation.
 
@@ -514,7 +509,7 @@ async def bulk_execute_async(
 def bulk_execute_sync(
     operation: Callable[[T], R],
     items: Sequence[T],
-    config: Optional[BulkConfig] = None,
+    config: BulkConfig | None = None,
 ) -> BulkOperationResult[T, R]:
     """Convenience function to execute a bulk sync operation.
 
@@ -531,12 +526,12 @@ def bulk_execute_sync(
 
 
 __all__ = [
-    "OperationStatus",
-    "OperationResult",
-    "BulkOperationSummary",
-    "BulkOperationResult",
-    "BulkConfig",
     "AsyncBulkExecutor",
+    "BulkConfig",
+    "BulkOperationResult",
+    "BulkOperationSummary",
+    "OperationResult",
+    "OperationStatus",
     "SyncBulkExecutor",
     "bulk_execute_async",
     "bulk_execute_sync",

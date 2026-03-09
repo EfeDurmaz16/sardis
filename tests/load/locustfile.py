@@ -16,12 +16,11 @@ Environment variables:
     SARDIS_TEST_WALLET_ID: Pre-existing wallet ID for tests
 """
 import os
-import json
 import random
 import string
-from datetime import datetime, timezone
-from locust import HttpUser, task, between, events
+from datetime import UTC, datetime
 
+from locust import HttpUser, between, events, task
 
 # Configuration
 API_KEY = os.getenv("SARDIS_API_KEY", "sk_test_load_test")
@@ -41,7 +40,7 @@ TEST_VENDORS = [
 def generate_id(prefix: str = "load") -> str:
     """Generate a unique ID for testing."""
     suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-    return f"{prefix}_{int(datetime.now(timezone.utc).timestamp())}_{suffix}"
+    return f"{prefix}_{int(datetime.now(UTC).timestamp())}_{suffix}"
 
 
 class SardisAPIUser(HttpUser):
@@ -337,19 +336,19 @@ class HoldLifecycleUser(HttpUser):
 @events.test_start.add_listener
 def on_test_start(environment, **kwargs):
     """Log test configuration at start."""
-    print(f"\n=== Sardis Load Test Started ===")
+    print("\n=== Sardis Load Test Started ===")
     print(f"Target: {environment.host}")
     print(f"Test Wallet: {TEST_WALLET_ID}")
-    print(f"================================\n")
+    print("================================\n")
 
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs):
     """Log summary at end."""
-    print(f"\n=== Sardis Load Test Complete ===")
+    print("\n=== Sardis Load Test Complete ===")
     stats = environment.stats.total
     print(f"Total Requests: {stats.num_requests}")
     print(f"Failed Requests: {stats.num_failures}")
     print(f"Average Response Time: {stats.avg_response_time:.2f}ms")
     print(f"Requests/sec: {stats.total_rps:.2f}")
-    print(f"==================================\n")
+    print("==================================\n")

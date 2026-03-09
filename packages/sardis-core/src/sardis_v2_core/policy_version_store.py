@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 
 def _nanoid(prefix: str = "pvr") -> str:
@@ -39,10 +39,10 @@ class PolicyVersion:
     agent_id: str
     version: int
     policy_json: dict[str, Any]
-    policy_text: Optional[str]
+    policy_text: str | None
     created_at: datetime
-    created_by: Optional[str]
-    parent_version_id: Optional[str]
+    created_by: str | None
+    parent_version_id: str | None
     hash: str
 
 
@@ -54,8 +54,8 @@ class PolicyVersionStore:
         pool: Any,
         agent_id: str,
         policy_json: dict[str, Any],
-        policy_text: Optional[str] = None,
-        created_by: Optional[str] = None,
+        policy_text: str | None = None,
+        created_by: str | None = None,
         _max_retries: int = 3,
     ) -> PolicyVersion:
         """Create a new policy version, auto-incrementing from the latest.
@@ -65,43 +65,42 @@ class PolicyVersionStore:
         """
         version_id = _nanoid()
         policy_hash = compute_policy_hash(policy_json)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for attempt in range(_max_retries):
             try:
-                async with pool.acquire() as conn:
-                    async with conn.transaction():
-                        # Lock the latest version row to serialize concurrent writes
-                        row = await conn.fetchrow(
-                            "SELECT id, version FROM policy_versions "
-                            "WHERE agent_id = $1 ORDER BY version DESC LIMIT 1 "
-                            "FOR UPDATE",
-                            agent_id,
-                        )
-                        if row:
-                            next_version = row["version"] + 1
-                            parent_id = row["id"]
-                        else:
-                            next_version = 1
-                            parent_id = None
+                async with pool.acquire() as conn, conn.transaction():
+                    # Lock the latest version row to serialize concurrent writes
+                    row = await conn.fetchrow(
+                        "SELECT id, version FROM policy_versions "
+                        "WHERE agent_id = $1 ORDER BY version DESC LIMIT 1 "
+                        "FOR UPDATE",
+                        agent_id,
+                    )
+                    if row:
+                        next_version = row["version"] + 1
+                        parent_id = row["id"]
+                    else:
+                        next_version = 1
+                        parent_id = None
 
-                        await conn.execute(
-                            """
+                    await conn.execute(
+                        """
                             INSERT INTO policy_versions
                                 (id, agent_id, version, policy_json, policy_text,
                                  created_at, created_by, parent_version_id, hash)
                             VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
                             """,
-                            version_id,
-                            agent_id,
-                            next_version,
-                            json.dumps(policy_json),
-                            policy_text,
-                            now,
-                            created_by,
-                            parent_id,
-                            policy_hash,
-                        )
+                        version_id,
+                        agent_id,
+                        next_version,
+                        json.dumps(policy_json),
+                        policy_text,
+                        now,
+                        created_by,
+                        parent_id,
+                        policy_hash,
+                    )
 
                 return PolicyVersion(
                     id=version_id,
@@ -126,7 +125,7 @@ class PolicyVersionStore:
         pool: Any,
         agent_id: str,
         version: int,
-    ) -> Optional[PolicyVersion]:
+    ) -> PolicyVersion | None:
         """Fetch a specific version."""
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -140,7 +139,7 @@ class PolicyVersionStore:
         self,
         pool: Any,
         agent_id: str,
-    ) -> Optional[PolicyVersion]:
+    ) -> PolicyVersion | None:
         """Fetch the most recent version for an agent."""
         async with pool.acquire() as conn:
             row = await conn.fetchrow(

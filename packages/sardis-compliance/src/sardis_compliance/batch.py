@@ -12,10 +12,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -45,22 +46,22 @@ class ItemStatus(str, Enum):
 class BatchItem(Generic[T]):
     """A single item in a batch job."""
     item_id: str
-    input_data: Dict[str, Any]
+    input_data: dict[str, Any]
     status: ItemStatus = ItemStatus.PENDING
-    result: Optional[T] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    result: T | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     retry_count: int = 0
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Get processing duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "item_id": self.item_id,
@@ -80,12 +81,12 @@ class BatchJob(Generic[T]):
     """A batch processing job."""
     job_id: str
     job_type: str
-    items: List[BatchItem[T]] = field(default_factory=list)
+    items: list[BatchItem[T]] = field(default_factory=list)
     status: BatchStatus = BatchStatus.PENDING
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def total_items(self) -> int:
@@ -124,17 +125,17 @@ class BatchJob(Generic[T]):
         return (self.completed_items / processed) * 100
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Total job duration."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
 
-    def get_results(self) -> List[T]:
+    def get_results(self) -> list[T]:
         """Get all successful results."""
         return [item.result for item in self.items if item.result is not None]
 
-    def get_failures(self) -> List[Dict[str, Any]]:
+    def get_failures(self) -> list[dict[str, Any]]:
         """Get all failure details."""
         return [
             {
@@ -146,7 +147,7 @@ class BatchJob(Generic[T]):
             if item.status == ItemStatus.FAILED
         ]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "job_id": self.job_id,
@@ -187,8 +188,8 @@ class BatchProcessor(Generic[T]):
 
     def __init__(
         self,
-        config: Optional[BatchConfig] = None,
-        on_progress: Optional[Callable[[BatchJob[T]], None]] = None,
+        config: BatchConfig | None = None,
+        on_progress: Callable[[BatchJob[T]], None] | None = None,
     ):
         """
         Initialize batch processor.
@@ -199,14 +200,14 @@ class BatchProcessor(Generic[T]):
         """
         self._config = config or BatchConfig()
         self._on_progress = on_progress
-        self._jobs: Dict[str, BatchJob[T]] = {}
+        self._jobs: dict[str, BatchJob[T]] = {}
         self._cancelled: set = set()
 
     async def create_job(
         self,
         job_type: str,
-        items: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None,
+        items: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None,
     ) -> BatchJob[T]:
         """
         Create a new batch job.
@@ -244,7 +245,7 @@ class BatchProcessor(Generic[T]):
     async def execute_job(
         self,
         job: BatchJob[T],
-        processor: Callable[[Dict[str, Any]], T],
+        processor: Callable[[dict[str, Any]], T],
     ) -> BatchJob[T]:
         """
         Execute a batch job.
@@ -257,7 +258,7 @@ class BatchProcessor(Generic[T]):
             Completed BatchJob with results
         """
         job.status = BatchStatus.RUNNING
-        job.started_at = datetime.now(timezone.utc)
+        job.started_at = datetime.now(UTC)
 
         logger.info(f"Starting batch job {job.job_id}")
 
@@ -288,7 +289,7 @@ class BatchProcessor(Generic[T]):
             await asyncio.gather(*[process_item(item) for item in batch])
 
         # Determine final status
-        job.completed_at = datetime.now(timezone.utc)
+        job.completed_at = datetime.now(UTC)
 
         if job.job_id in self._cancelled:
             job.status = BatchStatus.CANCELLED
@@ -310,11 +311,11 @@ class BatchProcessor(Generic[T]):
     async def _process_single_item(
         self,
         item: BatchItem[T],
-        processor: Callable[[Dict[str, Any]], T],
+        processor: Callable[[dict[str, Any]], T],
     ) -> None:
         """Process a single item with retry logic."""
         item.status = ItemStatus.PROCESSING
-        item.started_at = datetime.now(timezone.utc)
+        item.started_at = datetime.now(UTC)
 
         for attempt in range(self._config.max_retries + 1):
             try:
@@ -334,10 +335,10 @@ class BatchProcessor(Generic[T]):
 
                 item.result = result
                 item.status = ItemStatus.COMPLETED
-                item.completed_at = datetime.now(timezone.utc)
+                item.completed_at = datetime.now(UTC)
                 return
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 item.error = f"Timeout after {self._config.timeout_seconds}s"
                 item.retry_count = attempt + 1
             except Exception as e:
@@ -352,7 +353,7 @@ class BatchProcessor(Generic[T]):
 
         # All retries exhausted
         item.status = ItemStatus.FAILED
-        item.completed_at = datetime.now(timezone.utc)
+        item.completed_at = datetime.now(UTC)
 
         if not self._config.continue_on_error:
             raise RuntimeError(f"Item {item.item_id} failed after {self._config.max_retries} retries")
@@ -365,11 +366,11 @@ class BatchProcessor(Generic[T]):
             return True
         return False
 
-    def get_job(self, job_id: str) -> Optional[BatchJob[T]]:
+    def get_job(self, job_id: str) -> BatchJob[T] | None:
         """Get a job by ID."""
         return self._jobs.get(job_id)
 
-    def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def get_job_status(self, job_id: str) -> dict[str, Any] | None:
         """Get job status summary."""
         job = self._jobs.get(job_id)
         if not job:
@@ -389,7 +390,7 @@ class ComplianceBatchScreener:
         pep_service=None,
         sanctions_service=None,
         adverse_media_service=None,
-        config: Optional[BatchConfig] = None,
+        config: BatchConfig | None = None,
     ):
         """
         Initialize batch screener.
@@ -408,8 +409,8 @@ class ComplianceBatchScreener:
 
     async def batch_pep_screening(
         self,
-        subjects: List[Dict[str, Any]],
-        on_progress: Optional[Callable[[float], None]] = None,
+        subjects: list[dict[str, Any]],
+        on_progress: Callable[[float], None] | None = None,
     ) -> BatchJob:
         """
         Perform batch PEP screening.
@@ -425,7 +426,7 @@ class ComplianceBatchScreener:
             raise ValueError("PEP service not configured")
 
         # Create processor that calls PEP service
-        async def process_pep(data: Dict[str, Any]):
+        async def process_pep(data: dict[str, Any]):
             result = await self._pep_service.screen_individual(
                 subject_id=data["subject_id"],
                 name=data["name"],
@@ -460,8 +461,8 @@ class ComplianceBatchScreener:
 
     async def batch_sanctions_screening(
         self,
-        addresses: List[Dict[str, Any]],
-        on_progress: Optional[Callable[[float], None]] = None,
+        addresses: list[dict[str, Any]],
+        on_progress: Callable[[float], None] | None = None,
     ) -> BatchJob:
         """
         Perform batch sanctions screening.
@@ -476,7 +477,7 @@ class ComplianceBatchScreener:
         if not self._sanctions_service:
             raise ValueError("Sanctions service not configured")
 
-        async def process_sanctions(data: Dict[str, Any]):
+        async def process_sanctions(data: dict[str, Any]):
             result = await self._sanctions_service.screen_address(
                 address=data["address"],
                 chain=data.get("chain", "ethereum"),
@@ -505,8 +506,8 @@ class ComplianceBatchScreener:
 
     async def batch_adverse_media_screening(
         self,
-        subjects: List[Dict[str, Any]],
-        on_progress: Optional[Callable[[float], None]] = None,
+        subjects: list[dict[str, Any]],
+        on_progress: Callable[[float], None] | None = None,
     ) -> BatchJob:
         """
         Perform batch adverse media screening.
@@ -521,7 +522,7 @@ class ComplianceBatchScreener:
         if not self._adverse_media_service:
             raise ValueError("Adverse media service not configured")
 
-        async def process_media(data: Dict[str, Any]):
+        async def process_media(data: dict[str, Any]):
             result = await self._adverse_media_service.screen_individual(
                 subject_id=data["subject_id"],
                 name=data["name"],
@@ -553,12 +554,12 @@ class ComplianceBatchScreener:
 
     async def batch_combined_screening(
         self,
-        subjects: List[Dict[str, Any]],
+        subjects: list[dict[str, Any]],
         include_pep: bool = True,
         include_sanctions: bool = True,
         include_adverse_media: bool = True,
-        on_progress: Optional[Callable[[str, float], None]] = None,
-    ) -> Dict[str, BatchJob]:
+        on_progress: Callable[[str, float], None] | None = None,
+    ) -> dict[str, BatchJob]:
         """
         Perform combined batch screening across all types.
 
@@ -604,7 +605,7 @@ class ComplianceBatchScreener:
 
         return results
 
-    def get_batch_summary(self, jobs: Dict[str, BatchJob]) -> Dict[str, Any]:
+    def get_batch_summary(self, jobs: dict[str, BatchJob]) -> dict[str, Any]:
         """
         Get summary of multiple batch jobs.
 
@@ -640,7 +641,7 @@ def create_batch_screener(
     pep_service=None,
     sanctions_service=None,
     adverse_media_service=None,
-    config: Optional[BatchConfig] = None,
+    config: BatchConfig | None = None,
 ) -> ComplianceBatchScreener:
     """
     Factory function to create batch screener.

@@ -11,10 +11,10 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sardis_v2_core.spending_policy import SpendingPolicy
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers import secure_checkout
-from sardis_v2_core.spending_policy import SpendingPolicy
 
 
 class _WalletRepo:

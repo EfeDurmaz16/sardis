@@ -1,9 +1,9 @@
 """Protocol baseline/negative tests for AP2 and multi-rail method parsing."""
 from __future__ import annotations
 
-import pytest
 import time
 
+import pytest
 from sardis_protocol.payment_methods import PaymentMethod, parse_payment_method_from_mandate
 from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core import load_settings

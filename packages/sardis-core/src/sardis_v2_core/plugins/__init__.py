@@ -10,10 +10,10 @@ from .base import (
     ApprovalResult,
     AuditPlugin,
     NotificationPlugin,
-    PolicyDecision,
-    PolicyPlugin,
     PluginMetadata,
     PluginType,
+    PolicyDecision,
+    PolicyPlugin,
     SardisPlugin,
     WebhookPlugin,
 )

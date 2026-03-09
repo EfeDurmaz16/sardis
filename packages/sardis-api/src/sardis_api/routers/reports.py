@@ -1,6 +1,8 @@
 """Compliance Report API routes."""
 from __future__ import annotations
+
 from datetime import date
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -32,7 +34,7 @@ class ScheduleRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_report(req: GenerateReportRequest):
-    from sardis_v2_core.compliance_reports import ReportConfig, ReportType, ReportFormat
+    from sardis_v2_core.compliance_reports import ReportConfig, ReportFormat, ReportType
     try:
         rt = ReportType(req.report_type)
         fmt = ReportFormat(req.format)
@@ -75,7 +77,12 @@ async def download_report(report_id: str, format: str = Query("html")):
 
 @router.post("/schedule")
 async def create_schedule(req: ScheduleRequest):
-    from sardis_v2_core.compliance_reports import ReportSchedule, ReportType, ReportConfig, ReportFormat
+    from sardis_v2_core.compliance_reports import (
+        ReportConfig,
+        ReportFormat,
+        ReportSchedule,
+        ReportType,
+    )
     try:
         rt = ReportType(req.report_type)
     except ValueError:

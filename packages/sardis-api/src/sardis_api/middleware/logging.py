@@ -12,18 +12,19 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Set
+from datetime import UTC
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Context variable for request correlation ID
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 # Context variable for request start time (for nested timing)
-request_start_time_var: ContextVar[Optional[float]] = ContextVar("request_start_time", default=None)
+request_start_time_var: ContextVar[float | None] = ContextVar("request_start_time", default=None)
 
 logger = logging.getLogger("sardis.api")
 
@@ -53,7 +54,7 @@ class LoggingConfig:
     """Configuration for structured logging middleware."""
 
     # Paths to exclude from logging entirely
-    exclude_paths: List[str] = field(default_factory=lambda: [
+    exclude_paths: list[str] = field(default_factory=lambda: [
         "/health",
         "/",
         "/api/v2/docs",
@@ -61,12 +62,12 @@ class LoggingConfig:
     ])
 
     # Paths to log at DEBUG level only
-    debug_paths: List[str] = field(default_factory=lambda: [
+    debug_paths: list[str] = field(default_factory=lambda: [
         "/api/v2/health",
     ])
 
     # Log request body for these content types (up to max_body_log_size)
-    log_body_content_types: Set[str] = field(default_factory=lambda: {
+    log_body_content_types: set[str] = field(default_factory=lambda: {
         "application/json",
     })
 
@@ -95,7 +96,7 @@ def mask_sensitive_value(value: str) -> str:
     return f"{value[:4]}...{value[-4:]}"
 
 
-def filter_headers(headers: Dict[str, str]) -> Dict[str, str]:
+def filter_headers(headers: dict[str, str]) -> dict[str, str]:
     """Filter out sensitive headers from logging."""
     return {
         k: (mask_sensitive_value(v) if k.lower() in SENSITIVE_HEADERS else v)
@@ -320,10 +321,10 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         log_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -358,7 +359,7 @@ class JSONFormatter(logging.Formatter):
 def setup_logging(json_format: bool = True, level: str = "INFO"):
     """
     Configure structured logging for the application.
-    
+
     Args:
         json_format: Use JSON format (for production) or human-readable (for dev)
         level: Log level (DEBUG, INFO, WARNING, ERROR)
@@ -395,6 +396,6 @@ def setup_logging(json_format: bool = True, level: str = "INFO"):
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Get the current request's correlation ID."""
     return request_id_var.get()

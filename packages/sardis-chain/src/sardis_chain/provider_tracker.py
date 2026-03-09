@@ -10,8 +10,8 @@ import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class ProviderEvent:
     error_type: str = ""    # 'timeout', 'rate_limit', '5xx', 'revert'
     gas_used: int = 0
     gas_price_gwei: float = 0.0
-    recorded_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    recorded_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -44,7 +44,7 @@ class ProviderScorecard:
     p95_latency_ms: float = 0.0
     error_rate: float = 0.0
     availability: float = 1.0
-    computed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    computed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -1,11 +1,9 @@
 """Evidence resource for Sardis SDK."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .base import AsyncBaseResource, SyncBaseResource
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..client import TimeoutConfig
@@ -17,8 +15,8 @@ class AsyncEvidenceResource(AsyncBaseResource):
     async def get_transaction(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get full evidence package for a transaction.
 
         Args:
@@ -30,10 +28,10 @@ class AsyncEvidenceResource(AsyncBaseResource):
     async def list_policy_decisions(
         self,
         *,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[dict[str, Any]]:
         """List policy decisions with optional agent filter.
 
         Args:
@@ -41,7 +39,7 @@ class AsyncEvidenceResource(AsyncBaseResource):
             limit: Maximum number of decisions to return.
             timeout: Optional timeout override.
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
         data = await self._get("evidence/policy-decisions", params=params, timeout=timeout)
@@ -52,8 +50,8 @@ class AsyncEvidenceResource(AsyncBaseResource):
     async def get_policy_decision(
         self,
         decision_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get a specific policy decision record.
 
         Args:
@@ -65,8 +63,8 @@ class AsyncEvidenceResource(AsyncBaseResource):
     async def export_decision(
         self,
         decision_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Export a policy decision as a signed evidence bundle.
 
         Args:
@@ -85,8 +83,8 @@ class EvidenceResource(SyncBaseResource):
     def get_transaction(
         self,
         tx_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get full evidence package for a transaction.
 
         Args:
@@ -98,10 +96,10 @@ class EvidenceResource(SyncBaseResource):
     def list_policy_decisions(
         self,
         *,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         limit: int = 50,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> List[Dict[str, Any]]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> list[dict[str, Any]]:
         """List policy decisions with optional agent filter.
 
         Args:
@@ -109,7 +107,7 @@ class EvidenceResource(SyncBaseResource):
             limit: Maximum number of decisions to return.
             timeout: Optional timeout override.
         """
-        params: Dict[str, Any] = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if agent_id:
             params["agent_id"] = agent_id
         data = self._get("evidence/policy-decisions", params=params, timeout=timeout)
@@ -120,8 +118,8 @@ class EvidenceResource(SyncBaseResource):
     def get_policy_decision(
         self,
         decision_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Get a specific policy decision record.
 
         Args:
@@ -133,8 +131,8 @@ class EvidenceResource(SyncBaseResource):
     def export_decision(
         self,
         decision_id: str,
-        timeout: Optional[Union[float, "TimeoutConfig"]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
         """Export a policy decision as a signed evidence bundle.
 
         Args:

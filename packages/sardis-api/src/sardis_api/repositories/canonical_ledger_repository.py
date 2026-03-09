@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Optional
 import hashlib
 import os
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from sardis_api.canonical_state_machine import CanonicalEvent, apply_state_transition
 
@@ -78,7 +78,7 @@ class CanonicalLedgerRepository:
         provider: str,
         external_reference: str,
         currency: str,
-        direction: Optional[str],
+        direction: str | None,
         event_ts: datetime,
     ) -> dict[str, Any]:
         key = (organization_id, rail, external_reference)
@@ -104,8 +104,8 @@ class CanonicalLedgerRepository:
                 "first_event_at": event_ts,
                 "last_event_at": event_ts,
                 "metadata": {},
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             }
             self._journeys[key] = row
             return row
@@ -154,10 +154,10 @@ class CanonicalLedgerRepository:
         journey_id: str,
         break_type: str,
         severity: str,
-        expected_amount_minor: Optional[int],
-        settled_amount_minor: Optional[int],
-        delta_minor: Optional[int],
-        metadata: Optional[dict[str, Any]] = None,
+        expected_amount_minor: int | None,
+        settled_amount_minor: int | None,
+        delta_minor: int | None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         # Avoid spamming duplicate open breaks for the same journey/type.
         if not self._use_postgres():
@@ -181,7 +181,7 @@ class CanonicalLedgerRepository:
                     "delta_minor": delta_minor,
                     "status": "open",
                     "metadata": metadata or {},
-                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                    "detected_at": datetime.now(UTC).isoformat(),
                 }
             )
             return True
@@ -229,10 +229,10 @@ class CanonicalLedgerRepository:
         self,
         *,
         organization_id: str,
-        journey_id: Optional[str],
+        journey_id: str | None,
         reason_code: str,
         priority: str = "medium",
-        payload: Optional[dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
     ) -> bool:
         if not self._use_postgres():
             for review in self._manual_reviews:
@@ -253,8 +253,8 @@ class CanonicalLedgerRepository:
                     "status": "queued",
                     "assigned_to": None,
                     "payload": payload or {},
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                     "resolved_at": None,
                 }
             )
@@ -319,7 +319,7 @@ class CanonicalLedgerRepository:
                 external_reference=event.external_reference,
                 currency=event.currency or "USD",
                 direction=event.direction,
-                event_ts=event.event_ts or datetime.now(timezone.utc),
+                event_ts=event.event_ts or datetime.now(UTC),
             )
             return CanonicalIngestResult(
                 journey=journey,
@@ -330,7 +330,7 @@ class CanonicalLedgerRepository:
                 manual_review_created=False,
             )
 
-        event_ts = event.event_ts or datetime.now(timezone.utc)
+        event_ts = event.event_ts or datetime.now(UTC)
         journey = await self._get_or_create_journey(
             organization_id=event.organization_id,
             rail=event.rail,
@@ -360,7 +360,7 @@ class CanonicalLedgerRepository:
 
         break_detected = False
         manual_review_created = False
-        delta_minor: Optional[int] = None
+        delta_minor: int | None = None
         if next_state == "settled" and expected_amount > 0:
             delta_minor = abs(expected_amount - settled_amount)
             if delta_minor > max(0, int(drift_tolerance_minor)):
@@ -424,7 +424,7 @@ class CanonicalLedgerRepository:
                     "first_event_at": journey.get("first_event_at") or event_ts,
                     "last_event_at": last_event_at,
                     "break_status": "review_open" if manual_review_created else ("drift_open" if break_detected else journey.get("break_status", "ok")),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 }
             )
             event_row = {
@@ -443,7 +443,7 @@ class CanonicalLedgerRepository:
                 "out_of_order": out_of_order,
                 "metadata": event.metadata or {},
                 "raw_payload": event.raw_payload or {},
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             }
             self._events.append(event_row)
             if provider_event_id:
@@ -560,7 +560,7 @@ class CanonicalLedgerRepository:
                     priority="high",
                     payload={"retry_count": row["retry_count"]},
                 )
-            row["updated_at"] = datetime.now(timezone.utc).isoformat()
+            row["updated_at"] = datetime.now(UTC).isoformat()
             return row
 
         pool = await self._get_pool()
@@ -596,9 +596,9 @@ class CanonicalLedgerRepository:
         self,
         organization_id: str,
         *,
-        rail: Optional[str] = None,
-        canonical_state: Optional[str] = None,
-        break_status: Optional[str] = None,
+        rail: str | None = None,
+        canonical_state: str | None = None,
+        break_status: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         if not self._use_postgres():
@@ -712,17 +712,17 @@ class CanonicalLedgerRepository:
         organization_id: str,
         review_id: str,
         status_value: str,
-        notes: Optional[str] = None,
-    ) -> Optional[dict[str, Any]]:
+        notes: str | None = None,
+    ) -> dict[str, Any] | None:
         if status_value not in {"resolved", "dismissed", "in_review"}:
             raise ValueError("invalid manual review status")
         if not self._use_postgres():
             for row in self._manual_reviews:
                 if row.get("review_id") == review_id and row.get("organization_id") == organization_id:
                     row["status"] = status_value
-                    row["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    row["updated_at"] = datetime.now(UTC).isoformat()
                     if status_value in {"resolved", "dismissed"}:
-                        row["resolved_at"] = datetime.now(timezone.utc).isoformat()
+                        row["resolved_at"] = datetime.now(UTC).isoformat()
                     payload = dict(row.get("payload") or {})
                     if notes:
                         payload["resolution_notes"] = notes
@@ -761,7 +761,7 @@ class CanonicalLedgerRepository:
         self,
         organization_id: str,
         *,
-        journey_id: Optional[str] = None,
+        journey_id: str | None = None,
         limit: int = 500,
     ) -> dict[str, Any]:
         if not self._use_postgres():
@@ -783,7 +783,7 @@ class CanonicalLedgerRepository:
                 "events": events[:limit],
                 "breaks": breaks[:limit],
                 "manual_reviews": reviews[:limit],
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
 
         pool = await self._get_pool()
@@ -794,7 +794,7 @@ class CanonicalLedgerRepository:
                 "events": [],
                 "breaks": [],
                 "manual_reviews": [],
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
 
         async with pool.acquire() as conn:
@@ -890,5 +890,5 @@ class CanonicalLedgerRepository:
                 "events": [dict(r) for r in events_rows],
                 "breaks": [dict(r) for r in breaks_rows],
                 "manual_reviews": [dict(r) for r in reviews_rows],
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }

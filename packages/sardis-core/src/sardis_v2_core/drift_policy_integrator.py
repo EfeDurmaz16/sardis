@@ -17,12 +17,13 @@ Usage:
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class DriftActionResult:
     severity: str
     details: dict[str, Any] = field(default_factory=dict)
     policy_changed: bool = False
-    new_policy_version_id: Optional[str] = None
+    new_policy_version_id: str | None = None
 
 
 class DriftPolicyIntegrator:
@@ -95,7 +96,7 @@ class DriftPolicyIntegrator:
         self,
         pool: Any,
         alert: Any,
-        config: Optional[DriftPolicyConfig] = None,
+        config: DriftPolicyConfig | None = None,
     ) -> DriftActionResult:
         """Handle a drift alert by applying the configured policy action.
 
@@ -111,10 +112,7 @@ class DriftPolicyIntegrator:
             config = DriftPolicyConfig()
 
         severity = alert.severity
-        if isinstance(severity, Enum):
-            severity_str = severity.value
-        else:
-            severity_str = str(severity)
+        severity_str = severity.value if isinstance(severity, Enum) else str(severity)
 
         action = self._get_action(severity_str, config)
         agent_id = alert.agent_id
@@ -177,8 +175,8 @@ class DriftPolicyIntegrator:
         reduce_factor: float,
     ) -> DriftActionResult:
         """Scale down per-tx and daily limits by reduce_factor."""
-        from .spending_policy_json import spending_policy_to_json
         from .policy_version_store import PolicyVersionStore
+        from .spending_policy_json import spending_policy_to_json
 
         policy = await self._load_policy(agent_id)
         if policy is None:
@@ -241,8 +239,8 @@ class DriftPolicyIntegrator:
         alert: Any,
     ) -> DriftActionResult:
         """Set approval threshold to $0 — every tx needs human sign-off."""
-        from .spending_policy_json import spending_policy_to_json
         from .policy_version_store import PolicyVersionStore
+        from .spending_policy_json import spending_policy_to_json
 
         policy = await self._load_policy(agent_id)
         if policy is None:
@@ -293,8 +291,8 @@ class DriftPolicyIntegrator:
         alert: Any,
     ) -> DriftActionResult:
         """Freeze the agent — set per-tx and total limits to 0."""
-        from .spending_policy_json import spending_policy_to_json
         from .policy_version_store import PolicyVersionStore
+        from .spending_policy_json import spending_policy_to_json
 
         policy = await self._load_policy(agent_id)
         if policy is None:
@@ -338,7 +336,7 @@ class DriftPolicyIntegrator:
         self,
         pool: Any,
         agent_id: str,
-        config: Optional[DriftPolicyConfig] = None,
+        config: DriftPolicyConfig | None = None,
     ) -> bool:
         """If no drift alerts in restore window, restore previous policy version.
 
@@ -370,7 +368,7 @@ class DriftPolicyIntegrator:
             return False
 
         # Check if enough time has passed
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=config.auto_restore_after_hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=config.auto_restore_after_hours)
         if latest.created_at > cutoff:
             return False  # Too recent to restore
 
@@ -386,14 +384,12 @@ class DriftPolicyIntegrator:
                 restored_policy = spending_policy_from_json(v.policy_json)
                 await self._save_policy(agent_id, restored_policy)
 
-                try:
+                with contextlib.suppress(Exception):
                     await store.create_version(
                         pool, agent_id, v.policy_json,
                         policy_text="drift-auto-restore",
                         created_by="drift_policy_integrator",
                     )
-                except Exception:
-                    pass
 
                 logger.info(
                     "Auto-restored policy for agent %s from version %d",

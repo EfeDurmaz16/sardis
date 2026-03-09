@@ -15,7 +15,6 @@ from __future__ import annotations
 import logging
 import os
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
@@ -30,20 +29,20 @@ router = APIRouter(prefix="/stablecoin-cards", tags=["stablecoin-cards"])
 class OnboardAgentRequest(BaseModel):
     agent_name: str = Field(description="Display name for the agent/org")
     email: str = Field(description="Contact email for the connected account")
-    wallet_id: Optional[str] = Field(default=None, description="Sardis wallet ID")
+    wallet_id: str | None = Field(default=None, description="Sardis wallet ID")
 
 
 class OnboardAgentResponse(BaseModel):
     account_id: str
     connected_account_id: str
-    deposit_address: Optional[str] = None
+    deposit_address: str | None = None
     deposit_chain: str = "base"
     deposit_token: str = "USDC"
     status: str
 
 
 class DepositInfoResponse(BaseModel):
-    deposit_address: Optional[str] = None
+    deposit_address: str | None = None
     chain: str = "base"
     token: str = "USDC"
     token_contract: str
@@ -62,7 +61,7 @@ class IssueCardRequest(BaseModel):
     connected_account_id: str = Field(description="Stripe Connect account (acct_...)")
     cardholder_name: str = Field(description="Full name for the cardholder")
     cardholder_email: str = Field(description="Email for the cardholder")
-    wallet_id: Optional[str] = Field(default=None, description="Sardis wallet ID")
+    wallet_id: str | None = Field(default=None, description="Sardis wallet ID")
     limit_per_tx: Decimal = Field(default=Decimal("500"), description="Per-transaction limit (USD)")
     limit_daily: Decimal = Field(default=Decimal("2000"), description="Daily spending limit (USD)")
     limit_monthly: Decimal = Field(default=Decimal("10000"), description="Monthly spending limit (USD)")
@@ -85,9 +84,9 @@ class DepositHistoryItem(BaseModel):
     amount: str
     currency: str
     chain: str
-    tx_hash: Optional[str] = None
+    tx_hash: str | None = None
     status: str
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────

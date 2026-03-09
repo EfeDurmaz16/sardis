@@ -9,15 +9,15 @@ from __future__ import annotations
 import base64
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Optional, Protocol, runtime_checkable
+from datetime import UTC, datetime
+from typing import Protocol, runtime_checkable
 
 from .delegated_credential import (
+    CREDENTIAL_HANDLING,
     CredentialClass,
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
-    CREDENTIAL_HANDLING,
     DelegatedCredential,
 )
 
@@ -34,7 +34,7 @@ class CredentialEncryption:
     Follows pattern from sardis_api.middleware.sso._get_encryption_key().
     """
 
-    def __init__(self, key: Optional[bytes] = None) -> None:
+    def __init__(self, key: bytes | None = None) -> None:
         self._key = key or self._load_key()
 
     @staticmethod
@@ -103,10 +103,10 @@ class CredentialEncryption:
 @runtime_checkable
 class CredentialStore(Protocol):
     async def store(self, credential: DelegatedCredential) -> str: ...
-    async def get(self, credential_id: str) -> Optional[DelegatedCredential]: ...
+    async def get(self, credential_id: str) -> DelegatedCredential | None: ...
     async def get_for_agent(self, agent_id: str) -> list[DelegatedCredential]: ...
     async def get_active_for_agent(
-        self, agent_id: str, network: Optional[CredentialNetwork] = None,
+        self, agent_id: str, network: CredentialNetwork | None = None,
     ) -> list[DelegatedCredential]: ...
     async def update_status(
         self, credential_id: str, status: CredentialStatus,
@@ -130,7 +130,7 @@ class CredentialStore(Protocol):
 class InMemoryCredentialStore:
     """In-memory credential store for development and testing."""
 
-    def __init__(self, encryption: Optional[CredentialEncryption] = None) -> None:
+    def __init__(self, encryption: CredentialEncryption | None = None) -> None:
         self._creds: dict[str, DelegatedCredential] = {}
         self._encryption = encryption or CredentialEncryption()
 
@@ -138,14 +138,14 @@ class InMemoryCredentialStore:
         self._creds[credential.credential_id] = credential
         return credential.credential_id
 
-    async def get(self, credential_id: str) -> Optional[DelegatedCredential]:
+    async def get(self, credential_id: str) -> DelegatedCredential | None:
         return self._creds.get(credential_id)
 
     async def get_for_agent(self, agent_id: str) -> list[DelegatedCredential]:
         return [c for c in self._creds.values() if c.agent_id == agent_id]
 
     async def get_active_for_agent(
-        self, agent_id: str, network: Optional[CredentialNetwork] = None,
+        self, agent_id: str, network: CredentialNetwork | None = None,
     ) -> list[DelegatedCredential]:
         results = []
         for c in self._creds.values():
@@ -267,7 +267,7 @@ class InMemoryCredentialStore:
 class PostgresCredentialStore:
     """Production credential store backed by asyncpg."""
 
-    def __init__(self, pool, encryption: Optional[CredentialEncryption] = None) -> None:
+    def __init__(self, pool, encryption: CredentialEncryption | None = None) -> None:
         self._pool = pool
         self._encryption = encryption or CredentialEncryption()
 
@@ -294,7 +294,7 @@ class PostgresCredentialStore:
             provider_metadata=provider_meta,
             consent_id=row.get("consent_id", ""),
             last_used_at=row.get("last_used_at"),
-            created_at=row.get("created_at", datetime.now(timezone.utc)),
+            created_at=row.get("created_at", datetime.now(UTC)),
             expires_at=row.get("expires_at"),
         )
 
@@ -326,7 +326,7 @@ class PostgresCredentialStore:
             )
         return credential.credential_id
 
-    async def get(self, credential_id: str) -> Optional[DelegatedCredential]:
+    async def get(self, credential_id: str) -> DelegatedCredential | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM delegated_credentials WHERE credential_id = $1",
@@ -345,7 +345,7 @@ class PostgresCredentialStore:
         return [self._row_to_credential(dict(r)) for r in rows]
 
     async def get_active_for_agent(
-        self, agent_id: str, network: Optional[CredentialNetwork] = None,
+        self, agent_id: str, network: CredentialNetwork | None = None,
     ) -> list[DelegatedCredential]:
         async with self._pool.acquire() as conn:
             if network:

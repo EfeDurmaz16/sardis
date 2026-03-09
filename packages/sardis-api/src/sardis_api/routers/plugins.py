@@ -18,18 +18,18 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-
-from sardis_api.authz import require_principal, Principal
-from sardis_v2_core.plugins import PluginRegistry, PluginType, PluginInfo
+from sardis_v2_core.plugins import PluginRegistry, PluginType
 from sardis_v2_core.plugins.builtins import (
     CustomPolicyPlugin,
     EmailNotificationPlugin,
     SlackApprovalPlugin,
 )
+
+from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ async def list_builtin_plugins(
 
 @router.get("/plugins", response_model=list[PluginInfoResponse])
 async def list_plugins(
-    plugin_type: Optional[str] = None,
+    plugin_type: str | None = None,
     registry: PluginRegistry = Depends(get_plugin_registry),
     principal: Principal = Depends(require_principal),
 ) -> list[PluginInfoResponse]:

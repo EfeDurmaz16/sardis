@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Literal, Optional, Tuple
+from typing import Literal
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -34,7 +34,7 @@ class AgentIdentity:
         return f"did:sardis:{self.agent_id}"
 
     @property
-    def did_document_fragment(self) -> Dict:
+    def did_document_fragment(self) -> dict:
         """Minimal DID Document fragment for verification."""
         return {
             "id": self.did,
@@ -75,7 +75,7 @@ class AgentIdentity:
             )
 
     @staticmethod
-    def generate(seed: bytes | None = None) -> tuple["AgentIdentity", bytes]:
+    def generate(seed: bytes | None = None) -> tuple[AgentIdentity, bytes]:
         """Generate a new signing key pair (temporary helper for sandbox)."""
         signer = signing.SigningKey(seed) if seed else signing.SigningKey.generate()
         identity = AgentIdentity(
@@ -95,9 +95,9 @@ class IdentityRecord:
     algorithm: AllowedKeys = "ed25519"
     created_at: int = field(default_factory=lambda: int(time.time()))
     version: int = 1
-    revoked_at: Optional[int] = None
-    reason: Optional[str] = None
-    framework_attestation: Optional[str] = None  # e.g. "langchain:0.3.1"
+    revoked_at: int | None = None
+    reason: str | None = None
+    framework_attestation: str | None = None  # e.g. "langchain:0.3.1"
 
     @property
     def fingerprint(self) -> str:
@@ -126,9 +126,9 @@ class IdentityRegistry:
     to in-memory storage for dev/test.
     """
 
-    def __init__(self, dsn: Optional[str] = None):
-        self._records: Dict[str, IdentityRecord] = {}
-        self._history: Dict[str, list[IdentityRecord]] = {}
+    def __init__(self, dsn: str | None = None):
+        self._records: dict[str, IdentityRecord] = {}
+        self._history: dict[str, list[IdentityRecord]] = {}
         self._dsn = dsn
         self._pool = None
 
@@ -197,7 +197,7 @@ class IdentityRegistry:
                 _logger.warning(f"Failed to persist identity record: {e}")
         return record
 
-    def revoke(self, agent_id: str, reason: str = "revoked") -> Optional[IdentityRecord]:
+    def revoke(self, agent_id: str, reason: str = "revoked") -> IdentityRecord | None:
         record = self._records.get(agent_id)
         if not record:
             return None
@@ -207,7 +207,7 @@ class IdentityRegistry:
         self._records.pop(agent_id, None)
         return record
 
-    async def revoke_async(self, agent_id: str, reason: str = "revoked") -> Optional[IdentityRecord]:
+    async def revoke_async(self, agent_id: str, reason: str = "revoked") -> IdentityRecord | None:
         """Revoke with DB persistence."""
         record = self.revoke(agent_id, reason)
         if record and self._dsn:
@@ -227,10 +227,10 @@ class IdentityRegistry:
         record.reason = reason
         self._history.setdefault(record.agent_id, []).append(record)
 
-    def get(self, agent_id: str) -> Optional[IdentityRecord]:
+    def get(self, agent_id: str) -> IdentityRecord | None:
         return self._records.get(agent_id)
 
-    async def get_async(self, agent_id: str) -> Optional[IdentityRecord]:
+    async def get_async(self, agent_id: str) -> IdentityRecord | None:
         """Get identity, falling back to DB if not in memory."""
         record = self._records.get(agent_id)
         if record:
@@ -264,7 +264,7 @@ class IdentityRegistry:
             _logger.warning(f"Failed to load identity from DB: {e}")
         return None
 
-    def resolve_did(self, did: str) -> Optional[IdentityRecord]:
+    def resolve_did(self, did: str) -> IdentityRecord | None:
         """
         Resolve a did:sardis:<agent_id> to its active IdentityRecord.
 
@@ -283,7 +283,7 @@ class IdentityRegistry:
         return record.is_active(domain) and record.public_key == public_key and record.algorithm == algorithm
 
     @staticmethod
-    def parse_verification_method(verification_method: str) -> Tuple[AllowedKeys, bytes]:
+    def parse_verification_method(verification_method: str) -> tuple[AllowedKeys, bytes]:
         """
         Parse verification method fragment of form 'ed25519:<hex>' or 'ecdsa-p256:<hex>'.
         Raises ValueError on bad input.
@@ -301,7 +301,7 @@ class IdentityRegistry:
             raise ValueError("invalid_public_key_hex") from exc
         return ("ecdsa-p256" if algorithm == "ecdsa-p256" else "ed25519", public_key)
 
-    def verify_tap_identity(self, verification_method: str, domain: str) -> tuple[bool, Optional[IdentityRecord], Optional[str]]:
+    def verify_tap_identity(self, verification_method: str, domain: str) -> tuple[bool, IdentityRecord | None, str | None]:
         """
         Validate that a verification_method corresponds to an active registry entry for the domain.
         Returns (valid, record, reason_if_invalid)
@@ -310,7 +310,7 @@ class IdentityRegistry:
             algorithm, public_key = self.parse_verification_method(verification_method)
         except ValueError as exc:
             return False, None, str(exc)
-        for agent_id, record in self._records.items():
+        for _agent_id, record in self._records.items():
             if (
                 record.is_active(domain)
                 and record.algorithm == algorithm

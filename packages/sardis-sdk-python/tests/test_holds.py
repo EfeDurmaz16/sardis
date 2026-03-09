@@ -1,9 +1,9 @@
 """
 Tests for HoldsResource
 """
-import pytest
 from decimal import Decimal
-from sardis_sdk import SardisClient
+
+import pytest
 
 
 class TestCreateHold:

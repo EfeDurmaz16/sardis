@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional, Protocol, runtime_checkable
+from datetime import UTC, datetime
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass
@@ -33,15 +33,15 @@ class MerchantExecutionCapability:
 
     # Provenance
     first_seen: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
     last_verified: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
     capability_source: str = "manual"  # manual, discovery, network_api, browser_agent, provider_registry
     verification_status: str = "unverified"  # unverified, inferred, partner_confirmed, network_confirmed
     confidence: float = 0.5  # 0.0–1.0
-    risk_category: Optional[str] = None
+    risk_category: str | None = None
 
     # Extra
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -80,8 +80,8 @@ class MerchantExecutionCapability:
 
 @runtime_checkable
 class MerchantCapabilityStore(Protocol):
-    async def get(self, merchant_id: str) -> Optional[MerchantExecutionCapability]: ...
-    async def get_by_domain(self, domain: str) -> Optional[MerchantExecutionCapability]: ...
+    async def get(self, merchant_id: str) -> MerchantExecutionCapability | None: ...
+    async def get_by_domain(self, domain: str) -> MerchantExecutionCapability | None: ...
     async def upsert(self, capability: MerchantExecutionCapability) -> None: ...
     async def supports_mode(self, merchant_id: str, mode: str) -> bool: ...
 
@@ -95,10 +95,10 @@ class InMemoryMerchantCapabilityStore:
         self._by_id: dict[str, MerchantExecutionCapability] = {}
         self._by_domain: dict[str, str] = {}  # domain -> merchant_id
 
-    async def get(self, merchant_id: str) -> Optional[MerchantExecutionCapability]:
+    async def get(self, merchant_id: str) -> MerchantExecutionCapability | None:
         return self._by_id.get(merchant_id)
 
-    async def get_by_domain(self, domain: str) -> Optional[MerchantExecutionCapability]:
+    async def get_by_domain(self, domain: str) -> MerchantExecutionCapability | None:
         mid = self._by_domain.get(domain)
         if mid is None:
             return None
@@ -139,8 +139,8 @@ class PostgresMerchantCapabilityStore:
             supports_trusted_agent=row.get("supports_trusted_agent", False),
             supports_tokenized_delegation=row.get("supports_tokenized_delegation", False),
             settlement_preference=row.get("settlement_preference", "any"),
-            first_seen=row.get("first_seen", datetime.now(timezone.utc)),
-            last_verified=row.get("last_verified", datetime.now(timezone.utc)),
+            first_seen=row.get("first_seen", datetime.now(UTC)),
+            last_verified=row.get("last_verified", datetime.now(UTC)),
             capability_source=row.get("capability_source", "manual"),
             verification_status=row.get("verification_status", "unverified"),
             confidence=float(row.get("confidence", 0.5)),
@@ -148,7 +148,7 @@ class PostgresMerchantCapabilityStore:
             metadata=meta,
         )
 
-    async def get(self, merchant_id: str) -> Optional[MerchantExecutionCapability]:
+    async def get(self, merchant_id: str) -> MerchantExecutionCapability | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM merchant_capabilities WHERE merchant_id = $1",
@@ -158,7 +158,7 @@ class PostgresMerchantCapabilityStore:
             return None
         return self._row_to_cap(dict(row))
 
-    async def get_by_domain(self, domain: str) -> Optional[MerchantExecutionCapability]:
+    async def get_by_domain(self, domain: str) -> MerchantExecutionCapability | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM merchant_capabilities WHERE domain = $1",

@@ -9,11 +9,10 @@ The stamp format follows the official Turnkey Python SDK:
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -91,7 +90,7 @@ class TurnkeyClient:
         stamp_json = json.dumps(stamp_payload)
         return base64.urlsafe_b64encode(stamp_json.encode()).decode().rstrip("=")
 
-    def _stamp_headers(self, body_json: str) -> Dict[str, str]:
+    def _stamp_headers(self, body_json: str) -> dict[str, str]:
         """Return HTTP headers with the X-Stamp for a serialised request body."""
         return {"X-Stamp": self._create_stamp(body_json)}
 
@@ -99,7 +98,7 @@ class TurnkeyClient:
     # Low-level HTTP
     # ------------------------------------------------------------------
 
-    async def post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    async def post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
         """Send an authenticated POST request to the Turnkey API.
 
         This is the public entry point used both internally and by
@@ -120,7 +119,7 @@ class TurnkeyClient:
     # High-level helpers
     # ------------------------------------------------------------------
 
-    async def create_wallet(self, wallet_name: str) -> Dict[str, Any]:
+    async def create_wallet(self, wallet_name: str) -> dict[str, Any]:
         """Create a new HD wallet."""
         body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET",
@@ -143,7 +142,7 @@ class TurnkeyClient:
         wallet_id: str,
         chain_type: str = "CHAIN_TYPE_ETHEREUM",
         count: int = 1,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create accounts (addresses) for an existing wallet."""
         body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET_ACCOUNTS",
@@ -173,7 +172,7 @@ class TurnkeyClient:
         unsigned_transaction: str,
         sign_with: str,
         transaction_type: str = "TRANSACTION_TYPE_ETHEREUM",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Sign a transaction with a wallet address.
 
         Args:
@@ -203,7 +202,7 @@ class TurnkeyClient:
         wallet_id: str,
         unsigned_transaction: str,
         sign_with: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Sign a Solana transaction (ed25519) with a wallet address.
 
         Args:
@@ -218,7 +217,7 @@ class TurnkeyClient:
             transaction_type="TRANSACTION_TYPE_SOLANA",
         )
 
-    async def get_wallet(self, wallet_id: str) -> Dict[str, Any]:
+    async def get_wallet(self, wallet_id: str) -> dict[str, Any]:
         """Get wallet details."""
         body = {
             "organizationId": self._organization_id,

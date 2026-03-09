@@ -1,14 +1,13 @@
 """Checkout surface data models."""
 from __future__ import annotations
 
+import json
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional, List, Dict
-import json
-import uuid
-
+from typing import Any
 
 # Session timeout reduced from 30 minutes to 15 minutes (audit fix #1)
 DEFAULT_SESSION_TIMEOUT_MINUTES = 15
@@ -100,29 +99,29 @@ class CheckoutRequest:
     mandate_id: str
     amount: Decimal
     currency: str = "USD"
-    description: Optional[str] = None
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
-    chain: Optional[str] = None  # For on-chain mode
-    token: Optional[str] = None  # For on-chain mode
+    description: str | None = None
+    success_url: str | None = None
+    cancel_url: str | None = None
+    chain: str | None = None  # For on-chain mode
+    token: str | None = None  # For on-chain mode
     metadata: dict[str, Any] = field(default_factory=dict)
     # Idempotency support (audit fix #2)
-    idempotency_key: Optional[str] = None
+    idempotency_key: str | None = None
     # Session timeout (audit fix #1)
     session_timeout_minutes: int = DEFAULT_SESSION_TIMEOUT_MINUTES
     # Partial payment support
     allow_partial_payment: bool = False
-    minimum_payment_amount: Optional[Decimal] = None
+    minimum_payment_amount: Decimal | None = None
     # Multi-currency support
-    accepted_currencies: List[str] = field(default_factory=lambda: ["USD"])
+    accepted_currencies: list[str] = field(default_factory=lambda: ["USD"])
     auto_convert_currency: bool = False
     # Payment method selection
-    payment_methods: List[str] = field(default_factory=lambda: ["card", "apple_pay", "google_pay", "link"])
+    payment_methods: list[str] = field(default_factory=lambda: ["card", "apple_pay", "google_pay", "link"])
     # Customization options
-    customization: Optional["CheckoutCustomization"] = None
+    customization: CheckoutCustomization | None = None
     # Customer session
-    customer_id: Optional[str] = None
-    customer_email: Optional[str] = None
+    customer_id: str | None = None
+    customer_email: str | None = None
     # Payment link
     create_payment_link: bool = False
     payment_link_expiration_hours: int = DEFAULT_PAYMENT_LINK_EXPIRATION_HOURS
@@ -132,37 +131,37 @@ class CheckoutRequest:
 class CheckoutResponse:
     """Checkout response from PSP."""
     checkout_id: str
-    redirect_url: Optional[str] = None
+    redirect_url: str | None = None
     status: PaymentStatus = PaymentStatus.PENDING
-    psp_name: Optional[str] = None
+    psp_name: str | None = None
     amount: Decimal = Decimal("0")
     currency: str = "USD"
     agent_id: str = ""
     mandate_id: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    psp_payment_id: Optional[str] = None  # PSP's payment ID
+    expires_at: datetime | None = None
+    completed_at: datetime | None = None
+    psp_payment_id: str | None = None  # PSP's payment ID
     # Idempotency support
-    idempotency_key: Optional[str] = None
+    idempotency_key: str | None = None
     is_duplicate: bool = False
     # Partial payment support
     amount_paid: Decimal = Decimal("0")
     amount_remaining: Decimal = Decimal("0")
-    partial_payments: List["PartialPayment"] = field(default_factory=list)
+    partial_payments: list[PartialPayment] = field(default_factory=list)
     # Multi-currency
-    original_currency: Optional[str] = None
-    original_amount: Optional[Decimal] = None
-    exchange_rate: Optional[Decimal] = None
+    original_currency: str | None = None
+    original_amount: Decimal | None = None
+    exchange_rate: Decimal | None = None
     # Payment link
-    payment_link_url: Optional[str] = None
-    payment_link_id: Optional[str] = None
-    payment_link_expires_at: Optional[datetime] = None
+    payment_link_url: str | None = None
+    payment_link_id: str | None = None
+    payment_link_expires_at: datetime | None = None
     # Fraud check result
-    fraud_check_result: Optional["FraudCheckResult"] = None
+    fraud_check_result: FraudCheckResult | None = None
     # Customer session
-    customer_session_id: Optional[str] = None
+    customer_session_id: str | None = None
 
 
 @dataclass
@@ -178,10 +177,10 @@ class CheckoutSession:
     merchant_id: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    psp_payment_id: Optional[str] = None  # PSP's payment ID
-    payment_methods: List[str] = field(default_factory=lambda: ["card"])
+    expires_at: datetime | None = None
+    completed_at: datetime | None = None
+    psp_payment_id: str | None = None  # PSP's payment ID
+    payment_methods: list[str] = field(default_factory=lambda: ["card"])
 
 
 @dataclass
@@ -189,8 +188,8 @@ class PSPConfig:
     """PSP configuration."""
     psp: PSPType
     enabled: bool = True
-    api_key: Optional[str] = None
-    webhook_secret: Optional[str] = None
+    api_key: str | None = None
+    webhook_secret: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -211,18 +210,18 @@ class IdempotencyRecord:
     idempotency_key: str
     operation: str
     request_hash: str
-    response: Optional[Dict[str, Any]] = None
+    response: dict[str, Any] | None = None
     status: str = "pending"  # pending, completed, failed
     created_at: datetime = field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     expires_at: datetime = field(
         default_factory=lambda: datetime.utcnow() + timedelta(hours=24)
     )
-    agent_id: Optional[str] = None
-    checkout_id: Optional[str] = None
+    agent_id: str | None = None
+    checkout_id: str | None = None
     # Backward-compatible fields expected by older tests/clients.
-    response_code: Optional[int] = None
-    response_body: Optional[str] = None
+    response_code: int | None = None
+    response_body: str | None = None
 
     def __post_init__(self) -> None:
         # Legacy shape -> canonical shape.
@@ -249,22 +248,22 @@ class CheckoutAnalyticsEvent:
     """Checkout analytics event for tracking."""
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     event_type: CheckoutEventType = CheckoutEventType.SESSION_CREATED
-    checkout_id: Optional[str] = None
-    session_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    customer_id: Optional[str] = None
-    psp_name: Optional[str] = None
-    amount: Optional[Decimal] = None
-    currency: Optional[str] = None
-    status: Optional[str] = None
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    checkout_id: str | None = None
+    session_id: str | None = None
+    agent_id: str | None = None
+    customer_id: str | None = None
+    psp_name: str | None = None
+    amount: Decimal | None = None
+    currency: str | None = None
+    status: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    duration_ms: Optional[int] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    device_fingerprint: Optional[str] = None
+    duration_ms: int | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    device_fingerprint: str | None = None
 
 
 # Partial payment models
@@ -275,10 +274,10 @@ class PartialPayment:
     checkout_id: str = ""
     amount: Decimal = Decimal("0")
     currency: str = "USD"
-    psp_payment_id: Optional[str] = None
+    psp_payment_id: str | None = None
     status: PaymentStatus = PaymentStatus.COMPLETED
     created_at: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # Multi-currency models
@@ -314,8 +313,8 @@ class SupportedCurrency:
 class CustomerSession:
     """Customer checkout session."""
     session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    customer_id: Optional[str] = None
-    customer_email: Optional[str] = None
+    customer_id: str | None = None
+    customer_email: str | None = None
     agent_id: str = ""
     status: str = "active"  # active, completed, expired, abandoned
     created_at: datetime = field(default_factory=datetime.utcnow)
@@ -323,11 +322,11 @@ class CustomerSession:
         default_factory=lambda: datetime.utcnow() + timedelta(minutes=DEFAULT_SESSION_TIMEOUT_MINUTES)
     )
     last_activity_at: datetime = field(default_factory=datetime.utcnow)
-    checkout_ids: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    device_fingerprint: Optional[str] = None
+    checkout_ids: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    ip_address: str | None = None
+    user_agent: str | None = None
+    device_fingerprint: str | None = None
 
 
 # Payment link models
@@ -337,19 +336,19 @@ class PaymentLink:
     link_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     checkout_id: str = ""
     url: str = ""
-    short_url: Optional[str] = None
+    short_url: str | None = None
     status: str = "active"  # active, used, expired, revoked
     created_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: datetime = field(
         default_factory=lambda: datetime.utcnow() + timedelta(hours=DEFAULT_PAYMENT_LINK_EXPIRATION_HOURS)
     )
-    used_at: Optional[datetime] = None
+    used_at: datetime | None = None
     max_uses: int = 1
     use_count: int = 0
     amount: Decimal = Decimal("0")
     currency: str = "USD"
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # Webhook delivery models
@@ -360,18 +359,18 @@ class WebhookDelivery:
     webhook_id: str = ""
     endpoint_url: str = ""
     event_type: str = ""
-    payload: Dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
     status: WebhookDeliveryStatus = WebhookDeliveryStatus.PENDING
     attempt_count: int = 0
     max_attempts: int = 5
     created_at: datetime = field(default_factory=datetime.utcnow)
-    last_attempt_at: Optional[datetime] = None
-    next_retry_at: Optional[datetime] = None
-    delivered_at: Optional[datetime] = None
-    response_status_code: Optional[int] = None
-    response_body: Optional[str] = None
-    error_message: Optional[str] = None
-    headers: Dict[str, str] = field(default_factory=dict)
+    last_attempt_at: datetime | None = None
+    next_retry_at: datetime | None = None
+    delivered_at: datetime | None = None
+    response_status_code: int | None = None
+    response_body: str | None = None
+    error_message: str | None = None
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -380,13 +379,13 @@ class WebhookEndpoint:
     endpoint_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     url: str = ""
     secret: str = ""
-    events: List[str] = field(default_factory=list)  # Event types to receive
+    events: list[str] = field(default_factory=list)  # Event types to receive
     enabled: bool = True
     created_at: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     failure_count: int = 0
-    last_success_at: Optional[datetime] = None
-    last_failure_at: Optional[datetime] = None
+    last_success_at: datetime | None = None
+    last_failure_at: datetime | None = None
 
 
 # Checkout customization models
@@ -394,18 +393,18 @@ class WebhookEndpoint:
 class CheckoutCustomization:
     """Checkout UI and behavior customization."""
     # Branding
-    logo_url: Optional[str] = None
-    primary_color: Optional[str] = None
-    background_color: Optional[str] = None
-    button_color: Optional[str] = None
-    font_family: Optional[str] = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    background_color: str | None = None
+    button_color: str | None = None
+    font_family: str | None = None
     # Display
-    display_name: Optional[str] = None
-    display_description: Optional[str] = None
-    terms_url: Optional[str] = None
-    privacy_url: Optional[str] = None
-    support_email: Optional[str] = None
-    support_phone: Optional[str] = None
+    display_name: str | None = None
+    display_description: str | None = None
+    terms_url: str | None = None
+    privacy_url: str | None = None
+    support_email: str | None = None
+    support_phone: str | None = None
     # Behavior
     collect_billing_address: bool = False
     collect_shipping_address: bool = False
@@ -415,9 +414,9 @@ class CheckoutCustomization:
     # Locale
     locale: str = "en"
     # Custom fields
-    custom_fields: List[Dict[str, Any]] = field(default_factory=list)
+    custom_fields: list[dict[str, Any]] = field(default_factory=list)
     # Additional metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # Fraud detection models
@@ -428,12 +427,12 @@ class FraudSignal:
     signal_value: Any = None
     risk_score: float = 0.0  # Supports both 0..1 and 0..100 conventions
     confidence: float = 1.0  # 0.0 to 1.0
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     # Backward-compatible fields
-    name: Optional[str] = None
-    provider: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    name: str | None = None
+    provider: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # Keep old/new names interoperable.
@@ -457,14 +456,14 @@ class FraudCheckResult:
     decision: FraudDecision = FraudDecision.APPROVE
     risk_level: FraudRiskLevel = FraudRiskLevel.LOW
     risk_score: float = 0.0  # Overall score 0.0 to 100.0
-    signals: List[FraudSignal] = field(default_factory=list)
-    rules_triggered: List[str] = field(default_factory=list)
+    signals: list[FraudSignal] = field(default_factory=list)
+    rules_triggered: list[str] = field(default_factory=list)
     provider: str = "internal"  # fraud detection provider
-    provider_reference: Optional[str] = None
+    provider_reference: str | None = None
     checked_at: datetime = field(default_factory=datetime.utcnow)
-    review_reason: Optional[str] = None
+    review_reason: str | None = None
     manual_review_required: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -472,12 +471,12 @@ class FraudRule:
     """Fraud detection rule configuration."""
     rule_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
-    description: Optional[str] = None
+    description: str | None = None
     enabled: bool = True
     rule_type: str = "threshold"  # threshold, velocity, pattern, ml
-    conditions: Dict[str, Any] = field(default_factory=dict)
+    conditions: dict[str, Any] = field(default_factory=dict)
     action: FraudDecision = FraudDecision.REVIEW
     priority: int = 100
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)

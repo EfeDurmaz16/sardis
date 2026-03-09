@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
-from typing import Awaitable, Callable, Optional
 
-from .base import CardProvider
 from ..models import Card, CardTransaction, CardType
+from .base import CardProvider
 
-
-WalletOrgResolver = Callable[[str], Awaitable[Optional[str]]]
+WalletOrgResolver = Callable[[str], Awaitable[str | None]]
 
 
 class OrganizationCardProviderRouter(CardProvider):
@@ -80,7 +79,7 @@ class OrganizationCardProviderRouter(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
     ) -> Card:
         provider = await self._provider_for_wallet(wallet_id)
         card = await provider.create_card(
@@ -94,7 +93,7 @@ class OrganizationCardProviderRouter(CardProvider):
         self._register_card(card, provider)
         return card
 
-    async def get_card(self, provider_card_id: str) -> Optional[Card]:
+    async def get_card(self, provider_card_id: str) -> Card | None:
         provider = await self._resolve_provider_by_card(provider_card_id)
         card = await provider.get_card(provider_card_id)
         if card:
@@ -128,9 +127,9 @@ class OrganizationCardProviderRouter(CardProvider):
     async def update_limits(
         self,
         provider_card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         provider = await self._resolve_provider_by_card(provider_card_id)
         card = await provider.update_limits(
@@ -161,7 +160,7 @@ class OrganizationCardProviderRouter(CardProvider):
             offset=offset,
         )
 
-    async def get_transaction(self, provider_tx_id: str) -> Optional[CardTransaction]:
+    async def get_transaction(self, provider_tx_id: str) -> CardTransaction | None:
         tx = await self.default_provider.get_transaction(provider_tx_id)
         if tx is not None:
             return tx

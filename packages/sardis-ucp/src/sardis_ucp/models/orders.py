@@ -6,11 +6,11 @@ Orders represent completed checkouts and track fulfillment status.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .mandates import UCPLineItem, UCPCurrency
+from .mandates import UCPCurrency, UCPLineItem
 
 
 class UCPOrderStatus(str, Enum):
@@ -45,15 +45,15 @@ class UCPShippingAddress:
 
     name: str
     line1: str
-    line2: Optional[str] = None
+    line2: str | None = None
     city: str = ""
     state: str = ""
     postal_code: str = ""
     country: str = "US"
-    phone: Optional[str] = None
-    email: Optional[str] = None
+    phone: str | None = None
+    email: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "name": self.name,
@@ -74,12 +74,12 @@ class UCPFulfillmentEvent:
 
     event_id: str
     status: UCPFulfillmentStatus
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    location: Optional[str] = None
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    location: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "event_id": self.event_id,
@@ -100,31 +100,31 @@ class UCPFulfillment:
     status: UCPFulfillmentStatus = UCPFulfillmentStatus.PENDING
 
     # Shipping details
-    carrier: Optional[str] = None
-    tracking_number: Optional[str] = None
-    tracking_url: Optional[str] = None
-    shipping_address: Optional[UCPShippingAddress] = None
+    carrier: str | None = None
+    tracking_number: str | None = None
+    tracking_url: str | None = None
+    shipping_address: UCPShippingAddress | None = None
 
     # Line items being fulfilled (subset of order items)
-    line_item_ids: List[str] = field(default_factory=list)
+    line_item_ids: list[str] = field(default_factory=list)
 
     # Timeline
-    events: List[UCPFulfillmentEvent] = field(default_factory=list)
-    shipped_at: Optional[datetime] = None
-    delivered_at: Optional[datetime] = None
-    estimated_delivery: Optional[datetime] = None
+    events: list[UCPFulfillmentEvent] = field(default_factory=list)
+    shipped_at: datetime | None = None
+    delivered_at: datetime | None = None
+    estimated_delivery: datetime | None = None
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_event(
         self,
         event_id: str,
         status: UCPFulfillmentStatus,
-        location: Optional[str] = None,
-        description: Optional[str] = None,
+        location: str | None = None,
+        description: str | None = None,
     ) -> UCPFulfillmentEvent:
         """Add a fulfillment event and update status."""
         event = UCPFulfillmentEvent(
@@ -135,7 +135,7 @@ class UCPFulfillment:
         )
         self.events.append(event)
         self.status = status
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
         if status == UCPFulfillmentStatus.SHIPPED and self.shipped_at is None:
             self.shipped_at = event.timestamp
@@ -144,7 +144,7 @@ class UCPFulfillment:
 
         return event
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "fulfillment_id": self.fulfillment_id,
@@ -182,7 +182,7 @@ class UCPOrder:
     status: UCPOrderStatus = UCPOrderStatus.PENDING
 
     # Line items
-    line_items: List[UCPLineItem] = field(default_factory=list)
+    line_items: list[UCPLineItem] = field(default_factory=list)
     currency: UCPCurrency = UCPCurrency.USD
 
     # Pricing (as confirmed at checkout)
@@ -193,56 +193,56 @@ class UCPOrder:
     total_minor: int = 0
 
     # Payment information
-    payment_mandate_id: Optional[str] = None
-    chain_tx_hash: Optional[str] = None
-    ledger_tx_id: Optional[str] = None
-    payment_confirmed_at: Optional[datetime] = None
+    payment_mandate_id: str | None = None
+    chain_tx_hash: str | None = None
+    ledger_tx_id: str | None = None
+    payment_confirmed_at: datetime | None = None
 
     # Fulfillment
-    fulfillments: List[UCPFulfillment] = field(default_factory=list)
+    fulfillments: list[UCPFulfillment] = field(default_factory=list)
     requires_shipping: bool = True
-    shipping_address: Optional[UCPShippingAddress] = None
+    shipping_address: UCPShippingAddress | None = None
 
     # Refund tracking
     refunded_amount_minor: int = 0
-    refund_reason: Optional[str] = None
+    refund_reason: str | None = None
 
     # Timeline
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    cancelled_at: datetime | None = None
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def confirm_payment(
         self,
         payment_mandate_id: str,
         chain_tx_hash: str,
-        ledger_tx_id: Optional[str] = None,
+        ledger_tx_id: str | None = None,
     ) -> None:
         """Mark the order as payment confirmed."""
         self.payment_mandate_id = payment_mandate_id
         self.chain_tx_hash = chain_tx_hash
         self.ledger_tx_id = ledger_tx_id
-        self.payment_confirmed_at = datetime.now(timezone.utc)
+        self.payment_confirmed_at = datetime.now(UTC)
         self.status = UCPOrderStatus.CONFIRMED
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
-    def cancel(self, reason: Optional[str] = None) -> None:
+    def cancel(self, reason: str | None = None) -> None:
         """Cancel the order."""
         self.status = UCPOrderStatus.CANCELLED
-        self.cancelled_at = datetime.now(timezone.utc)
-        self.updated_at = datetime.now(timezone.utc)
+        self.cancelled_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
         if reason:
             self.metadata["cancellation_reason"] = reason
 
-    def refund(self, amount_minor: int, reason: Optional[str] = None) -> None:
+    def refund(self, amount_minor: int, reason: str | None = None) -> None:
         """Process a refund for the order."""
         self.refunded_amount_minor += amount_minor
         self.refund_reason = reason
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
         if self.refunded_amount_minor >= self.total_minor:
             self.status = UCPOrderStatus.REFUNDED
@@ -252,13 +252,13 @@ class UCPOrder:
     def complete(self) -> None:
         """Mark the order as complete."""
         self.status = UCPOrderStatus.COMPLETED
-        self.completed_at = datetime.now(timezone.utc)
-        self.updated_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def add_fulfillment(self, fulfillment: UCPFulfillment) -> None:
         """Add a fulfillment to the order."""
         self.fulfillments.append(fulfillment)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
         # Update order status based on fulfillment status
         if fulfillment.status == UCPFulfillmentStatus.SHIPPED:
@@ -273,7 +273,7 @@ class UCPOrder:
             if all_delivered:
                 self.status = UCPOrderStatus.DELIVERED
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "order_id": self.order_id,

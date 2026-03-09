@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Awaitable, Optional
 import os
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from decimal import Decimal
 
+from ..models import Card, CardStatus, CardTransaction, CardType, FundingSource, TransactionStatus
 from .base import CardProvider
-from ..models import Card, CardTransaction, CardType, CardStatus, TransactionStatus, FundingSource
 
 
 class StripeIssuingProvider(CardProvider):
@@ -33,9 +32,9 @@ class StripeIssuingProvider(CardProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        webhook_secret: Optional[str] = None,
-        policy_evaluator: Optional[Callable[[str, Decimal, str, str], Awaitable[tuple[bool, str]]]] = None,
+        api_key: str | None = None,
+        webhook_secret: str | None = None,
+        policy_evaluator: Callable[[str, Decimal, str, str], Awaitable[tuple[bool, str]]] | None = None,
     ) -> None:
         try:
             import stripe
@@ -131,7 +130,7 @@ class StripeIssuingProvider(CardProvider):
             limit_per_tx=limit_per_tx,
             limit_daily=limit_daily,
             limit_monthly=limit_monthly,
-            created_at=datetime.fromtimestamp(stripe_card.get("created", 0), tz=timezone.utc),
+            created_at=datetime.fromtimestamp(stripe_card.get("created", 0), tz=UTC),
         )
 
     def _stripe_auth_to_model(self, stripe_auth) -> CardTransaction:
@@ -159,7 +158,7 @@ class StripeIssuingProvider(CardProvider):
             merchant_id=merchant_data.get("network_id", ""),
             status=status,
             decline_reason=stripe_auth.get("request_history", [{}])[-1].get("reason") if not stripe_auth.get("approved") else None,
-            created_at=datetime.fromtimestamp(stripe_auth.get("created", 0), tz=timezone.utc),
+            created_at=datetime.fromtimestamp(stripe_auth.get("created", 0), tz=UTC),
         )
 
     @staticmethod
@@ -177,11 +176,11 @@ class StripeIssuingProvider(CardProvider):
         limit_per_tx: Decimal,
         limit_daily: Decimal,
         limit_monthly: Decimal,
-        locked_merchant_id: Optional[str] = None,
-        cardholder_name: Optional[str] = None,
-        cardholder_email: Optional[str] = None,
-        cardholder_phone: Optional[str] = None,
-        reuse_cardholder_id: Optional[str] = None,
+        locked_merchant_id: str | None = None,
+        cardholder_name: str | None = None,
+        cardholder_email: str | None = None,
+        cardholder_phone: str | None = None,
+        reuse_cardholder_id: str | None = None,
     ) -> Card:
         # Build spending controls
         spending_limits = []
@@ -276,11 +275,11 @@ class StripeIssuingProvider(CardProvider):
         card.limit_monthly = limit_monthly
         card.locked_merchant_id = locked_merchant_id
         card.status = CardStatus.ACTIVE
-        card.activated_at = datetime.now(timezone.utc)
+        card.activated_at = datetime.now(UTC)
 
         return card
 
-    async def get_card(self, provider_card_id: str) -> Optional[Card]:
+    async def get_card(self, provider_card_id: str) -> Card | None:
         try:
             stripe_card = await asyncio.to_thread(
                 self._stripe.issuing.Card.retrieve, provider_card_id
@@ -296,7 +295,7 @@ class StripeIssuingProvider(CardProvider):
             status="active",
         )
         card = self._stripe_card_to_model(stripe_card)
-        card.activated_at = datetime.now(timezone.utc)
+        card.activated_at = datetime.now(UTC)
         return card
 
     async def freeze_card(self, provider_card_id: str) -> Card:
@@ -310,7 +309,7 @@ class StripeIssuingProvider(CardProvider):
         )
         card = self._stripe_card_to_model(stripe_card)
         card.status = CardStatus.FROZEN
-        card.frozen_at = datetime.now(timezone.utc)
+        card.frozen_at = datetime.now(UTC)
         return card
 
     async def unfreeze_card(self, provider_card_id: str) -> Card:
@@ -330,15 +329,15 @@ class StripeIssuingProvider(CardProvider):
             cancellation_reason="design_changed",  # Permanent cancellation
         )
         card = self._stripe_card_to_model(stripe_card)
-        card.cancelled_at = datetime.now(timezone.utc)
+        card.cancelled_at = datetime.now(UTC)
         return card
 
     async def update_limits(
         self,
         provider_card_id: str,
-        limit_per_tx: Optional[Decimal] = None,
-        limit_daily: Optional[Decimal] = None,
-        limit_monthly: Optional[Decimal] = None,
+        limit_per_tx: Decimal | None = None,
+        limit_daily: Decimal | None = None,
+        limit_monthly: Decimal | None = None,
     ) -> Card:
         # Get current card to preserve existing limits
         current_card = await self.get_card(provider_card_id)
@@ -450,7 +449,7 @@ class StripeIssuingProvider(CardProvider):
     async def get_transaction(
         self,
         provider_tx_id: str,
-    ) -> Optional[CardTransaction]:
+    ) -> CardTransaction | None:
         try:
             stripe_auth = await asyncio.to_thread(
                 self._stripe.issuing.Authorization.retrieve, provider_tx_id

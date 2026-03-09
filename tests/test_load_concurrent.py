@@ -12,22 +12,18 @@ concurrency control logic.
 from __future__ import annotations
 
 import asyncio
-import time
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
+from sardis_v2_core.holds import Hold, HoldResult
 from sardis_v2_core.spending_policy import (
     SpendingPolicy,
     TimeWindowLimit,
     TrustLevel,
     create_default_policy,
 )
-from sardis_v2_core.holds import Hold, HoldResult, HoldsRepository
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -171,7 +167,7 @@ class AtomicHoldsManager:
                 merchant_id=None,
                 amount=amount,
                 token=token,
-                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
             )
             self._holds.append(hold)
             return HoldResult.succeeded(hold)

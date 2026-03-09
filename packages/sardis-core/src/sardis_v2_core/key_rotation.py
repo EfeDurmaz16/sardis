@@ -6,10 +6,9 @@ Provides secure key rotation with grace periods for agent identities.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,23 +28,21 @@ class AgentKey:
     public_key: bytes
     algorithm: str  # "ed25519" or "ecdsa-p256"
     created_at: datetime
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
     status: KeyStatus = KeyStatus.ACTIVE
-    
+
     # For rotation tracking
-    previous_key_id: Optional[str] = None
-    rotation_started_at: Optional[datetime] = None
+    previous_key_id: str | None = None
+    rotation_started_at: datetime | None = None
     rotation_grace_period_hours: int = 24
-    
+
     @property
     def is_valid(self) -> bool:
         """Check if key is valid for signing."""
         if self.status not in (KeyStatus.ACTIVE, KeyStatus.ROTATING):
             return False
-        if self.expires_at and datetime.now(timezone.utc) > self.expires_at:
-            return False
-        return True
-    
+        return not (self.expires_at and datetime.now(UTC) > self.expires_at)
+
     @property
     def is_in_grace_period(self) -> bool:
         """Check if key is in rotation grace period."""
@@ -54,9 +51,9 @@ class AgentKey:
         if not self.rotation_started_at:
             return False
         grace_end = self.rotation_started_at + timedelta(hours=self.rotation_grace_period_hours)
-        return datetime.now(timezone.utc) < grace_end
-    
-    def to_dict(self) -> Dict:
+        return datetime.now(UTC) < grace_end
+
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "key_id": self.key_id,
@@ -78,7 +75,7 @@ class RotationEvent:
     old_key_id: str
     new_key_id: str
     initiated_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     reason: str = "scheduled"
     initiated_by: str = "system"
 
@@ -88,16 +85,16 @@ class KeyRotationPolicy:
     """Key rotation policy configuration."""
     # Automatic rotation interval
     rotation_interval_days: int = 90
-    
+
     # Grace period for old keys
     grace_period_hours: int = 24
-    
+
     # Maximum key age before forced rotation
     max_key_age_days: int = 180
-    
+
     # Whether to allow multiple active keys
     allow_multiple_active: bool = False
-    
+
     # Notification threshold (days before rotation)
     notification_threshold_days: int = 7
 
@@ -105,17 +102,17 @@ class KeyRotationPolicy:
 class KeyRotationManager:
     """
     Manages agent key rotation with grace periods.
-    
+
     Features:
     - Automatic rotation scheduling
     - Grace period support for old keys
     - Rotation event logging
     - Policy-based rotation
     """
-    
+
     def __init__(
         self,
-        policy: Optional[KeyRotationPolicy] = None,
+        policy: KeyRotationPolicy | None = None,
     ):
         self._policy = policy or KeyRotationPolicy()
         # NOTE: Redis migration limitation — key objects contain bytes (public_key) and
@@ -124,43 +121,43 @@ class KeyRotationManager:
         # serializing/deserializing AgentKey objects on every access. For now, we keep
         # in-memory dicts as the primary store, which is process-local. A future migration
         # should use RedisStateStore(namespace="key_rotation") with full async conversion.
-        self._keys: Dict[str, Dict[str, AgentKey]] = {}  # agent_id -> key_id -> key
-        self._active_keys: Dict[str, str] = {}  # agent_id -> active_key_id
-        self._rotation_events: List[RotationEvent] = []
-    
+        self._keys: dict[str, dict[str, AgentKey]] = {}  # agent_id -> key_id -> key
+        self._active_keys: dict[str, str] = {}  # agent_id -> active_key_id
+        self._rotation_events: list[RotationEvent] = []
+
     def register_key(
         self,
         agent_id: str,
         key_id: str,
         public_key: bytes,
         algorithm: str = "ed25519",
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
     ) -> AgentKey:
         """
         Register a new key for an agent.
-        
+
         If the agent has an existing active key and allow_multiple_active is False,
         the old key will be put into rotation mode.
         """
-        now = datetime.now(timezone.utc)
-        
+        now = datetime.now(UTC)
+
         # Set expiration based on policy if not provided
         if expires_at is None:
             expires_at = now + timedelta(days=self._policy.rotation_interval_days)
-        
+
         # Check if agent has existing active key
         current_active_id = self._active_keys.get(agent_id)
         previous_key_id = None
-        
+
         if current_active_id and not self._policy.allow_multiple_active:
             # Put current key into rotation mode
             current_key = self._keys[agent_id][current_active_id]
             current_key.status = KeyStatus.ROTATING
             current_key.rotation_started_at = now
             previous_key_id = current_active_id
-            
+
             logger.info(f"Key {current_active_id} for agent {agent_id} entering grace period")
-        
+
         # Create new key
         new_key = AgentKey(
             key_id=key_id,
@@ -172,15 +169,15 @@ class KeyRotationManager:
             previous_key_id=previous_key_id,
             rotation_grace_period_hours=self._policy.grace_period_hours,
         )
-        
+
         # Store key
         if agent_id not in self._keys:
             self._keys[agent_id] = {}
         self._keys[agent_id][key_id] = new_key
         self._active_keys[agent_id] = key_id
-        
+
         logger.info(f"Registered new key {key_id} for agent {agent_id}")
-        
+
         # Log rotation event if replacing
         if previous_key_id:
             event = RotationEvent(
@@ -192,44 +189,44 @@ class KeyRotationManager:
                 reason="registration",
             )
             self._rotation_events.append(event)
-        
+
         return new_key
-    
-    def get_active_key(self, agent_id: str) -> Optional[AgentKey]:
+
+    def get_active_key(self, agent_id: str) -> AgentKey | None:
         """Get the currently active key for an agent."""
         key_id = self._active_keys.get(agent_id)
         if not key_id:
             return None
-        
+
         agent_keys = self._keys.get(agent_id, {})
         key = agent_keys.get(key_id)
-        
+
         if key and key.is_valid:
             return key
         return None
-    
-    def get_valid_keys(self, agent_id: str) -> List[AgentKey]:
+
+    def get_valid_keys(self, agent_id: str) -> list[AgentKey]:
         """Get all valid keys for an agent (including grace period keys)."""
         agent_keys = self._keys.get(agent_id, {})
         return [k for k in agent_keys.values() if k.is_valid]
-    
+
     def verify_with_any_valid_key(
         self,
         agent_id: str,
         message: bytes,
         signature: bytes,
-    ) -> Optional[AgentKey]:
+    ) -> AgentKey | None:
         """
         Attempt to verify a signature with any valid key.
-        
+
         Returns the key that successfully verified, or None.
         """
         from .identity import AgentIdentity
-        
+
         valid_keys = self.get_valid_keys(agent_id)
-        
+
         for key in valid_keys:
-            identity = AgentIdentity(
+            AgentIdentity(
                 agent_id=agent_id,
                 public_key=key.public_key,
                 algorithm=key.algorithm,
@@ -240,9 +237,9 @@ class KeyRotationManager:
                     return key
             except Exception:
                 continue
-        
+
         return None
-    
+
     def _verify_raw(self, key: AgentKey, message: bytes, signature: bytes) -> bool:
         """Raw signature verification."""
         try:
@@ -255,14 +252,14 @@ class KeyRotationManager:
                 from cryptography.hazmat.primitives import hashes
                 from cryptography.hazmat.primitives.asymmetric import ec
                 from cryptography.hazmat.primitives.serialization import load_der_public_key
-                
+
                 public_key = load_der_public_key(key.public_key)
                 public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
                 return True
         except Exception:
             return False
         return False
-    
+
     def rotate_key(
         self,
         agent_id: str,
@@ -273,16 +270,16 @@ class KeyRotationManager:
     ) -> AgentKey:
         """
         Perform a key rotation for an agent.
-        
+
         Returns the new key.
         """
         import secrets
-        
+
         new_key_id = f"key_{secrets.token_hex(8)}"
-        now = datetime.now(timezone.utc)
-        
+        now = datetime.now(UTC)
+
         old_key_id = self._active_keys.get(agent_id)
-        
+
         # Register new key (this handles grace period for old key)
         new_key = self.register_key(
             agent_id=agent_id,
@@ -290,7 +287,7 @@ class KeyRotationManager:
             public_key=new_public_key,
             algorithm=new_algorithm,
         )
-        
+
         # Update rotation event
         if old_key_id:
             event = RotationEvent(
@@ -303,35 +300,35 @@ class KeyRotationManager:
                 initiated_by=initiated_by,
             )
             self._rotation_events.append(event)
-        
+
         return new_key
-    
+
     def revoke_key(self, agent_id: str, key_id: str, reason: str = "manual") -> bool:
         """Revoke a specific key."""
         agent_keys = self._keys.get(agent_id, {})
         key = agent_keys.get(key_id)
-        
+
         if not key:
             return False
-        
+
         key.status = KeyStatus.REVOKED
-        
+
         # If this was the active key, clear active status
         if self._active_keys.get(agent_id) == key_id:
             del self._active_keys[agent_id]
-        
+
         logger.info(f"Revoked key {key_id} for agent {agent_id}: {reason}")
         return True
-    
+
     def cleanup_expired_keys(self) -> int:
         """
         Clean up expired keys and finalize rotation grace periods.
-        
+
         Returns the number of keys affected.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         count = 0
-        
+
         for agent_id, agent_keys in self._keys.items():
             for key_id, key in list(agent_keys.items()):
                 # Check expiration
@@ -340,48 +337,46 @@ class KeyRotationManager:
                         key.status = KeyStatus.EXPIRED
                         count += 1
                         logger.info(f"Key {key_id} for agent {agent_id} expired")
-                
+
                 # Check grace period end
-                if key.status == KeyStatus.ROTATING:
-                    if not key.is_in_grace_period:
-                        key.status = KeyStatus.REVOKED
-                        count += 1
-                        logger.info(f"Key {key_id} for agent {agent_id} grace period ended")
-        
+                if key.status == KeyStatus.ROTATING and not key.is_in_grace_period:
+                    key.status = KeyStatus.REVOKED
+                    count += 1
+                    logger.info(f"Key {key_id} for agent {agent_id} grace period ended")
+
         return count
-    
-    def get_keys_needing_rotation(self) -> List[tuple]:
+
+    def get_keys_needing_rotation(self) -> list[tuple]:
         """Get list of (agent_id, key_id) pairs that should be rotated soon."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         threshold = timedelta(days=self._policy.notification_threshold_days)
         result = []
-        
+
         for agent_id, key_id in self._active_keys.items():
             key = self._keys[agent_id][key_id]
-            if key.expires_at:
-                if key.expires_at - now <= threshold:
-                    result.append((agent_id, key_id, key.expires_at))
-        
+            if key.expires_at and key.expires_at - now <= threshold:
+                result.append((agent_id, key_id, key.expires_at))
+
         return result
-    
-    def get_rotation_history(self, agent_id: str) -> List[RotationEvent]:
+
+    def get_rotation_history(self, agent_id: str) -> list[RotationEvent]:
         """Get rotation event history for an agent."""
         return [e for e in self._rotation_events if e.agent_id == agent_id]
 
 
 # Singleton instance
-_key_rotation_manager: Optional[KeyRotationManager] = None
+_key_rotation_manager: KeyRotationManager | None = None
 
 
 def get_key_rotation_manager(
-    policy: Optional[KeyRotationPolicy] = None,
+    policy: KeyRotationPolicy | None = None,
 ) -> KeyRotationManager:
     """Get the global key rotation manager instance."""
     global _key_rotation_manager
-    
+
     if _key_rotation_manager is None:
         _key_rotation_manager = KeyRotationManager(policy)
-    
+
     return _key_rotation_manager
 
 

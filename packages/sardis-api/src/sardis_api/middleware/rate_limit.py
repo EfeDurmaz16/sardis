@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import inspect
-import ipaddress
 import logging
 import os
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Callable, Optional, Set
 
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,7 +18,7 @@ _logger = logging.getLogger("sardis.api.rate_limit")
 
 # SECURITY: Only trust X-Forwarded-For from known reverse proxy IPs.
 # Without this, any client can spoof the header to bypass rate limits.
-_TRUSTED_PROXIES: Set[str] = set(
+_TRUSTED_PROXIES: set[str] = set(
     filter(None, os.getenv("SARDIS_TRUSTED_PROXIES", "127.0.0.1,::1").split(","))
 )
 
@@ -57,7 +56,7 @@ class RateLimitConfig:
     # org_overrides example:
     #   {"org_abc": {"requests_per_minute": 500, "requests_per_hour": 5000}}
 
-    def for_org(self, org_id: str) -> "RateLimitConfig":
+    def for_org(self, org_id: str) -> RateLimitConfig:
         """Return org-specific config, falling back to defaults."""
         override = self.org_overrides.get(org_id)
         if not override:
@@ -174,7 +173,7 @@ class InMemoryRateLimiter:
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self._states: dict[str, RateLimitState] = defaultdict(RateLimitState)
-    
+
     def _get_client_key(self, request: Request) -> tuple[str, str | None]:
         """Get a unique key for the client plus optional org_id."""
         org_id = getattr(request.state, "org_id", None) if hasattr(request, "state") else None
@@ -226,10 +225,9 @@ class InMemoryRateLimiter:
         }
 
         # Check if over limit
-        if state.minute_count >= effective_config.requests_per_minute:
-            if state.tokens < 1:
-                headers["Retry-After"] = str(int(state.minute_reset - now))
-                return False, headers
+        if state.minute_count >= effective_config.requests_per_minute and state.tokens < 1:
+            headers["Retry-After"] = str(int(state.minute_reset - now))
+            return False, headers
 
         if state.hour_count >= effective_config.requests_per_hour:
             headers["Retry-After"] = str(int(state.hour_reset - now))
@@ -247,8 +245,8 @@ class InMemoryRateLimiter:
 
 def create_rate_limiter(config: RateLimitConfig):
     """Factory to create appropriate rate limiter based on environment."""
-    import os
     import logging
+    import os
 
     logger = logging.getLogger(__name__)
     redis_url = (
@@ -284,18 +282,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        config: Optional[RateLimitConfig] = None,
-        exclude_paths: Optional[list[str]] = None,
+        config: RateLimitConfig | None = None,
+        exclude_paths: list[str] | None = None,
     ):
         super().__init__(app)
         self.limiter = create_rate_limiter(config or RateLimitConfig())
         self.exclude_paths = exclude_paths or ["/health", "/", "/api/v2/docs", "/api/v2/openapi.json"]
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip rate limiting for excluded paths
         if request.url.path in self.exclude_paths:
             return await call_next(request)
-        
+
         # Check rate limit
         check = getattr(self.limiter, "check_rate_limit", None)
         if check is None:
@@ -304,7 +302,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             allowed, headers = await check(request)
         else:
             allowed, headers = check(request)
-        
+
         if not allowed:
             import json
             import time
@@ -327,19 +325,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers=headers,
                 media_type="application/problem+json",
             )
-        
+
         # Process request and add rate limit headers to response
         response = await call_next(request)
         for key, value in headers.items():
             response.headers[key] = value
-        
+
         return response
 
 
 def rate_limit(requests_per_minute: int = 100):
     """
     Decorator for rate limiting specific endpoints.
-    
+
     Usage:
         @app.get("/api/expensive")
         @rate_limit(requests_per_minute=10)
@@ -347,7 +345,7 @@ def rate_limit(requests_per_minute: int = 100):
             ...
     """
     limiter = InMemoryRateLimiter(RateLimitConfig(requests_per_minute=requests_per_minute))
-    
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(request: Request, *args, **kwargs):

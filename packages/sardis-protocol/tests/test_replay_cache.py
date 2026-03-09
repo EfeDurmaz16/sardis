@@ -1,12 +1,9 @@
 """Tests for mandate replay cache and InMemoryMandateCache."""
-import asyncio
 import time
 
 import pytest
-
-from sardis_protocol.storage import ReplayCache
 from sardis_protocol.mandate_cache import InMemoryMandateCache, MandateCacheConfig
-
+from sardis_protocol.storage import ReplayCache
 
 # --- ReplayCache ---
 

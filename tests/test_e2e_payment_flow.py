@@ -5,15 +5,17 @@ using mocked external providers.
 """
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 def _load_cards_module():
-    import importlib.util, sys
+    import importlib.util
+    import sys
     repo_root = Path(__file__).resolve().parents[1]
     cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
     spec = importlib.util.spec_from_file_location(

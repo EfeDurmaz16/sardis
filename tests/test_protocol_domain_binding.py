@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 import time
 
+import pytest
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.verifier import MandateVerifier, VerificationResult
 from sardis_v2_core import SardisSettings

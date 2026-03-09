@@ -8,12 +8,11 @@ import re
 import secrets
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import jwt as pyjwt
-from fastapi import APIRouter, HTTPException, status, Form, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 _logger = logging.getLogger(__name__)
@@ -50,7 +49,7 @@ class TokenResponse(BaseModel):
 class TokenPayload(BaseModel):
     sub: str  # subject (user id)
     role: str
-    org_id: Optional[str] = None
+    org_id: str | None = None
     exp: int  # expiration timestamp
     iat: int  # issued at timestamp
     jti: str  # JWT ID for revocation
@@ -59,7 +58,7 @@ class TokenPayload(BaseModel):
 class UserInfo(BaseModel):
     username: str
     role: str
-    organization_id: Optional[str] = None
+    organization_id: str | None = None
 
 
 class BootstrapAPIKeyRequest(BaseModel):
@@ -68,8 +67,8 @@ class BootstrapAPIKeyRequest(BaseModel):
     name: str = "Demo Admin Key"
     scopes: list[str] = Field(default_factory=lambda: ["admin", "*"])
     rate_limit: int = 100
-    expires_in_days: Optional[int] = None
-    organization_id: Optional[str] = None
+    expires_in_days: int | None = None
+    organization_id: str | None = None
 
 
 class BootstrapAPIKeyResponse(BaseModel):
@@ -79,7 +78,7 @@ class BootstrapAPIKeyResponse(BaseModel):
     organization_id: str
     scopes: list[str]
     rate_limit: int
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
 
 
 def create_jwt_token(payload: dict) -> str:
@@ -87,7 +86,7 @@ def create_jwt_token(payload: dict) -> str:
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_jwt_token(token: str) -> Optional[dict]:
+def verify_jwt_token(token: str) -> dict | None:
     """
     Verify a JWT token and return its payload if valid.
 
@@ -121,8 +120,8 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 async def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Optional[UserInfo]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> UserInfo | None:
     """
     Dependency to get the current authenticated user from JWT token.
 
@@ -181,7 +180,7 @@ async def get_current_user(
 
 
 async def require_auth(
-    user: Optional[UserInfo] = Depends(get_current_user),
+    user: UserInfo | None = Depends(get_current_user),
 ) -> UserInfo:
     """
     Dependency that requires authentication.
@@ -276,7 +275,7 @@ async def login(
         "Register a user account via POST /auth/register instead."
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     exp = now + timedelta(hours=JWT_EXPIRATION_HOURS)
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
     configured_org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "").strip()
@@ -317,7 +316,7 @@ async def refresh_token(
 
     Requires a valid (non-expired) token.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     exp = now + timedelta(hours=JWT_EXPIRATION_HOURS)
 
     payload = {
@@ -353,7 +352,7 @@ async def get_me(user: UserInfo = Depends(require_auth)):
 async def logout(
     request: Request,
     user: UserInfo = Depends(require_auth),
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ):
     """
     Logout endpoint.
@@ -384,7 +383,7 @@ async def logout(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    now_ts = int(datetime.now(timezone.utc).timestamp())
+    now_ts = int(datetime.now(UTC).timestamp())
     ttl_seconds = max(0, exp - now_ts)
 
     cache = getattr(request.app.state, "cache_service", None)
@@ -436,7 +435,7 @@ async def bootstrap_api_key(
 
     expires_at = None
     if body.expires_in_days:
-        expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_in_days)
+        expires_at = datetime.now(UTC) + timedelta(days=body.expires_in_days)
 
     manager = get_api_key_manager()
     full_key, api_key = await manager.create_key(
@@ -588,7 +587,7 @@ async def signup(request: Request, body: SignupRequest):
 class RegisterRequest(BaseModel):
     email: str = Field(..., min_length=5, max_length=255)
     password: str = Field(..., min_length=8, max_length=128)
-    display_name: Optional[str] = None
+    display_name: str | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -618,7 +617,7 @@ class APIKeyCreateRequest(BaseModel):
 
 
 class APIKeyResponse(BaseModel):
-    key: Optional[str] = None  # Only in create response
+    key: str | None = None  # Only in create response
     key_id: str
     key_prefix: str
     org_id: str

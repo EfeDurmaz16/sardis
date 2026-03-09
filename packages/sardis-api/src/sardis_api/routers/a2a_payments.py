@@ -47,23 +47,23 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from decimal import Decimal
-from typing import Any, Optional, Literal, List
 from datetime import datetime
+from decimal import Decimal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
-from sardis_v2_core.a2a_escrow import EscrowManager, Escrow, EscrowState
+from sardis_v2_core.a2a_escrow import Escrow, EscrowManager, EscrowState
 from sardis_v2_core.a2a_settlement import SettlementEngine, SettlementResult
-from sardis_v2_core.tokens import TokenType
 from sardis_v2_core.exceptions import (
-    SardisNotFoundError,
-    SardisValidationError,
     SardisConflictError,
+    SardisNotFoundError,
     SardisTransactionFailedError,
+    SardisValidationError,
 )
+from sardis_v2_core.tokens import TokenType
+
 from sardis_api.authz import Principal, require_principal
 from sardis_api.kill_switch_dep import require_kill_switch_clear
 from sardis_api.transaction_cap_dep import enforce_transaction_caps
@@ -105,7 +105,7 @@ class CreateEscrowRequest(BaseModel):
     token: str = Field(default="USDC", description="Token type (USDC, USDT, etc.)")
     chain: str = Field(default="base", description="Blockchain network")
     timeout_hours: int = Field(default=24, gt=0, le=168, description="Escrow timeout in hours (max 7 days)")
-    metadata: Optional[dict] = Field(default=None, description="Optional metadata")
+    metadata: dict | None = Field(default=None, description="Optional metadata")
 
 
 class FundEscrowRequest(BaseModel):
@@ -121,7 +121,7 @@ class ConfirmDeliveryRequest(BaseModel):
 class RefundEscrowRequest(BaseModel):
     """Request to refund an escrow."""
     reason: str = Field(description="Reason for refund")
-    tx_hash: Optional[str] = Field(default=None, description="Optional refund transaction hash")
+    tx_hash: str | None = Field(default=None, description="Optional refund transaction hash")
 
 
 class DisputeEscrowRequest(BaseModel):
@@ -131,7 +131,7 @@ class DisputeEscrowRequest(BaseModel):
 
 class ReleaseEscrowRequest(BaseModel):
     """Request to release escrow funds."""
-    tx_hash: Optional[str] = Field(default=None, description="Optional settlement transaction hash")
+    tx_hash: str | None = Field(default=None, description="Optional settlement transaction hash")
 
 
 class EscrowResponse(BaseModel):
@@ -145,23 +145,23 @@ class EscrowResponse(BaseModel):
     state: str
     created_at: datetime
     expires_at: datetime
-    funded_at: Optional[datetime] = None
-    funding_tx_hash: Optional[str] = None
-    delivery_proof: Optional[str] = None
-    delivered_at: Optional[datetime] = None
-    released_at: Optional[datetime] = None
-    release_tx_hash: Optional[str] = None
-    refunded_at: Optional[datetime] = None
-    refund_tx_hash: Optional[str] = None
-    refund_reason: Optional[str] = None
-    disputed_at: Optional[datetime] = None
-    dispute_reason: Optional[str] = None
-    dispute_resolution: Optional[str] = None
+    funded_at: datetime | None = None
+    funding_tx_hash: str | None = None
+    delivery_proof: str | None = None
+    delivered_at: datetime | None = None
+    released_at: datetime | None = None
+    release_tx_hash: str | None = None
+    refunded_at: datetime | None = None
+    refund_tx_hash: str | None = None
+    refund_reason: str | None = None
+    disputed_at: datetime | None = None
+    dispute_reason: str | None = None
+    dispute_resolution: str | None = None
     metadata: dict
     updated_at: datetime
 
     @classmethod
-    def from_escrow(cls, escrow: Escrow) -> "EscrowResponse":
+    def from_escrow(cls, escrow: Escrow) -> EscrowResponse:
         """Convert Escrow to response model."""
         return cls(
             id=escrow.id,
@@ -193,22 +193,22 @@ class EscrowResponse(BaseModel):
 class SettlementResponse(BaseModel):
     """Settlement details response."""
     escrow_id: str
-    tx_hash: Optional[str]
+    tx_hash: str | None
     settlement_type: str
-    ledger_entries: List[str]
+    ledger_entries: list[str]
     settled_at: datetime
     payer_agent_id: str
     payee_agent_id: str
     amount: str
     token: str
     chain: str
-    block_number: Optional[int] = None
-    explorer_url: Optional[str] = None
-    execution_path: Optional[str] = None
-    user_op_hash: Optional[str] = None
+    block_number: int | None = None
+    explorer_url: str | None = None
+    execution_path: str | None = None
+    user_op_hash: str | None = None
 
     @classmethod
-    def from_settlement(cls, settlement: SettlementResult) -> "SettlementResponse":
+    def from_settlement(cls, settlement: SettlementResult) -> SettlementResponse:
         """Convert SettlementResult to response model."""
         return cls(
             escrow_id=settlement.escrow_id,
@@ -230,13 +230,13 @@ class SettlementResponse(BaseModel):
 
 class EscrowListResponse(BaseModel):
     """List of escrows response."""
-    escrows: List[EscrowResponse]
+    escrows: list[EscrowResponse]
     total: int
 
 
 class SettlementListResponse(BaseModel):
     """List of settlements response."""
-    settlements: List[SettlementResponse]
+    settlements: list[SettlementResponse]
     total: int
 
 
@@ -505,7 +505,7 @@ async def dispute_escrow(
 async def list_escrows(
     agent_id: str = Query(..., description="Agent ID to filter by"),
     role: Literal["payer", "payee", "any"] = Query("any", description="Filter by role"),
-    state: Optional[str] = Query(None, description="Filter by state"),
+    state: str | None = Query(None, description="Filter by state"),
     principal: Principal = Depends(require_principal),
 ) -> EscrowListResponse:
     """
@@ -545,8 +545,8 @@ async def list_escrows(
 
 @router.get("/settlements", response_model=SettlementListResponse)
 async def list_settlements(
-    agent_id: Optional[str] = Query(None, description="Filter by payer or payee agent ID"),
-    settlement_type: Optional[Literal["on_chain", "off_chain"]] = Query(None, description="Filter by settlement type"),
+    agent_id: str | None = Query(None, description="Filter by payer or payee agent ID"),
+    settlement_type: Literal["on_chain", "off_chain"] | None = Query(None, description="Filter by settlement type"),
     limit: int = Query(100, ge=1, le=500, description="Maximum results to return"),
     principal: Principal = Depends(require_principal),
 ) -> SettlementListResponse:

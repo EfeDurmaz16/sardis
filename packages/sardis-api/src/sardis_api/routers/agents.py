@@ -7,14 +7,13 @@ import hmac
 import json
 import logging
 import os
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sardis_v2_core import Agent, AgentPolicy, AgentRepository, SpendingLimits, WalletRepository
 
-from sardis_v2_core import Agent, AgentPolicy, SpendingLimits, AgentRepository, WalletRepository
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
@@ -30,51 +29,51 @@ class SpendingLimitsRequest(BaseModel):
 
 
 class AgentPolicyRequest(BaseModel):
-    allowed_merchants: Optional[List[str]] = None
-    blocked_merchants: List[str] = Field(default_factory=list)
-    allowed_categories: Optional[List[str]] = None
-    blocked_categories: List[str] = Field(default_factory=list)
-    require_approval_above: Optional[Decimal] = None
+    allowed_merchants: list[str] | None = None
+    blocked_merchants: list[str] = Field(default_factory=list)
+    allowed_categories: list[str] | None = None
+    blocked_categories: list[str] = Field(default_factory=list)
+    require_approval_above: Decimal | None = None
     auto_approve_below: Decimal = Field(default=Decimal("50.00"))
 
 
 class AgentManifestRequest(BaseModel):
     """KYA Agent Manifest — declares what this agent is authorized to do."""
-    capabilities: List[str] = Field(default_factory=list, description="e.g. ['saas_subscription', 'api_credits']")
+    capabilities: list[str] = Field(default_factory=list, description="e.g. ['saas_subscription', 'api_credits']")
     max_budget_per_tx: Decimal = Field(default=Decimal("50.00"), description="Max budget per single transaction")
     daily_budget: Decimal = Field(default=Decimal("500.00"), description="Max daily spending budget")
-    allowed_domains: List[str] = Field(default_factory=list, description="Merchant domain allowlist")
-    blocked_domains: List[str] = Field(default_factory=list, description="Merchant domain blocklist")
-    framework: Optional[str] = Field(default=None, description="Agent framework (langchain, crewai, etc.)")
-    framework_version: Optional[str] = None
+    allowed_domains: list[str] = Field(default_factory=list, description="Merchant domain allowlist")
+    blocked_domains: list[str] = Field(default_factory=list, description="Merchant domain blocklist")
+    framework: str | None = Field(default=None, description="Agent framework (langchain, crewai, etc.)")
+    framework_version: str | None = None
 
 
 class CreateAgentRequest(BaseModel):
     name: str
-    description: Optional[str] = None
-    spending_limits: Optional[SpendingLimitsRequest] = None
-    policy: Optional[AgentPolicyRequest] = None
-    manifest: Optional[AgentManifestRequest] = Field(default=None, description="KYA agent manifest")
-    metadata: Optional[dict] = None
+    description: str | None = None
+    spending_limits: SpendingLimitsRequest | None = None
+    policy: AgentPolicyRequest | None = None
+    manifest: AgentManifestRequest | None = Field(default=None, description="KYA agent manifest")
+    metadata: dict | None = None
     create_wallet: bool = Field(default=True, description="Automatically create a wallet for this agent")
     initial_balance: Decimal = Field(default=Decimal("0.00"))
 
 
 class UpdateAgentRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    spending_limits: Optional[SpendingLimitsRequest] = None
-    policy: Optional[AgentPolicyRequest] = None
-    is_active: Optional[bool] = None
-    metadata: Optional[dict] = None
+    name: str | None = None
+    description: str | None = None
+    spending_limits: SpendingLimitsRequest | None = None
+    policy: AgentPolicyRequest | None = None
+    is_active: bool | None = None
+    metadata: dict | None = None
 
 
 class AgentResponse(BaseModel):
     agent_id: str
     name: str
-    description: Optional[str]
+    description: str | None
     owner_id: str
-    wallet_id: Optional[str]
+    wallet_id: str | None
     spending_limits: dict
     policy: dict
     is_active: bool
@@ -85,7 +84,7 @@ class AgentResponse(BaseModel):
     updated_at: str
 
     @classmethod
-    def from_agent(cls, agent: Agent) -> "AgentResponse":
+    def from_agent(cls, agent: Agent) -> AgentResponse:
         return cls(
             agent_id=agent.agent_id,
             name=agent.name,
@@ -202,7 +201,7 @@ def _build_payment_identity(
     mode: str,
     chain: str,
 ) -> PaymentIdentityResponse:
-    issued_at = datetime.now(timezone.utc)
+    issued_at = datetime.now(UTC)
     expires_at = issued_at + timedelta(seconds=ttl_seconds)
     payload = {
         "v": 1,
@@ -255,7 +254,7 @@ def _decode_payment_identity(payment_identity_id: str) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment identity payload") from exc
 
-    now_ts = int(datetime.now(timezone.utc).timestamp())
+    now_ts = int(datetime.now(UTC).timestamp())
     if int(payload.get("exp", 0)) < now_ts:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Payment identity expired")
     return payload
@@ -387,10 +386,10 @@ async def create_agent(
     return AgentResponse.from_agent(agent)
 
 
-@router.get("", response_model=List[AgentResponse])
+@router.get("", response_model=list[AgentResponse])
 async def list_agents(
-    owner_id: Optional[str] = Query(None),
-    is_active: Optional[bool] = Query(None),
+    owner_id: str | None = Query(None),
+    is_active: bool | None = Query(None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     deps: AgentDependencies = Depends(get_deps),
@@ -561,8 +560,8 @@ async def resolve_payment_identity(
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
 
-    issued_at = datetime.fromtimestamp(int(payload.get("iat", 0)), tz=timezone.utc)
-    expires_at = datetime.fromtimestamp(int(payload.get("exp", 0)), tz=timezone.utc)
+    issued_at = datetime.fromtimestamp(int(payload.get("iat", 0)), tz=UTC)
+    expires_at = datetime.fromtimestamp(int(payload.get("exp", 0)), tz=UTC)
 
     mode = str(payload.get("mode") or "live")
     chain = str(payload.get("chain") or "base_sepolia")
@@ -618,9 +617,9 @@ class InstructAgentResponse(BaseModel):
     agent_id: str
     instruction: str
     response: str
-    tool_call: Optional[dict] = None
-    tx_id: Optional[str] = None
-    error: Optional[str] = None
+    tool_call: dict | None = None
+    tx_id: str | None = None
+    error: str | None = None
 
 
 @router.post("/{agent_id}/instruct", response_model=InstructAgentResponse)
@@ -718,15 +717,15 @@ class KYAStatusResponse(BaseModel):
     agent_id: str
     kya_level: str
     kya_status: str
-    manifest: Optional[dict] = None
-    trust_score: Optional[float] = None
+    manifest: dict | None = None
+    trust_score: float | None = None
 
 
 class KYAUpgradeRequest(BaseModel):
     target_level: str = Field(description="Target KYA level: basic, verified, or attested")
-    anchor_verification_id: Optional[str] = Field(default=None, description="Owner KYC verification ID (required for verified)")
-    code_hash: Optional[str] = Field(default=None, description="SHA-256 hash of agent code (required for attested)")
-    framework: Optional[str] = Field(default=None, description="Agent framework name")
+    anchor_verification_id: str | None = Field(default=None, description="Owner KYC verification ID (required for verified)")
+    code_hash: str | None = Field(default=None, description="SHA-256 hash of agent code (required for attested)")
+    framework: str | None = Field(default=None, description="Agent framework name")
 
 
 class KYAUpgradeResponse(BaseModel):
@@ -734,7 +733,7 @@ class KYAUpgradeResponse(BaseModel):
     previous_level: str
     new_level: str
     status: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @router.get("/{agent_id}/kya", response_model=KYAStatusResponse)

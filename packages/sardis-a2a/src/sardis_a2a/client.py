@@ -9,20 +9,18 @@ Provides methods for sending A2A messages to other agents:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Protocol
+from dataclasses import dataclass
+from typing import Any, Protocol
 
+from .discovery import AgentDiscoveryService, DiscoveredAgent
 from .messages import (
-    A2AMessage,
-    A2AMessageType,
-    A2AMessageStatus,
-    A2APaymentRequest,
-    A2APaymentResponse,
     A2ACredentialRequest,
     A2ACredentialResponse,
+    A2AMessage,
+    A2AMessageType,
+    A2APaymentRequest,
+    A2APaymentResponse,
 )
-from .discovery import AgentDiscoveryService, DiscoveredAgent
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,7 @@ class A2AClientError(Exception):
         message: str,
         code: str,
         recipient_id: str | None = None,
-        details: Dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.code = code
@@ -49,9 +47,9 @@ class HttpClient(Protocol):
     async def post(
         self,
         url: str,
-        json: Dict[str, Any],
-        headers: Dict[str, str] | None = None,
-    ) -> tuple[int, Dict[str, Any]]:
+        json: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
         """Make an HTTP POST request.
 
         Returns:
@@ -84,8 +82,8 @@ class A2AClientConfig:
     base_url: str  # Our base URL for callbacks
 
     # Signing
-    signing_key_id: Optional[str] = None
-    private_key: Optional[str] = None
+    signing_key_id: str | None = None
+    private_key: str | None = None
 
     # Timeouts (seconds)
     request_timeout: int = 30
@@ -144,7 +142,7 @@ class A2AClient:
         purpose: str = "",
         reference: str | None = None,
         callback_url: str | None = None,
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> A2APaymentResponse:
         """
         Send a payment request to another agent.
@@ -246,7 +244,7 @@ class A2AClient:
         self,
         recipient_url: str,
         credential_type: str,
-        credential_data: Dict[str, Any],
+        credential_data: dict[str, Any],
         verify_signature: bool = True,
         verify_expiration: bool = True,
         verify_chain: bool = True,

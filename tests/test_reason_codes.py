@@ -6,14 +6,12 @@ and that the mapping table is complete and consistent.
 from __future__ import annotations
 
 import pytest
-
 from sardis_protocol.reason_codes import (
-    ProtocolReasonCode,
-    ReasonCodeMapping,
     REASON_CODE_TABLE,
+    ProtocolReasonCode,
     get_reason,
-    map_legacy_reason_to_code,
     map_exception_to_reason,
+    map_legacy_reason_to_code,
 )
 
 pytestmark = [pytest.mark.protocol_conformance]

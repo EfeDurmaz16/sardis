@@ -7,8 +7,7 @@ fed directly into the /policies/apply endpoint.
 from __future__ import annotations
 
 import statistics
-from dataclasses import dataclass, field
-from decimal import Decimal
+from dataclasses import dataclass
 from typing import Any
 
 from .database import Database
@@ -235,7 +234,7 @@ class PolicyRecommendationEngine:
         if not hourly or tx_count == 0:
             return []
 
-        threshold = 0.90 * tx_count
+        0.90 * tx_count
 
         # Slide an 8-hour window across all 24 hours (wrap-around via modulo)
         best_window_start: int | None = None

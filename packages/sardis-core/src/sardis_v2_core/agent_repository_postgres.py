@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional, List, Any
+import builtins
+from datetime import UTC, datetime
+from typing import Any
 
 from .agents import Agent, AgentPolicy, SpendingLimits
 
@@ -49,7 +50,7 @@ class PostgresAgentRepository:
         return str(created["id"])
 
     @staticmethod
-    def _agent_from_row(row: Any, wallet_external_id: Optional[str]) -> Agent:
+    def _agent_from_row(row: Any, wallet_external_id: str | None) -> Agent:
         meta = row.get("metadata") if isinstance(row, dict) else row["metadata"]
         if not isinstance(meta, dict):
             meta = {}
@@ -77,18 +78,18 @@ class PostgresAgentRepository:
             kya_level=str(meta.get("kya_level", "none")),
             kya_status=str(meta.get("kya_status", "pending")),
             metadata=meta,
-            created_at=row.get("created_at") or datetime.now(timezone.utc),
-            updated_at=row.get("updated_at") or datetime.now(timezone.utc),
+            created_at=row.get("created_at") or datetime.now(UTC),
+            updated_at=row.get("updated_at") or datetime.now(UTC),
         )
 
     async def create(
         self,
         name: str,
         owner_id: str = "default",
-        description: Optional[str] = None,
-        spending_limits: Optional[SpendingLimits] = None,
-        policy: Optional[AgentPolicy] = None,
-        metadata: Optional[dict] = None,
+        description: str | None = None,
+        spending_limits: SpendingLimits | None = None,
+        policy: AgentPolicy | None = None,
+        metadata: dict | None = None,
         kya_level: str = "none",
         kya_status: str = "pending",
     ) -> Agent:
@@ -124,7 +125,7 @@ class PostgresAgentRepository:
                 )
                 return agent
 
-    async def get(self, agent_id: str) -> Optional[Agent]:
+    async def get(self, agent_id: str) -> Agent | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -154,11 +155,11 @@ class PostgresAgentRepository:
 
     async def list(
         self,
-        owner_id: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        owner_id: str | None = None,
+        is_active: bool | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Agent]:
+    ) -> builtins.list[Agent]:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             where = []
@@ -244,15 +245,15 @@ class PostgresAgentRepository:
     async def update(
         self,
         agent_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        spending_limits: Optional[SpendingLimits] = None,
-        policy: Optional[AgentPolicy] = None,
-        is_active: Optional[bool] = None,
-        metadata: Optional[dict] = None,
-        kya_level: Optional[str] = None,
-        kya_status: Optional[str] = None,
-    ) -> Optional[Agent]:
+        name: str | None = None,
+        description: str | None = None,
+        spending_limits: SpendingLimits | None = None,
+        policy: AgentPolicy | None = None,
+        is_active: bool | None = None,
+        metadata: dict | None = None,
+        kya_level: str | None = None,
+        kya_status: str | None = None,
+    ) -> Agent | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             current = await conn.fetchrow(
@@ -307,7 +308,7 @@ class PostgresAgentRepository:
             res = await conn.execute("DELETE FROM agents WHERE external_id = $1", agent_id)
             return "DELETE 1" in res
 
-    async def bind_wallet(self, agent_id: str, wallet_id: str) -> Optional[Agent]:
+    async def bind_wallet(self, agent_id: str, wallet_id: str) -> Agent | None:
         # Wallets own the FK, so binding is a no-op here (WalletRepository creates the relationship).
         # We still store wallet_id in metadata for convenience.
         return await self.update(agent_id, metadata={"wallet_id": wallet_id})

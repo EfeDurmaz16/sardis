@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, List, Protocol
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,8 @@ class GroupPolicyResult:
     """Result of group policy evaluation."""
     allowed: bool
     reason: str
-    group_id: Optional[str] = None
-    group_name: Optional[str] = None
+    group_id: str | None = None
+    group_name: str | None = None
 
 
 class GroupPolicyPort(Protocol):
@@ -33,8 +33,8 @@ class GroupPolicyPort(Protocol):
         agent_id: str,
         amount: Decimal,
         fee: Decimal,
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
     ) -> GroupPolicyResult: ...
 
 
@@ -49,8 +49,8 @@ class GroupPolicyEvaluator:
 
     def __init__(
         self,
-        group_repo: "AgentGroupRepository",
-        spending_tracker: Optional["GroupSpendingTracker"] = None,
+        group_repo: AgentGroupRepository,
+        spending_tracker: GroupSpendingTracker | None = None,
     ) -> None:
         from .agent_groups import AgentGroupRepository
         self._group_repo: AgentGroupRepository = group_repo
@@ -61,8 +61,8 @@ class GroupPolicyEvaluator:
         agent_id: str,
         amount: Decimal,
         fee: Decimal,
-        merchant_id: Optional[str] = None,
-        merchant_category: Optional[str] = None,
+        merchant_id: str | None = None,
+        merchant_category: str | None = None,
     ) -> GroupPolicyResult:
         """Evaluate payment against all groups the agent belongs to.
 

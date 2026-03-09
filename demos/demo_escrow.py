@@ -29,13 +29,13 @@ from enum import Enum
 
 # Try to import rich for beautiful output
 try:
+    from rich import box
     from rich.console import Console
+    from rich.markdown import Markdown
     from rich.panel import Panel
+    from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich.table import Table
     from rich.tree import Tree
-    from rich import box
-    from rich.markdown import Markdown
-    from rich.progress import Progress, SpinnerColumn, TextColumn
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -115,7 +115,7 @@ class DemoDisplay:
                 else:
                     self.console.print(f"  [dim]○ {label}[/dim]")
                 if i < len(states) - 1:
-                    self.console.print(f"  [dim]↓[/dim]")
+                    self.console.print("  [dim]↓[/dim]")
         else:
             print("\nEscrow State Machine:")
             for i, (state, label, _) in enumerate(states):
@@ -188,7 +188,7 @@ class DemoDisplay:
                 TextColumn("[progress.description]{task.description}"),
                 console=self.console
             ) as progress:
-                task = progress.add_task(f"[cyan]{message}...", total=None)
+                progress.add_task(f"[cyan]{message}...", total=None)
                 time.sleep(0.5)
         else:
             print(f"  {message}... ", end="", flush=True)
@@ -235,7 +235,7 @@ This demo showcases trustless agent-to-agent payments using escrow:
 
     # Initialize client
     api_key = os.getenv('SARDIS_API_KEY', 'mock_key')
-    client = SardisClient(api_key=api_key)
+    SardisClient(api_key=api_key)
 
     # Agent balances
     agent_a = {

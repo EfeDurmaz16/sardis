@@ -5,9 +5,7 @@ Tests AP2, TAP, UCP, and x402 protocol conformance at the SDK client layer.
 All tests are offline using mocked HTTP responses.
 """
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from sardis_sdk import AsyncSardisClient

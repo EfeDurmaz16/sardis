@@ -26,17 +26,17 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
 from sardis_compliance.retry import (
-    RetryConfig,
     CircuitBreakerConfig,
     RateLimitConfig,
+    RetryConfig,
     create_retryable_client,
 )
 from sardis_compliance.sanctions import (
@@ -108,9 +108,9 @@ class CircleScreeningResponse:
     chain: str = ""
     action: CircleScreeningAction = CircleScreeningAction.APPROVE
     risk_level: CircleRiskLevel = CircleRiskLevel.UNKNOWN
-    matches: List[CircleScreeningMatch] = field(default_factory=list)
-    screened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    raw_response: Dict[str, Any] = field(default_factory=dict)
+    matches: list[CircleScreeningMatch] = field(default_factory=list)
+    screened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    raw_response: dict[str, Any] = field(default_factory=dict)
 
 
 class CircleComplianceError(Exception):
@@ -122,7 +122,7 @@ class CircleComplianceError(Exception):
 
 
 # Maps Sardis chain names to Circle blockchain identifiers
-CIRCLE_CHAIN_MAP: Dict[str, str] = {
+CIRCLE_CHAIN_MAP: dict[str, str] = {
     "ethereum": "ETH",
     "base": "BASE",
     "polygon": "MATIC",
@@ -243,8 +243,8 @@ class CircleComplianceClient:
         sender_address: str,
         recipient_address: str,
         chain: str,
-        amount: Optional[Decimal] = None,
-        token: Optional[str] = None,
+        amount: Decimal | None = None,
+        token: str | None = None,
     ) -> tuple[CircleScreeningResponse, CircleScreeningResponse]:
         """Screen both sides of a transfer.
 
@@ -257,7 +257,7 @@ class CircleComplianceClient:
 
     def _parse_screening_response(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         address: str,
         chain: str,
     ) -> CircleScreeningResponse:
@@ -450,7 +450,7 @@ class CircleComplianceProvider(SanctionsProvider):
 
 
 def create_circle_compliance_provider(
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
 ) -> CircleComplianceProvider:
     """Create a Circle Compliance provider.
 

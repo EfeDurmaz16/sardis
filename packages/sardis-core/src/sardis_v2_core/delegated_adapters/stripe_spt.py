@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import uuid
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from ..credential_store import CredentialEncryption
 from ..delegated_credential import (
@@ -35,7 +35,7 @@ class StripeSPTAdapter:
     def __init__(
         self,
         api_key: str = "",
-        encryption: Optional[CredentialEncryption] = None,
+        encryption: CredentialEncryption | None = None,
     ) -> None:
         self._api_key = api_key
         self._encryption = encryption or CredentialEncryption()
@@ -62,7 +62,7 @@ class StripeSPTAdapter:
             )
 
         # Translate to Stripe-specific request
-        stripe_payload = self._translate_to_stripe(request, token_bytes)
+        self._translate_to_stripe(request, token_bytes)
 
         # TODO: Call actual Stripe SPT API when partnership provides access
         # response = await self._http_client.post(...)
@@ -171,8 +171,8 @@ class MockStripeSPTAdapter:
         org_id: str,
         agent_id: str,
         scope: CredentialScope,
-        encryption: Optional[CredentialEncryption] = None,
-        customer_id: Optional[str] = None,
+        encryption: CredentialEncryption | None = None,
+        customer_id: str | None = None,
     ) -> DelegatedCredential:
         """Create a mock credential for testing."""
         token = f"spt_mock_{uuid.uuid4().hex[:12]}".encode()

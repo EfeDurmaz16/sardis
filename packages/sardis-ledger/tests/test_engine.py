@@ -10,16 +10,14 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
+import sys
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock, patch, AsyncMock
-
-import sys
 from pathlib import Path
+
+import pytest
 
 # Add source to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -30,15 +28,15 @@ for pkg in ["sardis-core"]:
         sys.path.insert(0, str(pkg_path))
 
 from sardis_ledger.engine import (
-    LedgerError,
-    LockAcquisitionError,
-    LockTimeoutError,
+    BatchProcessingError,
     ConcurrencyError,
     InsufficientBalanceError,
-    BatchProcessingError,
+    LedgerError,
+    LockAcquisitionError,
+    LockManager,
+    LockTimeoutError,
     RollbackError,
     ValidationError,
-    LockManager,
 )
 
 
@@ -228,7 +226,7 @@ class TestLockManager:
 
     def test_release_lock(self, lock_manager):
         """Should release lock."""
-        lock = lock_manager.acquire(
+        lock_manager.acquire(
             resource_type="account",
             resource_id="acc_123",
             holder_id="tx_456",
@@ -282,7 +280,7 @@ class TestLockManager:
         time.sleep(0.15)
 
         # Force cleanup
-        lock_manager._last_cleanup = datetime.now(timezone.utc) - timedelta(minutes=5)
+        lock_manager._last_cleanup = datetime.now(UTC) - timedelta(minutes=5)
         count = lock_manager._cleanup_expired()
 
         assert count >= 1
@@ -309,7 +307,7 @@ class TestLockManagerConcurrency:
 
         def try_acquire(holder_id):
             try:
-                lock = manager.acquire(
+                manager.acquire(
                     resource_type="account",
                     resource_id="contested_resource",
                     holder_id=holder_id,

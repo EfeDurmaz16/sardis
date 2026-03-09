@@ -7,9 +7,9 @@ These tests require a running Sardis API server.
 Run with: pytest tests/e2e/ -v --api-url=http://localhost:8000
 """
 import os
+from datetime import UTC, datetime
+
 import pytest
-from decimal import Decimal
-from datetime import datetime, timezone
 
 # Test configuration
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
@@ -80,7 +80,7 @@ async def test_wallet(api_key, api_url):
             wallet = await client.wallets.create(
                 agent_id="e2e_test_agent",
                 chain="base_sepolia",
-                metadata={"test": True, "created_at": datetime.now(timezone.utc).isoformat()},
+                metadata={"test": True, "created_at": datetime.now(UTC).isoformat()},
             )
 
             yield wallet
@@ -174,7 +174,7 @@ class TestPaymentScenarios:
 
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 mandate = {
-                    "mandate_id": f"e2e_test_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"e2e_test_{datetime.now(UTC).timestamp()}",
                     "subject": test_wallet.id,
                     "destination": f"vendor:{scenario['vendor'].lower()}",
                     "amount_minor": str(int(scenario["amount"] * 1_000_000)),
@@ -304,7 +304,7 @@ class TestLedgerVerification:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # Execute payment
                 mandate = {
-                    "mandate_id": f"ledger_test_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"ledger_test_{datetime.now(UTC).timestamp()}",
                     "subject": test_wallet.id,
                     "destination": "vendor:openai",
                     "amount_minor": "10000000",  # $10
@@ -360,7 +360,7 @@ class TestCompletePaymentFlow:
             async with SardisClient(api_key=api_key, base_url=api_url) as client:
                 # 1. Create wallet (agent identity)
                 wallet = await client.wallets.create(
-                    agent_id=f"complete_flow_agent_{datetime.now(timezone.utc).timestamp()}",
+                    agent_id=f"complete_flow_agent_{datetime.now(UTC).timestamp()}",
                     chain="base_sepolia",
                     metadata={"test": "complete_flow"},
                 )
@@ -376,7 +376,7 @@ class TestCompletePaymentFlow:
 
                 # 4. Execute a small payment
                 mandate = {
-                    "mandate_id": f"complete_flow_{datetime.now(timezone.utc).timestamp()}",
+                    "mandate_id": f"complete_flow_{datetime.now(UTC).timestamp()}",
                     "subject": wallet.id,
                     "destination": "vendor:vercel",
                     "amount_minor": "5000000",  # $5

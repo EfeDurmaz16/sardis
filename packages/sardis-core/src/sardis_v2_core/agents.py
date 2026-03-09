@@ -1,10 +1,9 @@
 """Agent management for Sardis."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+import builtins
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, List
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -20,11 +19,11 @@ class SpendingLimits(BaseModel):
 
 class AgentPolicy(BaseModel):
     """Policy rules for an agent."""
-    allowed_merchants: Optional[List[str]] = None  # None = all allowed
-    blocked_merchants: List[str] = Field(default_factory=list)
-    allowed_categories: Optional[List[str]] = None
-    blocked_categories: List[str] = Field(default_factory=list)
-    require_approval_above: Optional[Decimal] = None
+    allowed_merchants: list[str] | None = None  # None = all allowed
+    blocked_merchants: list[str] = Field(default_factory=list)
+    allowed_categories: list[str] | None = None
+    blocked_categories: list[str] = Field(default_factory=list)
+    require_approval_above: Decimal | None = None
     auto_approve_below: Decimal = Field(default=Decimal("50.00"))
 
 
@@ -32,19 +31,19 @@ class Agent(BaseModel):
     """An AI agent with spending capabilities."""
     agent_id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     owner_id: str = "default"  # Organization/user who owns this agent
-    wallet_id: Optional[str] = None
+    wallet_id: str | None = None
     spending_limits: SpendingLimits = Field(default_factory=SpendingLimits)
     policy: AgentPolicy = Field(default_factory=AgentPolicy)
-    api_key_hash: Optional[str] = None  # For agent-specific API keys
+    api_key_hash: str | None = None  # For agent-specific API keys
     is_active: bool = True
     # KYA (Know Your Agent) fields
     kya_level: str = "none"      # none | basic | verified | attested
     kya_status: str = "pending"  # pending | in_progress | active | suspended | revoked | expired
     metadata: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     class Config:
         json_encoders = {
@@ -53,7 +52,7 @@ class Agent(BaseModel):
         }
 
     @staticmethod
-    def new(name: str, owner_id: str = "default", **kwargs) -> "Agent":
+    def new(name: str, owner_id: str = "default", **kwargs) -> Agent:
         return Agent(
             agent_id=f"agent_{uuid4().hex[:16]}",
             name=name,
@@ -73,10 +72,10 @@ class AgentRepository:
         self,
         name: str,
         owner_id: str = "default",
-        description: Optional[str] = None,
-        spending_limits: Optional[SpendingLimits] = None,
-        policy: Optional[AgentPolicy] = None,
-        metadata: Optional[dict] = None,
+        description: str | None = None,
+        spending_limits: SpendingLimits | None = None,
+        policy: AgentPolicy | None = None,
+        metadata: dict | None = None,
         kya_level: str = "none",
         kya_status: str = "pending",
     ) -> Agent:
@@ -93,16 +92,16 @@ class AgentRepository:
         self._agents[agent.agent_id] = agent
         return agent
 
-    async def get(self, agent_id: str) -> Optional[Agent]:
+    async def get(self, agent_id: str) -> Agent | None:
         return self._agents.get(agent_id)
 
     async def list(
         self,
-        owner_id: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        owner_id: str | None = None,
+        is_active: bool | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Agent]:
+    ) -> builtins.list[Agent]:
         agents = list(self._agents.values())
         if owner_id:
             agents = [a for a in agents if a.owner_id == owner_id]
@@ -113,15 +112,15 @@ class AgentRepository:
     async def update(
         self,
         agent_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        spending_limits: Optional[SpendingLimits] = None,
-        policy: Optional[AgentPolicy] = None,
-        is_active: Optional[bool] = None,
-        metadata: Optional[dict] = None,
-        kya_level: Optional[str] = None,
-        kya_status: Optional[str] = None,
-    ) -> Optional[Agent]:
+        name: str | None = None,
+        description: str | None = None,
+        spending_limits: SpendingLimits | None = None,
+        policy: AgentPolicy | None = None,
+        is_active: bool | None = None,
+        metadata: dict | None = None,
+        kya_level: str | None = None,
+        kya_status: str | None = None,
+    ) -> Agent | None:
         agent = self._agents.get(agent_id)
         if not agent:
             return None
@@ -141,7 +140,7 @@ class AgentRepository:
             agent.kya_level = kya_level
         if kya_status is not None:
             agent.kya_status = kya_status
-        agent.updated_at = datetime.now(timezone.utc)
+        agent.updated_at = datetime.now(UTC)
         return agent
 
     async def delete(self, agent_id: str) -> bool:
@@ -150,10 +149,10 @@ class AgentRepository:
             return True
         return False
 
-    async def bind_wallet(self, agent_id: str, wallet_id: str) -> Optional[Agent]:
+    async def bind_wallet(self, agent_id: str, wallet_id: str) -> Agent | None:
         agent = self._agents.get(agent_id)
         if not agent:
             return None
         agent.wallet_id = wallet_id
-        agent.updated_at = datetime.now(timezone.utc)
+        agent.updated_at = datetime.now(UTC)
         return agent

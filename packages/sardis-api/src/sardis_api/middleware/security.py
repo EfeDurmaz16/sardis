@@ -17,12 +17,11 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Set
 
 from fastapi import HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
 
 logger = logging.getLogger("sardis.api.security")
@@ -48,20 +47,20 @@ class SecurityConfig:
     csp_connect_src: str = "'self'"
     csp_frame_ancestors: str = "'none'"
     csp_form_action: str = "'self'"
-    csp_report_uri: Optional[str] = None
+    csp_report_uri: str | None = None
 
     # Request limits
     max_body_size_bytes: int = 10 * 1024 * 1024  # 10MB default
     max_body_size_webhook: int = 1 * 1024 * 1024  # 1MB for webhooks
 
     # Paths to exclude from certain security headers
-    exclude_csp_paths: List[str] = field(default_factory=lambda: [
+    exclude_csp_paths: list[str] = field(default_factory=lambda: [
         "/api/v2/docs",
         "/api/v2/openapi.json",
     ])
 
     @classmethod
-    def from_environment(cls) -> "SecurityConfig":
+    def from_environment(cls) -> SecurityConfig:
         """Load security configuration from environment."""
         return cls(
             hsts_max_age=int(os.getenv("SECURITY_HSTS_MAX_AGE", "31536000")),
@@ -91,7 +90,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        config: Optional[SecurityConfig] = None,
+        config: SecurityConfig | None = None,
     ):
         super().__init__(app)
         self.config = config or SecurityConfig.from_environment()
@@ -185,8 +184,8 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
         self,
         app,
         default_limit: int = 10 * 1024 * 1024,  # 10MB
-        path_limits: Optional[Dict[str, int]] = None,
-        exclude_paths: Optional[List[str]] = None,
+        path_limits: dict[str, int] | None = None,
+        exclude_paths: list[str] | None = None,
     ):
         super().__init__(app)
         self.default_limit = default_limit
@@ -339,7 +338,7 @@ class WebhookSignatureVerifier:
 
     def __init__(
         self,
-        secret: Optional[str] = None,
+        secret: str | None = None,
         tolerance_seconds: int = TOLERANCE_SECONDS,
     ):
         """Initialize verifier for instance-style usage."""
@@ -347,7 +346,7 @@ class WebhookSignatureVerifier:
         self._tolerance_seconds = tolerance_seconds
 
     @staticmethod
-    def sign(payload: bytes, secret: str, timestamp: Optional[int] = None) -> str:
+    def sign(payload: bytes, secret: str, timestamp: int | None = None) -> str:
         """
         Generate an HMAC-SHA256 signature for a payload.
 
@@ -380,7 +379,7 @@ class WebhookSignatureVerifier:
         payload: bytes,
         signature_header: str,
         secret: str,
-        tolerance: Optional[int] = None,
+        tolerance: int | None = None,
     ) -> bool:
         """
         Verify a webhook signature.
@@ -461,7 +460,7 @@ class WebhookSignatureVerifier:
         cls,
         payload: bytes,
         secret: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Generate headers for signing an outbound webhook.
 
@@ -485,7 +484,7 @@ class WebhookSignatureVerifier:
 def verify_webhook_signature(
     signature_or_payload: str | bytes,
     payload_or_request: bytes | Request,
-    secret: Optional[str] = None,
+    secret: str | None = None,
 ) -> bool | None:
     """
     FastAPI dependency for verifying webhook signatures.

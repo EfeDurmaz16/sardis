@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -35,10 +35,10 @@ class SimulateResponse(BaseModel):
     intent_id: str
     would_succeed: bool
     failure_reasons: list[str] = Field(default_factory=list)
-    policy_result: Optional[dict[str, Any]] = None
-    compliance_result: Optional[dict[str, Any]] = None
-    cap_check: Optional[dict[str, Any]] = None
-    kill_switch_status: Optional[dict[str, Any]] = None
+    policy_result: dict[str, Any] | None = None
+    compliance_result: dict[str, Any] | None = None
+    cap_check: dict[str, Any] | None = None
+    kill_switch_status: dict[str, Any] | None = None
 
 
 @router.post("/", response_model=SimulateResponse)

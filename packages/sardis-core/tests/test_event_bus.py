@@ -1,14 +1,16 @@
 """Tests for the EventBus system."""
 import asyncio
+
 import pytest
+
 from sardis_v2_core import (
     EventBus,
     EventType,
     WebhookEvent,
-    get_default_bus,
+    emit_approval_event,
     emit_policy_event,
     emit_spend_event,
-    emit_approval_event,
+    get_default_bus,
 )
 
 

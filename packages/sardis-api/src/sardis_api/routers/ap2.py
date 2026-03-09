@@ -9,34 +9,31 @@ import re
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from inspect import isawaitable
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
-from sardis_v2_core.orchestrator import PaymentExecutionError
+from sardis_v2_core import AgentRepository
 from sardis_v2_core.mandates import MandateChain
 from sardis_v2_core.policy_attestation import build_policy_decision_receipt
 from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
-from sardis_api.kill_switch_dep import require_kill_switch_clear
-from sardis_api.transaction_cap_dep import enforce_transaction_caps
-from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
-from sardis_v2_core import AgentRepository
 from sardis_api.idempotency import run_idempotent
+from sardis_api.kill_switch_dep import require_kill_switch_clear
+from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.operational_alerts import alert_payment_failure
+from sardis_api.transaction_cap_dep import enforce_transaction_caps
 
 if TYPE_CHECKING:
-    from sardis_protocol.verifier import MandateVerifier
-    from sardis_v2_core.orchestrator import PaymentOrchestrator
     from sardis_compliance.kyc import KYCService
     from sardis_compliance.sanctions import SanctionsService
-    from sardis_v2_core.wallet_repository import WalletRepository
+    from sardis_protocol.verifier import MandateVerifier
     from sardis_v2_core.approval_service import ApprovalService
-    from sardis_v2_core.spending_policy import SpendingPolicy
+    from sardis_v2_core.orchestrator import PaymentOrchestrator
+    from sardis_v2_core.wallet_repository import WalletRepository
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +55,18 @@ PROMPT_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
 
 @dataclass
 class Dependencies:
-    verifier: "MandateVerifier"
-    orchestrator: "PaymentOrchestrator"
-    wallet_repo: "WalletRepository"
+    verifier: MandateVerifier
+    orchestrator: PaymentOrchestrator
+    wallet_repo: WalletRepository
     agent_repo: AgentRepository
-    kyc_service: Optional["KYCService"] = None
-    kya_service: Optional[Any] = None
-    sanctions_service: Optional["SanctionsService"] = None
-    approval_service: Optional["ApprovalService"] = None
-    settings: Optional[object] = None
-    wallet_manager: Optional[Any] = None
-    policy_store: Optional[Any] = None
-    audit_store: Optional[Any] = None
+    kyc_service: KYCService | None = None
+    kya_service: Any | None = None
+    sanctions_service: SanctionsService | None = None
+    approval_service: ApprovalService | None = None
+    settings: object | None = None
+    wallet_manager: Any | None = None
+    policy_store: Any | None = None
+    audit_store: Any | None = None
 
 
 def get_deps() -> Dependencies:
@@ -84,11 +81,11 @@ class ComplianceCheckResult:
     kyc_verified: bool = False
     sanctions_clear: bool = True
     kyt_review_required: bool = False
-    kyt_risk_level: Optional[str] = None
-    kyt_reason: Optional[str] = None
-    reason: Optional[str] = None
-    provider: Optional[str] = None
-    rule: Optional[str] = None
+    kyt_risk_level: str | None = None
+    kyt_reason: str | None = None
+    reason: str | None = None
+    provider: str | None = None
+    rule: str | None = None
 
 
 def _is_truthy_env(value: str) -> bool:
@@ -105,7 +102,7 @@ def _kyt_review_levels() -> set[str]:
     return parsed or set(KYT_REVIEW_DEFAULT)
 
 
-def _kyt_review_levels_for_org(organization_id: Optional[str]) -> set[str]:
+def _kyt_review_levels_for_org(organization_id: str | None) -> set[str]:
     default_levels = _kyt_review_levels()
     org_id = (organization_id or "").strip()
     if not org_id:
@@ -160,13 +157,13 @@ async def _compliance_checks_impl(
     destination: str,
     chain: str,
     amount_minor: int,
-    source_address: Optional[str] = None,
+    source_address: str | None = None,
     token: str = "USDC",
-    organization_id: Optional[str] = None,
+    organization_id: str | None = None,
 ) -> ComplianceCheckResult:
     """
     Perform all compliance checks for a payment.
-    
+
     Checks:
     1. KYC status for high-value transactions
     2. Sanctions screening for sender and recipient addresses
@@ -209,7 +206,7 @@ async def _compliance_checks_impl(
                 result.provider = "sardis_kya"
                 result.rule = "kya_verification"
                 return result
-    
+
     # Check KYC for high-value transactions
     if deps.kyc_service and amount_minor >= KYC_THRESHOLD_MINOR:
         try:
@@ -235,7 +232,7 @@ async def _compliance_checks_impl(
                     return result
                 logger.info("KYC not complete for agent %s (amount_minor=%s)", agent_id, amount_minor)
                 result.kyc_verified = False
-                
+
         except Exception as e:
             logger.error(f"KYC check failed for agent {agent_id}: {e}")
             # Fail closed for all KYC service errors
@@ -244,7 +241,7 @@ async def _compliance_checks_impl(
             result.provider = "persona"
             result.rule = "kyc_service_error"
             return result
-    
+
     # Screen destination address for sanctions
     if deps.sanctions_service:
         try:
@@ -288,7 +285,7 @@ async def _compliance_checks_impl(
                 )
                 result.provider = getattr(highest_risk_result, "provider", None) or "sanctions"
                 result.rule = f"kyt_risk:{highest_risk_level}"
-            
+
         except Exception as e:
             logger.error(f"Sanctions screening failed for {destination}: {e}")
             # Fail closed for sanctions errors
@@ -297,7 +294,7 @@ async def _compliance_checks_impl(
             result.provider = "sanctions"
             result.rule = "sanctions_service_error"
             return result
-    
+
     return result
 
 
@@ -312,7 +309,7 @@ def _iter_strings(value: Any):
             yield from _iter_strings(item)
 
 
-def _detect_prompt_injection_signal(payload: AP2PaymentExecuteRequest) -> Optional[str]:
+def _detect_prompt_injection_signal(payload: AP2PaymentExecuteRequest) -> str | None:
     for text in _iter_strings(payload.intent):
         for pattern in PROMPT_INJECTION_PATTERNS:
             if pattern.search(text):
@@ -334,7 +331,7 @@ def _try_build_policy_receipt(
     decision: str,
     reason: str,
     context: dict[str, Any],
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     try:
         return build_policy_decision_receipt(
             policy=policy,
@@ -354,7 +351,7 @@ async def _append_policy_decision_audit(
     allowed: bool,
     reason: str,
     receipt_payload: dict[str, Any],
-) -> Optional[str]:
+) -> str | None:
     if deps.audit_store is None:
         return None
     entry = ComplianceAuditEntry(
@@ -380,9 +377,9 @@ async def _append_compliance_decision_audit(
     allowed: bool,
     reason: str,
     provider: str,
-    rule_id: Optional[str] = None,
-    metadata: Optional[dict[str, Any]] = None,
-) -> Optional[str]:
+    rule_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str | None:
     if deps.audit_store is None:
         return None
     entry = ComplianceAuditEntry(
@@ -411,7 +408,7 @@ async def execute_ap2_payment(
 ):
     """
     Execute an AP2 payment with full compliance checks.
-    
+
     Flow:
     1. Verify mandate chain (signature, expiry, amount validation)
     2. Check rate limits
@@ -883,8 +880,9 @@ async def execute_ap2_payment(
 
         # Step 3: Submit through ControlPlane (anomaly + kill switch + unified receipts)
         # Policy and compliance already checked upstream, so ControlPlane skips them.
-        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
         from sardis_v2_core.control_plane import ControlPlane
+        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+
         from sardis_api.domains.execution_engine import ExecutionEngineAdapter
         from sardis_api.domains.ledger_core import LedgerCoreAdapter
 
@@ -976,7 +974,7 @@ async def perform_compliance_checks(
     destination: str,
     chain: str,
     amount_minor: int,
-    organization_id: Optional[str] = None,
+    organization_id: str | None = None,
 ) -> ComplianceCheckResult:
     """
     Compatibility wrapper kept for tests/introspection:

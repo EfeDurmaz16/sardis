@@ -8,8 +8,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -36,7 +37,7 @@ def _hash_payload(payload: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def get_idempotency_key(request: Request) -> Optional[str]:
+def get_idempotency_key(request: Request) -> str | None:
     for header in IDEMPOTENCY_HEADERS:
         value = request.headers.get(header)
         if value:
@@ -49,7 +50,7 @@ def _cache_key(*parts: str) -> str:
     return "sardis:idem:" + ":".join(safe)
 
 
-async def _db_get_idempotency(key: str) -> Optional[dict]:
+async def _db_get_idempotency(key: str) -> dict | None:
     """Fallback: read idempotency record from DB."""
     try:
         from sardis_v2_core.database import get_pool

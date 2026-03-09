@@ -3,13 +3,14 @@ import hashlib
 import hmac as hmac_mod
 import json
 import time
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
-
-from sardis_api.routers.ramp import router as ramp_router, public_router as ramp_public_router, get_deps, RampDependencies
+from fastapi.testclient import TestClient
+from sardis_api.routers.ramp import RampDependencies, get_deps
+from sardis_api.routers.ramp import public_router as ramp_public_router
+from sardis_api.routers.ramp import router as ramp_router
 
 
 @pytest.fixture

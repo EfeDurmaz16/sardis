@@ -6,9 +6,9 @@ Start with: docker-compose -f docker-compose.immudb.yml up -d
 
 Run with: pytest tests/test_immutable.py -v
 """
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+
 import pytest
 
 # Skip all tests if immudb-py is not installed
@@ -25,7 +25,6 @@ from sardis_ledger.immutable import (
     create_audit_trail,
 )
 from sardis_ledger.models import LedgerEntry, LedgerEntryType
-
 
 # Mark all tests as requiring immudb
 pytestmark = pytest.mark.immudb
@@ -80,7 +79,7 @@ class TestAuditEntry:
             entry_type="credit",
             amount="100.50",
             currency="USDC",
-            created_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
         )
 
         hash1 = entry.compute_hash()
