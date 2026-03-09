@@ -240,8 +240,18 @@ async def login(
                 detail="Invalid email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        except Exception:
-            pass  # Fall through to legacy auth
+        except Exception as exc:
+            _logger.warning(
+                "Primary auth failed for user %r: %s: %s",
+                username,
+                type(exc).__name__,
+                exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="authentication_failed",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     # Legacy shared admin password (deprecated)
     admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "")
@@ -251,8 +261,9 @@ async def login(
         "yes",
     )
 
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
     if not admin_password:
-        if allow_insecure_default and os.getenv("SARDIS_ENVIRONMENT", "dev") == "dev":
+        if allow_insecure_default and env in ("dev", "development", "local"):
             admin_password = "change-me-immediately"  # nosecret — dev-only placeholder
         else:
             raise HTTPException(
