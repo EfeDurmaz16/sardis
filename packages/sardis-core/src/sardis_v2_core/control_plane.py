@@ -6,6 +6,7 @@ All payment flows (A2A, AP2, checkout) submit ExecutionIntents here.
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
@@ -87,7 +88,19 @@ class ControlPlane:
         self._settings = settings or load_settings()
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
-        """Execute an intent through the full pipeline."""
+        """Execute an intent through the full pipeline.
+
+        .. deprecated::
+            Use :class:`~sardis_v2_core.orchestrator.PaymentOrchestrator`
+            with :class:`~sardis_v2_core.pre_execution_pipeline.PreExecutionPipeline`
+            and the hooks from :mod:`sardis_v2_core.hooks` instead.
+        """
+        warnings.warn(
+            "ControlPlane.submit() is deprecated. "
+            "Use PaymentOrchestrator with PreExecutionPipeline.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         logger.info(
             "ControlPlane: submitting intent=%s source=%s amount=%s chain=%s",
             intent.intent_id, intent.source.value, intent.amount, intent.chain,
