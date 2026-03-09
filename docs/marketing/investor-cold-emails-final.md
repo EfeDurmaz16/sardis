@@ -1,5 +1,5 @@
 # Sardis Investor Cold Emails (Final)
-**For Review | March 2026 | Seed Round ($1-3M)**
+**For Review | March 2026 | Seed Round ($9M @ $36M pre-money)**
 
 ## Format Guide
 
@@ -31,12 +31,14 @@ $200B has flowed into AI infrastructure. But there is no answer to a basic quest
 
 Sardis is the Payment OS for the agent economy. Every agent gets a non-custodial wallet with spending rules in plain English. It pays when the policy allows, stops when it does not.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
-- 15+ agent framework integrations, merchant checkout live.
+- 9 AI framework SDKs (LangChain, CrewAI, OpenAI, Vercel AI SDK, Google ADK, etc.), merchant checkout live on Base mainnet.
+- 1,095 commits, 39 packages, 63 API routers, 52 DB migrations. Solo founder.
+- Compliant with AP2, TAP, x402, UCP, A2A protocols. Revenue flow active.
 
-We have built more with zero funding than competitors who raised $10M+. We are raising seed to launch virtual card programs, hire GTM, and build a compliance team.
+Competitors raised $10M+ with fraction of this product maturity. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, fiat rails, and hiring.
 
 Would love 15 minutes to show you the spending policy engine in action.
 
@@ -56,12 +58,14 @@ You have written about the "agentic finance" shift: AI moving from advisor to ex
 
 Sardis is the Payment OS for AI agents. Every agent gets a non-custodial wallet with spending rules in plain English. It pays when the policy allows, stops when it does not.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
-- 15+ agent framework integrations, merchant checkout live.
+- 9 AI framework SDKs (LangChain, CrewAI, OpenAI, Vercel AI SDK, Google ADK, etc.), merchant checkout live on Base mainnet.
+- 1,095 commits, 39 packages, 63 API routers, 52 DB migrations. Solo founder.
+- Compliant with AP2, TAP, x402, UCP, A2A protocols. Revenue flow active.
 
-Competitors in this space have raised $10M+ with less product maturity. We are raising seed to scale: virtual card programs (capital-intensive by nature), GTM, and a compliance team.
+Competitors raised $10M+ with less product maturity. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, fiat rails, and hiring.
 
 Would love 15 minutes to show you the spending rules engine in action.
 
@@ -81,12 +85,14 @@ You have been writing about programmable money and autonomous agents converging.
 
 We give every AI agent a non-custodial MPC wallet with spending policies in plain English. Live on Arc (Circle's L1), Base, Polygon, Ethereum, Arbitrum, and Optimism. Stablecoins only. No speculative tokens. Pure financial infrastructure.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
-- 15+ agent framework integrations, merchant checkout live.
+- 9 AI framework SDKs (LangChain, CrewAI, OpenAI, Vercel AI SDK, Google ADK, etc.), merchant checkout live on Base mainnet.
+- 1,095 commits, 39 packages, 63 API routers, 52 DB migrations. Solo founder.
+- Compliant with AP2, TAP, x402, UCP, A2A protocols. Revenue flow active.
 
-This is a network, not just a product. Every framework and every merchant that plugs in makes the next one more valuable. Raising seed for virtual card programs, GTM, and compliance.
+This is a network, not just a product. Every framework and every merchant that plugs in makes the next one more valuable. Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love 15 minutes to walk you through the on-chain architecture.
 
@@ -106,13 +112,13 @@ The AI agent stack has compute, memory, reasoning, and tool calling. It does not
 
 Every agent gets a non-custodial wallet with spending policies in plain English. Think of it as the trust layer between an AI agent and real money. The same way Stripe became the payment layer for the internet, Sardis is becoming it for agents.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations (LangChain, Vercel AI SDK, MCP, CrewAI, and more).
 - Merchant checkout already in production.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed for virtual card programs, GTM, and compliance. Andrew Reed might also find this relevant given his fintech lens.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring. Andrew Reed might also find this relevant given his fintech lens.
 
 Would love 15 minutes to show you why agents are the next wave of payment initiators.
 
@@ -132,12 +138,12 @@ Every fintech era creates its own infrastructure layer. Consumer internet got St
 
 Sardis is building it. Non-custodial wallets, spending policies in plain English, live across six chains. This is the financial rails layer for AI agents that need to transact autonomously.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors have raised $10M+ with less product and less traction. We are raising seed for virtual card programs (capital-intensive, like Lithic), GTM, and compliance.
+Competitors raised $10M+ with less traction. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, and hiring.
 
 Would love 15 minutes to walk you through the fintech architecture.
 
@@ -160,11 +166,11 @@ AI agents can reason, browse, and call APIs. They cannot safely spend money. The
 Sardis is the infrastructure for agentic payments. Non-custodial wallets with spending policies in plain English, live across six chains.
 
 The traction is entirely organic:
-- 25,000+ SDK installs in three weeks.
+- 25,000+ SDK installs across 9 frameworks.
 - AutoGPT and Helicone as first design partners.
 - 15+ agent framework integrations, merchant checkout in production.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed for virtual card programs (think Lithic for agents), GTM, and compliance.
+Competitors raised $10M+ with less product maturity. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, and hiring.
 
 Would love 15 minutes to show you why Sardis is the missing trust layer for the agent economy.
 
@@ -185,11 +191,11 @@ Accel has backed some of the defining fintech infrastructure companies. The next
 Sardis is the Payment OS for AI agents. Each agent gets a non-custodial wallet with spending policies in plain English. It transacts autonomously within the rules its operator defines. Full audit trail, no custodial risk.
 
 The pull is real:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-This is a network. Every integration makes the next one more valuable. Raising seed. Would love 15 minutes to show you the developer experience.
+This is a network. Every integration makes the next one more valuable. Raising $9M seed at $36M pre. Would love 15 minutes to show you the developer experience.
 
 Best,
 Efe Baran Durmaz
@@ -207,11 +213,11 @@ Index backed the infrastructure companies that defined each era of fintech: Adye
 
 Sardis is the Payment OS for that. Every agent gets a non-custodial wallet with spending rules in plain English. It is live today:
 
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout in production.
 
-Competitors with less product depth have raised $10M+. We are raising seed for virtual card programs, GTM, and compliance.
+Competitors raised $10M+ with less depth. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre.
 
 Would love 15 minutes to walk you through it.
 
@@ -232,11 +238,11 @@ Ribbit has the thesis that financial services are being rebuilt from the ground 
 Every agent that takes a real-world action eventually needs to spend money. Today there is no safe infrastructure for that. Sardis is building it: non-custodial MPC wallets, spending policies in plain English, live across six chains.
 
 The traction speaks for itself:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed for virtual card programs, GTM, and compliance. Competitors with less traction have raised $10M+.
+Raising $9M seed at $36M pre. Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val).
 
 Would love 15 minutes to show you why agent payments are the next fintech infrastructure layer.
 
@@ -256,12 +262,12 @@ Ribbit understood before anyone that financial services would be rebuilt by soft
 
 Sardis is the Payment OS for AI agents. Non-custodial wallets, spending policies in plain English, live on six chains. The agent transacts. The operator controls the rules.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -280,11 +286,11 @@ Bessemer's cloud index tracks the infrastructure companies that define each era.
 Sardis is the Payment OS for AI agents. Non-custodial wallets, spending policies in plain English, six-chain support.
 
 The adoption is entirely organic:
-- 25,000+ SDK installs in three weeks.
+- 25,000+ SDK installs across 9 frameworks.
 - AutoGPT and Helicone as design partners.
 - 15+ framework integrations, merchant checkout live.
 
-This is a network play. Every agent framework, every merchant, every compliance layer connects through Sardis. The compounding is just starting. Raising seed.
+This is a network play. Every agent framework, every merchant, every compliance layer connects through Sardis. The compounding is just starting. Raising $9M seed at $36M pre.
 
 Would love 15 minutes to show you the network dynamics.
 
@@ -304,12 +310,12 @@ You have written extensively about responsible innovation. There is a question t
 
 Sardis is the answer. Every agent gets a non-custodial wallet with spending policies in plain English. The operator sets the rules. The agent executes within them. Full audit trail, fail-closed on any violation.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes to show you how the policy engine works.
+Raising $9M seed at $36M pre. Would love 15 minutes to show you how the policy engine works.
 
 Best,
 Efe Baran Durmaz
@@ -328,11 +334,11 @@ Greylock backed the enterprise platforms that became standards. The AI agent sta
 AI agents can reason, call tools, and take actions. The one action they cannot do safely is spend money. Sardis changes that.
 
 The traction is entirely organic:
-- 25,000+ SDK installs in three weeks.
+- 25,000+ SDK installs across 9 frameworks.
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed for virtual card programs, GTM, and compliance.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love 15 minutes to show you the developer adoption curve.
 
@@ -352,12 +358,12 @@ Lightspeed was early to every major infrastructure shift. The next one is paymen
 
 $200B+ has gone into AI. Agents can reason, code, and browse. They cannot safely spend money. Sardis is the infrastructure that changes that: non-custodial wallets, spending policies in plain English, live across six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -374,7 +380,7 @@ Hi Aydin,
 Felicis was early to Stripe, Plaid, and Shopify. Each became the infrastructure layer for a new era of commerce. The next era is agents buying, paying, and transacting on behalf of humans and businesses.
 
 Sardis is the payment infrastructure for that:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
@@ -399,11 +405,11 @@ Craft backs the infrastructure companies that sit at critical chokepoints. There
 Every AI agent that takes a real-world action will need to spend money. Today, developers wire up one-off integrations with no policy enforcement. Sardis is the control plane: non-custodial wallets, spending policies in plain English, works with any framework.
 
 The pull is real:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the chokepoint thesis in practice.
+Raising $9M seed at $36M pre. Would love to show you the chokepoint thesis in practice.
 
 Best,
 Efe Baran Durmaz
@@ -421,12 +427,12 @@ You talk about "thunder lizard" companies: startups that define a category befor
 
 $200B+ has gone into AI infrastructure. Agents can reason, code, browse, and call APIs. But nobody has built the financial infrastructure for them to safely transact. Sardis is that infrastructure.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love 15 minutes to make the "thunder lizard" case.
 
@@ -446,7 +452,7 @@ First Round backed the developer infrastructure companies that became standards:
 
 AI agents can do everything except spend money safely. Sardis is the infrastructure that fills that gap: non-custodial wallets, spending policies in plain English, works with any framework.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -470,13 +476,13 @@ Hi Jared,
 Sardis is the payment infrastructure layer for AI agents. Every agent gets a non-custodial wallet with spending policies in plain English. It is the missing piece between AI that reasons about money and AI that can safely move it.
 
 It is live today:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ agent framework integrations, merchant checkout in production.
 
 This is a network. Every framework, every merchant, every compliance layer that connects makes the next one more valuable. Competitors with far less product depth have raised $10M+.
 
-Raising seed for virtual card programs, GTM, and compliance. Would love to discuss whether Sardis is a fit for YC or for a direct investment conversation.
+Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring. Would love to discuss whether Sardis is a fit for YC or for a direct investment conversation.
 
 Best,
 Efe Baran Durmaz
@@ -494,7 +500,7 @@ YC backed Stripe when developers needed a way to accept payments. Today, AI agen
 
 Every agent gets a non-custodial wallet with spending rules in plain English. It is not a wrapper. It is financial infrastructure designed from the ground up for autonomous software.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -520,11 +526,11 @@ Khosla has made the biggest bets on AI infrastructure. One piece is missing from
 Sardis is the Payment OS for AI agents. Non-custodial wallets, spending policies in plain English, live across six chains. The agent executes within its policy. The operator controls the rules. Full audit trail.
 
 The adoption is entirely organic:
-- 25,000+ SDK installs in three weeks.
+- 25,000+ SDK installs across 9 frameworks.
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed for virtual card programs, GTM, and compliance.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love 15 minutes to show you how agent payments work in practice.
 
@@ -544,12 +550,12 @@ Balderton backed the companies that became European financial infrastructure: Re
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, live on six chains. Every agent gets its own wallet with its own rules.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction have raised $10M+. Raising seed for virtual card programs, GTM, and compliance.
+Competitors with less traction have raised $10M+. Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love 15 minutes to walk you through it.
 
@@ -569,12 +575,12 @@ You built Skype, which proved that infrastructure built by a small team can resh
 
 AI agents are going to initiate more transactions than most consumer apps. But there is no safe infrastructure for them to spend money. Sardis fills that gap: non-custodial wallets, plain English spending policies, live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -592,7 +598,7 @@ Google is part of the AP2 (Agent Payment Protocol) consortium alongside Visa, Ma
 
 We give every AI agent a non-custodial wallet with spending policies in plain English. Full AP2 mandate chain verification. Live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -620,11 +626,11 @@ Conviction backs the companies that become load-bearing infrastructure for AI. S
 AI agents can do almost anything except safely spend money. Sardis gives every agent a non-custodial wallet with spending policies in plain English.
 
 The pull is real:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations (LangChain, MCP, Vercel AI SDK), merchant checkout live.
 
-This is a network. Every integration compounds. Competitors with less traction have raised $10M+. Raising seed.
+This is a network. Every integration compounds. Competitors with less traction have raised $10M+. Raising $9M seed at $36M pre.
 
 Would love 15 minutes to show you the developer adoption curve.
 
@@ -644,12 +650,12 @@ Paradigm has the thesis that crypto is financial infrastructure, not speculation
 
 We give AI agents non-custodial MPC wallets. Stablecoins only: USDC, EURC, USDT, PYUSD. Live on Arc, Base, Polygon, Ethereum, Arbitrum, Optimism. This is the financial plumbing for autonomous agents operating in a stablecoin economy.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -667,12 +673,12 @@ You cofounded Coinbase because you believed crypto would become the infrastructu
 
 Non-custodial MPC wallets, plain English spending policies, live on six chains. No speculative tokens.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -690,12 +696,12 @@ QED just wrote that 2026 is the year AI reshapes financial services infrastructu
 
 AI agents will initiate trillions in financial transactions this decade. Today, there is no infrastructure for them to do it safely. Sardis gives every agent a non-custodial wallet with spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect with you, Frank, or Amias on this.
+Raising $9M seed at $36M pre. Would love to connect with you, Frank, or Amias on this.
 
 Best,
 Efe Baran Durmaz
@@ -714,11 +720,11 @@ BTV backs the fintech infrastructure companies that become standards. The next s
 Sardis gives every agent a non-custodial wallet with spending policies in plain English. Not a wrapper. Real financial infrastructure. Live on six chains.
 
 The pull is real:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less depth have raised $10M+. Raising seed for virtual card programs, GTM, and compliance.
+Competitors with less depth have raised $10M+. Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love to chat.
 
@@ -738,13 +744,13 @@ Boldstart backs developer infrastructure from day one. Sardis is the developer t
 
 One API call. The agent gets a non-custodial wallet. The developer writes a spending policy in plain English. The agent executes.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations (works with LangChain, CrewAI, Vercel AI SDK, MCP, anything).
 - Merchant checkout in production.
 
-Raising seed. Would love 15 minutes to show you the DX.
+Raising $9M seed at $36M pre. Would love 15 minutes to show you the DX.
 
 Best,
 Efe Baran Durmaz
@@ -762,7 +768,7 @@ Sardis is the payment infrastructure layer for AI agents. Arc is our primary cha
 
 We give every agent a non-custodial MPC wallet that transacts in USDC and EURC. Spending policies in plain English. AI agents are going to be the largest new category of USDC senders and receivers this decade. Sardis is how they get access.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - 15+ framework integrations (LangChain, Vercel AI SDK, MCP, more).
 - Merchant checkout in production.
@@ -785,7 +791,7 @@ Visa is part of the AP2 consortium alongside Google, Mastercard, and PayPal. Sar
 
 We verify the full AP2 mandate chain before any agent can execute a payment. Non-custodial wallets, plain English spending policies, live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -808,7 +814,7 @@ Mastercard co-designed the AP2 protocol. Sardis is building the production infra
 
 We give every AI agent a non-custodial wallet with spending policies in plain English. Full AP2 mandate chain verification. Live on six chains with stablecoin support.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - 15+ framework integrations, merchant checkout live.
 
@@ -830,12 +836,12 @@ Emergence backs the enterprise software that becomes the system of record. For A
 
 Every agent gets a non-custodial wallet with spending policies in plain English. Full audit trail. Enterprise-grade compliance. The agent executes. The company controls the rules.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -853,12 +859,12 @@ Hack VC has the crypto-AI convergence thesis. Sardis is that convergence deploye
 
 Non-custodial MPC wallets for AI agents. Stablecoins across six chains. Spending policies in plain English. This is the financial primitive that agents need to participate in the on-chain economy.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -878,12 +884,12 @@ Every agent gets a non-custodial MPC wallet. USDC, EURC, USDT, PYUSD across six 
 
 Stablecoins processed $9T in 2025. AI agents are about to become the fastest-growing category of stablecoin senders. Sardis is how they get access.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -901,12 +907,12 @@ You built Compound to make lending programmable. Sardis does the same for agent 
 
 Every AI agent gets a non-custodial MPC wallet with spending policies in plain English. Stablecoins across six chains. No speculation. Pure financial infrastructure for autonomous software.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-This is the DeFi primitive that the agent economy has been missing. Raising seed.
+This is the DeFi primitive that the agent economy has been missing. Raising $9M seed at $36M pre.
 
 Would love to talk.
 
@@ -926,12 +932,12 @@ Pantera's 2026 thesis is that stablecoin infrastructure is the biggest opportuni
 
 Non-custodial MPC wallets, plain English spending policies, live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -949,12 +955,12 @@ Nyca backs the companies that become financial infrastructure for institutions. 
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail. The institution defines the rules. The agent executes within them.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -972,12 +978,12 @@ Commerce Ventures backs the infrastructure that powers commerce. The next wave o
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, merchant checkout already live.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations.
 
-Raising seed. Would love to show you how merchant checkout works.
+Raising $9M seed at $36M pre. Would love to show you how merchant checkout works.
 
 Best,
 Efe Baran Durmaz
@@ -995,12 +1001,12 @@ Amplify backs the developer infrastructure companies that become essential. Sard
 
 One integration. The agent gets a wallet. The developer writes a policy. The agent pays. Works with LangChain, CrewAI, Vercel AI SDK, MCP, and anything else.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -1018,7 +1024,7 @@ You built the Fintech Devcon community because you saw that fintech infrastructu
 
 Sardis is building it. Non-custodial agent wallets, spending policies in plain English, six chains, merchant checkout.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations.
@@ -1041,12 +1047,12 @@ Contrary backs technical founders building category-defining infrastructure. Sar
 
 $200B+ has gone into AI. But there is no safe way for an agent to spend money. Sardis solves that: non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -1064,12 +1070,12 @@ Pear has a talent for finding the category-defining companies at seed. Sardis is
 
 Every agent gets a non-custodial wallet with spending policies in plain English. Works with any framework. Live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes.
+Raising $9M seed at $36M pre. Would love 15 minutes.
 
 Best,
 Efe Baran Durmaz
@@ -1087,12 +1093,12 @@ Revo backed Insider and iyzico, companies that proved Turkish founders can build
 
 We are building the Payment OS for AI agents. Non-custodial wallets, spending policies in plain English, live across six chains. This is not a local play. It is global financial infrastructure for a market that does not exist yet.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less product depth have raised $10M+. We are raising seed for virtual card programs, GTM, and compliance.
+Competitors raised $10M+ with less depth. Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). We are raising $9M seed at $36M pre.
 
 Would love to talk. This is exactly the kind of company Revo was built to back.
 
@@ -1112,12 +1118,12 @@ Polychain has been investing in the protocol layer of crypto since the beginning
 
 Non-custodial MPC wallets. Stablecoins only. Six chains. Spending policies in plain English. The agent transacts within its rules. The operator maintains control.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -1135,12 +1141,12 @@ The Electric Capital Developer Report tracks where crypto developers are buildin
 
 Non-custodial MPC wallets, plain English spending policies, stablecoins on six chains. The financial primitive that agents need.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the developer adoption data.
+Raising $9M seed at $36M pre. Would love to show you the developer adoption data.
 
 Best,
 Efe Baran Durmaz
@@ -1158,7 +1164,7 @@ Microsoft is investing heavily in AI agent capabilities. When those agents need 
 
 Non-custodial wallets, spending policies in plain English, works with any framework including MCP. Live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -1181,12 +1187,12 @@ Point Nine backs the B2B SaaS infrastructure that becomes essential. Sardis is t
 
 One integration. The agent gets a non-custodial wallet. The developer writes a policy in plain English. The agent executes.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the developer experience.
+Raising $9M seed at $36M pre. Would love to show you the developer experience.
 
 Best,
 Efe Baran Durmaz
@@ -1203,11 +1209,11 @@ Hi Christian,
 Earlybird has backed some of the biggest European companies going global. Sardis is building global financial infrastructure for AI agents, and we are just getting started.
 
 Non-custodial wallets, spending policies in plain English, live on six chains. The pull is real:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -1229,12 +1235,12 @@ You spent years building the payment infrastructure at Stripe that made internet
 
 Every agent gets a non-custodial wallet with spending rules in plain English. Agents will initiate more transactions than most consumer apps. The infrastructure does not exist yet.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your payments expertise would be incredibly valuable.
+Raising $9M seed at $36M pre. Your payments expertise would be incredibly valuable.
 
 Best,
 Efe Baran Durmaz
@@ -1251,13 +1257,13 @@ Hi Patrick,
 Stripe made it possible for any developer to accept payments with seven lines of code. Sardis does the same for AI agents: one integration, and the agent can safely transact with its own wallet and its own spending policy.
 
 The developer adoption curve looks familiar:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
 AI agents will initiate more financial transactions than most SaaS companies. The infrastructure for that does not exist yet.
 
-Raising seed. Would love to talk.
+Raising $9M seed at $36M pre. Would love to talk.
 
 Best,
 Efe Baran Durmaz
@@ -1275,7 +1281,7 @@ Sardis already has a native Vercel AI SDK integration. Your developers are build
 
 Non-custodial wallets, spending policies in plain English, merchant checkout live.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - 15+ framework integrations (Vercel AI SDK is one of them).
 
@@ -1297,12 +1303,12 @@ Plaid became the identity layer between consumers and their financial institutio
 
 Every agent gets a non-custodial wallet. The operator controls the rules. The agent executes. Full audit trail.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -1320,7 +1326,7 @@ Replit agents are building and deploying software autonomously. The next thing t
 
 Sardis gives them a safe way to do that. Non-custodial wallets, spending policies in plain English, works over MCP.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - 15+ framework integrations, merchant checkout live.
 
@@ -1342,7 +1348,7 @@ Sardis already has a native LangChain integration. Your developers want their ag
 
 Non-custodial wallets, spending policies in plain English, one import and any LangChain agent can pay.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - Merchant checkout live.
@@ -1365,12 +1371,12 @@ Scale AI built the data infrastructure that AI needs to learn. Sardis is buildin
 
 Non-custodial wallets, spending policies in plain English, live on six chains. The agent executes within its rules. The operator controls everything.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to get your take.
+Raising $9M seed at $36M pre. Would love to get your take.
 
 Best,
 Efe Baran Durmaz
@@ -1388,12 +1394,12 @@ You invest at the intersection of AI infrastructure and markets about to break o
 
 $200B+ has gone into AI. Agents can reason, code, browse. They cannot safely spend money. Sardis fixes that.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less product have raised $10M+. Raising seed.
+Competitors with less product have raised $10M+. Raising $9M seed at $36M pre.
 
 Would love to chat.
 
@@ -1413,12 +1419,12 @@ You cofounded PayPal and built Affirm. Both created payment infrastructure for a
 
 Every agent gets a non-custodial wallet with spending rules in plain English. The agent transacts within its policy. The operator maintains control.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your experience building payment infrastructure from zero would be invaluable.
+Raising $9M seed at $36M pre. Your experience building payment infrastructure from zero would be invaluable.
 
 Best,
 Efe Baran Durmaz
@@ -1436,12 +1442,12 @@ Mercury built the bank account for startups. Sardis is building the financial ac
 
 Every agent gets a non-custodial wallet with spending policies in plain English. Not a bank. The execution layer between an agent and money: policy enforcement, audit trail, no custodial risk.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to get your take.
+Raising $9M seed at $36M pre. Would love to get your take.
 
 Best,
 Efe Baran Durmaz
@@ -1459,12 +1465,12 @@ You built Wise because cross-border payments were broken for people. Agent payme
 
 Sardis is building the financial infrastructure for AI agents to transact safely. Non-custodial wallets, plain English spending policies, live on six chains with stablecoin support.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love your perspective.
+Raising $9M seed at $36M pre. Would love your perspective.
 
 Best,
 Efe Baran Durmaz
@@ -1481,11 +1487,11 @@ Hi Keith,
 You backed Stripe and Square early because you saw that payment infrastructure defines commerce eras. The next era is agents transacting autonomously.
 
 Sardis is the infrastructure for that:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less product have raised $10M+. Raising seed for virtual card programs, GTM, and compliance.
+Competitors with less product have raised $10M+. Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love 15 minutes.
 
@@ -1505,12 +1511,12 @@ You wrote that the future is a million small businesses run by one person with A
 
 Sardis is the infrastructure. Non-custodial wallets, spending policies in plain English, live on six chains. Every solopreneur's agent gets its own wallet with its own rules.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -1528,12 +1534,12 @@ You wrote about the network state and programmable money. Sardis is where those 
 
 This is agent-to-agent and agent-to-merchant commerce infrastructure running on crypto rails today. Not a whitepaper. Production.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to talk.
+Raising $9M seed at $36M pre. Would love to talk.
 
 Best,
 Efe Baran Durmaz
@@ -1550,11 +1556,11 @@ Hi Nik,
 Your writing on fintech infrastructure keeps coming back to a theme: the plumbing matters more than the interface. For AI agents, the plumbing does not exist yet.
 
 Sardis is building it:
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-This is a network. Every framework and merchant that connects makes the next one more valuable. Raising seed.
+This is a network. Every framework and merchant that connects makes the next one more valuable. Raising $9M seed at $36M pre.
 
 Would love to chat.
 
@@ -1572,12 +1578,12 @@ Hi Bill,
 
 You built WePay and saw how complex payment infrastructure is to get right. Now imagine building it for a user that is not human: AI agents that need to transact autonomously, safely, and within policy.
 
-That is Sardis. Three weeks in:
+That is Sardis. Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your payments expertise would be incredibly valuable.
+Raising $9M seed at $36M pre. Your payments expertise would be incredibly valuable.
 
 Best,
 Efe Baran Durmaz
@@ -1593,9 +1599,9 @@ Hi Sahil,
 
 Gumroad made it easy for creators to sell. Sardis makes it easy for AI agents to buy. Same thesis, new buyer.
 
-Non-custodial wallets, spending policies in plain English, merchant checkout live. 25,000+ SDK installs in three weeks with zero marketing.
+Non-custodial wallets, spending policies in plain English, merchant checkout live. 25,000+ SDK installs across 9 frameworks with zero marketing.
 
-Raising seed. Would love to chat.
+Raising $9M seed at $36M pre. Would love to chat.
 
 Best,
 Efe Baran Durmaz
@@ -1613,12 +1619,12 @@ You built ChatSpot and understand deeply how AI agents interact with business sy
 
 Sardis fixes that. Non-custodial wallets, spending policies in plain English, works over MCP.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect.
+Raising $9M seed at $36M pre. Would love to connect.
 
 Best,
 Efe Baran Durmaz
@@ -1634,12 +1640,12 @@ Hi Cristina,
 
 You built Stripe's partnerships. Sardis needs the same playbook: we are the payment infrastructure for AI agents, and every agent framework partnership compounds the network.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your partnerships expertise is exactly what we need at this stage.
+Raising $9M seed at $36M pre. Your partnerships expertise is exactly what we need at this stage.
 
 Best,
 Efe Baran Durmaz
@@ -1657,12 +1663,12 @@ You scaled Stripe's operations from early stage to IPO. Sardis is at the beginni
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks in:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your perspective on scaling financial infrastructure would be invaluable.
+Raising $9M seed at $36M pre. Your perspective on scaling financial infrastructure would be invaluable.
 
 Best,
 Efe Baran Durmaz
@@ -1688,10 +1694,12 @@ You backed Sardine, Persona, and Alloy because trust infrastructure is the unloc
 
 Sardis is the Payment OS for the agent economy. Each agent gets a non-custodial wallet with spending policies in plain English, backed by a full audit trail. KYC and sanctions screening are built in, not bolted on.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
-- 15+ agent framework integrations, merchant checkout live.
+- 9 AI framework SDKs (LangChain, CrewAI, OpenAI, Vercel AI SDK, Google ADK, etc.), merchant checkout live on Base mainnet.
+- 1,095 commits, 39 packages, 63 API routers, 52 DB migrations. Solo founder.
+- Compliant with AP2, TAP, x402, UCP, A2A protocols. Revenue flow active.
 
 Competitors with less traction and no compliance stack raised $10M+. We are raising seed to launch virtual card programs, hire GTM, and build out the compliance team.
 
@@ -1713,12 +1721,12 @@ You have been one of the clearest voices on stablecoins as the future of money m
 
 Every AI agent gets a non-custodial wallet with spending rules in plain English. Live on Arc, Base, Polygon, and Ethereum. USDC, EURC, USDT, PYUSD natively supported.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed to launch virtual card programs and scale the network.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, and scaling.
 
 Would love to show you the multi-chain execution engine.
 
@@ -1738,12 +1746,12 @@ You back foundational AI infrastructure at Sequoia. Every layer of the AI stack 
 
 Sardis is the Payment OS for the agent economy. Non-custodial wallets, spending policies in plain English, live on six chains. It is the financial primitive that makes autonomous agents commercially viable.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed to expand the platform.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Happy to walk you through how the spending policy engine works.
 
@@ -1763,12 +1771,12 @@ You backed MongoDB, Neo4j, and Mattermost because developer-first infrastructure
 
 One SDK, one API. Agents get non-custodial wallets, spending policies in plain English, and they execute autonomously. Developer experience is the product.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the developer experience.
 
@@ -1788,12 +1796,12 @@ Accel has backed some of the most important fintech infrastructure companies. Th
 
 Sardis is the Payment OS for the agent economy. Non-custodial wallets, spending policies in plain English, full audit trail. Think of it as the financial trust layer for any agent, on any chain.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed to launch virtual card programs and hire GTM.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, and hiring.
 
 Would love 15 minutes to show you the platform.
 
@@ -1813,12 +1821,12 @@ You backed Confluent, Elastic, and CockroachDB because foundational infrastructu
 
 Non-custodial wallets, spending policies in plain English, live on six chains. One integration, works everywhere.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through how the spending policy engine works at scale.
 
@@ -1838,12 +1846,12 @@ You have been investing at the intersection of crypto infrastructure and fintech
 
 Every agent gets a non-custodial wallet with spending rules in plain English. USDC, EURC, USDT, PYUSD natively supported across six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to launch virtual card programs and scale the network. Competitors with less traction raised $10M+.
+Raising $9M seed at $36M pre for audits, card programs, and scaling. Competitors with less traction raised $10M+.
 
 Would love to show you how the multi-chain execution works.
 
@@ -1863,12 +1871,12 @@ Spend management for humans is a solved problem. For AI agents, it does not exis
 
 Sardis is that layer. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed to launch virtual card programs and build a compliance team.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Happy to show you the spending policy engine in 15 minutes.
 
@@ -1888,12 +1896,12 @@ Every AI agent will need to transact. Today, there is no safe way for them to do
 
 Sardis is the Payment OS for agents. Non-custodial MPC wallets, spending policies in plain English, compliance built in. Not a feature on top of something else. The entire platform is purpose-built.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love 15 minutes to show you the architecture.
 
@@ -1913,12 +1921,12 @@ You co-founded Anduril and understand how critical it is to give autonomous syst
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail. The agent acts within its bounds. No exceptions.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to launch virtual card programs, hire GTM, and build a compliance team.
+Raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, fiat rails, and hiring.
 
 Would love to show you how the policy enforcement engine works.
 
@@ -1938,12 +1946,12 @@ You built the professional network for humans. Sardis is building the financial 
 
 Every agent gets a non-custodial wallet, spending policies in plain English, and the ability to transact with any other agent or merchant on the network. This is not just a product. It is infrastructure that becomes more valuable as more agents and merchants connect.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share how the network effects are compounding.
 
@@ -1963,12 +1971,12 @@ Khosla has a track record of backing infrastructure that reshapes entire markets
 
 Sardis is the Payment OS for the agent economy. Non-custodial wallets, spending policies in plain English, compliance built in. Live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone as first design partners.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the architecture.
 
@@ -1992,12 +2000,12 @@ Multicoin has backed the foundational crypto infrastructure layers: Solana, Heli
 
 Sardis is that layer. Non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum. Native MCP integration so any agent can call it as a tool.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to expand chain support and launch virtual card programs.
+Raising $9M seed at $36M pre for audits, card programs, and scaling.
 
 Would love to show you the on-chain execution engine.
 
@@ -2017,12 +2025,12 @@ You and Kyle have been early on every major crypto infrastructure shift. The nex
 
 Sardis gives each agent a non-custodial wallet with spending rules in plain English. USDC, EURC, USDT, PYUSD across six chains. One integration, any chain.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the multi-chain architecture.
 
@@ -2042,12 +2050,12 @@ You backed Coinbase when most people did not understand crypto infrastructure. T
 
 Sardis is the Payment OS for agents. Non-custodial wallets, spending policies in plain English, live on six chains with stablecoin support.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share how the network is growing.
 
@@ -2067,12 +2075,12 @@ You wrote about a world where AI agents operate autonomously. For that to work, 
 
 Sardis is that infrastructure. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your thesis on autonomous agents maps directly to what we are building.
+Raising $9M seed at $36M pre. Your thesis on autonomous agents maps directly to what we are building.
 
 Would love to discuss how Sardis fits the World After Capital framework.
 
@@ -2092,12 +2100,12 @@ QED built the playbook for fintech investing. The next infrastructure layer is p
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed to launch virtual card programs.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love your take on how agent payments reshape fintech.
 
@@ -2117,12 +2125,12 @@ Your experience at Treasury gives you a lens most investors do not have: what ha
 
 Sardis is building that infrastructure. Non-custodial wallets, spending policies in plain English, KYC and sanctions screening built in. Every transaction is audited before it executes.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to build out the compliance team and launch virtual card programs.
+Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love to show you how the compliance layer works.
 
@@ -2142,12 +2150,12 @@ You invest in B2B fintech infrastructure at QED. The next wave is clear: AI agen
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail. Built for B2B workflows where compliance and control matter.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to share how B2B agent payments work on Sardis.
+Raising $9M seed at $36M pre. Would love to share how B2B agent payments work on Sardis.
 
 Best,
 Efe Baran Durmaz
@@ -2165,12 +2173,12 @@ You co-founded NerdWallet and then built BTV to back the next generation of fint
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -2188,14 +2196,14 @@ Hi Nabeel,
 
 Spark has a strong track record backing developer platforms that become category-defining. Sardis is the payment primitive every AI agent developer needs. One SDK, spending policies in plain English, works across chains and frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
 Not a feature. A network. Every agent that integrates makes it more valuable for the next.
 
-Raising seed. Would love to show you the developer experience.
+Raising $9M seed at $36M pre. Would love to show you the developer experience.
 
 Best,
 Efe Baran Durmaz
@@ -2213,12 +2221,12 @@ You have backed some of the most important enterprise SaaS companies. Every one 
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the enterprise use case.
+Raising $9M seed at $36M pre. Would love to show you the enterprise use case.
 
 Best,
 Efe Baran Durmaz
@@ -2236,12 +2244,12 @@ Radical was built specifically for AI infrastructure. Sardis is the one layer ev
 
 Non-custodial wallets, spending policies in plain English, live on six chains with full compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the spending policy engine.
 
@@ -2261,12 +2269,12 @@ You backed Salesforce, Zoom, and Box when enterprise workflow automation was jus
 
 Sardis is the Payment OS for agents. Spending policies in plain English, non-custodial wallets, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you how the autonomous workflow maps to your thesis.
+Raising $9M seed at $36M pre. Would love to show you how the autonomous workflow maps to your thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2284,12 +2292,12 @@ You wrote the playbook on network effects. Sardis is a payment network where eve
 
 Each agent gets a non-custodial wallet with spending policies in plain English. Each merchant can embed a "Pay with Sardis" button. The network compounds on both sides.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to map the network effects model with you.
 
@@ -2309,12 +2317,12 @@ Coinbase Ventures backs the infrastructure that makes crypto usable. Sardis is t
 
 Non-custodial wallets, spending policies in plain English, live on Base, Polygon, Ethereum, and Arc. USDC native across all chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We are live on Base, which makes this a natural fit for the Coinbase ecosystem. Raising seed.
+We are live on Base, which makes this a natural fit for the Coinbase ecosystem. Raising $9M seed at $36M pre.
 
 Would love to show you how agents transact on Base using Sardis.
 
@@ -2334,7 +2342,7 @@ PayPal is part of the AP2 consortium alongside Google, Visa, and Mastercard, bui
 
 Every agent gets a non-custodial wallet with spending policies in plain English. Full AP2 mandate chain verification before execution.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -2355,12 +2363,12 @@ Hi Joe,
 
 You co-founded Palantir to bring structure and controls to complex systems. Sardis does the same for AI agent payments: structured spending policies, non-custodial wallets, full audit trail. Every transaction is audited before it executes.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you how the control layer works.
 
@@ -2380,12 +2388,12 @@ Enterprise AI agents are moving from recommendations to actions. The one action 
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, full audit trail. Enterprise-grade controls built in from day one.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the enterprise use case.
+Raising $9M seed at $36M pre. Would love to show you the enterprise use case.
 
 Best,
 Efe Baran Durmaz
@@ -2403,12 +2411,12 @@ Wing backs foundational enterprise infrastructure. Sardis is the financial primi
 
 Non-custodial wallets, spending policies in plain English, compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the architecture.
 
@@ -2428,12 +2436,12 @@ Portage has been one of the clearest voices on embedded finance. The next embedd
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent payments fit the embedded finance thesis.
+Raising $9M seed at $36M pre. Would love to discuss how agent payments fit the embedded finance thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2451,12 +2459,12 @@ Flourish backs fintech infrastructure that creates broad access. As AI agents be
 
 Sardis is the Payment OS for agents. Non-custodial wallets, spending policies in plain English, compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to explore how Sardis fits the Flourish thesis.
+Raising $9M seed at $36M pre. Would love to explore how Sardis fits the Flourish thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2472,12 +2480,12 @@ Hi Logan,
 
 Fin Capital backs fintech infrastructure at the earliest stages. Sardis is the payment layer AI agents need to transact safely: non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed to launch virtual card programs.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share what we have built.
 
@@ -2495,14 +2503,14 @@ Hi Mike,
 
 Amplify backs developer infrastructure at the seed stage. Sardis is the payment primitive every AI agent developer needs: one SDK, spending policies in plain English, works across chains and frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
 Not a feature. A network. Every agent that integrates makes the network more valuable.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to demo the developer experience.
 
@@ -2522,12 +2530,12 @@ Work-Bench backs enterprise software in regulated industries. As enterprise comp
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail. Built for the enterprise from day one.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the enterprise buyer perspective.
+Raising $9M seed at $36M pre. Would love to discuss the enterprise buyer perspective.
 
 Best,
 Efe Baran Durmaz
@@ -2543,12 +2551,12 @@ Hi Ramtin,
 
 Abstract backs crypto infrastructure at the protocol level. Sardis is the execution layer where AI agents transact on-chain: non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the on-chain architecture.
 
@@ -2566,12 +2574,12 @@ Hi Mar,
 
 Pear backs foundational infrastructure at the seed stage. Sardis is the financial primitive that every AI agent is missing: a safe way to transact with real controls and a full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Happy to show you the platform.
 
@@ -2591,12 +2599,12 @@ Your career at DOJ and a16z Crypto gives you a unique view: what happens when au
 
 Sardis is building that infrastructure. Non-custodial wallets, spending policies in plain English, KYC and sanctions screening built in. Every transaction is audited before execution.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to build out the compliance team and launch virtual card programs.
+Raising $9M seed at $36M pre for audits, card programs, licenses, and hiring.
 
 Would love to show you how the compliance layer works.
 
@@ -2616,12 +2624,12 @@ Dragonfly backs the infrastructure that makes crypto work. Sardis is the next la
 
 Non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum. Native stablecoin support across all chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the on-chain execution engine.
 
@@ -2641,12 +2649,12 @@ Neo backs technical AI founders building foundational infrastructure. Sardis is 
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you how the spending policy engine works.
 
@@ -2666,12 +2674,12 @@ You literally wrote the book on crypto assets. The next asset class is agent wal
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent payments map to the Placeholder thesis.
+Raising $9M seed at $36M pre. Would love to discuss how agent payments map to the Placeholder thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2687,12 +2695,12 @@ Hi Hunter,
 
 Homebrew has been one of the most consistent seed funds for developer platforms. Sardis is the payment primitive every AI agent developer needs: one SDK, spending policies in plain English, works across chains and frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share the developer experience.
 
@@ -2712,12 +2720,12 @@ FPV invests at the intersection of AI and fintech. Sardis sits at exactly that i
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -2737,12 +2745,12 @@ Eniac backs AI-first enterprise companies at the earliest stages. Sardis is the 
 
 Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love 15 minutes to show you the spending policy engine.
+Raising $9M seed at $36M pre. Would love 15 minutes to show you the spending policy engine.
 
 Best,
 Efe Baran Durmaz
@@ -2760,12 +2768,12 @@ Primary backs enterprise B2B companies in New York. The next B2B infrastructure 
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the enterprise B2B angle.
+Raising $9M seed at $36M pre. Would love to discuss the enterprise B2B angle.
 
 Best,
 Efe Baran Durmaz
@@ -2781,12 +2789,12 @@ Hi Dan,
 
 You built Farcaster and understand crypto-native infrastructure deeply from your Coinbase days. Sardis is the payment layer for agents in that ecosystem: non-custodial wallets, spending policies in plain English, live on Base and four other chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you how agents transact on Base.
+Raising $9M seed at $36M pre. Would love to show you how agents transact on Base.
 
 Best,
 Efe Baran Durmaz
@@ -2802,12 +2810,12 @@ Hi Mike,
 
 6th Man backs crypto payment infrastructure. Sardis is the execution layer where AI agents transact on-chain: non-custodial wallets, spending policies in plain English, native stablecoin support.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the architecture.
 
@@ -2825,12 +2833,12 @@ Hi Lasse,
 
 1kx backs protocol-level crypto infrastructure. Sardis is building the agent payment protocol: non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum. Full AP2 mandate verification.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent payments become a protocol layer.
+Raising $9M seed at $36M pre. Would love to discuss how agent payments become a protocol layer.
 
 Best,
 Efe Baran Durmaz
@@ -2848,12 +2856,12 @@ Northzone was early on Spotify and iZettle. Both became infrastructure. Sardis i
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -2871,12 +2879,12 @@ Hi Ciaran,
 
 BlueYard backs decentralized infrastructure and open protocols. Sardis is building the open payment protocol for AI agents: non-custodial wallets, spending policies in plain English, works across chains and frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent payments fit the open infrastructure thesis.
+Raising $9M seed at $36M pre. Would love to discuss how agent payments fit the open infrastructure thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2894,12 +2902,12 @@ EQT Ventures is making AI-first bets in Europe. As enterprise agents move from r
 
 Sardis is the Payment OS for agents. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the platform.
+Raising $9M seed at $36M pre. Would love to show you the platform.
 
 Best,
 Efe Baran Durmaz
@@ -2917,12 +2925,12 @@ You coined the "ownership economy" thesis. Sardis extends it to AI: every agent 
 
 Non-custodial wallets, spending policies in plain English, live on Arc, Base, Polygon, and Ethereum.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent wallets map to the Variant thesis.
+Raising $9M seed at $36M pre. Would love to discuss how agent wallets map to the Variant thesis.
 
 Best,
 Efe Baran Durmaz
@@ -2938,12 +2946,12 @@ Hi Spencer,
 
 You track on-chain developer activity better than anyone. Sardis is creating a new category of on-chain data: agent payment transactions. Every agent wallet, every spending policy, every execution is on-chain and auditable.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to share the on-chain transaction patterns we are seeing.
+Raising $9M seed at $36M pre. Would love to share the on-chain transaction patterns we are seeing.
 
 Best,
 Efe Baran Durmaz
@@ -2959,12 +2967,12 @@ Hi Vance,
 
 Framework backs DeFi infrastructure at the protocol level. Sardis is the execution layer where AI agents interact with DeFi safely: non-custodial wallets, spending policies in plain English, stablecoin support across chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to walk you through the DeFi execution layer.
 
@@ -2984,12 +2992,12 @@ Madrona was early on the cloud infrastructure wave. The next infrastructure laye
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, works across chains and frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how agent payments fit the Madrona thesis.
+Raising $9M seed at $36M pre. Would love to discuss how agent payments fit the Madrona thesis.
 
 Best,
 Efe Baran Durmaz
@@ -3005,12 +3013,12 @@ Hi David,
 
 NextView backs fintech and commerce infrastructure at the seed stage. Sardis is the payment layer that AI agents need to transact safely: non-custodial wallets, spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share what we have built.
 
@@ -3030,12 +3038,12 @@ Brewer Lane backs fintech infrastructure in financial services. As insurance and
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the financial services use case.
+Raising $9M seed at $36M pre. Would love to discuss the financial services use case.
 
 Best,
 Efe Baran Durmaz
@@ -3055,12 +3063,12 @@ Hi Jeff,
 
 You build products at the intersection of consumer and crypto. Sardis is the checkout experience for AI agents: every agent gets a wallet, spending policies in plain English, and merchants can embed "Pay with Sardis" for instant agent payments.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the merchant checkout flow.
+Raising $9M seed at $36M pre. Would love to show you the merchant checkout flow.
 
 Best,
 Efe Baran Durmaz
@@ -3078,12 +3086,12 @@ You led AI programs at Apple and YC. You know how quickly the agent ecosystem is
 
 Sardis is that primitive. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the spending policy engine.
 
@@ -3101,12 +3109,12 @@ Hi Jenny,
 
 Everywhere backs pre-seed B2B infrastructure with a global lens. Sardis is the payment layer every AI agent needs to transact safely: non-custodial wallets, spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Happy to share a quick demo.
 
@@ -3128,7 +3136,7 @@ Sardis is the Payment OS for AI agents: non-custodial wallets with spending poli
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed to launch virtual card programs, hire GTM, and build a compliance team.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre for security audits, virtual card programs, financial licenses, fiat rails, and hiring.
 
 Would love 15 minutes to show you the traction.
 
@@ -3148,12 +3156,12 @@ Einstein agents are already making decisions inside Salesforce. The next step is
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Is agent payment execution something Salesforce customers are asking for?
+Raising $9M seed at $36M pre. Is agent payment execution something Salesforce customers are asking for?
 
 Best,
 Efe Baran Durmaz
@@ -3169,12 +3177,12 @@ Hi Jeff,
 
 Uncork has been one of the most consistent seed investors for two decades. Sardis is the payment layer every AI agent needs: non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share a quick demo.
 
@@ -3194,12 +3202,12 @@ You write about the future of work and AI. The future you describe requires one 
 
 Sardis is building it. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how Sardis fits the future of autonomous work.
+Raising $9M seed at $36M pre. Would love to discuss how Sardis fits the future of autonomous work.
 
 Best,
 Efe Baran Durmaz
@@ -3215,12 +3223,12 @@ Hi Erik,
 
 You have built communities that turn into platforms. Sardis is a payment network for AI agents where every agent and merchant that connects makes it more valuable for the next one.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share how the network is compounding.
 
@@ -3240,12 +3248,12 @@ Base10 backs AI that transforms real industries. For that transformation to work
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the real-economy use cases.
+Raising $9M seed at $36M pre. Would love to discuss the real-economy use cases.
 
 Best,
 Efe Baran Durmaz
@@ -3263,12 +3271,12 @@ Rebel Fund backs contrarian infrastructure bets. Here is one: AI agents will tra
 
 Sardis is building it. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share the thesis.
 
@@ -3288,12 +3296,12 @@ HubSpot Ventures backs B2B software that helps companies grow. As AI agents take
 
 Sardis is the Payment OS for that.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the B2B agent angle.
+Raising $9M seed at $36M pre. Would love to discuss the B2B agent angle.
 
 Best,
 Efe Baran Durmaz
@@ -3309,12 +3317,12 @@ Hi Fabian,
 
 GFC backs global infrastructure companies at the seed stage. Sardis is the payment layer for the agent economy: multi-chain, multi-currency, multi-framework. Built to be global from day one.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -3332,12 +3340,12 @@ Hi Mallun,
 
 Operator Collective backs enterprise software built by operators. Sardis is the payment infrastructure that enterprise AI agents need: non-custodial wallets, spending policies in plain English, compliance and audit trails built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed to hire a GTM team and launch virtual card programs.
+Raising $9M seed at $36M pre for audits, card programs, and hiring.
 
 Would love to discuss our enterprise go-to-market.
 
@@ -3359,7 +3367,7 @@ Soma backs seed-stage B2B with strong early traction. Sardis has exactly that: t
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Happy to share a quick demo.
 
@@ -3379,12 +3387,12 @@ You have talked about agent infrastructure being the next massive category. The 
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the traction story.
 
@@ -3404,12 +3412,12 @@ Mayfield backed ServiceNow and HashiCorp when infrastructure categories were jus
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the category formation.
+Raising $9M seed at $36M pre. Would love to discuss the category formation.
 
 Best,
 Efe Baran Durmaz
@@ -3427,12 +3435,12 @@ Initialized was early on Coinbase and Cruise. Sardis is building the next founda
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share a quick demo.
 
@@ -3452,12 +3460,12 @@ Lux backs deep tech that sits at the intersection of software and the physical w
 
 Non-custodial wallets, spending policies in plain English, compliance built in.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to walk you through the architecture.
+Raising $9M seed at $36M pre. Would love to walk you through the architecture.
 
 Best,
 Efe Baran Durmaz
@@ -3473,7 +3481,7 @@ Hi Sandeep,
 
 Sardis is live on Polygon. Every AI agent gets a non-custodial wallet with spending policies in plain English, executing USDC and USDT transactions on Polygon natively.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
@@ -3496,12 +3504,12 @@ Hi Edith,
 
 Race Capital backs AI infrastructure at the seed stage. Sardis is the one primitive every AI agent is missing: safe, auditable payment execution.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Happy to show you the platform.
 
@@ -3519,12 +3527,12 @@ Hi Paul,
 
 SPC is where technical founders build before they launch. Sardis is the financial primitive that agent developers need: one SDK, spending policies in plain English, works across frameworks and chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to connect with the SPC community on this.
+Raising $9M seed at $36M pre. Would love to connect with the SPC community on this.
 
 Best,
 Efe Baran Durmaz
@@ -3542,12 +3550,12 @@ Decibel backs enterprise AI infrastructure. As enterprises deploy agents for pro
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the enterprise angle.
+Raising $9M seed at $36M pre. Would love to discuss the enterprise angle.
 
 Best,
 Efe Baran Durmaz
@@ -3563,12 +3571,12 @@ Hi Rina,
 
 I am a Turkish founder building global payment infrastructure for AI agents. Sardis gives every agent a non-custodial wallet with spending policies in plain English. Live on six chains, integrated with 15+ agent frameworks.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - Merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to connect on how 500 Emerging Europe can support this.
 
@@ -3588,12 +3596,12 @@ You backed Getir and Dream Games before the world noticed. I am building the nex
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share the vision.
 
@@ -3611,12 +3619,12 @@ Hi Abdulaziz,
 
 Faith Capital backs AI and fintech infrastructure in MENA. Sardis is the Payment OS for AI agents: non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Agent payments is a global opportunity with strong MENA demand.
+Raising $9M seed at $36M pre. Agent payments is a global opportunity with strong MENA demand.
 
 Would love to discuss the regional angle.
 
@@ -3636,12 +3644,12 @@ Seedcamp was early on Wise and Revolut. Sardis is building the next payment infr
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -3659,12 +3667,12 @@ Hi Hasan,
 
 Endeavor backs high-impact founders scaling globally. I am a Turkish founder building global payment infrastructure for AI agents. Sardis gives every agent a non-custodial wallet with spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to discuss how Endeavor Catalyst can support this.
 
@@ -3688,12 +3696,12 @@ You helped build PayPal for humans. The same problem needs to be solved for AI a
 
 Sardis is the Payment OS for the agent economy. Non-custodial wallets, spending policies in plain English, full audit trail. It is what PayPal would look like if it were built for autonomous software from scratch.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love 15 minutes to show you the spending policy engine.
 
@@ -3713,12 +3721,12 @@ You co-founded Eventbrite and have been investing at the intersection of payment
 
 Sardis is the infrastructure for that. Non-custodial wallets, spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to share what we have built.
+Raising $9M seed at $36M pre. Would love to share what we have built.
 
 Best,
 Efe Baran Durmaz
@@ -3734,12 +3742,12 @@ Hi Allison,
 
 You have been one of the most active fintech angels from your time at Uber and Brex. Sardis is the payment infrastructure that AI agents need to transact safely: non-custodial wallets, spending policies in plain English.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -3759,12 +3767,12 @@ Rippling is becoming the operating system for businesses. As you add AI agents t
 
 Sardis is the Payment OS for agents. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how Sardis fits the Rippling ecosystem.
+Raising $9M seed at $36M pre. Would love to discuss how Sardis fits the Rippling ecosystem.
 
 Best,
 Efe Baran Durmaz
@@ -3780,12 +3788,12 @@ Hi Mathilde,
 
 You built Front into a category-defining enterprise tool. Sardis is building the same kind of category: the payment infrastructure every AI agent needs to transact safely.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love your operator perspective on this.
 
@@ -3805,12 +3813,12 @@ Flexport is automating global trade. When AI agents start booking freight, payin
 
 Sardis is the Payment OS for agents. Non-custodial wallets, spending policies in plain English, full audit trail.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss the supply chain use case.
+Raising $9M seed at $36M pre. Would love to discuss the supply chain use case.
 
 Best,
 Efe Baran Durmaz
@@ -3826,12 +3834,12 @@ Hi Sunil,
 
 You built Workers AI at Cloudflare and understand developer infrastructure deeply. Sardis is the payment primitive every AI agent developer is missing: one SDK, spending policies in plain English, works across frameworks and chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to show you the developer experience.
+Raising $9M seed at $36M pre. Would love to show you the developer experience.
 
 Best,
 Efe Baran Durmaz
@@ -3847,12 +3855,12 @@ Hi Tom,
 
 You co-founded GitHub and understand how open infrastructure becomes essential. Sardis is building the open payment layer for AI agents: non-custodial wallets, spending policies in plain English, works with any framework.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to discuss the open infrastructure angle.
 
@@ -3872,12 +3880,12 @@ You built Lattice into a category leader in enterprise HR. The next enterprise c
 
 Sardis is the Payment OS for that.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to share the platform.
+Raising $9M seed at $36M pre. Would love to share the platform.
 
 Best,
 Efe Baran Durmaz
@@ -3895,12 +3903,12 @@ You were at the center of the agent ecosystem at OpenAI and Google. You know wha
 
 Sardis is that tool. Non-custodial wallets, spending policies in plain English, native MCP integration. One import and any agent can transact.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love your take on how this fits the agent stack.
+Raising $9M seed at $36M pre. Would love your take on how this fits the agent stack.
 
 Best,
 Efe Baran Durmaz
@@ -3922,7 +3930,7 @@ You know what it means to ship fast and let traction speak. Sardis is the Paymen
 
 Non-custodial wallets. Spending policies in plain English. One integration, any agent can pay.
 
-We have built more than competitors who raised $10M+. Raising seed to scale.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you.
 
@@ -3942,12 +3950,12 @@ You have been tracking the AI agent ecosystem closely. One layer nobody has buil
 
 Sardis is the Payment OS for that. Non-custodial wallets, spending policies in plain English, 15+ framework integrations.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - Merchant checkout live.
 
-Raising seed. Would love to share the traction story.
+Raising $9M seed at $36M pre. Would love to share the traction story.
 
 Best,
 Efe Baran Durmaz
@@ -3963,12 +3971,12 @@ Hi Ian,
 
 You have written about the risks of unchecked AI capabilities. Sardis is the controlled financial layer for AI agents: spending policies in plain English, non-custodial wallets, every transaction audited before execution. Agents act within bounds. No exceptions.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Your perspective on safe agent autonomy would be incredibly valuable.
+Raising $9M seed at $36M pre. Your perspective on safe agent autonomy would be incredibly valuable.
 
 Best,
 Efe Baran Durmaz
@@ -3986,12 +3994,12 @@ You are building agents at Imbue that reason and act autonomously. When they nee
 
 Sardis is that infrastructure.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Raising seed. Would love to discuss how Sardis fits the Imbue architecture.
+Raising $9M seed at $36M pre. Would love to discuss how Sardis fits the Imbue architecture.
 
 Best,
 Efe Baran Durmaz
@@ -4007,12 +4015,12 @@ Hi Ryan,
 
 You built the developer experience for financial data at Plaid. Sardis is building the same thing for AI agent payments: the developer-first infrastructure that makes it easy and safe for agents to transact.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the developer experience.
 
@@ -4032,12 +4040,12 @@ You have written about technology that becomes so fundamental it becomes invisib
 
 Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-We have built more with zero funding than competitors who raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to share the thesis.
 
@@ -4057,12 +4065,12 @@ You have been investing in frontier technology since before it was mainstream. A
 
 Sardis is building it. Non-custodial wallets, spending policies in plain English, live on six chains.
 
-Three weeks since launch:
+Five months since founding, live on mainnet:
 - 25,000+ SDK installs (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
-Competitors with less traction raised $10M+. Raising seed.
+Competitors raised $10M+ with less traction: Skyfire ($9.5M), Payman ($13.7M), Paid ($33.3M at $100M val). Raising $9M seed at $36M pre.
 
 Would love to show you the platform.
 
@@ -4080,7 +4088,7 @@ Hi Charles,
 
 Sardis has the kind of pre-seed traction you look for, delivered with zero funding:
 
-- 25,000+ SDK installs in three weeks (100% organic).
+- 25,000+ SDK installs across 9 frameworks (100% organic).
 - AutoGPT and Helicone committed.
 - 15+ framework integrations, merchant checkout live.
 
