@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sardis_chain.executor import ChainExecutor
-from sardis_ledger.records import LedgerStore
+from sardis_ledger.records import ChainReceipt, LedgerStore
 from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core import AgentRepository, SardisSettings
 from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
@@ -84,6 +84,7 @@ class Dependencies:
     agent_repo: AgentRepository
     wallet_manager: Any | None = None
     compliance: Any | None = None
+    payment_orchestrator: Any | None = None
 
 
 def get_deps() -> Dependencies:
@@ -263,67 +264,94 @@ async def execute_payment(
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail=freeze_reason)
     mandate = replace(mandate, wallet_id=wallet.wallet_id)
 
-    # SpendingPolicy enforcement
-    # TODO: Migrate to PaymentOrchestrator gateway
-    if not deps.wallet_manager:
+    # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
+    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain
+    from sardis_v2_core.orchestrator import (
+        ChainExecutionError,
+        ComplianceViolationError,
+        PolicyViolationError,
+    )
+
+    if not deps.payment_orchestrator:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="wallet_manager_not_configured",
-        )
-    policy_result = await deps.wallet_manager.async_validate_policies(mandate)
-    if not getattr(policy_result, "allowed", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
+            detail="payment_orchestrator_not_configured",
         )
 
-    # Compliance (KYC/AML) enforcement
-    # TODO: Migrate to PaymentOrchestrator gateway
-    if not deps.compliance:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="compliance_engine_not_configured",
-        )
-    compliance_result = await deps.compliance.preflight(mandate)
-    if not compliance_result.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=compliance_result.reason or "compliance_check_failed",
-        )
+    _now_ts = int(time.time())
+    _stub_proof = VCProof(
+        verification_method=f"did:sardis:{mandate.subject}#key-1",
+        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        proof_value="mvp-execution-stub",
+    )
+    _chain = MandateChain(
+        intent=IntentMandate(
+            mandate_id=f"intent_{mandate.mandate_id[:16]}",
+            mandate_type="intent",
+            issuer=mandate.issuer,
+            subject=mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"intent_{mandate.nonce}",
+            proof=_stub_proof,
+            domain=mandate.domain,
+            purpose="intent",
+            requested_amount=mandate.amount_minor,
+        ),
+        cart=CartMandate(
+            mandate_id=f"cart_{mandate.mandate_id[:16]}",
+            mandate_type="cart",
+            issuer=mandate.issuer,
+            subject=mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"cart_{mandate.nonce}",
+            proof=_stub_proof,
+            domain=mandate.domain,
+            purpose="cart",
+            line_items=[{"description": "payment", "amount_minor": mandate.amount_minor}],
+            merchant_domain=getattr(mandate, "merchant_domain", "sardis.sh"),
+            currency=mandate.token,
+            subtotal_minor=mandate.amount_minor,
+            taxes_minor=0,
+        ),
+        payment=mandate,
+    )
 
     try:
-        chain_receipt = await deps.chain_executor.dispatch_payment(mandate)
-    except Exception as exc:  # noqa: BLE001
+        orch_result = await deps.payment_orchestrator.execute_chain(_chain)
+    except PolicyViolationError as e:
+        METRICS["execution_failures"] += 1
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ComplianceViolationError as e:
+        METRICS["execution_failures"] += 1
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ChainExecutionError as e:
         logger.exception("execution_failed")
         METRICS["execution_failures"] += 1
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    # Record spend state for policy enforcement
-    # TODO: Migrate to PaymentOrchestrator gateway
-    if deps.wallet_manager:
-        try:
-            await deps.wallet_manager.async_record_spend(mandate)
-        except Exception as e:
-            logger.warning(f"Failed to record spend for mandate {mandate.mandate_id}: {e}")
-
-    # Ledger + deterministic receipt
-    deps.ledger.append(payment_mandate=mandate, chain_receipt=chain_receipt)
-    receipt = deps.ledger.create_receipt(payment_mandate=mandate, chain_receipt=chain_receipt)
+    # Deterministic receipt (ledger.append is handled internally by the orchestrator)
+    _chain_receipt = ChainReceipt(
+        tx_hash=orch_result.chain_tx_hash,
+        chain=orch_result.chain,
+        block_number=0,
+        audit_anchor=orch_result.audit_anchor,
+    )
+    receipt = deps.ledger.create_receipt(payment_mandate=mandate, chain_receipt=_chain_receipt)
 
     logger.info(
         "payment_executed mandate=%s tx=%s chain=%s receipt=%s",
         mandate.mandate_id,
-        chain_receipt.tx_hash,
-        chain_receipt.chain,
+        orch_result.chain_tx_hash,
+        orch_result.chain,
         receipt["receipt_id"],
     )
     METRICS["executions"] += 1
 
     return ExecuteResponse(
         status="executed",
-        tx_hash=chain_receipt.tx_hash,
-        chain=chain_receipt.chain,
-        block_number=chain_receipt.block_number or 0,
+        tx_hash=orch_result.chain_tx_hash,
+        chain=orch_result.chain,
+        block_number=0,
         receipt=receipt,
     )
 
