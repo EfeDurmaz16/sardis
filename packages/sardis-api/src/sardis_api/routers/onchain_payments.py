@@ -86,7 +86,6 @@ class OnChainPaymentResponse(BaseModel):
 class OnChainPaymentDependencies:
     wallet_repo: Any
     agent_repo: Any
-    chain_executor: Any
     policy_store: Any = None
     approval_service: Any = None
     sanctions_service: Any = None

@@ -8,7 +8,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sardis_chain.executor import ChainExecutor
 from sardis_ledger.records import ChainReceipt, LedgerStore
 from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core import AgentRepository, SardisSettings
@@ -76,7 +75,6 @@ class ExecuteResponse(BaseModel):
 @dataclass
 class Dependencies:
     verifier: MandateVerifier
-    chain_executor: ChainExecutor
     ledger: LedgerStore
     identity_registry: IdentityRegistry
     settings: SardisSettings

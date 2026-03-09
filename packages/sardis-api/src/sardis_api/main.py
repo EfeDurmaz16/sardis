@@ -724,7 +724,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.dependency_overrides[mvp.get_deps] = lambda: mvp.Dependencies(  # type: ignore[arg-type]
         verifier=verifier,
-        chain_executor=chain_exec,
         ledger=ledger_store,
         identity_registry=identity_registry,
         settings=settings,
@@ -732,6 +731,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         agent_repo=agent_repo,
         wallet_manager=wallet_mgr,
         compliance=compliance,
+        payment_orchestrator=orchestrator,
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
@@ -976,7 +976,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
-        chain_executor=chain_exec,
         policy_store=policy_store,
         approval_service=approval_service,
         sanctions_service=sanctions_service,
@@ -985,6 +984,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         default_on_chain_provider=configured_on_chain_provider,
         audit_store=audit_store,
         settings=settings,
+        payment_orchestrator=orchestrator,
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
