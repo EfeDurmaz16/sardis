@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from sardis_guardrails.kill_switch import KillSwitch
     from sardis_guardrails.transaction_caps import TransactionCapEngine
 
+from .config import SardisSettings, load_settings
 from .execution_intent import (
     ExecutionIntent,
     ExecutionResult,
@@ -69,6 +70,7 @@ class ControlPlane:
         trust_scorer: Any | None = None,
         fides_config: Any | None = None,
         agit_policy_engine: Any | None = None,
+        settings: SardisSettings | None = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
@@ -82,6 +84,7 @@ class ControlPlane:
         self._trust_scorer = trust_scorer
         self._fides_config = fides_config
         self._agit_policy_engine = agit_policy_engine
+        self._settings = settings or load_settings()
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
         """Execute an intent through the full pipeline."""
@@ -184,10 +187,22 @@ class ControlPlane:
                             },
                         )
                 except Exception as e:
-                    logger.warning(
-                        "ControlPlane: AGIT chain check failed for intent=%s: %s (non-blocking)",
-                        intent.intent_id, e,
-                    )
+                    if self._settings.agit_fail_open:
+                        logger.warning(
+                            "ControlPlane: AGIT chain check failed for intent=%s: %s (fail-open enabled)",
+                            intent.intent_id, e,
+                        )
+                    else:
+                        logger.error(
+                            "ControlPlane: AGIT chain check failed for intent=%s: %s (fail-closed, rejecting)",
+                            intent.intent_id, e,
+                        )
+                        return ExecutionResult(
+                            intent_id=intent.intent_id,
+                            success=False,
+                            status=IntentStatus.REJECTED,
+                            error=f"AGIT policy verification unavailable: {e}",
+                        )
 
             # Step 1.5a: FIDES trust gate (if enabled)
             if self._trust_scorer and self._fides_config and intent.metadata.get("fides_did"):

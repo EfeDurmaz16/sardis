@@ -431,6 +431,9 @@ class SardisSettings(BaseSettings):
     erc4337_rollout_stage: Literal["pilot", "beta", "ga"] = "pilot"
     erc4337_sponsor_stage_caps_json: str = ""
 
+    # AGIT policy chain enforcement
+    agit_fail_open: bool = False  # Default: fail-closed (safe)
+
     # Tenderly simulation (optional pre-flight tx simulation)
     tenderly_api_key: str = ""
     tenderly_account_slug: str = ""
