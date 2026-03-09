@@ -241,14 +241,15 @@ class MandateVerifier:
                 drift_score=drift_score, drift_reasons=drift_reasons,
             )
 
-        # Origin binding: if intent carries origin context, verify it flows through
-        if hasattr(intent, 'action_description') and intent.action_description:
+        # Origin binding: if intent carries a natural language description,
+        # verify that action_description_hash matches SHA-256(description).
+        # This ensures the executed payment matches what was described at intent time.
+        if intent.natural_language_description and intent.action_description_hash:
             import hashlib
             expected_hash = hashlib.sha256(
-                intent.action_description.encode("utf-8")
+                intent.natural_language_description.encode("utf-8")
             ).hexdigest()
-            intent_desc_hash = getattr(intent, 'action_description_hash', '')
-            if intent_desc_hash and intent_desc_hash != expected_hash:
+            if intent.action_description_hash != expected_hash:
                 reason = "action_description_hash_mismatch"
                 return MandateChainVerification(
                     False, reason, sd_jwt_detected=sd_jwt_detected,
@@ -414,6 +415,9 @@ class MandateVerifier:
             ",".join(sorted(mandate.scope)) if mandate.scope else "",
             str(mandate.requested_amount) if mandate.requested_amount is not None else "",
             str(mandate.expires_at),
+            mandate.natural_language_description,
+            mandate.action_description_hash,
+            mandate.origin_hash,
         ]
         return "|".join(fields).encode()
 
@@ -435,6 +439,7 @@ class MandateVerifier:
             mandate.currency,
             mandate.merchant_domain,
             str(mandate.expires_at),
+            mandate.cart_hash,
         ]
         return "|".join(fields).encode()
 
@@ -452,6 +457,8 @@ class MandateVerifier:
             mandate.audit_hash,
             "1" if mandate.ai_agent_presence else "0",
             mandate.transaction_modality,
+            mandate.cart_mandate_hash,
+            mandate.approval_context_hash,
         ]
         return "|".join(fields).encode()
 
@@ -465,6 +472,9 @@ class MandateVerifier:
             "scope": sorted(mandate.scope) if mandate.scope else [],
             "requested_amount": mandate.requested_amount,
             "expires_at": mandate.expires_at,
+            "natural_language_description": mandate.natural_language_description,
+            "action_description_hash": mandate.action_description_hash,
+            "origin_hash": mandate.origin_hash,
         }
         return MandateVerifier._jcs_canonicalize(mandate_dict)
 
@@ -482,6 +492,7 @@ class MandateVerifier:
             "currency": mandate.currency,
             "merchant_domain": mandate.merchant_domain,
             "expires_at": mandate.expires_at,
+            "cart_hash": mandate.cart_hash,
         }
         return MandateVerifier._jcs_canonicalize(mandate_dict)
 
@@ -499,5 +510,7 @@ class MandateVerifier:
             "audit_hash": mandate.audit_hash,
             "ai_agent_presence": mandate.ai_agent_presence,
             "transaction_modality": mandate.transaction_modality,
+            "cart_mandate_hash": mandate.cart_mandate_hash,
+            "approval_context_hash": mandate.approval_context_hash,
         }
         return MandateVerifier._jcs_canonicalize(mandate_dict)

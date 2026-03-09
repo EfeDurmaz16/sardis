@@ -18,12 +18,11 @@ import hashlib
 import os
 import re
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
 from sardis import SardisClient
-
 
 # ---------------------------------------------------------------------------
 # Prompt injection detection (mirrors sardis-api patterns)
@@ -158,7 +157,7 @@ def register_sardis_actions(
         # --- Prompt injection scan on all string inputs ---
         injection = _scan_prompt_injection(merchant, purpose, origin, page_title)
         if injection:
-            return f"BLOCKED: prompt injection signal detected in payment parameters"
+            return "BLOCKED: prompt injection signal detected in payment parameters"
 
         # --- Origin allowlist enforcement ---
         if allowed_origins and origin:
@@ -206,7 +205,7 @@ def register_sardis_actions(
         # Scan policy check inputs too
         injection = _scan_prompt_injection(merchant)
         if injection:
-            return f"BLOCKED: prompt injection signal detected"
+            return "BLOCKED: prompt injection signal detected"
 
         balance = client.wallets.get_balance(wid)
         if amount > balance.remaining:

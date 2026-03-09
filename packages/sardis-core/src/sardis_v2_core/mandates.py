@@ -40,6 +40,8 @@ class IntentMandate(MandateBase):
     scope: Sequence[str] = field(default_factory=list)
     requested_amount: int | None = None  # in minor units (e.g., cents)
     natural_language_description: str = ""  # AP2: prompt playback — what the agent said it wants
+    action_description_hash: str = ""      # SHA-256 of natural_language_description (tamper-evident)
+    origin_hash: str = ""                  # SHA-256 of page origin (browser agent context binding)
     merchant_constraints: list[str] = field(default_factory=list)  # AP2: allowed merchants
     category_constraints: list[str] = field(default_factory=list)  # AP2: allowed merchant categories
     refundable: bool = True  # AP2: whether the purchase should be refundable

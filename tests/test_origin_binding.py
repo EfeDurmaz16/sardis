@@ -154,6 +154,154 @@ class TestHashValue:
         assert _hash_value("") == hashlib.sha256(b"").hexdigest()
 
 
+class TestVerifierActionDescriptionHashCheck:
+    """MandateVerifier.verify_chain() enforces action_description_hash on IntentMandate."""
+
+    def _make_chain_bundle(self, *, description: str = "", desc_hash: str = ""):
+        """Build a minimal AP2 chain bundle for testing the verifier check.
+
+        We don't need valid signatures here — just enough to trigger the
+        action_description_hash check (which runs before signature verification).
+        """
+        import time
+        now = int(time.time()) + 300
+        return {
+            "intent": {
+                "mandate_id": "int_test",
+                "mandate_type": "intent",
+                "issuer": "agent_1",
+                "subject": "agent_1",
+                "expires_at": now,
+                "nonce": "n1",
+                "domain": "sardis.sh",
+                "purpose": "intent",
+                "scope": ["compute"],
+                "natural_language_description": description,
+                "action_description_hash": desc_hash,
+                "proof": {
+                    "verification_method": "did:key:z6Mktest#key-1",
+                    "created": "2026-01-01T00:00:00Z",
+                    "proof_value": "dGVzdA==",
+                },
+            },
+            "cart": {
+                "mandate_id": "cart_test",
+                "mandate_type": "cart",
+                "issuer": "merchant_1",
+                "subject": "agent_1",
+                "expires_at": now,
+                "nonce": "n2",
+                "domain": "sardis.sh",
+                "purpose": "cart",
+                "line_items": [{"item_id": "i1", "name": "Widget", "quantity": 1, "price_minor": 1000}],
+                "merchant_domain": "shop.example.com",
+                "currency": "USD",
+                "subtotal_minor": 1000,
+                "taxes_minor": 80,
+                "proof": {
+                    "verification_method": "did:key:z6Mktest#key-1",
+                    "created": "2026-01-01T00:00:00Z",
+                    "proof_value": "dGVzdA==",
+                },
+            },
+            "payment": {
+                "mandate_id": "pay_test",
+                "mandate_type": "payment",
+                "issuer": "agent_1",
+                "subject": "agent_1",
+                "expires_at": now,
+                "nonce": "n3",
+                "domain": "sardis.sh",
+                "purpose": "checkout",
+                "chain": "base",
+                "token": "USDC",
+                "amount_minor": 1000,
+                "destination": "0xmerchant",
+                "audit_hash": "ah_test",
+                "ai_agent_presence": True,
+                "transaction_modality": "human_present",
+                "merchant_domain": "shop.example.com",
+                "proof": {
+                    "verification_method": "did:key:z6Mktest#key-1",
+                    "created": "2026-01-01T00:00:00Z",
+                    "proof_value": "dGVzdA==",
+                },
+            },
+        }
+
+    def test_mismatched_hash_rejects_chain(self):
+        """If action_description_hash doesn't match SHA-256(description), chain is rejected."""
+        import os
+        os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
+
+        from sardis_protocol.verifier import MandateVerifier
+        from sardis_v2_core import SardisSettings
+
+        settings = SardisSettings(allowed_domains=["sardis.sh"])
+        verifier = MandateVerifier(settings=settings)
+
+        bundle = self._make_chain_bundle(
+            description="Buy 1 Widget for $10",
+            desc_hash="wrong_hash_that_does_not_match",
+        )
+
+        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        req = AP2PaymentExecuteRequest(**bundle)
+        result = verifier.verify_chain(req)
+
+        assert not result.accepted
+        assert result.reason == "action_description_hash_mismatch"
+
+    def test_correct_hash_passes_check(self):
+        """Correct action_description_hash passes the origin binding check."""
+        import os
+        os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
+
+        from sardis_protocol.verifier import MandateVerifier
+        from sardis_v2_core import SardisSettings
+
+        settings = SardisSettings(allowed_domains=["sardis.sh"])
+        verifier = MandateVerifier(settings=settings)
+
+        description = "Buy 1 Widget for $10"
+        correct_hash = hashlib.sha256(description.encode("utf-8")).hexdigest()
+
+        bundle = self._make_chain_bundle(
+            description=description,
+            desc_hash=correct_hash,
+        )
+
+        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        req = AP2PaymentExecuteRequest(**bundle)
+        result = verifier.verify_chain(req)
+
+        # Should pass the hash check (may fail later on signature verification,
+        # but the reason should NOT be action_description_hash_mismatch)
+        if not result.accepted:
+            assert result.reason != "action_description_hash_mismatch"
+
+    def test_empty_description_skips_check(self):
+        """No description = no check (backward compat)."""
+        import os
+        os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
+
+        from sardis_protocol.verifier import MandateVerifier
+        from sardis_v2_core import SardisSettings
+
+        settings = SardisSettings(allowed_domains=["sardis.sh"])
+        verifier = MandateVerifier(settings=settings)
+
+        bundle = self._make_chain_bundle(description="", desc_hash="")
+
+        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        req = AP2PaymentExecuteRequest(**bundle)
+        result = verifier.verify_chain(req)
+
+        # Should not fail on action_description_hash_mismatch
+        if not result.accepted:
+            assert result.reason != "action_description_hash_mismatch"
+
+
 class TestSignatureCoversOriginFields:
     """Attestation signature must cover origin fields (tamper-evident)."""
 

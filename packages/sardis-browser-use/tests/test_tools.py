@@ -284,14 +284,14 @@ def test_browser_payment_context_differs_on_origin_change():
     """Changing the origin produces a different action_hash."""
     from sardis_browser_use.tools import BrowserPaymentContext
 
-    base_kwargs = dict(
-        page_title="Shop",
-        merchant="shop.com",
-        amount=10.0,
-        purpose="Buy item",
-        session_id="bsess_abc123",
-        timestamp=1700000000.0,
-    )
+    base_kwargs = {
+        "page_title": "Shop",
+        "merchant": "shop.com",
+        "amount": 10.0,
+        "purpose": "Buy item",
+        "session_id": "bsess_abc123",
+        "timestamp": 1700000000.0,
+    }
     ctx_legit = BrowserPaymentContext(origin="https://shop.com", **base_kwargs)
     ctx_evil = BrowserPaymentContext(origin="https://evil.com", **base_kwargs)
 
@@ -302,14 +302,14 @@ def test_browser_payment_context_differs_on_amount_change():
     """Changing the amount produces a different action_hash."""
     from sardis_browser_use.tools import BrowserPaymentContext
 
-    base_kwargs = dict(
-        origin="https://shop.com",
-        page_title="Shop",
-        merchant="shop.com",
-        purpose="Buy item",
-        session_id="bsess_abc123",
-        timestamp=1700000000.0,
-    )
+    base_kwargs = {
+        "origin": "https://shop.com",
+        "page_title": "Shop",
+        "merchant": "shop.com",
+        "purpose": "Buy item",
+        "session_id": "bsess_abc123",
+        "timestamp": 1700000000.0,
+    }
     ctx_10 = BrowserPaymentContext(amount=10.0, **base_kwargs)
     ctx_99 = BrowserPaymentContext(amount=99.0, **base_kwargs)
 
@@ -320,14 +320,14 @@ def test_browser_payment_context_differs_on_session():
     """Different session_id produces a different action_hash."""
     from sardis_browser_use.tools import BrowserPaymentContext
 
-    base_kwargs = dict(
-        origin="https://shop.com",
-        page_title="Shop",
-        merchant="shop.com",
-        amount=10.0,
-        purpose="Buy item",
-        timestamp=1700000000.0,
-    )
+    base_kwargs = {
+        "origin": "https://shop.com",
+        "page_title": "Shop",
+        "merchant": "shop.com",
+        "amount": 10.0,
+        "purpose": "Buy item",
+        "timestamp": 1700000000.0,
+    }
     ctx_a = BrowserPaymentContext(session_id="bsess_aaa", **base_kwargs)
     ctx_b = BrowserPaymentContext(session_id="bsess_bbb", **base_kwargs)
 
