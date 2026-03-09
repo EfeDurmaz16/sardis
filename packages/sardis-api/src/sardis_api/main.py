@@ -95,6 +95,7 @@ from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
+from .routers import attestation as attestation_router
 from .routers import analytics as analytics_router
 from .routers import ap2, auth, mandates, mvp
 from .routers import api_keys as api_keys_router
@@ -1822,6 +1823,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Evidence/audit trail API
     app.include_router(evidence_router.router, prefix="/api/v2/evidence", tags=["evidence"])
+
+    # Attestation envelope API
+    app.include_router(attestation_router.router, prefix="/api/v2", tags=["attestation"])
 
     # Simulation API
     app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
