@@ -193,6 +193,7 @@ class Dependencies:
     compliance: ComplianceEngine
     wallet_repository: WalletRepository
     agent_repo: AgentRepository
+    payment_orchestrator: Any = None
 
 
 def get_deps() -> Dependencies:
@@ -388,7 +389,7 @@ async def execute_stored_mandate(
         )
     stored.mandate = replace(stored.mandate, wallet_id=wallet.wallet_id)
 
-    # Validate if not already validated
+    # Validate mandate structure if not already validated
     if stored.status != "validated":
         verification = deps.verifier.verify(stored.mandate)
         if not verification.accepted:
@@ -397,35 +398,87 @@ async def execute_stored_mandate(
             await _save_mandate(stored)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=verification.reason)
 
-        policy_result = await deps.wallet_manager.async_validate_policies(stored.mandate)
-        if not policy_result.allowed:
-            stored.status = "failed"
-            stored.updated_at = datetime.now(UTC)
-            await _save_mandate(stored)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
+    # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
+    import time as _time
 
-        compliance_status = await deps.compliance.preflight(stored.mandate)
-        if not compliance_status.allowed:
-            stored.status = "failed"
-            stored.updated_at = datetime.now(UTC)
-            await _save_mandate(stored)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
+    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
+    from sardis_v2_core.orchestrator import (
+        ChainExecutionError,
+        ComplianceViolationError,
+        PolicyViolationError,
+    )
 
-    # Execute
-    tx = await deps.chain_executor.dispatch_payment(stored.mandate)
-    # Record spend state for policy enforcement
-    # TODO: Migrate to PaymentOrchestrator gateway
+    if not deps.payment_orchestrator:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="payment_orchestrator_not_configured",
+        )
+
+    _mandate = stored.mandate
+    _now_ts = int(_time.time())
+    _stub_proof = VCProof(
+        verification_method=f"mandate:{_mandate.mandate_id}#key-1",
+        created=_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+        proof_value="mandate-execution-stub",
+    )
+    _chain = MandateChain(
+        intent=IntentMandate(
+            mandate_id=f"intent_{_mandate.mandate_id}",
+            mandate_type="intent",
+            issuer=_mandate.issuer,
+            subject=_mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"intent_{_mandate.nonce}",
+            proof=_stub_proof,
+            domain=_mandate.domain,
+            purpose="intent",
+            requested_amount=_mandate.amount_minor,
+        ),
+        cart=CartMandate(
+            mandate_id=f"cart_{_mandate.mandate_id}",
+            mandate_type="cart",
+            issuer=_mandate.issuer,
+            subject=_mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"cart_{_mandate.nonce}",
+            proof=_stub_proof,
+            domain=_mandate.domain,
+            purpose="cart",
+            line_items=[{"description": "mandate_payment", "amount_minor": _mandate.amount_minor}],
+            merchant_domain=getattr(_mandate, "merchant_domain", None) or _mandate.domain,
+            currency=getattr(_mandate, "token", "USDC"),
+            subtotal_minor=_mandate.amount_minor,
+            taxes_minor=0,
+        ),
+        payment=_mandate,
+    )
+
     try:
-        await deps.wallet_manager.async_record_spend(stored.mandate)
-    except Exception as e:
-        logger.warning(f"Failed to record spend for mandate {stored.mandate.mandate_id}: {e}")
-    deps.ledger.append(payment_mandate=stored.mandate, chain_receipt=tx)
+        orch_result = await deps.payment_orchestrator.execute_chain(_chain)
+    except PolicyViolationError as e:
+        stored.status = "failed"
+        stored.updated_at = datetime.now(UTC)
+        await _save_mandate(stored)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ComplianceViolationError as e:
+        stored.status = "failed"
+        stored.updated_at = datetime.now(UTC)
+        await _save_mandate(stored)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ChainExecutionError as e:
+        stored.status = "failed"
+        stored.updated_at = datetime.now(UTC)
+        await _save_mandate(stored)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Execution failed: {str(e)}",
+        )
 
     stored.status = "executed"
     stored.execution_result = {
-        "tx_hash": tx.tx_hash,
-        "chain": tx.chain,
-        "audit_anchor": tx.audit_anchor,
+        "tx_hash": orch_result.chain_tx_hash,
+        "chain": orch_result.chain,
+        "audit_anchor": orch_result.audit_anchor,
     }
     stored.updated_at = datetime.now(UTC)
     await _save_mandate(stored)
@@ -433,9 +486,9 @@ async def execute_stored_mandate(
     return MandateExecutionResponse(
         mandate_id=stored.mandate.mandate_id,
         status="submitted",
-        tx_hash=tx.tx_hash,
-        chain=tx.chain,
-        audit_anchor=tx.audit_anchor,
+        tx_hash=orch_result.chain_tx_hash,
+        chain=orch_result.chain,
+        audit_anchor=orch_result.audit_anchor,
     )
 
 
@@ -505,29 +558,78 @@ async def execute_payment_mandate(
 
         mandate = replace(payload.mandate, wallet_id=wallet.wallet_id)
 
-        policy_result = await deps.wallet_manager.async_validate_policies(mandate)
-        if not policy_result.allowed:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=policy_result.reason)
+        # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
+        import time as _time
 
-        compliance_status = await deps.compliance.preflight(mandate)
-        if not compliance_status.allowed:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=compliance_status.reason)
+        from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
+        from sardis_v2_core.orchestrator import (
+            ChainExecutionError,
+            ComplianceViolationError,
+            PolicyViolationError,
+        )
 
-        tx = await deps.chain_executor.dispatch_payment(mandate)
-        # Record spend state for policy enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
+        if not deps.payment_orchestrator:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="payment_orchestrator_not_configured",
+            )
+
+        _now_ts = int(_time.time())
+        _stub_proof = VCProof(
+            verification_method=f"mandate:{mandate.mandate_id}#key-1",
+            created=_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            proof_value="mandate-execution-stub",
+        )
+        _chain = MandateChain(
+            intent=IntentMandate(
+                mandate_id=f"intent_{mandate.mandate_id}",
+                mandate_type="intent",
+                issuer=mandate.issuer,
+                subject=mandate.subject,
+                expires_at=_now_ts + 300,
+                nonce=f"intent_{mandate.nonce}",
+                proof=_stub_proof,
+                domain=mandate.domain,
+                purpose="intent",
+                requested_amount=mandate.amount_minor,
+            ),
+            cart=CartMandate(
+                mandate_id=f"cart_{mandate.mandate_id}",
+                mandate_type="cart",
+                issuer=mandate.issuer,
+                subject=mandate.subject,
+                expires_at=_now_ts + 300,
+                nonce=f"cart_{mandate.nonce}",
+                proof=_stub_proof,
+                domain=mandate.domain,
+                purpose="cart",
+                line_items=[{"description": "mandate_payment", "amount_minor": mandate.amount_minor}],
+                merchant_domain=getattr(mandate, "merchant_domain", None) or mandate.domain,
+                currency=getattr(mandate, "token", "USDC"),
+                subtotal_minor=mandate.amount_minor,
+                taxes_minor=0,
+            ),
+            payment=mandate,
+        )
+
         try:
-            await deps.wallet_manager.async_record_spend(mandate)
-        except Exception as e:
-            logger.warning(f"Failed to record spend for mandate {mandate.mandate_id}: {e}")
-        deps.ledger.append(payment_mandate=mandate, chain_receipt=tx)
+            orch_result = await deps.payment_orchestrator.execute_chain(_chain)
+        except PolicyViolationError as e:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except ComplianceViolationError as e:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except ChainExecutionError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Execution failed: {str(e)}",
+            )
 
         return 200, MandateExecutionResponse(
             mandate_id=mandate.mandate_id,
             status="submitted",
-            tx_hash=tx.tx_hash,
-            chain=tx.chain,
-            audit_anchor=tx.audit_anchor,
+            tx_hash=orch_result.chain_tx_hash,
+            chain=orch_result.chain,
+            audit_anchor=orch_result.audit_anchor,
         )
 
     return await run_idempotent(
