@@ -184,6 +184,23 @@ class BridgeCardsConfig(BaseSettings):
         env_prefix = "BRIDGE_"
 
 
+class X402Config(BaseSettings):
+    """x402 protocol integration configuration."""
+
+    enabled: bool = False
+    server_enabled: bool = False
+    client_enabled: bool = False
+    facilitator_enabled: bool = False
+    default_ttl_seconds: int = 300
+    max_amount_per_request: str = "1000"
+    supported_networks: str = "base,polygon,ethereum"
+    permit2_enabled: bool = False
+    dry_run_default: bool = False
+
+    class Config:
+        env_prefix = "SARDIS_X402_"
+
+
 class DelegatedCredentialConfig(BaseSettings):
     """Delegated payment credential configuration."""
 
@@ -363,6 +380,7 @@ class SardisSettings(BaseSettings):
     rain: RainConfig = Field(default_factory=RainConfig)
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
+    x402: X402Config = Field(default_factory=X402Config)
     delegated: DelegatedCredentialConfig = Field(default_factory=DelegatedCredentialConfig)
     visa_tap: VisaTAPConfig = Field(default_factory=VisaTAPConfig)
     mastercard: MastercardConfig = Field(default_factory=MastercardConfig)
