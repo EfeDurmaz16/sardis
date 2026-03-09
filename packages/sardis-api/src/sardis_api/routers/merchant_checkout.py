@@ -300,6 +300,18 @@ async def pay_session(
     """Execute payment from connected wallet."""
     session = await _get_session_by_secret(client_secret, deps)
 
+    # Bind to session's connected wallet — reject mismatched wallet_id
+    if session.payer_wallet_id and body.wallet_id != session.payer_wallet_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="wallet_id does not match the wallet connected to this session",
+        )
+    if not session.payer_wallet_id and not body.wallet_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No wallet connected to session. Connect a wallet first.",
+        )
+
     # Enforce global transaction caps for checkout payments
     if session.amount and session.amount > 0:
         cap_engine = get_transaction_cap_engine()
