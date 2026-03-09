@@ -22,6 +22,7 @@ import { sandboxToolDefinitions, sandboxToolHandlers } from './sandbox.js';
 import { groupToolDefinitions, groupToolHandlers } from './groups.js';
 import { eventToolDefinitions, eventToolHandlers } from './events.js';
 import { guardrailsToolDefinitions, guardrailsToolHandlers } from './guardrails.js';
+import { x402ToolDefinitions, x402ToolHandlers } from './x402.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -58,6 +59,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...groupToolDefinitions,
   ...eventToolDefinitions,
   ...guardrailsToolDefinitions,
+  ...x402ToolDefinitions,
 ];
 
 /**
@@ -78,6 +80,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...groupToolHandlers,
   ...eventToolHandlers,
   ...guardrailsToolHandlers,
+  ...x402ToolHandlers,
 };
 
 /**
@@ -189,6 +192,11 @@ export const toolCategories = {
     'sardis_deactivate_kill_switch',
     'sardis_check_rate_limits',
     'sardis_get_behavioral_alerts',
+  ],
+  x402: [
+    'sardis_x402_pay',
+    'sardis_x402_preview_cost',
+    'sardis_x402_list_payments',
   ],
 } as const;
 

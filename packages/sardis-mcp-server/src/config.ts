@@ -23,6 +23,10 @@ export interface MCPConfig {
   policyAllowedVendors: string[];
   fetchAgentPolicy: boolean;
   requireExplicitApproval: boolean;
+
+  // x402 Configuration
+  x402Enabled: boolean;
+  x402MaxCost: number;
 }
 
 /**
@@ -64,6 +68,10 @@ export function loadConfig(): MCPConfig {
     ),
     fetchAgentPolicy: process.env.SARDIS_FETCH_AGENT_POLICY === 'true',
     requireExplicitApproval: process.env.SARDIS_REQUIRE_EXPLICIT_APPROVAL === 'true',
+
+    // x402 configuration
+    x402Enabled: process.env.SARDIS_X402_ENABLED === 'true',
+    x402MaxCost: parseInt(process.env.SARDIS_X402_MAX_COST || '100', 10),
   };
 }
 
