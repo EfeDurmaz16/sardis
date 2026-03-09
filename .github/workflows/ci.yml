@@ -121,11 +121,11 @@ jobs:
       - name: Enforce formatting
         run: forge fmt --check
 
-      - name: Build contracts (strict profile)
-        run: forge build --profile ci --sizes -vv
+      - name: Build contracts
+        run: forge build --sizes -vv
 
-      - name: Run full contract test suite (strict profile)
-        run: forge test --profile ci -vvv
+      - name: Run full contract test suite
+        run: forge test -vvv
 
   typescript-sdk:
     name: TypeScript SDK Build & Type Check

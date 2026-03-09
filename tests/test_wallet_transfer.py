@@ -81,7 +81,24 @@ def mock_compliance():
 
 
 @pytest.fixture
-def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor, mock_wallet_manager, mock_compliance):
+def mock_payment_orchestrator():
+    orchestrator = AsyncMock()
+    result = MagicMock()
+    result.chain_tx_hash = "0xtxhash123"
+    result.chain = "base_sepolia"
+    result.ledger_tx_id = "ledger_1"
+    result.status = "submitted"
+    result.audit_anchor = None
+    result.execution_path = "legacy_tx"
+    result.user_op_hash = None
+    result.proof_artifact_path = None
+    result.proof_artifact_sha256 = None
+    orchestrator.execute_chain.return_value = result
+    return orchestrator
+
+
+@pytest.fixture
+def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor, mock_wallet_manager, mock_compliance, mock_payment_orchestrator):
     app = FastAPI()
     deps = WalletDependencies(
         wallet_repo=mock_wallet_repo,
@@ -89,6 +106,7 @@ def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor, moc
         chain_executor=mock_chain_executor,
         wallet_manager=mock_wallet_manager,
         compliance=mock_compliance,
+        payment_orchestrator=mock_payment_orchestrator,
     )
     app.dependency_overrides[get_deps] = lambda: deps
     app.include_router(wallets_router, prefix="/api/v2/wallets")
@@ -96,7 +114,7 @@ def app_with_wallets(mock_wallet_repo, mock_agent_repo, mock_chain_executor, moc
 
 
 class TestWalletTransfer:
-    def test_transfer_success(self, app_with_wallets, mock_chain_executor):
+    def test_transfer_success(self, app_with_wallets, mock_payment_orchestrator):
         client = TestClient(app_with_wallets)
         resp = client.post("/api/v2/wallets/wallet_1/transfer", json={
             "destination": "0xrecipient456",
@@ -111,7 +129,7 @@ class TestWalletTransfer:
         assert data["from_address"] == "0xsender123"
         assert data["to_address"] == "0xrecipient456"
         assert data["amount"] == "10.5"
-        mock_chain_executor.dispatch_payment.assert_called_once()
+        mock_payment_orchestrator.execute_chain.assert_called_once()
 
     def test_transfer_wallet_not_found(self, app_with_wallets, mock_wallet_repo):
         mock_wallet_repo.get.return_value = None
@@ -159,8 +177,9 @@ class TestWalletTransfer:
         })
         assert resp.status_code == 503
 
-    def test_transfer_chain_error(self, app_with_wallets, mock_chain_executor, mock_wallet_manager, mock_compliance):
-        mock_chain_executor.dispatch_payment.side_effect = Exception("nonce too low")
+    def test_transfer_chain_error(self, app_with_wallets, mock_payment_orchestrator):
+        from sardis_v2_core.orchestrator import ChainExecutionError
+        mock_payment_orchestrator.execute_chain.side_effect = ChainExecutionError("nonce too low")
         client = TestClient(app_with_wallets)
         resp = client.post("/api/v2/wallets/wallet_1/transfer", json={
             "destination": "0xrecipient456",
