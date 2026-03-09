@@ -7,12 +7,12 @@ const steps = [
   {
     num: '02',
     title: 'Execute with Guardrails',
-    desc: 'Your agent makes payments. The control plane runs a 12-check pipeline, routes to approval when needed, and blocks anything the policy forbids. Kill switch available at all times.',
+    desc: 'Your agent makes payments. Every transaction flows through a single execution gateway — policy checks, compliance, and chain execution in one auditable path. Kill switch available at all times.',
   },
   {
     num: '03',
     title: 'Audit Everything',
-    desc: 'Every decision is recorded with cryptographic evidence. HMAC receipts, Merkle proofs, policy snapshots. Replay any transaction, simulate policy changes, detect anomalies automatically.',
+    desc: 'Every decision produces a signed attestation envelope with cryptographic evidence. HMAC receipts, Merkle proofs, policy snapshots. Replay any transaction, simulate policy changes, detect anomalies.',
   },
 ];
 

@@ -22,7 +22,7 @@ const cards = [
   {
     Icon: Shield,
     title: 'Cryptographic Evidence',
-    desc: 'HMAC receipts, Merkle proofs, policy snapshots for every decision. Tamper-proof audit trail anchored to Base blockchain.',
+    desc: 'Signed attestation envelopes, HMAC receipts, Merkle proofs, and policy snapshots for every decision. Tamper-proof audit trail anchored to Base.',
     unique: true,
   },
   {
@@ -72,8 +72,8 @@ export default function FeaturesGrid() {
               color: 'var(--landing-text-tertiary)',
             }}
           >
-            The only platform combining natural language policies, kill switches, approval workflows,
-            cryptographic evidence, simulation, and anomaly detection — all without holding your private keys.
+            Natural language policies, kill switches, approval workflows,
+            signed attestation envelopes, simulation, and anomaly detection — routed through a single execution gateway, without holding your private keys.
           </p>
         </div>
 
