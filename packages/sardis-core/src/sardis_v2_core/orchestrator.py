@@ -756,7 +756,7 @@ class PaymentOrchestrator:
                 chain_receipt=receipt,
                 error=f"spend_state_update_failed: {e}",
             )
-            self._reconciliation_queue.append(spend_recon)
+            self._reconciliation_queue.enqueue(spend_recon)
             logger.warning(
                 "Queued spend-state reconciliation for mandate=%s tx=%s",
                 mandate_id, receipt.tx_hash,
