@@ -463,43 +463,9 @@ async def execute_ap2_payment(
         )
         payment = chain.payment
 
-        # SpendingPolicy enforcement
-        # TODO: Migrate to PaymentOrchestrator gateway
-        if not deps.wallet_manager:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="wallet_manager_not_configured",
-            )
-        policy_result = await deps.wallet_manager.async_validate_policies(payment)
-        if not getattr(policy_result, "allowed", False):
-            policy = await deps.policy_store.fetch_policy(payment.subject) if deps.policy_store else None
-            if policy is not None:
-                receipt = _try_build_policy_receipt(
-                    policy=policy,
-                    decision="deny",
-                    reason=getattr(policy_result, "reason", None) or "spending_policy_denied",
-                    context={
-                        "mandate_id": payment.mandate_id,
-                        "subject": payment.subject,
-                        "destination": payment.destination,
-                        "amount_minor": payment.amount_minor,
-                        "token": payment.token,
-                        "chain": payment.chain,
-                    },
-                )
-                if receipt is not None:
-                    await _append_policy_decision_audit(
-                        deps=deps,
-                        mandate_id=payment.mandate_id,
-                        subject=payment.subject,
-                        allowed=False,
-                        reason=receipt["reason"],
-                        receipt_payload=receipt,
-                    )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=getattr(policy_result, "reason", None) or "spending_policy_denied",
-            )
+        # SpendingPolicy enforcement is handled by the PaymentOrchestrator
+        # during execute_chain(). AP2-specific deterministic guardrails below
+        # provide additional safety gates on top of the orchestrator's checks.
 
         # Deterministic final gate (AI advisory-only mode):
         # enforce chain/token/destination rails from persisted policy.
@@ -878,75 +844,78 @@ async def execute_ap2_payment(
                         approval_id=approval.id,
                     )
 
-        # Step 3: Submit through ControlPlane (anomaly + kill switch + unified receipts)
-        # Policy and compliance already checked upstream, so ControlPlane skips them.
-        from sardis_v2_core.control_plane import ControlPlane
-        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
-
-        from sardis_api.domains.execution_engine import ExecutionEngineAdapter
-        from sardis_api.domains.ledger_core import LedgerCoreAdapter
-
-        intent = ExecutionIntent(
-            source=IntentSource.AP2,
-            org_id=str(principal.organization_id),
-            agent_id=payment.subject,
-            amount=Decimal(str(payment.amount_minor)) / Decimal("100"),
-            currency=payment.token,
-            chain=payment.chain,
-            idempotency_key=str(key),
-            # Policy and compliance already checked upstream — ControlPlane skips them
-            policy_result={"allowed": True},
-            compliance_result={
-                "allowed": True,
-                "provider": compliance.provider,
-                "kyc_verified": compliance.kyc_verified,
-                "sanctions_clear": compliance.sanctions_clear,
-            },
+        # Step 3: Execute through PaymentOrchestrator
+        # The orchestrator handles: policy validation → compliance → chain execution
+        # → spend recording → ledger append in a single pipeline.
+        from sardis_v2_core.orchestrator import (
+            ChainExecutionError,
+            ComplianceViolationError,
+            PolicyViolationError,
         )
 
-        from sardis_guardrails.anomaly_engine import get_anomaly_engine
-        from sardis_guardrails.kill_switch import get_kill_switch
-        from sardis_guardrails.transaction_caps import get_transaction_cap_engine
-
-        cp = ControlPlane(
-            chain_executor=ExecutionEngineAdapter(deps.orchestrator),
-            ledger_recorder=LedgerCoreAdapter(None),
-            anomaly_engine=get_anomaly_engine(),
-            kill_switch=get_kill_switch(),
-            cap_engine=get_transaction_cap_engine(),
-        )
-
-        cp_result = await cp.submit(intent)
-
-        if not cp_result.success:
+        try:
+            orch_result = await deps.orchestrator.execute_chain(chain)
+        except PolicyViolationError as e:
+            # AP2-specific: build policy audit receipt for denial
+            if deps.policy_store:
+                _policy = await deps.policy_store.fetch_policy(payment.subject)
+                if _policy is not None:
+                    _receipt = _try_build_policy_receipt(
+                        policy=_policy,
+                        decision="deny",
+                        reason=str(e),
+                        context={
+                            "mandate_id": payment.mandate_id,
+                            "subject": payment.subject,
+                            "destination": payment.destination,
+                            "amount_minor": payment.amount_minor,
+                            "token": payment.token,
+                            "chain": payment.chain,
+                        },
+                    )
+                    if _receipt is not None:
+                        await _append_policy_decision_audit(
+                            deps=deps,
+                            mandate_id=payment.mandate_id,
+                            subject=payment.subject,
+                            allowed=False,
+                            reason=_receipt["reason"],
+                            receipt_payload=_receipt,
+                        )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except ComplianceViolationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except ChainExecutionError as e:
             asyncio.create_task(alert_payment_failure(
-                error=cp_result.error or "unknown",
+                error=str(e),
                 org_id=str(principal.organization_id),
                 agent_id=payment.agent_id if hasattr(payment, 'agent_id') else None,
                 tx_id=str(key),
             ))
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=cp_result.error) from None
-
-        # Record spend for policy tracking
-        if deps.wallet_manager:
-            try:
-                await deps.wallet_manager.async_record_spend(payment)
-            except Exception as rec_err:
-                logger.warning("Failed to record spend for %s: %s", payment.mandate_id, rec_err)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
 
         logger.info(
-            "Payment executed: mandate=%s amount=%s kyc=%s sanctions_clear=%s intent=%s receipt=%s",
+            "Payment executed: mandate=%s amount=%s kyc=%s sanctions_clear=%s receipt=%s",
             payment.mandate_id, payment.amount_minor,
             compliance.kyc_verified, compliance.sanctions_clear,
-            intent.intent_id, cp_result.receipt_id,
+            orch_result.mandate_id,
         )
 
         return 200, AP2PaymentExecuteResponse(
             mandate_id=payment.mandate_id,
-            ledger_tx_id=cp_result.ledger_entry_id,
-            chain_tx_hash=cp_result.tx_hash,
+            ledger_tx_id=orch_result.ledger_tx_id,
+            chain_tx_hash=orch_result.chain_tx_hash,
             chain=payment.chain,
-            audit_anchor="",
+            audit_anchor=orch_result.audit_anchor,
             status="executed",
             compliance_provider=compliance.provider,
             compliance_rule=compliance.rule,
