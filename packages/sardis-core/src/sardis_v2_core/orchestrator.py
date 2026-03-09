@@ -762,6 +762,39 @@ class PaymentOrchestrator:
                 mandate_id, receipt.tx_hash,
             )
 
+        # ── Phase 3.5b: Update Group Spend State ────────────────────────
+        # If the agent belongs to a group, record the spend against all
+        # group budgets so future group policy checks are accurate.
+        # This is a best-effort update — failure is logged but does not
+        # block the payment (it already succeeded on-chain).
+        if self._group_policy is not None:
+            agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
+            if agent_id:
+                try:
+                    from decimal import Decimal as _Dec
+                    pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
+                    await self._group_policy.record_spend(
+                        agent_id=agent_id,
+                        amount=_Dec(str(pay_amount)),
+                    )
+                    self._audit(
+                        mandate_id,
+                        ExecutionPhase.POLICY_STATE_UPDATE,
+                        True,
+                        {"group_spend_recorded": True, "agent_id": agent_id},
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to record group spend for agent=%s mandate=%s: %s",
+                        agent_id, mandate_id, e,
+                    )
+                    self._audit(
+                        mandate_id,
+                        ExecutionPhase.POLICY_STATE_UPDATE,
+                        False,
+                        error=f"group_spend_record_failed: {e}",
+                    )
+
         # Phase 4: Ledger Append (queue for reconciliation on failure)
         ledger_tx = None
         try:

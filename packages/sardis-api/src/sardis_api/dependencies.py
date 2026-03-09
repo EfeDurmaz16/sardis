@@ -154,6 +154,19 @@ class DependencyContainer:
         )
 
     @cached_property
+    def group_policy(self) -> Any | None:
+        """Get group policy evaluator (optional, returns None if deps missing)."""
+        try:
+            from sardis_v2_core.group_policy import GroupPolicyEvaluator
+            from sardis_v2_core.agent_groups import AgentGroupRepository
+            dsn = self.database_url if self.use_postgres else "memory://"
+            group_repo = AgentGroupRepository(dsn=dsn)
+            return GroupPolicyEvaluator(group_repo=group_repo)
+        except Exception as e:
+            logger.warning("Group policy evaluator unavailable: %s", e)
+            return None
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator."""
         from sardis_v2_core.orchestrator import PaymentOrchestrator
@@ -162,6 +175,7 @@ class DependencyContainer:
             compliance=self.compliance_engine,
             chain_executor=self.chain_executor,
             ledger=self.ledger_store,
+            group_policy=self.group_policy,
         )
 
     # =========================================================================
