@@ -75,17 +75,17 @@ contract MockBlockingHook is IACPHook {
         }
     }
 
-    function afterAction(uint256, bytes4, bytes calldata) external pure override {}
+    function afterAction(uint256, bytes4, bytes calldata) external pure override { }
 }
 
 contract MockGasGuzzlerHook is IACPHook {
     function beforeAction(uint256, bytes4, bytes calldata) external pure override {
         // Consume all gas — should fail-open
         uint256 i = 0;
-        while (true) { i++; }
+        while (true) i++;
     }
 
-    function afterAction(uint256, bytes4, bytes calldata) external pure override {}
+    function afterAction(uint256, bytes4, bytes calldata) external pure override { }
 }
 
 // ============ Test Contract ============
@@ -124,11 +124,7 @@ contract SardisJobManagerTest is Test {
     function _createJob(address hook) internal returns (uint256) {
         vm.prank(client);
         return manager.createJob(
-            provider,
-            evaluator,
-            block.timestamp + 7 days,
-            "Generate marketing copy for product launch",
-            hook
+            provider, evaluator, block.timestamp + 7 days, "Generate marketing copy for product launch", hook
         );
     }
 
@@ -249,9 +245,7 @@ contract SardisJobManagerTest is Test {
 
         vm.startPrank(client);
         token.approve(address(manager), JOB_AMOUNT * 2);
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisJobManager.BudgetMismatch.selector, JOB_AMOUNT + 1, JOB_AMOUNT
-        ));
+        vm.expectRevert(abi.encodeWithSelector(SardisJobManager.BudgetMismatch.selector, JOB_AMOUNT + 1, JOB_AMOUNT));
         manager.fund(jobId, JOB_AMOUNT + 1, "");
         vm.stopPrank();
     }

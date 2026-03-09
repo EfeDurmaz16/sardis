@@ -19,23 +19,12 @@ interface IIdentityRegistry {
 
     // ============ Events ============
 
-    event Registered(
-        uint256 indexed agentId,
-        string agentURI,
-        address indexed owner
-    );
+    event Registered(uint256 indexed agentId, string agentURI, address indexed owner);
 
-    event URIUpdated(
-        uint256 indexed agentId,
-        string newURI,
-        address indexed updatedBy
-    );
+    event URIUpdated(uint256 indexed agentId, string newURI, address indexed updatedBy);
 
     event MetadataSet(
-        uint256 indexed agentId,
-        string indexed indexedMetadataKey,
-        string metadataKey,
-        bytes metadataValue
+        uint256 indexed agentId, string indexed indexedMetadataKey, string metadataKey, bytes metadataValue
     );
 
     // ============ Registration Functions ============
@@ -46,19 +35,14 @@ interface IIdentityRegistry {
      * @param metadata Array of key-value metadata entries
      * @return agentId The unique token ID for the registered agent
      */
-    function register(
-        string calldata agentURI,
-        MetadataEntry[] calldata metadata
-    ) external returns (uint256 agentId);
+    function register(string calldata agentURI, MetadataEntry[] calldata metadata) external returns (uint256 agentId);
 
     /**
      * @notice Register a new agent with URI only
      * @param agentURI URI pointing to agent registration file
      * @return agentId The unique token ID for the registered agent
      */
-    function register(
-        string calldata agentURI
-    ) external returns (uint256 agentId);
+    function register(string calldata agentURI) external returns (uint256 agentId);
 
     /**
      * @notice Register a new agent with no URI or metadata
@@ -85,12 +69,7 @@ interface IIdentityRegistry {
      * @param deadline Signature expiry timestamp
      * @param signature EIP-712 or ERC-1271 signature from newWallet
      */
-    function setAgentWallet(
-        uint256 agentId,
-        address newWallet,
-        uint256 deadline,
-        bytes calldata signature
-    ) external;
+    function setAgentWallet(uint256 agentId, address newWallet, uint256 deadline, bytes calldata signature) external;
 
     /**
      * @notice Get the linked wallet for an agent
@@ -113,10 +92,7 @@ interface IIdentityRegistry {
      * @param metadataKey The metadata key
      * @return value The metadata value
      */
-    function getMetadata(
-        uint256 agentId,
-        string calldata metadataKey
-    ) external view returns (bytes memory value);
+    function getMetadata(uint256 agentId, string calldata metadataKey) external view returns (bytes memory value);
 
     /**
      * @notice Set metadata for an agent
@@ -125,9 +101,5 @@ interface IIdentityRegistry {
      * @param metadataKey The metadata key
      * @param metadataValue The metadata value
      */
-    function setMetadata(
-        uint256 agentId,
-        string calldata metadataKey,
-        bytes calldata metadataValue
-    ) external;
+    function setMetadata(uint256 agentId, string calldata metadataKey, bytes calldata metadataValue) external;
 }

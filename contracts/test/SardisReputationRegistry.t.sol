@@ -58,7 +58,7 @@ contract SardisReputationRegistryTest is Test {
         vm.prank(client1);
         reputation.giveFeedback(agentId, -50, 2, "", "", "", "", bytes32(0));
 
-        (int128 value, uint8 dec,,, ) = reputation.readFeedback(agentId, client1, 0);
+        (int128 value, uint8 dec,,,) = reputation.readFeedback(agentId, client1, 0);
         assertEq(value, -50);
         assertEq(dec, 2);
     }
@@ -186,9 +186,7 @@ contract SardisReputationRegistryTest is Test {
 
         vm.prank(responder);
         vm.expectEmit(true, true, false, true);
-        emit IReputationRegistry.ResponseAppended(
-            agentId, client1, 0, responder, "https://resp.com", keccak256("r")
-        );
+        emit IReputationRegistry.ResponseAppended(agentId, client1, 0, responder, "https://resp.com", keccak256("r"));
         reputation.appendResponse(agentId, client1, 0, "https://resp.com", keccak256("r"));
     }
 
@@ -283,10 +281,8 @@ contract SardisReputationRegistryTest is Test {
         address[] memory clients = new address[](1);
         clients[0] = client1;
 
-        (
-            address[] memory retClients,
-            ,int128[] memory values,,,, bool[] memory revoked
-        ) = reputation.readAllFeedback(agentId, clients, "", "", false);
+        (address[] memory retClients,, int128[] memory values,,,, bool[] memory revoked) =
+            reputation.readAllFeedback(agentId, clients, "", "", false);
 
         assertEq(retClients.length, 1);
         assertEq(values[0], 80);
@@ -302,7 +298,7 @@ contract SardisReputationRegistryTest is Test {
         address[] memory clients = new address[](1);
         clients[0] = client1;
 
-        (,,,,,,bool[] memory revoked) = reputation.readAllFeedback(agentId, clients, "", "", true);
+        (,,,,,, bool[] memory revoked) = reputation.readAllFeedback(agentId, clients, "", "", true);
         assertEq(revoked.length, 1);
         assertTrue(revoked[0]);
     }

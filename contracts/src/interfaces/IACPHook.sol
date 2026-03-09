@@ -21,11 +21,7 @@ interface IACPHook {
      * @param selector The function selector of the action (e.g., IJob.fund.selector)
      * @param data ABI-encoded parameters specific to the action
      */
-    function beforeAction(
-        uint256 jobId,
-        bytes4 selector,
-        bytes calldata data
-    ) external;
+    function beforeAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
 
     /**
      * @notice Called after a lifecycle action completes
@@ -33,9 +29,5 @@ interface IACPHook {
      * @param selector The function selector of the action
      * @param data ABI-encoded parameters specific to the action
      */
-    function afterAction(
-        uint256 jobId,
-        bytes4 selector,
-        bytes calldata data
-    ) external;
+    function afterAction(uint256 jobId, bytes4 selector, bytes calldata data) external;
 }

@@ -118,7 +118,9 @@ contract SardisReputationRegistry is IReputationRegistry {
             isRevoked: false
         });
 
-        unchecked { _nextIndex[agentId][msg.sender] = idx + 1; }
+        unchecked {
+            _nextIndex[agentId][msg.sender] = idx + 1;
+        }
 
         // Track client list
         if (!_isClient[agentId][msg.sender]) {
@@ -127,8 +129,7 @@ contract SardisReputationRegistry is IReputationRegistry {
         }
 
         emit NewFeedback(
-            agentId, msg.sender, idx, value, valueDecimals,
-            tag1, tag1, tag2, endpoint, feedbackURI, feedbackHash
+            agentId, msg.sender, idx, value, valueDecimals, tag1, tag1, tag2, endpoint, feedbackURI, feedbackHash
         );
     }
 
@@ -154,13 +155,13 @@ contract SardisReputationRegistry is IReputationRegistry {
         string calldata responseURI,
         bytes32 responseHash
     ) external override {
-        if (feedbackIndex >= _nextIndex[agentId][clientAddress]) revert FeedbackDoesNotExist();
+        if (feedbackIndex >= _nextIndex[agentId][clientAddress]) {
+            revert FeedbackDoesNotExist();
+        }
 
-        _responses[agentId][clientAddress][feedbackIndex].push(ResponseRecord({
-            responder: msg.sender,
-            responseURI: responseURI,
-            responseHash: responseHash
-        }));
+        _responses[agentId][clientAddress][feedbackIndex].push(
+            ResponseRecord({ responder: msg.sender, responseURI: responseURI, responseHash: responseHash })
+        );
 
         emit ResponseAppended(agentId, clientAddress, feedbackIndex, msg.sender, responseURI, responseHash);
     }
@@ -168,12 +169,12 @@ contract SardisReputationRegistry is IReputationRegistry {
     // ============ Read Functions ============
 
     /// @inheritdoc IReputationRegistry
-    function getSummary(
-        uint256 agentId,
-        address[] calldata clientAddresses,
-        string calldata tag1,
-        string calldata tag2
-    ) external view override returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals) {
+    function getSummary(uint256 agentId, address[] calldata clientAddresses, string calldata tag1, string calldata tag2)
+        external
+        view
+        override
+        returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)
+    {
         // Default to 0 decimals; will use max decimals found
         uint8 maxDecimals = 0;
         int256 scaledSum = 0;
@@ -211,17 +212,12 @@ contract SardisReputationRegistry is IReputationRegistry {
     }
 
     /// @inheritdoc IReputationRegistry
-    function readFeedback(
-        uint256 agentId,
-        address clientAddress,
-        uint64 feedbackIndex
-    ) external view override returns (
-        int128 value,
-        uint8 valueDecimals,
-        string memory tag1,
-        string memory tag2,
-        bool isRevoked
-    ) {
+    function readFeedback(uint256 agentId, address clientAddress, uint64 feedbackIndex)
+        external
+        view
+        override
+        returns (int128 value, uint8 valueDecimals, string memory tag1, string memory tag2, bool isRevoked)
+    {
         if (feedbackIndex >= _nextIndex[agentId][clientAddress]) revert FeedbackDoesNotExist();
 
         Feedback storage fb = _feedback[agentId][clientAddress][feedbackIndex];
@@ -235,15 +231,20 @@ contract SardisReputationRegistry is IReputationRegistry {
         string calldata tag1,
         string calldata tag2,
         bool includeRevoked
-    ) external view override returns (
-        address[] memory clients,
-        uint64[] memory feedbackIndexes,
-        int128[] memory values,
-        uint8[] memory valueDecimals,
-        string[] memory tag1s,
-        string[] memory tag2s,
-        bool[] memory revokedStatuses
-    ) {
+    )
+        external
+        view
+        override
+        returns (
+            address[] memory clients,
+            uint64[] memory feedbackIndexes,
+            int128[] memory values,
+            uint8[] memory valueDecimals,
+            string[] memory tag1s,
+            string[] memory tag2s,
+            bool[] memory revokedStatuses
+        )
+    {
         bytes32 tag1Hash = bytes(tag1).length > 0 ? keccak256(bytes(tag1)) : bytes32(0);
         bytes32 tag2Hash = bytes(tag2).length > 0 ? keccak256(bytes(tag2)) : bytes32(0);
 
@@ -315,10 +316,7 @@ contract SardisReputationRegistry is IReputationRegistry {
     }
 
     /// @inheritdoc IReputationRegistry
-    function getLastIndex(
-        uint256 agentId,
-        address clientAddress
-    ) external view override returns (uint64) {
+    function getLastIndex(uint256 agentId, address clientAddress) external view override returns (uint64) {
         return _nextIndex[agentId][clientAddress];
     }
 
@@ -326,9 +324,12 @@ contract SardisReputationRegistry is IReputationRegistry {
 
     function _requireAgentExists(uint256 agentId) internal view {
         // Check the identity registry owns this token
-        try IERC721(identityRegistry).ownerOf(agentId) returns (address) {
-            // exists
-        } catch {
+        try IERC721(identityRegistry).ownerOf(agentId) returns (
+            address
+        ) {
+        // exists
+        }
+        catch {
             revert AgentDoesNotExist();
         }
     }

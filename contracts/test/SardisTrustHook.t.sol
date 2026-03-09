@@ -38,12 +38,7 @@ contract SardisTrustHookTest is Test {
         registry = new SardisJobRegistry(owner);
         mockJobManager = new MockJobManagerForTrust();
         hook = new SardisTrustHook(
-            address(registry),
-            address(mockJobManager),
-            owner,
-            MIN_CLIENT_TRUST,
-            MIN_PROVIDER_JOBS,
-            MIN_EVALUATOR_TRUST
+            address(registry), address(mockJobManager), owner, MIN_CLIENT_TRUST, MIN_PROVIDER_JOBS, MIN_EVALUATOR_TRUST
         );
 
         // Authorize test contract to write reputation
@@ -67,9 +62,9 @@ contract SardisTrustHookTest is Test {
     // ============ beforeAction(fund): gates on client trust score ============
 
     function testBeforeAction_fund_deniesLowTrust() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisTrustHook.InsufficientTrustScore.selector, client, 0, MIN_CLIENT_TRUST
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(SardisTrustHook.InsufficientTrustScore.selector, client, 0, MIN_CLIENT_TRUST)
+        );
         hook.beforeAction(0, IJob.fund.selector, "");
     }
 
@@ -88,18 +83,18 @@ contract SardisTrustHookTest is Test {
     function testBeforeAction_fund_justBelowThreshold() public {
         // 2 completed, 8 rejected = 2000 bp < 3000
         _buildReputation(client, 2, 8, 0, 0);
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisTrustHook.InsufficientTrustScore.selector, client, 2000, MIN_CLIENT_TRUST
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(SardisTrustHook.InsufficientTrustScore.selector, client, 2000, MIN_CLIENT_TRUST)
+        );
         hook.beforeAction(0, IJob.fund.selector, "");
     }
 
     // ============ beforeAction(submit): gates on provider completed jobs ============
 
     function testBeforeAction_submit_deniesNewProvider() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisTrustHook.InsufficientCompletedJobs.selector, provider, 0, MIN_PROVIDER_JOBS
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(SardisTrustHook.InsufficientCompletedJobs.selector, provider, 0, MIN_PROVIDER_JOBS)
+        );
         hook.beforeAction(0, IJob.submit.selector, "");
     }
 
@@ -116,9 +111,9 @@ contract SardisTrustHookTest is Test {
     // ============ beforeAction(complete/reject): gates on evaluator trust ============
 
     function testBeforeAction_complete_deniesLowTrust() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST)
+        );
         hook.beforeAction(0, IJob.complete.selector, "");
     }
 
@@ -128,9 +123,9 @@ contract SardisTrustHookTest is Test {
     }
 
     function testBeforeAction_reject_deniesLowTrust() public {
-        vm.expectRevert(abi.encodeWithSelector(
-            SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST)
+        );
         hook.beforeAction(0, IJob.reject.selector, "");
     }
 
@@ -175,13 +170,9 @@ contract SardisTrustHookTest is Test {
 
     // ============ Helpers ============
 
-    function _buildReputation(
-        address agent,
-        uint256 completed,
-        uint256 rejected,
-        uint256 earned,
-        uint256 spent
-    ) internal {
+    function _buildReputation(address agent, uint256 completed, uint256 rejected, uint256 earned, uint256 spent)
+        internal
+    {
         uint256 earnedPerJob = completed > 0 ? earned / completed : 0;
         for (uint256 i = 0; i < completed; i++) {
             registry.recordCompletion(agent, earnedPerJob);

@@ -13,10 +13,7 @@ interface IValidationRegistry {
     // ============ Events ============
 
     event ValidationRequest(
-        address indexed validatorAddress,
-        uint256 indexed agentId,
-        string requestURI,
-        bytes32 indexed requestHash
+        address indexed validatorAddress, uint256 indexed agentId, string requestURI, bytes32 indexed requestHash
     );
 
     event ValidationResponse(
@@ -86,14 +83,17 @@ interface IValidationRegistry {
      * @return tag Tag from latest response
      * @return lastUpdate Timestamp of last update
      */
-    function getValidationStatus(bytes32 requestHash) external view returns (
-        address validatorAddress,
-        uint256 agentId,
-        uint8 response,
-        bytes32 responseHash,
-        string memory tag,
-        uint256 lastUpdate
-    );
+    function getValidationStatus(bytes32 requestHash)
+        external
+        view
+        returns (
+            address validatorAddress,
+            uint256 agentId,
+            uint8 response,
+            bytes32 responseHash,
+            string memory tag,
+            uint256 lastUpdate
+        );
 
     /**
      * @notice Get aggregated validation summary for an agent
@@ -104,11 +104,10 @@ interface IValidationRegistry {
      * @return count Number of matching validations
      * @return averageResponse Average response score
      */
-    function getSummary(
-        uint256 agentId,
-        address[] calldata validatorAddresses,
-        string calldata tag
-    ) external view returns (uint64 count, uint8 averageResponse);
+    function getSummary(uint256 agentId, address[] calldata validatorAddresses, string calldata tag)
+        external
+        view
+        returns (uint64 count, uint8 averageResponse);
 
     /**
      * @notice Get all validation request hashes for an agent

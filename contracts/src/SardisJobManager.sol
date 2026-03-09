@@ -125,25 +125,28 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
             client: msg.sender,
             provider: provider,
             evaluator: evaluator,
-            token: address(0),      // Set via setBudget
-            budget: 0,              // Set via setBudget
+            token: address(0), // Set via setBudget
+            budget: 0, // Set via setBudget
             expiredAt: expiredAt,
             description: description,
             hook: hook,
             status: JobStatus.Open
         });
 
-        unchecked { ++jobCounter; }
+        unchecked {
+            ++jobCounter;
+        }
 
         emit JobCreated(jobId, msg.sender, provider, evaluator, expiredAt, description, hook);
     }
 
     /// @inheritdoc IJob
-    function setProvider(
-        uint256 jobId,
-        address provider,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function setProvider(uint256 jobId, address provider, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
         if (msg.sender != job.client) revert NotClient();
         if (job.status != JobStatus.Open) revert InvalidJobStatus(job.status, JobStatus.Open);
@@ -160,11 +163,12 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     }
 
     /// @inheritdoc IJob
-    function setBudget(
-        uint256 jobId,
-        uint256 amount,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function setBudget(uint256 jobId, uint256 amount, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
         // Client or provider can propose/negotiate budget
         if (msg.sender != job.client && msg.sender != job.provider) revert NotClient();
@@ -193,11 +197,12 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     }
 
     /// @inheritdoc IJob
-    function fund(
-        uint256 jobId,
-        uint256 expectedBudget,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function fund(uint256 jobId, uint256 expectedBudget, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
         if (msg.sender != job.client) revert NotClient();
         if (job.status != JobStatus.Open) revert InvalidJobStatus(job.status, JobStatus.Open);
@@ -220,11 +225,12 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     }
 
     /// @inheritdoc IJob
-    function submit(
-        uint256 jobId,
-        bytes32 deliverable,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function submit(uint256 jobId, bytes32 deliverable, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
         if (msg.sender != job.provider) revert NotProvider();
         if (job.status != JobStatus.Funded) revert InvalidJobStatus(job.status, JobStatus.Funded);
@@ -240,11 +246,12 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     }
 
     /// @inheritdoc IJob
-    function complete(
-        uint256 jobId,
-        bytes32 reason,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function complete(uint256 jobId, bytes32 reason, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
         if (msg.sender != job.evaluator) revert NotEvaluator();
         if (job.status != JobStatus.Submitted) {
@@ -272,11 +279,12 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     }
 
     /// @inheritdoc IJob
-    function reject(
-        uint256 jobId,
-        bytes32 reason,
-        bytes calldata optParams
-    ) external override whenNotPaused nonReentrant {
+    function reject(uint256 jobId, bytes32 reason, bytes calldata optParams)
+        external
+        override
+        whenNotPaused
+        nonReentrant
+    {
         Job storage job = _getJob(jobId);
 
         // ERC-8183 permitted transitions for reject:
@@ -366,8 +374,13 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
         allowedTokens[token] = allowed;
     }
 
-    function pause() external onlyOwner { _pause(); }
-    function unpause() external onlyOwner { _unpause(); }
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
 
     // ============ Internal Functions ============
 
@@ -383,9 +396,8 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     function _callBeforeHook(address hook, uint256 jobId, bytes4 selector, bytes memory data) internal {
         if (hook == address(0)) return;
 
-        (bool success, bytes memory returnData) = hook.call{ gas: HOOK_GAS_LIMIT }(
-            abi.encodeCall(IACPHook.beforeAction, (jobId, selector, data))
-        );
+        (bool success, bytes memory returnData) =
+            hook.call{ gas: HOOK_GAS_LIMIT }(abi.encodeCall(IACPHook.beforeAction, (jobId, selector, data)));
 
         if (!success) {
             // Distinguish between explicit revert (has return data) and gas exhaustion
@@ -406,8 +418,6 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
      */
     function _callAfterHook(address hook, uint256 jobId, bytes4 selector, bytes memory data) internal {
         if (hook == address(0)) return;
-        hook.call{ gas: HOOK_GAS_LIMIT }(
-            abi.encodeCall(IACPHook.afterAction, (jobId, selector, data))
-        );
+        hook.call{ gas: HOOK_GAS_LIMIT }(abi.encodeCall(IACPHook.afterAction, (jobId, selector, data)));
     }
 }

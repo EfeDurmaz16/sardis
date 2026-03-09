@@ -54,8 +54,8 @@ contract DeploySafeModules is Script {
         // 2. Deploy Circle RefundProtocol (audited escrow)
         // Sardis deployer becomes the arbiter for dispute resolution
         RefundProtocol refundProtocol = new RefundProtocol(
-            sardisAddress,  // arbiter
-            usdcAddress,    // USDC
+            sardisAddress, // arbiter
+            usdcAddress, // USDC
             "RefundProtocol",
             "1"
         );

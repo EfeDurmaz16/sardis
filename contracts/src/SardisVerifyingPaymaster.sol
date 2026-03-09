@@ -49,12 +49,9 @@ contract SardisVerifyingPaymaster is IPaymaster, Ownable, Pausable {
     error DailyCapExceeded(uint256 maxCost, uint256 remaining);
     error InvalidVerifierSignature();
 
-    constructor(
-        address entryPoint_,
-        address owner_,
-        uint256 maxSponsoredCostPerOp_,
-        uint256 dailySponsorCap_
-    ) Ownable(owner_) {
+    constructor(address entryPoint_, address owner_, uint256 maxSponsoredCostPerOp_, uint256 dailySponsorCap_)
+        Ownable(owner_)
+    {
         require(entryPoint_ != address(0), "entrypoint=0");
         entryPoint = IEntryPoint(entryPoint_);
         maxSponsoredCostPerOp = maxSponsoredCostPerOp_;
@@ -94,17 +91,19 @@ contract SardisVerifyingPaymaster is IPaymaster, Ownable, Pausable {
     }
 
     function deposit() external payable {
-        entryPoint.depositTo{value: msg.value}(address(this));
+        entryPoint.depositTo{ value: msg.value }(address(this));
     }
 
     /**
      * @inheritdoc IPaymaster
      */
-    function validatePaymasterUserOp(
-        PackedUserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 maxCost
-    ) external override onlyEntryPoint whenNotPaused returns (bytes memory context, uint256 validationData) {
+    function validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
+        external
+        override
+        onlyEntryPoint
+        whenNotPaused
+        returns (bytes memory context, uint256 validationData)
+    {
         if (!allowedWallets[userOp.sender]) revert WalletNotAllowed(userOp.sender);
         if (maxCost > maxSponsoredCostPerOp) revert CostLimitExceeded(maxCost, maxSponsoredCostPerOp);
 
@@ -135,12 +134,11 @@ contract SardisVerifyingPaymaster is IPaymaster, Ownable, Pausable {
     /**
      * @inheritdoc IPaymaster
      */
-    function postOp(
-        PostOpMode,
-        bytes calldata context,
-        uint256 actualGasCost,
-        uint256
-    ) external override onlyEntryPoint {
+    function postOp(PostOpMode, bytes calldata context, uint256 actualGasCost, uint256)
+        external
+        override
+        onlyEntryPoint
+    {
         (address sender, uint256 reservedMaxCost) = abi.decode(context, (address, uint256));
         sender; // silence unused var warning while preserving context shape
         reservedMaxCost;

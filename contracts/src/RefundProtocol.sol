@@ -405,8 +405,9 @@ contract RefundProtocol is EIP712 {
         uint256 expiry,
         uint256 salt
     ) internal view returns (bytes32) {
-        bytes32 structHash =
-            keccak256(abi.encode(EARLY_WITHDRAWAL_TYPEHASH, paymentIDs, withdrawalAmounts, feeAmount, expiry, salt));
+        bytes32 structHash = keccak256(
+            abi.encode(EARLY_WITHDRAWAL_TYPEHASH, paymentIDs, withdrawalAmounts, feeAmount, expiry, salt)
+        );
         return _hashTypedDataV4(structHash);
     }
 }

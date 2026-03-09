@@ -164,9 +164,7 @@ contract SardisIdentityRegistryTest is Test {
                 block.timestamp + 1 hours
             )
         );
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", registry.DOMAIN_SEPARATOR(), structHash)
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", registry.DOMAIN_SEPARATOR(), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(walletPrivateKey, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -209,9 +207,7 @@ contract SardisIdentityRegistryTest is Test {
                 block.timestamp + 1 hours
             )
         );
-        bytes32 digest = keccak256(
-            abi.encodePacked("\x19\x01", registry.DOMAIN_SEPARATOR(), structHash)
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", registry.DOMAIN_SEPARATOR(), structHash));
         // Sign with a DIFFERENT key (not walletAddress)
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xDEAD, digest);
         bytes memory wrongSig = abi.encodePacked(r, s, v);

@@ -54,18 +54,16 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
 
     // ============ Constructor ============
 
-    constructor()
-        ERC721("Sardis Agent Identity", "SAGENT")
-        EIP712("SardisIdentityRegistry", "1")
-    {}
+    constructor() ERC721("Sardis Agent Identity", "SAGENT") EIP712("SardisIdentityRegistry", "1") { }
 
     // ============ Registration ============
 
     /// @inheritdoc IIdentityRegistry
-    function register(
-        string calldata agentURI,
-        MetadataEntry[] calldata metadata
-    ) external override returns (uint256 agentId) {
+    function register(string calldata agentURI, MetadataEntry[] calldata metadata)
+        external
+        override
+        returns (uint256 agentId)
+    {
         agentId = _registerAgent(agentURI);
 
         for (uint256 i = 0; i < metadata.length; ++i) {
@@ -77,9 +75,7 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
     }
 
     /// @inheritdoc IIdentityRegistry
-    function register(
-        string calldata agentURI
-    ) external override returns (uint256 agentId) {
+    function register(string calldata agentURI) external override returns (uint256 agentId) {
         agentId = _registerAgent(agentURI);
     }
 
@@ -100,20 +96,16 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
     // ============ Agent Wallet ============
 
     /// @inheritdoc IIdentityRegistry
-    function setAgentWallet(
-        uint256 agentId,
-        address newWallet,
-        uint256 deadline,
-        bytes calldata signature
-    ) external override {
+    function setAgentWallet(uint256 agentId, address newWallet, uint256 deadline, bytes calldata signature)
+        external
+        override
+    {
         _requireOwnerOrApproved(agentId);
         if (newWallet == address(0)) revert ZeroAddress();
         if (block.timestamp > deadline) revert ExpiredDeadline();
 
         // Verify signature from newWallet
-        bytes32 structHash = keccak256(
-            abi.encode(SET_AGENT_WALLET_TYPEHASH, agentId, newWallet, deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(SET_AGENT_WALLET_TYPEHASH, agentId, newWallet, deadline));
         bytes32 digest = _hashTypedDataV4(structHash);
 
         // Try EIP-712 ECDSA first
@@ -130,7 +122,7 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
                     _agentWallets[agentId] = newWallet;
                     return;
                 }
-            } catch {}
+            } catch { }
         }
 
         revert InvalidSignature();
@@ -151,20 +143,13 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
     // ============ Metadata ============
 
     /// @inheritdoc IIdentityRegistry
-    function getMetadata(
-        uint256 agentId,
-        string calldata metadataKey
-    ) external view override returns (bytes memory) {
+    function getMetadata(uint256 agentId, string calldata metadataKey) external view override returns (bytes memory) {
         _requireExists(agentId);
         return _metadata[agentId][keccak256(bytes(metadataKey))];
     }
 
     /// @inheritdoc IIdentityRegistry
-    function setMetadata(
-        uint256 agentId,
-        string calldata metadataKey,
-        bytes calldata metadataValue
-    ) external override {
+    function setMetadata(uint256 agentId, string calldata metadataKey, bytes calldata metadataValue) external override {
         _requireOwnerOrApproved(agentId);
         bytes32 keyHash = keccak256(bytes(metadataKey));
         if (keyHash == RESERVED_WALLET_KEY_HASH) revert ReservedMetadataKey();
@@ -186,7 +171,9 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
 
     function _registerAgent(string memory agentURI) internal returns (uint256 agentId) {
         agentId = nextAgentId;
-        unchecked { ++nextAgentId; }
+        unchecked {
+            ++nextAgentId;
+        }
 
         _safeMint(msg.sender, agentId);
 

@@ -37,13 +37,11 @@ contract DeployERC8004 is Script {
         console.log("SardisIdentityRegistry deployed at:", address(identityRegistry));
 
         // 2. Deploy SardisReputationRegistry (linked to identity)
-        SardisReputationRegistry reputationRegistry =
-            new SardisReputationRegistry(address(identityRegistry));
+        SardisReputationRegistry reputationRegistry = new SardisReputationRegistry(address(identityRegistry));
         console.log("SardisReputationRegistry deployed at:", address(reputationRegistry));
 
         // 3. Deploy SardisValidationRegistry (linked to identity)
-        SardisValidationRegistry validationRegistry =
-            new SardisValidationRegistry(address(identityRegistry));
+        SardisValidationRegistry validationRegistry = new SardisValidationRegistry(address(identityRegistry));
         console.log("SardisValidationRegistry deployed at:", address(validationRegistry));
 
         vm.stopBroadcast();

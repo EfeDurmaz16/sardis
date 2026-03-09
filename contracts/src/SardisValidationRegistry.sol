@@ -119,40 +119,38 @@ contract SardisValidationRegistry is IValidationRegistry {
         record.tag = tag;
         record.lastUpdate = block.timestamp;
 
-        emit ValidationResponse(
-            msg.sender, record.agentId, requestHash,
-            response, responseURI, responseHash, tag
-        );
+        emit ValidationResponse(msg.sender, record.agentId, requestHash, response, responseURI, responseHash, tag);
     }
 
     // ============ Read Functions ============
 
     /// @inheritdoc IValidationRegistry
-    function getValidationStatus(bytes32 requestHash) external view override returns (
-        address validatorAddress,
-        uint256 agentId,
-        uint8 response,
-        bytes32 responseHash,
-        string memory tag,
-        uint256 lastUpdate
-    ) {
+    function getValidationStatus(bytes32 requestHash)
+        external
+        view
+        override
+        returns (
+            address validatorAddress,
+            uint256 agentId,
+            uint8 response,
+            bytes32 responseHash,
+            string memory tag,
+            uint256 lastUpdate
+        )
+    {
         ValidationRecord storage record = _validations[requestHash];
         return (
-            record.validatorAddress,
-            record.agentId,
-            record.response,
-            record.responseHash,
-            record.tag,
-            record.lastUpdate
+            record.validatorAddress, record.agentId, record.response, record.responseHash, record.tag, record.lastUpdate
         );
     }
 
     /// @inheritdoc IValidationRegistry
-    function getSummary(
-        uint256 agentId,
-        address[] calldata validatorAddresses,
-        string calldata tag
-    ) external view override returns (uint64 count, uint8 averageResponse) {
+    function getSummary(uint256 agentId, address[] calldata validatorAddresses, string calldata tag)
+        external
+        view
+        override
+        returns (uint64 count, uint8 averageResponse)
+    {
         bytes32[] storage hashes = _agentValidations[agentId];
         bytes32 tagHash = bytes(tag).length > 0 ? keccak256(bytes(tag)) : bytes32(0);
         uint256 totalScore = 0;

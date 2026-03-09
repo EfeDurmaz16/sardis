@@ -17,7 +17,7 @@ contract SardisLedgerAnchor is Ownable {
     /// @notice Emitted when a new Merkle root is anchored
     event Anchored(bytes32 indexed root, string anchorId, uint256 timestamp);
 
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) { }
 
     /**
      * @notice Anchor a Merkle root on-chain
@@ -47,12 +47,11 @@ contract SardisLedgerAnchor is Ownable {
      * @param isLeft Array indicating whether each sibling is on the left (true) or right (false)
      * @return valid True if the proof is valid and the root is anchored
      */
-    function verifyProof(
-        bytes32 root,
-        bytes32 leaf,
-        bytes32[] calldata proof,
-        bool[] calldata isLeft
-    ) external view returns (bool valid) {
+    function verifyProof(bytes32 root, bytes32 leaf, bytes32[] calldata proof, bool[] calldata isLeft)
+        external
+        view
+        returns (bool valid)
+    {
         // Root must be anchored
         if (anchors[root] == 0) {
             return false;

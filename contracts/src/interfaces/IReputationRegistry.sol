@@ -26,11 +26,7 @@ interface IReputationRegistry {
         bytes32 feedbackHash
     );
 
-    event FeedbackRevoked(
-        uint256 indexed agentId,
-        address indexed clientAddress,
-        uint64 indexed feedbackIndex
-    );
+    event FeedbackRevoked(uint256 indexed agentId, address indexed clientAddress, uint64 indexed feedbackIndex);
 
     event ResponseAppended(
         uint256 indexed agentId,
@@ -114,12 +110,10 @@ interface IReputationRegistry {
      * @return summaryValue Aggregated value
      * @return summaryValueDecimals Decimal precision of summaryValue
      */
-    function getSummary(
-        uint256 agentId,
-        address[] calldata clientAddresses,
-        string calldata tag1,
-        string calldata tag2
-    ) external view returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals);
+    function getSummary(uint256 agentId, address[] calldata clientAddresses, string calldata tag1, string calldata tag2)
+        external
+        view
+        returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals);
 
     /**
      * @notice Read a single feedback entry
@@ -132,17 +126,10 @@ interface IReputationRegistry {
      * @return tag2 Categorization tag
      * @return isRevoked Whether the feedback has been revoked
      */
-    function readFeedback(
-        uint256 agentId,
-        address clientAddress,
-        uint64 feedbackIndex
-    ) external view returns (
-        int128 value,
-        uint8 valueDecimals,
-        string memory tag1,
-        string memory tag2,
-        bool isRevoked
-    );
+    function readFeedback(uint256 agentId, address clientAddress, uint64 feedbackIndex)
+        external
+        view
+        returns (int128 value, uint8 valueDecimals, string memory tag1, string memory tag2, bool isRevoked);
 
     /**
      * @notice Read all feedback matching filters
@@ -158,15 +145,18 @@ interface IReputationRegistry {
         string calldata tag1,
         string calldata tag2,
         bool includeRevoked
-    ) external view returns (
-        address[] memory clients,
-        uint64[] memory feedbackIndexes,
-        int128[] memory values,
-        uint8[] memory valueDecimals,
-        string[] memory tag1s,
-        string[] memory tag2s,
-        bool[] memory revokedStatuses
-    );
+    )
+        external
+        view
+        returns (
+            address[] memory clients,
+            uint64[] memory feedbackIndexes,
+            int128[] memory values,
+            uint8[] memory valueDecimals,
+            string[] memory tag1s,
+            string[] memory tag2s,
+            bool[] memory revokedStatuses
+        );
 
     /**
      * @notice Get the number of responses for a feedback entry
@@ -196,8 +186,5 @@ interface IReputationRegistry {
      * @param clientAddress The client address
      * @return lastIndex The last feedback index (0 if no feedback)
      */
-    function getLastIndex(
-        uint256 agentId,
-        address clientAddress
-    ) external view returns (uint64 lastIndex);
+    function getLastIndex(uint256 agentId, address clientAddress) external view returns (uint64 lastIndex);
 }

@@ -46,8 +46,7 @@ contract SardisValidationRegistryTest is Test {
         vm.prank(agentOwner);
         validation.validationRequest(validator1, agentId, "https://req.com", reqHash);
 
-        (address v, uint256 aid, uint8 resp,,, uint256 lastUpdate) =
-            validation.getValidationStatus(reqHash);
+        (address v, uint256 aid, uint8 resp,,, uint256 lastUpdate) = validation.getValidationStatus(reqHash);
         assertEq(v, validator1);
         assertEq(aid, agentId);
         assertEq(resp, 0);
@@ -130,7 +129,7 @@ contract SardisValidationRegistryTest is Test {
         validation.validationResponse(reqHash, 90, "", bytes32(0), "updated");
         vm.stopPrank();
 
-        (,, uint8 resp,,string memory tag,) = validation.getValidationStatus(reqHash);
+        (,, uint8 resp,, string memory tag,) = validation.getValidationStatus(reqHash);
         assertEq(resp, 90);
         assertEq(tag, "updated");
     }
