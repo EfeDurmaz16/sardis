@@ -4,15 +4,31 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "../src/hooks/SardisTrustHook.sol";
 import "../src/SardisJobRegistry.sol";
+import "../src/interfaces/IJob.sol";
+
+/// @dev Minimal mock that returns predictable job data for trust checks
+contract MockJobManagerForTrust {
+    mapping(uint256 => IJob.Job) internal _mockJobs;
+
+    function setMockJob(uint256 jobId, IJob.Job memory job) external {
+        _mockJobs[jobId] = job;
+    }
+
+    function getJob(uint256 jobId) external view returns (IJob.Job memory) {
+        return _mockJobs[jobId];
+    }
+}
 
 contract SardisTrustHookTest is Test {
     SardisJobRegistry internal registry;
     SardisTrustHook internal hook;
+    MockJobManagerForTrust internal mockJobManager;
 
     address internal owner = address(this);
     address internal client = address(0xCAFE);
     address internal provider = address(0xDEAD);
     address internal evaluator = address(0xFACE);
+    address internal token = address(0xA0B8);
 
     uint256 internal constant MIN_CLIENT_TRUST = 3000; // 30%
     uint256 internal constant MIN_PROVIDER_JOBS = 2;
@@ -20,9 +36,11 @@ contract SardisTrustHookTest is Test {
 
     function setUp() public {
         registry = new SardisJobRegistry(owner);
+        mockJobManager = new MockJobManagerForTrust();
         hook = new SardisTrustHook(
             address(registry),
-            owner,              // hook owner
+            address(mockJobManager),
+            owner,
             MIN_CLIENT_TRUST,
             MIN_PROVIDER_JOBS,
             MIN_EVALUATOR_TRUST
@@ -30,108 +48,96 @@ contract SardisTrustHookTest is Test {
 
         // Authorize test contract to write reputation
         registry.setAuthorizedWriter(owner, true);
+
+        // Set up a mock job
+        IJob.Job memory mockJob = IJob.Job({
+            client: client,
+            provider: provider,
+            evaluator: evaluator,
+            token: token,
+            budget: 1000e6,
+            expiredAt: block.timestamp + 7 days,
+            description: "test job",
+            hook: address(hook),
+            status: IJob.JobStatus.Funded
+        });
+        mockJobManager.setMockJob(0, mockJob);
     }
 
-    // ============ beforeFund: gates on client trust score ============
+    // ============ beforeAction(fund): gates on client trust score ============
 
-    function testBeforeFundDeniesLowTrust() public view {
-        // Client has no reputation → trust score = 0
-        bool result = hook.beforeFund(0, client);
-        assertFalse(result);
+    function testBeforeAction_fund_deniesLowTrust() public {
+        vm.expectRevert(abi.encodeWithSelector(
+            SardisTrustHook.InsufficientTrustScore.selector, client, 0, MIN_CLIENT_TRUST
+        ));
+        hook.beforeAction(0, IJob.fund.selector, "");
     }
 
-    function testBeforeFundAllowsHighTrust() public {
-        // Give client enough reputation: 5 completed, 0 rejected → 100% = 10000 bp
+    function testBeforeAction_fund_allowsHighTrust() public {
         _buildReputation(client, 5, 0, 0, 1000);
-
-        bool result = hook.beforeFund(0, client);
-        assertTrue(result);
-    }
-
-    function testBeforeFundBorderlineTrust() public {
-        // Give client exactly 30% trust: 3 completed, 7 rejected = 3000 bp
-        _buildReputation(client, 3, 7, 0, 0);
-
-        bool result = hook.beforeFund(0, client);
-        assertTrue(result); // 3000 >= 3000
-    }
-
-    function testBeforeFundJustBelowThreshold() public {
-        // 2 completed, 8 rejected = 2000 bp
-        _buildReputation(client, 2, 8, 0, 0);
-
-        bool result = hook.beforeFund(0, client);
-        assertFalse(result); // 2000 < 3000
-    }
-
-    // ============ beforeSubmit: gates on provider completed jobs ============
-
-    function testBeforeSubmitDeniesNewProvider() public view {
-        // Provider has no completed jobs
-        bool result = hook.beforeSubmit(0, provider);
-        assertFalse(result);
-    }
-
-    function testBeforeSubmitAllowsExperiencedProvider() public {
-        // Give provider 3 completed jobs
-        _buildReputation(provider, 3, 0, 500, 0);
-
-        bool result = hook.beforeSubmit(0, provider);
-        assertTrue(result); // 3 >= 2
-    }
-
-    function testBeforeSubmitExactMinimum() public {
-        // Give provider exactly 2 completed jobs
-        _buildReputation(provider, 2, 0, 100, 0);
-
-        bool result = hook.beforeSubmit(0, provider);
-        assertTrue(result); // 2 >= 2
-    }
-
-    function testBeforeSubmitOneShort() public {
-        _buildReputation(provider, 1, 0, 50, 0);
-
-        bool result = hook.beforeSubmit(0, provider);
-        assertFalse(result); // 1 < 2
-    }
-
-    // ============ beforeEvaluate: gates on evaluator trust score ============
-
-    function testBeforeEvaluateDeniesLowTrust() public view {
-        // Evaluator has no reputation
-        bool result = hook.beforeEvaluate(0, evaluator, true);
-        assertFalse(result);
-    }
-
-    function testBeforeEvaluateAllowsHighTrust() public {
-        // Give evaluator high reputation
-        _buildReputation(evaluator, 10, 1, 0, 0);
-
-        bool result = hook.beforeEvaluate(0, evaluator, true);
-        assertTrue(result);
-    }
-
-    function testBeforeEvaluateChecksBothApproveAndReject() public {
-        _buildReputation(evaluator, 10, 0, 0, 0);
-
-        // Works for both approved=true and approved=false
-        assertTrue(hook.beforeEvaluate(0, evaluator, true));
-        assertTrue(hook.beforeEvaluate(0, evaluator, false));
-    }
-
-    // ============ afterXxx: no-ops ============
-
-    function testAfterFundIsNoOp() public {
-        hook.afterFund(0, client);
         // Should not revert
+        hook.beforeAction(0, IJob.fund.selector, "");
     }
 
-    function testAfterSubmitIsNoOp() public {
-        hook.afterSubmit(0, provider);
+    function testBeforeAction_fund_borderlineTrust() public {
+        // 3 completed, 7 rejected = 3000 bp = exactly threshold
+        _buildReputation(client, 3, 7, 0, 0);
+        hook.beforeAction(0, IJob.fund.selector, "");
     }
 
-    function testAfterEvaluateIsNoOp() public {
-        hook.afterEvaluate(0, evaluator, true);
+    function testBeforeAction_fund_justBelowThreshold() public {
+        // 2 completed, 8 rejected = 2000 bp < 3000
+        _buildReputation(client, 2, 8, 0, 0);
+        vm.expectRevert(abi.encodeWithSelector(
+            SardisTrustHook.InsufficientTrustScore.selector, client, 2000, MIN_CLIENT_TRUST
+        ));
+        hook.beforeAction(0, IJob.fund.selector, "");
+    }
+
+    // ============ beforeAction(submit): gates on provider completed jobs ============
+
+    function testBeforeAction_submit_deniesNewProvider() public {
+        vm.expectRevert(abi.encodeWithSelector(
+            SardisTrustHook.InsufficientCompletedJobs.selector, provider, 0, MIN_PROVIDER_JOBS
+        ));
+        hook.beforeAction(0, IJob.submit.selector, "");
+    }
+
+    function testBeforeAction_submit_allowsExperiencedProvider() public {
+        _buildReputation(provider, 3, 0, 500, 0);
+        hook.beforeAction(0, IJob.submit.selector, "");
+    }
+
+    function testBeforeAction_submit_exactMinimum() public {
+        _buildReputation(provider, 2, 0, 100, 0);
+        hook.beforeAction(0, IJob.submit.selector, "");
+    }
+
+    // ============ beforeAction(complete/reject): gates on evaluator trust ============
+
+    function testBeforeAction_complete_deniesLowTrust() public {
+        vm.expectRevert(abi.encodeWithSelector(
+            SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST
+        ));
+        hook.beforeAction(0, IJob.complete.selector, "");
+    }
+
+    function testBeforeAction_complete_allowsHighTrust() public {
+        _buildReputation(evaluator, 10, 1, 0, 0);
+        hook.beforeAction(0, IJob.complete.selector, "");
+    }
+
+    function testBeforeAction_reject_deniesLowTrust() public {
+        vm.expectRevert(abi.encodeWithSelector(
+            SardisTrustHook.InsufficientTrustScore.selector, evaluator, 0, MIN_EVALUATOR_TRUST
+        ));
+        hook.beforeAction(0, IJob.reject.selector, "");
+    }
+
+    // ============ afterAction: no-op ============
+
+    function testAfterAction_isNoOp() public pure {
+        // SardisTrustHook.afterAction is pure no-op
     }
 
     // ============ Admin: setThresholds ============

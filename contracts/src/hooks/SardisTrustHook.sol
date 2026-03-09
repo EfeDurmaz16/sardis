@@ -1,25 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../interfaces/IJobHook.sol";
+import "../interfaces/IACPHook.sol";
+import "../interfaces/IJob.sol";
 import "../interfaces/IJobRegistry.sol";
 
 /**
  * @title SardisTrustHook
- * @notice Job hook that gates lifecycle transitions on trust scores and job counts
- * @dev Uses IJobRegistry to check:
- *      - beforeFund: client must have trust score >= minClientTrustScore
- *      - beforeSubmit: provider must have completed >= minProviderCompletedJobs
- *      - beforeEvaluate: evaluator must have trust score >= minEvaluatorTrustScore
- *      - after*: no-op
+ * @notice ERC-8183 compliant hook that gates lifecycle transitions on trust scores
+ * @dev Uses IACPHook selector-based dispatch:
+ *      - beforeAction(fund): client must have trust score >= minClientTrustScore
+ *      - beforeAction(submit): provider must have completed >= minProviderCompletedJobs
+ *      - beforeAction(complete/reject): evaluator must have trust score >= minEvaluatorTrustScore
+ *      - afterAction: no-op
  *
- *      Thresholds are configurable by the contract owner.
+ *      Reverts in beforeAction block the transition.
  */
-contract SardisTrustHook is IJobHook {
-    // ============ State Variables ============
-
+contract SardisTrustHook is IACPHook {
     /// @notice Reference to the job registry for trust scores
     IJobRegistry public immutable registry;
+
+    /// @notice The job manager contract (for reading job details)
+    IJob public immutable jobManager;
 
     /// @notice Contract owner (can configure thresholds)
     address public owner;
@@ -33,86 +35,65 @@ contract SardisTrustHook is IJobHook {
     /// @notice Minimum trust score (basis points) for evaluators
     uint256 public minEvaluatorTrustScore;
 
-    // ============ Events ============
-
     event ThresholdsUpdated(uint256 minClientTrust, uint256 minProviderJobs, uint256 minEvaluatorTrust);
     event OwnerTransferred(address indexed oldOwner, address indexed newOwner);
-
-    // ============ Errors ============
 
     error NotOwner();
     error ZeroAddress();
     error InvalidThreshold();
+    error InsufficientTrustScore(address account, uint256 score, uint256 required);
+    error InsufficientCompletedJobs(address provider, uint256 completed, uint256 required);
 
-    // ============ Constructor ============
-
-    /**
-     * @param _registry Address of the IJobRegistry contract
-     * @param _owner Address that can configure thresholds
-     * @param _minClientTrustScore Initial minimum client trust score (basis points, max 10000)
-     * @param _minProviderCompletedJobs Initial minimum provider completed jobs
-     * @param _minEvaluatorTrustScore Initial minimum evaluator trust score (basis points, max 10000)
-     */
     constructor(
         address _registry,
+        address _jobManager,
         address _owner,
         uint256 _minClientTrustScore,
         uint256 _minProviderCompletedJobs,
         uint256 _minEvaluatorTrustScore
     ) {
-        if (_registry == address(0) || _owner == address(0)) revert ZeroAddress();
+        if (_registry == address(0) || _jobManager == address(0) || _owner == address(0)) {
+            revert ZeroAddress();
+        }
         if (_minClientTrustScore > 10000 || _minEvaluatorTrustScore > 10000) revert InvalidThreshold();
 
         registry = IJobRegistry(_registry);
+        jobManager = IJob(_jobManager);
         owner = _owner;
         minClientTrustScore = _minClientTrustScore;
         minProviderCompletedJobs = _minProviderCompletedJobs;
         minEvaluatorTrustScore = _minEvaluatorTrustScore;
     }
 
-    // ============ IJobHook Implementation ============
+    /// @inheritdoc IACPHook
+    function beforeAction(uint256 jobId, bytes4 selector, bytes calldata) external view override {
+        IJob.Job memory job = jobManager.getJob(jobId);
 
-    /// @inheritdoc IJobHook
-    function beforeFund(uint256, address client) external view override returns (bool) {
-        uint256 score = registry.getTrustScore(client);
-        return score >= minClientTrustScore;
+        if (selector == IJob.fund.selector) {
+            uint256 score = registry.getTrustScore(job.client);
+            if (score < minClientTrustScore) {
+                revert InsufficientTrustScore(job.client, score, minClientTrustScore);
+            }
+        } else if (selector == IJob.submit.selector) {
+            IJobRegistry.AgentReputation memory rep = registry.getReputation(job.provider);
+            if (rep.completedJobs < minProviderCompletedJobs) {
+                revert InsufficientCompletedJobs(job.provider, rep.completedJobs, minProviderCompletedJobs);
+            }
+        } else if (selector == IJob.complete.selector || selector == IJob.reject.selector) {
+            uint256 score = registry.getTrustScore(job.evaluator);
+            if (score < minEvaluatorTrustScore) {
+                revert InsufficientTrustScore(job.evaluator, score, minEvaluatorTrustScore);
+            }
+        }
     }
 
-    /// @inheritdoc IJobHook
-    function afterFund(uint256, address) external override {
-        // no-op
-    }
-
-    /// @inheritdoc IJobHook
-    function beforeSubmit(uint256, address provider) external view override returns (bool) {
-        IJobRegistry.AgentReputation memory rep = registry.getReputation(provider);
-        return rep.completedJobs >= minProviderCompletedJobs;
-    }
-
-    /// @inheritdoc IJobHook
-    function afterSubmit(uint256, address) external override {
-        // no-op
-    }
-
-    /// @inheritdoc IJobHook
-    function beforeEvaluate(uint256, address evaluator, bool) external view override returns (bool) {
-        uint256 score = registry.getTrustScore(evaluator);
-        return score >= minEvaluatorTrustScore;
-    }
-
-    /// @inheritdoc IJobHook
-    function afterEvaluate(uint256, address, bool) external override {
+    /// @inheritdoc IACPHook
+    function afterAction(uint256, bytes4, bytes calldata) external pure override {
         // no-op
     }
 
     // ============ Admin Functions ============
 
-    /**
-     * @notice Update trust thresholds
-     * @param _minClientTrustScore New minimum client trust score (basis points)
-     * @param _minProviderCompletedJobs New minimum provider completed jobs
-     * @param _minEvaluatorTrustScore New minimum evaluator trust score (basis points)
-     */
     function setThresholds(
         uint256 _minClientTrustScore,
         uint256 _minProviderCompletedJobs,
@@ -128,10 +109,6 @@ contract SardisTrustHook is IJobHook {
         emit ThresholdsUpdated(_minClientTrustScore, _minProviderCompletedJobs, _minEvaluatorTrustScore);
     }
 
-    /**
-     * @notice Transfer ownership
-     * @param newOwner New owner address
-     */
     function transferOwnership(address newOwner) external {
         if (msg.sender != owner) revert NotOwner();
         if (newOwner == address(0)) revert ZeroAddress();

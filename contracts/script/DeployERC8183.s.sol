@@ -58,9 +58,9 @@ contract DeployERC8183 is Script {
         SardisJobManager jobManager = new SardisJobManager(deployer, feeRecipientAddr, feeBps);
         console.log("SardisJobManager deployed at:", address(jobManager));
 
-        // 3. Deploy SardisTrustHook
+        // 3. Deploy SardisTrustHook (IACPHook compliant)
         SardisTrustHook trustHook = new SardisTrustHook(
-            address(registry), deployer, minClientTrust, minProviderJobs, minEvaluatorTrust
+            address(registry), address(jobManager), deployer, minClientTrust, minProviderJobs, minEvaluatorTrust
         );
         console.log("SardisTrustHook deployed at:", address(trustHook));
 

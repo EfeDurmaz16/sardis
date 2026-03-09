@@ -7,24 +7,16 @@ import "../src/SardisJobRegistry.sol";
 import "../src/interfaces/IJob.sol";
 
 /// @dev Minimal mock of IJob.getJob() that returns predictable data
-contract MockJobManager is IJob {
-    mapping(uint256 => Job) internal _mockJobs;
+contract MockJobManager {
+    mapping(uint256 => IJob.Job) internal _mockJobs;
 
-    function setMockJob(uint256 jobId, Job memory job) external {
+    function setMockJob(uint256 jobId, IJob.Job memory job) external {
         _mockJobs[jobId] = job;
     }
 
-    function getJob(uint256 jobId) external view override returns (Job memory) {
+    function getJob(uint256 jobId) external view returns (IJob.Job memory) {
         return _mockJobs[jobId];
     }
-
-    // Unused lifecycle functions — revert
-    function createJob(address, address, address, uint256, uint256, bytes32, address) external pure override returns (uint256) { revert("not implemented"); }
-    function fundJob(uint256) external pure override { revert("not implemented"); }
-    function submitJob(uint256, bytes32) external pure override { revert("not implemented"); }
-    function evaluateJob(uint256, bool) external pure override { revert("not implemented"); }
-    function expireJob(uint256) external pure override { revert("not implemented"); }
-    function cancelJob(uint256) external pure override { revert("not implemented"); }
 }
 
 contract SardisReputationHookTest is Test {
@@ -52,69 +44,43 @@ contract SardisReputationHookTest is Test {
             provider: provider,
             evaluator: evaluator,
             token: token,
-            amount: 1000e6,
-            deadline: block.timestamp + 7 days,
-            jobHash: keccak256("test-job"),
+            budget: 1000e6,
+            expiredAt: block.timestamp + 7 days,
+            description: "test job",
             hook: address(hook),
             status: IJob.JobStatus.Funded
         });
         mockJobManager.setMockJob(0, mockJob);
     }
 
-    // ============ beforeFund: always returns true ============
+    // ============ beforeAction: always passes ============
 
-    function testBeforeFundAlwaysReturnsTrue() public pure {
-        // SardisReputationHook.beforeFund is pure and always returns true
-        // We just verify the interface is correct
+    function testBeforeActionNeverReverts() public pure {
+        // SardisReputationHook.beforeAction is pure no-op
     }
 
-    function testBeforeFundReturnsTrueForAnyAddress() public view {
-        bool result = hook.beforeFund(0, client);
-        assertTrue(result);
+    // ============ afterAction(fund): tracks client spending ============
 
-        result = hook.beforeFund(0, address(0));
-        assertTrue(result);
-    }
-
-    // ============ beforeSubmit: always returns true ============
-
-    function testBeforeSubmitAlwaysReturnsTrue() public view {
-        bool result = hook.beforeSubmit(0, provider);
-        assertTrue(result);
-    }
-
-    // ============ beforeEvaluate: always returns true ============
-
-    function testBeforeEvaluateAlwaysReturnsTrue() public view {
-        bool result = hook.beforeEvaluate(0, evaluator, true);
-        assertTrue(result);
-
-        result = hook.beforeEvaluate(0, evaluator, false);
-        assertTrue(result);
-    }
-
-    // ============ afterFund: tracks client spending ============
-
-    function testAfterFundRecordsSpending() public {
-        hook.afterFund(0, client);
+    function testAfterAction_fund_recordsSpending() public {
+        hook.afterAction(0, IJob.fund.selector, "");
 
         IJobRegistry.AgentReputation memory rep = registry.getReputation(client);
         assertEq(rep.totalSpent, 1000e6);
         assertGt(rep.lastActiveAt, 0);
     }
 
-    function testAfterFundAccumulatesSpending() public {
-        hook.afterFund(0, client);
-        hook.afterFund(0, client);
+    function testAfterAction_fund_accumulatesSpending() public {
+        hook.afterAction(0, IJob.fund.selector, "");
+        hook.afterAction(0, IJob.fund.selector, "");
 
         IJobRegistry.AgentReputation memory rep = registry.getReputation(client);
         assertEq(rep.totalSpent, 2000e6);
     }
 
-    // ============ afterEvaluate(approved): records completion ============
+    // ============ afterAction(complete): records completion ============
 
-    function testAfterEvaluateApprovedRecordsCompletion() public {
-        hook.afterEvaluate(0, evaluator, true);
+    function testAfterAction_complete_recordsCompletion() public {
+        hook.afterAction(0, IJob.complete.selector, "");
 
         IJobRegistry.AgentReputation memory rep = registry.getReputation(provider);
         assertEq(rep.completedJobs, 1);
@@ -122,48 +88,74 @@ contract SardisReputationHookTest is Test {
         assertGt(rep.lastActiveAt, 0);
     }
 
-    function testAfterEvaluateApprovedMultiple() public {
-        hook.afterEvaluate(0, evaluator, true);
-        hook.afterEvaluate(0, evaluator, true);
+    function testAfterAction_complete_multiple() public {
+        hook.afterAction(0, IJob.complete.selector, "");
+        hook.afterAction(0, IJob.complete.selector, "");
 
         IJobRegistry.AgentReputation memory rep = registry.getReputation(provider);
         assertEq(rep.completedJobs, 2);
         assertEq(rep.totalEarned, 2000e6);
     }
 
-    // ============ afterEvaluate(rejected): records rejection ============
+    // ============ afterAction(reject): records rejection ============
 
-    function testAfterEvaluateRejectedRecordsRejection() public {
-        hook.afterEvaluate(0, evaluator, false);
+    function testAfterAction_reject_recordsRejection() public {
+        // Set job status to Rejected for the mock
+        IJob.Job memory rejectedJob = IJob.Job({
+            client: client,
+            provider: provider,
+            evaluator: evaluator,
+            token: token,
+            budget: 1000e6,
+            expiredAt: block.timestamp + 7 days,
+            description: "test job",
+            hook: address(hook),
+            status: IJob.JobStatus.Rejected
+        });
+        mockJobManager.setMockJob(0, rejectedJob);
+
+        hook.afterAction(0, IJob.reject.selector, "");
 
         IJobRegistry.AgentReputation memory rep = registry.getReputation(provider);
         assertEq(rep.rejectedJobs, 1);
         assertEq(rep.completedJobs, 0);
     }
 
-    // ============ afterSubmit: no-op ============
+    // ============ afterAction(submit): no-op ============
 
-    function testAfterSubmitIsNoOp() public {
-        hook.afterSubmit(0, provider);
+    function testAfterAction_submit_isNoOp() public {
+        hook.afterAction(0, IJob.submit.selector, "");
         // No state changes expected
     }
 
     // ============ Trust score after reputation ============
 
     function testTrustScoreAfterCompletions() public {
-        // 3 completions, 0 rejections → 100% = 10000 bp
-        hook.afterEvaluate(0, evaluator, true);
-        hook.afterEvaluate(0, evaluator, true);
-        hook.afterEvaluate(0, evaluator, true);
+        hook.afterAction(0, IJob.complete.selector, "");
+        hook.afterAction(0, IJob.complete.selector, "");
+        hook.afterAction(0, IJob.complete.selector, "");
 
         uint256 score = registry.getTrustScore(provider);
-        assertEq(score, 10000); // 100% success rate (no volume bonus since amount < 1e18)
+        assertEq(score, 10000);
     }
 
     function testTrustScoreAfterMixedResults() public {
-        // 1 completion, 1 rejection → 50% = 5000 bp
-        hook.afterEvaluate(0, evaluator, true);
-        hook.afterEvaluate(0, evaluator, false);
+        hook.afterAction(0, IJob.complete.selector, "");
+
+        // Set rejected status for reject call
+        IJob.Job memory rejectedJob = IJob.Job({
+            client: client,
+            provider: provider,
+            evaluator: evaluator,
+            token: token,
+            budget: 1000e6,
+            expiredAt: block.timestamp + 7 days,
+            description: "test",
+            hook: address(hook),
+            status: IJob.JobStatus.Rejected
+        });
+        mockJobManager.setMockJob(0, rejectedJob);
+        hook.afterAction(0, IJob.reject.selector, "");
 
         uint256 score = registry.getTrustScore(provider);
         assertEq(score, 5000);
