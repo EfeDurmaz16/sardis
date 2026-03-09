@@ -49,6 +49,7 @@ class TrustPathResult:
     path: list[TrustPathNode] = field(default_factory=list)
     cumulative_trust: float = 0.0
     hops: int = 0
+    reason: str | None = None
 
 
 def _is_edge_valid(edge: TrustEdge) -> bool:

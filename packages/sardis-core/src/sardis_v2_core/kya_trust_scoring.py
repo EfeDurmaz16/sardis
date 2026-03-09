@@ -28,6 +28,7 @@ Usage:
 """
 from __future__ import annotations
 
+import inspect
 import logging
 import math
 from dataclasses import dataclass, field
@@ -296,7 +297,7 @@ class TrustScorer:
         signals.append(behavioral_score)
 
         # 6. Transitive Trust Score (FIDES trust graph)
-        transitive_score = self._score_transitive_trust(agent_did)
+        transitive_score = await self._score_transitive_trust(agent_did)
         signals.append(transitive_score)
 
         # Calculate weighted overall score
@@ -532,11 +533,12 @@ class TrustScorer:
             },
         )
 
-    def _score_transitive_trust(self, agent_did: str | None) -> TrustSignal:
+    async def _score_transitive_trust(self, agent_did: str | None) -> TrustSignal:
         """Score based on transitive trust path from platform to agent.
 
         Uses FIDES trust graph BFS traversal with 0.85 decay per hop.
         Falls back to neutral (0.5) when trust graph or agent DID is unavailable.
+        Supports both sync TrustGraphService and async FidesTrustGraphAdapter.
         """
         if self._trust_graph is None or not agent_did:
             return TrustSignal(
@@ -546,8 +548,32 @@ class TrustScorer:
                 details={"reason": "not_configured"},
             )
 
-        cumulative = self._trust_graph.get_trust_score(self._platform_did, agent_did)
-        path_result = self._trust_graph.find_path(self._platform_did, agent_did)
+        try:
+            cumulative = self._trust_graph.get_trust_score(self._platform_did, agent_did)
+            if inspect.isawaitable(cumulative):
+                cumulative = await cumulative
+            path_result = self._trust_graph.find_path(self._platform_did, agent_did)
+            if inspect.isawaitable(path_result):
+                path_result = await path_result
+        except Exception:
+            logger.warning(
+                "Transitive trust lookup failed for %s, returning neutral",
+                agent_did, exc_info=True,
+            )
+            return TrustSignal(
+                name="transitive_trust",
+                score=0.5,
+                weight=self._weights.get("transitive_trust", 0.15),
+                details={"reason": "fides_unavailable"},
+            )
+
+        if getattr(path_result, "reason", None) == "fides_unavailable":
+            return TrustSignal(
+                name="transitive_trust",
+                score=0.5,
+                weight=self._weights.get("transitive_trust", 0.15),
+                details={"reason": "fides_unavailable"},
+            )
 
         return TrustSignal(
             name="transitive_trust",
