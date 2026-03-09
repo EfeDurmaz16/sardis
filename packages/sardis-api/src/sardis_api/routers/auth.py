@@ -253,7 +253,16 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    # Legacy shared admin password (deprecated)
+    # Legacy shared admin password — DEPRECATED, will be removed Q3 2026.
+    # Blocked in production. Only allowed in dev/staging for backward compat.
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    if env in ("production", "prod"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Shared admin login is disabled in production. Use a registered account.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "")
     allow_insecure_default = os.getenv("SARDIS_ALLOW_INSECURE_DEFAULT_ADMIN_PASSWORD", "").lower() in (
         "1",
@@ -261,7 +270,6 @@ async def login(
         "yes",
     )
 
-    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
     if not admin_password:
         if allow_insecure_default and env in ("dev", "development", "local"):
             admin_password = "change-me-immediately"  # nosecret — dev-only placeholder
@@ -282,8 +290,10 @@ async def login(
         )
 
     _logger.warning(
-        "Login via shared admin password is DEPRECATED. "
-        "Register a user account via POST /auth/register instead."
+        "DEPRECATED: shared admin password login from env=%s. "
+        "Register a user account via POST /auth/register. "
+        "This path will be removed in Q3 2026.",
+        env,
     )
 
     now = datetime.now(UTC)
