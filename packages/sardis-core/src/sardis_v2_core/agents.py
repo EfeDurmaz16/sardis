@@ -42,6 +42,8 @@ class Agent(BaseModel):
     kya_level: str = "none"      # none | basic | verified | attested
     kya_status: str = "pending"  # pending | in_progress | active | suspended | revoked | expired
     metadata: dict = Field(default_factory=dict)
+    fides_did: str | None = None
+    agit_repo_hash: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -78,6 +80,8 @@ class AgentRepository:
         metadata: dict | None = None,
         kya_level: str = "none",
         kya_status: str = "pending",
+        fides_did: str | None = None,
+        agit_repo_hash: str | None = None,
     ) -> Agent:
         agent = Agent.new(
             name=name,
@@ -88,6 +92,8 @@ class AgentRepository:
             metadata=metadata or {},
             kya_level=kya_level,
             kya_status=kya_status,
+            fides_did=fides_did,
+            agit_repo_hash=agit_repo_hash,
         )
         self._agents[agent.agent_id] = agent
         return agent
@@ -120,6 +126,8 @@ class AgentRepository:
         metadata: dict | None = None,
         kya_level: str | None = None,
         kya_status: str | None = None,
+        fides_did: str | None = None,
+        agit_repo_hash: str | None = None,
     ) -> Agent | None:
         agent = self._agents.get(agent_id)
         if not agent:
@@ -140,6 +148,10 @@ class AgentRepository:
             agent.kya_level = kya_level
         if kya_status is not None:
             agent.kya_status = kya_status
+        if fides_did is not None:
+            agent.fides_did = fides_did
+        if agit_repo_hash is not None:
+            agent.agit_repo_hash = agit_repo_hash
         agent.updated_at = datetime.now(UTC)
         return agent
 

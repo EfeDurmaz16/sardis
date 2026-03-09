@@ -78,6 +78,8 @@ class PostgresAgentRepository:
             kya_level=str(meta.get("kya_level", "none")),
             kya_status=str(meta.get("kya_status", "pending")),
             metadata=meta,
+            fides_did=meta.get("fides_did"),
+            agit_repo_hash=meta.get("agit_repo_hash"),
             created_at=row.get("created_at") or datetime.now(UTC),
             updated_at=row.get("updated_at") or datetime.now(UTC),
         )
@@ -92,6 +94,8 @@ class PostgresAgentRepository:
         metadata: dict | None = None,
         kya_level: str = "none",
         kya_status: str = "pending",
+        fides_did: str | None = None,
+        agit_repo_hash: str | None = None,
     ) -> Agent:
         pool = await self._get_pool()
         base_meta = dict(metadata or {})
@@ -100,6 +104,10 @@ class PostgresAgentRepository:
         base_meta["policy"] = (policy or AgentPolicy()).model_dump(mode="json")
         base_meta["kya_level"] = kya_level
         base_meta["kya_status"] = kya_status
+        if fides_did is not None:
+            base_meta["fides_did"] = fides_did
+        if agit_repo_hash is not None:
+            base_meta["agit_repo_hash"] = agit_repo_hash
 
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -253,6 +261,8 @@ class PostgresAgentRepository:
         metadata: dict | None = None,
         kya_level: str | None = None,
         kya_status: str | None = None,
+        fides_did: str | None = None,
+        agit_repo_hash: str | None = None,
     ) -> Agent | None:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -282,6 +292,10 @@ class PostgresAgentRepository:
                 meta["kya_level"] = kya_level
             if kya_status is not None:
                 meta["kya_status"] = kya_status
+            if fides_did is not None:
+                meta["fides_did"] = fides_did
+            if agit_repo_hash is not None:
+                meta["agit_repo_hash"] = agit_repo_hash
 
             import json as _json
             await conn.execute(

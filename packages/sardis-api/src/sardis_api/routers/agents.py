@@ -13,6 +13,14 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sardis_v2_core import Agent, AgentPolicy, AgentRepository, SpendingLimits, WalletRepository
+from sardis_v2_core.agent_payment_identity import (
+    AgentPaymentIdentity as CanonicalAgentPaymentIdentity,
+    EvidencePack,
+    IdentityAttestation,
+    ProvenanceAttestation,
+    spend_authority_tier_for_agent,
+    trust_tier_from_score,
+)
 
 from sardis_api.authz import Principal, require_principal
 
@@ -74,6 +82,8 @@ class AgentResponse(BaseModel):
     description: str | None
     owner_id: str
     wallet_id: str | None
+    fides_did: str | None = None
+    agit_repo_hash: str | None = None
     spending_limits: dict
     policy: dict
     is_active: bool
@@ -91,6 +101,8 @@ class AgentResponse(BaseModel):
             description=agent.description,
             owner_id=agent.owner_id,
             wallet_id=agent.wallet_id,
+            fides_did=agent.fides_did,
+            agit_repo_hash=agent.agit_repo_hash,
             spending_limits=agent.spending_limits.model_dump(),
             policy=agent.policy.model_dump(),
             is_active=agent.is_active,
@@ -124,6 +136,8 @@ class PaymentIdentityResponse(BaseModel):
     issued_at: str
     expires_at: str
     mcp_init_snippet: str
+    agent_payment_identity: CanonicalAgentPaymentIdentity | None = None
+    evidence: EvidencePack | None = None
 
 
 # Dependency
@@ -192,6 +206,131 @@ def _policy_ref(agent: Agent) -> str:
     return f"policy_sha256:{digest}"
 
 
+def _coerce_trust_score(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_fides_did(agent: Agent) -> str | None:
+    if agent.fides_did:
+        return agent.fides_did
+    metadata_value = agent.metadata.get("fides_did")
+    if isinstance(metadata_value, str) and metadata_value:
+        return metadata_value
+    identity_meta = agent.metadata.get("fides_identity")
+    if isinstance(identity_meta, dict):
+        did_value = identity_meta.get("fides_did")
+        if isinstance(did_value, str) and did_value:
+            return did_value
+    return None
+
+
+def _build_identity_attestations(agent: Agent, fides_did: str | None) -> list[IdentityAttestation]:
+    attestations: list[IdentityAttestation] = []
+    if fides_did:
+        attestations.append(
+            IdentityAttestation(
+                kind="fides_did_link",
+                reference=fides_did,
+                issuer="fides",
+                status="active",
+            )
+        )
+    anchor_verification_id = agent.metadata.get("anchor_verification_id")
+    if isinstance(anchor_verification_id, str) and anchor_verification_id:
+        attestations.append(
+            IdentityAttestation(
+                kind="anchor_verification",
+                reference=anchor_verification_id,
+                issuer="sardis",
+                status="active",
+            )
+        )
+    code_attestation = agent.metadata.get("code_attestation")
+    if isinstance(code_attestation, str) and code_attestation:
+        attestations.append(
+            IdentityAttestation(
+                kind="code_attestation",
+                reference=code_attestation,
+                issuer="agit",
+                status="active",
+            )
+        )
+    return attestations
+
+
+def _build_provenance(agent: Agent, fides_did: str | None) -> ProvenanceAttestation | None:
+    commit_hash = agent.metadata.get("commit_hash")
+    code_hash = agent.metadata.get("code_hash")
+    repo_hash = agent.agit_repo_hash or agent.metadata.get("agit_repo_hash")
+    if not any([repo_hash, commit_hash, code_hash, fides_did]):
+        return None
+    return ProvenanceAttestation(
+        repo_hash=str(repo_hash) if repo_hash else None,
+        commit_hash=str(commit_hash) if commit_hash else (str(code_hash) if code_hash else None),
+        signer_did=fides_did,
+        chain_verified=bool(repo_hash or commit_hash or code_hash),
+        source="agit" if repo_hash or commit_hash else "metadata",
+    )
+
+
+def _build_canonical_payment_identity(
+    *,
+    agent: Agent,
+    wallet_id: str | None,
+    payment_identity_id: str | None,
+    mode: str,
+    chain: str,
+    issued_at: datetime | None = None,
+    expires_at: datetime | None = None,
+) -> CanonicalAgentPaymentIdentity:
+    fides_did = _resolve_fides_did(agent)
+    trust_metadata = agent.metadata.get("trust")
+    trust_score = _coerce_trust_score(agent.metadata.get("trust_score"))
+    if trust_score is None and isinstance(trust_metadata, dict):
+        trust_score = _coerce_trust_score(trust_metadata.get("score"))
+    provenance = _build_provenance(agent, fides_did)
+    return CanonicalAgentPaymentIdentity(
+        agent_id=agent.agent_id,
+        organization_id=agent.owner_id,
+        wallet_id=wallet_id,
+        payment_identity_id=payment_identity_id,
+        did=f"did:sardis:{agent.agent_id}",
+        fides_did=fides_did,
+        spend_authority_tier=spend_authority_tier_for_agent(
+            agent.kya_level,
+            has_runtime_provenance=bool(provenance and provenance.commit_hash),
+        ),
+        kya_level=agent.kya_level,
+        kya_status=agent.kya_status,
+        policy_ref=_policy_ref(agent),
+        mode=mode,
+        chain=chain,
+        trust_score=trust_score,
+        trust_tier=trust_tier_from_score(trust_score),
+        identity_attestations=_build_identity_attestations(agent, fides_did),
+        provenance=provenance,
+        issued_at=issued_at.isoformat() if issued_at else None,
+        expires_at=expires_at.isoformat() if expires_at else None,
+    )
+
+
+def _build_evidence_pack(agent: Agent, canonical_identity: CanonicalAgentPaymentIdentity) -> EvidencePack:
+    reason_codes = [f"kya:{agent.kya_status}", f"authority:{canonical_identity.spend_authority_tier.value}"]
+    if canonical_identity.fides_did:
+        reason_codes.append("identity:fides_linked")
+    return EvidencePack(
+        policy_ref=canonical_identity.policy_ref,
+        reason_codes=reason_codes,
+        attestation_refs=[att.reference for att in canonical_identity.identity_attestations],
+        trust_score=canonical_identity.trust_score,
+    )
+
+
 def _build_payment_identity(
     *,
     principal: Principal,
@@ -205,7 +344,7 @@ def _build_payment_identity(
     expires_at = issued_at + timedelta(seconds=ttl_seconds)
     payload = {
         "v": 1,
-        "org_id": principal.organization_id,
+        "org_id": agent.owner_id,
         "agent_id": agent.agent_id,
         "wallet_id": wallet_id,
         "policy_ref": _policy_ref(agent),
@@ -218,6 +357,15 @@ def _build_payment_identity(
     payload_b64 = _b64url_encode(payload_json.encode("utf-8"))
     signature_b64 = _sign_identity_payload(payload_b64)
     payment_identity_id = f"spi_{payload_b64}.{signature_b64}"
+    canonical_identity = _build_canonical_payment_identity(
+        agent=agent,
+        wallet_id=wallet_id,
+        payment_identity_id=payment_identity_id,
+        mode=mode,
+        chain=chain,
+        issued_at=issued_at,
+        expires_at=expires_at,
+    )
 
     return PaymentIdentityResponse(
         payment_identity_id=payment_identity_id,
@@ -233,6 +381,8 @@ def _build_payment_identity(
             f"--mode {mode} --api-url <API_URL> --api-key <API_KEY> "
             f"--payment-identity {payment_identity_id}"
         ),
+        agent_payment_identity=canonical_identity,
+        evidence=_build_evidence_pack(agent, canonical_identity),
     )
 
 
@@ -258,6 +408,14 @@ def _decode_payment_identity(payment_identity_id: str) -> dict:
     if int(payload.get("exp", 0)) < now_ts:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Payment identity expired")
     return payload
+
+
+def _build_mcp_init_snippet(mode: str, payment_identity_id: str) -> str:
+    return (
+        "npx @sardis/mcp-server init "
+        f"--mode {mode} --api-url <API_URL> --api-key <API_KEY> "
+        f"--payment-identity {payment_identity_id}"
+    )
 
 
 # Endpoints
@@ -566,6 +724,15 @@ async def resolve_payment_identity(
     mode = str(payload.get("mode") or "live")
     chain = str(payload.get("chain") or "base_sepolia")
     policy_ref = str(payload.get("policy_ref") or _policy_ref(agent))
+    canonical_identity = _build_canonical_payment_identity(
+        agent=agent,
+        wallet_id=wallet_id,
+        payment_identity_id=payment_identity_id,
+        mode=mode,
+        chain=chain,
+        issued_at=issued_at,
+        expires_at=expires_at,
+    )
 
     return PaymentIdentityResponse(
         payment_identity_id=payment_identity_id,
@@ -576,11 +743,32 @@ async def resolve_payment_identity(
         chain=chain,
         issued_at=issued_at.isoformat(),
         expires_at=expires_at.isoformat(),
-        mcp_init_snippet=(
-            "npx @sardis/mcp-server init "
-            f"--mode {mode} --api-url <API_URL> --api-key <API_KEY> "
-            f"--payment-identity {payment_identity_id}"
-        ),
+        mcp_init_snippet=_build_mcp_init_snippet(mode, payment_identity_id),
+        agent_payment_identity=canonical_identity,
+        evidence=_build_evidence_pack(agent, canonical_identity),
+    )
+
+
+@router.get("/{agent_id}/agent-payment-identity", response_model=CanonicalAgentPaymentIdentity)
+async def get_agent_payment_identity(
+    agent_id: str,
+    mode: str = Query(default="live"),
+    chain: str = Query(default="base_sepolia"),
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Return the canonical agent payment identity profile used across rails."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return _build_canonical_payment_identity(
+        agent=agent,
+        wallet_id=agent.wallet_id,
+        payment_identity_id=None,
+        mode=mode,
+        chain=chain,
     )
 
 
