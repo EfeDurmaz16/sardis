@@ -15,6 +15,11 @@ from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
+# Period-appropriate TTLs for spend counters
+_TTL_DAILY = 86_400        # 24 hours
+_TTL_MONTHLY = 2_678_400   # 31 days
+_TTL_TOTAL = 31_536_000    # 365 days (effectively no expiry)
+
 
 @dataclass(slots=True)
 class GroupPolicyResult:
@@ -208,31 +213,40 @@ class GroupSpendingTracker(Protocol):
 
 
 class InMemoryGroupSpendingTracker:
-    """Redis-backed group spending tracker with in-memory fallback."""
+    """Redis-backed group spending tracker with in-memory fallback.
+
+    Uses per-period keys with period-appropriate TTLs:
+    - {group_id}:daily   -> TTL = 24 hours
+    - {group_id}:monthly -> TTL = 31 days
+    - {group_id}:total   -> TTL = 365 days
+    """
 
     def __init__(self) -> None:
         from sardis_v2_core.redis_state import RedisStateStore
         self._store = RedisStateStore(namespace="group_spending")
 
     async def get_group_spending(self, group_id: str) -> GroupSpending:
-        data = await self._store.get(group_id)
-        if data is None:
-            return GroupSpending()
+        daily_data = await self._store.get(f"{group_id}:daily")
+        monthly_data = await self._store.get(f"{group_id}:monthly")
+        total_data = await self._store.get(f"{group_id}:total")
         return GroupSpending(
-            daily=Decimal(str(data.get("daily", "0"))),
-            monthly=Decimal(str(data.get("monthly", "0"))),
-            total=Decimal(str(data.get("total", "0"))),
+            daily=Decimal(str(daily_data.get("value", "0"))) if daily_data else Decimal("0"),
+            monthly=Decimal(str(monthly_data.get("value", "0"))) if monthly_data else Decimal("0"),
+            total=Decimal(str(total_data.get("value", "0"))) if total_data else Decimal("0"),
         )
 
     async def record_spend(self, group_id: str, amount: Decimal) -> None:
-        existing = await self._store.get(group_id)
-        if existing is None:
-            existing = {"daily": "0", "monthly": "0", "total": "0"}
-        daily = Decimal(str(existing["daily"])) + amount
-        monthly = Decimal(str(existing["monthly"])) + amount
-        total = Decimal(str(existing["total"])) + amount
-        await self._store.set(group_id, {
-            "daily": str(daily),
-            "monthly": str(monthly),
-            "total": str(total),
-        }, ttl=86400)
+        # Update daily counter
+        daily_data = await self._store.get(f"{group_id}:daily")
+        daily = Decimal(str(daily_data["value"])) + amount if daily_data else amount
+        await self._store.set(f"{group_id}:daily", {"value": str(daily)}, ttl=_TTL_DAILY)
+
+        # Update monthly counter
+        monthly_data = await self._store.get(f"{group_id}:monthly")
+        monthly = Decimal(str(monthly_data["value"])) + amount if monthly_data else amount
+        await self._store.set(f"{group_id}:monthly", {"value": str(monthly)}, ttl=_TTL_MONTHLY)
+
+        # Update total counter
+        total_data = await self._store.get(f"{group_id}:total")
+        total = Decimal(str(total_data["value"])) + amount if total_data else amount
+        await self._store.set(f"{group_id}:total", {"value": str(total)}, ttl=_TTL_TOTAL)
