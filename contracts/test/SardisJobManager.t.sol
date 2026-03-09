@@ -478,10 +478,8 @@ contract SardisJobManagerTest is Test {
         vm.startPrank(client);
         token.approve(address(manager), JOB_AMOUNT + fee);
 
-        // Hook blocks fund — but our implementation fail-opens on gas exhaustion
-        // Explicit revert from hook propagates
-        // The MockBlockingHook reverts, which costs gas but has returndata
-        // In practice with HOOK_GAS_LIMIT, behavior depends on gas cost
+        // Hook explicitly reverts → propagates, blocking the fund
+        vm.expectRevert("Hook blocked");
         manager.fund(jobId, JOB_AMOUNT, "");
         vm.stopPrank();
     }
@@ -492,8 +490,28 @@ contract SardisJobManagerTest is Test {
         _setBudgetAndFund(jobId);
 
         vm.prank(provider);
-        // Hook blocks submit with revert
+        // Hook explicitly reverts → propagates, blocking the submit
+        vm.expectRevert("Hook blocked");
         manager.submit(jobId, keccak256("x"), "");
+    }
+
+    function test_hook_gasGuzzler_failsOpen() public {
+        MockGasGuzzlerHook hook = new MockGasGuzzlerHook();
+        uint256 jobId = _createJob(address(hook));
+
+        vm.prank(client);
+        manager.setBudget(jobId, JOB_AMOUNT, abi.encode(address(token)));
+
+        uint256 fee = (JOB_AMOUNT * FEE_BPS) / 10000;
+        vm.startPrank(client);
+        token.approve(address(manager), JOB_AMOUNT + fee);
+
+        // Gas guzzler hook exhausts gas (no return data) → fail-open, fund succeeds
+        manager.fund(jobId, JOB_AMOUNT, "");
+        vm.stopPrank();
+
+        IJob.Job memory job = manager.getJob(jobId);
+        assertEq(uint256(job.status), uint256(IJob.JobStatus.Funded));
     }
 
     // ============ Admin ============

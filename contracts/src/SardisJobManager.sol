@@ -382,16 +382,22 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
      */
     function _callBeforeHook(address hook, uint256 jobId, bytes4 selector, bytes memory data) internal {
         if (hook == address(0)) return;
-        // Reverts propagate — hook can block the action
-        (bool success,) = hook.call{ gas: HOOK_GAS_LIMIT }(
+
+        (bool success, bytes memory returnData) = hook.call{ gas: HOOK_GAS_LIMIT }(
             abi.encodeCall(IACPHook.beforeAction, (jobId, selector, data))
         );
-        // If call failed (gas exhaustion), fail-open: continue
-        // If hook explicitly reverted with reason, that would propagate
-        // This matches the spec: hooks MAY revert to block
+
         if (!success) {
-            // Check if it was an explicit revert (has return data) vs gas exhaustion
-            // Gas exhaustion = fail-open, explicit revert = block
+            // Distinguish between explicit revert (has return data) and gas exhaustion
+            // Explicit revert → propagate (hook is blocking the action)
+            // Gas exhaustion (empty returnData) → fail-open (continue)
+            if (returnData.length > 0) {
+                // Propagate the hook's revert reason
+                assembly {
+                    revert(add(returnData, 32), mload(returnData))
+                }
+            }
+            // Gas exhaustion: fail-open, continue execution
         }
     }
 
