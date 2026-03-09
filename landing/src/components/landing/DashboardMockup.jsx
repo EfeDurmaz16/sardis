@@ -796,7 +796,7 @@ export default function DashboardMockup() {
               maxWidth: "520px",
             }}
           >
-            Generate payment requests, track deposits in real time, and auto-reconcile incoming funds across every chain.
+            Generate payment requests, track deposits in real time, and auto-reconcile incoming funds on Base.
           </p>
         </div>
 

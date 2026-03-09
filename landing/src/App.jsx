@@ -571,7 +571,7 @@ function App() {
             <Badge variant="outline" className="mb-4 text-[var(--sardis-teal-strong)] dark:text-[#9DD9D2] border-[var(--sardis-teal-strong)]/30 dark:border-[#9DD9D2]/30 rounded-none font-mono">PROTOCOL NATIVE</Badge>
             <h2 className="text-4xl md:text-5xl font-display font-semibold mb-4">Built on Open Standards</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Sardis implements and extends the emerging standards for agentic commerce. Full interoperability with the protocols shaping the agent economy.
+              Sardis implements and extends the emerging standards for agentic commerce. See each protocol's maturity status below.
             </p>
           </div>
 

@@ -58,22 +58,43 @@ Sardis gives AI agents **non-custodial MPC wallets** with **natural language spe
 
 Your Claude agent, LangChain workflow, or autonomous bot gets its own wallet with programmable guardrails: "Max $100/day on cloud services, only approved vendors, no gambling." The agent cannot override these policies.
 
-Sardis supports **stablecoin payments** (USDC, USDT), **virtual Visa/Mastercard cards**, and **bank transfers** (ACH/wire) across 5 blockchain networks.
+Sardis executes **stablecoin payments** (USDC) on **Base** with multi-chain funding via CCTP v2 (Ethereum, Polygon, Arbitrum, Optimism). Virtual cards are available in pilot via Stripe Issuing.
 
 ---
 
-## ✨ Key Features
+## Protocol & Feature Maturity
 
-- 🔐 **Non-custodial MPC wallets** — Turnkey/Fireblocks integration, zero private key exposure
-- 🗣️ **Natural language spending policies** — "Max $50/tx, $200/day, SaaS vendors only"
-- 🚫 **Financial hallucination prevention** — Policy firewall blocks invalid transactions
-- 🤖 **9 AI framework integrations** — MCP, LangChain, OpenAI, Vercel AI, CrewAI, LlamaIndex, Mastra
-- 💳 **Virtual cards** — Instant Visa/Mastercard issuance via Lithic for fiat payments
-- 🤝 **Agent-to-agent escrow** — Cryptographic mandate chain for A2A payments
-- 🔍 **KYA (Know Your Agent)** — Trust scoring and behavioral anomaly detection
-- ⛓️ **5 blockchain networks** — Base, Polygon, Ethereum, Arbitrum, Optimism
-- 📊 **Double-entry audit ledger** — Append-only transaction history with cryptographic proofs
-- 🎯 **Protocol compliance** — AP2, TAP, UCP, A2A, x402 payment standards
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Spending Policy Engine | **Production** | Deterministic NL-to-policy, atomic spend tracking |
+| AP2 Mandate Verification | **Production** | Full mandate chain verification with evidence |
+| USDC Payments (Base) | **Production** | Non-custodial MPC wallet execution |
+| Policy Attestation API | **Production** | Signed attestation envelopes with Ed25519 |
+| PreExecutionPipeline | **Production** | Composable hook chain with fail-closed defaults |
+| Hosted Checkout | **Pilot** | Merchant checkout flows with session security |
+| ERC-8183 Agentic Jobs | **Pilot** | On-chain job escrow (conservative caps: 1% fee, USDC-only) |
+| x402 Protocol | **Pilot** | HTTP-native micropayments |
+| Virtual Cards (Stripe Issuing) | **Pilot** | Agent-controlled virtual card issuance |
+| Multi-chain (Polygon, Arbitrum) | **Experimental** | Chain routing implemented, not production-tested |
+| UCP MCP Transport | **Experimental** | Partial implementation |
+| FIDES Trust Graph | **Experimental** | DID-based trust federation |
+
+> **Status key:** **Production** = deployed, tested, load-bearing. **Pilot** = functional with design partners, conservative limits. **Experimental** = code exists, not production-tested.
+
+---
+
+## Key Features
+
+- **Non-custodial MPC wallets** -- Turnkey integration, zero private key exposure
+- **Natural language spending policies** -- "Max $50/tx, $200/day, SaaS vendors only"
+- **Financial hallucination prevention** -- Policy firewall blocks invalid transactions
+- **9 AI framework integrations** -- MCP, LangChain, OpenAI, Vercel AI, CrewAI, LlamaIndex, Mastra
+- **Virtual cards (Pilot)** -- Stripe Issuing for agent-controlled fiat payments
+- **Agent-to-agent escrow** -- Cryptographic mandate chain for A2A payments
+- **KYA (Know Your Agent)** -- Trust scoring and behavioral anomaly detection
+- **Base (production) + 4 funding chains** -- Multi-chain funding via CCTP v2
+- **Double-entry audit ledger** -- Append-only transaction history with cryptographic proofs
+- **Protocol support** -- AP2 and TAP (production), x402 (pilot), UCP and A2A (partial)
 
 ---
 
@@ -152,7 +173,9 @@ All frameworks use the same policy engine and MPC wallet infrastructure.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
+
+Every payment follows a **single execution path** through the `PaymentOrchestrator`. There are no alternative code paths that bypass policy checks.
 
 ```
                          AI AGENT
@@ -161,22 +184,22 @@ All frameworks use the same policy engine and MPC wallet infrastructure.
                      MCP / SDK
                           |
             ┌─────────────┴─────────────┐
-            │   SARDIS POLICY ENGINE    │
+            │    PaymentOrchestrator     │
+            │    (single entry point)    │
+            └─────────────┬─────────────┘
+                          |
+            ┌─────────────┴─────────────┐
+            │   PreExecutionPipeline    │
             │                           │
-            │  Natural Language Rules   │
-            │  Merchant Allowlist       │
-            │  Amount Limits            │
-            │  Time-Based Controls      │
-            └─────────────┬─────────────┘
-                          |
-            ┌─────────────┴─────────────┐
-            │    KYA (Know Your Agent)  │
-            │  Trust Scoring + Anomaly  │
-            └─────────────┬─────────────┘
-                          |
-            ┌─────────────┴─────────────┐
-            │  COMPLIANCE ORCHESTRATOR  │
-            │  KYC • AML • Sanctions    │
+            │  Composable hooks:        │
+            │  - Policy evaluation      │
+            │  - Spend tracking         │
+            │  - Dedup check            │
+            │  - Compliance gate        │
+            │  - KYA trust scoring      │
+            │                           │
+            │  Fail-closed: any hook    │
+            │  failure blocks the tx    │
             └─────────────┬─────────────┘
                           |
             ┌─────────────┴─────────────┐
@@ -188,8 +211,7 @@ All frameworks use the same policy engine and MPC wallet infrastructure.
                |                     |
          On-Chain Rails         Fiat Rails
          USDC on Base          Virtual Cards
-         Polygon, ETH           (Lithic)
-         Arbitrum, OP
+         (+ CCTP v2 funding)   (Stripe Issuing)
                |                     |
          ┌─────┴─────┐         ┌────┴────┐
          │  LEDGER   │         │  LEDGER │
@@ -197,6 +219,11 @@ All frameworks use the same policy engine and MPC wallet infrastructure.
          │  Only     │         │  Only   │
          └───────────┘         └─────────┘
 ```
+
+**Key design principles:**
+- **Fail-closed** -- Default deny on all policy, compliance, and security checks
+- **Non-custodial** -- Private keys never stored; MPC signing via Turnkey
+- **Audit everything** -- Append-only ledger with signed attestation envelopes for every decision
 
 ---
 
@@ -211,8 +238,8 @@ sardis/
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
 │   ├── sardis-ledger/      # Append-only audit trail
-│   ├── sardis-compliance/  # KYC (Persona) + AML (Elliptic)
-│   ├── sardis-cards/       # Virtual cards (Lithic)
+│   ├── sardis-compliance/  # KYC (iDenfy) + AML (Elliptic)
+│   ├── sardis-cards/       # Virtual cards (Stripe Issuing)
 │   ├── sardis-mcp-server/  # MCP server for Claude/Cursor
 │   ├── sardis-sdk-python/  # Full Python SDK
 │   ├── sardis-sdk-js/      # TypeScript SDK

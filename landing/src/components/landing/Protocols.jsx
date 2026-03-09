@@ -4,35 +4,35 @@ const protocols = [
     full: "Agent Payment Protocol",
     org: "Google, PayPal, Visa",
     desc: "Mandate chain verification: Intent, Cart, Payment. The emerging standard for agent commerce.",
-    status: "Implemented",
-  },
-  {
-    name: "UCP",
-    full: "Universal Commerce Protocol",
-    org: "Open standard",
-    desc: "Structured checkout flows enabling agents to complete purchases at any merchant endpoint.",
-    status: "Implemented",
-  },
-  {
-    name: "A2A",
-    full: "Agent-to-Agent Protocol",
-    org: "Google",
-    desc: "Multi-agent communication for collaborative workflows across payment and service boundaries.",
-    status: "Implemented",
+    status: "Production",
   },
   {
     name: "TAP",
     full: "Trusted Agent Protocol",
     org: "Open standard",
     desc: "Cryptographic identity verification using Ed25519 and ECDSA-P256 for agent attestation.",
-    status: "Implemented",
+    status: "Production",
   },
   {
     name: "x402",
     full: "HTTP 402 Micropayments",
     org: "Coinbase",
     desc: "Native HTTP micropayments. Pay-per-request for APIs, content, and compute resources.",
-    status: "Implemented",
+    status: "Pilot",
+  },
+  {
+    name: "A2A",
+    full: "Agent-to-Agent Protocol",
+    org: "Google",
+    desc: "Multi-agent communication for collaborative workflows across payment and service boundaries.",
+    status: "Partial",
+  },
+  {
+    name: "UCP",
+    full: "Universal Commerce Protocol",
+    org: "Open standard",
+    desc: "Structured checkout flows enabling agents to complete purchases at any merchant endpoint. MCP transport is experimental.",
+    status: "Experimental",
   },
 ];
 
@@ -70,7 +70,7 @@ export default function Protocols() {
             }}
           >
             Sardis implements and extends the emerging standards for agentic commerce.
-            Full interoperability with the protocols shaping the agent economy.
+            See each protocol's maturity status below.
           </p>
         </div>
 
@@ -97,9 +97,9 @@ export default function Protocols() {
                   className="text-[9px] px-2 py-0.5 rounded-full font-medium tracking-wider"
                   style={{
                     fontFamily: "'JetBrains Mono', monospace",
-                    background: 'rgba(34,197,94,0.1)',
-                    color: '#22C55E',
-                    border: '1px solid rgba(34,197,94,0.15)',
+                    background: p.status === 'Production' ? 'rgba(34,197,94,0.1)' : p.status === 'Pilot' ? 'rgba(59,130,246,0.1)' : 'rgba(161,161,170,0.1)',
+                    color: p.status === 'Production' ? '#22C55E' : p.status === 'Pilot' ? '#3B82F6' : '#A1A1AA',
+                    border: `1px solid ${p.status === 'Production' ? 'rgba(34,197,94,0.15)' : p.status === 'Pilot' ? 'rgba(59,130,246,0.15)' : 'rgba(161,161,170,0.15)'}`,
                   }}
                 >
                   {p.status.toUpperCase()}
