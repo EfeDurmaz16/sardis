@@ -429,6 +429,34 @@ async def execute_ap2_payment(
         chain = verification.chain
         payment = chain.payment
 
+        # ── Compute ApprovalContext binding ─────────────────────────────
+        # Build a cryptographic binding between what was verified and what
+        # will be executed. The hash travels with the payment through the
+        # orchestrator and into the ledger, so post-hoc audit can prove
+        # the executed object matched the approved object.
+        from sardis_v2_core.approval_context import ApprovalContext, hash_cart
+
+        _cart_items = [dict(li) for li in chain.cart.line_items] if chain.cart.line_items else []
+        approval_ctx = ApprovalContext(
+            merchant_domain=chain.cart.merchant_domain,
+            cart_hash=hash_cart(
+                _cart_items,
+                str(chain.cart.subtotal_minor),
+                str(chain.cart.taxes_minor),
+                chain.cart.currency,
+            ),
+            action_description_hash=chain.intent.action_description_hash,
+            amount=str(payment.amount_minor),
+            token=payment.token,
+            chain=payment.chain,
+            destination=payment.destination,
+        )
+        ctx_hash = approval_ctx.compute_hash()
+
+        # Attach to payment mandate so orchestrator/ledger can log it.
+        payment = replace(payment, approval_context_hash=ctx_hash)
+        chain = MandateChain(intent=chain.intent, cart=chain.cart, payment=payment)
+
         agent = await deps.agent_repo.get(payment.subject)
         if not agent:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="agent_not_found")
@@ -919,6 +947,7 @@ async def execute_ap2_payment(
             status="executed",
             compliance_provider=compliance.provider,
             compliance_rule=compliance.rule,
+            approval_context_hash=payment.approval_context_hash,
         )
 
     # Use payment.mandate_id for dedupe; mandate chain verification ensures it's stable.

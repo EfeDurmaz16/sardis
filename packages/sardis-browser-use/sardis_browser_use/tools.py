@@ -180,6 +180,17 @@ def register_sardis_actions(
             amount=amount,
             purpose=purpose,
             memo=f"[browser:{ctx.action_hash[:12]}] {purpose}",
+            metadata={
+                "browser_context": ctx.to_metadata()["browser_context"],
+                "origin_url": origin,
+                "action_description": purpose,
+                "action_description_hash": hashlib.sha256(
+                    purpose.encode("utf-8")
+                ).hexdigest(),
+                "session_context_hash": hashlib.sha256(
+                    session_id.encode("utf-8")
+                ).hexdigest(),
+            },
         )
         if result.success:
             return (

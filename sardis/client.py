@@ -512,6 +512,7 @@ class PaymentManager:
         token: str = "USDC",
         memo: str | None = None,
         purpose: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> TransactionResult:
         """Execute a payment with policy enforcement.
 
@@ -522,6 +523,7 @@ class PaymentManager:
             token: Token type (default: USDC)
             memo: Payment memo / reason (alias: purpose)
             purpose: Alias for memo
+            metadata: Optional metadata dict (browser context, origin binding, etc.)
 
         Returns:
             TransactionResult with status, tx_hash, policy_result

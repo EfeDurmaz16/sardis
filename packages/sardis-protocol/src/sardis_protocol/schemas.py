@@ -79,6 +79,7 @@ class AP2PaymentExecuteResponse(BaseModel):
     compliance_provider: str | None = None
     compliance_rule: str | None = None
     approval_id: str | None = None
+    approval_context_hash: str = ""
 
 
 class X402PaymentExecuteRequest(BaseModel):
