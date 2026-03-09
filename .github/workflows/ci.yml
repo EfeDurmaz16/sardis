@@ -118,6 +118,12 @@ jobs:
           version: stable
           cache: false
 
+      - name: Pre-install solc 0.8.24
+        run: |
+          mkdir -p ~/.svm/0.8.24
+          curl -sSL "https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux" -o ~/.svm/0.8.24/solc-0.8.24
+          chmod +x ~/.svm/0.8.24/solc-0.8.24
+
       - name: Enforce formatting
         run: forge fmt --check
 
