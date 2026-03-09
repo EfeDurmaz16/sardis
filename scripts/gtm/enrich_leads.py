@@ -13,7 +13,6 @@ import re
 import time
 import urllib.parse
 import urllib.request
-from typing import Dict, Optional, Tuple
 
 from config import apollo_api_key, github_token, hunter_api_key, score_threshold
 from store import connect, init_schema, list_leads_for_enrichment, log_enrichment
@@ -24,7 +23,7 @@ USER_AGENT = "sardis-gtm-bot/0.1 (+https://sardis.sh)"
 # Provider: GitHub public email (free, 60 req/hr unauth, 5000 req/hr auth)
 # ---------------------------------------------------------------------------
 
-def _github_headers() -> Dict[str, str]:
+def _github_headers() -> dict[str, str]:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"}
     token = github_token()
     if token:
@@ -32,7 +31,7 @@ def _github_headers() -> Dict[str, str]:
     return headers
 
 
-def enrich_github(lead: Dict) -> Optional[Tuple[str, str]]:
+def enrich_github(lead: dict) -> tuple[str, str] | None:
     """Try to get public email from GitHub user profile."""
     source = (lead.get("source") or "").lower()
     person = (lead.get("person_name") or "").strip()
@@ -62,7 +61,7 @@ def enrich_github(lead: Dict) -> Optional[Tuple[str, str]]:
 # Provider: Hunter.io Email Finder (25 free searches/month)
 # ---------------------------------------------------------------------------
 
-def enrich_hunter(lead: Dict) -> Optional[Tuple[str, str]]:
+def enrich_hunter(lead: dict) -> tuple[str, str] | None:
     """Find email via Hunter.io domain search + person name."""
     api_key = hunter_api_key()
     if not api_key:
@@ -77,7 +76,7 @@ def enrich_hunter(lead: Dict) -> Optional[Tuple[str, str]]:
     first_name = parts[0] if parts else ""
     last_name = parts[-1] if len(parts) > 1 else ""
 
-    params: Dict[str, str] = {"domain": domain, "api_key": api_key}
+    params: dict[str, str] = {"domain": domain, "api_key": api_key}
     if first_name:
         params["first_name"] = first_name
     if last_name:
@@ -102,7 +101,7 @@ def enrich_hunter(lead: Dict) -> Optional[Tuple[str, str]]:
     return None
 
 
-def _hunter_domain_search(domain: str, api_key: str) -> Optional[Tuple[str, str]]:
+def _hunter_domain_search(domain: str, api_key: str) -> tuple[str, str] | None:
     """Fallback: search domain for any email, prefer founders/C-level."""
     url = f"https://api.hunter.io/v2/domain-search?domain={urllib.parse.quote(domain)}&api_key={api_key}&limit=5"
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -132,7 +131,7 @@ def _hunter_domain_search(domain: str, api_key: str) -> Optional[Tuple[str, str]
 # Provider: Apollo.io People Enrichment (50 free credits/month)
 # ---------------------------------------------------------------------------
 
-def enrich_apollo(lead: Dict) -> Optional[Tuple[str, str]]:
+def enrich_apollo(lead: dict) -> tuple[str, str] | None:
     """Find email via Apollo.io people match."""
     api_key = apollo_api_key()
     if not api_key:
@@ -145,7 +144,7 @@ def enrich_apollo(lead: Dict) -> Optional[Tuple[str, str]]:
     if not domain and not company:
         return None
 
-    payload: Dict = {}
+    payload: dict = {}
     if person:
         parts = person.split()
         payload["first_name"] = parts[0]
@@ -183,7 +182,7 @@ def enrich_apollo(lead: Dict) -> Optional[Tuple[str, str]]:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _extract_domain(lead: Dict) -> str:
+def _extract_domain(lead: dict) -> str:
     website = (lead.get("website") or "").strip()
     if not website:
         return ""
@@ -202,9 +201,9 @@ PROVIDERS = [
 ]
 
 
-def enrich_one(lead: Dict) -> Optional[str]:
+def enrich_one(lead: dict) -> str | None:
     """Run waterfall enrichment on a single lead. Returns email or None."""
-    for provider_name, provider_fn in PROVIDERS:
+    for _provider_name, provider_fn in PROVIDERS:
         result = provider_fn(lead)
         if result:
             email, confidence = result

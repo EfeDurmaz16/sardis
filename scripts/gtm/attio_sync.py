@@ -16,7 +16,7 @@ import json
 import os
 import time
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from config import score_threshold
 from store import connect, init_schema
@@ -33,7 +33,7 @@ def attio_list_slug() -> str:
     return os.getenv("ATTIO_LIST_SLUG", "gtm_pipeline")
 
 
-def _request(method: str, path: str, body: Optional[Dict] = None) -> Dict:
+def _request(method: str, path: str, body: dict | None = None) -> dict:
     api_key = attio_api_key()
     if not api_key:
         raise RuntimeError("ATTIO_API_KEY not set")
@@ -54,12 +54,12 @@ def _request(method: str, path: str, body: Optional[Dict] = None) -> Dict:
         return json.loads(res.read().decode("utf-8", errors="ignore"))
 
 
-def upsert_company(company_name: str, domain: str, description: str = "") -> Optional[Dict]:
+def upsert_company(company_name: str, domain: str, description: str = "") -> dict | None:
     """Create or update a company in Attio by domain."""
     if not domain and not company_name:
         return None
 
-    values: Dict[str, Any] = {}
+    values: dict[str, Any] = {}
     if company_name:
         values["name"] = [{"value": company_name}]
     if domain:
@@ -89,12 +89,12 @@ def upsert_person(
     company_name: str = "",
     role: str = "",
     description: str = "",
-) -> Optional[Dict]:
+) -> dict | None:
     """Create or update a person in Attio by email."""
     if not email:
         return None
 
-    values: Dict[str, Any] = {
+    values: dict[str, Any] = {
         "email_addresses": [{"email_address": email}],
     }
 
@@ -102,7 +102,7 @@ def upsert_person(
         parts = person_name.strip().split()
         first = parts[0] if parts else ""
         last = " ".join(parts[1:]) if len(parts) > 1 else ""
-        name_val: Dict[str, str] = {}
+        name_val: dict[str, str] = {}
         if first:
             name_val["first_name"] = first
         if last:

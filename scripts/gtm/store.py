@@ -5,18 +5,19 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from config import db_path
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def connect(path: Optional[Path] = None) -> sqlite3.Connection:
+def connect(path: Path | None = None) -> sqlite3.Connection:
     db = Path(path or db_path())
     db.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db)
@@ -94,7 +95,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def upsert_lead(conn: sqlite3.Connection, lead: Dict[str, Any]) -> int:
+def upsert_lead(conn: sqlite3.Connection, lead: dict[str, Any]) -> int:
     now = utc_now_iso()
     payload = {
         "external_id": str(lead.get("external_id", "")).strip() or str(lead.get("source_url", "")),
@@ -153,7 +154,7 @@ def upsert_lead(conn: sqlite3.Connection, lead: Dict[str, Any]) -> int:
     return int(row["id"])
 
 
-def list_leads_for_scoring(conn: sqlite3.Connection, limit: int = 200, rescore_all: bool = False) -> List[sqlite3.Row]:
+def list_leads_for_scoring(conn: sqlite3.Connection, limit: int = 200, rescore_all: bool = False) -> list[sqlite3.Row]:
     if rescore_all:
         return conn.execute(
             "SELECT l.* FROM leads l WHERE l.status != 'merged' ORDER BY l.updated_at DESC LIMIT ?",
@@ -200,7 +201,7 @@ def save_score(
     conn.commit()
 
 
-def list_leads_for_email(conn: sqlite3.Connection, min_score: int, limit: int = 100) -> List[sqlite3.Row]:
+def list_leads_for_email(conn: sqlite3.Connection, min_score: int, limit: int = 100) -> list[sqlite3.Row]:
     return conn.execute(
         """
         SELECT l.*, s.fit_score, s.intent_score, s.overall_score, s.reasons_json
@@ -226,7 +227,7 @@ def queue_email(
     subject: str,
     body_text: str,
     tone: str = "pg",
-    scheduled_at: Optional[str] = None,
+    scheduled_at: str | None = None,
 ) -> int:
     now = utc_now_iso()
     schedule = scheduled_at or now
@@ -242,7 +243,7 @@ def queue_email(
     return int(cur.lastrowid)
 
 
-def list_queued_emails(conn: sqlite3.Connection, limit: int = 50) -> List[sqlite3.Row]:
+def list_queued_emails(conn: sqlite3.Connection, limit: int = 50) -> list[sqlite3.Row]:
     now = utc_now_iso()
     return conn.execute(
         """
@@ -281,7 +282,7 @@ def mark_email_failed(conn: sqlite3.Connection, queue_id: int, error_message: st
     conn.commit()
 
 
-def list_leads_for_enrichment(conn: sqlite3.Connection, limit: int = 100) -> List[sqlite3.Row]:
+def list_leads_for_enrichment(conn: sqlite3.Connection, limit: int = 100) -> list[sqlite3.Row]:
     """Leads that have been scored but have no email yet."""
     return conn.execute(
         """
@@ -324,7 +325,7 @@ def log_enrichment(
     conn.commit()
 
 
-def list_leads_for_followup(conn: sqlite3.Connection, delay_days: int = 3, max_touches: int = 2, limit: int = 50) -> List[sqlite3.Row]:
+def list_leads_for_followup(conn: sqlite3.Connection, delay_days: int = 3, max_touches: int = 2, limit: int = 50) -> list[sqlite3.Row]:
     """Leads that were emailed but haven't replied, eligible for follow-up."""
     return conn.execute(
         """
@@ -348,7 +349,7 @@ def list_leads_for_followup(conn: sqlite3.Connection, delay_days: int = 3, max_t
     ).fetchall()
 
 
-def find_duplicate_leads(conn: sqlite3.Connection) -> List[tuple]:
+def find_duplicate_leads(conn: sqlite3.Connection) -> list[tuple]:
     """Find leads that share the same normalized domain across sources."""
     return conn.execute(
         """
@@ -387,7 +388,7 @@ def merge_duplicate_lead(conn: sqlite3.Connection, keep_id: int, dup_id: int) ->
     conn.commit()
 
 
-def metrics_snapshot(conn: sqlite3.Connection) -> Dict[str, int]:
+def metrics_snapshot(conn: sqlite3.Connection) -> dict[str, int]:
     keys = {
         "leads": "SELECT COUNT(*) FROM leads WHERE status != 'merged'",
         "hot": "SELECT COUNT(*) FROM leads WHERE status = 'hot'",
@@ -399,7 +400,7 @@ def metrics_snapshot(conn: sqlite3.Connection) -> Dict[str, int]:
         "failed_emails": "SELECT COUNT(*) FROM email_queue WHERE status = 'failed'",
         "merged": "SELECT COUNT(*) FROM leads WHERE status = 'merged'",
     }
-    out: Dict[str, int] = {}
+    out: dict[str, int] = {}
     for key, sql in keys.items():
         row = conn.execute(sql).fetchone()
         out[key] = int(row[0] if row else 0)

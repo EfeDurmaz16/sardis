@@ -25,7 +25,6 @@ import os
 import time
 import urllib.request
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from config import score_threshold
 from store import connect, init_schema, upsert_lead
@@ -57,7 +56,7 @@ def _extract_domain(website: str) -> str:
 # PUSH: Send leads to Clay webhook for enrichment
 # ---------------------------------------------------------------------------
 
-def push_to_clay(leads: List[Dict], webhook_url: str, dry_run: bool = False) -> int:
+def push_to_clay(leads: list[dict], webhook_url: str, dry_run: bool = False) -> int:
     """Push leads to Clay table via webhook. Returns count of successful pushes."""
     pushed = 0
 

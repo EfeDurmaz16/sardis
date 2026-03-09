@@ -149,6 +149,7 @@ dev = [
     "web3>=6.0",
     "prometheus-client>=0.20",
     "PyJWT>=2.8",
+    "respx>=0.22.0",
 ]
 
 

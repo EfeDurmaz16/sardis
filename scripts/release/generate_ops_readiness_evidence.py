@@ -9,8 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
-
+from typing import Any
 
 RUNBOOK_FILES = [
     "docs/design-partner/ops-slo-alerts-rollback-runbook.md",
@@ -33,7 +32,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise SystemExit(f"[ops-evidence][fail] missing json file: {path}")
     try:
@@ -42,7 +41,7 @@ def _load_json(path: Path) -> Dict[str, Any]:
         raise SystemExit(f"[ops-evidence][fail] invalid json ({path}): {exc}") from exc
 
 
-def _parse_json_env(name: str, fallback: Dict[str, Any]) -> Dict[str, Any]:
+def _parse_json_env(name: str, fallback: dict[str, Any]) -> dict[str, Any]:
     raw = (os.getenv(name, "") or "").strip()
     if not raw:
         return fallback
@@ -147,7 +146,7 @@ def main() -> None:
     }
 
     artifact = {
-        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "generated_at": dt.datetime.now(dt.UTC).isoformat(),
         "drill": {
             "source": args.drill_evidence,
             "drill_id": drill_payload["drill_id"],

@@ -9,10 +9,11 @@ Validates that:
 """
 
 from decimal import Decimal
+
 from sardis_v2_core.nl_policy_parser import (
-    get_policy_templates,
-    get_policy_template,
     RegexPolicyParser,
+    get_policy_template,
+    get_policy_templates,
 )
 
 
@@ -83,7 +84,7 @@ def test_policy_validation():
         limit_amount=Decimal("200")
     )
 
-    print(f"\nCreated test policy:")
+    print("\nCreated test policy:")
     print(f"  Agent: {policy.agent_id}")
     print(f"  Per-tx: ${policy.limit_per_tx}")
     print(f"  Total: ${policy.limit_total}")

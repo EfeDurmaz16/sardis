@@ -8,12 +8,11 @@ import csv
 import json
 import os
 import re
+import time
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List
-
-import time
 
 from config import DEFAULT_QUERIES_FILE, DEFAULT_TARGETS_FILE, max_items_per_source
 from store import connect, init_schema, upsert_lead
@@ -25,7 +24,7 @@ def _github_token() -> str:
     return os.environ.get("GITHUB_TOKEN", "")
 
 
-def get_json(url: str, extra_headers: Dict | None = None) -> Dict:
+def get_json(url: str, extra_headers: dict | None = None) -> dict:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     if extra_headers:
         headers.update(extra_headers)
@@ -50,14 +49,14 @@ def company_from_domain(domain: str) -> str:
     return first.replace("-", " ").replace("_", " ").strip().title()
 
 
-def load_queries(path: Path) -> List[str]:
+def load_queries(path: Path) -> list[str]:
     if not path.exists():
         return []
     lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
     return [line for line in lines if line and not line.startswith("#")]
 
 
-def collect_github(query: str, limit: int) -> Iterable[Dict]:
+def collect_github(query: str, limit: int) -> Iterable[dict]:
     q = urllib.parse.quote_plus(f"{query} in:name,description,readme stars:>20")
     url = f"https://api.github.com/search/repositories?q={q}&sort=updated&order=desc&per_page={limit}"
     gh_headers = {}
@@ -70,7 +69,7 @@ def collect_github(query: str, limit: int) -> Iterable[Dict]:
         domain = safe_domain(homepage)
         owner = (item.get("owner") or {}).get("login")
         stars = item.get("stargazers_count", 0)
-        updated_at = item.get("updated_at", "")
+        item.get("updated_at", "")
         yield {
             "external_id": str(item.get("id")),
             "source": "github",
@@ -86,7 +85,7 @@ def collect_github(query: str, limit: int) -> Iterable[Dict]:
     time.sleep(1)  # Rate limit: GitHub allows 10 req/min unauthenticated
 
 
-def collect_hn(query: str, limit: int) -> Iterable[Dict]:
+def collect_hn(query: str, limit: int) -> Iterable[dict]:
     q = urllib.parse.quote_plus(query)
     url = f"https://hn.algolia.com/api/v1/search?query={q}&tags=story&hitsPerPage={limit}"
     data = get_json(url)
@@ -109,7 +108,7 @@ def collect_hn(query: str, limit: int) -> Iterable[Dict]:
         }
 
 
-def collect_reddit(query: str, limit: int) -> Iterable[Dict]:
+def collect_reddit(query: str, limit: int) -> Iterable[dict]:
     q = urllib.parse.quote_plus(query)
     url = f"https://www.reddit.com/search.json?q={q}&sort=new&limit={limit}"
     data = get_json(url)
@@ -135,10 +134,10 @@ def collect_reddit(query: str, limit: int) -> Iterable[Dict]:
         }
 
 
-def collect_manual_targets(path: Path) -> Iterable[Dict]:
+def collect_manual_targets(path: Path) -> Iterable[dict]:
     if not path.exists():
         return []
-    leads: List[Dict] = []
+    leads: list[dict] = []
     with path.open("r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         for row in reader:

@@ -16,7 +16,7 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,8 +43,8 @@ class DemoRun:
             DemoStep(
                 name=name,
                 status=status,
-                started_at=datetime.fromtimestamp(started, tz=timezone.utc).isoformat(),
-                completed_at=datetime.now(timezone.utc).isoformat(),
+                started_at=datetime.fromtimestamp(started, tz=UTC).isoformat(),
+                completed_at=datetime.now(UTC).isoformat(),
                 details=details,
             )
         )
@@ -90,7 +90,7 @@ def write_artifacts(run: DemoRun, output_dir: Path) -> None:
 
     payload = {
         "run_id": run.run_id,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "context": run.context,
         "steps": [step.__dict__ for step in run.steps],
     }

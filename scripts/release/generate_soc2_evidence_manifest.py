@@ -7,7 +7,7 @@ import argparse
 import hashlib
 import json
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -78,7 +78,7 @@ def main() -> int:
         return 1
 
     payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "git_commit": _git_sha(root),
         "evidence_count": len(records),
         "evidence": records,

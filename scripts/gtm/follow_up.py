@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import re
-from typing import Dict, Tuple
 
 from config import followup_delay_days, followup_max_touches, unsubscribe_url
 from store import connect, init_schema, list_leads_for_followup, queue_email
@@ -65,7 +64,7 @@ def first_name(person_name: str) -> str:
     return clean.split(" ")[0] if clean else "there"
 
 
-def build_followup(lead: Dict, touch_index: int) -> Tuple[str, str]:
+def build_followup(lead: dict, touch_index: int) -> tuple[str, str]:
     """Build follow-up email for the given touch number (0-indexed)."""
     template_idx = min(touch_index, len(FOLLOWUP_TEMPLATES) - 1)
     template = FOLLOWUP_TEMPLATES[template_idx]

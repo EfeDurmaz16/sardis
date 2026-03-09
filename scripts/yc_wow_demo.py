@@ -5,12 +5,12 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
 
-def _env(name: str, default: Optional[str] = None) -> str:
+def _env(name: str, default: str | None = None) -> str:
     value = os.getenv(name, default)
     if value is None:
         raise RuntimeError(f"Missing required env var: {name}")
@@ -27,8 +27,8 @@ def _request(
     path: str,
     *,
     json: Any | None = None,
-    data: Dict[str, str] | None = None,
-    headers: Dict[str, str] | None = None,
+    data: dict[str, str] | None = None,
+    headers: dict[str, str] | None = None,
     ok_statuses: tuple[int, ...] = (200, 201, 204),
 ) -> Any:
     url = client.base_url.join(path)

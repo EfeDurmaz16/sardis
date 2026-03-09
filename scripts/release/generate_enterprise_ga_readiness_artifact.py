@@ -8,10 +8,10 @@ import datetime as dt
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise SystemExit(f"[ga-artifact][fail] missing json file: {path}")
     try:
@@ -95,7 +95,7 @@ def main() -> None:
     overall_ready = all(readiness.values())
 
     artifact = {
-        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "generated_at": dt.datetime.now(dt.UTC).isoformat(),
         "overall_ready": overall_ready,
         "readiness": readiness,
         "api_freeze_checks": api_freeze_checks,

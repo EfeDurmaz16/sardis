@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from typing import Dict, List, Tuple
+from datetime import UTC
 
 from store import connect, init_schema, list_leads_for_scoring, save_score
 
@@ -85,9 +85,9 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").lower()).strip()
 
 
-def score_text(text: str, weights: Dict[str, int]) -> Tuple[int, List[str]]:
+def score_text(text: str, weights: dict[str, int]) -> tuple[int, list[str]]:
     score = 0
-    reasons: List[str] = []
+    reasons: list[str] = []
     for phrase, weight in weights.items():
         if phrase in text:
             score += weight
@@ -95,15 +95,15 @@ def score_text(text: str, weights: Dict[str, int]) -> Tuple[int, List[str]]:
     return score, reasons
 
 
-def recency_bonus(lead: Dict) -> Tuple[int, List[str]]:
+def recency_bonus(lead: dict) -> tuple[int, list[str]]:
     """Boost score for recently updated leads."""
     updated = lead.get("updated_at") or lead.get("created_at") or ""
     if not updated:
         return 0, []
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
         ts = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-        age_days = (datetime.now(timezone.utc) - ts).days
+        age_days = (datetime.now(UTC) - ts).days
         if age_days <= 7:
             return 10, ["+10:updated-within-7d"]
         elif age_days <= 30:
@@ -115,12 +115,12 @@ def recency_bonus(lead: Dict) -> Tuple[int, List[str]]:
     return 0, []
 
 
-def source_bonus(lead: Dict) -> Tuple[int, List[str]]:
+def source_bonus(lead: dict) -> tuple[int, list[str]]:
     """Boost based on source quality signals embedded in raw_text."""
     raw = str(lead.get("raw_text") or "")
     source = str(lead.get("source") or "")
     bonus = 0
-    reasons: List[str] = []
+    reasons: list[str] = []
 
     # Warm leads already engaged — highest priority
     if source == "warm-lead":
@@ -202,7 +202,7 @@ def source_bonus(lead: Dict) -> Tuple[int, List[str]]:
     return bonus, reasons
 
 
-def score_lead(lead: Dict) -> Tuple[int, int, int, List[str]]:
+def score_lead(lead: dict) -> tuple[int, int, int, list[str]]:
     text = normalize(
         " ".join(
             [

@@ -16,7 +16,6 @@ import argparse
 import json
 import re
 import urllib.request
-from typing import Dict, List, Tuple
 
 from config import default_model, openai_api_key, score_threshold, unsubscribe_url
 from store import connect, init_schema, list_leads_for_email, queue_email
@@ -32,7 +31,7 @@ def first_name(person_name: str) -> str:
     return clean.split(" ")[0] if clean else "there"
 
 
-def _get_tier(lead: Dict) -> str:
+def _get_tier(lead: dict) -> str:
     """Determine lead tier from tags."""
     tags = str(lead.get("tags") or "")
     if "tier-1" in tags:
@@ -51,7 +50,7 @@ def _get_tier(lead: Dict) -> str:
     return "tier-2"
 
 
-def _build_tier1_email(lead: Dict, person: str, company: str) -> Tuple[str, str]:
+def _build_tier1_email(lead: dict, person: str, company: str) -> tuple[str, str]:
     """Tier 1: Integration partners. Pitch = we build it, your users get wallets."""
     tags = str(lead.get("tags") or "")
 
@@ -102,7 +101,7 @@ def _build_tier1_email(lead: Dict, person: str, company: str) -> Tuple[str, str]
     return subject, hook
 
 
-def _build_tier2_email(lead: Dict, person: str, company: str) -> Tuple[str, str]:
+def _build_tier2_email(lead: dict, person: str, company: str) -> tuple[str, str]:
     """Tier 2: Early adopters. Pitch = try our SDK, we'll white-glove onboard."""
     tags = str(lead.get("tags") or "")
 
@@ -138,7 +137,7 @@ def _build_tier2_email(lead: Dict, person: str, company: str) -> Tuple[str, str]
             f"We're onboarding early partners now and would handle the setup for you."
         )
     elif any(t in tags for t in ["agent-observability", "agent-testing", "agent-safety"]):
-        subject = f"Stopping bad transactions, not just observing them"
+        subject = "Stopping bad transactions, not just observing them"
         hook = (
             f"{company} sees what agents do. But when the action is a $5,000 purchase, "
             f"you need to stop it before it happens, not log it after.\n"
@@ -160,7 +159,7 @@ def _build_tier2_email(lead: Dict, person: str, company: str) -> Tuple[str, str]
     return subject, hook
 
 
-def _build_tier3_email(lead: Dict, person: str, company: str) -> Tuple[str, str]:
+def _build_tier3_email(lead: dict, person: str, company: str) -> tuple[str, str]:
     """Tier 3: Enterprise pipeline. Pitch = when you're ready, we're here."""
     tags = str(lead.get("tags") or "")
 
@@ -184,7 +183,7 @@ def _build_tier3_email(lead: Dict, person: str, company: str) -> Tuple[str, str]
             f"Built for enterprise compliance. Would love to share what we're seeing."
         )
     else:
-        subject = f"Agent spending controls"
+        subject = "Agent spending controls"
         hook = (
             f"As {company}'s agents start taking financial actions, "
             f"the trust and compliance layer becomes critical.\n"
@@ -196,7 +195,7 @@ def _build_tier3_email(lead: Dict, person: str, company: str) -> Tuple[str, str]
     return subject, hook
 
 
-def build_email(lead: Dict) -> Tuple[str, str]:
+def build_email(lead: dict) -> tuple[str, str]:
     """Build a short, personalized cold email based on lead tier."""
     person = first_name(lead.get("person_name") or "")
     company = lead.get("company_name") or "your team"
@@ -220,7 +219,7 @@ def build_email(lead: Dict) -> Tuple[str, str]:
     return subject, body
 
 
-def maybe_refine_with_llm(subject: str, body: str, lead: Dict) -> Tuple[str, str]:
+def maybe_refine_with_llm(subject: str, body: str, lead: dict) -> tuple[str, str]:
     """Optional LLM refinement for more natural tone."""
     api_key = openai_api_key()
     if not api_key:

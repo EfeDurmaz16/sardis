@@ -12,15 +12,14 @@ import argparse
 import datetime as dt
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
+CRITICAL_KEYS: list[str] = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
+ALL_KEYS: list[str] = CRITICAL_KEYS + ["D1", "E1"]
+DEFAULT_PROVIDERS: list[str] = ["stripe", "lithic", "rain", "bridge"]
 
 
-CRITICAL_KEYS: List[str] = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
-ALL_KEYS: List[str] = CRITICAL_KEYS + ["D1", "E1"]
-DEFAULT_PROVIDERS: List[str] = ["stripe", "lithic", "rain", "bridge"]
-
-
-def _load(path: Path) -> Dict[str, Any]:
+def _load(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise SystemExit(f"[provider-cert][fail] missing input file: {path}")
     try:
@@ -29,8 +28,8 @@ def _load(path: Path) -> Dict[str, Any]:
         raise SystemExit(f"[provider-cert][fail] invalid JSON input ({path}): {exc}") from exc
 
 
-def _validate_scores(provider: str, scores: Dict[str, Any]) -> Dict[str, int]:
-    normalized: Dict[str, int] = {}
+def _validate_scores(provider: str, scores: dict[str, Any]) -> dict[str, int]:
+    normalized: dict[str, int] = {}
     for key in ALL_KEYS:
         if key not in scores:
             raise SystemExit(f"[provider-cert][fail] provider={provider} missing score key: {key}")
@@ -43,7 +42,7 @@ def _validate_scores(provider: str, scores: Dict[str, Any]) -> Dict[str, int]:
     return normalized
 
 
-def _decision(scores: Dict[str, int], threshold: int) -> str:
+def _decision(scores: dict[str, int], threshold: int) -> str:
     has_critical_zero = any(scores[key] == 0 for key in CRITICAL_KEYS)
     total = sum(scores.values())
     if has_critical_zero:
@@ -53,7 +52,7 @@ def _decision(scores: Dict[str, int], threshold: int) -> str:
     return "NO_GO_SCORE"
 
 
-def _build_provider_result(provider: str, scores: Dict[str, int], threshold: int, notes: str) -> Dict[str, Any]:
+def _build_provider_result(provider: str, scores: dict[str, int], threshold: int, notes: str) -> dict[str, Any]:
     total = sum(scores.values())
     decision = _decision(scores, threshold)
     critical_zero_keys = [k for k in CRITICAL_KEYS if scores[k] == 0]
@@ -68,7 +67,7 @@ def _build_provider_result(provider: str, scores: Dict[str, int], threshold: int
     }
 
 
-def _write_provider_markdown(path: Path, result: Dict[str, Any]) -> None:
+def _write_provider_markdown(path: Path, result: dict[str, Any]) -> None:
     provider = result["provider"]
     decision = result["decision"]
     total = result["total"]
@@ -145,8 +144,8 @@ def main() -> None:
     if not isinstance(providers_blob, dict):
         raise SystemExit("[provider-cert][fail] providers must be a JSON object")
 
-    generated_at = dt.datetime.now(dt.timezone.utc).isoformat()
-    results: List[Dict[str, Any]] = []
+    generated_at = dt.datetime.now(dt.UTC).isoformat()
+    results: list[dict[str, Any]] = []
     for provider in args.providers:
         provider_key = provider.strip().lower()
         raw_provider = providers_blob.get(provider_key)

@@ -8,7 +8,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
 
 from store import connect, find_duplicate_leads, init_schema, merge_duplicate_lead, metrics_snapshot
 
@@ -18,7 +17,7 @@ HAS_CLAY = bool(os.environ.get("CLAY_WEBHOOK_URL", ""))
 BASE = Path(__file__).resolve().parent
 
 
-def run_step(name: str, args: List[str]) -> int:
+def run_step(name: str, args: list[str]) -> int:
     cmd = [sys.executable, str(BASE / name), *args]
     print(f"[daily] running: {' '.join(cmd)}")
     result = subprocess.run(cmd, check=False)

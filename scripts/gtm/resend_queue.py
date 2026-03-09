@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import urllib.request
-from typing import Dict, Tuple
 
 from config import dry_run_default, resend_api_key, resend_from_email, resend_to_override
 from store import connect, init_schema, list_queued_emails, mark_email_failed, mark_email_sent
@@ -14,7 +13,7 @@ from store import connect, init_schema, list_queued_emails, mark_email_failed, m
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 
 
-def send_via_resend(payload: Dict, api_key: str) -> Tuple[int, str]:
+def send_via_resend(payload: dict, api_key: str) -> tuple[int, str]:
     req = urllib.request.Request(
         RESEND_ENDPOINT,
         data=json.dumps(payload).encode("utf-8"),

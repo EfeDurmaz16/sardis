@@ -10,7 +10,6 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-
 VALID_STATUSES = {"pass", "pending", "fail", "waived"}
 DEFAULT_CHECKLIST = Path("docs/design-partner/staging-hardening-checklist.json")
 

@@ -23,9 +23,33 @@
       "lifecycle": "canonical_live",
       "source": "pre_deployed",
       "provider": "Safe"
+    },
+    "jobRegistry": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 on-chain reputation store"
+    },
+    "jobManager": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 job escrow and lifecycle (conservative: 1% fee, USDC only)"
+    },
+    "trustHook": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 trust-gated lifecycle transitions (thresholds disabled initially)"
+    },
+    "reputationHook": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 auto reputation on lifecycle events"
     }
   },
   "blockNumber": null,
   "timestamp": null,
-  "notes": "Custom contracts (ledgerAnchor, refundProtocol) pending mainnet deployment. policyModule points to external Zodiac Roles module. Runtime override: SARDIS_BASE_POLICY_MODULE_ADDRESS and SARDIS_BASE_LEDGER_ANCHOR_ADDRESS."
+  "notes": "Custom contracts (ledgerAnchor, refundProtocol, ERC-8183 stack) pending mainnet deployment. policyModule points to external Zodiac Roles module. ERC-8183 deployed with conservative caps: USDC-only, 1% fee, trust hooks disabled. Runtime override: SARDIS_BASE_POLICY_MODULE_ADDRESS, SARDIS_BASE_LEDGER_ANCHOR_ADDRESS, SARDIS_BASE_JOB_REGISTRY_ADDRESS, SARDIS_BASE_JOB_MANAGER_ADDRESS."
 }

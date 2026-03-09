@@ -27,10 +27,9 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
 
 # Add packages to path for local development
 root_dir = Path(__file__).parent.parent
@@ -82,7 +81,6 @@ async def step_1_create_agent() -> dict:
 
     try:
         from sardis_v2_core.agents import Agent, AgentPolicy, SpendingLimits
-        from sardis_v2_core.wallet_repository import WalletRepository
 
         # Create agent with default spending limits
         agent = Agent.new(
@@ -125,9 +123,9 @@ async def step_2_parse_policy(agent_id: str) -> dict:
 
     try:
         from sardis_v2_core.nl_policy_parser import (
+            HAS_INSTRUCTOR,
             NLPolicyParser,
             RegexPolicyParser,
-            HAS_INSTRUCTOR,
         )
 
         if HAS_INSTRUCTOR and os.getenv("OPENAI_API_KEY"):
@@ -178,8 +176,9 @@ async def step_3_create_wallet(agent_id: str) -> dict:
     logger.info("=" * 60)
 
     try:
-        from sardis_v2_core.wallets import Wallet
         from uuid import uuid4
+
+        from sardis_v2_core.wallets import Wallet
 
         wallet_id = f"wallet_{uuid4().hex[:16]}"
         test_address = "0x" + uuid4().hex[:40]
@@ -209,18 +208,19 @@ async def step_3_create_wallet(agent_id: str) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-async def step_4_compliance_check(agent_id: str, policy: Optional[dict] = None) -> dict:
+async def step_4_compliance_check(agent_id: str, policy: dict | None = None) -> dict:
     """Step 4: Run compliance preflight check."""
     logger.info("=" * 60)
     logger.info("STEP 4: Running Compliance Preflight Check")
     logger.info("=" * 60)
 
     try:
-        from sardis_v2_core import SardisSettings, load_settings
-        from sardis_v2_core.mandates import PaymentMandate, VCProof
-        from sardis_compliance.checks import ComplianceEngine, NLPolicyProvider
+        from datetime import datetime
         from uuid import uuid4
-        from datetime import datetime, timezone
+
+        from sardis_compliance.checks import ComplianceEngine, NLPolicyProvider
+        from sardis_v2_core import load_settings
+        from sardis_v2_core.mandates import PaymentMandate, VCProof
 
         settings = load_settings()
 
@@ -231,7 +231,7 @@ async def step_4_compliance_check(agent_id: str, policy: Optional[dict] = None) 
         # Create a mock VCProof for demo
         proof = VCProof(
             verification_method="did:key:demo",
-            created=datetime.now(timezone.utc).isoformat(),
+            created=datetime.now(UTC).isoformat(),
             proof_value="demo_proof_value",
         )
 
@@ -240,7 +240,7 @@ async def step_4_compliance_check(agent_id: str, policy: Optional[dict] = None) 
             mandate_type="payment",
             issuer=f"did:agent:{agent_id}",
             subject=agent_id,
-            expires_at=int(datetime.now(timezone.utc).timestamp()) + 300,
+            expires_at=int(datetime.now(UTC).timestamp()) + 300,
             nonce=uuid4().hex,
             proof=proof,
             domain="demo.sardis.sh",
@@ -296,11 +296,11 @@ async def step_5_execute_payment(wallet: dict, mandate_id: str, simulated: bool 
         # Simulate payment execution
         tx_hash = f"0x{'demo' * 16}"
 
-        logger.info(f"  [SIMULATED] Transaction submitted")
+        logger.info("  [SIMULATED] Transaction submitted")
         logger.info(f"  TX Hash: {tx_hash[:20]}...{tx_hash[-10:]}")
         logger.info(f"  Amount: ${test_payment['amount']} {test_payment['currency']}")
-        logger.info(f"  Gas Used: 21000 (estimated)")
-        logger.info(f"  Status: CONFIRMED (simulated)")
+        logger.info("  Gas Used: 21000 (estimated)")
+        logger.info("  Status: CONFIRMED (simulated)")
 
         return {
             "tx_hash": tx_hash,
@@ -310,8 +310,8 @@ async def step_5_execute_payment(wallet: dict, mandate_id: str, simulated: bool 
         }
     else:
         try:
-            from sardis_v2_core import SardisSettings, load_settings
             from sardis_chain.executor import ChainExecutor
+            from sardis_v2_core import load_settings
 
             settings = load_settings()
             executor = ChainExecutor(settings=settings)

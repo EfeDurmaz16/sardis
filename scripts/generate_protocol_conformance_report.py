@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -155,7 +155,7 @@ def classify_protocol(test_name: str) -> str:
 
 def generate_report(data: dict) -> str:
     """Generate markdown report from pytest JSON data."""
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     git_sha = get_git_sha()
 
     # Extract summary
@@ -208,8 +208,8 @@ def generate_report(data: dict) -> str:
         "",
         "## Summary",
         "",
-        f"| Total | Passed | Failed | Skipped | Errors |",
-        f"|-------|--------|--------|---------|--------|",
+        "| Total | Passed | Failed | Skipped | Errors |",
+        "|-------|--------|--------|---------|--------|",
         f"| {total} | {passed} | {failed} | {skipped} | {errors} |",
         "",
     ]

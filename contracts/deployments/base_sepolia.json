@@ -17,7 +17,31 @@
       "notes": "Legacy contract from pre-Safe migration. Replaced by RefundProtocol."
     },
     "ledgerAnchor": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
-    "refundProtocol": { "address": null, "lifecycle": "pending_deploy", "source": "custom" }
+    "refundProtocol": { "address": null, "lifecycle": "pending_deploy", "source": "custom" },
+    "jobRegistry": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 on-chain reputation store"
+    },
+    "jobManager": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 job escrow and lifecycle"
+    },
+    "trustHook": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 trust-gated lifecycle transitions"
+    },
+    "reputationHook": {
+      "address": null,
+      "lifecycle": "pending_deploy",
+      "source": "custom",
+      "notes": "ERC-8183 auto reputation on lifecycle events"
+    }
   },
   "blockNumber": 36783677,
   "timestamp": "2026-01-25T12:07:22Z",
