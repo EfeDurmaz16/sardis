@@ -70,7 +70,7 @@ class PostgresReconciliationQueue:
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
         elif created_at is None:
-            created_at = row["created_at"] if "created_at" in row.keys() else datetime.now(UTC)
+            created_at = row["created_at"] if "created_at" in row else datetime.now(UTC)
 
         last_retry = payload.get("last_retry")
         if isinstance(last_retry, str):

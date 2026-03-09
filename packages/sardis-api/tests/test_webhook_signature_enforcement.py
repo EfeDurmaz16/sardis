@@ -16,15 +16,22 @@ from fastapi.testclient import TestClient
 
 from sardis_api.routers.cpn import (
     CPNDependencies,
+)
+from sardis_api.routers.cpn import (
     get_deps as cpn_get_deps,
+)
+from sardis_api.routers.cpn import (
     public_router as cpn_public_router,
 )
 from sardis_api.routers.treasury import (
     TreasuryDependencies,
+)
+from sardis_api.routers.treasury import (
     get_deps as treasury_get_deps,
+)
+from sardis_api.routers.treasury import (
     public_router as treasury_public_router,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes

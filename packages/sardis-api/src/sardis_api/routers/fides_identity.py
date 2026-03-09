@@ -6,14 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-
-from sardis_api.authz import Principal, require_principal
 from sardis_v2_core import Agent, AgentRepository
+from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
+from sardis_v2_core.config import load_settings
 from sardis_v2_core.did_bridge import DIDBridge, DIDRegistrationError
 from sardis_v2_core.fides_trust_adapter import FidesTrustGraphAdapter
-from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
 from sardis_v2_core.kya_trust_scoring import KYALevel, TrustScorer
-from sardis_v2_core.config import load_settings
+
+from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger("sardis.api.fides_identity")
 

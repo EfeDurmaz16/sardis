@@ -14,6 +14,12 @@ trust verification) delivered as DataPart payloads within the standard A2A frame
 Spec: https://google.github.io/A2A/
 """
 
+# Legacy re-exports for backward compatibility during migration
+from .agent_card import (
+    AgentCapability,
+    PaymentCapability,
+    SardisAgentCard,
+)
 from .client import (
     A2AClient,
     A2AClientConfig,
@@ -22,6 +28,14 @@ from .client import (
 from .discovery import (
     AgentDiscoveryService,
     DiscoveredAgent,
+)
+from .messages import (
+    A2ACredentialRequest,
+    A2ACredentialResponse,
+    A2AMessage,
+    A2AMessageType,
+    A2APaymentRequest,
+    A2APaymentResponse,
 )
 from .server import (
     A2AServer,
@@ -55,21 +69,6 @@ from .types import (
     TaskStatusUpdateEvent,
     TextPart,
     create_sardis_agent_card,
-)
-
-# Legacy re-exports for backward compatibility during migration
-from .agent_card import (
-    AgentCapability,
-    PaymentCapability,
-    SardisAgentCard,
-)
-from .messages import (
-    A2ACredentialRequest,
-    A2ACredentialResponse,
-    A2AMessage,
-    A2AMessageType,
-    A2APaymentRequest,
-    A2APaymentResponse,
 )
 
 __all__ = [

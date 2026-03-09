@@ -853,8 +853,6 @@ async def transfer_crypto(
                 detail=f"Transfer failed: {str(e)}",
             )
 
-        receipt = orch_result  # PaymentResult from orchestrator
-
         # --- Collect fee to treasury (best-effort, non-blocking) ---
         if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
             treasury_addr = get_treasury_address()
@@ -1695,9 +1693,9 @@ async def verify_x402_payment(
 
     # Run through control plane policy check before verification
     try:
-        from sardis_v2_core.control_plane import ControlPlane
-        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
         from decimal import Decimal
+
+        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
 
         cp = getattr(deps, "control_plane", None)
         if cp is not None:
@@ -2392,7 +2390,6 @@ async def execute_offramp_send(
             detail="sell_amount not set. User may not have completed the Coinbase widget.",
         )
 
-    source_address = row.get("source_address")
     chain = row.get("source_chain", "base")
 
     # Execute on-chain USDC send via the PaymentOrchestrator (policy → compliance → chain → ledger)
@@ -2405,8 +2402,18 @@ async def execute_offramp_send(
     import hashlib
     import time
 
-    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, PaymentMandate, VCProof
-    from sardis_v2_core.orchestrator import ChainExecutionError, ComplianceViolationError, PolicyViolationError
+    from sardis_v2_core.mandates import (
+        CartMandate,
+        IntentMandate,
+        MandateChain,
+        PaymentMandate,
+        VCProof,
+    )
+    from sardis_v2_core.orchestrator import (
+        ChainExecutionError,
+        ComplianceViolationError,
+        PolicyViolationError,
+    )
 
     _now_ts = int(time.time())
     _stub_proof = VCProof(

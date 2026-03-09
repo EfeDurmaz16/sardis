@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -212,7 +212,7 @@ async def create_job(
             detail="Evaluator must be different from both client and provider",
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     deadline = now + timedelta(hours=body.deadline_hours)
     job_id = _gen_id("job")
 
@@ -341,7 +341,7 @@ async def fund_job(
 ) -> JobResponse:
     """Fund a job (transitions open -> funded)."""
     pool = await _get_pool(request)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM erc8183_jobs WHERE id = $1", job_id)
@@ -388,7 +388,7 @@ async def submit_deliverable(
 ) -> JobResponse:
     """Submit a deliverable for a job (transitions funded -> submitted)."""
     pool = await _get_pool(request)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM erc8183_jobs WHERE id = $1", job_id)
@@ -438,7 +438,7 @@ async def evaluate_job(
 ) -> JobResponse:
     """Evaluate a submitted deliverable (transitions submitted -> completed/rejected)."""
     pool = await _get_pool(request)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM erc8183_jobs WHERE id = $1", job_id)
@@ -508,7 +508,7 @@ async def dispute_job(
 ) -> JobResponse:
     """Raise a dispute on a funded or submitted job."""
     pool = await _get_pool(request)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM erc8183_jobs WHERE id = $1", job_id)
@@ -560,7 +560,7 @@ async def expire_job(
 ) -> JobResponse:
     """Force-expire a job past its deadline."""
     pool = await _get_pool(request)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM erc8183_jobs WHERE id = $1", job_id)

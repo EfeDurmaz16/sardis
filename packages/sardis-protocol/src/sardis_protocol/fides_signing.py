@@ -189,8 +189,8 @@ def verify_request(
         VerifyResult with validity status
     """
     try:
-        from nacl.signing import VerifyKey
         from nacl.exceptions import BadSignatureError
+        from nacl.signing import VerifyKey
     except ImportError:
         return VerifyResult(valid=False, error="PyNaCl not installed")
 

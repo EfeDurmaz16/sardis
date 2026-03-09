@@ -29,6 +29,7 @@ from .rate_limiter import (
     create_rate_limiter,
     get_rate_limiter,
 )
+from .replay_cache_redis import RedisReplayCache
 from .schemas import (
     AP2PaymentExecuteRequest,
     AP2PaymentExecuteResponse,
@@ -37,7 +38,6 @@ from .schemas import (
     X402PaymentExecuteRequest,
     X402PaymentExecuteResponse,
 )
-from .replay_cache_redis import RedisReplayCache
 from .storage import MandateArchive, ReplayCache, SqliteReplayCache
 from .tap import (
     TAP_ALLOWED_MESSAGE_ALGS,

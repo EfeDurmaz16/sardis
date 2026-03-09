@@ -1,8 +1,8 @@
 """Tests for Google A2A spec-compliant agent discovery service."""
 
-import pytest
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sardis_a2a.discovery import AgentDiscoveryService, DiscoveredAgent
 from sardis_a2a.types import (
     AgentAuthentication,

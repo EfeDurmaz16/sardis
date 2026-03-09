@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers — mock objects used by multiple test classes
 # ---------------------------------------------------------------------------
@@ -55,7 +54,7 @@ def _mock_orchestrator(*, success: bool = True, status: str = "submitted"):
     if success:
         result = MockPaymentResult(status=status)
     else:
-        from sardis_v2_core.orchestrator import PolicyViolationError, ExecutionPhase
+        from sardis_v2_core.orchestrator import ExecutionPhase, PolicyViolationError
 
         orch.execute_chain = AsyncMock(
             side_effect=PolicyViolationError("policy_denied", mandate_id="test")

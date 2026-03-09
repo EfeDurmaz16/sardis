@@ -12,12 +12,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from sardis_v2_core.group_policy import (
-    InMemoryGroupSpendingTracker,
     _TTL_DAILY,
     _TTL_MONTHLY,
     _TTL_TOTAL,
+    InMemoryGroupSpendingTracker,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

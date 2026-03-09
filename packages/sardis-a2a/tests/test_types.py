@@ -1,19 +1,14 @@
 """Tests for Google A2A spec-compliant types."""
 
-import pytest
 
 from sardis_a2a.types import (
-    AgentAuthentication,
-    AgentCapabilities,
     AgentCard,
-    AgentProvider,
-    AgentSkill,
     Artifact,
     DataPart,
     FilePart,
+    JsonRpcError,
     JsonRpcRequest,
     JsonRpcResponse,
-    JsonRpcError,
     Message,
     PushNotificationConfig,
     Task,

@@ -1,18 +1,16 @@
 """Tests for A2A JSON-RPC 2.0 server."""
 
-import pytest
 import uuid
 from collections.abc import AsyncGenerator
 
+import pytest
 from sardis_a2a.server import (
     A2AServer,
-    TaskHandler,
-    TaskNotFoundError,
     TaskNotCancelableError,
+    TaskNotFoundError,
 )
 from sardis_a2a.types import (
     Artifact,
-    DataPart,
     Message,
     Task,
     TaskArtifactUpdateEvent,

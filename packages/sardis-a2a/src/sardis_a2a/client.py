@@ -12,24 +12,20 @@ Spec: https://google.github.io/A2A/
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from collections.abc import AsyncGenerator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .types import (
     AgentCard,
     DataPart,
     JsonRpcRequest,
-    JsonRpcResponse,
     Message,
     Task,
     TaskCancelParams,
     TaskGetParams,
     TaskSendParams,
-    TaskState,
     TextPart,
 )
 

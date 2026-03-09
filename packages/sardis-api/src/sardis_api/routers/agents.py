@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 from sardis_v2_core import Agent, AgentPolicy, AgentRepository, SpendingLimits, WalletRepository
 from sardis_v2_core.agent_payment_identity import (
     AgentPaymentIdentity as CanonicalAgentPaymentIdentity,
+)
+from sardis_v2_core.agent_payment_identity import (
     EvidencePack,
     IdentityAttestation,
     ProvenanceAttestation,

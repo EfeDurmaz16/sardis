@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_v2_core.attestation_envelope import (
     AttestationEnvelope,
     build_attestation_envelope,
@@ -15,7 +14,6 @@ from sardis_v2_core.attestation_envelope import (
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers.attestation import router
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

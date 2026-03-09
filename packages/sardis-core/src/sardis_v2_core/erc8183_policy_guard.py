@@ -6,7 +6,6 @@ Fund and settlement actions must flow through ControlPlane.submit() pipeline
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

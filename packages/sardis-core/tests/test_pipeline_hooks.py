@@ -14,7 +14,6 @@ import pytest
 from sardis_v2_core.hooks import create_agit_hook, create_fides_hook, create_kya_hook
 from sardis_v2_core.pre_execution_pipeline import PreExecutionPipeline
 
-
 # ---------------------------------------------------------------------------
 # Helpers / stubs
 # ---------------------------------------------------------------------------

@@ -6,16 +6,14 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_v2_core.kya_trust_scoring import (
-    TrustScore,
-    TrustScorer,
-    TrustTier,
     TRUST_TIER_LIMITS,
     KYALevel,
+    TrustScore,
+    TrustScorer,
     TrustSignal,
+    TrustTier,
 )
-
 
 # ============ Trust-Gated ControlPlane Tests ============
 
@@ -129,7 +127,7 @@ async def test_no_fides_did_skips_trust_gate():
 
 def test_trust_overrides_kya_when_stricter():
     """Trust score LOW overrides policy limits when stricter."""
-    from sardis_v2_core.spending_policy import SpendingPolicy, create_default_policy, TrustLevel
+    from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
     # Create MEDIUM trust policy ($500/tx)
     policy = create_default_policy("agent_001", TrustLevel.MEDIUM)
@@ -155,7 +153,7 @@ def test_trust_overrides_kya_when_stricter():
 
 def test_high_trust_gets_full_limits():
     """SOVEREIGN trust gets configured limits (no additional restriction)."""
-    from sardis_v2_core.spending_policy import SpendingPolicy, create_default_policy, TrustLevel
+    from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
     policy = create_default_policy("agent_001", TrustLevel.HIGH)
 
@@ -179,7 +177,7 @@ def test_high_trust_gets_full_limits():
 
 def test_trust_override_none_uses_configured():
     """No trust_score_override uses configured policy limits only."""
-    from sardis_v2_core.spending_policy import create_default_policy, TrustLevel
+    from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
 
     policy = create_default_policy("agent_001", TrustLevel.LOW)
     mock_wallet = MagicMock()

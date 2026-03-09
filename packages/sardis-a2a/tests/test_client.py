@@ -1,10 +1,8 @@
 """Tests for Google A2A spec-compliant JSON-RPC 2.0 client."""
 
 import pytest
-
 from sardis_a2a.client import A2AClient, A2AClientConfig, A2AClientError
 from sardis_a2a.types import (
-    DataPart,
     Message,
     TaskState,
     TextPart,

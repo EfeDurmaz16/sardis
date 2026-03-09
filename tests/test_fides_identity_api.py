@@ -6,9 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from sardis_v2_core.did_bridge import DIDMapping, DIDBridge
-from sardis_v2_core.trust_graph import TrustPathResult, TrustPathNode
+from sardis_v2_core.did_bridge import DIDBridge, DIDMapping
+from sardis_v2_core.trust_graph import TrustPathNode, TrustPathResult
 
 
 @pytest.fixture
@@ -20,7 +19,7 @@ def app():
     test_app.include_router(router, prefix="/api/v2")
 
     # Override auth dependency to bypass authentication
-    from sardis_api.authz import require_principal, Principal
+    from sardis_api.authz import Principal, require_principal
     test_app.dependency_overrides[require_principal] = lambda: Principal(
         kind="api_key",
         organization_id="test_org",
@@ -136,8 +135,9 @@ def test_get_fides_identity_not_linked(client):
 
 def test_get_trust_score_with_fides(client):
     """Returns trust score computed via FIDES adapter."""
-    from sardis_v2_core.kya_trust_scoring import TrustScore, TrustTier, TrustSignal
     from decimal import Decimal
+
+    from sardis_v2_core.kya_trust_scoring import TrustScore, TrustSignal, TrustTier
 
     mock_scorer = AsyncMock()
     mock_scorer.calculate_trust = AsyncMock(return_value=TrustScore(

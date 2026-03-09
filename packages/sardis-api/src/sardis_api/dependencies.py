@@ -169,8 +169,8 @@ class DependencyContainer:
     def group_policy(self) -> Any | None:
         """Get group policy evaluator (optional, returns None if deps missing)."""
         try:
-            from sardis_v2_core.group_policy import GroupPolicyEvaluator
             from sardis_v2_core.agent_groups import AgentGroupRepository
+            from sardis_v2_core.group_policy import GroupPolicyEvaluator
             dsn = self.database_url if self.use_postgres else "memory://"
             group_repo = AgentGroupRepository(dsn=dsn)
             return GroupPolicyEvaluator(group_repo=group_repo)
