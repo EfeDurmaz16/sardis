@@ -16,7 +16,8 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sardis_compliance.checks import ComplianceAuditEntry
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, PaymentMandate, VCProof
+from sardis_v2_core.orchestrator import ChainExecutionError, ComplianceViolationError, PolicyViolationError
 from sardis_v2_core.policy_attestation import (
     build_policy_decision_receipt,
     build_signed_policy_snapshot,
@@ -94,6 +95,7 @@ class OnChainPaymentDependencies:
     default_on_chain_provider: str | None = None
     audit_store: Any = None
     settings: Any = None
+    payment_orchestrator: Any = None
 
 
 def get_deps() -> OnChainPaymentDependencies:
@@ -1030,12 +1032,6 @@ async def pay_onchain(
         merchant_domain=request.memo or "onchain",
     )
 
-    if not deps.chain_executor:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="chain_executor_not_configured",
-        )
-
     # --- Platform fee calculation ---
     from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
 
@@ -1048,13 +1044,52 @@ async def pay_onchain(
         )
         mandate.amount_minor = net_amount_minor
 
+    _now_ts = int(time.time())
+    _stub_proof = VCProof(
+        verification_method=f"wallet:{wallet_id}#key-1",
+        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        proof_value="onchain-payment-stub",
+    )
+    _chain = MandateChain(
+        intent=IntentMandate(
+            mandate_id=f"intent_{nonce[:16]}",
+            mandate_type="intent",
+            issuer=mandate.issuer,
+            subject=mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"intent_{nonce}",
+            proof=_stub_proof,
+            domain=mandate.domain,
+            purpose="intent",
+            requested_amount=mandate.amount_minor,
+        ),
+        cart=CartMandate(
+            mandate_id=f"cart_{nonce[:16]}",
+            mandate_type="cart",
+            issuer=mandate.issuer,
+            subject=mandate.subject,
+            expires_at=_now_ts + 300,
+            nonce=f"cart_{nonce}",
+            proof=_stub_proof,
+            domain=mandate.domain,
+            purpose="cart",
+            line_items=[{"description": "onchain_payment", "amount_minor": mandate.amount_minor}],
+            merchant_domain=request.memo or "onchain",
+            currency=request.token.upper(),
+            subtotal_minor=mandate.amount_minor,
+            taxes_minor=0,
+        ),
+        payment=mandate,
+    )
+
     try:
-        receipt = await deps.chain_executor.dispatch_payment(mandate)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"onchain_payment_failed: {exc}",
-        ) from exc
+        orch_result = await deps.payment_orchestrator.execute_chain(_chain)
+    except PolicyViolationError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ComplianceViolationError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ChainExecutionError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"onchain_payment_failed: {e}")
 
     # --- Collect fee to treasury (best-effort) ---
     if not fee_calc.fee_exempt and fee_calc.fee_amount > 0:
@@ -1089,8 +1124,45 @@ async def pay_onchain(
                     account_type=wallet.account_type,
                     smart_account_address=wallet.smart_account_address,
                 )
-                fee_receipt = await deps.chain_executor.dispatch_payment(fee_mandate)
-                fee_tx_hash = fee_receipt.tx_hash if hasattr(fee_receipt, "tx_hash") else str(fee_receipt)
+                _fee_now_ts = int(time.time())
+                _fee_stub_proof = VCProof(
+                    verification_method=f"wallet:{wallet_id}#key-1",
+                    created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    proof_value="onchain-payment-stub",
+                )
+                fee_chain = MandateChain(
+                    intent=IntentMandate(
+                        mandate_id=f"intent_fee_{nonce[:16]}",
+                        mandate_type="intent",
+                        issuer=fee_mandate.issuer,
+                        subject=fee_mandate.subject,
+                        expires_at=_fee_now_ts + 300,
+                        nonce=f"intent_fee_{nonce}",
+                        proof=_fee_stub_proof,
+                        domain=fee_mandate.domain,
+                        purpose="intent",
+                        requested_amount=fee_mandate.amount_minor,
+                    ),
+                    cart=CartMandate(
+                        mandate_id=f"cart_fee_{nonce[:16]}",
+                        mandate_type="cart",
+                        issuer=fee_mandate.issuer,
+                        subject=fee_mandate.subject,
+                        expires_at=_fee_now_ts + 300,
+                        nonce=f"cart_fee_{nonce}",
+                        proof=_fee_stub_proof,
+                        domain=fee_mandate.domain,
+                        purpose="cart",
+                        line_items=[{"description": "platform_fee", "amount_minor": fee_mandate.amount_minor}],
+                        merchant_domain="sardis.sh",
+                        currency=request.token.upper(),
+                        subtotal_minor=fee_mandate.amount_minor,
+                        taxes_minor=0,
+                    ),
+                    payment=fee_mandate,
+                )
+                fee_result = await deps.payment_orchestrator.execute_chain(fee_chain)
+                fee_tx_hash = fee_result.chain_tx_hash
                 logger.info(
                     "Platform fee collected: %s %s → %s (tx: %s)",
                     fee_calc.fee_amount, request.token, treasury_addr, fee_tx_hash,
@@ -1112,10 +1184,11 @@ async def pay_onchain(
             receipt_payload=policy_receipt,
         )
 
-    tx_hash = receipt.tx_hash if hasattr(receipt, "tx_hash") else str(receipt)
+    tx_hash = orch_result.chain_tx_hash if hasattr(orch_result, "chain_tx_hash") else str(orch_result)
+    _result_chain = orch_result.chain if hasattr(orch_result, "chain") else request.chain
     return OnChainPaymentResponse(
         tx_hash=tx_hash,
-        explorer_url=_explorer_url(request.chain, tx_hash),
+        explorer_url=_explorer_url(_result_chain, tx_hash),
         status="submitted",
         policy_hash=policy_receipt["policy_hash"] if policy_receipt else None,
         policy_audit_anchor=policy_receipt["audit_anchor"] if policy_receipt else None,
