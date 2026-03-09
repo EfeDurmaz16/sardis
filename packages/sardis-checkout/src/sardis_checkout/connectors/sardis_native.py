@@ -245,7 +245,9 @@ class SardisNativeConnector(PSPConnector):
             amount_minor=amount_minor,
             destination=destination,
             audit_hash=hashlib.sha256(
-                f"{payer_wallet_id}:{destination}:{amount_minor}:{session_id}".encode()
+                f"{payer_wallet_id}:{destination}:{amount_minor}:{session_id}:"
+                f"{merchant.merchant_id}:{merchant.name or ''}:{session.description or ''}"
+                .encode()
             ).hexdigest(),
             wallet_id=payer_wallet_id,
             account_type=wallet.account_type,
@@ -363,7 +365,7 @@ class SardisNativeConnector(PSPConnector):
                         amount_minor=fee_amount_minor,
                         destination=treasury_addr,
                         audit_hash=hashlib.sha256(
-                            f"fee:{payer_wallet_id}:{treasury_addr}:{fee_amount_minor}".encode()
+                            f"fee:{payer_wallet_id}:{treasury_addr}:{fee_amount_minor}:{session_id}".encode()
                         ).hexdigest(),
                         wallet_id=payer_wallet_id,
                         account_type=wallet.account_type,

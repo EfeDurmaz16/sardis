@@ -44,6 +44,9 @@ class AttestationEnvelope:
     policy_rules_applied: list[str]
     evidence_chain: list[str]
     ap2_mandate_ref: str = ""
+    origin_hash: str = ""              # SHA-256 of origin URL at approval time
+    action_description_hash: str = ""  # SHA-256 of action description
+    approval_timestamp: str = ""       # ISO 8601 timestamp of approval
     verification_report: dict[str, Any] = field(default_factory=dict)
     signature: str = ""
 
@@ -56,6 +59,9 @@ class AttestationEnvelope:
             "policy_rules_applied": self.policy_rules_applied,
             "evidence_chain": self.evidence_chain,
             "ap2_mandate_ref": self.ap2_mandate_ref,
+            "origin_hash": self.origin_hash,
+            "action_description_hash": self.action_description_hash,
+            "approval_timestamp": self.approval_timestamp,
             "verification_report": self.verification_report,
             "signature": self.signature,
         }
@@ -75,9 +81,18 @@ def _canonical_json(envelope: AttestationEnvelope) -> str:
         "policy_rules_applied": envelope.policy_rules_applied,
         "evidence_chain": envelope.evidence_chain,
         "ap2_mandate_ref": envelope.ap2_mandate_ref,
+        "origin_hash": envelope.origin_hash,
+        "action_description_hash": envelope.action_description_hash,
+        "approval_timestamp": envelope.approval_timestamp,
         "verification_report": envelope.verification_report,
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def _hash_value(value: str) -> str:
+    """SHA-256 hash a string for tamper-evident binding."""
+    import hashlib
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def build_attestation_envelope(
@@ -87,6 +102,9 @@ def build_attestation_envelope(
     evidence: list[str],
     verification_report: dict[str, Any] | None = None,
     signing_key: bytes | None = None,
+    origin_url: str = "",
+    action_description_hash: str = "",
+    approval_timestamp: str = "",
 ) -> AttestationEnvelope:
     """Build and optionally sign an attestation envelope.
 
@@ -119,6 +137,9 @@ def build_attestation_envelope(
         mandate_id=mandate_id,
         policy_rules_applied=list(policy_rules),
         evidence_chain=list(evidence),
+        origin_hash=_hash_value(origin_url) if origin_url else "",
+        action_description_hash=action_description_hash,
+        approval_timestamp=approval_timestamp,
         verification_report=verification_report or {},
     )
 

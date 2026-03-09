@@ -39,6 +39,10 @@ class MandateBase:
 class IntentMandate(MandateBase):
     scope: Sequence[str] = field(default_factory=list)
     requested_amount: int | None = None  # in minor units (e.g., cents)
+    natural_language_description: str = ""  # AP2: prompt playback — what the agent said it wants
+    merchant_constraints: list[str] = field(default_factory=list)  # AP2: allowed merchants
+    category_constraints: list[str] = field(default_factory=list)  # AP2: allowed merchant categories
+    refundable: bool = True  # AP2: whether the purchase should be refundable
 
 
 @dataclass(slots=True)
@@ -48,6 +52,9 @@ class CartMandate(MandateBase):
     currency: str
     subtotal_minor: int
     taxes_minor: int
+    cart_hash: str = ""                # SHA-256 of canonical cart for cross-mandate binding
+    merchant_signed: bool = False      # AP2: was this cart signed by the merchant?
+    cart_confirmation_hash: str = ""   # AP2: user/agent confirmation over cart contents
 
 
 @dataclass(slots=True)
@@ -71,6 +78,10 @@ class PaymentMandate(MandateBase):
     # Merchant domain binding (distinct from identity `domain`).
     # In AP2, this should match the CartMandate.merchant_domain.
     merchant_domain: str | None = None
+    payment_details_id: str = ""       # AP2: unique payment details identifier
+    cart_mandate_hash: str = ""        # AP2: hash of the cart mandate this payment fulfills
+    user_authorization_hash: str = ""  # AP2: user authorization over cart_hash + payment_hash
+    approval_context_hash: str = ""    # Sardis: hash of the full ApprovalContext
 
 
 @dataclass(slots=True)

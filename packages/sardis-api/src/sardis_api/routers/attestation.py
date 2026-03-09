@@ -32,6 +32,9 @@ class AttestationEnvelopeResponse(BaseModel):
     policy_rules_applied: list[str] = Field(default_factory=list)
     evidence_chain: list[str] = Field(default_factory=list)
     ap2_mandate_ref: str = ""
+    origin_hash: str = ""
+    action_description_hash: str = ""
+    approval_timestamp: str = ""
     verification_report: dict[str, Any] = Field(default_factory=dict)
     signature: str = ""
 
@@ -85,17 +88,35 @@ async def get_payment_attestation(
 
             agent_id = row["agent_id"] or ""
 
-            # Try to load the most recent policy decision for this payment
+            # Load the policy decision for THIS SPECIFIC payment, not just the latest for the agent
             decision_row = await conn.fetchrow(
                 """
                 SELECT id, verdict, steps_json, evidence_hash
                 FROM policy_decisions
                 WHERE agent_id = $1
+                  AND (mandate_id = $2 OR payment_id = $2 OR intent_id = $2)
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
                 agent_id,
+                payment_id,
             )
+
+            # Fallback: if no payment-specific decision found, check by ledger entry
+            if decision_row is None:
+                decision_row = await conn.fetchrow(
+                    """
+                    SELECT pd.id, pd.verdict, pd.steps_json, pd.evidence_hash
+                    FROM policy_decisions pd
+                    WHERE pd.agent_id = $1
+                      AND pd.created_at >= $2 - interval '5 minutes'
+                      AND pd.created_at <= $2 + interval '1 minute'
+                    ORDER BY pd.created_at DESC
+                    LIMIT 1
+                    """,
+                    agent_id,
+                    row["created_at"],
+                )
 
         if decision_row is None:
             raise HTTPException(
@@ -128,6 +149,7 @@ async def get_payment_attestation(
             policy_rules=policy_rules,
             evidence=evidence,
             verification_report=verification_report,
+            approval_timestamp=row["created_at"].isoformat() if row["created_at"] else "",
         )
 
         return AttestationEnvelopeResponse(**envelope.to_dict())

@@ -241,6 +241,20 @@ class MandateVerifier:
                 drift_score=drift_score, drift_reasons=drift_reasons,
             )
 
+        # Origin binding: if intent carries origin context, verify it flows through
+        if hasattr(intent, 'action_description') and intent.action_description:
+            import hashlib
+            expected_hash = hashlib.sha256(
+                intent.action_description.encode("utf-8")
+            ).hexdigest()
+            intent_desc_hash = getattr(intent, 'action_description_hash', '')
+            if intent_desc_hash and intent_desc_hash != expected_hash:
+                reason = "action_description_hash_mismatch"
+                return MandateChainVerification(
+                    False, reason, sd_jwt_detected=sd_jwt_detected,
+                    reason_code=map_legacy_reason_to_code(reason),
+                )
+
         # Verify signatures for all mandates in the chain with specified canonicalization mode
         use_jcs = (canonicalization_mode == "jcs")
         intent_result = self.verify(intent, use_jcs=use_jcs)

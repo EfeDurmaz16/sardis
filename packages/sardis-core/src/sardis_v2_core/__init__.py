@@ -32,6 +32,12 @@ Example usage:
     )
 """
 
+from .approval_context import (
+    ApprovalContext,
+    hash_cart,
+    hash_value,
+    verify_approval_context,
+)
 from .agent_groups import (
     AgentGroup,
     AgentGroupHierarchy,
@@ -296,6 +302,11 @@ from .webhooks import (
 )
 
 __all__ = [
+    # Approval Context
+    "ApprovalContext",
+    "hash_value",
+    "hash_cart",
+    "verify_approval_context",
     # Exceptions
     "SardisException",
     "SardisValidationError",

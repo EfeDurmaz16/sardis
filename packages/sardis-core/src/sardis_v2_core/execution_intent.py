@@ -71,6 +71,14 @@ class ExecutionIntent:
     reference: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    # Origin binding (browser agent context)
+    origin_url: str = ""                    # page origin where payment was initiated
+    action_description: str = ""            # what the agent claims it's paying for
+    action_description_hash: str = ""       # SHA-256 of action_description (tamper-evident)
+    session_context_hash: str = ""          # hash of session state at approval time
+    approval_context_hash: str = ""         # hash of the full ApprovalContext (verified at execution)
+    approved_at: datetime | None = None     # when the user/policy approved this intent
+
     # Pipeline results (filled during execution)
     policy_result: dict[str, Any] | None = None
     compliance_result: dict[str, Any] | None = None
@@ -94,6 +102,12 @@ class ExecutionIntent:
             "recipient_wallet_id": self.recipient_wallet_id,
             "execution_mode": self.execution_mode,
             "credential_id": self.credential_id,
+            "origin_url": self.origin_url,
+            "action_description": self.action_description,
+            "action_description_hash": self.action_description_hash,
+            "session_context_hash": self.session_context_hash,
+            "approval_context_hash": self.approval_context_hash,
+            "approved_at": self.approved_at.isoformat() if self.approved_at else None,
             "tx_hash": self.tx_hash,
             "receipt_id": self.receipt_id,
             "error": self.error,
