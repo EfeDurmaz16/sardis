@@ -20,6 +20,7 @@ from sardis_v2_core.mandates import (
 
 from .rate_limiter import AgentRateLimiter, RateLimitConfig, get_rate_limiter
 from .reason_codes import ProtocolReasonCode, map_legacy_reason_to_code
+from .replay_cache_redis import RedisReplayCache
 from .schemas import AP2PaymentExecuteRequest
 from .storage import MandateArchive, ReplayCache
 
@@ -54,7 +55,7 @@ class MandateVerifier:
     def __init__(
         self,
         settings: SardisSettings,
-        replay_cache: ReplayCache | None = None,
+        replay_cache: ReplayCache | RedisReplayCache | None = None,
         archive: MandateArchive | None = None,
         rate_limiter: AgentRateLimiter | None = None,
         rate_limit_config: RateLimitConfig | None = None,

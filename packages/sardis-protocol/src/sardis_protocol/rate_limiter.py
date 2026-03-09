@@ -7,6 +7,7 @@ within configurable time windows.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 
@@ -490,6 +491,12 @@ def get_rate_limiter(
         if redis_url:
             _rate_limiter = RedisAgentRateLimiter(config, redis_url)
         else:
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+            if env not in ("dev", "development", "local"):
+                raise RuntimeError(
+                    "Redis URL required for rate limiting in non-dev environments. "
+                    "Set SARDIS_REDIS_URL or REDIS_URL."
+                )
             _rate_limiter = AgentRateLimiter(config)
 
     return _rate_limiter

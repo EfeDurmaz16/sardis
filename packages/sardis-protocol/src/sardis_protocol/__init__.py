@@ -37,6 +37,7 @@ from .schemas import (
     X402PaymentExecuteRequest,
     X402PaymentExecuteResponse,
 )
+from .replay_cache_redis import RedisReplayCache
 from .storage import MandateArchive, ReplayCache, SqliteReplayCache
 from .tap import (
     TAP_ALLOWED_MESSAGE_ALGS,
@@ -126,6 +127,7 @@ __all__ = [
     "MandateArchive",
     "SqliteReplayCache",
     "ReplayCache",
+    "RedisReplayCache",
     # Payment Methods (multi-payment support)
     "PaymentMethod",
     "PaymentMethodConfig",
