@@ -1,437 +1,159 @@
-"""Tests for A2A agent discovery service."""
-
-from datetime import UTC, datetime, timedelta
-from typing import Any
+"""Tests for Google A2A spec-compliant agent discovery service."""
 
 import pytest
-from sardis_a2a.agent_card import (
-    AgentCapability,
-    PaymentCapability,
-    SardisAgentCard,
+from datetime import UTC, datetime, timedelta
+
+from sardis_a2a.discovery import AgentDiscoveryService, DiscoveredAgent
+from sardis_a2a.types import (
+    AgentAuthentication,
+    AgentCapabilities,
+    AgentCard,
+    AgentSkill,
 )
-from sardis_a2a.discovery import (
-    AgentDiscoveryService,
-    DiscoveredAgent,
-)
+
+
+def _make_card(name="Test Agent", url="https://test.com/a2a"):
+    return AgentCard(
+        name=name,
+        description="A test agent",
+        url=url,
+        version="1",
+        capabilities=AgentCapabilities(streaming=True),
+        authentication=AgentAuthentication(schemes=["Bearer"]),
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"],
+        skills=[
+            AgentSkill(id="payment-execute", name="Pay", description="Execute payment", tags=["payment"]),
+            AgentSkill(id="echo", name="Echo", description="Echo input", tags=["test"]),
+        ],
+    )
+
+
+def _card_json():
+    return _make_card().to_dict()
 
 
 class MockHttpClient:
-    """Mock HTTP client for testing."""
+    def __init__(self, responses=None):
+        self.responses = responses or {}
+        self.get_calls = []
 
-    def __init__(self):
-        self.responses: dict[str, tuple[int, dict[str, Any]]] = {}
-
-    def add_response(self, url: str, status: int, data: dict[str, Any]):
-        """Add a mock response for a URL."""
-        self.responses[url] = (status, data)
-
-    async def get(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> tuple[int, dict[str, Any]]:
-        """Mock GET request."""
+    async def get(self, url, headers=None):
+        self.get_calls.append(url)
         if url in self.responses:
             return self.responses[url]
-        return 404, {"error": "Not found"}
+        return (200, _card_json())
 
 
 class TestDiscoveredAgent:
-    """Tests for DiscoveredAgent."""
+    def test_basic(self):
+        agent = DiscoveredAgent(agent_url="https://test.com", card=_make_card())
+        assert agent.name == "Test Agent"
+        assert agent.available is True
+        assert agent.a2a_url == "https://test.com/a2a"
 
-    @pytest.fixture
-    def agent(self):
-        """Create a sample discovered agent."""
-        card = SardisAgentCard(
-            agent_id="agent_123",
-            agent_name="Test Agent",
-            capabilities=[
-                AgentCapability.PAYMENT_EXECUTE,
-                AgentCapability.CHECKOUT_CREATE,
-            ],
-            payment_capability=PaymentCapability(
-                supported_tokens=["USDC", "USDT"],
-                supported_chains=["base", "polygon"],
-            ),
-        )
+    def test_cache_valid(self):
+        agent = DiscoveredAgent(agent_url="https://test.com", cache_ttl_seconds=3600)
+        assert agent.is_cache_valid()
 
-        return DiscoveredAgent(
-            agent_id="agent_123",
-            agent_name="Test Agent",
-            agent_url="https://agent.example.com",
-            card=card,
+    def test_cache_expired(self):
+        agent = DiscoveredAgent(
+            agent_url="https://test.com",
+            last_verified_at=datetime.now(UTC) - timedelta(hours=2),
             cache_ttl_seconds=3600,
         )
+        assert not agent.is_cache_valid()
 
-    def test_create_discovered_agent(self, agent):
-        """Test creating a discovered agent."""
-        assert agent.agent_id == "agent_123"
-        assert agent.agent_name == "Test Agent"
-        assert agent.agent_url == "https://agent.example.com"
-        assert agent.available is True
-        assert agent.card is not None
+    def test_has_skill(self):
+        agent = DiscoveredAgent(agent_url="https://test.com", card=_make_card())
+        assert agent.has_skill("payment-execute")
+        assert agent.has_skill("echo")
+        assert not agent.has_skill("nonexistent")
 
-    def test_cache_valid_fresh(self, agent):
-        """Test cache validity for fresh agent."""
-        assert agent.is_cache_valid() is True
-
-    def test_cache_invalid_expired(self, agent):
-        """Test cache validity for expired agent."""
-        agent.last_verified_at = datetime.now(UTC) - timedelta(hours=2)
-        assert agent.is_cache_valid() is False
-
-    def test_supports_capability(self, agent):
-        """Test capability checking."""
-        assert agent.supports_capability(AgentCapability.PAYMENT_EXECUTE) is True
-        assert agent.supports_capability(AgentCapability.CHECKOUT_CREATE) is True
-        assert agent.supports_capability(AgentCapability.PAYMENT_REFUND) is False
-
-    def test_supports_capability_no_card(self):
-        """Test capability checking without card."""
-        agent = DiscoveredAgent(
-            agent_id="agent_1",
-            agent_name="Agent",
-            agent_url="https://example.com",
-            card=None,
-        )
-
-        assert agent.supports_capability(AgentCapability.PAYMENT_EXECUTE) is False
-
-    def test_supports_payment(self, agent):
-        """Test payment support checking."""
-        assert agent.supports_payment("USDC", "base") is True
-        assert agent.supports_payment("USDT", "polygon") is True
-        assert agent.supports_payment("USDC", "unknown") is False
-        assert agent.supports_payment("UNKNOWN", "base") is False
-
-    def test_supports_payment_no_card(self):
-        """Test payment support without card."""
-        agent = DiscoveredAgent(
-            agent_id="agent_1",
-            agent_name="Agent",
-            agent_url="https://example.com",
-            card=None,
-        )
-
-        assert agent.supports_payment("USDC", "base") is False
+    def test_supports_streaming(self):
+        agent = DiscoveredAgent(agent_url="https://test.com", card=_make_card())
+        assert agent.supports_streaming()
 
 
 class TestAgentDiscoveryService:
-    """Tests for AgentDiscoveryService."""
-
-    @pytest.fixture
-    def http_client(self):
-        """Create a mock HTTP client."""
-        return MockHttpClient()
-
-    @pytest.fixture
-    def discovery(self, http_client):
-        """Create a discovery service."""
-        return AgentDiscoveryService(
-            http_client=http_client,
-            cache_ttl_seconds=3600,
-        )
-
-    @pytest.fixture
-    def agent_card_data(self):
-        """Sample agent card JSON data."""
-        return {
-            "agent_id": "agent_test",
-            "name": "Test Agent",
-            "version": "1.0.0",
-            "description": "A test agent",
-            "operator": {
-                "name": "Test Operator",
-                "url": "https://test.com",
-            },
-            "capabilities": [
-                "payment.execute",
-                "payment.verify",
-                "checkout.create",
-            ],
-            "payment": {
-                "supported_tokens": ["USDC", "USDT"],
-                "supported_chains": ["base", "polygon"],
-                "min_amount_minor": 100,
-                "max_amount_minor": 100_000_00,
-                "ap2_compliant": True,
-            },
-        }
-
     @pytest.mark.asyncio
-    async def test_discover_agent_success(self, discovery, http_client, agent_card_data):
-        """Test successful agent discovery."""
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            200,
-            agent_card_data,
-        )
-
-        agent = await discovery.discover_agent("https://agent.example.com")
-
-        assert agent.agent_id == "agent_test"
-        assert agent.agent_name == "Test Agent"
+    async def test_discover_agent(self):
+        http = MockHttpClient()
+        svc = AgentDiscoveryService(http_client=http)
+        agent = await svc.discover_agent("https://test.com")
         assert agent.available is True
-        assert agent.card is not None
-        assert agent.card.agent_version == "1.0.0"
-        assert len(agent.card.capabilities) == 3
+        assert agent.card.name == "Test Agent"
+        assert "/.well-known/agent.json" in http.get_calls[0]
 
     @pytest.mark.asyncio
-    async def test_discover_agent_with_trailing_slash(self, discovery, http_client, agent_card_data):
-        """Test discovery with trailing slash in URL."""
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            200,
-            agent_card_data,
-        )
-
-        agent = await discovery.discover_agent("https://agent.example.com/")
-
-        assert agent.agent_id == "agent_test"
+    async def test_discover_caches(self):
+        http = MockHttpClient()
+        svc = AgentDiscoveryService(http_client=http)
+        await svc.discover_agent("https://test.com")
+        await svc.discover_agent("https://test.com")
+        assert len(http.get_calls) == 1
 
     @pytest.mark.asyncio
-    async def test_discover_agent_cached(self, discovery, http_client, agent_card_data):
-        """Test that discovered agents are cached."""
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            200,
-            agent_card_data,
-        )
-
-        # First discovery
-        agent1 = await discovery.discover_agent("https://agent.example.com")
-
-        # Second discovery should use cache
-        agent2 = await discovery.discover_agent("https://agent.example.com")
-
-        assert agent1 is agent2
+    async def test_discover_force_refresh(self):
+        http = MockHttpClient()
+        svc = AgentDiscoveryService(http_client=http)
+        await svc.discover_agent("https://test.com")
+        await svc.discover_agent("https://test.com", force_refresh=True)
+        assert len(http.get_calls) == 2
 
     @pytest.mark.asyncio
-    async def test_discover_agent_force_refresh(self, discovery, http_client, agent_card_data):
-        """Test force refresh bypasses cache."""
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            200,
-            agent_card_data,
-        )
-
-        await discovery.discover_agent("https://agent.example.com")
-
-        # Modify response
-        agent_card_data["name"] = "Updated Agent"
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            200,
-            agent_card_data,
-        )
-
-        # Force refresh
-        agent2 = await discovery.discover_agent(
-            "https://agent.example.com", force_refresh=True
-        )
-
-        assert agent2.agent_name == "Updated Agent"
-
-    @pytest.mark.asyncio
-    async def test_discover_agent_http_error(self, discovery, http_client):
-        """Test discovery with HTTP error."""
-        http_client.add_response(
-            "https://agent.example.com/.well-known/agent-card.json",
-            500,
-            {"error": "Internal server error"},
-        )
-
-        agent = await discovery.discover_agent("https://agent.example.com")
-
-        assert agent.available is False
+    async def test_discover_failure(self):
+        http = MockHttpClient(responses={
+            "https://bad.com/.well-known/agent.json": (404, {}),
+        })
+        svc = AgentDiscoveryService(http_client=http)
+        agent = await svc.discover_agent("https://bad.com")
+        assert not agent.available
         assert agent.last_error is not None
-        assert "500" in agent.last_error
 
     @pytest.mark.asyncio
-    async def test_discover_agent_no_http_client(self):
-        """Test discovery without HTTP client."""
-        discovery = AgentDiscoveryService(http_client=None)
+    async def test_discover_no_http_client(self):
+        svc = AgentDiscoveryService()
+        agent = await svc.discover_agent("https://test.com")
+        assert not agent.available
 
-        agent = await discovery.discover_agent("https://agent.example.com")
+    def test_register_agent(self):
+        svc = AgentDiscoveryService()
+        card = _make_card()
+        agent = svc.register_agent("https://test.com", card)
+        assert agent.available
+        assert agent.card.name == "Test Agent"
 
-        assert agent.available is False
-        assert "HTTP client not configured" in agent.last_error
+    def test_get_agent(self):
+        svc = AgentDiscoveryService()
+        svc.register_agent("https://test.com", _make_card())
+        assert svc.get_agent("https://test.com") is not None
+        assert svc.get_agent("https://other.com") is None
 
-    def test_register_agent(self, discovery):
-        """Test manual agent registration."""
-        card = SardisAgentCard(
-            agent_id="agent_manual",
-            agent_name="Manual Agent",
-        )
+    def test_list_agents(self):
+        svc = AgentDiscoveryService()
+        svc.register_agent("https://a.com", _make_card("A"))
+        svc.register_agent("https://b.com", _make_card("B"))
+        agents = svc.list_agents()
+        assert len(agents) == 2
 
-        agent = discovery.register_agent(
-            agent_id="agent_manual",
-            agent_name="Manual Agent",
-            agent_url="https://manual.example.com",
-            card=card,
-        )
-
-        assert agent.agent_id == "agent_manual"
-        assert agent.agent_name == "Manual Agent"
-        assert agent.available is True
-        assert agent.card is card
-
-    def test_register_agent_normalizes_url(self, discovery):
-        """Test that registration normalizes URL."""
-        discovery.register_agent(
-            agent_id="agent_1",
-            agent_name="Agent",
-            agent_url="https://example.com/",
-        )
-
-        # Should be found without trailing slash
-        agent = discovery.get_agent("https://example.com")
-        assert agent is not None
-
-    def test_get_agent(self, discovery):
-        """Test getting agent by URL."""
-        discovery.register_agent(
-            agent_id="agent_1",
-            agent_name="Agent",
-            agent_url="https://agent.example.com",
-        )
-
-        agent = discovery.get_agent("https://agent.example.com")
-
-        assert agent is not None
-        assert agent.agent_id == "agent_1"
-
-    def test_get_agent_not_found(self, discovery):
-        """Test getting non-existent agent."""
-        agent = discovery.get_agent("https://nonexistent.example.com")
-
-        assert agent is None
-
-    def test_get_agent_by_id(self, discovery):
-        """Test getting agent by ID."""
-        discovery.register_agent(
-            agent_id="agent_test_id",
-            agent_name="Test Agent",
-            agent_url="https://agent.example.com",
-        )
-
-        agent = discovery.get_agent_by_id("agent_test_id")
-
-        assert agent is not None
-        assert agent.agent_url == "https://agent.example.com"
-
-    def test_get_agent_by_id_not_found(self, discovery):
-        """Test getting non-existent agent by ID."""
-        agent = discovery.get_agent_by_id("nonexistent_id")
-
-        assert agent is None
-
-    def test_list_agents_all(self, discovery):
-        """Test listing all agents."""
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com")
-        discovery.register_agent("agent_2", "Agent 2", "https://agent2.example.com")
-        discovery.register_agent("agent_3", "Agent 3", "https://agent3.example.com")
-
-        agents = discovery.list_agents()
-
-        assert len(agents) == 3
-
-    def test_list_agents_available_only(self, discovery):
-        """Test listing only available agents."""
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com")
-
-        # Register unavailable agent
-        unavailable = discovery.register_agent("agent_2", "Agent 2", "https://agent2.example.com")
-        unavailable.available = False
-
-        agents = discovery.list_agents(available_only=True)
-
+    def test_list_agents_by_skill(self):
+        svc = AgentDiscoveryService()
+        svc.register_agent("https://a.com", _make_card())
+        agents = svc.list_agents(skill_id="payment-execute")
         assert len(agents) == 1
-        assert agents[0].agent_id == "agent_1"
+        agents = svc.list_agents(skill_id="nonexistent")
+        assert len(agents) == 0
 
-    def test_list_agents_by_capability(self, discovery):
-        """Test listing agents by capability."""
-        card1 = SardisAgentCard(
-            agent_id="agent_1",
-            agent_name="Agent 1",
-            capabilities=[AgentCapability.PAYMENT_EXECUTE],
-        )
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com", card1)
+    def test_remove_agent(self):
+        svc = AgentDiscoveryService()
+        svc.register_agent("https://test.com", _make_card())
+        assert svc.remove_agent("https://test.com")
+        assert not svc.remove_agent("https://test.com")
 
-        card2 = SardisAgentCard(
-            agent_id="agent_2",
-            agent_name="Agent 2",
-            capabilities=[AgentCapability.CHECKOUT_CREATE],
-        )
-        discovery.register_agent("agent_2", "Agent 2", "https://agent2.example.com", card2)
-
-        agents = discovery.list_agents(capability=AgentCapability.PAYMENT_EXECUTE)
-
-        assert len(agents) == 1
-        assert agents[0].agent_id == "agent_1"
-
-    def test_list_agents_by_payment(self, discovery):
-        """Test listing agents by payment support."""
-        card1 = SardisAgentCard(
-            agent_id="agent_1",
-            agent_name="Agent 1",
-            payment_capability=PaymentCapability(
-                supported_tokens=["USDC"],
-                supported_chains=["base"],
-            ),
-        )
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com", card1)
-
-        card2 = SardisAgentCard(
-            agent_id="agent_2",
-            agent_name="Agent 2",
-            payment_capability=PaymentCapability(
-                supported_tokens=["USDT"],
-                supported_chains=["polygon"],
-            ),
-        )
-        discovery.register_agent("agent_2", "Agent 2", "https://agent2.example.com", card2)
-
-        agents = discovery.list_agents(token="USDC", chain="base")
-
-        assert len(agents) == 1
-        assert agents[0].agent_id == "agent_1"
-
-    def test_list_agents_by_token_only(self, discovery):
-        """Test listing agents by token only."""
-        card1 = SardisAgentCard(
-            agent_id="agent_1",
-            agent_name="Agent 1",
-            payment_capability=PaymentCapability(
-                supported_tokens=["USDC", "USDT"],
-                supported_chains=["base"],
-            ),
-        )
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com", card1)
-
-        agents = discovery.list_agents(token="USDT")
-
-        assert len(agents) == 1
-
-    def test_remove_agent(self, discovery):
-        """Test removing an agent."""
-        discovery.register_agent("agent_1", "Agent 1", "https://agent.example.com")
-
-        result = discovery.remove_agent("https://agent.example.com")
-
-        assert result is True
-        assert discovery.get_agent("https://agent.example.com") is None
-
-    def test_remove_agent_not_found(self, discovery):
-        """Test removing non-existent agent."""
-        result = discovery.remove_agent("https://nonexistent.example.com")
-
-        assert result is False
-
-    def test_clear_cache(self, discovery):
-        """Test clearing all cached agents."""
-        discovery.register_agent("agent_1", "Agent 1", "https://agent1.example.com")
-        discovery.register_agent("agent_2", "Agent 2", "https://agent2.example.com")
-
-        count = discovery.clear_cache()
-
-        assert count == 2
-        assert len(discovery.list_agents(available_only=False)) == 0
+    def test_clear_cache(self):
+        svc = AgentDiscoveryService()
+        svc.register_agent("https://a.com", _make_card())
+        svc.register_agent("https://b.com", _make_card())
+        assert svc.clear_cache() == 2
+        assert len(svc.list_agents()) == 0

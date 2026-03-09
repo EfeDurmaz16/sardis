@@ -1,25 +1,36 @@
-"""A2A client for outbound agent communication.
+"""Google A2A spec-compliant JSON-RPC 2.0 client.
 
-Provides methods for sending A2A messages to other agents:
-- Payment requests
-- Credential verification
-- Checkout flows
+Provides methods for interacting with remote A2A agents:
+  - tasks/send — Create or continue tasks
+  - tasks/get — Poll task status
+  - tasks/cancel — Cancel running tasks
+  - tasks/sendSubscribe — Stream task updates via SSE
+  - Agent card discovery via /.well-known/agent.json
+
+Spec: https://google.github.io/A2A/
 """
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass
+import uuid
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from .discovery import AgentDiscoveryService, DiscoveredAgent
-from .messages import (
-    A2ACredentialRequest,
-    A2ACredentialResponse,
-    A2AMessage,
-    A2AMessageType,
-    A2APaymentRequest,
-    A2APaymentResponse,
+from .types import (
+    AgentCard,
+    DataPart,
+    JsonRpcRequest,
+    JsonRpcResponse,
+    Message,
+    Task,
+    TaskCancelParams,
+    TaskGetParams,
+    TaskSendParams,
+    TaskState,
+    TextPart,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,13 +42,11 @@ class A2AClientError(Exception):
     def __init__(
         self,
         message: str,
-        code: str,
-        recipient_id: str | None = None,
+        code: int | str = -1,
         details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.code = code
-        self.recipient_id = recipient_id
         self.details = details or {}
 
 
@@ -50,389 +59,239 @@ class HttpClient(Protocol):
         json: dict[str, Any],
         headers: dict[str, str] | None = None,
     ) -> tuple[int, dict[str, Any]]:
-        """Make an HTTP POST request.
-
-        Returns:
-            Tuple of (status_code, json_response)
-        """
+        """POST JSON and return (status_code, json_response)."""
         ...
 
-
-class MessageSigner(Protocol):
-    """Protocol for signing A2A messages."""
-
-    def sign(self, message: A2AMessage) -> str:
-        """Sign a message and return the signature."""
-        ...
-
-    def verify(self, message: A2AMessage, signature: str) -> bool:
-        """Verify a message signature."""
+    async def get(
+        self,
+        url: str,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """GET and return (status_code, json_response)."""
         ...
 
 
 @dataclass
 class A2AClientConfig:
     """Configuration for A2A client."""
-
-    # Client identity
     agent_id: str
     agent_name: str
-
-    # Endpoints
-    base_url: str  # Our base URL for callbacks
-
-    # Signing
-    signing_key_id: str | None = None
-    private_key: str | None = None
-
-    # Timeouts (seconds)
     request_timeout: int = 30
-    message_ttl: int = 300  # 5 minutes
-
-    # Retries
     max_retries: int = 3
-    retry_delay: float = 1.0
 
 
 class A2AClient:
-    """
-    Client for A2A inter-agent communication.
+    """Google A2A spec-compliant JSON-RPC 2.0 client.
 
-    Provides methods for:
-    - Sending payment requests to other agents
-    - Verifying credentials with other agents
-    - General A2A message exchange
+    Usage:
+        client = A2AClient(config, http_client)
 
-    Uses agent discovery to find agent endpoints.
+        # Discover agent
+        card = await client.discover("https://agent.example.com")
+
+        # Send a task
+        task = await client.send_task(
+            agent_url="https://agent.example.com/a2a",
+            task_id="task-123",
+            message=Message(role="user", parts=[TextPart(text="Pay 10 USDC")])
+        )
+
+        # Poll for completion
+        task = await client.get_task(agent_url, "task-123")
     """
 
     def __init__(
         self,
         config: A2AClientConfig,
-        http_client: HttpClient | None = None,
-        discovery: AgentDiscoveryService | None = None,
-        signer: MessageSigner | None = None,
+        http_client: HttpClient,
     ) -> None:
-        """
-        Initialize the A2A client.
-
-        Args:
-            config: Client configuration
-            http_client: HTTP client for requests
-            discovery: Agent discovery service
-            signer: Message signer for authentication
-        """
         self._config = config
-        self._http_client = http_client
-        self._discovery = discovery or AgentDiscoveryService()
-        self._signer = signer
+        self._http = http_client
+        self._request_counter = 0
+        self._card_cache: dict[str, AgentCard] = {}
 
     @property
     def agent_id(self) -> str:
-        """Our agent ID."""
         return self._config.agent_id
 
-    async def send_payment_request(
+    # ============ Agent Discovery ============
+
+    async def discover(self, base_url: str, force_refresh: bool = False) -> AgentCard:
+        """Fetch the agent card from /.well-known/agent.json"""
+        if not force_refresh and base_url in self._card_cache:
+            return self._card_cache[base_url]
+
+        url = f"{base_url.rstrip('/')}/.well-known/agent.json"
+        status, data = await self._http.get(url)
+
+        if status != 200:
+            raise A2AClientError(
+                f"Failed to discover agent at {url}: HTTP {status}",
+                code="discovery_failed",
+            )
+
+        card = AgentCard.from_dict(data)
+        self._card_cache[base_url] = card
+        return card
+
+    # ============ Task Operations ============
+
+    async def send_task(
         self,
-        recipient_url: str,
-        amount_minor: int,
-        token: str,
-        chain: str,
-        destination: str,
-        purpose: str = "",
-        reference: str | None = None,
-        callback_url: str | None = None,
+        agent_url: str,
+        task_id: str | None = None,
+        session_id: str | None = None,
+        message: Message | None = None,
+        text: str | None = None,
+        data: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> A2APaymentResponse:
+    ) -> Task:
+        """Send a task (tasks/send).
+
+        Convenience: pass either `message`, `text`, or `data` to construct the message.
         """
-        Send a payment request to another agent.
+        if message is None:
+            parts = []
+            if text:
+                parts.append(TextPart(text=text))
+            if data:
+                parts.append(DataPart(data=data))
+            if not parts:
+                raise A2AClientError("Must provide message, text, or data", code="invalid_params")
+            message = Message(role="user", parts=parts)
 
-        Args:
-            recipient_url: Base URL of the recipient agent
-            amount_minor: Amount in minor units
-            token: Token symbol (e.g., "USDC")
-            chain: Blockchain network (e.g., "base")
-            destination: Payment destination address
-            purpose: Purpose of the payment
-            reference: External reference (order ID, invoice, etc.)
-            callback_url: URL for payment status callbacks
-            metadata: Additional metadata
-
-        Returns:
-            A2APaymentResponse with result
-
-        Raises:
-            A2AClientError: If request fails
-        """
-        # Discover recipient
-        recipient = await self._discovery.discover_agent(recipient_url)
-
-        if not recipient.available:
-            raise A2AClientError(
-                f"Recipient agent not available: {recipient.last_error}",
-                code="agent_unavailable",
-                recipient_id=recipient.agent_id,
-            )
-
-        # Check capabilities
-        if not recipient.supports_payment(token, chain):
-            raise A2AClientError(
-                f"Recipient does not support {token} on {chain}",
-                code="unsupported_payment",
-                recipient_id=recipient.agent_id,
-            )
-
-        # Build request
-        request = A2APaymentRequest(
-            sender_agent_id=self._config.agent_id,
-            recipient_agent_id=recipient.agent_id,
-            amount_minor=amount_minor,
-            token=token,
-            chain=chain,
-            destination=destination,
-            purpose=purpose,
-            reference=reference,
-            callback_url=callback_url or f"{self._config.base_url}/api/v2/a2a/callback",
+        params = TaskSendParams(
+            id=task_id or str(uuid.uuid4()),
+            session_id=session_id,
+            message=message,
             metadata=metadata or {},
         )
 
-        # Convert to A2A message
-        message = request.to_a2a_message()
+        response = await self._rpc(agent_url, "tasks/send", params.to_dict())
+        return Task.from_dict(response)
 
-        # Sign if signer available
-        if self._signer:
-            message.signature = self._signer.sign(message)
-
-        # Send request
-        response = await self._send_message(recipient, message)
-
-        # Parse response
-        if response.message_type == A2AMessageType.PAYMENT_RESPONSE:
-            payload = response.payload
-            return A2APaymentResponse(
-                response_id=payload.get("response_id", response.message_id),
-                request_id=request.request_id,
-                sender_agent_id=response.sender_id,
-                recipient_agent_id=response.recipient_id,
-                success=payload.get("success", False),
-                status=payload.get("status", "unknown"),
-                tx_hash=payload.get("tx_hash"),
-                chain=payload.get("chain"),
-                block_number=payload.get("block_number"),
-                error=payload.get("error") or response.error,
-                error_code=payload.get("error_code") or response.error_code,
-                metadata=payload.get("metadata", {}),
-            )
-        elif response.message_type == A2AMessageType.ERROR:
-            return A2APaymentResponse(
-                request_id=request.request_id,
-                sender_agent_id=response.sender_id,
-                recipient_agent_id=response.recipient_id,
-                success=False,
-                status="failed",
-                error=response.error or "Unknown error",
-                error_code=response.error_code or "unknown_error",
-            )
-        else:
-            raise A2AClientError(
-                f"Unexpected response type: {response.message_type}",
-                code="unexpected_response",
-                recipient_id=recipient.agent_id,
-            )
-
-    async def verify_credential(
+    async def get_task(
         self,
-        recipient_url: str,
-        credential_type: str,
-        credential_data: dict[str, Any],
-        verify_signature: bool = True,
-        verify_expiration: bool = True,
-        verify_chain: bool = True,
-    ) -> A2ACredentialResponse:
+        agent_url: str,
+        task_id: str,
+        history_length: int | None = None,
+    ) -> Task:
+        """Get task status (tasks/get)."""
+        params = TaskGetParams(
+            id=task_id,
+            history_length=history_length,
+        )
+        response = await self._rpc(agent_url, "tasks/get", params.to_dict())
+        return Task.from_dict(response)
+
+    async def cancel_task(
+        self,
+        agent_url: str,
+        task_id: str,
+    ) -> Task:
+        """Cancel a task (tasks/cancel)."""
+        params = TaskCancelParams(id=task_id)
+        response = await self._rpc(agent_url, "tasks/cancel", params.to_dict())
+        return Task.from_dict(response)
+
+    # ============ Payment Convenience Methods ============
+
+    async def send_payment(
+        self,
+        agent_url: str,
+        amount: str,
+        token: str = "USDC",
+        chain: str = "base",
+        destination: str = "",
+        memo: str = "",
+        reference: str | None = None,
+    ) -> Task:
+        """Send a payment task to a remote agent.
+
+        This wraps tasks/send with a DataPart containing payment details.
+        The remote agent's payment skill handles the actual execution.
         """
-        Request credential verification from another agent.
-
-        Args:
-            recipient_url: Base URL of the verifying agent
-            credential_type: Type of credential (mandate, identity, etc.)
-            credential_data: The credential data to verify
-            verify_signature: Whether to verify signatures
-            verify_expiration: Whether to check expiration
-            verify_chain: Whether to verify mandate chain
-
-        Returns:
-            A2ACredentialResponse with verification result
-
-        Raises:
-            A2AClientError: If request fails
-        """
-        # Discover recipient
-        recipient = await self._discovery.discover_agent(recipient_url)
-
-        if not recipient.available:
-            raise A2AClientError(
-                f"Recipient agent not available: {recipient.last_error}",
-                code="agent_unavailable",
-                recipient_id=recipient.agent_id,
-            )
-
-        # Build request
-        request = A2ACredentialRequest(
-            sender_agent_id=self._config.agent_id,
-            recipient_agent_id=recipient.agent_id,
-            credential_type=credential_type,
-            credential_data=credential_data,
-            verify_signature=verify_signature,
-            verify_expiration=verify_expiration,
-            verify_chain=verify_chain,
+        return await self.send_task(
+            agent_url=agent_url,
+            text=f"Pay {amount} {token} on {chain}" + (f": {memo}" if memo else ""),
+            data={
+                "type": "sardis/payment-request",
+                "amount": amount,
+                "token": token,
+                "chain": chain,
+                "destination": destination,
+                "memo": memo,
+                "reference": reference or str(uuid.uuid4()),
+            },
         )
 
-        # Convert to A2A message
-        message = request.to_a2a_message()
-
-        # Sign if signer available
-        if self._signer:
-            message.signature = self._signer.sign(message)
-
-        # Send request
-        response = await self._send_message(recipient, message)
-
-        # Parse response
-        if response.message_type == A2AMessageType.CREDENTIAL_RESPONSE:
-            payload = response.payload
-            return A2ACredentialResponse(
-                response_id=payload.get("response_id", response.message_id),
-                request_id=request.request_id,
-                sender_agent_id=response.sender_id,
-                recipient_agent_id=response.recipient_id,
-                valid=payload.get("valid", False),
-                signature_valid=payload.get("signature_valid"),
-                not_expired=payload.get("not_expired"),
-                chain_valid=payload.get("chain_valid"),
-                error=payload.get("error") or response.error,
-                error_code=payload.get("error_code") or response.error_code,
-                verification_details=payload.get("verification_details", {}),
-            )
-        elif response.message_type == A2AMessageType.ERROR:
-            return A2ACredentialResponse(
-                request_id=request.request_id,
-                sender_agent_id=response.sender_id,
-                recipient_agent_id=response.recipient_id,
-                valid=False,
-                error=response.error or "Unknown error",
-                error_code=response.error_code or "unknown_error",
-            )
-        else:
-            raise A2AClientError(
-                f"Unexpected response type: {response.message_type}",
-                code="unexpected_response",
-                recipient_id=recipient.agent_id,
-            )
-
-    async def send_message(
+    async def check_balance(
         self,
-        recipient_url: str,
-        message: A2AMessage,
-    ) -> A2AMessage:
-        """
-        Send a raw A2A message to another agent.
-
-        Args:
-            recipient_url: Base URL of the recipient agent
-            message: Message to send
-
-        Returns:
-            Response message
-
-        Raises:
-            A2AClientError: If request fails
-        """
-        # Discover recipient
-        recipient = await self._discovery.discover_agent(recipient_url)
-
-        if not recipient.available:
-            raise A2AClientError(
-                f"Recipient agent not available: {recipient.last_error}",
-                code="agent_unavailable",
-                recipient_id=recipient.agent_id,
-            )
-
-        # Update sender ID
-        message.sender_id = self._config.agent_id
-
-        # Sign if signer available
-        if self._signer and not message.signature:
-            message.signature = self._signer.sign(message)
-
-        return await self._send_message(recipient, message)
-
-    async def _send_message(
-        self,
-        recipient: DiscoveredAgent,
-        message: A2AMessage,
-    ) -> A2AMessage:
-        """Send a message to a discovered agent."""
-        if self._http_client is None:
-            raise A2AClientError(
-                "HTTP client not configured",
-                code="client_not_configured",
-                recipient_id=recipient.agent_id,
-            )
-
-        # Determine A2A endpoint
-        a2a_url = f"{recipient.agent_url}/api/v2/a2a/messages"
-        if recipient.card and recipient.card.a2a_endpoint:
-            a2a_url = recipient.card.a2a_endpoint.url
-
-        logger.info(
-            f"Sending A2A message: type={message.message_type.value}, "
-            f"recipient={recipient.agent_id}, url={a2a_url}"
+        agent_url: str,
+        token: str = "USDC",
+        chain: str = "base",
+    ) -> Task:
+        """Query an agent's balance via the balance-check skill."""
+        return await self.send_task(
+            agent_url=agent_url,
+            text=f"Check {token} balance on {chain}",
+            data={
+                "type": "sardis/balance-query",
+                "token": token,
+                "chain": chain,
+            },
         )
 
-        try:
-            status, data = await self._http_client.post(
-                a2a_url,
-                json=message.to_dict(),
-                headers={
-                    "Content-Type": "application/json",
-                    "X-Sardis-Agent-Id": self._config.agent_id,
-                },
-            )
+    # ============ Internal ============
 
-            if status >= 400:
-                raise A2AClientError(
-                    f"HTTP {status} from {a2a_url}",
-                    code=f"http_{status}",
-                    recipient_id=recipient.agent_id,
-                    details={"response": data},
-                )
+    async def _rpc(
+        self,
+        agent_url: str,
+        method: str,
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Send a JSON-RPC 2.0 request and return the result."""
+        self._request_counter += 1
+        request = JsonRpcRequest(
+            method=method,
+            params=params,
+            id=self._request_counter,
+        )
 
-            # Parse response
-            response = A2AMessage.from_dict(data)
+        logger.info(f"A2A RPC: {method} → {agent_url}")
 
-            logger.info(
-                f"Received A2A response: type={response.message_type.value}, "
-                f"status={response.status.value}"
-            )
+        status, data = await self._http.post(
+            agent_url,
+            json=request.to_dict(),
+            headers={"Content-Type": "application/json"},
+        )
 
-            return response
-
-        except A2AClientError:
-            raise
-        except Exception as e:
-            logger.error(f"A2A message send failed: {e}")
+        if status >= 400:
             raise A2AClientError(
-                f"Failed to send message: {e}",
-                code="send_failed",
-                recipient_id=recipient.agent_id,
-                details={"error": str(e)},
+                f"HTTP {status} from {agent_url}",
+                code=f"http_{status}",
+                details={"response": data},
             )
+
+        # Parse JSON-RPC response
+        if "error" in data and data["error"]:
+            err = data["error"]
+            raise A2AClientError(
+                message=err.get("message", "Unknown error"),
+                code=err.get("code", -1),
+                details=err.get("data"),
+            )
+
+        result = data.get("result")
+        if result is None:
+            raise A2AClientError("Empty result in JSON-RPC response", code="empty_result")
+
+        return result
 
 
 __all__ = [
     "A2AClientError",
     "HttpClient",
-    "MessageSigner",
     "A2AClientConfig",
     "A2AClient",
 ]
