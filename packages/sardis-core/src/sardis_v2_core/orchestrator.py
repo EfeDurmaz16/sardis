@@ -82,6 +82,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol
 
+from sardis_v2_core.dedup_store import DedupStorePort, InMemoryDedupStore
 from sardis_v2_core.mandates import MandateChain, PaymentMandate
 
 logger = logging.getLogger(__name__)
@@ -427,6 +428,7 @@ class PaymentOrchestrator:
         group_policy: GroupPolicyPort | None = None,
         kya_service: KYAVerificationPort | None = None,
         sanctions_service: SanctionsScreeningPort | None = None,
+        dedup_store: DedupStorePort | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -436,8 +438,8 @@ class PaymentOrchestrator:
         self._group_policy = group_policy
         self._kya_service = kya_service
         self._sanctions_service = sanctions_service
+        self._dedup_store: DedupStorePort = dedup_store or InMemoryDedupStore()
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
-        self._executed_mandates: dict[str, PaymentResult] = {}
 
     def _audit(
         self,
@@ -486,9 +488,10 @@ class PaymentOrchestrator:
         payment = chain.payment
         mandate_id = payment.mandate_id
 
-        if mandate_id in self._executed_mandates:
+        existing = await self._dedup_store.check(mandate_id)
+        if existing is not None:
             logger.warning(f"Duplicate execution blocked: mandate_id={mandate_id}")
-            return self._executed_mandates[mandate_id]
+            return existing
 
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
 
@@ -837,7 +840,7 @@ class PaymentOrchestrator:
                 execution_time_ms=execution_time,
                 fastpath=fastpath if fastpath.eligible else None,
             )
-            self._executed_mandates[mandate_id] = result
+            await self._dedup_store.check_and_set(mandate_id, result)
             return result
 
         # Success!
@@ -855,7 +858,7 @@ class PaymentOrchestrator:
             execution_time_ms=execution_time,
             fastpath=fastpath if fastpath.eligible else None,
         )
-        self._executed_mandates[mandate_id] = result
+        await self._dedup_store.check_and_set(mandate_id, result)
         return result
 
     async def reconcile_pending(self, limit: int = 10) -> int:
