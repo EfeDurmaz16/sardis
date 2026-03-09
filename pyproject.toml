@@ -68,7 +68,7 @@ browser-use = ["sardis-browser-use>=1.0.0"]
 composio = ["sardis-composio>=1.0.0"]
 guardrails = ["sardis-guardrails>=1.0.0"]
 all = [
-    "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout]",
+    "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout,guardrails]",
 ]
 dev = [
     "pytest>=8.0",

@@ -68,7 +68,7 @@ jobs:
             **/uv.lock
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra all --extra dev
 
       - name: Run idempotency/replay E2E gate
         run: bash scripts/release/idempotency_replay_e2e_check.sh
