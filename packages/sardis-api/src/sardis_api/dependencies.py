@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import warnings
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, TypeVar
@@ -124,10 +125,21 @@ class DependencyContainer:
         return WalletManager(settings=self._settings)
 
     @cached_property
-    def chain_executor(self) -> Any:
-        """Get chain executor."""
+    def _chain_executor(self) -> Any:
+        """Internal — only used by PaymentOrchestrator."""
         from sardis_chain.executor import ChainExecutor
         return ChainExecutor(settings=self._settings)
+
+    @property
+    def chain_executor(self) -> Any:
+        """Deprecated: use payment_orchestrator instead of accessing chain_executor directly."""
+        warnings.warn(
+            "DependencyContainer.chain_executor is deprecated. "
+            "Use payment_orchestrator for all payment execution.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._chain_executor
 
     @cached_property
     def ledger_store(self) -> Any:
@@ -173,7 +185,7 @@ class DependencyContainer:
         return PaymentOrchestrator(
             wallet_manager=self.wallet_manager,
             compliance=self.compliance_engine,
-            chain_executor=self.chain_executor,
+            chain_executor=self._chain_executor,
             ledger=self.ledger_store,
             group_policy=self.group_policy,
         )
