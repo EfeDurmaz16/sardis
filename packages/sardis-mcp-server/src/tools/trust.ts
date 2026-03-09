@@ -2,7 +2,6 @@
  * Trust tools for MCP server — FIDES identity and trust graph queries
  */
 
-import { getConfig } from '../config.js';
 import { apiRequest } from '../api.js';
 import type {
   ToolDefinition,
@@ -76,12 +75,11 @@ export const trustToolDefinitions: ToolDefinition[] = [
 // Tool handlers
 async function handleCheckAgentTrust(args: unknown): Promise<ToolResult> {
   const parsed = CheckAgentTrustSchema.parse(args);
-  const config = getConfig();
 
   try {
     const result = await apiRequest(
-      `${config.apiBaseUrl}/api/v2/agents/${parsed.agent_id}/trust-score`,
-      { method: 'GET' },
+      'GET',
+      `/api/v2/agents/${parsed.agent_id}/trust-score`,
     );
 
     const data = result as Record<string, unknown>;
@@ -127,12 +125,11 @@ async function handleCheckAgentTrust(args: unknown): Promise<ToolResult> {
 
 async function handleVerifyAgentIdentity(args: unknown): Promise<ToolResult> {
   const parsed = VerifyAgentIdentitySchema.parse(args);
-  const config = getConfig();
 
   try {
     const identity = await apiRequest(
-      `${config.apiBaseUrl}/api/v2/agents/${parsed.agent_id}/fides/identity`,
-      { method: 'GET' },
+      'GET',
+      `/api/v2/agents/${parsed.agent_id}/fides/identity`,
     );
 
     const data = identity as Record<string, unknown>;
@@ -145,8 +142,8 @@ async function handleVerifyAgentIdentity(args: unknown): Promise<ToolResult> {
     if (parsed.target_did) {
       try {
         const pathResult = await apiRequest(
-          `${config.apiBaseUrl}/api/v2/agents/${parsed.agent_id}/trust-path/${encodeURIComponent(parsed.target_did)}`,
-          { method: 'GET' },
+          'GET',
+          `/api/v2/agents/${parsed.agent_id}/trust-path/${encodeURIComponent(parsed.target_did)}`,
         );
 
         const pathData = pathResult as Record<string, unknown>;
@@ -180,12 +177,11 @@ async function handleVerifyAgentIdentity(args: unknown): Promise<ToolResult> {
 
 async function handleViewPolicyHistory(args: unknown): Promise<ToolResult> {
   const parsed = ViewPolicyHistorySchema.parse(args);
-  const config = getConfig();
 
   try {
     const result = await apiRequest(
-      `${config.apiBaseUrl}/api/v2/agents/${parsed.agent_id}/policy-history?limit=${parsed.limit}`,
-      { method: 'GET' },
+      'GET',
+      `/api/v2/agents/${parsed.agent_id}/policy-history?limit=${parsed.limit}`,
     );
 
     const data = result as Record<string, unknown>;
