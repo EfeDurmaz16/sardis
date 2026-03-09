@@ -23,6 +23,8 @@ import { groupToolDefinitions, groupToolHandlers } from './groups.js';
 import { eventToolDefinitions, eventToolHandlers } from './events.js';
 import { guardrailsToolDefinitions, guardrailsToolHandlers } from './guardrails.js';
 import { x402ToolDefinitions, x402ToolHandlers } from './x402.js';
+import { trustToolDefinitions, trustToolHandlers } from './trust.js';
+import { jobToolDefinitions, jobToolHandlers } from './jobs.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -60,6 +62,8 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...eventToolDefinitions,
   ...guardrailsToolDefinitions,
   ...x402ToolDefinitions,
+  ...trustToolDefinitions,
+  ...jobToolDefinitions,
 ];
 
 /**
@@ -81,6 +85,8 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...eventToolHandlers,
   ...guardrailsToolHandlers,
   ...x402ToolHandlers,
+  ...trustToolHandlers,
+  ...jobToolHandlers,
 };
 
 /**
@@ -197,6 +203,20 @@ export const toolCategories = {
     'sardis_x402_pay',
     'sardis_x402_preview_cost',
     'sardis_x402_list_payments',
+  ],
+  trust: [
+    'sardis_check_agent_trust',
+    'sardis_verify_agent_identity',
+    'sardis_view_policy_history',
+  ],
+  jobs: [
+    'sardis_create_job',
+    'sardis_fund_job',
+    'sardis_submit_deliverable',
+    'sardis_evaluate_job',
+    'sardis_get_job',
+    'sardis_list_jobs',
+    'sardis_dispute_job',
   ],
 } as const;
 
