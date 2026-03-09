@@ -82,11 +82,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+
+      - name: Install solc 0.8.24
+        run: svm install 0.8.24
 
       - name: Run gas ceiling tests
         run: forge test --match-test "testGasCeiling_" --gas-report -vv | tee gas-report.txt
@@ -106,17 +111,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
 
-      - name: Show Foundry versions
-        run: |
-          forge --version
-          cast --version
-          anvil --version
+      - name: Install solc 0.8.24
+        run: svm install 0.8.24
 
       - name: Enforce formatting
         run: forge fmt --check
