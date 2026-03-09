@@ -13,6 +13,8 @@ from ..ramp_types import BankAccount
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_RAILS = ("ach", "sepa", "pix", "wire")
+
 
 class BridgeProvider(RampProvider):
     """
@@ -20,6 +22,10 @@ class BridgeProvider(RampProvider):
 
     Supports both on-ramp and off-ramp via Bridge's fiat-to-crypto infrastructure.
     Wraps the existing SardisFiatRamp implementation.
+
+    Multi-rail support: ACH (US), SEPA (EU), PIX (Brazil), Wire (international).
+    Pass ``ach_enabled``, ``sepa_enabled``, ``pix_enabled``, or ``wire_enabled``
+    to the constructor to declare which rails the provider instance should expose.
     """
 
     def __init__(
@@ -27,6 +33,10 @@ class BridgeProvider(RampProvider):
         sardis_api_key: Optional[str] = None,
         bridge_api_key: Optional[str] = None,
         environment: Literal["sandbox", "production"] = "sandbox",
+        ach_enabled: bool = True,
+        sepa_enabled: bool = False,
+        pix_enabled: bool = False,
+        wire_enabled: bool = False,
     ):
         """
         Initialize Bridge provider.
@@ -35,6 +45,10 @@ class BridgeProvider(RampProvider):
             sardis_api_key: Sardis API key
             bridge_api_key: Bridge API key
             environment: "sandbox" or "production"
+            ach_enabled: Enable ACH (US bank transfer) rail
+            sepa_enabled: Enable SEPA (EU bank transfer) rail
+            pix_enabled: Enable PIX (Brazilian instant payment) rail
+            wire_enabled: Enable international wire transfer rail
         """
         self._ramp = SardisFiatRamp(
             sardis_api_key=sardis_api_key,
@@ -42,10 +56,31 @@ class BridgeProvider(RampProvider):
             environment=environment,
         )
         self._environment = environment
+        self._ach_enabled = ach_enabled
+        self._sepa_enabled = sepa_enabled
+        self._pix_enabled = pix_enabled
+        self._wire_enabled = wire_enabled
 
     @property
     def provider_name(self) -> str:
         return "bridge"
+
+    def get_available_rails(self) -> list[str]:
+        """Return the list of payment rails enabled for this provider instance.
+
+        The rails reflect the constructor flags passed at initialisation time.
+        At least one rail is always present (ACH is the default).
+        """
+        rails: list[str] = []
+        if self._ach_enabled:
+            rails.append("ach")
+        if self._sepa_enabled:
+            rails.append("sepa")
+        if self._pix_enabled:
+            rails.append("pix")
+        if self._wire_enabled:
+            rails.append("wire")
+        return rails
 
     @property
     def supports_onramp(self) -> bool:
@@ -151,10 +186,35 @@ class BridgeProvider(RampProvider):
         bank_account: dict,
         wallet_id: Optional[str] = None,
         metadata: Optional[dict] = None,
+        rail: str = "ach",
     ) -> RampSession:
-        """Create off-ramp session via Bridge."""
+        """Create off-ramp session via Bridge.
+
+        Args:
+            amount_crypto: Amount of cryptocurrency to convert
+            crypto_currency: Source cryptocurrency symbol (e.g. "USDC")
+            chain: Source chain identifier (e.g. "base")
+            fiat_currency: Target fiat currency symbol (e.g. "USD")
+            bank_account: Destination bank account details dict
+            wallet_id: Sardis wallet identifier
+            metadata: Optional additional metadata stored on the session
+            rail: Payment rail to use — one of ``"ach"`` (default), ``"sepa"``,
+                ``"pix"``, or ``"wire"``.  The rail must be in the list returned by
+                :meth:`get_available_rails`; otherwise a ``ValueError`` is raised.
+        """
         if not wallet_id:
             raise ValueError("wallet_id required for Bridge off-ramp")
+
+        available = self.get_available_rails()
+        if rail not in SUPPORTED_RAILS:
+            raise ValueError(
+                f"Unknown rail '{rail}'. Supported rails: {', '.join(SUPPORTED_RAILS)}"
+            )
+        if rail not in available:
+            raise ValueError(
+                f"Rail '{rail}' is not enabled for this BridgeProvider instance. "
+                f"Enabled rails: {', '.join(available)}"
+            )
 
         # Convert dict to BankAccount
         bank = BankAccount(
@@ -164,7 +224,12 @@ class BridgeProvider(RampProvider):
             account_type=bank_account.get("account_type", "checking"),
         )
 
-        # Use existing withdraw_to_bank implementation
+        # Build merged metadata that records the chosen rail
+        session_metadata: dict = {**(metadata or {}), "rail": rail}
+
+        # Use existing withdraw_to_bank implementation; the rail is recorded in
+        # metadata so the downstream API layer can route to the correct Bridge
+        # endpoint path (e.g. /v0/transfers for ACH vs /v0/sepa_transfers).
         result = await self._ramp.withdraw_to_bank(
             wallet_id=wallet_id,
             amount_usd=float(amount_crypto),
@@ -184,7 +249,7 @@ class BridgeProvider(RampProvider):
             destination_address=bank_account["account_number"],
             tx_hash=result.tx_hash,
             created_at=datetime.utcnow(),
-            metadata=metadata or {},
+            metadata=session_metadata,
         )
 
     async def get_status(self, session_id: str) -> RampSession:

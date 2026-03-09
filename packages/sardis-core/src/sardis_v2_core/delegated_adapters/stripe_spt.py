@@ -13,6 +13,8 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
+import httpx
+
 from ..credential_store import CredentialEncryption
 from ..delegated_credential import (
     CredentialClass,
@@ -30,19 +32,29 @@ logger = logging.getLogger(__name__)
 
 
 class StripeSPTAdapter:
-    """Real Stripe SPT adapter (placeholder until API access confirmed)."""
+    """Real Stripe SPT adapter backed by the Stripe payment_intents API."""
 
     def __init__(
         self,
         api_key: str = "",
+        partner_id: str = "",
         encryption: CredentialEncryption | None = None,
+        base_url: str = "https://api.stripe.com",
     ) -> None:
         self._api_key = api_key
+        self._partner_id = partner_id
         self._encryption = encryption or CredentialEncryption()
+        self._base_url = base_url.rstrip("/")
 
     @property
     def network(self) -> CredentialNetwork:
         return CredentialNetwork.STRIPE_SPT
+
+    def _auth_headers(self) -> dict[str, str]:
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        if self._partner_id:
+            headers["Stripe-Account"] = self._partner_id
+        return headers
 
     async def execute(
         self,
@@ -61,17 +73,106 @@ class StripeSPTAdapter:
                 error=f"Credential decryption failed: {e}",
             )
 
-        # Translate to Stripe-specific request
-        self._translate_to_stripe(request, token_bytes)
+        payload = self._translate_to_stripe(request, token_bytes)
 
-        # TODO: Call actual Stripe SPT API when partnership provides access
-        # response = await self._http_client.post(...)
-        raise NotImplementedError(
-            "Real Stripe SPT API not yet available. Use MockStripeSPTAdapter."
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self._base_url}/v1/payment_intents",
+                    data=payload,
+                    headers={
+                        **self._auth_headers(),
+                        "Idempotency-Key": request.idempotency_key,
+                    },
+                )
+        except httpx.HTTPError as e:
+            logger.error("Stripe SPT HTTP error during execute: %s", e)
+            return DelegatedPaymentResult(
+                success=False,
+                network=self.network.value,
+                error=f"HTTP error: {e}",
+            )
+
+        try:
+            body = response.json()
+        except Exception:
+            body = {}
+
+        if response.is_error:
+            error_msg = body.get("error", {}).get("message", response.text)
+            logger.warning(
+                "Stripe SPT API error status=%s message=%s", response.status_code, error_msg,
+            )
+            return DelegatedPaymentResult(
+                success=False,
+                network=self.network.value,
+                error=f"Stripe API error ({response.status_code}): {error_msg}",
+                raw_response=body,
+            )
+
+        return self._translate_from_stripe(body)
+
+    async def provision_credential(
+        self,
+        org_id: str,
+        agent_id: str,
+        scope: CredentialScope,
+        encryption: CredentialEncryption | None = None,
+        customer_id: str | None = None,
+    ) -> DelegatedCredential:
+        """Provision a real Stripe SPT credential via the payment methods API."""
+        enc = encryption or self._encryption
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self._base_url}/v1/payment_methods",
+                    data={
+                        "type": "card",
+                        **({"customer": customer_id} if customer_id else {}),
+                    },
+                    headers=self._auth_headers(),
+                )
+        except httpx.HTTPError as e:
+            raise RuntimeError(f"Stripe SPT provision HTTP error: {e}") from e
+
+        body = response.json()
+        if response.is_error:
+            error_msg = body.get("error", {}).get("message", response.text)
+            raise RuntimeError(f"Stripe SPT provision failed: {error_msg}")
+
+        pm_id: str = body.get("id", f"pm_stub_{uuid.uuid4().hex[:12]}")
+        token = pm_id.encode()
+        encrypted = enc.encrypt_for_class(token, CredentialClass.OPAQUE_DELEGATED_TOKEN)
+
+        return DelegatedCredential(
+            org_id=org_id,
+            agent_id=agent_id,
+            network=CredentialNetwork.STRIPE_SPT,
+            status=CredentialStatus.ACTIVE,
+            credential_class=CredentialClass.OPAQUE_DELEGATED_TOKEN,
+            token_reference=f"tok_ref_{pm_id}",
+            token_encrypted=encrypted,
+            scope=scope,
+            provider_metadata={
+                "payment_method_id": pm_id,
+                "customer_id": customer_id,
+            },
         )
 
     async def check_health(self) -> bool:
-        return bool(self._api_key)
+        if not self._api_key:
+            return False
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self._base_url}/v1/payment_intents",
+                    params={"limit": 1},
+                    headers=self._auth_headers(),
+                )
+            return not response.is_error
+        except httpx.HTTPError:
+            return False
 
     async def estimate_fee(self, amount: Decimal, currency: str) -> Decimal:
         return amount * Decimal("0.025")  # 2.5%

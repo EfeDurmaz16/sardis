@@ -130,6 +130,7 @@ from .routers import secure_checkout as secure_checkout_router
 from .routers import settlements as settlements_router
 from .routers import simulation as simulation_router
 from .routers import stripe_funding as stripe_funding_router
+from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
 from .routers import swap as swap_router
@@ -1663,6 +1664,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("Stripe webhook router not enabled: %s", exc)
     else:
         logger.info("Stripe webhook router disabled (missing STRIPE API key/webhook secret)")
+
+    # Mastercard Agent Pay inbound webhooks (always mounted; sig check is env-driven)
+    app.include_router(mastercard_webhooks_router.router)
+    logger.info("Mastercard webhook router enabled at /mastercard/webhooks")
 
     app.dependency_overrides[funding_capabilities_router.get_deps] = (
         lambda: funding_capabilities_router.FundingCapabilitiesDeps(settings=settings)

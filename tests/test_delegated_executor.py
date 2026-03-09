@@ -1,4 +1,4 @@
-"""Tests for delegated executor and Stripe SPT adapter."""
+"""Tests for delegated executor, registry, and Stripe SPT adapter."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -9,6 +9,7 @@ import pytest
 from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
 from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
 from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
 from sardis_v2_core.delegated_credential import (
     CredentialNetwork,
@@ -37,11 +38,12 @@ def _make_encryption() -> CredentialEncryption:
 def _make_active_credential(
     consent_id: str = "dcns_test",
     scope: CredentialScope | None = None,
+    network: CredentialNetwork = CredentialNetwork.STRIPE_SPT,
 ) -> DelegatedCredential:
     return DelegatedCredential(
         org_id="org_1",
         agent_id="agent_1",
-        network=CredentialNetwork.STRIPE_SPT,
+        network=network,
         status=CredentialStatus.ACTIVE,
         token_reference="tok_ref_test",
         token_encrypted=b"enc_test_payload",
@@ -58,6 +60,56 @@ def _make_request(amount: Decimal = Decimal("50")) -> DelegatedPaymentRequest:
         amount=amount,
         currency="USD",
     )
+
+
+# ---------------------------------------------------------------------------
+# DelegatedAdapterRegistry tests
+# ---------------------------------------------------------------------------
+
+class TestDelegatedAdapterRegistry:
+
+    def test_register_and_get(self):
+        registry = DelegatedAdapterRegistry()
+        adapter = MockStripeSPTAdapter()
+        registry.register(CredentialNetwork.STRIPE_SPT, adapter)
+        assert registry.get(CredentialNetwork.STRIPE_SPT) is adapter
+
+    def test_get_missing_raises(self):
+        registry = DelegatedAdapterRegistry()
+        with pytest.raises(KeyError, match="No delegated adapter"):
+            registry.get(CredentialNetwork.VISA_TAP)
+
+    def test_available_networks(self):
+        registry = DelegatedAdapterRegistry()
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        assert CredentialNetwork.STRIPE_SPT in registry.available_networks()
+        assert CredentialNetwork.VISA_TAP not in registry.available_networks()
+
+    def test_contains(self):
+        registry = DelegatedAdapterRegistry()
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        assert CredentialNetwork.STRIPE_SPT in registry
+        assert CredentialNetwork.VISA_TAP not in registry
+
+    def test_len(self):
+        registry = DelegatedAdapterRegistry()
+        assert len(registry) == 0
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        assert len(registry) == 1
+
+    @pytest.mark.asyncio
+    async def test_health_check_all(self):
+        registry = DelegatedAdapterRegistry()
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        results = await registry.health_check_all()
+        assert results["stripe_spt"] is True
+
+    def test_overwrite_warning(self):
+        registry = DelegatedAdapterRegistry()
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        new_adapter = MockStripeSPTAdapter(should_fail=True)
+        registry.register(CredentialNetwork.STRIPE_SPT, new_adapter)
+        assert registry.get(CredentialNetwork.STRIPE_SPT) is new_adapter
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +180,10 @@ class TestMockStripeSPTAdapter:
 
 
 # ---------------------------------------------------------------------------
-# DelegatedExecutionAdapter tests
+# DelegatedExecutionAdapter tests (backward-compatible single-port)
 # ---------------------------------------------------------------------------
 
-class TestDelegatedExecutionAdapter:
+class TestDelegatedExecutionAdapterLegacy:
 
     @pytest.fixture
     def setup(self):
@@ -196,6 +248,60 @@ class TestDelegatedExecutionAdapter:
         intent = ExecutionIntent(amount=Decimal("50"))
         with pytest.raises(RuntimeError, match="No credential_id"):
             await adapter.execute(intent)
+
+
+# ---------------------------------------------------------------------------
+# DelegatedExecutionAdapter tests (registry-based multi-provider)
+# ---------------------------------------------------------------------------
+
+class TestDelegatedExecutionAdapterRegistry:
+
+    @pytest.fixture
+    def setup(self):
+        cred_store = InMemoryCredentialStore(encryption=_make_encryption())
+        registry = DelegatedAdapterRegistry()
+        registry.register(CredentialNetwork.STRIPE_SPT, MockStripeSPTAdapter())
+        adapter = DelegatedExecutionAdapter(
+            registry=registry,
+            credential_store=cred_store,
+        )
+        return adapter, cred_store, registry
+
+    @pytest.mark.asyncio
+    async def test_dispatches_to_correct_adapter(self, setup):
+        adapter, cred_store, _ = setup
+        cred = _make_active_credential(network=CredentialNetwork.STRIPE_SPT)
+        await cred_store.store(cred)
+
+        intent = ExecutionIntent(
+            agent_id="agent_1",
+            amount=Decimal("50"),
+            currency="USD",
+            credential_id=cred.credential_id,
+        )
+        result = await adapter.execute(intent)
+        assert result["execution_mode"] == "delegated_card"
+        assert result["network"] == "stripe_spt"
+
+    @pytest.mark.asyncio
+    async def test_missing_network_adapter_raises(self, setup):
+        adapter, cred_store, _ = setup
+        # Create credential for a network with no registered adapter
+        cred = _make_active_credential(network=CredentialNetwork.VISA_TAP)
+        await cred_store.store(cred)
+
+        intent = ExecutionIntent(
+            agent_id="agent_1",
+            amount=Decimal("50"),
+            credential_id=cred.credential_id,
+        )
+        with pytest.raises(KeyError, match="No delegated adapter"):
+            await adapter.execute(intent)
+
+    @pytest.mark.asyncio
+    async def test_registry_property_exposed(self, setup):
+        adapter, _, registry = setup
+        assert adapter.registry is registry
 
 
 # ---------------------------------------------------------------------------

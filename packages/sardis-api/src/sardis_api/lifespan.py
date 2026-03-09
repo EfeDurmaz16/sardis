@@ -524,6 +524,94 @@ async def lifespan(app: FastAPI):
                 f"{env} mode."
             )
 
+    # Initialize delegated adapter registry for multi-provider dispatch
+    try:
+        from sardis_v2_core.config import load_settings
+        from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
+        from sardis_v2_core.delegated_credential import CredentialNetwork
+
+        settings = load_settings()
+        delegated_registry = DelegatedAdapterRegistry()
+
+        if settings.delegated.stripe_spt_enabled:
+            try:
+                from sardis_v2_core.delegated_adapters.stripe_spt import (
+                    MockStripeSPTAdapter,
+                    StripeSPTAdapter,
+                )
+
+                if settings.delegated.stripe_spt_api_key:
+                    from sardis_v2_core.credential_store import CredentialEncryption
+                    adapter = StripeSPTAdapter(
+                        api_key=settings.delegated.stripe_spt_api_key,
+                        partner_id=settings.delegated.stripe_spt_partner_id,
+                        encryption=CredentialEncryption(),
+                    )
+                else:
+                    adapter = MockStripeSPTAdapter()
+                    logger.info("Stripe SPT: using mock adapter (no API key)")
+                delegated_registry.register(CredentialNetwork.STRIPE_SPT, adapter)
+            except Exception as e:
+                logger.warning("Stripe SPT adapter init failed: %s", e)
+
+        if settings.delegated.visa_tap_enabled:
+            try:
+                from sardis_v2_core.delegated_adapters.visa_tap import (
+                    MockVisaTAPAdapter,
+                    VisaTAPAdapter,
+                )
+
+                if settings.visa_tap.api_key and settings.visa_tap.certificate_path:
+                    from sardis_v2_core.credential_store import CredentialEncryption
+                    adapter = VisaTAPAdapter(
+                        api_key=settings.visa_tap.api_key,
+                        certificate_path=settings.visa_tap.certificate_path,
+                        trid=settings.visa_tap.trid,
+                        environment=settings.visa_tap.environment,
+                        base_url=settings.visa_tap.base_url,
+                        encryption=CredentialEncryption(),
+                    )
+                else:
+                    adapter = MockVisaTAPAdapter()
+                    logger.info("Visa TAP: using mock adapter (no API key/cert)")
+                delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
+            except Exception as e:
+                logger.warning("Visa TAP adapter init failed: %s", e)
+
+        if settings.delegated.mastercard_agent_pay_enabled:
+            try:
+                from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+                    MastercardAgentPayAdapter,
+                    MockMastercardAgentPayAdapter,
+                )
+
+                if settings.mastercard.consumer_key and settings.mastercard.p12_certificate_path:
+                    from sardis_v2_core.credential_store import CredentialEncryption
+                    adapter = MastercardAgentPayAdapter(
+                        consumer_key=settings.mastercard.consumer_key,
+                        p12_certificate_path=settings.mastercard.p12_certificate_path,
+                        key_alias=settings.mastercard.key_alias,
+                        key_password=settings.mastercard.key_password,
+                        environment=settings.mastercard.environment,
+                        base_url=settings.mastercard.base_url,
+                        encryption=CredentialEncryption(),
+                    )
+                else:
+                    adapter = MockMastercardAgentPayAdapter()
+                    logger.info("Mastercard: using mock adapter (no consumer key/cert)")
+                delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
+            except Exception as e:
+                logger.warning("Mastercard adapter init failed: %s", e)
+
+        app.state.delegated_registry = delegated_registry
+        if len(delegated_registry) > 0:
+            logger.info(
+                "Delegated adapter registry initialized: %s",
+                [n.value for n in delegated_registry.available_networks()],
+            )
+    except Exception as e:
+        logger.warning("Delegated adapter registry init failed (non-fatal): %s", e)
+
     app.state.ready = True
     logger.info("Sardis API started successfully")
 

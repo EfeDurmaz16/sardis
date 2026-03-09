@@ -23,10 +23,12 @@ class SettlementService:
         merchant_repo: Any,
         offramp_service: Any | None = None,
         merchant_webhook_service: Any | None = None,
+        cpn_adapter: Any | None = None,
     ):
         self._merchant_repo = merchant_repo
         self._offramp = offramp_service
         self._webhooks = merchant_webhook_service
+        self._cpn_adapter = cpn_adapter
 
     async def settle_session(self, session_id: str) -> None:
         """
@@ -65,6 +67,54 @@ class SettlementService:
                         "currency": session.currency,
                         "settlement_method": "usdc",
                     },
+                )
+            return
+
+        if merchant.settlement_preference == "cpn":
+            # CPN settlement: fund merchant via Circle Payments Network
+            if not self._cpn_adapter:
+                logger.error("Settlement: no CPN adapter configured for session %s", session_id)
+                await self._merchant_repo.update_session(
+                    session_id, settlement_status="failed"
+                )
+                return
+
+            try:
+                from decimal import Decimal
+
+                from sardis_v2_core.funding import FundingRequest
+
+                request = FundingRequest(
+                    amount=Decimal(str(session.amount)),
+                    currency=session.currency or "USD",
+                    description=f"Settlement for session {session_id}",
+                    connected_account_id=getattr(merchant, "cpn_account_id", None),
+                    metadata={"session_id": session_id, "merchant_id": session.merchant_id},
+                )
+                result = await self._cpn_adapter.fund(request)
+
+                await self._merchant_repo.update_session(
+                    session_id,
+                    settlement_status="processing",
+                    offramp_id=result.transfer_id,
+                )
+
+                if self._webhooks and merchant.webhook_url:
+                    await self._webhooks.deliver(
+                        merchant=merchant,
+                        event_type="settlement.initiated",
+                        payload={
+                            "session_id": session_id,
+                            "amount": str(session.amount),
+                            "currency": session.currency,
+                            "settlement_method": "cpn",
+                            "transfer_id": result.transfer_id,
+                        },
+                    )
+            except Exception:
+                logger.exception("CPN settlement failed for session %s", session_id)
+                await self._merchant_repo.update_session(
+                    session_id, settlement_status="failed"
                 )
             return
 

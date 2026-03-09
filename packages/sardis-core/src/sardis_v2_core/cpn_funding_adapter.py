@@ -24,6 +24,7 @@ class CircleCPNFundingAdapter(FundingRailAdapter):
         auth_style: str = "bearer",
         timeout_seconds: float = 20.0,
         program_id: str = "",
+        collection_path: str = "/v1/cpn/collections",
     ) -> None:
         if not api_key:
             raise ValueError("circle_cpn: api_key is required")
@@ -39,6 +40,7 @@ class CircleCPNFundingAdapter(FundingRailAdapter):
         self._auth_style = (auth_style or "bearer").strip().lower()
         self._timeout_seconds = float(timeout_seconds)
         self._program_id = program_id
+        self._collection_path = collection_path
 
     @property
     def provider(self) -> str:
@@ -107,6 +109,52 @@ class CircleCPNFundingAdapter(FundingRailAdapter):
         )
         if not transfer_id:
             raise RuntimeError("circle_cpn_missing_transfer_id")
+
+        amount_value = Decimal(str(body.get("amount") or request.amount))
+        currency_value = str(body.get("currency") or request.currency).upper()
+        status_value = str(body.get("status") or "processing")
+
+        metadata = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
+
+        return FundingResult(
+            provider=self.provider,
+            rail=self.rail,
+            transfer_id=transfer_id,
+            amount=amount_value,
+            currency=currency_value,
+            status=status_value,
+            metadata=metadata,
+        )
+
+    async def collect(self, request: FundingRequest) -> FundingResult:
+        """Initiate a collection (inbound payment) into the Sardis Circle account.
+
+        Mirrors the ``fund()`` flow but POSTs to the collection endpoint so that
+        funds flow *into* the platform account rather than out to a connected
+        account.
+        """
+        payload: dict[str, Any] = {
+            "amount": str(request.amount),
+            "currency": request.currency.upper(),
+            "description": request.description,
+            "metadata": request.metadata,
+        }
+        if request.connected_account_id:
+            payload["connected_account_id"] = request.connected_account_id
+
+        body = await self._request("POST", self._collection_path, payload=payload)
+
+        transfer_id = str(
+            body.get("id")
+            or body.get("collection_id")
+            or body.get("collectionId")
+            or body.get("payment_id")
+            or body.get("paymentId")
+            or body.get("transfer_id")
+            or ""
+        )
+        if not transfer_id:
+            raise RuntimeError("circle_cpn_missing_collection_id")
 
         amount_value = Decimal(str(body.get("amount") or request.amount))
         currency_value = str(body.get("currency") or request.currency).upper()

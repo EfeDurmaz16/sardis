@@ -1,6 +1,7 @@
 """Delegated execution adapter — ControlPlane ChainExecutor implementation.
 
 Loads credential from store, validates scope, calls DelegatedExecutorPort.
+Supports multi-provider dispatch via DelegatedAdapterRegistry.
 """
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ import logging
 from typing import Any
 
 from sardis_v2_core.credential_store import CredentialStore
+from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
 from sardis_v2_core.delegated_credential import CredentialStatus
 from sardis_v2_core.delegated_executor import (
     DelegatedExecutorPort,
@@ -19,15 +21,33 @@ logger = logging.getLogger(__name__)
 
 
 class DelegatedExecutionAdapter:
-    """Adapts DelegatedExecutorPort to the ControlPlane ChainExecutor interface."""
+    """Adapts DelegatedExecutorPort to the ControlPlane ChainExecutor interface.
+
+    Accepts either a single executor_port (backward-compatible) or a
+    DelegatedAdapterRegistry for multi-provider dispatch based on the
+    credential's network field.
+    """
 
     def __init__(
         self,
-        executor_port: DelegatedExecutorPort,
         credential_store: CredentialStore,
+        registry: DelegatedAdapterRegistry | None = None,
+        executor_port: DelegatedExecutorPort | None = None,
     ) -> None:
-        self._executor = executor_port
         self._cred_store = credential_store
+
+        if registry is not None:
+            self._registry = registry
+        elif executor_port is not None:
+            # Backward-compatible: wrap single adapter in a registry
+            self._registry = DelegatedAdapterRegistry()
+            self._registry.register(executor_port.network, executor_port)
+        else:
+            self._registry = DelegatedAdapterRegistry()
+
+    @property
+    def registry(self) -> DelegatedAdapterRegistry:
+        return self._registry
 
     async def execute(self, intent: ExecutionIntent) -> dict[str, Any]:
         cred_id = intent.credential_id or intent.metadata.get("credential_id", "")
@@ -51,6 +71,9 @@ class DelegatedExecutionAdapter:
         if not ok:
             raise RuntimeError(f"Credential scope check failed: {reason}")
 
+        # Dispatch to the correct adapter based on credential network
+        executor = self._registry.get(credential.network)
+
         request = DelegatedPaymentRequest(
             credential_reference=credential.token_reference,
             consent_reference=credential.consent_id or "",
@@ -62,7 +85,7 @@ class DelegatedExecutionAdapter:
             metadata=intent.metadata,
         )
 
-        result = await self._executor.execute(request, credential)
+        result = await executor.execute(request, credential)
 
         if not result.success:
             raise RuntimeError(

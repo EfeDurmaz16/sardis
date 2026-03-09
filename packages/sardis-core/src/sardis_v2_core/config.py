@@ -173,6 +173,13 @@ class BridgeCardsConfig(BaseSettings):
     cards_path_map_json: str = ""
     cards_method_map_json: str = ""
 
+    # Multi-rail support
+    ach_enabled: bool = True
+    sepa_enabled: bool = False
+    pix_enabled: bool = False
+    wire_enabled: bool = False
+    default_rail: str = "ach"
+
     class Config:
         env_prefix = "BRIDGE_"
 
@@ -183,10 +190,48 @@ class DelegatedCredentialConfig(BaseSettings):
     encryption_key: str = ""  # Fernet key for credential token encryption
     enabled_networks: str = ""  # Comma-separated: stripe_spt,visa_tap,mastercard_agent_pay
     stripe_spt_enabled: bool = False
+    visa_tap_enabled: bool = False
+    mastercard_agent_pay_enabled: bool = False
     credential_ttl_days: int = 90
+
+    # Stripe SPT
+    stripe_spt_api_key: str = ""
+    stripe_spt_webhook_secret: str = ""
+    stripe_spt_partner_id: str = ""
 
     class Config:
         env_prefix = "SARDIS_DELEGATED_"
+
+
+class VisaTAPConfig(BaseSettings):
+    """Visa TAP (Token Authentication Protocol) configuration."""
+
+    api_key: str = ""
+    certificate_path: str = ""  # mTLS client certificate
+    trid: str = ""  # Token Requestor ID
+    environment: Literal["sandbox", "production"] = "sandbox"
+    webhook_secret: str = ""
+    base_url: str = "https://sandbox.api.visa.com"
+    timeout_seconds: float = 30.0
+
+    class Config:
+        env_prefix = "VISA_TAP_"
+
+
+class MastercardConfig(BaseSettings):
+    """Mastercard Agent Pay / MDES configuration."""
+
+    consumer_key: str = ""
+    p12_certificate_path: str = ""  # PKCS12 certificate
+    key_alias: str = ""
+    key_password: str = ""
+    environment: Literal["sandbox", "production"] = "sandbox"
+    webhook_secret: str = ""
+    base_url: str = "https://sandbox.api.mastercard.com"
+    timeout_seconds: float = 30.0
+
+    class Config:
+        env_prefix = "MASTERCARD_"
 
 
 class CardStackConfig(BaseSettings):
@@ -319,6 +364,8 @@ class SardisSettings(BaseSettings):
     bridge_cards: BridgeCardsConfig = Field(default_factory=BridgeCardsConfig)
     cards: CardStackConfig = Field(default_factory=CardStackConfig)
     delegated: DelegatedCredentialConfig = Field(default_factory=DelegatedCredentialConfig)
+    visa_tap: VisaTAPConfig = Field(default_factory=VisaTAPConfig)
+    mastercard: MastercardConfig = Field(default_factory=MastercardConfig)
     funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
 
     # Chain execution mode
