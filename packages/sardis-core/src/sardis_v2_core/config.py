@@ -276,6 +276,37 @@ class FundingRoutingConfig(BaseSettings):
         env_prefix = "SARDIS_FUNDING_"
 
 
+class FidesConfig(BaseSettings):
+    """FIDES trust graph integration configuration."""
+
+    enabled: bool = False
+    trust_url: str = "http://localhost:3200"
+    discovery_url: str = "http://localhost:3100"
+    platform_did: str = "did:fides:sardis-platform"
+    min_trust_for_payment: float = 0.3
+    request_timeout_seconds: int = 5
+
+    class Config:
+        env_prefix = "SARDIS_FIDES_"
+
+
+class ERC8183Config(BaseSettings):
+    """ERC-8183 Agentic Commerce integration configuration."""
+
+    enabled: bool = False
+    contract_address: str = ""  # SardisJobManager address
+    registry_address: str = ""  # SardisJobRegistry address
+    trust_hook_address: str = ""  # SardisTrustHook address
+    reputation_hook_address: str = ""  # SardisReputationHook address
+    default_deadline_hours: int = 72
+    max_deadline_hours: int = 720  # 30 days
+    min_evaluator_trust_score: float = 0.5
+    reputation_feedback_enabled: bool = True
+
+    class Config:
+        env_prefix = "SARDIS_ERC8183_"
+
+
 class SardisSettings(BaseSettings):
     """Main Sardis configuration."""
 
@@ -385,6 +416,8 @@ class SardisSettings(BaseSettings):
     visa_tap: VisaTAPConfig = Field(default_factory=VisaTAPConfig)
     mastercard: MastercardConfig = Field(default_factory=MastercardConfig)
     funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
+    fides: FidesConfig = Field(default_factory=FidesConfig)
+    erc8183: ERC8183Config = Field(default_factory=ERC8183Config)
 
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"

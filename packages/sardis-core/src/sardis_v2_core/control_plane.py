@@ -66,6 +66,9 @@ class ControlPlane:
         cap_engine: TransactionCapEngine | None = None,
         receipt_store: Any | None = None,
         outcome_tracker: Any | None = None,
+        trust_scorer: Any | None = None,
+        fides_config: Any | None = None,
+        agit_policy_engine: Any | None = None,
     ) -> None:
         self._policy = policy_evaluator
         self._compliance = compliance_checker
@@ -76,6 +79,9 @@ class ControlPlane:
         self._cap_engine = cap_engine
         self._receipt_store = receipt_store
         self._outcome_tracker = outcome_tracker
+        self._trust_scorer = trust_scorer
+        self._fides_config = fides_config
+        self._agit_policy_engine = agit_policy_engine
 
     async def submit(self, intent: ExecutionIntent) -> ExecutionResult:
         """Execute an intent through the full pipeline."""
@@ -150,6 +156,65 @@ class ControlPlane:
                         success=False,
                         status=IntentStatus.REJECTED,
                         error=intent.error,
+                    )
+
+            # Step 1.25: AGIT policy chain integrity (if enabled)
+            if self._agit_policy_engine and intent.agent_id:
+                try:
+                    import asyncio
+                    verification = await asyncio.to_thread(
+                        self._agit_policy_engine.verify_policy_chain, intent.agent_id,
+                    )
+                    if not verification.valid:
+                        intent.status = IntentStatus.REJECTED
+                        intent.error = "policy_chain_tampered"
+                        logger.warning(
+                            "ControlPlane: intent=%s blocked — policy chain tampered at commit %s",
+                            intent.intent_id, verification.broken_at,
+                        )
+                        return ExecutionResult(
+                            intent_id=intent.intent_id,
+                            success=False,
+                            status=IntentStatus.REJECTED,
+                            error="policy_chain_tampered",
+                            data={
+                                "broken_at": verification.broken_at,
+                                "chain_length": verification.chain_length,
+                                "error": verification.error,
+                            },
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "ControlPlane: AGIT chain check failed for intent=%s: %s (non-blocking)",
+                        intent.intent_id, e,
+                    )
+
+            # Step 1.5a: FIDES trust gate (if enabled)
+            if self._trust_scorer and self._fides_config and intent.metadata.get("fides_did"):
+                try:
+                    trust_score = await self._trust_scorer.calculate_trust(
+                        agent_id=intent.agent_id,
+                        agent_did=intent.metadata["fides_did"],
+                    )
+                    min_trust = getattr(self._fides_config, "min_trust_for_payment", 0.3)
+                    if trust_score.overall < min_trust:
+                        intent.status = IntentStatus.REJECTED
+                        intent.error = f"trust_score_insufficient: {trust_score.overall:.2f} < {min_trust}"
+                        return ExecutionResult(
+                            intent_id=intent.intent_id,
+                            success=False,
+                            status=IntentStatus.REJECTED,
+                            error=intent.error,
+                            data={
+                                "trust_score": trust_score.overall,
+                                "trust_tier": trust_score.tier.value,
+                                "min_required": min_trust,
+                            },
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "ControlPlane: FIDES trust check failed for intent=%s: %s (non-blocking)",
+                        intent.intent_id, e,
                     )
 
             # Step 1.5: Anomaly risk assessment (optional)

@@ -22,6 +22,7 @@ class IntentSource(str, Enum):
     CARD = "card"
     DELEGATED_CARD = "delegated_card"
     X402 = "x402"
+    ERC8183 = "erc8183"
 
 
 class IntentStatus(str, Enum):

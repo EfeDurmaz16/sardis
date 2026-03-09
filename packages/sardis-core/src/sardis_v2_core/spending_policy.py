@@ -260,6 +260,7 @@ class SpendingPolicy:
         policy_store: Any | None = None,  # SpendingPolicyStore for DB-backed enforcement
         kya_client: Any | None = None,  # EASKYAClient for attestation verification
         merchant_trust_service: Any | None = None,  # MerchantTrustService for trust-based checks
+        trust_score_override: float | None = None,
     ) -> tuple[bool, str]:
         """
         Evaluate a payment request against this policy.
@@ -335,6 +336,12 @@ class SpendingPolicy:
         # Cap on a single payment.  Category-specific overrides (e.g.
         # "groceries max $200/tx") take precedence over the global limit.
         effective_per_tx = self._get_effective_per_tx_limit(mcc_code, merchant_category)
+        # Apply trust score override (most-restrictive-wins)
+        if trust_score_override is not None:
+            from sardis_v2_core.kya_trust_scoring import TrustScorer, TRUST_TIER_LIMITS
+            trust_tier = TrustScorer._get_tier(trust_score_override)
+            trust_limits = TRUST_TIER_LIMITS[trust_tier]
+            effective_per_tx = min(effective_per_tx, trust_limits["max_per_tx"])
         if total_cost > effective_per_tx:
             return False, "per_transaction_limit"
 
