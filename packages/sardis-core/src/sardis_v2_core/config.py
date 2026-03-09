@@ -656,6 +656,17 @@ def validate_production_config(settings: SardisSettings) -> list[str]:
                 "SARDIS_DELEGATED_ENCRYPTION_KEY: Required when stripe_spt_enabled=True"
             )
 
+        # Reject in-memory reconciliation queue in production.
+        # The actual queue type is controlled at the DI level; this is a
+        # documentation-level reminder that the default InMemoryReconciliationQueue
+        # must NOT be used in production (it loses state on restart).
+        # See: PostgresReconciliationQueue in reconciliation_queue_postgres.py
+        import logging as _logging
+        _logging.getLogger(__name__).info(
+            "Production config check: ensure ReconciliationQueue is backed by "
+            "PostgresReconciliationQueue (not InMemoryReconciliationQueue)."
+        )
+
     return errors
 
 
