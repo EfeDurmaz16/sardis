@@ -888,8 +888,45 @@ async def transfer_crypto(
                         account_type=wallet.account_type,
                         smart_account_address=wallet.smart_account_address,
                     )
-                    fee_receipt = await deps.chain_executor.dispatch_payment(fee_mandate)
-                    fee_tx_hash = fee_receipt.tx_hash if hasattr(fee_receipt, "tx_hash") else str(fee_receipt)
+                    _fee_proof = VCProof(
+                        verification_method=f"wallet:{wallet_id}#key-1",
+                        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        proof_value="platform-fee-stub",
+                    )
+                    _now_ts = int(time.time())
+                    fee_chain = MandateChain(
+                        intent=IntentMandate(
+                            mandate_id=f"intent_fee_{digest[:16]}",
+                            mandate_type="intent",
+                            issuer=fee_mandate.issuer,
+                            subject=fee_mandate.subject,
+                            expires_at=_now_ts + 300,
+                            nonce=f"intent_fee_{digest}",
+                            proof=_fee_proof,
+                            domain=fee_mandate.domain,
+                            purpose="intent",
+                            requested_amount=fee_mandate.amount_minor,
+                        ),
+                        cart=CartMandate(
+                            mandate_id=f"cart_fee_{digest[:16]}",
+                            mandate_type="cart",
+                            issuer=fee_mandate.issuer,
+                            subject=fee_mandate.subject,
+                            expires_at=_now_ts + 300,
+                            nonce=f"cart_fee_{digest}",
+                            proof=_fee_proof,
+                            domain=fee_mandate.domain,
+                            purpose="cart",
+                            line_items=[{"description": "platform_fee", "amount_minor": fee_mandate.amount_minor}],
+                            merchant_domain="sardis.sh",
+                            currency=transfer_request.token,
+                            subtotal_minor=fee_mandate.amount_minor,
+                            taxes_minor=0,
+                        ),
+                        payment=fee_mandate,
+                    )
+                    fee_result = await deps.payment_orchestrator.execute_chain(fee_chain)
+                    fee_tx_hash = fee_result.chain_tx_hash if hasattr(fee_result, "chain_tx_hash") else str(fee_result)
                     logger.info(
                         "Platform fee collected: %s %s → %s (tx: %s)",
                         fee_calc.fee_amount, transfer_request.token, treasury_addr, fee_tx_hash,
@@ -2313,6 +2350,7 @@ async def execute_offramp_send(
     wallet_id: str,
     offramp_id: str,
     principal: Principal = Depends(require_principal),
+    deps: WalletDependencies = Depends(get_deps),
 ) -> OfframpExecuteResponse:
     """Step 3: Send USDC on-chain to Coinbase's deposit address.
 
@@ -2357,29 +2395,92 @@ async def execute_offramp_send(
     source_address = row.get("source_address")
     chain = row.get("source_chain", "base")
 
-    # Execute on-chain USDC send via the wallet's MPC signer
-    # This uses the same execution path as normal payments
-    from sardis_api.dependencies import get_chain_executor
-
-    chain_exec = get_chain_executor()
-    if chain_exec is None:
+    # Execute on-chain USDC send via the PaymentOrchestrator (policy → compliance → chain → ledger)
+    if not deps.payment_orchestrator:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="chain_executor_not_available",
+            detail="payment_orchestrator_not_available",
         )
 
+    import hashlib
+    import time
+
+    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, PaymentMandate, VCProof
+    from sardis_v2_core.orchestrator import ChainExecutionError, ComplianceViolationError, PolicyViolationError
+
+    _now_ts = int(time.time())
+    _stub_proof = VCProof(
+        verification_method=f"wallet:{wallet_id}#key-1",
+        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        proof_value="offramp-stub",
+    )
+    _amount_minor = int(float(sell_amount) * 1_000_000)
+    _audit_hash = hashlib.sha256(f"offramp:{wallet_id}:{to_address}:{sell_amount}".encode()).hexdigest()
+    _agent_subject = row.get("agent_id", f"wallet:{wallet_id}")
+    offramp_mandate = PaymentMandate(
+        mandate_id=f"offramp_{offramp_id[:16]}",
+        mandate_type="payment",
+        issuer=f"wallet:{wallet_id}",
+        subject=_agent_subject,
+        expires_at=_now_ts + 300,
+        nonce=f"offramp_{offramp_id}",
+        proof=_stub_proof,
+        domain="sardis.sh",
+        purpose="checkout",
+        chain=chain,
+        token="USDC",
+        amount_minor=_amount_minor,
+        destination=to_address,
+        audit_hash=_audit_hash,
+        wallet_id=wallet_id,
+    )
+    _offramp_chain = MandateChain(
+        intent=IntentMandate(
+            mandate_id=f"intent_offramp_{offramp_id[:16]}",
+            mandate_type="intent",
+            issuer=f"wallet:{wallet_id}",
+            subject=_agent_subject,
+            expires_at=_now_ts + 300,
+            nonce=f"intent_offramp_{offramp_id}",
+            proof=_stub_proof,
+            domain="sardis.sh",
+            purpose="intent",
+            requested_amount=_amount_minor,
+        ),
+        cart=CartMandate(
+            mandate_id=f"cart_offramp_{offramp_id[:16]}",
+            mandate_type="cart",
+            issuer=f"wallet:{wallet_id}",
+            subject=_agent_subject,
+            expires_at=_now_ts + 300,
+            nonce=f"cart_offramp_{offramp_id}",
+            proof=_stub_proof,
+            domain="sardis.sh",
+            purpose="cart",
+            line_items=[{"description": f"Coinbase Offramp {offramp_id}", "amount_minor": _amount_minor}],
+            merchant_domain="sardis.sh",
+            currency="USDC",
+            subtotal_minor=_amount_minor,
+            taxes_minor=0,
+        ),
+        payment=offramp_mandate,
+    )
+
     try:
-        tx_result = await chain_exec.dispatch_payment(
-            from_address=source_address,
-            to_address=to_address,
-            amount_usdc=sell_amount,
-            chain=chain,
-            wallet_id=wallet_id,
-            memo=f"Coinbase Offramp {offramp_id}",
-        )
-        tx_hash = getattr(tx_result, "tx_hash", str(tx_result))
-    except Exception as e:
+        orch_result = await deps.payment_orchestrator.execute_chain(_offramp_chain)
+        tx_hash = orch_result.chain_tx_hash if hasattr(orch_result, "chain_tx_hash") else str(orch_result)
+    except (PolicyViolationError, ComplianceViolationError, ChainExecutionError) as e:
         logger.error("Offramp on-chain send failed: offramp_id=%s error=%s", offramp_id, e)
+        await Database.execute(
+            "UPDATE offramp_transactions SET status = $1, error = $2 WHERE offramp_id = $3",
+            "failed", str(e), offramp_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"on_chain_send_failed: {e}",
+        )
+    except Exception as e:
+        logger.error("Offramp on-chain send unexpected error: offramp_id=%s error=%s", offramp_id, e)
         await Database.execute(
             "UPDATE offramp_transactions SET status = $1, error = $2 WHERE offramp_id = $3",
             "failed", str(e), offramp_id,
