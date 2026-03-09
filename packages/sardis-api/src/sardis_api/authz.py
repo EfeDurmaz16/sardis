@@ -36,6 +36,20 @@ class Principal:
             return "admin" in self.scopes or "*" in self.scopes
         return bool(self.user and self.user.role == "admin")
 
+    @property
+    def org_id(self) -> str:
+        """Compatibility alias used by older handlers/tests."""
+        return self.organization_id
+
+    @property
+    def user_id(self) -> str:
+        """Best-effort actor identifier for audit and ownership checks."""
+        if self.user is not None:
+            return self.user.username
+        if self.api_key is not None:
+            return self.api_key.key_id
+        return self.organization_id
+
 
 async def require_principal(
     request: Request,

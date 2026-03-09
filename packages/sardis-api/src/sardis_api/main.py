@@ -903,6 +903,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("x402 facilitator router disabled (set SARDIS_X402_FACILITATOR_ENABLED=true to enable)")
 
+    # ERC-8183 agentic commerce router (feature-flag gated)
+    if settings.erc8183.enabled:
+        from .routers import erc8183 as erc8183_router
+        app.include_router(erc8183_router.router, prefix="/api/v2", tags=["erc8183"])
+        logger.info("ERC-8183 agentic commerce router registered at /api/v2/erc8183")
+    else:
+        logger.info("ERC-8183 router disabled (set SARDIS_ERC8183_ENABLED=true to enable)")
+
     subscription_repo = SubscriptionRepository(dsn=database_url if use_postgres else None)
     recurring_billing_service = RecurringBillingService(
         subscription_repo=subscription_repo,
@@ -1700,6 +1708,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         kya_service=kya_service,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
+
+    # FIDES identity & trust routes (feature-flag gated)
+    if settings.fides.enabled:
+        from .routers import fides_identity as fides_identity_router
+
+        app.dependency_overrides[fides_identity_router.get_agent_repo] = lambda: agent_repo
+        app.include_router(fides_identity_router.router, prefix="/api/v2", tags=["fides-identity"])
 
     group_repo = AgentGroupRepository(dsn="memory://")
     app.dependency_overrides[groups_router.get_deps] = lambda: groups_router.GroupDependencies(  # type: ignore[arg-type]
