@@ -141,6 +141,15 @@ def _to_payment_response(row: dict[str, Any]) -> TreasuryPaymentResponse:
     )
 
 
+def _require_webhook_secret(secret: str | None, env: str) -> None:
+    """Fail-closed: require webhook secret in all environments except dev/local."""
+    if not secret and env not in ("dev", "development", "local"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook secret not configured — refusing to process unsigned webhook",
+        )
+
+
 def _map_event_type_to_status(event_type: str) -> str | None:
     normalized = (event_type or "").strip().upper()
     mapping = {
@@ -455,11 +464,7 @@ async def receive_lithic_payments_webhook(
     env = (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower()
     secret = deps.lithic_webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET", "")
 
-    if not secret and env in {"prod", "production"}:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="LITHIC_WEBHOOK_SECRET is required in production",
-        )
+    _require_webhook_secret(secret, env)
     if secret:
         signature = request.headers.get("x-lithic-hmac", "")
         if not signature:

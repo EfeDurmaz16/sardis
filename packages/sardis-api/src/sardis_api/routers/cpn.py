@@ -40,6 +40,15 @@ def _extract_signature(raw_signature: str) -> str:
     return value
 
 
+def _require_webhook_secret(secret: str | None, env: str) -> None:
+    """Fail-closed: require webhook secret in all environments except dev/local."""
+    if not secret and env not in ("dev", "development", "local"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook secret not configured — refusing to process unsigned webhook",
+        )
+
+
 def _verify_signature(secret: str, body: bytes, signature_header: str) -> bool:
     provided = _extract_signature(signature_header)
     if not provided:
@@ -71,7 +80,7 @@ async def cpn_security_policy(
     env = (deps.environment or os.getenv("SARDIS_ENVIRONMENT", "dev")).strip().lower()
     return {
         "provider": "circle_cpn",
-        "signature_required": env in {"prod", "production"},
+        "signature_required": env not in ("dev", "development", "local"),
         "replay_protection_ttl_seconds": 7 * 24 * 60 * 60,
         "secret_configured": bool(deps.webhook_secret),
     }
@@ -175,11 +184,7 @@ async def cpn_webhook(
         or request.headers.get("x-signature", "")
     )
 
-    if env in {"prod", "production"} and not deps.webhook_secret:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="cpn_webhook_secret_required_in_production",
-        )
+    _require_webhook_secret(deps.webhook_secret, env)
 
     if deps.webhook_secret and not _verify_signature(deps.webhook_secret, body, signature):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_webhook_signature")
