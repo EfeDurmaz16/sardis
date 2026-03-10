@@ -11,6 +11,10 @@ import {
   Search,
   Filter,
   Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react'
 import clsx from 'clsx'
 import {
@@ -18,6 +22,10 @@ import {
   useResolveException,
   useEscalateException,
   useRetryException,
+  useRetryPolicies,
+  useCreateRetryPolicy,
+  useUpdateRetryPolicy,
+  useDeleteRetryPolicy,
 } from '../hooks/useApi'
 
 /* ─── Types ─── */
@@ -173,6 +181,435 @@ function ResolveInput({ value, onChange, onConfirm, onCancel, loading }: Resolve
   )
 }
 
+/* ─── Retry Policy types ─── */
+
+interface RetryPolicy {
+  id: string
+  name: string
+  exception_type: string
+  max_retries: number
+  retry_delay_seconds: number
+  backoff_multiplier: number
+  fallback_action: string
+  fallback_rail: string | null
+  enabled: boolean
+  audit_trail: boolean
+  safeguards: {
+    max_total_amount: number | null
+    require_approval_on_fallback: boolean
+  }
+}
+
+const EXCEPTION_TYPES = [
+  'chain_failure',
+  'timeout',
+  'kill_switch_active',
+]
+
+const FALLBACK_ACTIONS = ['escalate', 'block', 'alternative_rail', 'manual_review']
+
+const EMPTY_POLICY: Omit<RetryPolicy, 'id'> = {
+  name: '',
+  exception_type: 'chain_failure',
+  max_retries: 3,
+  retry_delay_seconds: 10,
+  backoff_multiplier: 2.0,
+  fallback_action: 'escalate',
+  fallback_rail: null,
+  enabled: true,
+  audit_trail: true,
+  safeguards: { max_total_amount: null, require_approval_on_fallback: true },
+}
+
+/* ─── Policy Modal ─── */
+
+interface PolicyModalProps {
+  initial: RetryPolicy | null
+  onClose: () => void
+  onSave: (policy: RetryPolicy) => void
+  saving: boolean
+}
+
+function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
+  const [form, setForm] = useState<RetryPolicy>(
+    initial ?? { id: '', ...EMPTY_POLICY }
+  )
+
+  function set<K extends keyof RetryPolicy>(key: K, value: RetryPolicy[K]) {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  const inputCls =
+    'w-full px-3 py-2 bg-dark-400 border border-dark-100 text-white text-sm focus:outline-none focus:border-sardis-500/50'
+  const labelCls = 'block text-xs text-gray-400 mb-1'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-dark-300 border border-dark-100 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-white">
+            {initial ? 'Edit Retry Policy' : 'New Retry Policy'}
+          </h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white">
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Policy Name</label>
+            <input
+              className={inputCls}
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              placeholder="e.g. Gas Retry"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Exception Type</label>
+              <select
+                className={inputCls}
+                value={form.exception_type}
+                onChange={e => set('exception_type', e.target.value)}
+              >
+                {EXCEPTION_TYPES.map(t => (
+                  <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls}>Fallback Action</label>
+              <select
+                className={inputCls}
+                value={form.fallback_action}
+                onChange={e => set('fallback_action', e.target.value)}
+              >
+                {FALLBACK_ACTIONS.map(a => (
+                  <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>Max Retries</label>
+              <input
+                type="number"
+                className={inputCls}
+                min={0}
+                max={10}
+                value={form.max_retries}
+                onChange={e => set('max_retries', Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Delay (s)</label>
+              <input
+                type="number"
+                className={inputCls}
+                min={1}
+                max={600}
+                value={form.retry_delay_seconds}
+                onChange={e => set('retry_delay_seconds', Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Backoff</label>
+              <input
+                type="number"
+                className={inputCls}
+                min={1.0}
+                max={5.0}
+                step={0.1}
+                value={form.backoff_multiplier}
+                onChange={e => set('backoff_multiplier', Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          {form.fallback_action === 'alternative_rail' && (
+            <div>
+              <label className={labelCls}>Fallback Rail</label>
+              <input
+                className={inputCls}
+                value={form.fallback_rail ?? ''}
+                onChange={e => set('fallback_rail', e.target.value || null)}
+                placeholder="e.g. stripe, coinbase"
+              />
+            </div>
+          )}
+
+          <div className="border border-dark-100 p-3 space-y-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Safeguards</p>
+            <div>
+              <label className={labelCls}>Max Total Amount (USDC, blank = unlimited)</label>
+              <input
+                type="number"
+                className={inputCls}
+                min={0}
+                value={form.safeguards.max_total_amount ?? ''}
+                onChange={e =>
+                  set('safeguards', {
+                    ...form.safeguards,
+                    max_total_amount: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                placeholder="Unlimited"
+              />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-sardis-500"
+                checked={form.safeguards.require_approval_on_fallback}
+                onChange={e =>
+                  set('safeguards', {
+                    ...form.safeguards,
+                    require_approval_on_fallback: e.target.checked,
+                  })
+                }
+              />
+              <span className="text-sm text-gray-300">Require approval on fallback</span>
+            </label>
+          </div>
+
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-sardis-500"
+                checked={form.enabled}
+                onChange={e => set('enabled', e.target.checked)}
+              />
+              <span className="text-sm text-gray-300">Enabled</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="accent-sardis-500"
+                checked={form.audit_trail}
+                onChange={e => set('audit_trail', e.target.checked)}
+              />
+              <span className="text-sm text-gray-300">Audit trail</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={() => onSave(form)}
+            disabled={saving || !form.name}
+            className={clsx(
+              'px-5 py-2 bg-sardis-500/10 text-sardis-400 border border-sardis-500/30 text-sm font-medium flex items-center gap-1.5 transition-all',
+              saving || !form.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sardis-500/20'
+            )}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {initial ? 'Save Changes' : 'Create Policy'}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-dark-400 text-gray-400 border border-dark-100 text-sm font-medium hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Retry Policies Section ─── */
+
+function RetryPoliciesSection() {
+  const { data, isLoading } = useRetryPolicies()
+  const createPolicy = useCreateRetryPolicy()
+  const updatePolicy = useUpdateRetryPolicy()
+  const deletePolicy = useDeleteRetryPolicy()
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<RetryPolicy | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const policies: RetryPolicy[] = Array.isArray(data) ? (data as unknown as RetryPolicy[]) : []
+
+  function openCreate() {
+    setEditing(null)
+    setModalOpen(true)
+  }
+
+  function openEdit(policy: RetryPolicy) {
+    setEditing(policy)
+    setModalOpen(true)
+  }
+
+  async function handleSave(policy: RetryPolicy) {
+    if (editing) {
+      await updatePolicy.mutateAsync({ id: editing.id, data: policy })
+    } else {
+      await createPolicy.mutateAsync(policy)
+    }
+    setModalOpen(false)
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    try {
+      await deletePolicy.mutateAsync(id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const saving = createPolicy.isPending || updatePolicy.isPending
+
+  return (
+    <div className="space-y-3">
+      {modalOpen && (
+        <PolicyModal
+          initial={editing}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          saving={saving}
+        />
+      )}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-5 h-5 text-sardis-400" />
+          <h2 className="text-lg font-semibold text-white">Retry Policies</h2>
+          <span className="text-xs text-gray-500 bg-dark-400 border border-dark-100 px-2 py-0.5">
+            {policies.length}
+          </span>
+        </div>
+        <button
+          onClick={openCreate}
+          className="px-4 py-2 bg-sardis-500/10 text-sardis-400 border border-sardis-500/30 text-sm font-medium flex items-center gap-1.5 hover:bg-sardis-500/20 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          Add Policy
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Policies are evaluated deterministically and written into exception metadata for audit.
+        Live retry execution is not wired in yet, so fallback actions remain operator guidance rather than automated settlement changes.
+      </p>
+
+      {isLoading ? (
+        <div className="bg-dark-300 border border-dark-100 p-8 text-center">
+          <Loader2 className="w-6 h-6 text-sardis-500 mx-auto animate-spin" />
+        </div>
+      ) : policies.length === 0 ? (
+        <div className="bg-dark-300 border border-dark-100 p-8 text-center text-gray-500 text-sm">
+          No retry policies configured.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-dark-100 text-xs text-gray-500 uppercase tracking-wider">
+                <th className="text-left py-2 px-3">Name</th>
+                <th className="text-left py-2 px-3">Exception Type</th>
+                <th className="text-center py-2 px-3">Max Retries</th>
+                <th className="text-center py-2 px-3">Delay (s)</th>
+                <th className="text-center py-2 px-3">Backoff</th>
+                <th className="text-left py-2 px-3">Fallback</th>
+                <th className="text-center py-2 px-3">Safeguards</th>
+                <th className="text-center py-2 px-3">Enabled</th>
+                <th className="py-2 px-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-dark-100">
+              {policies.map(policy => (
+                <tr
+                  key={policy.id}
+                  className="bg-dark-300 hover:bg-dark-400/60 transition-colors"
+                >
+                  <td className="py-3 px-3 font-medium text-white">{policy.name}</td>
+                  <td className="py-3 px-3">
+                    <span className="font-mono text-xs bg-dark-400 border border-dark-100 px-2 py-0.5 text-gray-300">
+                      {policy.exception_type}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-center text-gray-300">{policy.max_retries}</td>
+                  <td className="py-3 px-3 text-center text-gray-300">{policy.retry_delay_seconds}s</td>
+                  <td className="py-3 px-3 text-center text-gray-300">{policy.backoff_multiplier}x</td>
+                  <td className="py-3 px-3">
+                    <span className={clsx(
+                      'text-xs px-2 py-0.5 border',
+                      policy.fallback_action === 'escalate'
+                        ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                        : policy.fallback_action === 'block'
+                        ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                        : policy.fallback_action === 'manual_review'
+                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                        : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                    )}>
+                      {policy.fallback_action.replace(/_/g, ' ')}
+                      {policy.fallback_rail && ` -> ${policy.fallback_rail}`}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <div className="flex flex-col items-center gap-0.5 text-xs text-gray-500">
+                      {policy.safeguards.max_total_amount != null && (
+                        <span>${policy.safeguards.max_total_amount} cap</span>
+                      )}
+                      {policy.safeguards.require_approval_on_fallback && (
+                        <span className="text-sardis-400">approval req.</span>
+                      )}
+                      {policy.safeguards.max_total_amount == null && !policy.safeguards.require_approval_on_fallback && (
+                        <span className="text-gray-600">none</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={clsx(
+                      'text-xs px-2 py-0.5 border',
+                      policy.enabled
+                        ? 'bg-sardis-500/10 text-sardis-400 border-sardis-500/30'
+                        : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
+                    )}>
+                      {policy.enabled ? 'On' : 'Off'}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => openEdit(policy)}
+                        className="p-1.5 text-gray-500 hover:text-white transition-colors"
+                        title="Edit policy"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(policy.id)}
+                        disabled={deletingId === policy.id}
+                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                        title="Delete policy"
+                      >
+                        {deletingId === policy.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ─── Main Component ─── */
 
 export default function ExceptionsPage() {
@@ -278,9 +715,14 @@ export default function ExceptionsPage() {
       {/* Experimental warning banner */}
       <div className="bg-yellow-500/10 border border-yellow-500/30 p-4">
         <p className="text-yellow-400 text-sm font-medium">
-          ⚠️ Experimental — Exception data is stored in-memory and will be lost on server restart.
-          This surface is not yet production-grade.
+          Experimental — Exception records are still in-memory. Recovery policy evaluation and audit are live,
+          but an end-to-end retry executor is not yet configured in the API layer.
         </p>
+      </div>
+
+      {/* Retry Policies */}
+      <div className="bg-dark-300 border border-dark-100 p-5">
+        <RetryPoliciesSection />
       </div>
 
       {/* Header */}
@@ -600,7 +1042,7 @@ export default function ExceptionsPage() {
                                 ) : (
                                   <RotateCcw className="w-4 h-4" />
                                 )}
-                                Retry
+                                Evaluate Recovery
                                 {exc.retry_count >= exc.max_retries && (
                                   <span className="text-xs opacity-60">(max reached)</span>
                                 )}

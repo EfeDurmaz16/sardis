@@ -900,6 +900,60 @@ export const policyTestApi = {
 }
 
 // Exceptions APIs (V2)
+export interface ExceptionRecord {
+  id: string
+  transaction_id: string
+  agent_id: string
+  exception_type: string
+  status: string
+  strategy: string
+  retry_count: number
+  max_retries: number
+  metadata: Record<string, unknown>
+  created_at: string
+  resolved_at: string | null
+  resolution_notes: string | null
+  resolved_by: string | null
+  description: string
+}
+
+interface RawExceptionResponse {
+  exception_id: string
+  transaction_id: string
+  agent_id: string
+  exception_type: string
+  status: string
+  description: string
+  retry_count: number
+  max_retries: number
+  suggested_strategy: string | null
+  resolution_notes: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+  created_at: string
+  updated_at: string
+  metadata: Record<string, unknown>
+}
+
+function normalizeExceptionRecord(raw: RawExceptionResponse): ExceptionRecord {
+  return {
+    id: raw.exception_id,
+    transaction_id: raw.transaction_id,
+    agent_id: raw.agent_id,
+    exception_type: raw.exception_type.toUpperCase(),
+    status: raw.status.toUpperCase(),
+    strategy: (raw.suggested_strategy ?? 'manual_review').toUpperCase(),
+    retry_count: raw.retry_count,
+    max_retries: raw.max_retries,
+    metadata: raw.metadata ?? {},
+    created_at: raw.created_at,
+    resolved_at: raw.resolved_at,
+    resolution_notes: raw.resolution_notes,
+    resolved_by: raw.resolved_by,
+    description: raw.description,
+  }
+}
+
 export const exceptionsApi = {
   list: (params?: { agent_id?: string; status?: string; limit?: number }) => {
     const search = new URLSearchParams()
@@ -907,27 +961,36 @@ export const exceptionsApi = {
     if (params?.status) search.set('status', params.status)
     if (params?.limit) search.set('limit', String(params.limit))
     const q = search.toString()
-    return requestV2<JsonObject[]>(`/exceptions${q ? `?${q}` : ''}`)
+    return requestV2<RawExceptionResponse[]>(`/exceptions${q ? `?${q}` : ''}`)
+      .then((items) => items.map(normalizeExceptionRecord))
   },
 
-  get: (exceptionId: string) => requestV2<JsonObject>(`/exceptions/${exceptionId}`),
+  get: (exceptionId: string) =>
+    requestV2<RawExceptionResponse>(`/exceptions/${exceptionId}`)
+      .then(normalizeExceptionRecord),
 
   resolve: (exceptionId: string, data: { resolution_notes?: string }) =>
-    requestV2<JsonObject>(`/exceptions/${exceptionId}/resolve`, {
+    requestV2<RawExceptionResponse>(`/exceptions/${exceptionId}/resolve`, {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify({
+        notes: data.resolution_notes,
+        resolved_by: 'dashboard',
+      }),
+    }).then(normalizeExceptionRecord),
 
   escalate: (exceptionId: string, data?: { notes?: string }) =>
-    requestV2<JsonObject>(`/exceptions/${exceptionId}/escalate`, {
+    requestV2<RawExceptionResponse>(`/exceptions/${exceptionId}/escalate`, {
       method: 'POST',
-      body: JSON.stringify(data ?? {}),
-    }),
+      body: JSON.stringify({
+        reason: data?.notes ?? 'Escalated from dashboard',
+      }),
+    }).then(normalizeExceptionRecord),
 
   retry: (exceptionId: string) =>
-    requestV2<JsonObject>(`/exceptions/${exceptionId}/retry`, {
+    requestV2<RawExceptionResponse>(`/exceptions/${exceptionId}/retry`, {
       method: 'POST',
-    }),
+      body: JSON.stringify({}),
+    }).then(normalizeExceptionRecord),
 }
 
 // Retry Policy APIs (V2)
