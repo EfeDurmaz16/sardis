@@ -832,6 +832,10 @@ export const policyTestApi = {
     currency?: string
     chain?: string
     agent_id?: string
+    merchant_id?: string
+    merchant_category?: string
+    mcc_code?: string
+    scope?: string
     /** Optional inline policy definition to test against instead of the agent's active policy */
     definition?: {
       version?: string
@@ -843,7 +847,7 @@ export const policyTestApi = {
       intent_id: string
       would_succeed: boolean
       failure_reasons: string[]
-      policy_result: JsonObject | null
+      policy_result: (JsonObject & { verdict?: string; reason?: string }) | null
       compliance_result: JsonObject | null
     }>('/policies/simulate', {
       method: 'POST',

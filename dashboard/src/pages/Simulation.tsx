@@ -398,8 +398,8 @@ function EmptyState() {
       <div className="text-center max-w-xs">
         <h3 className="text-base font-semibold text-white mb-2">No simulation run yet</h3>
         <p className="text-sm text-gray-500 leading-relaxed">
-          Fill in the form and click "Simulate Payment" to dry-run the transaction against
-          current policies without touching the chain.
+          Fill in the form and click "Run Live Dry Run" to test the transaction against
+          the currently deployed policy without touching the chain.
         </p>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -423,8 +423,6 @@ export default function SimulationPage() {
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState<string>('USDC')
   const [chain, setChain] = useState<string>('base')
-  const [merchantId, setMerchantId] = useState('')
-  const [mccCode, setMccCode] = useState('')
   const [source, setSource] = useState<string>('ap2')
 
   const canSubmit = !!agentId && !!amount && !simulate.isPending
@@ -451,11 +449,11 @@ export default function SimulationPage() {
         <div>
           <h1 className="text-3xl font-bold text-white font-display flex items-center gap-3">
             <FlaskConical className="w-8 h-8 text-sardis-400" />
-            Payment Simulation
+            Live Policy Dry Run
           </h1>
           <p className="text-gray-400 mt-1 max-w-lg">
-            Dry-run payments against current policies without executing on chain. See a full
-            check-by-check breakdown of what would pass or fail.
+            Dry-run payments against the currently deployed policy without executing on chain.
+            Use Policy Manager for draft-policy scenario testing before deployment.
           </p>
         </div>
         <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-500">
@@ -530,29 +528,6 @@ export default function SimulationPage() {
               <FieldSelect value={chain} onChange={setChain} options={CHAINS} />
             </div>
 
-            {/* Merchant ID */}
-            <div>
-              <FieldLabel>Merchant ID <span className="text-gray-600">(optional)</span></FieldLabel>
-              <FieldInput
-                value={merchantId}
-                onChange={setMerchantId}
-                placeholder="merch_..."
-              />
-            </div>
-
-            {/* MCC Code */}
-            <div>
-              <FieldLabel>MCC Code <span className="text-gray-600">(optional)</span></FieldLabel>
-              <FieldInput
-                value={mccCode}
-                onChange={setMccCode}
-                placeholder="e.g. 7372 (Software), 5734, 7995, 5411, 5812"
-              />
-              <p className="text-xs text-gray-600 mt-1">
-                Common: 5734 Computer Software · 7372 Programming · 7995 Gambling · 5411 Grocery · 5812 Restaurants
-              </p>
-            </div>
-
             {/* Source */}
             <div>
               <FieldLabel>Source</FieldLabel>
@@ -588,7 +563,7 @@ export default function SimulationPage() {
               ) : (
                 <>
                   <FlaskConical className="w-4 h-4" />
-                  Simulate Payment
+                  Run Live Dry Run
                 </>
               )}
             </button>
