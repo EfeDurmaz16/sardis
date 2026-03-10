@@ -62,6 +62,10 @@ class Card:
     status: CardStatus = CardStatus.PENDING
     locked_merchant_id: str | None = None
 
+    # Card currency (USD or EUR)
+    currency: str = "USD"
+    replacement_for: str | None = None
+
     # Funding
     funding_source: FundingSource = FundingSource.STABLECOIN
     funded_amount: Decimal = field(default_factory=lambda: Decimal("0"))

@@ -37,3 +37,10 @@ try:
     __all__.append("StripeIssuingProvider")
 except ImportError:
     pass
+
+# Striga card provider is optional
+try:
+    from sardis_striga.cards import StrigaCardProvider
+    __all__.append("StrigaCardProvider")
+except ImportError:
+    pass

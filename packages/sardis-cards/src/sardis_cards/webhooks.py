@@ -123,6 +123,8 @@ class CardWebhookHandler:
             return self._verify_lithic_signature(payload, signature)
         elif self._provider == "marqeta":
             return self._verify_marqeta_signature(payload, signature)
+        elif self._provider == "striga":
+            return self._verify_striga_signature(payload, signature)
         else:
             # For mock provider, always return True
             return True
@@ -146,6 +148,15 @@ class CardWebhookHandler:
         ).hexdigest()
         return hmac.compare_digest(expected, signature)
 
+    def _verify_striga_signature(self, payload: bytes, signature: str) -> bool:
+        """Verify Striga webhook signature (HMAC-SHA256)."""
+        expected = hmac.new(
+            self._secret.encode(),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(expected, signature)
+
     def parse_event(self, payload: bytes) -> WebhookEvent:
         """
         Parse webhook payload into an event.
@@ -162,6 +173,8 @@ class CardWebhookHandler:
             return self._parse_lithic_event(data)
         elif self._provider == "marqeta":
             return self._parse_marqeta_event(data)
+        elif self._provider == "striga":
+            return self._parse_striga_event(data)
         else:
             return self._parse_generic_event(data)
 
@@ -200,6 +213,30 @@ class CardWebhookHandler:
             event_type=event_type,
             created_at=datetime.now(UTC),
             data=data,
+        )
+
+    def _parse_striga_event(self, data: dict) -> WebhookEvent:
+        """Parse Striga webhook event."""
+        event_type_map = {
+            "transaction.authorization": WebhookEventType.TRANSACTION_CREATED,
+            "transaction.settled": WebhookEventType.TRANSACTION_SETTLED,
+            "transaction.declined": WebhookEventType.TRANSACTION_DECLINED,
+            "transaction.reversed": WebhookEventType.TRANSACTION_REVERSED,
+            "card.created": WebhookEventType.CARD_CREATED,
+            "card.activated": WebhookEventType.CARD_ACTIVATED,
+            "card.frozen": WebhookEventType.CARD_FROZEN,
+            "card.cancelled": WebhookEventType.CARD_CANCELLED,
+        }
+
+        raw_type = data.get("type", "")
+        event_type = event_type_map.get(raw_type, WebhookEventType.TRANSACTION_CREATED)
+
+        event_data = data.get("data", data)
+        return WebhookEvent(
+            event_id=data.get("eventId", data.get("event_id", "")),
+            event_type=event_type,
+            created_at=datetime.now(UTC),
+            data=event_data,
         )
 
     def _parse_generic_event(self, data: dict) -> WebhookEvent:

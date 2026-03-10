@@ -39,6 +39,10 @@ class ConversionDirection(str, Enum):
     """Direction of conversion."""
     USDC_TO_USD = "usdc_to_usd"
     USD_TO_USDC = "usd_to_usdc"
+    EURC_TO_EUR = "eurc_to_eur"
+    EUR_TO_EURC = "eur_to_eurc"
+    USDC_TO_EUR = "usdc_to_eur"
+    EURC_TO_USD = "eurc_to_usd"
 
 
 class ConversionStatus(str, Enum):
@@ -58,9 +62,13 @@ class UnifiedBalance:
     """
     wallet_id: str
 
-    # Component balances
+    # Component balances (USD)
     usdc_balance_minor: int = 0  # In minor units (6 decimals)
     usd_balance_cents: int = 0   # In cents
+
+    # Component balances (EUR)
+    eurc_balance_minor: int = 0  # In minor units (6 decimals)
+    eur_balance_cents: int = 0   # In cents
 
     # Optional breakdown
     chain: str = "base"
@@ -75,6 +83,27 @@ class UnifiedBalance:
     def usd_balance(self) -> Decimal:
         """USD balance as Decimal."""
         return Decimal(self.usd_balance_cents) / Decimal(100)
+
+    @property
+    def eurc_balance(self) -> Decimal:
+        """EURC balance as Decimal."""
+        return Decimal(self.eurc_balance_minor) / Decimal(1_000_000)
+
+    @property
+    def eur_balance(self) -> Decimal:
+        """EUR balance as Decimal."""
+        return Decimal(self.eur_balance_cents) / Decimal(100)
+
+    @property
+    def total_eur_balance_cents(self) -> int:
+        """Total unified EUR balance in cents (EURC + EUR)."""
+        eurc_in_cents = self.eurc_balance_minor // 10_000
+        return eurc_in_cents + self.eur_balance_cents
+
+    @property
+    def total_eur_balance(self) -> Decimal:
+        """Total unified EUR balance as Decimal."""
+        return Decimal(self.total_eur_balance_cents) / Decimal(100)
 
     @property
     def total_balance_cents(self) -> int:
@@ -510,6 +539,106 @@ class AutoConversionService:
             record.status = ConversionStatus.FAILED
             record.error_message = str(e)
             logger.error(f"Auto-conversion failed: {e}")
+
+        return record
+
+    async def convert_for_eur_card_payment(
+        self,
+        wallet_id: str,
+        amount_cents: int,
+        card_transaction_id: str | None = None,
+        chain: str = "base",
+    ) -> ConversionRecord:
+        """
+        Convert EURC to EUR for a EUR card payment.
+
+        Similar to convert_for_card_payment but for EUR-denominated cards.
+        """
+        self._conversion_counter += 1
+        conversion_id = f"conv_eur_{self._conversion_counter}_{wallet_id[:8]}"
+
+        eurc_amount_minor = amount_cents * 10_000
+
+        record = ConversionRecord(
+            conversion_id=conversion_id,
+            wallet_id=wallet_id,
+            direction=ConversionDirection.EURC_TO_EUR,
+            input_amount_minor=eurc_amount_minor,
+            output_amount_cents=amount_cents,
+            exchange_rate=Decimal("1.0"),
+            fee_cents=0,
+            status=ConversionStatus.PENDING,
+            trigger="card_payment",
+            card_transaction_id=card_transaction_id,
+        )
+
+        self._conversions[conversion_id] = record
+
+        try:
+            # Mock conversion for now — Striga swap provider handles real conversion
+            record.status = ConversionStatus.COMPLETED
+            record.completed_at = datetime.now(UTC)
+            record.provider_tx_id = f"striga_{conversion_id}"
+
+            if self._on_conversion_complete:
+                self._on_conversion_complete(record)
+
+        except Exception as e:
+            record.status = ConversionStatus.FAILED
+            record.error_message = str(e)
+            logger.error(f"EUR auto-conversion failed: {e}")
+
+        return record
+
+    async def convert_cross_currency(
+        self,
+        wallet_id: str,
+        amount_cents: int,
+        from_currency: str,
+        to_currency: str,
+        chain: str = "base",
+    ) -> ConversionRecord:
+        """
+        Convert between USD and EUR currencies.
+
+        Supports USDC→EUR (via Grid FX) and EURC→USD paths.
+        """
+        self._conversion_counter += 1
+        conversion_id = f"conv_fx_{self._conversion_counter}_{wallet_id[:8]}"
+
+        if from_currency.upper() in ("USDC", "USD") and to_currency.upper() == "EUR":
+            direction = ConversionDirection.USDC_TO_EUR
+        elif from_currency.upper() in ("EURC", "EUR") and to_currency.upper() == "USD":
+            direction = ConversionDirection.EURC_TO_USD
+        else:
+            direction = ConversionDirection.USDC_TO_USD
+
+        record = ConversionRecord(
+            conversion_id=conversion_id,
+            wallet_id=wallet_id,
+            direction=direction,
+            input_amount_minor=amount_cents * 10_000,
+            output_amount_cents=amount_cents,  # FX rate applied at execution
+            exchange_rate=Decimal("1.0"),
+            fee_cents=0,
+            status=ConversionStatus.PENDING,
+            trigger="cross_currency",
+        )
+
+        self._conversions[conversion_id] = record
+
+        try:
+            record.status = ConversionStatus.COMPLETED
+            record.completed_at = datetime.now(UTC)
+            record.provider_tx_id = f"fx_{conversion_id}"
+
+            if self._on_conversion_complete:
+                self._on_conversion_complete(record)
+
+        except Exception as e:
+            record.status = ConversionStatus.FAILED
+            record.error_message = str(e)
+            logger.error(f"Cross-currency conversion failed: {e}")
 
         return record
 

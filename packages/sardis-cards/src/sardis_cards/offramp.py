@@ -39,6 +39,7 @@ class OfframpProvider(str, Enum):
     """Supported off-ramp providers."""
     BRIDGE = "bridge"        # Bridge.xyz
     ZERO_HASH = "zero_hash"  # Zero Hash
+    STRIGA = "striga"        # Striga (EURC → EUR)
     MOCK = "mock"            # For testing
 
 
