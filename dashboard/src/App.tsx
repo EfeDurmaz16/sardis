@@ -37,6 +37,7 @@ import WorkflowTemplatesPage from './pages/WorkflowTemplates'
 import PolicyAnalyticsPage from './pages/PolicyAnalytics'
 import CounterpartiesPage from './pages/Counterparties'
 import ApprovalConfigPage from './pages/ApprovalConfig'
+import ProviderScorecardsPage from './pages/ProviderScorecards'
 import CheckoutControlsPage from './pages/CheckoutControls'
 import FallbackPoliciesPage from './pages/FallbackPolicies'
 import { AuthProvider, useAuth } from './auth/AuthContext'
@@ -114,6 +115,7 @@ function AppRoutes() {
                 <Route path="/policy-analytics" element={<PolicyAnalyticsPage />} />
                 <Route path="/counterparties" element={<CounterpartiesPage />} />
                 <Route path="/approval-config" element={<ApprovalConfigPage />} />
+                <Route path="/provider-health" element={<ProviderScorecardsPage />} />
                 <Route path="/checkout-controls" element={<CheckoutControlsPage />} />
                 <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
               </Routes>

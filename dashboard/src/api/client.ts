@@ -1365,6 +1365,35 @@ export interface DegradedModePolicy {
   updated_at: string
 }
 
+export interface ProviderReliabilityScorecard {
+  provider: string
+  chain: string
+  period: string
+  total_calls: number
+  success_count: number
+  failure_count: number
+  avg_latency_ms: number
+  p95_latency_ms: number
+  error_rate: number
+  availability: number
+  computed_at: string
+}
+
+export interface ProviderReliabilityListResponse {
+  scorecards: ProviderReliabilityScorecard[]
+  count: number
+}
+
+export const reliabilityApi = {
+  listProviders: () =>
+    requestV2<ProviderReliabilityListResponse>('/reliability/providers'),
+
+  getProvider: (provider: string, chain: string, period = '24h') =>
+    requestV2<ProviderReliabilityScorecard>(
+      `/reliability/providers/${encodeURIComponent(provider)}/${encodeURIComponent(chain)}?period=${encodeURIComponent(period)}`,
+    ),
+}
+
 // Fallback Policies APIs (V2)
 // Checkout Controls types
 export interface CheckoutControlConfig {
