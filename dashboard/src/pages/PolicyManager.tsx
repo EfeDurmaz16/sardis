@@ -30,11 +30,14 @@ import clsx from 'clsx'
 import { useLocation } from 'react-router-dom'
 import {
   useAgents,
+  usePolicy,
+  usePolicyHistory,
   useParsePolicy,
   useApplyPolicy,
   usePolicyTestDraft,
   useWallets,
 } from '../hooks/useApi'
+import { policiesApi, type ActivePolicyRecord, type PolicyHistoryCommit } from '../api/client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,6 +89,8 @@ interface PolicyHistoryEntry {
   policy_text: string
   deployed_by: string
   version: number
+  commit_hash: string
+  signed: boolean
 }
 
 // ── Static preset scenarios ───────────────────────────────────────────────────
@@ -102,6 +107,60 @@ const PRESET_SCENARIOS: TestScenario[] = [
 function fmt(val: number | null | undefined, prefix = '$') {
   if (val == null) return '—'
   return `${prefix}${val.toLocaleString()}`
+}
+
+function parseCurrencyValue(value: string | null | undefined): number | null {
+  if (value == null || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function toParsedPolicy(activePolicy: ActivePolicyRecord): ParsedPolicy {
+  return {
+    spending_limits: {
+      per_tx: parseCurrencyValue(activePolicy.limit_per_tx),
+      daily: parseCurrencyValue(activePolicy.daily_limit),
+      weekly: parseCurrencyValue(activePolicy.weekly_limit),
+      monthly: parseCurrencyValue(activePolicy.monthly_limit),
+      total: parseCurrencyValue(activePolicy.limit_total),
+    },
+    category_restrictions: {
+      blocked: activePolicy.blocked_merchant_categories,
+      allowed: [],
+    },
+    approval_threshold: parseCurrencyValue(activePolicy.approval_threshold),
+    warnings: activePolicy.require_preauth
+      ? ['Live policy requires pre-authorization before execution.']
+      : [],
+  }
+}
+
+function policyTextFromSnapshot(snapshot: Record<string, unknown>): string {
+  const naturalLanguage = snapshot.natural_language
+  if (typeof naturalLanguage === 'string' && naturalLanguage.trim()) {
+    return naturalLanguage.trim()
+  }
+
+  const lines: string[] = []
+  const perTx = parseCurrencyValue(snapshot.limit_per_tx as string | null | undefined)
+  const daily = parseCurrencyValue(snapshot.daily_limit as string | null | undefined)
+  const weekly = parseCurrencyValue(snapshot.weekly_limit as string | null | undefined)
+  const monthly = parseCurrencyValue(snapshot.monthly_limit as string | null | undefined)
+  const total = parseCurrencyValue(snapshot.limit_total as string | null | undefined)
+  const approvalThreshold = parseCurrencyValue(snapshot.approval_threshold as string | null | undefined)
+  const blocked = Array.isArray(snapshot.blocked_merchant_categories)
+    ? (snapshot.blocked_merchant_categories as unknown[]).filter((x): x is string => typeof x === 'string')
+    : []
+
+  if (perTx != null) lines.push(`Allow up to $${perTx} per transaction.`)
+  if (daily != null) lines.push(`Cap daily spend at $${daily}.`)
+  if (weekly != null) lines.push(`Cap weekly spend at $${weekly}.`)
+  if (monthly != null) lines.push(`Cap monthly spend at $${monthly}.`)
+  if (total != null) lines.push(`Cap total spend at $${total}.`)
+  if (approvalThreshold != null) lines.push(`Require approval above $${approvalThreshold}.`)
+  if (blocked.length > 0) lines.push(`Block categories: ${blocked.join(', ')}.`)
+
+  return lines.join(' ') || 'Imported policy snapshot from history.'
 }
 
 function getInitialTab(): TabId {
@@ -580,6 +639,11 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
 
   const walletList = (wallets ?? []) as Array<{ wallet_id?: string; id?: string; agent_id?: string; balance?: string }>
   const agentList = (agents ?? []) as Array<{ agent_id?: string; id?: string; name: string }>
+  const {
+    data: activePolicy,
+    isLoading: activePolicyLoading,
+    isError: activePolicyError,
+  } = usePolicy(selectedAgentId)
 
   async function handleDeploy() {
     if (!selectedAgentId || !draftText.trim()) return
@@ -623,9 +687,9 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
         <select
           value={selectedAgentId}
           onChange={(e) => { setSelectedAgentId(e.target.value); setDeploySuccess(false) }}
-          className="w-full px-3 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white focus:outline-none focus:border-sardis-500/60"
-        >
-          <option value="">— Select an agent —</option>
+        className="w-full px-3 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white focus:outline-none focus:border-sardis-500/60"
+      >
+        <option value="">— Select an agent —</option>
           {agentList.map((a) => {
             const id = a.agent_id ?? a.id ?? ''
             return (
@@ -649,12 +713,32 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-dark-200 border border-dark-100 p-4">
             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Current (active)</p>
-            <p className="text-xs text-gray-500 italic">Fetch current policy by selecting an agent above</p>
+            {!selectedAgentId ? (
+              <p className="text-xs text-gray-500 italic">Select an agent above to load the live policy.</p>
+            ) : activePolicyLoading ? (
+              <p className="text-xs text-gray-500 italic">Loading live policy…</p>
+            ) : activePolicyError ? (
+              <p className="text-xs text-gray-500 italic">No active policy found for this agent yet.</p>
+            ) : activePolicy ? (
+              <PolicyPreview parsed={toParsedPolicy(activePolicy as ActivePolicyRecord)} />
+            ) : (
+              <p className="text-xs text-gray-500 italic">No active policy found for this agent yet.</p>
+            )}
           </div>
           <div className="bg-dark-200 border border-sardis-500/30 p-4">
             <p className="text-xs text-sardis-400 mb-2 uppercase tracking-wider">New (draft)</p>
             {draftText.trim() ? (
-              <p className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{draftText}</p>
+              parsedPolicy ? (
+                <PolicyPreview parsed={parsedPolicy} />
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{draftText}</p>
+                  <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 p-2.5">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    Parse the draft before deploying so you can review the structured policy output.
+                  </div>
+                </div>
+              )
             ) : (
               <p className="text-xs text-gray-600 italic">No draft written yet</p>
             )}
@@ -718,33 +802,6 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
   )
 }
 
-// ── Tab: History ──────────────────────────────────────────────────────────────
-
-// Static sample history (real data would come from /wallets/:id/policy-history)
-const SAMPLE_HISTORY: PolicyHistoryEntry[] = [
-  {
-    id: 'ph-3',
-    timestamp: '2026-03-10T08:32:00Z',
-    policy_text: 'Allow up to $500 per transaction and $2000 per day. Block gambling and adult content.',
-    deployed_by: 'dashboard',
-    version: 3,
-  },
-  {
-    id: 'ph-2',
-    timestamp: '2026-03-05T14:11:00Z',
-    policy_text: 'Allow up to $200 per transaction. Block gambling.',
-    deployed_by: 'api-key',
-    version: 2,
-  },
-  {
-    id: 'ph-1',
-    timestamp: '2026-02-28T09:00:00Z',
-    policy_text: 'Allow up to $100 per transaction.',
-    deployed_by: 'dashboard',
-    version: 1,
-  },
-]
-
 function HistoryTab({
   setDraftText,
   setParsedPolicy,
@@ -756,28 +813,44 @@ function HistoryTab({
 }) {
   const { data: agents } = useAgents()
   const [selectedAgentId, setSelectedAgentId] = useState('')
-  const [rolledBackId, setRolledBackId] = useState<string | null>(null)
+  const [loadingCommitId, setLoadingCommitId] = useState<string | null>(null)
+  const {
+    data: historyData,
+    isLoading: historyLoading,
+    isError: historyError,
+  } = usePolicyHistory(selectedAgentId)
 
   const agentList = (agents ?? []) as Array<{ agent_id?: string; id?: string; name: string }>
 
-  function handleRollback(entry: PolicyHistoryEntry) {
-    setDraftText(entry.policy_text)
-    setParsedPolicy(null)
-    setRolledBackId(entry.id)
-    // Navigate user to author tab so they can review/parse before re-deploying
-    setTimeout(() => {
+  async function handleRollback(entry: PolicyHistoryEntry) {
+    if (!selectedAgentId) return
+    setLoadingCommitId(entry.id)
+    try {
+      const snapshot = await policiesApi.getHistoryVersion(selectedAgentId, entry.commit_hash)
+      setDraftText(policyTextFromSnapshot(snapshot.policy))
+      setParsedPolicy(null)
       setActiveTab('author')
       window.location.hash = 'author'
-    }, 800)
+    } finally {
+      setLoadingCommitId(null)
+    }
   }
 
-  const history = SAMPLE_HISTORY
+  const history: PolicyHistoryEntry[] = (historyData?.commits ?? []).map((commit: PolicyHistoryCommit, idx) => ({
+    id: commit.commit_hash,
+    commit_hash: commit.commit_hash,
+    timestamp: commit.created_at ?? new Date().toISOString(),
+    policy_text: '',
+    deployed_by: commit.signer_did ?? (commit.signed ? 'signed' : 'dashboard'),
+    version: (historyData?.count ?? 0) - idx,
+    signed: commit.signed,
+  }))
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-gray-400 bg-dark-200 border border-dark-100 p-3">
         <Info className="w-4 h-4 text-sardis-400 flex-shrink-0" />
-        Version history shows past policies per agent. Rolling back loads the policy text into the Author tab for review before re-deploying.
+        Version history shows real policy deploys per agent. Rolling back loads the selected version into the Author tab so you can review and re-deploy it deliberately.
       </div>
 
       {/* Agent selector */}
@@ -802,6 +875,23 @@ function HistoryTab({
 
       {/* Timeline */}
       <div className="space-y-3">
+        {!selectedAgentId ? (
+          <div className="bg-dark-200 border border-dashed border-dark-100 px-4 py-8 text-center text-sm text-gray-500">
+            Select an agent to load real policy history.
+          </div>
+        ) : historyLoading ? (
+          <div className="bg-dark-200 border border-dark-100 px-4 py-8 text-center text-sm text-gray-500">
+            Loading policy history…
+          </div>
+        ) : historyError ? (
+          <div className="bg-red-500/5 border border-red-500/20 px-4 py-8 text-center text-sm text-red-400">
+            Failed to load policy history.
+          </div>
+        ) : history.length === 0 ? (
+          <div className="bg-dark-200 border border-dark-100 px-4 py-8 text-center text-sm text-gray-500">
+            No policy versions recorded for this agent yet.
+          </div>
+        ) : null}
         {history.map((entry, idx) => (
           <div
             key={entry.id}
@@ -815,32 +905,37 @@ function HistoryTab({
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-white">Version {entry.version}</span>
                   {idx === 0 && <Badge variant="success">Active</Badge>}
+                  {entry.signed && <Badge variant="default">Signed</Badge>}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {new Date(entry.timestamp).toLocaleString()}
                   </span>
-                  <span>Deployed by: {entry.deployed_by}</span>
+                  <span>Recorded by: {entry.deployed_by}</span>
                 </div>
               </div>
               {idx !== 0 && (
                 <button
                   onClick={() => handleRollback(entry)}
-                  disabled={rolledBackId === entry.id}
+                  disabled={loadingCommitId === entry.id}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dark-100 text-gray-400 hover:text-white hover:border-sardis-500/40 disabled:opacity-50 transition-colors flex-shrink-0"
                 >
-                  {rolledBackId === entry.id ? (
+                  {loadingCommitId === entry.id ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     <RotateCcw className="w-3 h-3" />
                   )}
-                  {rolledBackId === entry.id ? 'Loading…' : 'Rollback'}
+                  {loadingCommitId === entry.id ? 'Loading…' : 'Load for Rollback'}
                 </button>
               )}
             </div>
-            <div className="bg-dark-300 border border-dark-100 px-4 py-3">
-              <p className="text-xs text-gray-300 font-mono leading-relaxed whitespace-pre-wrap">{entry.policy_text}</p>
+            <div className="bg-dark-300 border border-dark-100 px-4 py-3 space-y-2">
+              <p className="text-xs text-gray-500">Commit</p>
+              <p className="text-xs text-gray-300 font-mono leading-relaxed break-all">{entry.commit_hash}</p>
+              <p className="text-xs text-gray-500">
+                Load this version to inspect the natural-language policy or snapshot summary before re-deploying it.
+              </p>
             </div>
           </div>
         ))}

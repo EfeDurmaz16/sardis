@@ -81,6 +81,44 @@ export interface ApprovalListResponse {
   offset: number
 }
 
+export interface ActivePolicyRecord {
+  agent_id: string
+  policy_id: string
+  trust_level: string
+  limit_per_tx: string
+  limit_total: string
+  daily_limit: string | null
+  weekly_limit: string | null
+  monthly_limit: string | null
+  approval_threshold: string | null
+  blocked_merchant_categories: string[]
+  allowed_chains: string[]
+  allowed_tokens: string[]
+  allowed_destination_addresses: string[]
+  blocked_destination_addresses: string[]
+  merchant_rules_count: number
+  require_preauth: boolean
+}
+
+export interface PolicyHistoryCommit {
+  commit_hash: string
+  created_at: string | null
+  signed: boolean
+  signer_did: string | null
+}
+
+export interface PolicyHistoryListResponse {
+  agent_id: string
+  commits: PolicyHistoryCommit[]
+  count: number
+}
+
+export interface PolicyHistoryDetailResponse {
+  agent_id: string
+  commit_hash: string
+  policy: JsonObject
+}
+
 
 async function request<T>(
   endpoint: string,
@@ -954,7 +992,13 @@ export const policiesApi = {
       body: JSON.stringify(data),
     }),
 
-  get: (agentId: string) => requestV2<JsonObject>(`/policies/${agentId}`),
+  get: (agentId: string) => requestV2<ActivePolicyRecord>(`/policies/${agentId}`),
+
+  history: (agentId: string, limit = 20) =>
+    requestV2<PolicyHistoryListResponse>(`/policies/${agentId}/history?limit=${limit}`),
+
+  getHistoryVersion: (agentId: string, commitHash: string) =>
+    requestV2<PolicyHistoryDetailResponse>(`/policies/${agentId}/history/${commitHash}`),
 
   check: (data: {
     agent_id: string
@@ -974,9 +1018,6 @@ export const walletsApi = {
   list: () => requestV2<JsonObject[]>('/wallets'),
 
   get: (walletId: string) => requestV2<JsonObject>(`/wallets/${walletId}`),
-
-  history: (walletId: string, limit = 20) =>
-    requestV2<JsonObject[]>(`/wallets/${walletId}/policy-history?limit=${limit}`),
 }
 
 // Anomaly APIs (V2)

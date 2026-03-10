@@ -184,6 +184,58 @@ class PolicyRecommendationResponse(BaseModel):
     data: dict
 
 
+class PolicyHistoryCommitResponse(BaseModel):
+    commit_hash: str
+    created_at: str | None = None
+    signed: bool = False
+    signer_did: str | None = None
+
+
+class PolicyHistoryListResponse(BaseModel):
+    agent_id: str
+    commits: list[PolicyHistoryCommitResponse]
+    count: int
+
+
+class PolicyHistoryDetailResponse(BaseModel):
+    agent_id: str
+    commit_hash: str
+    policy: dict
+
+
+def _serialize_policy_snapshot(policy: object, natural_language: str) -> dict:
+    policy_daily_limit = getattr(policy, "daily_limit", None)
+    policy_weekly_limit = getattr(policy, "weekly_limit", None)
+    policy_monthly_limit = getattr(policy, "monthly_limit", None)
+    policy_approval_threshold = getattr(policy, "approval_threshold", None)
+
+    return {
+        "policy_id": getattr(policy, "policy_id", None),
+        "agent_id": getattr(policy, "agent_id", None),
+        "natural_language": natural_language,
+        "trust_level": getattr(getattr(policy, "trust_level", None), "value", None),
+        "limit_per_tx": str(getattr(policy, "limit_per_tx", "")),
+        "limit_total": str(getattr(policy, "limit_total", "")),
+        "daily_limit": str(policy_daily_limit.limit_amount) if policy_daily_limit else None,
+        "weekly_limit": str(policy_weekly_limit.limit_amount) if policy_weekly_limit else None,
+        "monthly_limit": str(policy_monthly_limit.limit_amount) if policy_monthly_limit else None,
+        "approval_threshold": str(policy_approval_threshold) if policy_approval_threshold is not None else None,
+        "blocked_merchant_categories": list(getattr(policy, "blocked_merchant_categories", [])),
+        "allowed_chains": list(getattr(policy, "allowed_chains", [])),
+        "allowed_tokens": list(getattr(policy, "allowed_tokens", [])),
+        "allowed_destination_addresses": list(getattr(policy, "allowed_destination_addresses", [])),
+        "blocked_destination_addresses": list(getattr(policy, "blocked_destination_addresses", [])),
+        "merchant_rules_count": len(getattr(policy, "merchant_rules", [])),
+        "require_preauth": bool(getattr(policy, "require_preauth", False)),
+    }
+
+
+def _get_policy_history_engine():
+    from .fides_identity import _get_agit_engine
+
+    return _get_agit_engine()
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================
@@ -490,6 +542,13 @@ async def apply_policy_from_nl(
 
         # In production, this would save to database
         await deps.policy_store.set_policy(request.agent_id, policy)
+        try:
+            _get_policy_history_engine().commit_policy(
+                request.agent_id,
+                _serialize_policy_snapshot(policy, request.natural_language),
+            )
+        except Exception:
+            logger.warning("Failed to record policy history for agent_id=%s", request.agent_id, exc_info=True)
 
         logger.info(
             f"Policy applied: agent_id={request.agent_id}, "
@@ -651,6 +710,10 @@ async def get_active_policy(
         "trust_level": policy.trust_level.value,
         "limit_per_tx": str(policy.limit_per_tx),
         "limit_total": str(policy.limit_total),
+        "daily_limit": str(policy.daily_limit.limit_amount) if policy.daily_limit else None,
+        "weekly_limit": str(policy.weekly_limit.limit_amount) if policy.weekly_limit else None,
+        "monthly_limit": str(policy.monthly_limit.limit_amount) if policy.monthly_limit else None,
+        "approval_threshold": str(policy.approval_threshold) if policy.approval_threshold is not None else None,
         "blocked_merchant_categories": policy.blocked_merchant_categories,
         "allowed_chains": policy.allowed_chains,
         "allowed_tokens": policy.allowed_tokens,
@@ -659,6 +722,57 @@ async def get_active_policy(
         "merchant_rules_count": len(policy.merchant_rules),
         "require_preauth": policy.require_preauth,
     }
+
+
+@router.get("/{agent_id}/history", response_model=PolicyHistoryListResponse)
+async def get_policy_history(
+    agent_id: str,
+    limit: int = 20,
+    deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get policy version history for an agent."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    commits = _get_policy_history_engine().get_chain_history(agent_id, limit=min(limit, 100))
+    return PolicyHistoryListResponse(
+        agent_id=agent_id,
+        commits=[PolicyHistoryCommitResponse(**commit) for commit in commits],
+        count=len(commits),
+    )
+
+
+@router.get("/{agent_id}/history/{commit_hash}", response_model=PolicyHistoryDetailResponse)
+async def get_policy_history_detail(
+    agent_id: str,
+    commit_hash: str,
+    deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get a policy snapshot for a specific commit."""
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    history = _get_policy_history_engine().get_chain_history(agent_id, limit=1000)
+    if not any(entry.get("commit_hash") == commit_hash for entry in history):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commit not found")
+
+    policy = _get_policy_history_engine().get_policy_at(commit_hash)
+    if policy is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commit not found")
+
+    return PolicyHistoryDetailResponse(
+        agent_id=agent_id,
+        commit_hash=commit_hash,
+        policy=policy,
+    )
 
 
 @router.post("/check", response_model=PolicyCheckResponse)

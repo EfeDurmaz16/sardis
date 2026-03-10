@@ -339,8 +339,9 @@ export function useApplyPolicy() {
   return useMutation({
     mutationFn: ({ agentId, naturalLanguage }: { agentId: string; naturalLanguage: string }) =>
       policiesApi.apply({ agent_id: agentId, natural_language: naturalLanguage, confirm: true }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['policy'] })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.agentId] })
+      queryClient.invalidateQueries({ queryKey: ['policy-history', variables.agentId] })
     },
   })
 }
@@ -479,11 +480,11 @@ export function useWallet(walletId: string) {
   })
 }
 
-export function usePolicyHistory(walletId: string) {
+export function usePolicyHistory(agentId: string) {
   return useQuery({
-    queryKey: ['policy-history', walletId],
-    queryFn: () => walletsApi.history(walletId),
-    enabled: !!walletId,
+    queryKey: ['policy-history', agentId],
+    queryFn: () => policiesApi.history(agentId),
+    enabled: !!agentId,
   })
 }
 
