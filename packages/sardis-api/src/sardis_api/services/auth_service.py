@@ -341,6 +341,15 @@ class AuthService:
             )
         return True
 
+    async def mark_email_verified(self, user_id: str) -> None:
+        """Set email_verified = TRUE for the given user."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE users SET email_verified = TRUE, updated_at = now() WHERE id = $1",
+                user_id,
+            )
+
     def _create_jwt(
         self,
         user_id: str,

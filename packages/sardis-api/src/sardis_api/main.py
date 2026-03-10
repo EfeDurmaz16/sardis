@@ -147,6 +147,7 @@ from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
+from .routers import email_verification as email_verification_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -811,6 +812,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.include_router(auth.router, prefix="/api/v1/auth")
     app.include_router(auth.router, prefix="/api/v2/auth")
+    app.include_router(email_verification_router.router, prefix="/api/v2/auth", tags=["auth"])
 
     configured_on_chain_provider = (
         (settings.cards.on_chain_provider or os.getenv("SARDIS_CARDS_ON_CHAIN_PROVIDER", "")).strip().lower()
