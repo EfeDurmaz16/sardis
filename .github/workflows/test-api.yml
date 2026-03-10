@@ -1,0 +1,46 @@
+name: Test API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/sardis-api/**'
+      - 'packages/sardis-core/**'
+  pull_request:
+    paths:
+      - 'packages/sardis-api/**'
+      - 'packages/sardis-core/**'
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  test:
+    name: API Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint
+        run: uv run ruff check packages/sardis-api/ packages/sardis-core/
+
+      - name: Test
+        run: uv run pytest packages/sardis-api/tests/ -v --tb=short -q
+        env:
+          SARDIS_SECRET_KEY: test-secret-key
+          JWT_SECRET_KEY: test-jwt-secret
+          SARDIS_ENVIRONMENT: dev
