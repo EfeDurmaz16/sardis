@@ -45,6 +45,11 @@ import DocsIntegrationLangChain from './docs/pages/IntegrationLangChain.jsx'
 import DocsIntegrationCrewAI from './docs/pages/IntegrationCrewAI.jsx'
 import DocsIntegrationADK from './docs/pages/IntegrationADK.jsx'
 import DocsIntegrationAgentSDK from './docs/pages/IntegrationAgentSDK.jsx'
+import DocsIntegrationBrowserUse from './docs/pages/IntegrationBrowserUse.jsx'
+import DocsIntegrationOpenAIAgents from './docs/pages/IntegrationOpenAIAgents.jsx'
+import DocsIntegrationComposio from './docs/pages/IntegrationComposio.jsx'
+import DocsIntegrationAutogpt from './docs/pages/IntegrationAutogpt.jsx'
+import DocsIntegrationN8N from './docs/pages/IntegrationN8N.jsx'
 // Resources
 import DocsBlockchainInfrastructure from './docs/pages/BlockchainInfrastructure.jsx'
 import DocsArchitecture from './docs/pages/Architecture.jsx'
@@ -52,6 +57,7 @@ import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
 import DocsSecurity from './docs/pages/Security.jsx'
 import DocsDeployment from './docs/pages/Deployment.jsx'
 import DocsFAQ from './docs/pages/FAQ.jsx'
+import DocsTroubleshooting from './docs/pages/Troubleshooting.jsx'
 import DocsComparison from './docs/pages/Comparison.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
 import DocsChangelog from './docs/pages/Changelog.jsx'
@@ -145,6 +151,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="integration-crewai" element={<DocsIntegrationCrewAI />} />
           <Route path="integration-adk" element={<DocsIntegrationADK />} />
           <Route path="integration-agent-sdk" element={<DocsIntegrationAgentSDK />} />
+          <Route path="integration-browser-use" element={<DocsIntegrationBrowserUse />} />
+          <Route path="integration-openai-agents" element={<DocsIntegrationOpenAIAgents />} />
+          <Route path="integration-composio" element={<DocsIntegrationComposio />} />
+          <Route path="integration-autogpt" element={<DocsIntegrationAutogpt />} />
+          <Route path="integration-n8n" element={<DocsIntegrationN8N />} />
           {/* Resources */}
           <Route path="blockchain-infrastructure" element={<DocsBlockchainInfrastructure />} />
           <Route path="architecture" element={<DocsArchitecture />} />
@@ -152,6 +163,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="security" element={<DocsSecurity />} />
           <Route path="deployment" element={<DocsDeployment />} />
           <Route path="faq" element={<DocsFAQ />} />
+          <Route path="troubleshooting" element={<DocsTroubleshooting />} />
           <Route path="comparison" element={<DocsComparison />} />
           <Route path="provider-diligence" element={<DocsProviderDiligence />} />
           <Route path="runtime-guardrails" element={<DocsRuntimeGuardrails />} />
