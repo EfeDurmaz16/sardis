@@ -273,13 +273,60 @@ class RampRouter:
                 providers.insert(0, preferred)
                 return providers
 
-        # Smart routing based on token
+        # Smart routing based on token and currency
         if crypto_currency.upper() == "USDC":
             # USDC: prefer Coinbase for 0% fee
             coinbase = next((p for p in providers if p.provider_name == "coinbase"), None)
             if coinbase:
                 providers.remove(coinbase)
                 providers.insert(0, coinbase)
+
+        return providers
+
+    def _get_offramp_priority(
+        self,
+        fiat_currency: str,
+        preferred_provider: str | None,
+        available_providers: list[RampProvider],
+    ) -> list[RampProvider]:
+        """
+        Determine provider priority for off-ramp.
+
+        Priority:
+        1. Preferred provider (if specified)
+        2. EUR → Striga SEPA
+        3. USD + instant → Grid (RTP/FedNow)
+        4. USD → Bridge or Grid
+        """
+        providers = available_providers.copy()
+
+        if preferred_provider:
+            preferred = next(
+                (p for p in providers if p.provider_name == preferred_provider),
+                None
+            )
+            if preferred:
+                providers.remove(preferred)
+                providers.insert(0, preferred)
+                return providers
+
+        # EUR: prefer Striga SEPA
+        if fiat_currency.upper() == "EUR":
+            striga = next(
+                (p for p in providers if p.provider_name == "striga_sepa"), None
+            )
+            if striga:
+                providers.remove(striga)
+                providers.insert(0, striga)
+
+        # USD: prefer Grid for instant rails
+        elif fiat_currency.upper() == "USD":
+            grid = next(
+                (p for p in providers if p.provider_name == "lightspark_grid"), None
+            )
+            if grid:
+                providers.remove(grid)
+                providers.insert(0, grid)
 
         return providers
 
