@@ -64,9 +64,12 @@ class PaymentCapability:
     x402_compliant: bool = True
     ucp_compliant: bool = True
 
+    # UMA address for A2A payments
+    uma_address: str | None = None  # e.g., $agent@sardis.sh
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        d = {
             "supported_tokens": self.supported_tokens,
             "supported_chains": self.supported_chains,
             "min_amount_minor": self.min_amount_minor,
@@ -75,6 +78,9 @@ class PaymentCapability:
             "x402_compliant": self.x402_compliant,
             "ucp_compliant": self.ucp_compliant,
         }
+        if self.uma_address:
+            d["uma_address"] = self.uma_address
+        return d
 
 
 @dataclass(slots=True)
