@@ -251,11 +251,49 @@ class MastercardConfig(BaseSettings):
         env_prefix = "MASTERCARD_"
 
 
+class StrigaConfig(BaseSettings):
+    """Striga EEA banking + card issuance configuration."""
+
+    api_key: str = ""
+    api_secret: str = ""
+    base_url: str = "https://payment.striga.com/api/v1"
+    webhook_secret: str = ""
+    enabled: bool = False
+    environment: Literal["sandbox", "production"] = "sandbox"
+    cards_enabled: bool = True
+    viban_enabled: bool = True
+    lightning_enabled: bool = False
+    standing_orders_enabled: bool = False
+    kyc_enabled: bool = True
+
+    class Config:
+        env_prefix = "SARDIS_STRIGA_"
+
+
+class LightsparkConfig(BaseSettings):
+    """Lightspark Grid API configuration."""
+
+    api_key: str = ""
+    api_secret: str = ""
+    base_url: str = "https://api.lightspark.com/grid/2025-10-13"
+    uma_domain: str = "sardis.sh"
+    webhook_secret: str = ""
+    enabled: bool = False
+    environment: Literal["sandbox", "production"] = "sandbox"
+    fx_enabled: bool = True
+    payouts_enabled: bool = True
+    uma_enabled: bool = True
+    plaid_enabled: bool = False
+
+    class Config:
+        env_prefix = "SARDIS_LIGHTSPARK_"
+
+
 class CardStackConfig(BaseSettings):
     """Card stack provider routing configuration."""
 
-    primary_provider: Literal["lithic", "stripe_issuing", "mock", "rain", "bridge_cards"] = "mock"
-    fallback_provider: Literal["lithic", "stripe_issuing", "rain", "bridge_cards"] | None = None
+    primary_provider: Literal["lithic", "stripe_issuing", "mock", "rain", "bridge_cards", "striga"] = "mock"
+    fallback_provider: Literal["lithic", "stripe_issuing", "rain", "bridge_cards", "striga"] | None = None
     on_chain_provider: Literal["coinbase_cdp"] | None = None
     org_provider_overrides_json: str = ""
 
@@ -418,6 +456,8 @@ class SardisSettings(BaseSettings):
     funding: FundingRoutingConfig = Field(default_factory=FundingRoutingConfig)
     fides: FidesConfig = Field(default_factory=FidesConfig)
     erc8183: ERC8183Config = Field(default_factory=ERC8183Config)
+    striga: StrigaConfig = Field(default_factory=StrigaConfig)
+    lightspark: LightsparkConfig = Field(default_factory=LightsparkConfig)
 
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
