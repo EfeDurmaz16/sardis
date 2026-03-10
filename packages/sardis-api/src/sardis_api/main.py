@@ -147,7 +147,9 @@ from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
+from .routers import data_export as data_export_router
 from .routers import email_verification as email_verification_router
+from .routers import kyc_onboarding as kyc_onboarding_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1838,6 +1840,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
     if hasattr(compliance_router, "public_router"):
         app.include_router(compliance_router.public_router, prefix="/api/v2/compliance", tags=["compliance"])
+
+    # Self-serve KYC initiation and status (developer-facing)
+    app.include_router(kyc_onboarding_router.router)
+
+    # GDPR data export (Art. 20 — right to data portability)
+    app.include_router(data_export_router.router, tags=["account"])
 
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
 
