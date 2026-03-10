@@ -36,6 +36,8 @@ import {
   Rocket,
   LayoutGrid,
   GitBranch,
+  LayoutTemplate,
+  BookUser,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -49,6 +51,7 @@ interface LayoutProps {
 const primaryNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Go Live', href: '/go-live', icon: Rocket },
+  { name: 'Templates', href: '/templates', icon: LayoutTemplate },
   { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
   { name: 'Control Plane Demo', href: '/demo', icon: Sparkles },
   // ── Control Plane ──
@@ -57,14 +60,16 @@ const primaryNavigation = [
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
   { name: 'Kill Switch', href: '/kill-switch', icon: Power },
   { name: 'Evidence', href: '/evidence', icon: FileSearch },
-  { name: 'Simulation', href: '/simulation', icon: Beaker },
+  { name: 'Dry Run', href: '/simulation', icon: Beaker },
   { name: 'Anomaly Detection', href: '/anomaly', icon: Radar },
   { name: 'Merchants', href: '/merchants', icon: Store },
+  { name: 'Counterparties', href: '/counterparties', icon: BookUser },
   // ── Operations ──
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },
   { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Policy Analytics', href: '/policy-analytics', icon: BarChart3 },
   { name: 'Live Events', href: '/events', icon: Activity },
   { name: 'Policy Lab', href: '/policies', icon: FlaskConical },
   { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },

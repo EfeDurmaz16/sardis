@@ -34,6 +34,9 @@ import AlertPreferencesPage from './pages/AlertPreferences'
 import LiveLaneOnboardingPage from './pages/LiveLaneOnboarding'
 import PolicyManagerPage from './pages/PolicyManager'
 import ControlCenterPage from './pages/ControlCenter'
+import WorkflowTemplatesPage from './pages/WorkflowTemplates'
+import PolicyAnalyticsPage from './pages/PolicyAnalytics'
+import CounterpartiesPage from './pages/Counterparties'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -106,6 +109,9 @@ function AppRoutes() {
                 <Route path="/go-live" element={<LiveLaneOnboardingPage />} />
                 <Route path="/policy-manager" element={<PolicyManagerPage />} />
                 <Route path="/control-center" element={<ControlCenterPage />} />
+                <Route path="/templates" element={<WorkflowTemplatesPage />} />
+                <Route path="/policy-analytics" element={<PolicyAnalyticsPage />} />
+                <Route path="/counterparties" element={<CounterpartiesPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

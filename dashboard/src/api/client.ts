@@ -937,6 +937,82 @@ export const billingApi = {
   account: () => requestV2<BillingAccount>('/billing/account'),
 }
 
+// Workflow Templates APIs (V2)
+export const templatesApi = {
+  list: () => requestV2<JsonObject[]>('/templates/'),
+  get: (id: string) => requestV2<JsonObject>(`/templates/${id}`),
+}
+
+// Counterparties APIs (V2)
+export interface Counterparty {
+  id: string
+  name: string
+  type: string
+  identifier: string
+  category: string | null
+  trust_status: string
+  approval_required: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export const counterpartiesApi = {
+  list: (params?: { type?: string; trust_status?: string; limit?: number }) => {
+    const search = new URLSearchParams()
+    if (params?.type) search.set('type', params.type)
+    if (params?.trust_status) search.set('trust_status', params.trust_status)
+    if (params?.limit) search.set('limit', String(params.limit))
+    const q = search.toString()
+    return requestV2<Counterparty[]>(`/counterparties${q ? `?${q}` : ''}`)
+  },
+
+  get: (id: string) => requestV2<Counterparty>(`/counterparties/${id}`),
+
+  create: (data: {
+    name: string
+    type?: string
+    identifier: string
+    category?: string
+    trust_status?: string
+    approval_required?: boolean
+    metadata?: Record<string, unknown>
+  }) =>
+    requestV2<Counterparty>('/counterparties/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: {
+    name?: string
+    trust_status?: string
+    approval_required?: boolean
+    category?: string
+    metadata?: Record<string, unknown>
+  }) =>
+    requestV2<Counterparty>(`/counterparties/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    requestV2<void>(`/counterparties/${id}`, { method: 'DELETE' }),
+}
+
+// Policy Analytics APIs (V2)
+export const policyAnalyticsApi = {
+  getOutcomes: (params?: { period?: string }) => {
+    const search = new URLSearchParams()
+    if (params?.period) search.set('period', params.period)
+    const q = search.toString()
+    return requestV2<JsonObject>(`/policies/analytics/outcomes${q ? `?${q}` : ''}`)
+  },
+
+  getDenyReasons: () => requestV2<JsonObject[]>('/policies/analytics/deny-reasons'),
+
+  getSuggestions: () => requestV2<JsonObject[]>('/policies/analytics/suggestions'),
+}
+
 // Demo APIs (V2)
 export const demoApi = {
   bootstrapApiKey: (data: {
@@ -1037,4 +1113,62 @@ export const demoApi = {
 
   getProviderReadiness: () =>
     requestV2<JsonObject>('/cards/providers/readiness'),
+}
+
+// ── Approval Config types ────────────────────────────────────────────────────
+
+export interface ApproverGroup {
+  id: string
+  name: string
+  members: string[]
+  is_fallback: boolean
+}
+
+export interface RoutingRule {
+  id: string
+  name: string
+  condition: string
+  approver_group: string
+  quorum: number
+  distinct_reviewers: boolean
+  sla_hours: number
+  escalation_hours: number | null
+  escalation_group: string | null
+}
+
+export interface ApprovalDefaults {
+  default_approver_group: string
+  default_quorum: number
+  default_sla_hours: number
+  auto_expire_hours: number
+  require_distinct_reviewers: boolean
+}
+
+export interface ApprovalConfigData {
+  approver_groups: ApproverGroup[]
+  routing_rules: RoutingRule[]
+  defaults: ApprovalDefaults
+}
+
+// Approval Config APIs (V2)
+export const approvalConfigApi = {
+  get: () => requestV2<ApprovalConfigData>('/approvals/config/'),
+
+  updateGroups: (groups: ApproverGroup[]) =>
+    requestV2<ApproverGroup[]>('/approvals/config/groups', {
+      method: 'PUT',
+      body: JSON.stringify(groups),
+    }),
+
+  updateRules: (rules: RoutingRule[]) =>
+    requestV2<RoutingRule[]>('/approvals/config/rules', {
+      method: 'PUT',
+      body: JSON.stringify(rules),
+    }),
+
+  updateDefaults: (defaults: ApprovalDefaults) =>
+    requestV2<ApprovalDefaults>('/approvals/config/defaults', {
+      method: 'PUT',
+      body: JSON.stringify(defaults),
+    }),
 }
