@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, exceptionsApi, anomalyApi, billingApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -351,10 +351,17 @@ export function useCheckPolicy() {
   })
 }
 
-// Simulation
+// Live simulation — dry-run through the full control-plane pipeline
 export function useSimulate() {
   return useMutation({
     mutationFn: simulationApi.simulate,
+  })
+}
+
+// Draft policy testing — what-if analysis without executing
+export function usePolicyTestDraft() {
+  return useMutation({
+    mutationFn: policyTestApi.testDraft,
   })
 }
 

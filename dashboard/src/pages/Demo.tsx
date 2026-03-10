@@ -570,7 +570,7 @@ export default function DemoPage() {
     setB7Status('running')
     setB7Error('')
     try {
-      const res = await simulationApi.simulate({ agent_id: agentId, amount: b7Amount, chain: 'base', currency: 'USDC' })
+      const res = await simulationApi.simulate({ sender_agent_id: agentId, amount: b7Amount, chain: 'base', currency: 'USDC' })
       setB7Result(res)
       setB7Status('done')
     } catch {

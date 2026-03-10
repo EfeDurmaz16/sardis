@@ -761,19 +761,21 @@ export const evidenceApi = {
     requestV2<JsonObject>(`/evidence/decisions/${agentId}/${decisionId}/export`),
 }
 
-// Simulation APIs (V2)
+// Live simulation — dry-run through the full control-plane pipeline (V2)
 export const simulationApi = {
   simulate: (data: {
     amount: string
     currency?: string
     chain?: string
-    agent_id: string
-    wallet_id?: string
-    merchant_id?: string
-    mcc_code?: string
+    /** Agent initiating the payment — maps to sender_agent_id in the API */
+    sender_agent_id: string
+    sender_wallet_id?: string
+    recipient_wallet_id?: string
+    recipient_address?: string
     source?: string
   }) =>
     requestV2<{
+      intent_id: string
       would_succeed: boolean
       failure_reasons: string[]
       policy_result: JsonObject | null
@@ -783,6 +785,32 @@ export const simulationApi = {
     }>('/simulate', {
       method: 'POST',
       body: JSON.stringify({ currency: 'USDC', chain: 'base', source: 'ap2', ...data }),
+    }),
+}
+
+// Draft policy testing — what-if analysis against a policy definition without executing (V2)
+export const policyTestApi = {
+  testDraft: (data: {
+    amount: string
+    currency?: string
+    chain?: string
+    agent_id?: string
+    /** Optional inline policy definition to test against instead of the agent's active policy */
+    definition?: {
+      version?: string
+      rules: Array<{ type: string; params?: Record<string, unknown> }>
+      metadata?: Record<string, unknown>
+    }
+  }) =>
+    requestV2<{
+      intent_id: string
+      would_succeed: boolean
+      failure_reasons: string[]
+      policy_result: JsonObject | null
+      compliance_result: JsonObject | null
+    }>('/policies/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ currency: 'USDC', chain: 'base', ...data }),
     }),
 }
 

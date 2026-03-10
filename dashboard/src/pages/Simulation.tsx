@@ -21,10 +21,10 @@ interface SimulatePayload {
   amount: string
   currency?: string
   chain?: string
-  agent_id: string
-  wallet_id?: string
-  merchant_id?: string
-  mcc_code?: string
+  sender_agent_id: string
+  sender_wallet_id?: string
+  recipient_wallet_id?: string
+  recipient_address?: string
   source?: string
 }
 
@@ -434,14 +434,12 @@ export default function SimulationPage() {
     if (!canSubmit) return
 
     const payload: SimulatePayload = {
-      agent_id: agentId,
+      sender_agent_id: agentId,
       amount,
       currency,
       chain,
       source,
     }
-    if (merchantId.trim()) payload.merchant_id = merchantId.trim()
-    if (mccCode.trim()) payload.mcc_code = mccCode.trim()
 
     simulate.mutate(payload)
   }
