@@ -497,7 +497,8 @@ function RetryPoliciesSection() {
 
       <p className="text-xs text-gray-500">
         Policies are evaluated deterministically and written into exception metadata for audit.
-        Live retry execution is not wired in yet, so fallback actions remain operator guidance rather than automated settlement changes.
+        Live retry execution currently runs only for supported treasury-backed exceptions.
+        Other fallback actions remain operator guidance until their rail-specific executor is wired in.
       </p>
 
       {isLoading ? (

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sardis_v2_core.exception_workflows import (
     ExceptionWorkflowEngine,
@@ -194,6 +194,166 @@ def _list_exceptions(
     return results[:limit]
 
 
+def _extract_treasury_retry_target(exc: PaymentException) -> tuple[str, str] | None:
+    target = exc.metadata.get("retry_target") or exc.metadata.get("recovery_target") or {}
+    if not isinstance(target, dict):
+        target = {}
+
+    target_kind = str(target.get("kind") or exc.metadata.get("retry_target_kind") or "").strip().lower()
+    if target_kind and target_kind != "treasury_payment":
+        return None
+
+    organization_id = (
+        target.get("organization_id")
+        or exc.metadata.get("organization_id")
+        or exc.metadata.get("org_id")
+    )
+    payment_token = (
+        target.get("payment_token")
+        or exc.metadata.get("payment_token")
+        or exc.transaction_id
+    )
+    if not organization_id or not payment_token:
+        return None
+    return str(organization_id), str(payment_token)
+
+
+def _apply_retry_fallback(
+    *,
+    exc: PaymentException,
+    matching_policy: RetryPolicy | None,
+    audit_entry: dict[str, Any],
+    failure_reason: str,
+) -> None:
+    action = matching_policy.fallback_action if matching_policy else "escalate"
+    audit_entry["fallback_action_executed"] = action
+    audit_entry["fallback_reason"] = failure_reason
+
+    if action in {"escalate", "manual_review"}:
+        exc.status = ExceptionStatus.ESCALATED
+        exc.resolution_notes = (
+            "Automated retry failed. Escalated for operator review."
+        )
+        return
+
+    if action == "block":
+        exc.status = ExceptionStatus.ABANDONED
+        exc.resolution_notes = (
+            "Automated retry failed. Recovery policy blocked further automated execution."
+        )
+        return
+
+    if action == "alternative_rail":
+        fallback_rail = matching_policy.fallback_rail if matching_policy else None
+        exc.status = ExceptionStatus.ESCALATED
+        exc.resolution_notes = (
+            "Automated retry failed. Policy recommends fallback rail "
+            f"'{fallback_rail}', but no live fallback rail executor is configured."
+        )
+        return
+
+    exc.status = ExceptionStatus.ESCALATED
+    exc.resolution_notes = (
+        "Automated retry failed. Recovery policy used an unknown fallback action, "
+        "so the exception was escalated."
+    )
+
+
+async def _execute_treasury_retry(
+    *,
+    exc: PaymentException,
+    request: Request,
+    matching_policy: RetryPolicy | None,
+    audit_entry: dict[str, Any],
+) -> bool:
+    target = _extract_treasury_retry_target(exc)
+    if target is None:
+        audit_entry["reason"] = "live_retry_executor_not_configured"
+        return False
+
+    treasury_repo = getattr(request.app.state, "treasury_repo", None)
+    lithic_client = getattr(request.app.state, "lithic_treasury_client", None)
+    if treasury_repo is None or lithic_client is None:
+        audit_entry["reason"] = "treasury_retry_dependencies_unavailable"
+        return False
+
+    organization_id, payment_token = target
+    payment = await treasury_repo.get_ach_payment(organization_id, payment_token)
+    if not payment:
+        audit_entry["reason"] = "treasury_payment_not_found"
+        audit_entry["organization_id"] = organization_id
+        audit_entry["payment_token"] = payment_token
+        return False
+
+    retry_limit = matching_policy.max_retries if matching_policy else exc.max_retries
+    current_retry_count = int(payment.get("retry_count", 0) or 0)
+    if current_retry_count >= retry_limit:
+        audit_entry["reason"] = "max_retries_exhausted"
+        audit_entry["payment_retry_count"] = current_retry_count
+        audit_entry["max_retries"] = retry_limit
+        return False
+
+    from sardis_api.providers.lithic_treasury import CreatePaymentRequest
+
+    direction = str(payment.get("direction", "COLLECTION")).upper()
+    method = str(payment.get("method", "ACH_NEXT_DAY")).upper()
+    sec_code = str(payment.get("sec_code", "CCD")).upper()
+
+    exc.status = ExceptionStatus.IN_PROGRESS
+    exc.updated_at = datetime.now(UTC)
+    exc.retry_count += 1
+
+    retry_request = CreatePaymentRequest(
+        financial_account_token=str(payment.get("financial_account_token", "")),
+        external_bank_account_token=str(payment.get("external_bank_account_token", "")),
+        payment_type="COLLECTION" if direction == "COLLECTION" else "PAYMENT",
+        amount=int(payment.get("amount_minor", 0) or 0),
+        method="ACH_SAME_DAY" if method == "ACH_SAME_DAY" else "ACH_NEXT_DAY",
+        sec_code="PPD" if sec_code == "PPD" else ("WEB" if sec_code == "WEB" else "CCD"),
+        memo=f"retry:{payment_token}",
+        idempotency_token=str(uuid.uuid4()),
+        user_defined_id=payment.get("user_defined_id"),
+    )
+
+    retried = await lithic_client.create_payment(retry_request)
+    await treasury_repo.increment_retry_count(organization_id, payment_token)
+    await treasury_repo.upsert_ach_payment(
+        organization_id,
+        retried.raw or {},
+        idempotency_key=retry_request.idempotency_token,
+    )
+    await treasury_repo.append_ach_events(
+        organization_id,
+        retried.token,
+        retried.events,
+    )
+
+    audit_entry["executed"] = True
+    audit_entry["executor"] = "lithic_treasury_retry"
+    audit_entry["organization_id"] = organization_id
+    audit_entry["payment_token"] = payment_token
+    audit_entry["retried_payment_token"] = retried.token
+    audit_entry["result_status"] = retried.status
+    audit_entry["result"] = retried.result
+
+    exc.status = ExceptionStatus.RESOLVED
+    exc.resolved_at = datetime.now(UTC)
+    exc.resolution_notes = (
+        "Automated treasury retry succeeded and created replacement payment "
+        f"{retried.token}."
+    )
+    exc.metadata["last_retry_result"] = {
+        "executor": "lithic_treasury_retry",
+        "organization_id": organization_id,
+        "payment_token": payment_token,
+        "retried_payment_token": retried.token,
+        "status": retried.status,
+        "result": retried.result,
+    }
+    exc.updated_at = datetime.now(UTC)
+    return True
+
+
 # ============================================================================
 # Request / Response models
 # ============================================================================
@@ -368,6 +528,7 @@ async def escalate_exception(
 )
 async def retry_exception(
     exception_id: str,
+    request: Request,
     body: RetryRequest | None = None,
 ) -> ExceptionResponse:
     """Evaluate retry or fallback policy for a payment exception.
@@ -455,21 +616,49 @@ async def retry_exception(
         audit_entry["fallback_action"] = matching_policy.fallback_action
         audit_entry["fallback_rail"] = matching_policy.fallback_rail
         audit_entry["max_retries"] = matching_policy.max_retries
+    live_retry_supported = strategy in {
+        ResolutionStrategy.RETRY,
+        ResolutionStrategy.RETRY_WITH_BACKOFF,
+    }
+    if live_retry_supported:
+        try:
+            executed = await _execute_treasury_retry(
+                exc=exc,
+                request=request,
+                matching_policy=matching_policy,
+                audit_entry=audit_entry,
+            )
+        except Exception as exc_error:
+            audit_entry["executed"] = True
+            audit_entry["reason"] = "live_retry_failed"
+            audit_entry["error"] = str(exc_error)[:500]
+            _apply_retry_fallback(
+                exc=exc,
+                matching_policy=matching_policy,
+                audit_entry=audit_entry,
+                failure_reason="live_retry_failed",
+            )
+            _append_recovery_audit(exc, audit_entry)
+            return ExceptionResponse.from_exc(exc)
+        else:
+            if executed:
+                _append_recovery_audit(exc, audit_entry)
+                return ExceptionResponse.from_exc(exc)
 
-    # No live retry callable is wired into the API layer yet. Record that
-    # the policy was evaluated and surface the recommended next step.
-    audit_entry["reason"] = "live_retry_executor_not_configured"
+    if "reason" not in audit_entry:
+        audit_entry["reason"] = "live_retry_executor_not_configured"
     _append_recovery_audit(exc, audit_entry)
 
     if matching_policy and matching_policy.fallback_action == "alternative_rail":
         exc.resolution_notes = (
-            "Recovery policy evaluated. Live retry executor is not configured, "
-            f"but policy recommends fallback rail '{matching_policy.fallback_rail}'."
+            "Recovery policy evaluated. Live retry execution is only available for "
+            "supported treasury-backed exceptions, so this policy remains guidance "
+            f"toward fallback rail '{matching_policy.fallback_rail}'."
         )
     else:
         exc.resolution_notes = (
-            "Recovery policy evaluated. Live retry executor is not configured, "
-            "so no automated retry was executed."
+            "Recovery policy evaluated. Live retry execution is only available for "
+            "supported treasury-backed exceptions, so no automated retry was executed."
         )
     exc.updated_at = datetime.now(UTC)
     return ExceptionResponse.from_exc(exc)
