@@ -655,6 +655,25 @@ class MFAVerifyRequest(BaseModel):
     code: str
 
 
+# IP-based rate limiter for register endpoint: tracks (ip -> list of timestamps)
+_register_ip_timestamps: dict[str, list[float]] = defaultdict(list)
+_REGISTER_RATE_LIMIT = 5  # max registrations per IP per hour
+_REGISTER_RATE_WINDOW = 3600  # 1 hour in seconds
+
+
+def _check_register_rate_limit(ip: str) -> None:
+    """Raise 429 if this IP has exceeded the register rate limit."""
+    now = time.monotonic()
+    timestamps = _register_ip_timestamps[ip]
+    # Prune expired entries
+    _register_ip_timestamps[ip] = [t for t in timestamps if now - t < _REGISTER_RATE_WINDOW]
+    if len(_register_ip_timestamps[ip]) >= _REGISTER_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration requests. Try again later.",
+        )
+
+
 def _get_auth_service(request: Request):
     database_url = getattr(getattr(request.app, "state", None), "database_url", None)
     if not database_url:
@@ -669,6 +688,12 @@ def _get_auth_service(request: Request):
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(request: Request, body: RegisterRequest):
     """Register a new user account with email + password."""
+    # IP rate limiting
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    # x-forwarded-for may be a comma-separated list; take the first (original client) IP
+    client_ip = client_ip.split(",")[0].strip()
+    _check_register_rate_limit(client_ip)
+
     auth_svc = _get_auth_service(request)
     try:
         result = await auth_svc.register(
@@ -678,6 +703,9 @@ async def register_user(request: Request, body: RegisterRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+    # Record the registration for rate limiting
+    _register_ip_timestamps[client_ip].append(time.monotonic())
 
     return RegisterResponse(
         user_id=result.user_id,
