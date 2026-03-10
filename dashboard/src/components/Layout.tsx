@@ -29,6 +29,7 @@ import {
   Receipt,
   Key,
   Webhook,
+  Settings,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -67,6 +68,7 @@ const navigation = [
   { name: 'Billing', href: '/billing', icon: Receipt },
   { name: 'API Keys', href: '/api-keys', icon: Key },
   { name: 'Webhooks', href: '/webhooks', icon: Webhook },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export default function Layout({ children }: LayoutProps) {

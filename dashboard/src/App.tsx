@@ -29,6 +29,7 @@ import ExceptionsPage from './pages/Exceptions'
 import BillingPage from './pages/Billing'
 import APIKeysPage from './pages/APIKeys'
 import WebhookManagerPage from './pages/WebhookManager'
+import SettingsPage from './pages/Settings'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -96,6 +97,7 @@ function AppRoutes() {
                 <Route path="/billing" element={<BillingPage />} />
                 <Route path="/api-keys" element={<APIKeysPage />} />
                 <Route path="/webhooks" element={<WebhookManagerPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
