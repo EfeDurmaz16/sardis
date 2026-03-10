@@ -302,10 +302,11 @@ export function useTransactionEvidence(txId: string) {
   })
 }
 
-export function usePolicyDecisions(params?: { agent_id?: string; limit?: number }) {
+export function usePolicyDecisions(agentId: string, params?: { limit?: number }) {
   return useQuery({
-    queryKey: ['policy-decisions', params?.agent_id, params?.limit],
-    queryFn: () => evidenceApi.listPolicyDecisions(params),
+    queryKey: ['policy-decisions', agentId, params?.limit],
+    queryFn: () => evidenceApi.listPolicyDecisions(agentId, params),
+    enabled: !!agentId,
   })
 }
 

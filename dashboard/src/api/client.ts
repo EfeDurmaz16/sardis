@@ -729,35 +729,36 @@ export const approvalsApi = {
 
   get: (approvalId: string) => requestV2<JsonObject>(`/approvals/${approvalId}`),
 
-  approve: (approvalId: string, data?: { notes?: string }) =>
+  approve: (approvalId: string, data?: { notes?: string; reviewed_by?: string }) =>
     requestV2<JsonObject>(`/approvals/${approvalId}/approve`, {
       method: 'POST',
-      body: JSON.stringify(data ?? {}),
+      body: JSON.stringify({ reviewed_by: data?.reviewed_by ?? 'dashboard', reason: data?.notes }),
     }),
 
-  deny: (approvalId: string, data?: { reason?: string }) =>
-    requestV2<JsonObject>(`/approvals/${approvalId}/reject`, {
+  deny: (approvalId: string, data?: { reason?: string; reviewed_by?: string }) =>
+    requestV2<JsonObject>(`/approvals/${approvalId}/deny`, {
       method: 'POST',
-      body: JSON.stringify(data ?? {}),
+      body: JSON.stringify({ reviewed_by: data?.reviewed_by ?? 'dashboard', reason: data?.reason }),
     }),
 }
 
 // Evidence APIs (V2)
 export const evidenceApi = {
-  getTransactionEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}`),
+  getTransactionEvidence: (txId: string) =>
+    requestV2<JsonObject>(`/evidence/transactions/${txId}`),
 
-  verifyEvidence: (txId: string) => requestV2<JsonObject>(`/evidence/${txId}/verify`),
-
-  listPolicyDecisions: (params?: { agent_id?: string; limit?: number }) => {
+  listPolicyDecisions: (agentId: string, params?: { limit?: number }) => {
     const search = new URLSearchParams()
-    if (params?.agent_id) search.set('agent_id', params.agent_id)
     if (params?.limit) search.set('limit', String(params.limit))
     const q = search.toString()
-    return requestV2<JsonObject[]>(`/evidence/policy-decisions${q ? `?${q}` : ''}`)
+    return requestV2<JsonObject[]>(`/evidence/decisions/${agentId}${q ? `?${q}` : ''}`)
   },
 
-  getPolicyDecisionDetail: (decisionId: string) =>
-    requestV2<JsonObject>(`/evidence/policy-decisions/${decisionId}`),
+  getPolicyDecisionDetail: (agentId: string, decisionId: string) =>
+    requestV2<JsonObject>(`/evidence/decisions/${agentId}/${decisionId}`),
+
+  exportPolicyDecision: (agentId: string, decisionId: string) =>
+    requestV2<JsonObject>(`/evidence/decisions/${agentId}/${decisionId}/export`),
 }
 
 // Simulation APIs (V2)
