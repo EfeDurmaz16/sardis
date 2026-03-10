@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi, walletsApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi, walletsApi, retryPolicyApi } from '../api/client'
+import type { ApprovalListResponse } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -255,7 +256,7 @@ export function useDeactivateKillSwitchChain() {
 
 // Approvals
 export function usePendingApprovals() {
-  return useQuery({
+  return useQuery<ApprovalListResponse>({
     queryKey: ['approvals-pending'],
     queryFn: approvalsApi.listPending,
     refetchInterval: 15000,
@@ -263,7 +264,7 @@ export function usePendingApprovals() {
 }
 
 export function useApprovals(params?: { status?: string; limit?: number }) {
-  return useQuery({
+  return useQuery<ApprovalListResponse>({
     queryKey: ['approvals', params?.status, params?.limit],
     queryFn: () => approvalsApi.list(params),
   })
@@ -483,5 +484,44 @@ export function usePolicyHistory(walletId: string) {
     queryKey: ['policy-history', walletId],
     queryFn: () => walletsApi.history(walletId),
     enabled: !!walletId,
+  })
+}
+
+// Retry Policies
+export function useRetryPolicies() {
+  return useQuery({
+    queryKey: ['retry-policies'],
+    queryFn: retryPolicyApi.listRetryPolicies,
+  })
+}
+
+export function useCreateRetryPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: retryPolicyApi.createRetryPolicy,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['retry-policies'] })
+    },
+  })
+}
+
+export function useUpdateRetryPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof retryPolicyApi.updateRetryPolicy>[1] }) =>
+      retryPolicyApi.updateRetryPolicy(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['retry-policies'] })
+    },
+  })
+}
+
+export function useDeleteRetryPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => retryPolicyApi.deleteRetryPolicy(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['retry-policies'] })
+    },
   })
 }

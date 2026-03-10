@@ -50,6 +50,37 @@ export interface EnterpriseSupportTicket {
   updated_at: string
 }
 
+export type ApprovalStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'cancelled'
+export type ApprovalUrgency = 'low' | 'medium' | 'high'
+
+export interface ApprovalRecord {
+  id: string
+  action: string
+  status: ApprovalStatus
+  urgency: ApprovalUrgency
+  requested_by: string
+  reviewed_by: string | null
+  created_at: string
+  reviewed_at: string | null
+  expires_at: string
+  vendor: string | null
+  amount: string | null
+  purpose: string | null
+  reason: string | null
+  card_limit: string | null
+  agent_id: string | null
+  wallet_id: string | null
+  organization_id: string | null
+  metadata: Record<string, unknown>
+}
+
+export interface ApprovalListResponse {
+  approvals: ApprovalRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 
 async function request<T>(
   endpoint: string,
@@ -717,17 +748,17 @@ export const killSwitchApi = {
 
 // Approvals APIs (V2)
 export const approvalsApi = {
-  listPending: () => requestV2<JsonObject[]>('/approvals/pending'),
+  listPending: () => requestV2<ApprovalListResponse>('/approvals/pending'),
 
   list: (params?: { status?: string; limit?: number }) => {
     const search = new URLSearchParams()
     if (params?.status) search.set('status', params.status)
     if (params?.limit) search.set('limit', String(params.limit))
     const q = search.toString()
-    return requestV2<JsonObject[]>(`/approvals${q ? `?${q}` : ''}`)
+    return requestV2<ApprovalListResponse>(`/approvals${q ? `?${q}` : ''}`)
   },
 
-  get: (approvalId: string) => requestV2<JsonObject>(`/approvals/${approvalId}`),
+  get: (approvalId: string) => requestV2<ApprovalRecord>(`/approvals/${approvalId}`),
 
   approve: (approvalId: string, data?: { notes?: string; reviewed_by?: string }) =>
     requestV2<JsonObject>(`/approvals/${approvalId}/approve`, {
@@ -851,6 +882,48 @@ export const exceptionsApi = {
     }),
 }
 
+// Retry Policy APIs (V2)
+export const retryPolicyApi = {
+  listRetryPolicies: () => requestV2<JsonObject[]>('/exceptions/retry-policies'),
+
+  createRetryPolicy: (data: {
+    name: string
+    exception_type: string
+    max_retries?: number
+    retry_delay_seconds?: number
+    backoff_multiplier?: number
+    fallback_action?: string
+    fallback_rail?: string | null
+    enabled?: boolean
+    audit_trail?: boolean
+    safeguards?: Record<string, unknown>
+  }) =>
+    requestV2<JsonObject>('/exceptions/retry-policies', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateRetryPolicy: (id: string, data: {
+    name: string
+    exception_type: string
+    max_retries?: number
+    retry_delay_seconds?: number
+    backoff_multiplier?: number
+    fallback_action?: string
+    fallback_rail?: string | null
+    enabled?: boolean
+    audit_trail?: boolean
+    safeguards?: Record<string, unknown>
+  }) =>
+    requestV2<JsonObject>(`/exceptions/retry-policies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteRetryPolicy: (id: string) =>
+    requestV2<void>(`/exceptions/retry-policies/${id}`, { method: 'DELETE' }),
+}
+
 // Policies APIs (V2)
 export const policiesApi = {
   parse: (data: { natural_language: string }) =>
@@ -941,6 +1014,32 @@ export const billingApi = {
 export const templatesApi = {
   list: () => requestV2<JsonObject[]>('/templates/'),
   get: (id: string) => requestV2<JsonObject>(`/templates/${id}`),
+}
+
+// Environment Templates APIs (V2)
+export interface ProviderConfig {
+  name: string
+  required: boolean
+  env_var: string
+  status: string
+  docs_url: string
+}
+
+export interface EnvironmentTemplate {
+  id: string
+  name: string
+  description: string
+  lane: string
+  providers: ProviderConfig[]
+  env_vars: Record<string, string>
+  policy_defaults: string
+  safety_defaults: Record<string, unknown>
+  recommended_for: string[]
+}
+
+export const environmentTemplatesApi = {
+  list: () => requestV2<EnvironmentTemplate[]>('/environments/'),
+  get: (id: string) => requestV2<EnvironmentTemplate>(`/environments/${id}`),
 }
 
 // Counterparties APIs (V2)
@@ -1170,5 +1269,57 @@ export const approvalConfigApi = {
     requestV2<ApprovalDefaults>('/approvals/config/defaults', {
       method: 'PUT',
       body: JSON.stringify(defaults),
+    }),
+}
+
+// ── Fallback Policies types ──────────────────────────────────────────────────
+
+export interface FallbackRule {
+  id: string
+  name: string
+  primary_rail: string
+  fallback_rail: string
+  trigger: string
+  behavior: string
+  max_retries: number
+  retry_delay_seconds: number
+  enabled: boolean
+  audit_log: boolean
+}
+
+export interface DegradedModePolicy {
+  rail: string
+  mode: string
+  reason: string | null
+  max_amount_override: number | null
+  require_approval: boolean
+  updated_at: string
+}
+
+// Fallback Policies APIs (V2)
+export const fallbackPoliciesApi = {
+  listRules: () => requestV2<FallbackRule[]>('/fallback/rules'),
+
+  createRule: (data: Omit<FallbackRule, 'id'>) =>
+    requestV2<FallbackRule>('/fallback/rules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateRule: (id: string, data: Omit<FallbackRule, 'id'>) =>
+    requestV2<FallbackRule>(`/fallback/rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteRule: (id: string) =>
+    requestV2<void>(`/fallback/rules/${id}`, { method: 'DELETE' }),
+
+  listDegradedModes: () => requestV2<DegradedModePolicy[]>('/fallback/degraded-modes'),
+
+  setDegradedMode: (rail: string, data: Omit<DegradedModePolicy, 'updated_at'>) =>
+    requestV2<DegradedModePolicy>(`/fallback/degraded-modes/${rail}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
 }

@@ -13,23 +13,11 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { usePendingApprovals, useApprovals, useApproveApproval, useDenyApproval } from '../hooks/useApi'
+import type { ApprovalRecord } from '../api/client'
 
 /* ─── Types ─── */
 
-interface ApiApproval {
-  id: string
-  agent_id: string
-  action: string
-  amount: string
-  token: string
-  destination: string
-  urgency: 'low' | 'medium' | 'high' | 'critical'
-  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled'
-  created_at: string
-  reviewed_by: string | null
-  reviewed_at: string | null
-  review_notes: string | null
-}
+type ApiApproval = ApprovalRecord
 
 /* ─── Helpers ─── */
 
@@ -45,10 +33,35 @@ function formatTimeAgo(isoString: string): string {
 }
 
 function normalizeRisk(urgency: string): 'low' | 'medium' | 'high' {
-  if (urgency === 'critical') return 'high'
   if (urgency === 'high') return 'high'
   if (urgency === 'medium') return 'medium'
   return 'low'
+}
+
+function approvalAgent(item: ApiApproval): string {
+  return item.agent_id ?? item.requested_by
+}
+
+function approvalAmount(item: ApiApproval): string {
+  return item.amount ?? item.card_limit ?? '0'
+}
+
+function approvalToken(item: ApiApproval): string {
+  const token = item.metadata?.token
+  return typeof token === 'string' && token ? token : 'USDC'
+}
+
+function approvalDestination(item: ApiApproval): string {
+  const destination =
+    item.vendor ??
+    (typeof item.metadata?.destination === 'string' ? item.metadata.destination : null) ??
+    (typeof item.metadata?.recipient_address === 'string' ? item.metadata.recipient_address : null) ??
+    item.purpose
+  return destination ?? '—'
+}
+
+function approvalNotes(item: ApiApproval): string | null {
+  return item.reason ?? null
 }
 
 function getRiskBadgeColor(risk: 'low' | 'medium' | 'high'): string {
@@ -89,8 +102,8 @@ export default function ApprovalsPage() {
   const approveMutation = useApproveApproval()
   const denyMutation = useDenyApproval()
 
-  const pending: ApiApproval[] = Array.isArray(pendingData) ? (pendingData as unknown as ApiApproval[]) : []
-  const allApprovals: ApiApproval[] = Array.isArray(allApprovalsData) ? (allApprovalsData as unknown as ApiApproval[]) : []
+  const pending: ApiApproval[] = pendingData?.approvals ?? []
+  const allApprovals: ApiApproval[] = allApprovalsData?.approvals ?? []
   const history = allApprovals.filter(item => item.status !== 'pending')
 
   const filteredPending = useMemo(() => {
@@ -104,15 +117,15 @@ export default function ApprovalsPage() {
       const t = new Date(h.reviewed_at ?? h.created_at).getTime()
       return h.status === 'approved' && t > dayAgo
     })
-    const rejectedToday = history.filter(h => {
+    const deniedToday = history.filter(h => {
       const t = new Date(h.reviewed_at ?? h.created_at).getTime()
-      return h.status === 'rejected' && t > dayAgo
+      return h.status === 'denied' && t > dayAgo
     })
 
     return {
       pending: pending.length,
       approvedToday: approvedToday.length,
-      rejectedToday: rejectedToday.length,
+      deniedToday: deniedToday.length,
     }
   }, [pending, history])
 
@@ -243,9 +256,9 @@ export default function ApprovalsPage() {
         <div className="bg-dark-300 border border-dark-100 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Rejected Today</p>
+              <p className="text-sm text-gray-400">Denied Today</p>
               <p className="text-3xl font-bold text-red-400 mt-1">
-                {historyLoading ? '—' : stats.rejectedToday}
+                {historyLoading ? '—' : stats.deniedToday}
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-400" />
@@ -333,7 +346,7 @@ export default function ApprovalsPage() {
               const isExpanded = expandedItems.has(item.id)
               const isSelected = selectedItems.has(item.id)
               const isActioning = actionLoadingIds.has(item.id)
-              const amountNum = parseFloat(item.amount)
+              const amountNum = parseFloat(approvalAmount(item))
 
               return (
                 <div
@@ -356,19 +369,19 @@ export default function ApprovalsPage() {
                     <div className="flex-1 grid grid-cols-5 gap-4">
                       <div>
                         <p className="text-xs text-gray-500">Agent</p>
-                        <p className="text-sm font-medium text-white font-mono">{item.agent_id}</p>
+                        <p className="text-sm font-medium text-white font-mono">{approvalAgent(item)}</p>
                       </div>
 
                       <div>
                         <p className="text-xs text-gray-500">Amount</p>
                         <p className="text-sm font-bold text-white">
-                          ${isNaN(amountNum) ? item.amount : amountNum.toFixed(2)} {item.token}
+                          ${isNaN(amountNum) ? approvalAmount(item) : amountNum.toFixed(2)} {approvalToken(item)}
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-xs text-gray-500">Destination</p>
-                        <p className="text-sm font-medium text-white truncate">{item.destination}</p>
+                        <p className="text-xs text-gray-500">Counterparty</p>
+                        <p className="text-sm font-medium text-white truncate">{approvalDestination(item)}</p>
                       </div>
 
                       <div>
@@ -425,12 +438,12 @@ export default function ApprovalsPage() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Action / Purpose</p>
-                          <p className="text-white">{item.action}</p>
+                          <p className="text-white">{item.purpose ?? item.action}</p>
                         </div>
-                        {item.review_notes && (
+                        {approvalNotes(item) && (
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Notes</p>
-                            <p className="text-white">{item.review_notes}</p>
+                            <p className="text-white">{approvalNotes(item)}</p>
                           </div>
                         )}
                       </div>
@@ -493,23 +506,23 @@ export default function ApprovalsPage() {
               </thead>
               <tbody className="divide-y divide-dark-100">
                 {history.map((item) => {
-                  const amountNum = parseFloat(item.amount)
+                  const amountNum = parseFloat(approvalAmount(item))
                   const isApproved = item.status === 'approved'
                   const decisionAt = item.reviewed_at ?? item.created_at
 
                   return (
                     <tr key={item.id} className="hover:bg-dark-400 transition-colors">
                       <td className="py-3 px-4">
-                        <p className="text-white font-medium font-mono text-xs">{item.agent_id}</p>
+                        <p className="text-white font-medium font-mono text-xs">{approvalAgent(item)}</p>
                       </td>
                       <td className="py-3 px-4">
                         <p className="text-white font-medium">
-                          ${isNaN(amountNum) ? item.amount : amountNum.toFixed(2)}
+                          ${isNaN(amountNum) ? approvalAmount(item) : amountNum.toFixed(2)}
                         </p>
-                        <p className="text-xs text-gray-500">{item.token}</p>
+                        <p className="text-xs text-gray-500">{approvalToken(item)}</p>
                       </td>
-                      <td className="py-3 px-4 text-white">{item.destination}</td>
-                      <td className="py-3 px-4 text-gray-400 max-w-xs truncate">{item.action}</td>
+                      <td className="py-3 px-4 text-white">{approvalDestination(item)}</td>
+                      <td className="py-3 px-4 text-gray-400 max-w-xs truncate">{item.purpose ?? item.action}</td>
                       <td className="py-3 px-4">
                         <div className={clsx(
                           'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border',
