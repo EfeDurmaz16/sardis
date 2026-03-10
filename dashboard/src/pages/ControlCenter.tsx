@@ -24,24 +24,12 @@ import {
   useTransactions,
   useHealth,
 } from '../hooks/useApi'
+import type { ApprovalRecord } from '../api/client'
 import type { Transaction } from '../types'
 
 /* ─── Types ─── */
 
-interface ApiApproval {
-  id: string
-  agent_id: string
-  action: string
-  amount: string
-  token: string
-  destination: string
-  urgency: 'low' | 'medium' | 'high' | 'critical'
-  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled'
-  created_at: string
-  reviewed_by: string | null
-  reviewed_at: string | null
-  review_notes: string | null
-}
+type ApiApproval = ApprovalRecord
 
 /* ─── Helpers ─── */
 
@@ -59,6 +47,11 @@ function formatAmount(amount: string): string {
   const n = parseFloat(amount)
   if (isNaN(n)) return amount
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function truncateId(value: string, leading = 8, trailing = 6): string {
+  if (!value || value.length <= leading + trailing + 3) return value
+  return `${value.slice(0, leading)}...${value.slice(-trailing)}`
 }
 
 function normalizeRisk(urgency: string): 'low' | 'medium' | 'high' {
@@ -166,6 +159,10 @@ interface ActionQueueProps {
   onDeny: (id: string) => void
 }
 
+function approvalSummary(item: ApiApproval): string {
+  return item.vendor || item.purpose || item.reason || item.action
+}
+
 function ActionQueue({
   pending,
   isLoading,
@@ -220,7 +217,7 @@ function ActionQueue({
             {top5.map((item) => {
               const risk = normalizeRisk(item.urgency)
               const isActioning = actionLoadingIds.has(item.id)
-              const amountNum = parseFloat(item.amount)
+              const amountNum = parseFloat(item.amount ?? '')
 
               return (
                 <div key={item.id} className="p-4 hover:bg-dark-400/50 transition-colors">
@@ -241,17 +238,33 @@ function ActionQueue({
                     </span>
                   </div>
 
-                  {/* Row 2: amount + destination */}
+                  {/* Row 2: amount + request context */}
                   <p className="text-sm font-bold text-white mb-0.5">
-                    {isNaN(amountNum) ? item.amount : formatAmount(item.amount)}{' '}
-                    <span className="text-xs text-gray-500 font-normal">{item.token}</span>
+                    {item.amount
+                      ? isNaN(amountNum)
+                        ? item.amount
+                        : formatAmount(item.amount)
+                      : item.action}
                   </p>
-                  <p className="text-xs text-gray-400 truncate mb-3">{item.destination}</p>
+                  <p className="text-xs text-gray-400 truncate mb-1">{approvalSummary(item)}</p>
+                  <p className="text-xs text-gray-500 truncate mb-3">
+                    Requested by {item.requested_by}
+                    {item.reason ? ` • ${item.reason}` : ''}
+                  </p>
 
                   {/* Row 3: time + actions */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">{formatTimeAgo(item.created_at)}</span>
                     <div className="flex items-center gap-1.5">
+                      {item.agent_id && (
+                        <Link
+                          to={`/evidence?agent=${encodeURIComponent(item.agent_id)}`}
+                          className="px-2.5 py-1 bg-dark-400 border border-dark-100 text-gray-300 text-xs font-medium flex items-center gap-1 hover:border-sardis-500/30 hover:text-sardis-400 transition-all"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Evidence
+                        </Link>
+                      )}
                       <button
                         onClick={() => onApprove(item.id)}
                         disabled={isActioning}
@@ -305,7 +318,7 @@ interface RiskFeedProps {
 }
 
 function RiskFeed({ transactions, isLoading }: RiskFeedProps) {
-  // Sort by urgency: failed/rejected first, then pending, then others
+  // Sort by urgency: failed first, then pending, then successful transactions
   const sorted = useMemo(() => {
     return [...transactions].sort((a, b) => {
       const order = { failed: 0, pending: 1, completed: 2 }
@@ -387,7 +400,7 @@ function RiskFeed({ transactions, isLoading }: RiskFeedProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-medium text-white font-mono truncate">
-                        {tx.from_wallet}
+                        {truncateId(tx.tx_id)}
                       </p>
                       <span
                         className={clsx(
@@ -405,6 +418,12 @@ function RiskFeed({ transactions, isLoading }: RiskFeedProps) {
                         {tx.purpose || `→ ${tx.to_wallet || 'unknown'}`}
                       </p>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Link
+                          to={`/evidence?tx=${encodeURIComponent(tx.tx_id)}`}
+                          className="text-xs text-sardis-400 hover:text-sardis-300 transition-colors"
+                        >
+                          Evidence
+                        </Link>
                         <span
                           className={clsx(
                             'text-xs px-1.5 py-0.5 border capitalize',
@@ -443,7 +462,6 @@ interface SystemPostureProps {
     agents: Record<string, unknown>
   } | undefined
   isKillSwitchLoading: boolean
-  pendingCount: number
   approvals: ApiApproval[]
 }
 
@@ -463,7 +481,7 @@ function SystemPosture({ killSwitchData, isKillSwitchLoading, approvals }: Syste
   const recentApprovals = approvals.filter(
     (a) => new Date(a.reviewed_at ?? a.created_at).getTime() > dayAgo
   )
-  const deniedToday = recentApprovals.filter((a) => a.status === 'rejected').length
+  const deniedToday = recentApprovals.filter((a) => a.status === 'denied').length
   const approvedToday = recentApprovals.filter((a) => a.status === 'approved').length
   const denialSpike = deniedToday > 3
 
@@ -666,7 +684,7 @@ export default function ControlCenterPage() {
       (a) => new Date(a.reviewed_at ?? a.created_at).getTime() > dayAgo
     )
     if (recent.length === 0) return '0%'
-    const denied = recent.filter((a) => a.status === 'rejected').length
+    const denied = recent.filter((a) => a.status === 'denied').length
     return `${Math.round((denied / recent.length) * 100)}%`
   }, [allApprovals])
 
@@ -749,7 +767,6 @@ export default function ControlCenterPage() {
               | undefined
           }
           isKillSwitchLoading={ksLoading}
-          pendingCount={pending.length}
           approvals={allApprovals}
         />
       </div>

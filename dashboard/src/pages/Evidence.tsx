@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Shield,
   ShieldCheck,
@@ -726,9 +727,19 @@ function EmptyState() {
 /* ─── Main Page ─── */
 
 export default function EvidencePage() {
-  const [inputValue, setInputValue] = useState('')
-  const [searchedValue, setSearchedValue] = useState('')
-  const [searchMode, setSearchMode] = useState<SearchMode>('idle')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTx = searchParams.get('tx')?.trim() ?? ''
+  const initialAgent = searchParams.get('agent')?.trim() ?? ''
+  const initialValue = initialTx || initialAgent
+  const initialMode: SearchMode = initialTx
+    ? 'transaction'
+    : initialAgent
+    ? 'agent'
+    : 'idle'
+
+  const [inputValue, setInputValue] = useState(initialValue)
+  const [searchedValue, setSearchedValue] = useState(initialValue)
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialMode)
   const [exportModalTxId, setExportModalTxId] = useState<string | null>(null)
 
   const agentsQuery = useAgents()
@@ -744,12 +755,14 @@ export default function EvidencePage() {
 
     if (val.startsWith('tx_') || val.startsWith('0x')) {
       setSearchMode('transaction')
+      setSearchParams({ tx: val })
     } else {
       // agent ID or ambiguous — check against known agents or default to agent mode
       setSearchMode(agentIds.has(val) || val.startsWith('agent_') || val.startsWith('agt_') ? 'agent' : 'agent')
+      setSearchParams({ agent: val })
     }
     setSearchedValue(val)
-  }, [inputValue, agentIds])
+  }, [inputValue, agentIds, setSearchParams])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -762,7 +775,8 @@ export default function EvidencePage() {
     setInputValue('')
     setSearchedValue('')
     setSearchMode('idle')
-  }, [])
+    setSearchParams({})
+  }, [setSearchParams])
 
   return (
     <div className="space-y-8">
