@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function CTASection({ onOpenWaitlist }) {
   return (
     <section style={{ backgroundColor: 'var(--landing-bg)' }}>
@@ -16,10 +18,10 @@ export default function CTASection({ onOpenWaitlist }) {
           Free to start. No credit card required.
         </p>
 
-        <div className="pt-3">
-          <button
-            onClick={onOpenWaitlist}
-            className="text-white rounded-lg py-3.5 px-9 transition-colors"
+        <div className="pt-3 flex flex-col sm:flex-row items-center gap-4">
+          <Link
+            to="/signup"
+            className="text-white rounded-lg py-3.5 px-9 transition-colors inline-block text-center"
             style={{ backgroundColor: 'var(--landing-accent)' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent)'}
@@ -28,8 +30,23 @@ export default function CTASection({ onOpenWaitlist }) {
               className="text-[15px] font-medium"
               style={{ fontFamily: "'Inter', sans-serif" }}
             >
-              Start Free
+              Get Started Free
             </span>
+          </Link>
+          <button
+            onClick={onOpenWaitlist}
+            className="text-[15px] font-medium transition-colors"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              color: 'var(--landing-text-muted)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--landing-text-secondary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--landing-text-muted)'}
+          >
+            Enterprise waitlist →
           </button>
         </div>
       </div>

@@ -80,6 +80,7 @@ import Demo from './pages/Demo.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Enterprise from './pages/Enterprise.jsx'
 import LandingV2 from './pages/LandingV2.jsx'
+import Signup from './pages/Signup.jsx'
 // Solution pages
 import AgentPlatformsPage from './pages/solutions/AgentPlatforms.jsx'
 import ProcurementPage from './pages/solutions/Procurement.jsx'
@@ -100,6 +101,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/solutions/agent-platforms" element={<AgentPlatformsPage />} />
         <Route path="/solutions/procurement" element={<ProcurementPage />} />
         <Route path="/solutions/payouts" element={<PayoutsPage />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />

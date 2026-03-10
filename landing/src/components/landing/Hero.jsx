@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ── Wallet Screens ───────────────────────────────────────────── */
@@ -338,9 +339,9 @@ export default function Hero({ onOpenWaitlist }) {
 
           {/* CTA Row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-            <button
-              onClick={onOpenWaitlist}
-              className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap"
+            <Link
+              to="/signup"
+              className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap inline-block text-center"
               style={{
                 fontFamily: "'Inter', sans-serif",
                 backgroundColor: 'var(--landing-accent)',
@@ -348,7 +349,23 @@ export default function Hero({ onOpenWaitlist }) {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent)'}
             >
-              See the Demo
+              Get Started Free
+            </Link>
+            <button
+              onClick={onOpenWaitlist}
+              className="text-[15px] font-medium whitespace-nowrap transition-colors"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                color: 'var(--landing-text-muted)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--landing-text-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--landing-text-muted)'}
+            >
+              Enterprise waitlist →
             </button>
           </div>
 
