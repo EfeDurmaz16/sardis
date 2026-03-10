@@ -25,7 +25,6 @@ import {
   Store,
   Beaker,
   Radar,
-  OctagonAlert,
   Receipt,
   Key,
   Webhook,
@@ -81,7 +80,6 @@ const primaryNavigation = [
 ]
 
 const experimentalNavigation = [
-  { name: 'Exceptions', href: '/exceptions', icon: OctagonAlert },
   { name: 'Agent Identity', href: '/agent-identity', icon: Award },
   { name: 'Guardrails', href: '/guardrails', icon: Shield },
   { name: 'Confidence Router', href: '/confidence-router', icon: Target },

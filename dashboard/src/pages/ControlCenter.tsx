@@ -598,11 +598,11 @@ function SystemPosture({ killSwitchData, isKillSwitchLoading, approvals }: Syste
         </Link>
 
         <Link
-          to="/exceptions"
+          to="/evidence"
           className="flex items-center gap-2 w-full px-3 py-2.5 bg-dark-400 border border-dark-100 text-gray-300 text-xs font-medium hover:border-sardis-500/30 hover:text-sardis-400 transition-all"
         >
-          <AlertTriangle className="w-3.5 h-3.5" />
-          View Exceptions
+          <Shield className="w-3.5 h-3.5" />
+          Review Evidence
           <ExternalLink className="w-3 h-3 ml-auto" />
         </Link>
 
