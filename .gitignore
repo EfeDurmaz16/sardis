@@ -115,6 +115,7 @@ pitch-deck/
 !/docs/design-partner/
 !/docs/design-partner/staging-hardening-checklist.json
 !/docs/audits/
+!/docs/quickstart/
 /demos/sardis-demo-video/
 
 # Root-level internal files
