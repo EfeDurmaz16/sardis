@@ -1168,17 +1168,71 @@ export const counterpartiesApi = {
 }
 
 // Policy Analytics APIs (V2)
+export interface PolicyAnalyticsSummary {
+  total_checks: number
+  allowed: number
+  denied: number
+  escalated: number
+  allow_rate: number
+  deny_rate: number
+  escalation_rate: number
+}
+
+export interface PolicyAnalyticsDailyOutcome {
+  date: string
+  allowed: number
+  denied: number
+  escalated: number
+}
+
+export interface PolicyAnalyticsDenyReason {
+  reason: string
+  count: number
+  pct_of_denials: number
+  trend: 'up' | 'down' | 'flat'
+}
+
+export interface PolicyAnalyticsVersionImpact {
+  version: string
+  policy_version_id: string
+  agent_id: string
+  deployed_at: string
+  label: string
+  deny_rate_before: number
+  deny_rate_after: number
+  escalation_rate_before: number
+  escalation_rate_after: number
+}
+
+export interface PolicyAnalyticsSuggestion {
+  id: string
+  severity: 'info' | 'warn' | 'action'
+  title: string
+  body: string
+  action_label?: string
+}
+
+export interface PolicyAnalyticsOutcomesResponse {
+  summary_24h: PolicyAnalyticsSummary
+  summary_7d: PolicyAnalyticsSummary
+  summary_30d: PolicyAnalyticsSummary
+  daily_outcomes: PolicyAnalyticsDailyOutcome[]
+  policy_versions: PolicyAnalyticsVersionImpact[]
+}
+
 export const policyAnalyticsApi = {
   getOutcomes: (params?: { period?: string }) => {
     const search = new URLSearchParams()
     if (params?.period) search.set('period', params.period)
     const q = search.toString()
-    return requestV2<JsonObject>(`/policies/analytics/outcomes${q ? `?${q}` : ''}`)
+    return requestV2<PolicyAnalyticsOutcomesResponse>(`/policies/analytics/outcomes${q ? `?${q}` : ''}`)
   },
 
-  getDenyReasons: () => requestV2<JsonObject[]>('/policies/analytics/deny-reasons'),
+  getDenyReasons: () =>
+    requestV2<PolicyAnalyticsDenyReason[]>('/policies/analytics/deny-reasons'),
 
-  getSuggestions: () => requestV2<JsonObject[]>('/policies/analytics/suggestions'),
+  getSuggestions: () =>
+    requestV2<PolicyAnalyticsSuggestion[]>('/policies/analytics/suggestions'),
 }
 
 // Demo APIs (V2)
