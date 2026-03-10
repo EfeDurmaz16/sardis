@@ -332,6 +332,10 @@ async def create_checkout_session(
             detail="Failed to create checkout session",
         ) from exc
 
+    # Analytics: track plan upgrade intent (fire-and-forget, never blocks the request)
+    from sardis_api.analytics.posthog_tracker import track_event, PLAN_UPGRADED
+    track_event(principal.user_id, PLAN_UPGRADED, {"plan": body.plan})
+
     return CheckoutResponse(checkout_url=session.url)
 
 

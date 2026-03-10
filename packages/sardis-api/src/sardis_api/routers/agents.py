@@ -543,6 +543,10 @@ async def create_agent(
         await deps.agent_repo.bind_wallet(agent.agent_id, wallet.wallet_id)
         agent.wallet_id = wallet.wallet_id
 
+    # Analytics: track agent creation (fire-and-forget, never blocks the request)
+    from sardis_api.analytics.posthog_tracker import track_event, FIRST_AGENT_CREATED
+    track_event(principal.user_id, FIRST_AGENT_CREATED, {"agent_name": agent.name})
+
     return AgentResponse.from_agent(agent)
 
 
