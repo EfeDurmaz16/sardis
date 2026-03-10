@@ -303,6 +303,12 @@ class APIError(SardisError):
         # Map status codes to specific error classes
         error_class = cls._get_error_class_for_status(status_code)
 
+        # Enhance messages for common auth errors
+        if status_code == 401 and "dashboard.sardis.sh" not in message:
+            message = message + "\n→ Get or rotate your API key: https://dashboard.sardis.sh/api-keys"
+        elif status_code == 403 and "scope" not in message:
+            message = message + "\n→ Check required scopes: https://sardis.sh/docs/api#authentication"
+
         return error_class(
             message=message,
             status_code=status_code,
@@ -339,7 +345,7 @@ class AuthenticationError(APIError):
     """
 
     default_code = ErrorCode.AUTHENTICATION_ERROR
-    default_message = "Authentication failed"
+    default_message = "Authentication failed. Check your API key at https://dashboard.sardis.sh/api-keys"
     default_severity = ErrorSeverity.HIGH
 
     def __init__(
@@ -398,7 +404,7 @@ class NotFoundError(APIError):
     """
 
     default_code = ErrorCode.NOT_FOUND
-    default_message = "Resource not found"
+    default_message = "Resource not found. Check the resource ID and API docs at https://sardis.sh/docs/api"
 
     def __init__(
         self,
@@ -439,7 +445,7 @@ class RateLimitError(APIError):
     """
 
     default_code = ErrorCode.RATE_LIMIT_EXCEEDED
-    default_message = "Rate limit exceeded"
+    default_message = "Rate limit exceeded. Upgrade your plan at https://sardis.sh/pricing or retry after the Retry-After header value"
     default_retryable = True
 
     def __init__(
@@ -550,7 +556,7 @@ class ServiceUnavailableError(APIError):
     """
 
     default_code = ErrorCode.SERVICE_UNAVAILABLE
-    default_message = "Service temporarily unavailable"
+    default_message = "Service temporarily unavailable. Check https://status.sardis.sh for updates"
     default_retryable = True
 
     def __init__(self, message: str | None = None, **kwargs: Any):

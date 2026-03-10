@@ -245,19 +245,33 @@ export class APIError extends SardisError {
     const error = body.error || body.detail || body;
     const errorCode = APIError.getErrorCodeForStatus(statusCode);
 
+    let message: string;
+    let code: string;
+    let details: Record<string, unknown>;
+    let requestId: string | undefined;
+
     if (typeof error === 'string') {
-      return new APIError(error, statusCode, errorCode, {}, undefined, headers);
+      message = error;
+      code = errorCode;
+      details = {};
+    } else {
+      const errorObj = error as Record<string, unknown>;
+      message = (errorObj.message as string) || 'Unknown API error';
+      code = (errorObj.code as string) || errorCode;
+      details = (errorObj.details as Record<string, unknown>) || {};
+      requestId = errorObj.request_id as string;
     }
 
-    const errorObj = error as Record<string, unknown>;
-    return new APIError(
-      (errorObj.message as string) || 'Unknown API error',
-      statusCode,
-      (errorObj.code as string) || errorCode,
-      (errorObj.details as Record<string, unknown>) || {},
-      errorObj.request_id as string,
-      headers
-    );
+    // Append actionable guidance for common error status codes
+    if (statusCode === 401) {
+      message = message + '\n→ Get or rotate your API key: https://dashboard.sardis.sh/api-keys';
+    } else if (statusCode === 403) {
+      message = message + '\n→ Check required scopes: https://sardis.sh/docs/api#authentication';
+    } else if (statusCode === 503) {
+      message = message + '\n→ Check status: https://status.sardis.sh';
+    }
+
+    return new APIError(message, statusCode, code, details, requestId, headers);
   }
 
   /**
@@ -325,7 +339,7 @@ export class AuthenticationError extends SardisError {
    * @param code - Machine-readable error code
    */
   constructor(
-    message: string = 'Invalid or missing API key',
+    message: string = 'Invalid or missing API key. Get one at https://dashboard.sardis.sh/api-keys',
     code: string = SardisErrorCode.AUTHENTICATION_ERROR
   ) {
     super(message, code, {}, undefined, false);
@@ -371,7 +385,7 @@ export class RateLimitError extends SardisError {
    * @param resetAt - Reset timestamp
    */
   constructor(
-    message: string = 'Rate limit exceeded',
+    message: string = 'Rate limit exceeded. Upgrade at https://sardis.sh/pricing or wait for Retry-After',
     retryAfter?: number,
     limit?: number,
     remaining?: number,
