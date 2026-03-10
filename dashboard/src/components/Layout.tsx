@@ -55,6 +55,7 @@ const primaryNavigation = [
   // ── Control Plane ──
   { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
+  { name: 'Approval Routing', href: '/approval-config', icon: Settings },
   { name: 'Kill Switch', href: '/kill-switch', icon: Power },
   { name: 'Evidence', href: '/evidence', icon: FileSearch },
   { name: 'Live Dry Run', href: '/simulation', icon: Beaker },

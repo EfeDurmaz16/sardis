@@ -103,6 +103,7 @@ from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
 from .routers import ap2, auth, mandates, mvp
 from .routers import api_keys as api_keys_router
+from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
 from .routers import audit_anchors as audit_anchors_router
 from .routers import cards as cards_router
@@ -777,6 +778,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 approval_repo=approval_repo,
             )
             app.include_router(approvals_router.router, prefix="/api/v2/approvals", tags=["approvals"])
+            app.include_router(
+                approval_config_router.router,
+                prefix="/api/v2/approvals/config",
+                tags=["approval-config"],
+            )
             logger.info("Approvals router registered")
         except ImportError as e:
             logger.warning(f"Approvals dependencies not available: {e}")
