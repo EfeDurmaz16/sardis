@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import DashboardPage from './pages/Dashboard'
 import AgentsPage from './pages/Agents'
 import LoginPage from './pages/Login'
+import OnboardingPage from './pages/Onboarding'
 import DemoPage from './pages/Demo'
 import CardsPage from './pages/Cards'
 import ReconciliationPage from './pages/Reconciliation'
@@ -27,10 +28,23 @@ import AnomalyDashboardPage from './pages/AnomalyDashboard'
 import ExceptionsPage from './pages/Exceptions'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+// Requires auth only — used for the onboarding route itself to avoid redirect loops
+const AuthRequired = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
+  }
+  return <>{children}</>;
+};
+
+// Requires auth and redirects to onboarding when the user has no agents yet
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, needsOnboarding } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  if (needsOnboarding) {
+    return <Navigate to="/onboarding" />;
   }
   return <>{children}</>;
 };
@@ -39,6 +53,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/onboarding"
+        element={
+          <AuthRequired>
+            <OnboardingPage />
+          </AuthRequired>
+        }
+      />
       <Route
         path="/*"
         element={
