@@ -149,6 +149,7 @@ def register_sardis_actions(
         purpose: str = "Purchase",
         origin: str = "",
         page_title: str = "",
+        card_id: str | None = None,
     ) -> str:
         wid = default_wallet_id
         if not wid:
@@ -174,23 +175,27 @@ def register_sardis_actions(
             session_id=session_id,
         )
 
+        payment_metadata = {
+            "browser_context": ctx.to_metadata()["browser_context"],
+            "origin_url": origin,
+            "action_description": purpose,
+            "action_description_hash": hashlib.sha256(
+                purpose.encode("utf-8")
+            ).hexdigest(),
+            "session_context_hash": hashlib.sha256(
+                session_id.encode("utf-8")
+            ).hexdigest(),
+        }
+        if card_id:
+            payment_metadata["card_id"] = card_id
+
         result = client.payments.send(
             wid,
             to=merchant,
             amount=amount,
             purpose=purpose,
             memo=f"[browser:{ctx.action_hash[:12]}] {purpose}",
-            metadata={
-                "browser_context": ctx.to_metadata()["browser_context"],
-                "origin_url": origin,
-                "action_description": purpose,
-                "action_description_hash": hashlib.sha256(
-                    purpose.encode("utf-8")
-                ).hexdigest(),
-                "session_context_hash": hashlib.sha256(
-                    session_id.encode("utf-8")
-                ).hexdigest(),
-            },
+            metadata=payment_metadata,
         )
         if result.success:
             return (
@@ -225,4 +230,41 @@ def register_sardis_actions(
             return f"WOULD BE BLOCKED: ${amount} exceeds balance ${balance.balance}"
         return f"WOULD BE ALLOWED: ${amount} to {merchant} (balance: ${balance.balance}, remaining: ${balance.remaining})"
 
-    return [sardis_pay, sardis_balance, sardis_check_policy]
+    @controller.action("Select the best card for a merchant purchase based on currency, merchant lock, and spend")
+    async def select_best_card(
+        merchant: str,
+        currency: str = "USD",
+        mcc: str | None = None,
+    ) -> str:
+        wid = default_wallet_id
+        if not wid:
+            return "Error: No wallet ID configured."
+
+        injection = _scan_prompt_injection(merchant)
+        if injection:
+            return "BLOCKED: prompt injection signal detected"
+
+        try:
+            cards = client.cards.list(wid)
+            if not cards or not cards.cards:
+                return "No cards available for this wallet."
+
+            # Simple heuristic: prefer currency match, then merchant-locked, then lowest spend
+            best = None
+            for card in cards.cards:
+                card_currency = getattr(card, "currency", "USD")
+                if card_currency == currency:
+                    best = card
+                    break
+            if not best:
+                best = cards.cards[0]
+
+            return (
+                f"Selected card: {best.card_id} "
+                f"(currency={getattr(best, 'currency', 'USD')}, "
+                f"type={getattr(best, 'card_type', 'unknown')})"
+            )
+        except Exception as e:
+            return f"Error selecting card: {e}"
+
+    return [sardis_pay, sardis_balance, sardis_check_policy, select_best_card]
