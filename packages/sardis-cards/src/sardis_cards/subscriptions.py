@@ -103,6 +103,7 @@ class Subscription:
 
     # Card association
     card_id: str | None = None  # shared card or dedicated
+    preferred_card_id: str | None = None  # preferred card for routing
 
     # Approval settings
     auto_approve: bool = True
@@ -121,6 +122,9 @@ class Subscription:
     failure_count: int = 0
     max_failures: int = 3  # pause after N consecutive failures
 
+    # Standing order sync (Striga)
+    striga_standing_order_id: str | None = None
+
     # Timestamps
     created_at: datetime = field(
         default_factory=lambda: datetime.now(UTC)
@@ -128,6 +132,7 @@ class Subscription:
     updated_at: datetime = field(
         default_factory=lambda: datetime.now(UTC)
     )
+    modified_at: datetime | None = None
 
     @property
     def amount(self) -> Decimal:
@@ -147,6 +152,35 @@ class Subscription:
         # Amount match: within tolerance
         diff = abs(amount_cents - self.amount_cents)
         return not diff > self.amount_tolerance_cents
+
+    def modify(
+        self,
+        *,
+        amount_cents: int | None = None,
+        currency: str | None = None,
+        billing_cycle: BillingCycle | None = None,
+        billing_day: int | None = None,
+        preferred_card_id: str | None = None,
+        auto_approve: bool | None = None,
+        auto_approve_threshold_cents: int | None = None,
+    ) -> None:
+        """Modify subscription fields. Preserves billing history."""
+        if amount_cents is not None:
+            self.amount_cents = amount_cents
+        if currency is not None:
+            self.currency = currency
+        if billing_cycle is not None:
+            self.billing_cycle = billing_cycle
+        if billing_day is not None:
+            self.billing_day = billing_day
+        if preferred_card_id is not None:
+            self.preferred_card_id = preferred_card_id
+        if auto_approve is not None:
+            self.auto_approve = auto_approve
+        if auto_approve_threshold_cents is not None:
+            self.auto_approve_threshold_cents = auto_approve_threshold_cents
+        self.modified_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     def compute_next_billing(self) -> datetime:
         """Calculate the next billing date after the current one."""
@@ -315,6 +349,34 @@ class SubscriptionService:
             sub.status = SubscriptionStatus.ACTIVE
             sub.failure_count = 0
             sub.updated_at = datetime.now(UTC)
+        return sub
+
+    async def update_subscription(
+        self,
+        sub_id: str,
+        *,
+        amount_cents: int | None = None,
+        currency: str | None = None,
+        billing_cycle: BillingCycle | None = None,
+        billing_day: int | None = None,
+        preferred_card_id: str | None = None,
+        auto_approve: bool | None = None,
+        auto_approve_threshold_cents: int | None = None,
+    ) -> Subscription | None:
+        """Modify a subscription's fields. Preserves billing history."""
+        sub = self._subscriptions.get(sub_id)
+        if not sub:
+            return None
+        sub.modify(
+            amount_cents=amount_cents,
+            currency=currency,
+            billing_cycle=billing_cycle,
+            billing_day=billing_day,
+            preferred_card_id=preferred_card_id,
+            auto_approve=auto_approve,
+            auto_approve_threshold_cents=auto_approve_threshold_cents,
+        )
+        logger.info(f"Subscription {sub_id} modified at {sub.modified_at}")
         return sub
 
     async def update_status(

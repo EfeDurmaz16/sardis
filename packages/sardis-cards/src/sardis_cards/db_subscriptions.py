@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from .subscriptions import (
     BillingCycle,
@@ -147,6 +148,61 @@ class PostgresSubscriptionService:
                 sub_id,
                 datetime.now(UTC),
             )
+        return self._row_to_subscription(row) if row else None
+
+    async def update_subscription(
+        self,
+        sub_id: str,
+        *,
+        amount_cents: int | None = None,
+        currency: str | None = None,
+        billing_cycle: str | None = None,
+        billing_day: int | None = None,
+        preferred_card_id: str | None = None,
+        auto_approve: bool | None = None,
+        auto_approve_threshold_cents: int | None = None,
+    ) -> Subscription | None:
+        """Modify a subscription's fields. Preserves billing history."""
+        _ALLOWED_COLUMNS = {
+            "amount_cents", "currency", "billing_cycle", "billing_day",
+            "preferred_card_id", "auto_approve", "auto_approve_threshold_cents",
+        }
+        updates: dict[str, Any] = {}
+        if amount_cents is not None:
+            updates["amount_cents"] = amount_cents
+        if currency is not None:
+            updates["currency"] = currency
+        if billing_cycle is not None:
+            updates["billing_cycle"] = billing_cycle
+        if billing_day is not None:
+            updates["billing_day"] = billing_day
+        if preferred_card_id is not None:
+            updates["preferred_card_id"] = preferred_card_id
+        if auto_approve is not None:
+            updates["auto_approve"] = auto_approve
+        if auto_approve_threshold_cents is not None:
+            updates["auto_approve_threshold_cents"] = auto_approve_threshold_cents
+
+        if not updates:
+            return await self.get(sub_id)
+
+        # Column whitelist — only columns in _ALLOWED_COLUMNS are written
+        assert set(updates.keys()) <= _ALLOWED_COLUMNS
+
+        now = datetime.now(UTC)
+        set_clauses = ", ".join(f"{col} = ${i + 2}" for i, col in enumerate(updates))
+        idx = len(updates) + 2
+        query = f"""
+            UPDATE subscriptions
+            SET {set_clauses}, modified_at = ${idx}, updated_at = ${idx + 1}
+            WHERE id = $1
+            RETURNING *
+        """
+        params = [sub_id, *updates.values(), now, now]
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(query, *params)
         return self._row_to_subscription(row) if row else None
 
     async def update_status(
@@ -441,6 +497,7 @@ class PostgresSubscriptionService:
             billing_day=row["billing_day"],
             next_billing=row["next_billing"],
             card_id=row["card_id"],
+            preferred_card_id=row.get("preferred_card_id"),
             auto_approve=row["auto_approve"],
             auto_approve_threshold_cents=row["auto_approve_threshold_cents"],
             amount_tolerance_cents=row["amount_tolerance_cents"],
@@ -450,8 +507,10 @@ class PostgresSubscriptionService:
             last_charged_at=row["last_charged_at"],
             failure_count=row["failure_count"],
             max_failures=row["max_failures"],
+            striga_standing_order_id=row.get("striga_standing_order_id"),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            modified_at=row.get("modified_at"),
         )
 
     @staticmethod
