@@ -21,6 +21,9 @@ import {
   Loader2,
   AlertCircle,
   ShieldCheck,
+  ShieldAlert,
+  CheckCircle,
+  Clock,
   ExternalLink,
   Send,
   ChevronRight,
@@ -156,6 +159,241 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
         )}
       />
     </button>
+  )
+}
+
+// ── KYC STATUS TYPES ─────────────────────────────────────────────────────────
+
+type KYCStatus = 'not_started' | 'pending' | 'approved' | 'rejected' | 'expired'
+
+interface KYCStatusData {
+  status: KYCStatus
+  provider?: string
+  verified_at?: string
+  expires_at?: string
+}
+
+// ── VERIFICATION SECTION (used inside ProfileTab) ─────────────────────────────
+
+function VerificationSection({ token }: { token: string | null }) {
+  const [kycData, setKycData] = useState<KYCStatusData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [hidden, setHidden] = useState(false)
+  const [initiating, setInitiating] = useState(false)
+  const [initiateMsg, setInitiateMsg] = useState<string | null>(null)
+
+  const hdrs = authHeaders(token)
+
+  useEffect(() => {
+    async function fetchKyc() {
+      setLoading(true)
+      try {
+        const res = await fetch(`${API_BASE}/api/v2/kyc/status`, { headers: hdrs })
+        if (res.status === 503) { setHidden(true); return }
+        if (!res.ok) { setHidden(true); return }
+        const data: KYCStatusData = await res.json()
+        setKycData(data)
+      } catch {
+        setHidden(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchKyc()
+  }, [token])
+
+  async function handleInitiate() {
+    setInitiating(true)
+    setInitiateMsg(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/v2/kyc/initiate`, {
+        method: 'POST',
+        headers: hdrs,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.redirect_url) {
+          window.open(data.redirect_url, '_blank', 'noopener,noreferrer')
+          setInitiateMsg('Verification page opened in a new tab.')
+        }
+      } else {
+        setInitiateMsg('Failed to start verification. Please try again.')
+      }
+    } catch {
+      setInitiateMsg('Network error. Please try again.')
+    } finally {
+      setInitiating(false)
+      setTimeout(() => setInitiateMsg(null), 5000)
+    }
+  }
+
+  function formatDate(iso: string) {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    } catch {
+      return iso
+    }
+  }
+
+  if (hidden || (loading && !kycData)) {
+    if (loading) {
+      return (
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-blue-400" />
+            </div>
+            <h3 className="text-base font-semibold text-white">Identity Verification</h3>
+          </div>
+          <div className="flex items-center gap-2 mt-4 text-sm text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading verification status...
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  const status = kycData?.status ?? 'not_started'
+
+  const STATUS_CONFIG: Record<KYCStatus, {
+    badge: string
+    label: string
+    icon: React.ReactNode
+    iconBg: string
+    headerIcon: React.ReactNode
+  }> = {
+    not_started: {
+      badge: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
+      label: 'Not Started',
+      icon: <ShieldCheck className="w-4 h-4 text-gray-400" />,
+      iconBg: 'bg-gray-500/10',
+      headerIcon: <ShieldCheck className="w-5 h-5 text-gray-400" />,
+    },
+    pending: {
+      badge: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+      label: 'Pending',
+      icon: <Clock className="w-4 h-4 text-blue-400 animate-pulse" />,
+      iconBg: 'bg-blue-500/10',
+      headerIcon: <Clock className="w-5 h-5 text-blue-400" />,
+    },
+    approved: {
+      badge: 'bg-green-500/20 text-green-300 border border-green-500/30',
+      label: 'Verified',
+      icon: <CheckCircle className="w-4 h-4 text-green-400" />,
+      iconBg: 'bg-green-500/10',
+      headerIcon: <CheckCircle className="w-5 h-5 text-green-400" />,
+    },
+    rejected: {
+      badge: 'bg-red-500/20 text-red-300 border border-red-500/30',
+      label: 'Failed',
+      icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
+      iconBg: 'bg-red-500/10',
+      headerIcon: <ShieldAlert className="w-5 h-5 text-red-400" />,
+    },
+    expired: {
+      badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+      label: 'Expired',
+      icon: <AlertCircle className="w-4 h-4 text-amber-400" />,
+      iconBg: 'bg-amber-500/10',
+      headerIcon: <AlertCircle className="w-5 h-5 text-amber-400" />,
+    },
+  }
+
+  const cfg = STATUS_CONFIG[status]
+  const showCta = status === 'not_started' || status === 'rejected' || status === 'expired'
+  const ctaLabel = status === 'not_started' ? 'Verify Now' : status === 'rejected' ? 'Retry' : 'Re-verify'
+
+  return (
+    <div className="card p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center', cfg.iconBg)}>
+            {cfg.headerIcon}
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-white">Identity Verification</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Required for live payment processing.
+            </p>
+          </div>
+        </div>
+        <span className={clsx('text-xs font-medium px-2.5 py-1 rounded-full', cfg.badge)}>
+          {cfg.label}
+        </span>
+      </div>
+
+      {/* Details for approved */}
+      {status === 'approved' && kycData && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-dark-200/50 border border-dark-100 rounded p-4">
+          {kycData.provider && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Provider</p>
+              <p className="text-sm font-medium text-white capitalize">{kycData.provider}</p>
+            </div>
+          )}
+          {kycData.verified_at && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Verified On</p>
+              <p className="text-sm font-medium text-white">{formatDate(kycData.verified_at)}</p>
+            </div>
+          )}
+          {kycData.expires_at && (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Expires</p>
+              <p className="text-sm font-medium text-white">{formatDate(kycData.expires_at)}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pending message */}
+      {status === 'pending' && (
+        <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          Verification is in progress. This usually takes a few minutes.
+        </div>
+      )}
+
+      {/* Rejected message */}
+      {status === 'rejected' && (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-300">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          Verification failed. Please try again with valid documents.
+        </div>
+      )}
+
+      {/* Expired message */}
+      {status === 'expired' && (
+        <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-sm text-amber-300">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Your verification has expired. Please re-verify to continue using live payments.
+        </div>
+      )}
+
+      {/* Initiate result message */}
+      {initiateMsg && (
+        <p className={clsx('text-sm', initiateMsg.includes('Failed') || initiateMsg.includes('Network') ? 'text-red-400' : 'text-sardis-400')}>
+          {initiateMsg}
+        </p>
+      )}
+
+      {/* CTA button */}
+      {showCta && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleInitiate}
+            disabled={initiating}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {initiating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {ctaLabel}
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -526,6 +764,9 @@ function ProfileTab({ token }: { token: string | null }) {
           </div>
         )}
       </div>
+
+      {/* Identity Verification */}
+      <VerificationSection token={token} />
     </div>
   )
 }

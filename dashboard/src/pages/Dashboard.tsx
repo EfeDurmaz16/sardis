@@ -29,6 +29,7 @@ import {
 } from 'recharts'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
+import KYCBanner from '../components/KYCBanner'
 import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount } from '../hooks/useApi'
 import type { Transaction } from '../types'
 
@@ -136,6 +137,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* KYC verification banner */}
+      <KYCBanner />
+
       {/* Header with Live Indicator */}
       <div className="flex items-center justify-between">
         <div>
