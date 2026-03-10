@@ -153,6 +153,7 @@ from .routers import x402 as x402_router
 from .routers import data_export as data_export_router
 from .routers import email_verification as email_verification_router
 from .routers import kyc_onboarding as kyc_onboarding_router
+from .routers import fallback_policies as fallback_policies_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1984,6 +1985,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(outcomes_router.router, prefix="/api/v2", tags=["outcomes"])
     app.include_router(reliability_router.router, prefix="/api/v2/reliability", tags=["reliability"])
     app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
+    app.include_router(fallback_policies_router.router, prefix="/api/v2/fallback", tags=["Fallback Policies"])
+    logger.info("Fallback policies router registered at /api/v2/fallback")
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])

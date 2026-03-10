@@ -62,6 +62,7 @@ const primaryNavigation = [
   { name: 'Anomaly Detection', href: '/anomaly', icon: Radar },
   { name: 'Merchants', href: '/merchants', icon: Store },
   { name: 'Counterparties', href: '/counterparties', icon: BookUser },
+  { name: 'Fallback Rules', href: '/fallback-rules', icon: GitBranch },
   // ── Operations ──
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },

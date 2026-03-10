@@ -37,6 +37,7 @@ import WorkflowTemplatesPage from './pages/WorkflowTemplates'
 import PolicyAnalyticsPage from './pages/PolicyAnalytics'
 import CounterpartiesPage from './pages/Counterparties'
 import ApprovalConfigPage from './pages/ApprovalConfig'
+import FallbackPoliciesPage from './pages/FallbackPolicies'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -112,6 +113,7 @@ function AppRoutes() {
                 <Route path="/policy-analytics" element={<PolicyAnalyticsPage />} />
                 <Route path="/counterparties" element={<CounterpartiesPage />} />
                 <Route path="/approval-config" element={<ApprovalConfigPage />} />
+                <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
