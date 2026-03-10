@@ -14,13 +14,15 @@ Designed for developer acquisition and onboarding.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sardis_v2_core import (
     TrustLevel,
@@ -30,6 +32,16 @@ from sardis_v2_core import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ============================================================================
+# Constants
+# ============================================================================
+
+DEMO_NAMESPACE = "__demo__"
+MAX_NAMESPACES = 1000
+NAMESPACE_TTL_HOURS = 24
+RATE_LIMIT_MAX = 60
+RATE_LIMIT_WINDOW_SECONDS = 60
 
 # ============================================================================
 # In-Memory Demo Data Store
@@ -96,7 +108,17 @@ class SandboxStore:
         self.transactions: list[DemoTransaction] = []
         self.ledger: list[DemoLedgerEntry] = []
         self.cards: dict[str, DemoCard] = {}
+        self.created_at: datetime = datetime.now(UTC)
+        self.last_accessed: datetime = datetime.now(UTC)
         self._seed_demo_data()
+
+    def touch(self) -> None:
+        """Update last_accessed timestamp."""
+        self.last_accessed = datetime.now(UTC)
+
+    def is_expired(self) -> bool:
+        """Return True if the store has not been accessed within TTL."""
+        return datetime.now(UTC) - self.last_accessed > timedelta(hours=NAMESPACE_TTL_HOURS)
 
     def _seed_demo_data(self):
         """Pre-seed demo data for playground."""
@@ -186,8 +208,111 @@ class SandboxStore:
                 created_at=now - timedelta(days=20),
             )
 
-# Global sandbox store (ephemeral, resets on server restart)
-_sandbox_store = SandboxStore()
+
+# ============================================================================
+# SandboxStoreManager — per-namespace isolation with LRU eviction
+# ============================================================================
+
+class SandboxStoreManager:
+    """Manages per-namespace SandboxStore instances with LRU eviction and rate limiting."""
+
+    def __init__(self) -> None:
+        self._stores: dict[str, SandboxStore] = {}
+        # namespace -> list of request timestamps (float, epoch seconds)
+        self._rate_limits: dict[str, list[float]] = {}
+
+    def get_store(self, namespace: str) -> SandboxStore:
+        """Return the SandboxStore for *namespace*, creating it if needed.
+
+        Evicts expired stores and enforces the MAX_NAMESPACES cap before
+        creating a new store.
+        """
+        self._evict_expired()
+
+        if namespace not in self._stores:
+            if len(self._stores) >= MAX_NAMESPACES:
+                self._evict_lru()
+            self._stores[namespace] = SandboxStore()
+            # Only initialise rate-limit tracking if not already present (e.g.
+            # check_rate_limit may have already seeded it for this namespace).
+            if namespace not in self._rate_limits:
+                self._rate_limits[namespace] = []
+
+        store = self._stores[namespace]
+        store.touch()
+        return store
+
+    def reset_namespace(self, namespace: str) -> None:
+        """Replace the store for *namespace* with a fresh seeded instance."""
+        self._stores[namespace] = SandboxStore()
+        self._rate_limits[namespace] = []
+
+    def check_rate_limit(self, namespace: str) -> bool:
+        """Return True if request is allowed, False if rate limit exceeded.
+
+        Allows up to RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_SECONDS.
+        """
+        now = time.monotonic()
+        cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+        timestamps = self._rate_limits.get(namespace, [])
+        # Drop timestamps outside the window
+        timestamps = [t for t in timestamps if t > cutoff]
+        if len(timestamps) >= RATE_LIMIT_MAX:
+            self._rate_limits[namespace] = timestamps
+            return False
+        timestamps.append(now)
+        self._rate_limits[namespace] = timestamps
+        return True
+
+    # ------------------------------------------------------------------
+    # Internal eviction helpers
+    # ------------------------------------------------------------------
+
+    def _evict_expired(self) -> None:
+        """Remove stores that have not been accessed within their TTL."""
+        expired = [ns for ns, store in self._stores.items() if store.is_expired()]
+        for ns in expired:
+            del self._stores[ns]
+            self._rate_limits.pop(ns, None)
+
+    def _evict_lru(self) -> None:
+        """Remove the least-recently-used namespace to make room."""
+        if not self._stores:
+            return
+        lru_ns = min(self._stores, key=lambda ns: self._stores[ns].last_accessed)
+        del self._stores[lru_ns]
+        self._rate_limits.pop(lru_ns, None)
+
+
+# Module-level manager (replaces the old global _sandbox_store)
+_manager = SandboxStoreManager()
+
+
+# ============================================================================
+# Namespace helpers
+# ============================================================================
+
+def _get_namespace_from_request(request: Request) -> str:
+    """Extract namespace from auth header if present, else return demo namespace.
+
+    Uses a truncated SHA-256 of the raw token so we never store credentials.
+    """
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+        return f"ns_{hashlib.sha256(token.encode()).hexdigest()[:16]}"
+    return DEMO_NAMESPACE
+
+
+def _get_store_for_request(request: Request) -> SandboxStore:
+    """Resolve the namespace, enforce rate limit, return the store."""
+    namespace = _get_namespace_from_request(request)
+    if not _manager.check_rate_limit(namespace):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded: max 60 sandbox requests per minute per namespace.",
+        )
+    return _manager.get_store(namespace)
 
 
 # ============================================================================
@@ -296,7 +421,7 @@ class LedgerEntryResponse(BaseModel):
 # ============================================================================
 
 @router.post("/payment", response_model=SandboxPaymentResponse, tags=["Sandbox"])
-async def sandbox_payment(req: SandboxPaymentRequest):
+async def sandbox_payment(req: SandboxPaymentRequest, request: Request):
     """
     Simulate a payment with policy enforcement.
 
@@ -306,8 +431,10 @@ async def sandbox_payment(req: SandboxPaymentRequest):
 
     Try different amounts and merchants to see how policies work!
     """
+    store = _get_store_for_request(request)
+
     # Get or create agent
-    agent = _sandbox_store.agents.get(req.agent_id)
+    agent = store.agents.get(req.agent_id)
     if not agent:
         # Create ephemeral agent
         agent = DemoAgent(
@@ -317,11 +444,11 @@ async def sandbox_payment(req: SandboxPaymentRequest):
             kya_level=1,
             created_at=datetime.now(UTC),
         )
-        _sandbox_store.agents[req.agent_id] = agent
+        store.agents[req.agent_id] = agent
 
     # Get or create wallet
     wallet = next(
-        (w for w in _sandbox_store.wallets.values() if w.agent_id == req.agent_id),
+        (w for w in store.wallets.values() if w.agent_id == req.agent_id),
         None
     )
     if not wallet:
@@ -334,7 +461,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
             chain=req.chain,
             created_at=datetime.now(UTC),
         )
-        _sandbox_store.wallets[wallet.wallet_id] = wallet
+        store.wallets[wallet.wallet_id] = wallet
 
     # Create policy for agent
     policy = create_default_policy(agent.trust_level)
@@ -351,9 +478,9 @@ async def sandbox_payment(req: SandboxPaymentRequest):
         success = False
 
     # Check per-transaction limit
-    elif policy.limit_per_transaction and req.amount > policy.limit_per_transaction:
+    elif policy.limit_per_tx and req.amount > policy.limit_per_tx:
         policy_result = "per_transaction_limit"
-        policy_reason = f"Exceeds per-transaction limit of ${policy.limit_per_transaction}"
+        policy_reason = f"Exceeds per-transaction limit of ${policy.limit_per_tx}"
         success = False
 
     # Check balance
@@ -382,7 +509,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
         chain=req.chain,
         token=req.token,
     )
-    _sandbox_store.transactions.append(tx)
+    store.transactions.append(tx)
 
     # Create ledger entry
     ledger_entry_id = f"ledger_{uuid.uuid4().hex[:8]}"
@@ -401,7 +528,7 @@ async def sandbox_payment(req: SandboxPaymentRequest):
             "token": req.token,
         },
     )
-    _sandbox_store.ledger.append(ledger_entry)
+    store.ledger.append(ledger_entry)
 
     # Deduct from wallet if successful
     if success and policy_result == "approved":
@@ -419,14 +546,16 @@ async def sandbox_payment(req: SandboxPaymentRequest):
 
 
 @router.post("/policy-check", response_model=PolicyCheckResponse, tags=["Sandbox"])
-async def sandbox_policy_check(req: PolicyCheckRequest):
+async def sandbox_policy_check(req: PolicyCheckRequest, request: Request):
     """
     Test if a hypothetical payment would pass policy.
 
     This is a dry-run - no payment is executed, but you can see exactly
     what would happen if the agent tried to make this payment.
     """
-    agent = _sandbox_store.agents.get(req.agent_id)
+    store = _get_store_for_request(request)
+
+    agent = store.agents.get(req.agent_id)
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -443,15 +572,15 @@ async def sandbox_policy_check(req: PolicyCheckRequest):
     if req.amount <= 0:
         would_allow = False
         reason = "Amount must be positive"
-    elif policy.limit_per_transaction and req.amount > policy.limit_per_transaction:
+    elif policy.limit_per_tx and req.amount > policy.limit_per_tx:
         would_allow = False
-        reason = f"Exceeds per-transaction limit of ${policy.limit_per_transaction}"
+        reason = f"Exceeds per-transaction limit of ${policy.limit_per_tx}"
     elif policy.approval_threshold and req.amount >= policy.approval_threshold:
         reason = f"Would require approval (amount >= ${policy.approval_threshold})"
 
     # Build summary
     limits = {
-        "per_transaction": str(policy.limit_per_transaction) if policy.limit_per_transaction else "unlimited",
+        "per_transaction": str(policy.limit_per_tx) if policy.limit_per_tx else "unlimited",
         "total_lifetime": str(policy.limit_total) if policy.limit_total else "unlimited",
         "approval_threshold": str(policy.approval_threshold) if policy.approval_threshold else "none",
     }
@@ -472,21 +601,23 @@ async def sandbox_policy_check(req: PolicyCheckRequest):
 
 
 @router.post("/create-wallet", response_model=CreateDemoWalletResponse, tags=["Sandbox"])
-async def sandbox_create_wallet(req: CreateDemoWalletRequest):
+async def sandbox_create_wallet(req: CreateDemoWalletRequest, request: Request):
     """
     Create a demo wallet with simulated testnet funds.
 
     This wallet is ephemeral (in-memory only) and disappears on server restart.
     Perfect for testing the SDK and understanding wallet creation flow.
     """
+    store = _get_store_for_request(request)
+
     # Generate IDs
     agent_id = req.agent_id or f"agent_{uuid.uuid4().hex[:8]}"
     wallet_id = f"wallet_{uuid.uuid4().hex[:8]}"
     address = f"0x{uuid.uuid4().hex[:40]}"
 
     # Create agent if new
-    if agent_id not in _sandbox_store.agents:
-        _sandbox_store.agents[agent_id] = DemoAgent(
+    if agent_id not in store.agents:
+        store.agents[agent_id] = DemoAgent(
             agent_id=agent_id,
             name=req.agent_name or "Demo Agent",
             trust_level=req.trust_level,
@@ -504,11 +635,11 @@ async def sandbox_create_wallet(req: CreateDemoWalletRequest):
         chain="base_sepolia",
         created_at=datetime.now(UTC),
     )
-    _sandbox_store.wallets[wallet_id] = wallet
+    store.wallets[wallet_id] = wallet
 
     # Build policy summary
     policy = create_default_policy(req.trust_level)
-    policy_summary = f"Per-tx: ${policy.limit_per_transaction or 'unlimited'}, Total: ${policy.limit_total or 'unlimited'}"
+    policy_summary = f"Per-tx: ${policy.limit_per_tx or 'unlimited'}, Total: ${policy.limit_total or 'unlimited'}"
 
     logger.info(f"Created sandbox wallet: {wallet_id} for agent {agent_id}")
 
@@ -524,14 +655,16 @@ async def sandbox_create_wallet(req: CreateDemoWalletRequest):
 
 
 @router.post("/issue-card", response_model=IssueDemoCardResponse, tags=["Sandbox"])
-async def sandbox_issue_card(req: IssueDemoCardRequest):
+async def sandbox_issue_card(req: IssueDemoCardRequest, request: Request):
     """
     Simulate virtual card issuance.
 
     This demonstrates how Sardis can issue virtual cards for AI agents.
     The card is simulated - no real Lithic/Stripe card is created.
     """
-    agent = _sandbox_store.agents.get(req.agent_id)
+    store = _get_store_for_request(request)
+
+    agent = store.agents.get(req.agent_id)
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -540,7 +673,7 @@ async def sandbox_issue_card(req: IssueDemoCardRequest):
 
     # Generate card
     card_id = f"card_{uuid.uuid4().hex[:8]}"
-    last_four = f"{len(_sandbox_store.cards) + 1234:04d}"
+    last_four = f"{len(store.cards) + 1234:04d}"
 
     card = DemoCard(
         card_id=card_id,
@@ -550,7 +683,7 @@ async def sandbox_issue_card(req: IssueDemoCardRequest):
         spending_limit=req.spending_limit,
         created_at=datetime.now(UTC),
     )
-    _sandbox_store.cards[card_id] = card
+    store.cards[card_id] = card
 
     logger.info(f"Issued sandbox card: {card_id} for agent {req.agent_id}")
 
@@ -565,13 +698,15 @@ async def sandbox_issue_card(req: IssueDemoCardRequest):
 
 
 @router.get("/demo-data", response_model=DemoDataResponse, tags=["Sandbox"])
-async def sandbox_demo_data():
+async def sandbox_demo_data(request: Request):
     """
     Get all pre-seeded demo data.
 
     Returns agents, wallets, transactions, and cards that you can use
     to explore the playground without creating your own data.
     """
+    store = _get_store_for_request(request)
+
     agents = [
         {
             "agent_id": a.agent_id,
@@ -580,7 +715,7 @@ async def sandbox_demo_data():
             "kya_level": a.kya_level,
             "created_at": a.created_at.isoformat(),
         }
-        for a in _sandbox_store.agents.values()
+        for a in store.agents.values()
     ]
 
     wallets = [
@@ -593,7 +728,7 @@ async def sandbox_demo_data():
             "chain": w.chain,
             "created_at": w.created_at.isoformat(),
         }
-        for w in _sandbox_store.wallets.values()
+        for w in store.wallets.values()
     ]
 
     transactions = [
@@ -608,7 +743,7 @@ async def sandbox_demo_data():
             "token": t.token,
             "created_at": t.created_at.isoformat(),
         }
-        for t in _sandbox_store.transactions
+        for t in store.transactions
     ]
 
     cards = [
@@ -620,7 +755,7 @@ async def sandbox_demo_data():
             "spending_limit": str(c.spending_limit),
             "created_at": c.created_at.isoformat(),
         }
-        for c in _sandbox_store.cards.values()
+        for c in store.cards.values()
     ]
 
     return DemoDataResponse(
@@ -633,6 +768,7 @@ async def sandbox_demo_data():
 
 @router.get("/ledger", response_model=list[LedgerEntryResponse], tags=["Sandbox"])
 async def sandbox_ledger(
+    request: Request,
     agent_id: str | None = None,
     limit: int = 50,
 ):
@@ -642,7 +778,8 @@ async def sandbox_ledger(
     Shows all payment events with full context. Filter by agent_id to see
     one agent's activity, or leave blank to see everything.
     """
-    entries = _sandbox_store.ledger
+    store = _get_store_for_request(request)
+    entries = store.ledger
 
     if agent_id:
         entries = [e for e in entries if e.agent_id == agent_id]
@@ -669,13 +806,17 @@ async def sandbox_ledger(
 
 
 @router.delete("/reset", tags=["Sandbox"])
-async def sandbox_reset():
+@router.post("/reset", tags=["Sandbox"])
+async def sandbox_reset(request: Request):
     """
-    Reset all sandbox data to initial state.
+    Reset sandbox data to initial state.
+
+    When authenticated, only resets the caller's isolated namespace.
+    When unauthenticated, resets the shared demo namespace.
 
     Useful for starting fresh or after testing destructive operations.
     """
-    global _sandbox_store
-    _sandbox_store = SandboxStore()
-    logger.info("Sandbox data reset to initial state")
+    namespace = _get_namespace_from_request(request)
+    _manager.reset_namespace(namespace)
+    logger.info(f"Sandbox namespace '{namespace}' reset to initial state")
     return {"status": "reset", "message": "Sandbox data has been reset to demo seed state"}
