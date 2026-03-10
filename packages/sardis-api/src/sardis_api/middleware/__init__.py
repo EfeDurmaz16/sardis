@@ -56,6 +56,10 @@ from .tap import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
 )
+from .usage_metering import (
+    EXEMPT_PREFIXES,
+    UsageMeteringMiddleware,
+)
 from .x402 import (
     X402MiddlewareConfig,
     X402PaymentMiddleware,
@@ -112,4 +116,7 @@ __all__ = [
     "X402MiddlewareConfig",
     "X402PricingRegistry",
     "X402PricingRule",
+    # Usage metering (plan enforcement)
+    "UsageMeteringMiddleware",
+    "EXEMPT_PREFIXES",
 ]

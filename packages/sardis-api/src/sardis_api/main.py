@@ -377,6 +377,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("x402 payment middleware disabled (set SARDIS_X402_SERVER_ENABLED=true to enable)")
 
+    # 6c. Usage metering middleware (plan enforcement, billing-flag gated)
+    from .billing.config import BillingConfig as _BillingConfig
+    from .middleware.usage_metering import UsageMeteringMiddleware
+    _billing_cfg = _BillingConfig()
+    app.add_middleware(UsageMeteringMiddleware, billing_config=_billing_cfg)
+    if _billing_cfg.billing_enabled:
+        logger.info("Usage metering middleware enabled")
+    else:
+        logger.info("Usage metering middleware loaded (billing disabled — no-op until SARDIS_BILLING_BILLING_ENABLED=true)")
+
     # 7. CORS middleware with settings-based origins
     app.add_middleware(
         CORSMiddleware,
