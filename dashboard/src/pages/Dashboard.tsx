@@ -9,8 +9,10 @@ import {
   Globe,
   Shield,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  BarChart2
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   AreaChart,
   Area,
@@ -27,7 +29,7 @@ import {
 } from 'recharts'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
-import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus } from '../hooks/useApi'
+import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount } from '../hooks/useApi'
 import type { Transaction } from '../types'
 
 // Static chart structure — populated with real data when available, empty-state otherwise
@@ -111,6 +113,7 @@ export default function DashboardPage() {
   const { data: transactions = [], isLoading: txLoading } = useTransactions(50)
   const { data: pendingApprovals = [] } = usePendingApprovals()
   const { data: killSwitchStatus } = useKillSwitchStatus()
+  const { data: billing, isError: billingError } = useBillingAccount()
 
   const activeAgents = agents.filter((agent) => agent.is_active).length
 
@@ -481,6 +484,136 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Usage Quota Widget */}
+      {!billingError && billing && (
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-sardis-400" />
+              <h2 className="text-lg font-semibold text-white">Usage</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={clsx(
+                "px-2.5 py-0.5 rounded text-xs font-medium uppercase tracking-wide",
+                billing.plan === 'free' && "bg-gray-700 text-gray-300",
+                billing.plan === 'starter' && "bg-blue-500/20 text-blue-400",
+                billing.plan === 'growth' && "bg-purple-500/20 text-purple-400",
+                billing.plan === 'enterprise' && "bg-sardis-500/20 text-sardis-400",
+                !['free', 'starter', 'growth', 'enterprise'].includes(billing.plan) && "bg-gray-700 text-gray-300"
+              )}>
+                {billing.plan}
+              </span>
+              {(() => {
+                const u = billing.usage
+                const apiPct = u.api_calls_limit ? u.api_calls_used / u.api_calls_limit * 100 : 0
+                const volPct = u.tx_volume_limit_cents ? u.tx_volume_cents / u.tx_volume_limit_cents * 100 : 0
+                const agentPct = u.agents_limit ? u.agents_used / u.agents_limit * 100 : 0
+                const anyHigh = Math.max(apiPct, volPct, agentPct) > 80
+                return anyHigh ? (
+                  <Link
+                    to="/billing"
+                    className="text-xs font-medium text-sardis-400 hover:text-sardis-300 border border-sardis-500/40 hover:border-sardis-400 px-2.5 py-0.5 rounded transition-colors"
+                  >
+                    Upgrade
+                  </Link>
+                ) : null
+              })()}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            {/* API Calls */}
+            {(() => {
+              const used = billing.usage.api_calls_used
+              const limit = billing.usage.api_calls_limit
+              const pct = limit ? Math.min(used / limit * 100, 100) : 0
+              const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-sardis-500'
+              const textColor = pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-sardis-400'
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-gray-400">API Calls</span>
+                    <span className={clsx("text-sm font-medium mono-numbers", limit ? textColor : "text-gray-500")}>
+                      {limit
+                        ? `${used.toLocaleString()} / ${limit.toLocaleString()} (${Math.round(pct)}%)`
+                        : `${used.toLocaleString()} / Unlimited`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-dark-100 rounded-full overflow-hidden">
+                    {limit && (
+                      <div
+                        className={clsx("h-full rounded-full transition-all", color)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Transaction Volume */}
+            {(() => {
+              const usedCents = billing.usage.tx_volume_cents
+              const limitCents = billing.usage.tx_volume_limit_cents
+              const pct = limitCents ? Math.min(usedCents / limitCents * 100, 100) : 0
+              const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-sardis-500'
+              const textColor = pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-sardis-400'
+              const fmt = (cents: number) =>
+                `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-gray-400">Transaction Volume</span>
+                    <span className={clsx("text-sm font-medium mono-numbers", limitCents ? textColor : "text-gray-500")}>
+                      {limitCents
+                        ? `${fmt(usedCents)} / ${fmt(limitCents)} (${Math.round(pct)}%)`
+                        : `${fmt(usedCents)} / Unlimited`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-dark-100 rounded-full overflow-hidden">
+                    {limitCents && (
+                      <div
+                        className={clsx("h-full rounded-full transition-all", color)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Agents */}
+            {(() => {
+              const used = billing.usage.agents_used
+              const limit = billing.usage.agents_limit
+              const pct = limit ? Math.min(used / limit * 100, 100) : 0
+              const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-400' : 'bg-sardis-500'
+              const textColor = pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-sardis-400'
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-gray-400">Agents</span>
+                    <span className={clsx("text-sm font-medium mono-numbers", limit ? textColor : "text-gray-500")}>
+                      {limit
+                        ? `${used} / ${limit} (${Math.round(pct)}%)`
+                        : `${used} / Unlimited`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-dark-100 rounded-full overflow-hidden">
+                    {limit && (
+                      <div
+                        className={clsx("h-full rounded-full transition-all", color)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="card p-6">

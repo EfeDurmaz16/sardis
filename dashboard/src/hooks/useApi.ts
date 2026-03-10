@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, exceptionsApi, anomalyApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, exceptionsApi, anomalyApi, billingApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -434,6 +434,15 @@ export function useUpdateAnomalyConfig() {
 export function useAssessRisk() {
   return useMutation({
     mutationFn: anomalyApi.assess,
+  })
+}
+
+// Billing
+export function useBillingAccount() {
+  return useQuery({
+    queryKey: ['billing-account'],
+    queryFn: billingApi.account,
+    retry: false,
   })
 }
 

@@ -872,6 +872,26 @@ export const anomalyApi = {
     requestV2<JsonObject>('/anomaly/config', { method: 'PUT', body: JSON.stringify(data) }),
 }
 
+// Billing APIs (V2)
+export interface BillingUsage {
+  api_calls_used: number
+  api_calls_limit: number | null
+  tx_volume_cents: number
+  tx_volume_limit_cents: number | null
+  agents_used: number
+  agents_limit: number | null
+}
+
+export interface BillingAccount {
+  plan: string
+  status: string
+  usage: BillingUsage
+}
+
+export const billingApi = {
+  account: () => requestV2<BillingAccount>('/billing/account'),
+}
+
 // Demo APIs (V2)
 export const demoApi = {
   bootstrapApiKey: (data: {
