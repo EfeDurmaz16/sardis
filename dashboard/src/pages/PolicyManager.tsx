@@ -8,7 +8,7 @@
  *  History  — per-wallet policy timeline with rollback
  */
 
-import { useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   FileText,
   FlaskConical,
@@ -27,6 +27,7 @@ import {
   Info,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useLocation } from 'react-router-dom'
 import {
   useAgents,
   useParsePolicy,
@@ -860,14 +861,27 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PolicyManagerPage() {
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState<TabId>(getInitialTab)
   const [draftText, setDraftText] = useState('')
   const [parsedPolicy, setParsedPolicy] = useState<ParsedPolicy | null>(null)
+  const prefillPolicy =
+    ((location.state as { prefillPolicy?: string } | null)?.prefillPolicy ?? '').trim()
 
   const switchTab = useCallback((id: TabId) => {
     setActiveTab(id)
     window.location.hash = id
   }, [])
+
+  useEffect(() => {
+    if (!prefillPolicy || prefillPolicy === draftText.trim()) {
+      return
+    }
+    setDraftText(prefillPolicy)
+    setParsedPolicy(null)
+    setActiveTab('author')
+    window.location.hash = 'author'
+  }, [prefillPolicy, draftText])
 
   return (
     <div className="space-y-6">

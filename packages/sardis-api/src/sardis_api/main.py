@@ -145,6 +145,7 @@ from .routers import treasury as treasury_router
 from .routers import treasury_ops as treasury_ops_router
 from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
+from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
 from .routers import data_export as data_export_router
@@ -1974,6 +1975,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(receipts_router.router, prefix="/api/v2/receipts", tags=["receipts"])
     app.include_router(outcomes_router.router, prefix="/api/v2", tags=["outcomes"])
     app.include_router(reliability_router.router, prefix="/api/v2/reliability", tags=["reliability"])
+    app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
