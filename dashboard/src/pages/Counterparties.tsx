@@ -12,9 +12,14 @@ import {
   X,
   ChevronDown,
   BarChart2,
+  type LucideIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
-import { counterpartiesApi, type Counterparty } from '../api/client'
+import {
+  counterpartiesApi,
+  type Counterparty,
+  type CounterpartyTrustProfile,
+} from '../api/client'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,7 +28,10 @@ type CounterpartyType = 'merchant' | 'vendor' | 'agent' | 'service'
 
 // ─── Config maps ─────────────────────────────────────────────────────────────
 
-const TRUST_STATUS_CONFIG = {
+const TRUST_STATUS_CONFIG: Record<
+  TrustStatus,
+  { label: string; color: string; bg: string; icon: LucideIcon }
+> = {
   pending:  { label: 'Pending',  color: 'text-yellow-400', bg: 'bg-yellow-500/10', icon: Clock },
   approved: { label: 'Approved', color: 'text-green-400',  bg: 'bg-green-500/10',  icon: ShieldCheck },
   blocked:  { label: 'Blocked',  color: 'text-red-400',    bg: 'bg-red-500/10',    icon: ShieldX },
@@ -335,21 +343,6 @@ function ConfirmDelete({ name, onConfirm, onCancel, deleting }: ConfirmDeletePro
 
 // ─── Trust Profile types ──────────────────────────────────────────────────────
 
-interface TrustProfile {
-  counterparty_id: string
-  name: string
-  trust_score: number
-  policy_compatible: boolean
-  proof_status: 'verified' | 'partial' | 'none'
-  settlement_preference: string
-  total_transactions: number
-  total_volume: string
-  success_rate: number
-  avg_settlement_time: string
-  last_transaction: string | null
-  flags: string[]
-}
-
 // ─── Trust Score Gauge ────────────────────────────────────────────────────────
 
 function TrustScoreGauge({ score }: { score: number }) {
@@ -420,17 +413,19 @@ const PROOF_STATUS_CONFIG = {
 } as const
 
 function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) {
-  const [profile, setProfile] = useState<TrustProfile | null>(null)
+  const [profile, setProfile] = useState<CounterpartyTrustProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useState(() => {
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
     counterpartiesApi
       .getTrustProfile(counterpartyId)
-      .then((data) => setProfile(data as unknown as TrustProfile))
+      .then(setProfile)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load trust profile'))
       .finally(() => setLoading(false))
-  })
+  }, [counterpartyId])
 
   const proofCfg = profile
     ? PROOF_STATUS_CONFIG[profile.proof_status] ?? PROOF_STATUS_CONFIG.none
