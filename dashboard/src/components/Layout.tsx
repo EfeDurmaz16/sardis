@@ -34,6 +34,7 @@ import {
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
 import { useAuth } from '../auth/AuthContext'
+import NotificationCenter from './NotificationCenter'
 
 interface LayoutProps {
   children: ReactNode
@@ -151,8 +152,12 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-auto flex flex-col">
+        {/* Top header bar */}
+        <header className="flex items-center justify-end px-8 py-3 border-b border-dark-100 bg-dark-300/50 flex-shrink-0">
+          <NotificationCenter />
+        </header>
+        <div className="p-8 flex-1">
           {children}
         </div>
       </main>
