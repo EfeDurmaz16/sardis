@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   FlaskConical,
   CheckCircle2,
@@ -455,6 +456,22 @@ export default function SimulationPage() {
             Dry-run payments against the currently deployed policy without executing on chain.
             Use Policy Manager for draft-policy scenario testing before deployment.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              to="/policy-manager"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-sardis-400" />
+              Go to Policy Manager for draft tests
+            </Link>
+            <Link
+              to="/control-center"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+            >
+              <Shield className="w-3.5 h-3.5 text-sardis-400" />
+              Review evidence and approvals
+            </Link>
+          </div>
         </div>
         <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-500">
           <Shield className="w-4 h-4 text-sardis-400" />

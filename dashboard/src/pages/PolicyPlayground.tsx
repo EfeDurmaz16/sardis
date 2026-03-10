@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   FlaskConical,
   Sparkles,
@@ -8,8 +9,6 @@ import {
   XCircle,
   AlertTriangle,
   ChevronRight,
-  ToggleLeft,
-  ToggleRight,
   DollarSign,
   ShieldCheck,
   Target,
@@ -31,7 +30,6 @@ import {
   Cell,
 } from 'recharts'
 import clsx from 'clsx'
-import { demoApi } from '../api/client'
 
 /* ─── Types ─── */
 
@@ -319,15 +317,10 @@ function generateSpendData(policy: ParsedPolicy): SpendDataPoint[] {
 /* ─── Main Component ─── */
 
 export default function PolicyPlaygroundPage() {
-  // Mode toggle
-  const [liveMode, setLiveMode] = useState(false)
-
   // Section 1: Policy Editor
   const [policyText, setPolicyText] = useState('')
   const [parsedPolicy, setParsedPolicy] = useState<ParsedPolicy | null>(null)
   const [isParsing, setIsParsing] = useState(false)
-  const [liveParseResult, setLiveParseResult] = useState<Record<string, unknown> | null>(null)
-  const [liveParseError, setLiveParseError] = useState<string | null>(null)
 
   // Section 2: Transaction Simulator
   const [simAmount, setSimAmount] = useState('25.00')
@@ -340,7 +333,6 @@ export default function PolicyPlaygroundPage() {
     checks: PolicyCheckResult[]
   } | null>(null)
   const [isChecking, setIsChecking] = useState(false)
-  const [liveCheckResult, setLiveCheckResult] = useState<{ allowed: boolean; reason: string } | null>(null)
 
   // Section 3: Batch Simulator
   const [batchTxs, setBatchTxs] = useState<SimTransaction[]>([])
@@ -356,55 +348,19 @@ export default function PolicyPlaygroundPage() {
   const handleParsePolicy = useCallback(async () => {
     if (!policyText.trim()) return
     setIsParsing(true)
-    setLiveParseResult(null)
-    setLiveParseError(null)
 
-    if (liveMode) {
-      try {
-        const result = await demoApi.applyPolicy({
-          agent_id: 'playground_agent',
-          natural_language: policyText,
-        })
-        setLiveParseResult(result)
-        // Also parse locally for simulator functionality
-        const local = parseNaturalLanguagePolicy(policyText)
-        setParsedPolicy(local)
-      } catch (err) {
-        setLiveParseError(err instanceof Error ? err.message : 'API request failed')
-        // Fall back to local parse
-        const local = parseNaturalLanguagePolicy(policyText)
-        setParsedPolicy(local)
-      }
-    } else {
-      // Simulate a brief delay for UX
-      await new Promise(r => setTimeout(r, 400))
-      const local = parseNaturalLanguagePolicy(policyText)
-      setParsedPolicy(local)
-    }
+    await new Promise(r => setTimeout(r, 400))
+    const local = parseNaturalLanguagePolicy(policyText)
+    setParsedPolicy(local)
 
     setIsParsing(false)
     setSimResult(null)
     setBatchTxs([])
-  }, [policyText, liveMode])
+  }, [policyText])
 
   const handleCheckTransaction = useCallback(async () => {
     if (!parsedPolicy) return
     setIsChecking(true)
-    setLiveCheckResult(null)
-
-    if (liveMode) {
-      try {
-        const result = await demoApi.checkPolicy({
-          agent_id: 'playground_agent',
-          amount: simAmount,
-          currency: simToken,
-          merchant_id: simDestination,
-        })
-        setLiveCheckResult(result)
-      } catch {
-        // Fall through to local check
-      }
-    }
 
     // Always run local check for the detailed UI
     await new Promise(r => setTimeout(r, 300))
@@ -420,7 +376,7 @@ export default function PolicyPlaygroundPage() {
     )
     setSimResult(result)
     setIsChecking(false)
-  }, [parsedPolicy, simAmount, simDestination, simToken, simPurpose, usedBudget, liveMode])
+  }, [parsedPolicy, simAmount, simDestination, simToken, simPurpose, usedBudget])
 
   const handleGenerateBatch = useCallback(() => {
     if (!parsedPolicy) return
@@ -442,30 +398,28 @@ export default function PolicyPlaygroundPage() {
         <div>
           <h1 className="text-3xl font-bold text-white font-display">Policy Lab</h1>
           <p className="text-gray-400 mt-1">
-            Design, test, and visualize spending policies for your AI agents
+            Legacy sandbox for local policy exploration. Use Policy Manager for draft testing and Live Dry Run for deployed-policy checks.
           </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setLiveMode(!liveMode)}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium',
-              liveMode
-                ? 'bg-sardis-500/10 text-sardis-400 border border-sardis-500/30'
-                : 'bg-dark-200 text-gray-400 border border-dark-100 hover:border-dark-100/80'
-            )}
-          >
-            {liveMode ? (
-              <ToggleRight className="w-5 h-5" />
-            ) : (
-              <ToggleLeft className="w-5 h-5" />
-            )}
-            {liveMode ? 'Live Mode' : 'Simulation'}
-          </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
-            <FlaskConical className="w-4 h-4 text-sardis-400" />
-            <span className="text-sm text-gray-400">Playground</span>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              to="/policy-manager"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-sardis-400" />
+              Open Policy Manager
+            </Link>
+            <Link
+              to="/simulation"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+            >
+              <Play className="w-3.5 h-3.5 text-sardis-400" />
+              Open Live Dry Run
+            </Link>
           </div>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
+          <FlaskConical className="w-4 h-4 text-sardis-400" />
+          <span className="text-sm text-gray-400">Sandbox Only</span>
         </div>
       </div>
 
@@ -519,9 +473,6 @@ export default function PolicyPlaygroundPage() {
             )}
             Parse Policy
           </button>
-          {liveMode && (
-            <span className="text-xs text-sardis-400/60">Will call /policies/apply API</span>
-          )}
         </div>
 
         {/* Parsed Policy Display */}
@@ -578,21 +529,6 @@ export default function PolicyPlaygroundPage() {
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Live API result */}
-            {liveParseResult && (
-              <div className="mt-4 p-3 bg-dark-300 rounded-lg border border-dark-100">
-                <span className="text-xs text-sardis-400 font-medium">API Response</span>
-                <pre className="text-xs text-gray-400 mt-2 overflow-x-auto">
-                  {JSON.stringify(liveParseResult, null, 2)}
-                </pre>
-              </div>
-            )}
-            {liveParseError && (
-              <div className="mt-4 p-3 bg-red-500/5 rounded-lg border border-red-500/20">
-                <span className="text-xs text-red-400">{liveParseError} (fell back to local parse)</span>
               </div>
             )}
           </div>
@@ -716,20 +652,6 @@ export default function PolicyPlaygroundPage() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Live API result */}
-                  {liveCheckResult && (
-                    <div className="p-3 bg-dark-300 rounded-lg border border-dark-100">
-                      <span className="text-xs text-sardis-400 font-medium">API Response</span>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className={clsx(
-                          'w-2 h-2 rounded-full',
-                          liveCheckResult.allowed ? 'bg-sardis-500' : 'bg-red-500'
-                        )} />
-                        <span className="text-xs text-gray-400">{liveCheckResult.reason}</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-600">

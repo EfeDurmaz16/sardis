@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Shield,
   Sparkles,
@@ -398,8 +399,24 @@ export default function PoliciesPage() {
           Policy Management
         </h1>
         <p className="text-gray-400 mt-1">
-          Define and apply natural language spending policies for AI agents
+          Legacy policy surface. Use Policy Manager for the primary authoring and draft-testing flow.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            to="/policy-manager"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+          >
+            <Shield className="w-3.5 h-3.5 text-sardis-400" />
+            Open Policy Manager
+          </Link>
+          <Link
+            to="/simulation"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
+          >
+            <Search className="w-3.5 h-3.5 text-sardis-400" />
+            Use Live Dry Run
+          </Link>
+        </div>
       </div>
 
       {/* Two-column layout */}

@@ -948,7 +948,7 @@ function HistoryTab({
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'author', label: 'Author', icon: <FileText className="w-4 h-4" /> },
-  { id: 'test', label: 'Test', icon: <FlaskConical className="w-4 h-4" /> },
+  { id: 'test', label: 'Draft Scenarios', icon: <FlaskConical className="w-4 h-4" /> },
   { id: 'deploy', label: 'Deploy', icon: <Send className="w-4 h-4" /> },
   { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
 ]
@@ -984,7 +984,7 @@ export default function PolicyManagerPage() {
       <div>
         <h1 className="text-3xl font-bold text-white font-display">Policy Manager</h1>
         <p className="text-gray-400 mt-1">
-          Author, test, and deploy spending policies through a unified lifecycle.
+          Author, draft-test, deploy, and roll back spending policies through one lifecycle.
         </p>
       </div>
 
