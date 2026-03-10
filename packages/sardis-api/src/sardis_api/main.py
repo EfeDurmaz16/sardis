@@ -94,6 +94,9 @@ from sardis_wallet.manager import WalletManager
 from .routers import a2a as a2a_router
 from .routers import a2a_payments as a2a_payments_router
 from .routers import admin as admin_router
+from .routers import billing as billing_router
+from .routers import emergency as emergency_router
+from .routers import sdk_metrics as sdk_metrics_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
@@ -1842,6 +1845,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         prefix="/api/v2/admin/reconciliation",
         tags=["admin", "reconciliation"],
     )
+    # Emergency freeze-all (admin-only, always enabled)
+    app.include_router(emergency_router.router)
+
+    # Billing & usage metering
+    app.include_router(billing_router.router)
+    app.include_router(billing_router.webhook_router)
+
+    # SDK install metrics (public)
+    app.include_router(sdk_metrics_router.router)
 
     # Evidence/audit trail API
     app.include_router(evidence_router.router, prefix="/api/v2/evidence", tags=["evidence"])
