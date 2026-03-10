@@ -154,6 +154,7 @@ from .routers import data_export as data_export_router
 from .routers import email_verification as email_verification_router
 from .routers import kyc_onboarding as kyc_onboarding_router
 from .routers import fallback_policies as fallback_policies_router
+from .routers import checkout_controls as checkout_controls_router
 from .routers import counterparties as counterparties_router
 
 # Conditional import for approvals router (may not exist yet)
@@ -1988,6 +1989,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
     app.include_router(fallback_policies_router.router, prefix="/api/v2/fallback", tags=["Fallback Policies"])
     logger.info("Fallback policies router registered at /api/v2/fallback")
+    app.include_router(checkout_controls_router.router, prefix="/api/v2/checkout-controls", tags=["checkout-controls"])
     app.include_router(counterparties_router.router, prefix="/api/v2/counterparties", tags=["counterparties"])
 
     # A2A discovery: /.well-known/agent-card.json

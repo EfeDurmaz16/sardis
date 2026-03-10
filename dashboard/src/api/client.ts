@@ -1366,6 +1366,43 @@ export interface DegradedModePolicy {
 }
 
 // Fallback Policies APIs (V2)
+// Checkout Controls types
+export interface CheckoutControlConfig {
+  require_approval_above: number | null
+  require_kyc: boolean
+  allowed_chains: string[]
+  allowed_tokens: string[]
+  max_session_amount: number | null
+  evidence_export_auto: boolean
+  incident_webhook_url: string | null
+  freeze_on_dispute: boolean
+}
+
+export interface CheckoutIncidentResponse {
+  incident_id: string
+  session_id: string
+  incident_type: string
+  severity: string
+  status: string
+  description: string
+  auto_actions_taken: string[]
+  created_at: string
+}
+
+export const checkoutControlsApi = {
+  getConfig: () => requestV2<CheckoutControlConfig>('/checkout-controls/config'),
+
+  updateConfig: (config: CheckoutControlConfig) =>
+    requestV2<CheckoutControlConfig>('/checkout-controls/config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    }),
+
+  listIncidents: (limit = 50) =>
+    requestV2<CheckoutIncidentResponse[]>(`/checkout-controls/incidents?limit=${limit}`),
+}
+
+// Fallback Policies APIs (V2)
 export const fallbackPoliciesApi = {
   listRules: () => requestV2<FallbackRule[]>('/fallback/rules'),
 
