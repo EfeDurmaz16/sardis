@@ -113,6 +113,7 @@ from .routers import credentials as credentials_router
 from .routers import dev as dev_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import evidence as evidence_router
+from .routers import evidence_export as evidence_export_router
 from .routers import execution_modes as execution_modes_router
 from .routers import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
@@ -1878,6 +1879,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Evidence/audit trail API
     app.include_router(evidence_router.router, prefix="/api/v2/evidence", tags=["evidence"])
+    app.include_router(evidence_export_router.router, prefix="/api/v2/evidence/export", tags=["evidence-export"])
 
     # Attestation envelope API
     app.include_router(attestation_router.router, prefix="/api/v2", tags=["attestation"])

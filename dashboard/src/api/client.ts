@@ -794,6 +794,12 @@ export const evidenceApi = {
   exportBundle: (txId: string) =>
     requestV2<JsonObject>(`/evidence/export/${txId}`, { method: 'POST' }),
 
+  verifyBundle: (data: { tx_id: string; content_hash: string; signature: string }) =>
+    requestV2<{ valid: boolean; message: string; verified_at: string }>('/evidence/export/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   downloadBundleUrl: (txId: string) =>
     `${API_URL}/api/v2/evidence/export/${txId}/download`,
 }
