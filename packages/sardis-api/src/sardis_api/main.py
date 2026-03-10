@@ -54,6 +54,8 @@ def _bootstrap_monorepo_sys_path() -> None:
         "sardis-compliance",
         "sardis-checkout",
         "sardis-coinbase",
+        "sardis-striga",
+        "sardis-lightspark",
     ):
         src = packages_dir / pkg / "src"
         if src.is_dir():
@@ -1064,6 +1066,26 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
     if hasattr(ramp_router, "public_router"):
         app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
+
+    # --- Striga routes (EEA cards, vIBAN, SEPA) ---
+    if settings.striga.enabled:
+        from .routers import striga as striga_router
+        app.include_router(striga_router.router, prefix="/api/v2", tags=["striga"])
+        logger.info("Striga routes enabled")
+
+    # --- Lightspark Grid routes (UMA, payouts, FX) ---
+    if settings.lightspark.enabled:
+        from .routers import lightspark as lightspark_router
+        app.include_router(lightspark_router.router, prefix="/api/v2", tags=["lightspark-grid"])
+        logger.info("Lightspark Grid routes enabled")
+
+    # --- Unified fiat rails routes ---
+    if settings.striga.enabled or settings.lightspark.enabled:
+        from .routers import fiat_rails as fiat_rails_router
+        from .routers import currency as currency_router
+        app.include_router(fiat_rails_router.router, prefix="/api/v2", tags=["fiat-rails"])
+        app.include_router(currency_router.router, prefix="/api/v2", tags=["currency"])
+        logger.info("Fiat rails and currency routes enabled")
 
     # Treasury routes (Lithic financial accounts + ACH payments)
     treasury_repo = TreasuryRepository(dsn=database_url if use_postgres else None)

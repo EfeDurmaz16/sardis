@@ -50,6 +50,7 @@ class SubscriptionResponse(BaseModel):
     billing_day: int
     next_billing: datetime
     status: str
+    preferred_card_id: str | None = None
     destination_address: str | None = None
     token: str = "USDC"
     chain: str = "base_sepolia"
@@ -60,6 +61,7 @@ class SubscriptionResponse(BaseModel):
     max_failures: int = 3
     created_at: datetime
     updated_at: datetime
+    modified_at: datetime | None = None
 
     @classmethod
     def from_row(cls, row: dict) -> SubscriptionResponse:
@@ -86,9 +88,21 @@ class SubscriptionResponse(BaseModel):
             ),
             failure_count=int(row.get("failure_count", 0) or 0),
             max_failures=int(row.get("max_failures", 3) or 3),
+            preferred_card_id=row.get("preferred_card_id"),
             created_at=row.get("created_at"),
             updated_at=row.get("updated_at"),
+            modified_at=row.get("modified_at"),
         )
+
+
+class ModifySubscriptionRequest(BaseModel):
+    amount: Decimal | None = Field(default=None, gt=Decimal("0"))
+    currency: str | None = None
+    billing_cycle: Literal["daily", "weekly", "monthly", "yearly"] | None = None
+    billing_day: int | None = Field(default=None, ge=1, le=31)
+    preferred_card_id: str | None = None
+    auto_approve: bool | None = None
+    auto_approve_threshold: Decimal | None = Field(default=None, gt=Decimal("0"))
 
 
 class CancelSubscriptionResponse(BaseModel):
@@ -213,6 +227,47 @@ async def get_subscription(
     if not principal.is_admin and owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
     return SubscriptionResponse.from_row(row)
+
+
+@router.patch("/{subscription_id}", response_model=SubscriptionResponse)
+async def modify_subscription(
+    subscription_id: str,
+    payload: ModifySubscriptionRequest,
+    deps: SubscriptionDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    row = await deps.subscription_repo.get_subscription(subscription_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    owner_id = str(row.get("owner_id", ""))
+    if not principal.is_admin and owner_id != principal.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+
+    update_kwargs: dict = {}
+    if payload.amount is not None:
+        update_kwargs["amount_cents"] = int((payload.amount * Decimal(100)).to_integral_value())
+    if payload.currency is not None:
+        update_kwargs["currency"] = payload.currency
+    if payload.billing_cycle is not None:
+        update_kwargs["billing_cycle"] = payload.billing_cycle
+    if payload.billing_day is not None:
+        update_kwargs["billing_day"] = payload.billing_day
+    if payload.preferred_card_id is not None:
+        update_kwargs["preferred_card_id"] = payload.preferred_card_id
+    if payload.auto_approve is not None:
+        update_kwargs["auto_approve"] = payload.auto_approve
+    if payload.auto_approve_threshold is not None:
+        update_kwargs["auto_approve_threshold_cents"] = int(
+            (payload.auto_approve_threshold * Decimal(100)).to_integral_value()
+        )
+
+    if not update_kwargs:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+
+    updated = await deps.subscription_repo.update_subscription(subscription_id, **update_kwargs)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    return SubscriptionResponse.from_row(updated)
 
 
 @router.post("/{subscription_id}/cancel", response_model=CancelSubscriptionResponse)

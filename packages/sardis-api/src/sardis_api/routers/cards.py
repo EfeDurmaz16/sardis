@@ -31,6 +31,7 @@ class IssueCardRequest(BaseModel):
     """Request to issue a new virtual card."""
     wallet_id: str
     card_type: str = Field(default="multi_use")
+    currency: str = Field(default="USD", description="Card denomination currency (USD or EUR)")
     limit_per_tx: Decimal = Field(default=Decimal("500.00"))
     limit_daily: Decimal = Field(default=Decimal("2000.00"))
     limit_monthly: Decimal = Field(default=Decimal("10000.00"))
