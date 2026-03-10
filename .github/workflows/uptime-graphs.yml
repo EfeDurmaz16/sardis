@@ -1,0 +1,19 @@
+name: Graphs CI
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  graphs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: upptime/uptime-monitor@v1.37.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          command: "graphs"

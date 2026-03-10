@@ -1,0 +1,64 @@
+owner: EfeDurmaz16
+repo: sardis
+
+sites:
+  - name: API
+    url: https://api.sardis.sh/health
+    expectedStatusCodes:
+      - 200
+    icon: https://sardis.sh/favicon.ico
+  - name: Dashboard
+    url: https://dashboard.sardis.sh
+    expectedStatusCodes:
+      - 200
+      - 301
+      - 302
+  - name: Landing
+    url: https://sardis.sh
+    expectedStatusCodes:
+      - 200
+      - 301
+      - 302
+  - name: Checkout
+    url: https://checkout.sardis.sh
+    expectedStatusCodes:
+      - 200
+      - 301
+      - 302
+  - name: Base Chain RPC
+    url: $BASE_RPC_URL
+    method: POST
+    headers:
+      Content-Type: application/json
+    body: '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+    expectedStatusCodes:
+      - 200
+
+status-website:
+  cname: status.sardis.sh
+  logoUrl: https://sardis.sh/favicon.ico
+  name: Sardis Status
+  introTitle: "**Sardis** Service Status"
+  introMessage: Current status and uptime for Sardis infrastructure. Subscribe for updates via RSS.
+  navbar:
+    - title: Homepage
+      href: https://sardis.sh
+    - title: Documentation
+      href: https://sardis.sh/docs
+    - title: API
+      href: https://api.sardis.sh/api/v2/docs
+  theme: light
+
+workflowSchedule:
+  graphs: "0 0 * * *"
+  responseTime: "0 23 * * *"
+  staticSite: "0 1 * * *"
+  summary: "0 0 * * *"
+  uptime: "*/5 * * * *"
+
+i18n:
+  activeIncidents: Active Incidents
+  allSystemsOperational: All Systems Operational
+  incidentReport: Incident Report
+  subscribeBySms: Subscribe via SMS
+  subscribeByEmail: Subscribe via Email
