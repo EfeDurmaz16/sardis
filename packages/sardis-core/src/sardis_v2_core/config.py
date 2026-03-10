@@ -328,6 +328,19 @@ class FidesConfig(BaseSettings):
         env_prefix = "SARDIS_FIDES_"
 
 
+class StripeBillingConfig(BaseSettings):
+    """Stripe Billing configuration for usage-based subscriptions."""
+
+    secret_key: str = ""
+    webhook_secret: str = ""
+    free_plan_price_id: str = ""
+    growth_plan_price_id: str = ""
+    scale_plan_price_id: str = ""
+
+    class Config:
+        env_prefix = "SARDIS_STRIPE_BILLING_"
+
+
 class ERC8183Config(BaseSettings):
     """ERC-8183 Agentic Commerce integration configuration."""
 
@@ -458,6 +471,7 @@ class SardisSettings(BaseSettings):
     erc8183: ERC8183Config = Field(default_factory=ERC8183Config)
     striga: StrigaConfig = Field(default_factory=StrigaConfig)
     lightspark: LightsparkConfig = Field(default_factory=LightsparkConfig)
+    stripe_billing: StripeBillingConfig = Field(default_factory=StripeBillingConfig)
 
     # Chain execution mode
     chain_mode: Literal["simulated", "live"] = "simulated"
