@@ -16,7 +16,10 @@ type CardRecord = {
   limit_daily?: number | string
   limit_monthly?: number | string
   wallet_id?: string
+  currency?: string
 }
+
+type CurrencyFilter = 'All' | 'USD' | 'EUR'
 
 type CardTransaction = {
   transaction_id: string
@@ -51,7 +54,7 @@ const SEED_AGENTS = [
   { agent_id: 'agent_research_002', name: 'research_analyst', wallet_id: 'wallet_demo_002' },
 ]
 
-const SEED_CARDS = [
+const SEED_CARDS: CardRecord[] = [
   {
     card_id: 'card_demo_001',
     provider_card_id: 'lith_sandbox_a1b2c3',
@@ -61,6 +64,7 @@ const SEED_CARDS = [
     limit_daily: 500,
     limit_monthly: 2000,
     wallet_id: 'wallet_demo_001',
+    currency: 'USD',
   },
   {
     card_id: 'card_demo_002',
@@ -71,6 +75,7 @@ const SEED_CARDS = [
     limit_daily: 200,
     limit_monthly: 1000,
     wallet_id: 'wallet_demo_001',
+    currency: 'EUR',
   },
 ]
 
@@ -87,6 +92,7 @@ export default function CardsPage() {
   const [showIssue, setShowIssue] = useState(false)
   const [showPurchase, setShowPurchase] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('All')
 
   const selectedAgent = agents.find((agent) => agent.agent_id === selectedAgentId)
   const walletId = selectedAgent?.wallet_id || ''
@@ -106,6 +112,20 @@ export default function CardsPage() {
 
   // Use seed cards if API returns empty and using seed agents
   const cards: CardRecord[] = apiCards.length > 0 ? apiCards : (apiAgents.length === 0 ? SEED_CARDS : [])
+
+  const cardCurrency = (card: CardRecord) => card.currency || 'USD'
+
+  const filteredCards = currencyFilter === 'All'
+    ? cards
+    : cards.filter((c) => cardCurrency(c) === currencyFilter)
+
+  const hasMultipleCurrencies = new Set(cards.map(cardCurrency)).size > 1
+
+  const balanceByCurrency = cards.reduce<Record<string, number>>((acc, card) => {
+    const cur = cardCurrency(card)
+    acc[cur] = (acc[cur] ?? 0) + Number(card.limit_daily || 0)
+    return acc
+  }, {})
 
   const issueMutation = useMutation({
     mutationFn: cardsApi.issue,
@@ -171,6 +191,42 @@ export default function CardsPage() {
         )}
       </div>
 
+      {/* Currency Filter + Balance Summary */}
+      {cards.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Currency:</span>
+            <div className="flex gap-1">
+              {(['All', 'USD', 'EUR'] as CurrencyFilter[]).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setCurrencyFilter(opt)}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                    currencyFilter === opt
+                      ? 'bg-sardis-500 text-dark-400'
+                      : 'bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-200',
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {hasMultipleCurrencies && (
+            <div className="flex items-center gap-3">
+              {Object.entries(balanceByCurrency).map(([cur, total]) => (
+                <div key={cur} className="flex items-center gap-2 px-3 py-1.5 bg-dark-300 rounded-lg">
+                  <CurrencyBadge currency={cur} />
+                  <span className="text-sm text-gray-300 font-mono">{total.toFixed(2)} daily</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cards Grid */}
       {agentsLoading || cardsLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -195,9 +251,15 @@ export default function CardsPage() {
             </button>
           )}
         </div>
+      ) : filteredCards.length === 0 ? (
+        <div className="card p-12 text-center">
+          <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No {currencyFilter} cards</h3>
+          <p className="text-gray-400">No cards match the selected currency filter.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {cards.map((card) => (
+          {filteredCards.map((card) => (
             <div key={card.card_id} className="space-y-4">
               <SardisCard
                 card={card}
@@ -251,6 +313,23 @@ export default function CardsPage() {
 }
 
 
+/* ─── Currency Badge ─── */
+
+function CurrencyBadge({ currency }: { currency: string }) {
+  const isEUR = currency === 'EUR'
+  return (
+    <span className={clsx(
+      'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide',
+      isEUR
+        ? 'bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30'
+        : 'bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30',
+    )}>
+      {currency}
+    </span>
+  )
+}
+
+
 /* ─── Visual Card Component ─── */
 
 function SardisCard({
@@ -276,6 +355,7 @@ function SardisCard({
   const isCancelled = card.status === 'cancelled'
   const isActive = card.status === 'active' || card.status === 'pending'
   const last4 = card.card_number_last4 || card.provider_card_id?.slice(-4) || '****'
+  const currency = card.currency || 'USD'
 
   return (
     <div className="space-y-3">
@@ -296,7 +376,7 @@ function SardisCard({
           backgroundImage: 'radial-gradient(circle at 70% 30%, rgba(255,79,0,0.8), transparent 50%), radial-gradient(circle at 30% 70%, rgba(255,79,0,0.4), transparent 50%)',
         }} />
 
-        {/* Top row: logo + status */}
+        {/* Top row: logo + currency + status */}
         <div className="relative flex items-start justify-between mb-8">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-sardis-500 rounded-lg flex items-center justify-center">
@@ -304,19 +384,22 @@ function SardisCard({
             </div>
             <span className="text-sm font-bold text-sardis-400 tracking-wider">SARDIS</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={clsx(
-              'status-dot',
-              isActive ? 'success' : isFrozen ? 'bg-blue-400' : 'error'
-            )} />
-            <span className={clsx(
-              'text-xs font-medium uppercase tracking-wider',
-              isActive && 'text-sardis-400',
-              isFrozen && 'text-blue-400',
-              isCancelled && 'text-red-400',
-            )}>
-              {card.status}
-            </span>
+          <div className="flex items-center gap-3">
+            <CurrencyBadge currency={currency} />
+            <div className="flex items-center gap-2">
+              <div className={clsx(
+                'status-dot',
+                isActive ? 'success' : isFrozen ? 'bg-blue-400' : 'error'
+              )} />
+              <span className={clsx(
+                'text-xs font-medium uppercase tracking-wider',
+                isActive && 'text-sardis-400',
+                isFrozen && 'text-blue-400',
+                isCancelled && 'text-red-400',
+              )}>
+                {card.status}
+              </span>
+            </div>
           </div>
         </div>
 
