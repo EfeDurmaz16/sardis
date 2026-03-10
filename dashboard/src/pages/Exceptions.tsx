@@ -275,6 +275,14 @@ export default function ExceptionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Experimental warning banner */}
+      <div className="bg-yellow-500/10 border border-yellow-500/30 p-4">
+        <p className="text-yellow-400 text-sm font-medium">
+          ⚠️ Experimental — Exception data is stored in-memory and will be lost on server restart.
+          This surface is not yet production-grade.
+        </p>
+      </div>
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">

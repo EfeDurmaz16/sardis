@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
-# Shared in-memory engine instance (replace with injected dependency for persistence)
+# NOTE: In-memory only — data is lost on restart. See #80.
+# TODO: Replace with database-backed persistence when exception workflows are promoted to production.
 _engine = ExceptionWorkflowEngine()
 
 
