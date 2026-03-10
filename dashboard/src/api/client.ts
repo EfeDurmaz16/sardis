@@ -759,6 +759,12 @@ export const evidenceApi = {
 
   exportPolicyDecision: (agentId: string, decisionId: string) =>
     requestV2<JsonObject>(`/evidence/decisions/${agentId}/${decisionId}/export`),
+
+  exportBundle: (txId: string) =>
+    requestV2<JsonObject>(`/evidence/export/${txId}`, { method: 'POST' }),
+
+  downloadBundleUrl: (txId: string) =>
+    `${API_URL}/api/v2/evidence/export/${txId}/download`,
 }
 
 // Live simulation — dry-run through the full control-plane pipeline (V2)
@@ -878,6 +884,16 @@ export const policiesApi = {
       method: 'POST',
       body: JSON.stringify({ currency: 'USD', ...data }),
     }),
+}
+
+// Wallets APIs (V2)
+export const walletsApi = {
+  list: () => requestV2<JsonObject[]>('/wallets'),
+
+  get: (walletId: string) => requestV2<JsonObject>(`/wallets/${walletId}`),
+
+  history: (walletId: string, limit = 20) =>
+    requestV2<JsonObject[]>(`/wallets/${walletId}/policy-history?limit=${limit}`),
 }
 
 // Anomaly APIs (V2)

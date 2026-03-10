@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi, walletsApi } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
@@ -459,5 +459,29 @@ export function useTransactions(limit = 50) {
   return useQuery({
     queryKey: ['transactions', limit],
     queryFn: () => paymentApi.getHistory(limit),
+  })
+}
+
+// Wallets
+export function useWallets() {
+  return useQuery({
+    queryKey: ['wallets'],
+    queryFn: walletsApi.list,
+  })
+}
+
+export function useWallet(walletId: string) {
+  return useQuery({
+    queryKey: ['wallet', walletId],
+    queryFn: () => walletsApi.get(walletId),
+    enabled: !!walletId,
+  })
+}
+
+export function usePolicyHistory(walletId: string) {
+  return useQuery({
+    queryKey: ['policy-history', walletId],
+    queryFn: () => walletsApi.history(walletId),
+    enabled: !!walletId,
   })
 }

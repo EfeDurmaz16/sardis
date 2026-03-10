@@ -30,6 +30,10 @@ import BillingPage from './pages/Billing'
 import APIKeysPage from './pages/APIKeys'
 import WebhookManagerPage from './pages/WebhookManager'
 import SettingsPage from './pages/Settings'
+import AlertPreferencesPage from './pages/AlertPreferences'
+import LiveLaneOnboardingPage from './pages/LiveLaneOnboarding'
+import PolicyManagerPage from './pages/PolicyManager'
+import ControlCenterPage from './pages/ControlCenter'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -98,6 +102,10 @@ function AppRoutes() {
                 <Route path="/api-keys" element={<APIKeysPage />} />
                 <Route path="/webhooks" element={<WebhookManagerPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/alert-preferences" element={<AlertPreferencesPage />} />
+                <Route path="/go-live" element={<LiveLaneOnboardingPage />} />
+                <Route path="/policy-manager" element={<PolicyManagerPage />} />
+                <Route path="/control-center" element={<ControlCenterPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

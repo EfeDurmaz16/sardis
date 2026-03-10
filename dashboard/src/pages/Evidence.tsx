@@ -17,11 +17,13 @@ import {
   User,
   Loader2,
   AlertCircle,
+  Package,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useQuery } from '@tanstack/react-query'
 import { useTransactionEvidence, usePolicyDecisions, useAgents } from '../hooks/useApi'
 import { evidenceApi } from '../api/client'
+import EvidenceExportModal from '../components/EvidenceExportModal'
 
 /* ─── Types ─── */
 
@@ -727,6 +729,7 @@ export default function EvidencePage() {
   const [inputValue, setInputValue] = useState('')
   const [searchedValue, setSearchedValue] = useState('')
   const [searchMode, setSearchMode] = useState<SearchMode>('idle')
+  const [exportModalTxId, setExportModalTxId] = useState<string | null>(null)
 
   const agentsQuery = useAgents()
   const agentIds = new Set(
@@ -763,6 +766,14 @@ export default function EvidencePage() {
 
   return (
     <div className="space-y-8">
+      {/* Export modal */}
+      {exportModalTxId && (
+        <EvidenceExportModal
+          txId={exportModalTxId}
+          onClose={() => setExportModalTxId(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -841,6 +852,15 @@ export default function EvidencePage() {
             )}
             <AlertTriangle className="w-3 h-3 text-gray-600 ml-1" />
             <span className="text-xs text-gray-600">IDs starting with tx_ search transactions, all others search agents</span>
+            {searchMode === 'transaction' && (
+              <button
+                onClick={() => setExportModalTxId(searchedValue)}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-dark-200 border border-dark-100 hover:border-sardis-500/40 text-gray-400 hover:text-sardis-400 transition-colors flex-shrink-0"
+              >
+                <Package className="w-3.5 h-3.5" />
+                Export Evidence
+              </button>
+            )}
           </div>
         )}
       </div>

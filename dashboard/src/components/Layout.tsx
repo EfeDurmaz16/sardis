@@ -33,6 +33,9 @@ import {
   ChevronDown,
   ChevronRight,
   FlaskConical as ExperimentalIcon,
+  Rocket,
+  LayoutGrid,
+  GitBranch,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -45,9 +48,12 @@ interface LayoutProps {
 
 const primaryNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Go Live', href: '/go-live', icon: Rocket },
+  { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
   { name: 'Control Plane Demo', href: '/demo', icon: Sparkles },
   // ── Control Plane ──
   { name: 'Policies', href: '/policy-management', icon: ScrollText },
+  { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
   { name: 'Approvals', href: '/approvals', icon: CheckSquare },
   { name: 'Kill Switch', href: '/kill-switch', icon: Power },
   { name: 'Evidence', href: '/evidence', icon: FileSearch },
