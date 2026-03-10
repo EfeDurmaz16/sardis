@@ -26,6 +26,9 @@ import MerchantsPage from './pages/Merchants'
 import SimulationPage from './pages/Simulation'
 import AnomalyDashboardPage from './pages/AnomalyDashboard'
 import ExceptionsPage from './pages/Exceptions'
+import BillingPage from './pages/Billing'
+import APIKeysPage from './pages/APIKeys'
+import WebhookManagerPage from './pages/WebhookManager'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -90,6 +93,9 @@ function AppRoutes() {
                 <Route path="/simulation" element={<SimulationPage />} />
                 <Route path="/anomaly" element={<AnomalyDashboardPage />} />
                 <Route path="/exceptions" element={<ExceptionsPage />} />
+                <Route path="/billing" element={<BillingPage />} />
+                <Route path="/api-keys" element={<APIKeysPage />} />
+                <Route path="/webhooks" element={<WebhookManagerPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

@@ -26,6 +26,9 @@ import {
   Beaker,
   Radar,
   OctagonAlert,
+  Receipt,
+  Key,
+  Webhook,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -61,6 +64,9 @@ const navigation = [
   { name: 'Agent Identity', href: '/agent-identity', icon: Award },
   { name: 'Goal Drift', href: '/goal-drift', icon: AlertTriangle },
   { name: 'Enterprise Support', href: '/enterprise-support', icon: Headset },
+  { name: 'Billing', href: '/billing', icon: Receipt },
+  { name: 'API Keys', href: '/api-keys', icon: Key },
+  { name: 'Webhooks', href: '/webhooks', icon: Webhook },
 ]
 
 export default function Layout({ children }: LayoutProps) {
