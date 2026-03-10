@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import posthog from 'posthog-js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.sardis.sh';
 
@@ -153,6 +154,13 @@ export default function Signup() {
   const [apiError, setApiError] = useState('');
   const [success, setSuccess] = useState(null); // { apiKey, email }
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') === 'success') {
+      posthog.capture('signup_completed', { method: 'google' });
+    }
+  }, []);
+
   const validate = () => {
     const next = {};
     if (!form.email) next.email = 'Email is required.';
@@ -196,6 +204,8 @@ export default function Signup() {
 
       if (res.ok) {
         setSuccess({ apiKey: data.api_key, email: form.email });
+        posthog.identify(data.user_id, { email: form.email });
+        posthog.capture('signup_completed', { method: 'email' });
       } else if (res.status === 409) {
         setApiError('An account with this email already exists. Try signing in.');
       } else if (res.status === 422) {

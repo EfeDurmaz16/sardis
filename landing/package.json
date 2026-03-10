@@ -27,6 +27,7 @@
     "geist": "^1.7.0",
     "hugeicons-react": "^0.4.0",
     "lucide-react": "^0.576.0",
+    "posthog-js": "^1.360.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",

@@ -1,5 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import posthog from 'posthog-js'
+
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY
+if (POSTHOG_KEY) {
+  posthog.init(POSTHOG_KEY, {
+    api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
+    capture_pageview: true,
+    autocapture: true,
+  })
+}
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import './index.css'

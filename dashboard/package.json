@@ -19,6 +19,7 @@
     "clsx": "^2.0.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.576.0",
+    "posthog-js": "^1.360.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-is": "^18.2.0",
