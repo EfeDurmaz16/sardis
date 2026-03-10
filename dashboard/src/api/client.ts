@@ -1107,6 +1107,21 @@ export interface Counterparty {
   updated_at: string
 }
 
+export interface CounterpartyTrustProfile {
+  counterparty_id: string
+  name: string
+  trust_score: number
+  policy_compatible: boolean
+  proof_status: 'verified' | 'partial' | 'none'
+  settlement_preference: string
+  total_transactions: number
+  total_volume: string
+  success_rate: number
+  avg_settlement_time: string
+  last_transaction: string | null
+  flags: string[]
+}
+
 export const counterpartiesApi = {
   list: (params?: { type?: string; trust_status?: string; limit?: number }) => {
     const search = new URLSearchParams()
@@ -1118,6 +1133,9 @@ export const counterpartiesApi = {
   },
 
   get: (id: string) => requestV2<Counterparty>(`/counterparties/${id}`),
+
+  getTrustProfile: (id: string) =>
+    requestV2<CounterpartyTrustProfile>(`/counterparties/${id}/trust-profile`),
 
   create: (data: {
     name: string
