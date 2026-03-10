@@ -46,6 +46,7 @@ export default function Navbar({ onOpenWaitlist }) {
 
   const navLinks = [
     { label: 'Docs', href: '/docs' },
+    { label: 'Pricing', href: '/pricing' },
     { label: 'GitHub', href: 'https://github.com/EfeDurmaz16/sardis' },
     { label: 'Blog', href: '/docs/blog' },
   ];
