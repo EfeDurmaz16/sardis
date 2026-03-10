@@ -9,6 +9,7 @@ import FundAndPay from "@/components/FundAndPay";
 import ProcessingView from "@/components/ProcessingView";
 import SuccessView from "@/components/SuccessView";
 import ErrorView from "@/components/ErrorView";
+import { useSessionStream } from "@/hooks/useSessionStream";
 
 export default function CheckoutPage() {
   const { clientSecret } = useParams<{ clientSecret: string }>();
@@ -64,6 +65,21 @@ export default function CheckoutPage() {
     setError("");
     setStep("pay");
   };
+
+  // SSE streaming: track session status in real-time while in an active state.
+  // The hook opens an EventSource to /stream and falls back to polling the
+  // /details endpoint every 3 s if SSE is unavailable or drops. It is dormant
+  // until the session is loaded and stops once a terminal step is reached.
+  const streamActive = step === "pay" || step === "processing";
+  useSessionStream(
+    streamActive ? clientSecret : undefined,
+    streamActive ? (session?.session_id ?? undefined) : undefined,
+    {
+      onStepChange: setStep,
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+  );
 
   if (step === "loading") {
     return (
