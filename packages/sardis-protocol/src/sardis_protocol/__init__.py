@@ -166,6 +166,32 @@ with contextlib.suppress(ImportError):
         create_dispute_resolver,
     )
 
+# ERC-8001: Agent Coordination
+with contextlib.suppress(ImportError):
+    from .erc8001 import (
+        AcceptanceAttestation,
+        AgentCoordinationManager,
+        AgentIntent,
+        BoundedPolicy,
+        CoordinationPayload,
+        CoordinationStatus,
+        CoordinationType,
+        ExecutionResult as CoordinationExecutionResult,
+        create_coordination_manager,
+    )
+
+# ERC-8122: Minimal Agent Registry
+with contextlib.suppress(ImportError):
+    from .erc8122 import (
+        AgentRegistration,
+        AgentRegistryManager,
+        MetadataEntry,
+        RegistryInfo,
+        RegistryStatus,
+        ServiceType,
+        create_agent_registry,
+    )
+
 # Protocol reason codes
 with contextlib.suppress(ImportError):
     from .reason_codes import (
@@ -311,6 +337,24 @@ __all__ = [
     "build_appeal_calldata",
     "build_rule_calldata",
     "create_dispute_resolver",
+    # ERC-8001: Agent Coordination
+    "AgentCoordinationManager",
+    "AgentIntent",
+    "AcceptanceAttestation",
+    "CoordinationPayload",
+    "CoordinationStatus",
+    "CoordinationType",
+    "CoordinationExecutionResult",
+    "BoundedPolicy",
+    "create_coordination_manager",
+    # ERC-8122: Minimal Agent Registry
+    "AgentRegistryManager",
+    "AgentRegistration",
+    "MetadataEntry",
+    "RegistryInfo",
+    "RegistryStatus",
+    "ServiceType",
+    "create_agent_registry",
     # Protocol reason codes
     "ProtocolReasonCode",
     "ReasonCodeMapping",
