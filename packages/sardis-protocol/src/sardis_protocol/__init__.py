@@ -100,6 +100,31 @@ with contextlib.suppress(ImportError):
         X402Settler,
     )
 
+# ERC-8128: Signed HTTP Requests
+with contextlib.suppress(ImportError):
+    from .erc8128 import (
+        ERC8128SignatureInput,
+        ERC8128VerificationResult,
+        build_keyid,
+        build_signature_base as erc8128_build_signature_base,
+        compute_content_digest,
+        parse_signature_input as erc8128_parse_signature_input,
+        sign_request as erc8128_sign_request,
+        verify_request as erc8128_verify_request,
+    )
+
+# ERC-8021: Transaction Attribution
+with contextlib.suppress(ImportError):
+    from .erc8021 import (
+        AttributionData,
+        append_attribution,
+        decode_attribution,
+        encode_attribution,
+        has_attribution,
+        sardis_attribution,
+        strip_attribution,
+    )
+
 # Protocol reason codes
 with contextlib.suppress(ImportError):
     from .reason_codes import (
@@ -195,6 +220,23 @@ __all__ = [
     "X402SettlementStatus",
     "X402SettlementStore",
     "InMemorySettlementStore",
+    # ERC-8128: Signed HTTP Requests
+    "ERC8128SignatureInput",
+    "ERC8128VerificationResult",
+    "build_keyid",
+    "compute_content_digest",
+    "erc8128_build_signature_base",
+    "erc8128_parse_signature_input",
+    "erc8128_sign_request",
+    "erc8128_verify_request",
+    # ERC-8021: Transaction Attribution
+    "AttributionData",
+    "encode_attribution",
+    "decode_attribution",
+    "append_attribution",
+    "strip_attribution",
+    "has_attribution",
+    "sardis_attribution",
     # Protocol reason codes
     "ProtocolReasonCode",
     "ReasonCodeMapping",
