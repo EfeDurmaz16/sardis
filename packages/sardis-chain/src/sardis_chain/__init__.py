@@ -117,6 +117,21 @@ from .wallet_manager import (
     WalletInfo,
     WalletManager,
 )
+from .zodiac_roles import (
+    ZODIAC_ADDRESSES,
+    AllowanceConfig,
+    ConditionFlat,
+    ExecutionOptions,
+    Operator,
+    RoleConfig,
+    RolePermission,
+    ZodiacRolesSetup,
+    build_agent_wallet_setup,
+    build_role_setup_transactions,
+    encode_role_key,
+    decode_role_key,
+    policy_to_role_config,
+)
 
 __version__ = "0.4.0"
 
@@ -209,4 +224,18 @@ __all__ = [
     "ForwardingDeposit",
     "ForwardingStatus",
     "FUNDING_SOURCE_CHAINS",
+    # Zodiac Roles v2
+    "ZODIAC_ADDRESSES",
+    "AllowanceConfig",
+    "ConditionFlat",
+    "ExecutionOptions",
+    "Operator",
+    "RoleConfig",
+    "RolePermission",
+    "ZodiacRolesSetup",
+    "build_agent_wallet_setup",
+    "build_role_setup_transactions",
+    "encode_role_key",
+    "decode_role_key",
+    "policy_to_role_config",
 ]
