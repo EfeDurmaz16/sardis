@@ -20,6 +20,7 @@ from .chainalysis import ChainalysisOracleProvider
 from .notabene import NotabeneTravelRuleProvider
 from .ofac import OFACAddressProvider
 from .opensanctions import OpenSanctionsProvider
+from .privado_id import PrivadoIDProvider
 from .watchman import WatchmanProvider
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "WatchmanProvider",
     "OpenSanctionsProvider",
     "NotabeneTravelRuleProvider",
+    "PrivadoIDProvider",
 ]

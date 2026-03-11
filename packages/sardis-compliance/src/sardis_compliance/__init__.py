@@ -127,6 +127,7 @@ from .providers import (
     NotabeneTravelRuleProvider,
     OFACAddressProvider,
     OpenSanctionsProvider,
+    PrivadoIDProvider,
     ScorechainProvider,
     WatchmanProvider,
 )
@@ -374,6 +375,8 @@ __all__ = [
     "OpenSanctionsProvider",
     # Notabene Travel Rule
     "NotabeneTravelRuleProvider",
+    # Privado ID ZK Identity
+    "PrivadoIDProvider",
     # Version
     "__version__",
 ]
