@@ -203,6 +203,22 @@ with contextlib.suppress(ImportError):
         map_legacy_reason_to_code,
     )
 
+# Paladin Privacy: privacy-preserving transactions
+with contextlib.suppress(ImportError):
+    from .paladin_privacy import (
+        NotaryDecision,
+        NotaryValidation,
+        PaladinPrivacyManager,
+        PrivacyConfig,
+        PrivacyDomain,
+        PrivacyGroup,
+        PrivacyLevel,
+        PrivateTransfer,
+        UTXO,
+        UTXOState,
+        create_privacy_manager,
+    )
+
 __all__ = [
     # Schemas
     "IngestMandateRequest",
@@ -362,4 +378,16 @@ __all__ = [
     "get_reason",
     "map_exception_to_reason",
     "map_legacy_reason_to_code",
+    # Paladin Privacy
+    "PaladinPrivacyManager",
+    "PrivacyDomain",
+    "PrivacyLevel",
+    "PrivacyGroup",
+    "PrivateTransfer",
+    "UTXO",
+    "UTXOState",
+    "NotaryDecision",
+    "NotaryValidation",
+    "PrivacyConfig",
+    "create_privacy_manager",
 ]
