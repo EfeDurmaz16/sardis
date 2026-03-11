@@ -132,6 +132,22 @@ class TestChainConfigs:
         assert "solana" in config["rpc_url"]
         assert config["native_token"] == "SOL"
 
+    def test_tempo_testnet_config(self):
+        """Test Tempo Moderato testnet configuration."""
+        config = CHAIN_CONFIGS["tempo_testnet"]
+
+        assert config["chain_id"] == 42431
+        assert "moderato" in config["rpc_url"]
+        assert config["native_token"] == "NONE"
+        assert config.get("is_tempo") is True
+
+    def test_tempo_mainnet_config(self):
+        """Test Tempo mainnet configuration (placeholder)."""
+        config = CHAIN_CONFIGS["tempo"]
+
+        assert config["chain_id"] == 0  # TBD — mainnet not launched yet
+        assert config.get("is_tempo") is True
+
 
 class TestStablecoinAddresses:
     """Tests for stablecoin contract addresses."""
@@ -173,6 +189,14 @@ class TestStablecoinAddresses:
         assert "USDC" in addresses
         # Solana addresses are base58, not hex
         assert not addresses["USDC"].startswith("0x")
+
+    def test_tempo_testnet_stablecoins(self):
+        """Test Tempo testnet stablecoin addresses (TIP-20 pathUSD)."""
+        addresses = STABLECOIN_ADDRESSES["tempo_testnet"]
+
+        assert "USDC" in addresses
+        # Tempo uses EVM-style 0x addresses
+        assert addresses["USDC"].startswith("0x")
 
     def test_ethereum_has_eurc_pyusd(self):
         """Test Ethereum has EURC and PYUSD."""

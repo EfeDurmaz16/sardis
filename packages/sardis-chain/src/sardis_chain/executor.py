@@ -181,6 +181,27 @@ CHAIN_CONFIGS = {
         "is_solana": True,
         "experimental": True,
     },
+    # ── Tempo (Payment L1) ─────────────────────────────────────────
+    # Tempo is EVM-compatible but has NO native gas token.
+    # Fees are deducted from the transferred TIP-20 stablecoin.
+    # Standard web3.py works for basic transfers.
+    # Type 0x76 transactions enable explicit fee token, batching, sponsorship.
+    "tempo_testnet": {
+        "chain_id": 42431,
+        "rpc_url": _rpc("SARDIS_TEMPO_TESTNET_RPC_URL", "https://rpc.moderato.tempo.xyz"),
+        "explorer": "https://moderato.tempo.xyz",
+        "native_token": "NONE",  # No native gas token — fees in TIP-20
+        "block_time": 1,
+        "is_tempo": True,
+    },
+    "tempo": {
+        "chain_id": 0,  # Mainnet not launched yet — update when known
+        "rpc_url": _rpc("SARDIS_TEMPO_RPC_URL", ""),
+        "explorer": "https://tempo.xyz",
+        "native_token": "NONE",
+        "block_time": 1,
+        "is_tempo": True,
+    },
 }
 
 # Stablecoin contract addresses by chain
@@ -242,6 +263,13 @@ STABLECOIN_ADDRESSES = {
         "USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # Mainnet USDC
         "USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # Mainnet USDT
         "PYUSD": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",  # PYUSD on Solana
+    },
+    # Tempo (TIP-20 stablecoins — EVM-style addresses)
+    "tempo_testnet": {
+        "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato testnet
+    },
+    "tempo": {
+        # Mainnet token addresses TBD — update when Tempo launches mainnet
     },
 }
 
