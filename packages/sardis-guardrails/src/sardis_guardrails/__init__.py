@@ -4,6 +4,13 @@ Provides circuit breakers, kill switches, rate limiting, input validation,
 and behavioral monitoring for safe agent payment execution.
 """
 
+from sardis_guardrails.agent_threat_detector import (
+    AgentThreatAssessment,
+    AgentThreatDetector,
+    AgentThreatSignals,
+    ThreatCategory,
+    get_agent_threat_detector,
+)
 from sardis_guardrails.anomaly_engine import (
     AnomalyEngine,
     RiskAction,
@@ -102,6 +109,12 @@ __all__ = [
     "RiskAction",
     "RiskAssessment",
     "RiskSignal",
+    # Agent Threat Detection
+    "AgentThreatDetector",
+    "AgentThreatAssessment",
+    "AgentThreatSignals",
+    "ThreatCategory",
+    "get_agent_threat_detector",
     # Zen Fraud Engine
     "ZenFraudEngine",
     "ZenFraudProvider",
