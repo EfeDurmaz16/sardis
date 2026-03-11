@@ -125,6 +125,26 @@ with contextlib.suppress(ImportError):
         strip_attribution,
     )
 
+# ERC-8126: ZK Risk Scoring
+with contextlib.suppress(ImportError):
+    from .erc8126 import (
+        AgentVerification,
+        RiskBand,
+        VerificationResult as ERC8126VerificationResult,
+        VerificationStatus as ERC8126VerificationStatus,
+        VerificationType,
+        ZKProofCommitment,
+        compute_composite_score,
+        create_proof_commitment,
+        evaluate_etv,
+        evaluate_scv,
+        evaluate_wav,
+        evaluate_wv,
+        risk_score_to_normalized,
+        score_to_risk_band,
+        verify_agent,
+    )
+
 # Protocol reason codes
 with contextlib.suppress(ImportError):
     from .reason_codes import (
@@ -237,6 +257,22 @@ __all__ = [
     "strip_attribution",
     "has_attribution",
     "sardis_attribution",
+    # ERC-8126: ZK Risk Scoring
+    "AgentVerification",
+    "RiskBand",
+    "ERC8126VerificationResult",
+    "ERC8126VerificationStatus",
+    "VerificationType",
+    "ZKProofCommitment",
+    "compute_composite_score",
+    "create_proof_commitment",
+    "evaluate_etv",
+    "evaluate_scv",
+    "evaluate_wav",
+    "evaluate_wv",
+    "risk_score_to_normalized",
+    "score_to_risk_band",
+    "verify_agent",
     # Protocol reason codes
     "ProtocolReasonCode",
     "ReasonCodeMapping",
