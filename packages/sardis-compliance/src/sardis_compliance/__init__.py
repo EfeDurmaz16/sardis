@@ -185,6 +185,25 @@ from .sanctions import (
     WalletScreeningRequest,
     create_sanctions_service,
 )
+from .mica import (
+    CASPAuthorization,
+    CASPService,
+    CryptoAssetClass,
+    DisclosureType,
+    MiCAComplianceEngine,
+    MiCASARReport,
+    MiCAStatus,
+    RiskDisclosure,
+    SARRegion,
+    StablecoinAssessment,
+    TransactionAssessment,
+    TransactionRisk,
+    WhitepaperField,
+    WhitepaperValidation,
+    classify_stablecoin,
+    create_mica_engine,
+    is_eu_country,
+)
 from .travel_rule import (
     BeneficiaryInfo,
     ManualTravelRuleProvider,
@@ -377,6 +396,24 @@ __all__ = [
     "NotabeneTravelRuleProvider",
     # Privado ID ZK Identity
     "PrivadoIDProvider",
+    # MiCA Compliance
+    "CASPAuthorization",
+    "CASPService",
+    "CryptoAssetClass",
+    "DisclosureType",
+    "MiCAComplianceEngine",
+    "MiCASARReport",
+    "MiCAStatus",
+    "RiskDisclosure",
+    "SARRegion",
+    "StablecoinAssessment",
+    "TransactionAssessment",
+    "TransactionRisk",
+    "WhitepaperField",
+    "WhitepaperValidation",
+    "classify_stablecoin",
+    "create_mica_engine",
+    "is_eu_country",
     # Version
     "__version__",
 ]
