@@ -219,6 +219,41 @@ with contextlib.suppress(ImportError):
         create_privacy_manager,
     )
 
+# ERC-8033: Paymaster Protocol
+with contextlib.suppress(ImportError):
+    from .erc8033 import (
+        PaymasterManager,
+        PaymasterConfig,
+        GasSession,
+        SessionStatus,
+        PaymasterType,
+        GasPolicy,
+        SponsorshipTier,
+        SponsorshipRecord,
+        GasEstimate,
+        PaymasterTransaction,
+        PaymasterStats,
+        create_paymaster_manager,
+        estimate_tx_cost,
+    )
+
+# zkPass Transgate: portable ZK-based KYC verification
+with contextlib.suppress(ImportError):
+    from .zkpass_transgate import (
+        ZKPassVerifier,
+        TransgateProofType,
+        TransgateIssuer,
+        TransgateSchema,
+        ZKProof,
+        ProofStatus,
+        VerificationMethod,
+        VerificationResult as ZKPassVerificationResult,
+        PortableKYCResult,
+        TransgateConfig,
+        create_zkpass_verifier,
+        hash_public_inputs,
+    )
+
 __all__ = [
     # Schemas
     "IngestMandateRequest",
@@ -390,4 +425,31 @@ __all__ = [
     "NotaryValidation",
     "PrivacyConfig",
     "create_privacy_manager",
+    # ERC-8033: Paymaster Protocol
+    "PaymasterManager",
+    "PaymasterConfig",
+    "GasSession",
+    "SessionStatus",
+    "PaymasterType",
+    "GasPolicy",
+    "SponsorshipTier",
+    "SponsorshipRecord",
+    "GasEstimate",
+    "PaymasterTransaction",
+    "PaymasterStats",
+    "create_paymaster_manager",
+    "estimate_tx_cost",
+    # zkPass Transgate
+    "ZKPassVerifier",
+    "TransgateProofType",
+    "TransgateIssuer",
+    "TransgateSchema",
+    "ZKProof",
+    "ProofStatus",
+    "VerificationMethod",
+    "ZKPassVerificationResult",
+    "PortableKYCResult",
+    "TransgateConfig",
+    "create_zkpass_verifier",
+    "hash_public_inputs",
 ]
