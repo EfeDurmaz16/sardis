@@ -57,6 +57,8 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "optimism": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
             "solana": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "arc_testnet": "0x3600000000000000000000000000000000000000",
+            "tempo_testnet": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato
+            "morph": "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
         },
     ),
     TokenType.USDT: TokenMetadata(

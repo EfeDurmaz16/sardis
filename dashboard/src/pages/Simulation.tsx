@@ -68,7 +68,7 @@ interface SimulateResult {
 /* ─── Constants ─── */
 
 const CURRENCIES = ['USDC', 'USDT', 'EURC'] as const
-const CHAINS = ['base', 'polygon', 'arbitrum', 'optimism', 'ethereum'] as const
+const CHAINS = ['base', 'polygon', 'arbitrum', 'optimism', 'ethereum', 'tempo_testnet', 'solana_devnet', 'morph'] as const
 const SOURCES = ['ap2', 'a2a', 'checkout'] as const
 
 /* ─── Sub-components ─── */

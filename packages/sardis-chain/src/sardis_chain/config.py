@@ -29,6 +29,9 @@ class ChainNetwork(str, Enum):
     POLYGON = "polygon"
     ARBITRUM = "arbitrum"
     OPTIMISM = "optimism"
+    TEMPO = "tempo"
+    SOLANA = "solana"
+    MORPH = "morph"
 
     # Arc (Circle L1)
     ARC_TESTNET = "arc_testnet"
@@ -39,6 +42,9 @@ class ChainNetwork(str, Enum):
     POLYGON_AMOY = "polygon_amoy"
     ARBITRUM_SEPOLIA = "arbitrum_sepolia"
     OPTIMISM_SEPOLIA = "optimism_sepolia"
+    TEMPO_TESTNET = "tempo_testnet"
+    SOLANA_DEVNET = "solana_devnet"
+    MORPH_TESTNET = "morph_testnet"
 
 
 # Aliases for backwards compatibility with __init__.py exports
@@ -526,6 +532,69 @@ def build_default_config() -> SardisChainConfig:
         explorer_url="https://optimistic.etherscan.io",
     )
 
+    # Tempo Moderato Testnet (Payment L1 — no native gas token)
+    chains["tempo_testnet"] = _build_chain_config(
+        chain_id=42431,
+        name="tempo_testnet",
+        display_name="Tempo Moderato (Testnet)",
+        default_rpc="https://rpc.moderato.tempo.xyz",
+        fallback_rpcs=[],
+        block_time=1.0,
+        native_token="NONE",
+        explorer_url="https://moderato.tempo.xyz",
+        is_testnet=True,
+    )
+
+    # Solana Devnet
+    chains["solana_devnet"] = _build_chain_config(
+        chain_id=0,
+        name="solana_devnet",
+        display_name="Solana Devnet",
+        default_rpc="https://api.devnet.solana.com",
+        fallback_rpcs=[],
+        block_time=0.4,
+        native_token="SOL",
+        explorer_url="https://explorer.solana.com/?cluster=devnet",
+        is_testnet=True,
+    )
+
+    # Solana Mainnet
+    chains["solana"] = _build_chain_config(
+        chain_id=0,
+        name="solana",
+        display_name="Solana",
+        default_rpc="https://api.mainnet-beta.solana.com",
+        fallback_rpcs=[],
+        block_time=0.4,
+        native_token="SOL",
+        explorer_url="https://explorer.solana.com",
+    )
+
+    # Morph Mainnet (Payment L2 — USDC + CCTP native)
+    chains["morph"] = _build_chain_config(
+        chain_id=2818,
+        name="morph",
+        display_name="Morph",
+        default_rpc="https://rpc-quicknode.morphl2.io",
+        fallback_rpcs=[],
+        block_time=2.0,
+        native_token="ETH",
+        explorer_url="https://explorer.morphl2.io",
+    )
+
+    # Morph Testnet (Holesky)
+    chains["morph_testnet"] = _build_chain_config(
+        chain_id=2710,
+        name="morph_testnet",
+        display_name="Morph Testnet",
+        default_rpc="https://rpc-testnet.morphl2.io",
+        fallback_rpcs=[],
+        block_time=2.0,
+        native_token="ETH",
+        explorer_url="https://explorer-testnet.morphl2.io",
+        is_testnet=True,
+    )
+
     return SardisChainConfig(
         chains=chains,
         default_chain=_get_env("DEFAULT_CHAIN", "base_sepolia"),
@@ -568,6 +637,12 @@ CHAIN_ID_MAP: dict[str, int] = {
     "polygon_amoy": 80002,
     "arbitrum_sepolia": 421614,
     "optimism_sepolia": 11155420,
+    "tempo_testnet": 42431,
+    "tempo": 0,       # Mainnet not launched — update when known
+    "solana_devnet": 0,  # Solana doesn't use EVM chain IDs
+    "solana": 0,
+    "morph": 2818,
+    "morph_testnet": 2710,
 }
 
 

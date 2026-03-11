@@ -110,6 +110,11 @@ function getExplorerUrl(chain: string, txHash: string): string {
     arbitrum: 'https://arbiscan.io/tx/',
     optimism: 'https://optimistic.ethscan.io/tx/',
     arc: 'https://explorer.circle.com/tx/',
+    tempo_testnet: 'https://moderato.tempo.xyz/tx/',
+    solana_devnet: 'https://explorer.solana.com/tx/',
+    solana: 'https://explorer.solana.com/tx/',
+    morph: 'https://explorer.morphl2.io/tx/',
+    morph_testnet: 'https://explorer-testnet.morphl2.io/tx/',
   }
   const base = explorers[chain?.toLowerCase()] ?? 'https://basescan.org/tx/'
   return `${base}${txHash}`

@@ -202,6 +202,23 @@ CHAIN_CONFIGS = {
         "block_time": 1,
         "is_tempo": True,
     },
+    # ── Morph (Payment L2 on Ethereum) ─────────────────────────────
+    # EVM-compatible optimistic zkEVM L2. USDC + CCTP native.
+    # Standard web3.py / Turnkey MPC / Safe wallets all work.
+    "morph": {
+        "chain_id": 2818,
+        "rpc_url": _rpc("SARDIS_MORPH_RPC_URL", "https://rpc-quicknode.morphl2.io"),
+        "explorer": "https://explorer.morphl2.io",
+        "native_token": "ETH",
+        "block_time": 2,
+    },
+    "morph_testnet": {
+        "chain_id": 2710,
+        "rpc_url": _rpc("SARDIS_MORPH_TESTNET_RPC_URL", "https://rpc-testnet.morphl2.io"),
+        "explorer": "https://explorer-testnet.morphl2.io",
+        "native_token": "ETH",
+        "block_time": 2,
+    },
 }
 
 # Stablecoin contract addresses by chain
@@ -270,6 +287,13 @@ STABLECOIN_ADDRESSES = {
     },
     "tempo": {
         # Mainnet token addresses TBD — update when Tempo launches mainnet
+    },
+    # Morph (EVM L2 — Circle native USDC + CCTP)
+    "morph": {
+        "USDC": "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
+    },
+    "morph_testnet": {
+        "USDC": "0x7433b41C6c5e1d58D4Da99483609520255ab661B",
     },
 }
 
@@ -371,6 +395,24 @@ SARDIS_CONTRACTS = {
         "wallet_program": "",
         "escrow_program": "",
         "experimental": True,
+    },
+    # Tempo — EVM-compatible but uses TIP-20 fee model (no Safe/EAS infra yet)
+    "tempo_testnet": {
+        "policy_module": "",  # TBD — may use Tempo Access Keys instead
+        "ledger_anchor": "",
+    },
+    "tempo": {
+        "policy_module": "",
+        "ledger_anchor": "",
+    },
+    # Morph — EVM L2, standard Safe/Zodiac infra
+    "morph": {
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
+        "ledger_anchor": "",
+    },
+    "morph_testnet": {
+        "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
+        "ledger_anchor": "",
     },
 }
 

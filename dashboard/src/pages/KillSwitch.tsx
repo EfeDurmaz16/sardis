@@ -24,7 +24,7 @@ import {
 /* ─── Constants ─── */
 
 const RAILS = ['a2a', 'ap2', 'checkout'] as const
-const CHAINS = ['base', 'ethereum', 'polygon', 'arbitrum', 'optimism'] as const
+const CHAINS = ['base', 'ethereum', 'polygon', 'arbitrum', 'optimism', 'tempo_testnet', 'solana_devnet', 'morph'] as const
 
 /* ─── Types ─── */
 

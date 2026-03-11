@@ -115,7 +115,6 @@ class TestChainConfigs:
         assert config["chain_id"] == 10
         assert config["native_token"] == "ETH"
 
-    @pytest.mark.skip(reason="Solana not yet implemented — planned Q3 2026")
     def test_solana_devnet_config(self):
         """Test Solana devnet configuration."""
         config = CHAIN_CONFIGS["solana_devnet"]
@@ -124,7 +123,6 @@ class TestChainConfigs:
         assert config["native_token"] == "SOL"
         assert config.get("is_solana") is True
 
-    @pytest.mark.skip(reason="Solana not yet implemented — planned Q3 2026")
     def test_solana_mainnet_config(self):
         """Test Solana mainnet configuration."""
         config = CHAIN_CONFIGS["solana"]
@@ -181,7 +179,6 @@ class TestStablecoinAddresses:
         assert "USDC" in addresses
         assert "USDT" in addresses
 
-    @pytest.mark.skip(reason="Solana not yet implemented — planned Q3 2026")
     def test_solana_usdc(self):
         """Test USDC address on Solana."""
         addresses = STABLECOIN_ADDRESSES["solana"]
