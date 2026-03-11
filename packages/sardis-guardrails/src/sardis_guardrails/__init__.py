@@ -79,6 +79,18 @@ from sardis_guardrails.ml_fraud import (
 # Alias to avoid conflict with zen_engine FraudAction
 from sardis_guardrails.ml_fraud import FraudAction as MLFraudAction
 
+from sardis_guardrails.graph_fraud import (
+    GraphAnalysisResult,
+    GraphFraudAnalyzer,
+    GraphPattern,
+    GraphRiskLevel,
+    PatternMatch,
+    TransactionEdge,
+    TransactionGraph,
+    WalletNode,
+    create_graph_analyzer,
+)
+
 try:
     from sardis_guardrails.zen_engine import (
         FraudAction,
@@ -163,4 +175,14 @@ __all__ = [
     "FEATURE_SCHEMA",
     "extract_features",
     "get_ml_fraud_scorer",
+    # Graph-Based Fraud Detection
+    "GraphFraudAnalyzer",
+    "GraphAnalysisResult",
+    "GraphPattern",
+    "GraphRiskLevel",
+    "PatternMatch",
+    "TransactionEdge",
+    "TransactionGraph",
+    "WalletNode",
+    "create_graph_analyzer",
 ]
