@@ -79,6 +79,7 @@ export default function FeaturesGrid() {
 
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {/* eslint-disable-next-line no-unused-vars -- Icon is used as JSX component below */}
           {cards.map(({ Icon, title, desc, unique }) => (
             <div
               key={title}

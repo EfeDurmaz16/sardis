@@ -35,7 +35,7 @@ import {
   LayoutGrid,
   GitBranch,
   LayoutTemplate,
-  BookUser,
+  BookUser
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -63,6 +63,7 @@ const primaryNavigation = [
   { name: 'Merchants', href: '/merchants', icon: Store },
   { name: 'Counterparties', href: '/counterparties', icon: BookUser },
   { name: 'Fallback Rules', href: '/fallback-rules', icon: GitBranch },
+  { name: 'Env Templates', href: '/environment-templates', icon: FlaskConical },
   // ── Operations ──
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Cards', href: '/cards', icon: CreditCard },

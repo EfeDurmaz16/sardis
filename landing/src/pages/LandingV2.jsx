@@ -1,4 +1,5 @@
 import { useState } from 'react';
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from 'framer-motion';
 
 // Font imports (fix latent bug - these packages are installed but never imported)

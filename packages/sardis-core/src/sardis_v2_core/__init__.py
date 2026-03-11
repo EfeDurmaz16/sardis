@@ -32,12 +32,6 @@ Example usage:
     )
 """
 
-from .approval_context import (
-    ApprovalContext,
-    hash_cart,
-    hash_value,
-    verify_approval_context,
-)
 from .agent_groups import (
     AgentGroup,
     AgentGroupHierarchy,
@@ -48,6 +42,12 @@ from .agent_groups import (
 )
 from .agent_repository_postgres import PostgresAgentRepository
 from .agents import Agent, AgentPolicy, AgentRepository, SpendingLimits
+from .approval_context import (
+    ApprovalContext,
+    hash_cart,
+    hash_value,
+    verify_approval_context,
+)
 from .cache import CacheBackend, CacheService, InMemoryCache, RedisCache, create_cache_service
 from .circuit_breaker import (
     CircuitBreaker,

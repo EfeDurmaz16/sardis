@@ -6,7 +6,7 @@ function TypewriterLine({ text, speed = 12 }) {
 
   useEffect(() => {
     idx.current = 0
-    setDisplayed('')
+    setDisplayed('') // eslint-disable-line react-hooks/set-state-in-effect -- reset for typewriter re-trigger
     const interval = setInterval(() => {
       idx.current += 1
       setDisplayed(text.slice(0, idx.current))

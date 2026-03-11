@@ -3,9 +3,12 @@
 Ensures hosted checkout inherits the same trust workflow as the core control plane.
 """
 from __future__ import annotations
+
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+
 from sardis_api.authz import require_principal
 
 logger = logging.getLogger(__name__)

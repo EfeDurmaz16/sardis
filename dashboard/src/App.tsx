@@ -40,6 +40,7 @@ import ApprovalConfigPage from './pages/ApprovalConfig'
 import ProviderScorecardsPage from './pages/ProviderScorecards'
 import CheckoutControlsPage from './pages/CheckoutControls'
 import FallbackPoliciesPage from './pages/FallbackPolicies'
+import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -118,6 +119,7 @@ function AppRoutes() {
                 <Route path="/provider-health" element={<ProviderScorecardsPage />} />
                 <Route path="/checkout-controls" element={<CheckoutControlsPage />} />
                 <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
+                <Route path="/environment-templates" element={<EnvironmentTemplatesPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

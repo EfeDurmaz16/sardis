@@ -708,7 +708,7 @@ async def register_user(request: Request, body: RegisterRequest):
     _register_ip_timestamps[client_ip].append(time.monotonic())
 
     # Analytics: identify and track signup (fire-and-forget, never blocks the request)
-    from sardis_api.analytics.posthog_tracker import identify_user, track_event, SIGNUP_COMPLETED
+    from sardis_api.analytics.posthog_tracker import SIGNUP_COMPLETED, identify_user, track_event
     identify_user(result.user_id, {"email": result.email, "plan": "free"})
     track_event(result.user_id, SIGNUP_COMPLETED, {"method": "email"})
 

@@ -1,19 +1,18 @@
 """Sardis Fiat Ramp - Multi-provider fiat on/off-ramp infrastructure."""
 
 # Legacy Bridge-only implementation (preserved for backward compatibility)
-from .ramp import SardisFiatRamp
-from .ramp_types import (
-    FundingResult,
-    WithdrawalResult,
-    PaymentResult,
-    BankAccount,
-    MerchantAccount,
-    FundingMethod,
-)
-
 # New multi-provider architecture
 from .base import RampProvider, RampQuote, RampSession, RampStatus
 from .providers import BridgeProvider, CoinbaseOnrampProvider
+from .ramp import SardisFiatRamp
+from .ramp_types import (
+    BankAccount,
+    FundingMethod,
+    FundingResult,
+    MerchantAccount,
+    PaymentResult,
+    WithdrawalResult,
+)
 from .router import RampRouter
 
 __version__ = "0.2.0"

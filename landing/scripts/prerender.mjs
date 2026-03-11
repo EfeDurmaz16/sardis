@@ -129,7 +129,6 @@ function routeToOutputPath(route) {
 async function findFreePort(start = 4173, max = 65535) {
   for (let port = start; port <= max; port += 1) {
     try {
-      // eslint-disable-next-line no-await-in-loop
       const found = await new Promise((resolve, reject) => {
         const server = createNetServer();
         server.once('error', reject);

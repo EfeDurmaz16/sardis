@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div, motion.span, etc.)
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 
 // Demo scenarios showing the "aha" moments
@@ -36,16 +37,22 @@ const TypewriterText = ({ text, speed = 20, onComplete, className = '' }) => {
     return <span className={className}>{displayText}</span>;
 };
 
-// Confetti particle for success animation
-const Confetti = ({ count = 20 }) => {
-    const colors = ['#ef8354', '#22c55e', '#3b82f6', '#a855f7', '#eab308'];
-    const particles = Array.from({ length: count }, (_, i) => ({
+// Build confetti particles outside the component to avoid purity warnings
+const CONFETTI_COLORS = ['#ef8354', '#22c55e', '#3b82f6', '#a855f7', '#eab308'];
+function buildParticles(count) {
+    return Array.from({ length: count }, (_, i) => ({
         id: i,
         x: Math.random() * 100,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
         delay: Math.random() * 0.3,
         duration: 1 + Math.random() * 0.5,
+        drift: (Math.random() - 0.5) * 100,
     }));
+}
+
+// Confetti particle for success animation
+const Confetti = ({ count = 20 }) => {
+    const [particles] = useState(() => buildParticles(count));
 
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -63,7 +70,7 @@ const Confetti = ({ count = 20 }) => {
                         opacity: [1, 1, 0],
                         y: [0, 150, 200],
                         rotate: [0, 180, 360],
-                        x: [0, (Math.random() - 0.5) * 100],
+                        x: [0, p.drift],
                     }}
                     transition={{
                         duration: p.duration,
@@ -81,19 +88,6 @@ const shakeAnimation = {
     shake: {
         x: [0, -15, 15, -12, 12, -8, 8, -4, 4, 0],
         transition: { duration: 0.6, ease: 'easeInOut' },
-    },
-};
-
-// Pulse animation for processing state
-const pulseAnimation = {
-    pulse: {
-        scale: [1, 1.02, 1],
-        boxShadow: [
-            '0 0 0 0 rgba(239, 131, 84, 0)',
-            '0 0 20px 5px rgba(239, 131, 84, 0.3)',
-            '0 0 0 0 rgba(239, 131, 84, 0)',
-        ],
-        transition: { duration: 1.5, repeat: Infinity },
     },
 };
 
@@ -181,7 +175,6 @@ const SardisPlayground = () => {
     const [virtualCard, setVirtualCard] = useState(null);
     const [activeScenario, setActiveScenario] = useState(null);
     const [showConfetti, setShowConfetti] = useState(false);
-    const [isFlipped, setIsFlipped] = useState(false);
     const [showSignature, setShowSignature] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const terminalRef = useRef(null);
@@ -276,6 +269,7 @@ const SardisPlayground = () => {
                 setShowSuccess(false);
             }, 2000);
 
+            // eslint-disable-next-line react-hooks/purity -- event handler, not render
             const txId = `tx_${Math.random().toString(36).substring(2, 10)}`;
             setTerminalLogs(prev => [...prev,
                 { type: 'system', text: 'Payment approved.' },

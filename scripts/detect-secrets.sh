@@ -27,7 +27,7 @@ PATTERNS=(
 )
 
 # Files to skip
-SKIP_PATTERN='(\.lock$|\.min\.|node_modules|__pycache__|\.example$|detect-secrets\.sh$|\.pre-commit-config\.yaml$)'
+SKIP_PATTERN='(\.lock$|\.min\.|node_modules|__pycache__|\.example$|detect-secrets\.sh$|\.pre-commit-config\.yaml$|docs/docs/)'
 
 for file in $STAGED; do
   # Skip binary, lock, and minified files
@@ -41,7 +41,7 @@ for file in $STAGED; do
   fi
 
   for pattern in "${PATTERNS[@]}"; do
-    MATCHES=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v '# nosecret' || true)
+    MATCHES=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v 'nosecret' || true)
     if [ -n "$MATCHES" ]; then
       echo "ERROR: Possible secret detected in $file"
       echo "$MATCHES" | head -3

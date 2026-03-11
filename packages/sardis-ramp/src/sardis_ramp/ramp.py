@@ -5,23 +5,23 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-import os
 import logging
+import os
 from decimal import Decimal
 from typing import Literal, Optional
 
 import httpx
 
 from .ramp_types import (
+    ACHDetails,
     BankAccount,
     FundingMethod,
     FundingResult,
     MerchantAccount,
     PaymentResult,
     RampConfig,
-    WithdrawalResult,
-    ACHDetails,
     WireDetails,
+    WithdrawalResult,
 )
 
 logger = logging.getLogger(__name__)

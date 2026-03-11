@@ -54,8 +54,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -88,8 +86,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Install JS dependencies
         run: pnpm install --no-frozen-lockfile

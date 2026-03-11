@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_lightspark.payouts import GridPayoutProvider
 from sardis_lightspark.models import GridPaymentRail
+from sardis_lightspark.payouts import GridPayoutProvider
 
 
 class TestGridPayoutProvider:

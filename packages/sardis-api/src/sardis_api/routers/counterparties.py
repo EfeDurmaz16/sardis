@@ -4,11 +4,14 @@ Provides a registry of known counterparties that policies can reference
 by name instead of raw addresses.
 """
 from __future__ import annotations
+
 import logging
 import uuid
 from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
 from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)

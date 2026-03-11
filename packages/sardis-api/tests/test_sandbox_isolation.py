@@ -8,7 +8,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -176,7 +175,7 @@ async def test_delete_reset_only_resets_caller_namespace(dev_a_client, dev_b_cli
 @pytest.mark.asyncio
 async def test_rate_limit_returns_429_after_60_requests(app):
     """After 60 requests within the rate-limit window the 61st must return 429."""
-    from sardis_api.routers.sandbox import _manager, RATE_LIMIT_WINDOW_SECONDS
+    from sardis_api.routers.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
 
     token = "token_rate_limit_test"
     namespace = _namespace_for(token)
@@ -203,7 +202,7 @@ async def test_rate_limit_returns_429_after_60_requests(app):
 @pytest.mark.asyncio
 async def test_rate_limit_resets_after_window(app):
     """Requests outside the window are not counted toward the limit."""
-    from sardis_api.routers.sandbox import _manager, RATE_LIMIT_WINDOW_SECONDS
+    from sardis_api.routers.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
 
     token = "token_window_expiry_test"
     namespace = _namespace_for(token)

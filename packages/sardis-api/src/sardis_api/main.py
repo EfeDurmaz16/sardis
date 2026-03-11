@@ -94,9 +94,6 @@ from sardis_wallet.manager import WalletManager
 from .routers import a2a as a2a_router
 from .routers import a2a_payments as a2a_payments_router
 from .routers import admin as admin_router
-from .routers import billing as billing_router
-from .routers import emergency as emergency_router
-from .routers import sdk_metrics as sdk_metrics_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
@@ -106,20 +103,30 @@ from .routers import api_keys as api_keys_router
 from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
 from .routers import audit_anchors as audit_anchors_router
+from .routers import billing as billing_router
 from .routers import cards as cards_router
 from .routers import checkout as checkout_router
+from .routers import checkout_controls as checkout_controls_router
 from .routers import compliance as compliance_router
+from .routers import counterparties as counterparties_router
 from .routers import cpn as cpn_router
 from .routers import credentials as credentials_router
+from .routers import data_export as data_export_router
 from .routers import dev as dev_router
+from .routers import email_verification as email_verification_router
+from .routers import emergency as emergency_router
 from .routers import enterprise_support as enterprise_support_router
+from .routers import environment_templates as environment_templates_router
 from .routers import evidence as evidence_router
 from .routers import evidence_export as evidence_export_router
+from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
+from .routers import fallback_policies as fallback_policies_router
 from .routers import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
 from .routers import holds as holds_router
 from .routers import invoices as invoices_router
+from .routers import kyc_onboarding as kyc_onboarding_router
 from .routers import ledger as ledger_router
 from .routers import marketplace as marketplace_router
 from .routers import mastercard_webhooks as mastercard_webhooks_router
@@ -130,11 +137,13 @@ from .routers import onchain_payments as onchain_payments_router
 from .routers import outcomes as outcomes_router
 from .routers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import policies as policies_router
+from .routers import policy_analytics as policy_analytics_router
 from .routers import policy_simulation as policy_simulation_router
 from .routers import ramp as ramp_router
 from .routers import receipts as receipts_router
 from .routers import reliability as reliability_router
 from .routers import sandbox as sandbox_router
+from .routers import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
 from .routers import settlements as settlements_router
 from .routers import simulation as simulation_router
@@ -150,15 +159,6 @@ from .routers import webhooks as webhooks_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
-from .routers import data_export as data_export_router
-from .routers import email_verification as email_verification_router
-from .routers import kyc_onboarding as kyc_onboarding_router
-from .routers import policy_analytics as policy_analytics_router
-from .routers import environment_templates as environment_templates_router
-from .routers import exceptions as exceptions_router
-from .routers import fallback_policies as fallback_policies_router
-from .routers import checkout_controls as checkout_controls_router
-from .routers import counterparties as counterparties_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -1112,8 +1112,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # --- Unified fiat rails routes ---
     if settings.striga.enabled or settings.lightspark.enabled:
-        from .routers import fiat_rails as fiat_rails_router
         from .routers import currency as currency_router
+        from .routers import fiat_rails as fiat_rails_router
         app.include_router(fiat_rails_router.router, prefix="/api/v2", tags=["fiat-rails"])
         app.include_router(currency_router.router, prefix="/api/v2", tags=["currency"])
         logger.info("Fiat rails and currency routes enabled")

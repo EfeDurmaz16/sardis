@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from 'framer-motion';
 import '@fontsource/space-grotesk/600.css';
 import '@fontsource/space-grotesk/700.css';

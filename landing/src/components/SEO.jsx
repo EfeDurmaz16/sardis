@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Helmet } from 'react-helmet-async';
 
 const SITE_NAME = 'Sardis';

@@ -9,7 +9,6 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_compliance.sanctions import (
     EntityType,
     FailoverSanctionsProvider,
@@ -20,7 +19,6 @@ from sardis_compliance.sanctions import (
     WalletScreeningRequest,
     create_sanctions_service,
 )
-
 
 # ---------------------------------------------------------------------------
 # OFACAddressProvider

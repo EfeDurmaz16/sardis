@@ -18,7 +18,6 @@ from fastapi.testclient import TestClient
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers.billing import router, webhook_router
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import SardisPlayground from '../components/SardisPlayground';
@@ -385,7 +386,11 @@ function ToolDetail({ tool }) {
 
 // ─── Main Component ─────────────────────────────────────────────────
 export default function Playground() {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const stored = localStorage.getItem('sardis-theme');
+    return stored ? stored === 'dark' : prefersDark;
+  });
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedTool, setSelectedTool] = useState(MCP_TOOLS.find(t => t.name === 'execute_payment'));
@@ -393,12 +398,8 @@ export default function Playground() {
   const [expandedCategories, setExpandedCategories] = useState(new Set(CATEGORIES));
 
   useEffect(() => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const stored = localStorage.getItem('sardis-theme');
-    const dark = stored ? stored === 'dark' : prefersDark;
-    setIsDark(dark);
-    document.documentElement.classList.toggle('dark', dark);
-  }, []);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   const toggleTheme = () => {
     const newDark = !isDark;

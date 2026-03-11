@@ -11,8 +11,8 @@
 set -euo pipefail
 
 ENVIRONMENT="${1:-staging}"
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-sardis-staging}"
-REGION="${CLOUD_RUN_REGION:-us-central1}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-sardis-staging-01}"
+REGION="${CLOUD_RUN_REGION:-us-east1}"
 
 if [[ "$ENVIRONMENT" == "production" ]]; then
   SERVICE_NAME="sardis-api"

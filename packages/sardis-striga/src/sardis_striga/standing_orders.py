@@ -144,7 +144,7 @@ class StrigaStandingOrderManager:
 
     def _parse_standing_order(self, data: dict[str, Any]) -> StandingOrder:
         """Parse Striga standing order response."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         status_map = {
             "active": StandingOrderStatus.ACTIVE,

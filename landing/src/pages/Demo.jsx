@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from 'framer-motion'
 import { useSardisDemo } from '@/components/demo/useSardisDemo'
 import TerminalView from '@/components/demo/TerminalView'

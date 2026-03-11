@@ -6,9 +6,9 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sardis_cards.offramp import (
+    OfframpProvider,
     OfframpProviderBase,
     OfframpQuote,
-    OfframpProvider,
     OfframpStatus,
     OfframpTransaction,
 )

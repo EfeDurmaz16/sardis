@@ -1,7 +1,8 @@
 """PostHog product analytics — tracks user behavior events. No-op when not configured."""
 from __future__ import annotations
-import os
+
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 

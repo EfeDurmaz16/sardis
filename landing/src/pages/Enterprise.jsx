@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+// eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Sun, Moon, Shield, Lock, Activity, FileText } from "lucide-react";
@@ -75,21 +76,20 @@ function IsometricIcon({ src, alt = "", className = "", isDark = true }) {
 
 function Enterprise() {
   const [scrolled, setScrolled] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return savedTheme === "dark" || (!savedTheme && prefersDark);
+  });
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setIsDark(true);
+    if (isDark) {
       document.documentElement.classList.add("dark");
     } else {
-      setIsDark(false);
       document.documentElement.classList.remove("dark");
     }
-  }, []);
+  }, [isDark]);
 
   const toggleDarkMode = () => {
     setIsDark(!isDark);
