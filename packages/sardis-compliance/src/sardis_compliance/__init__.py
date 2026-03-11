@@ -204,6 +204,24 @@ from .mica import (
     create_mica_engine,
     is_eu_country,
 )
+from .marble import (
+    DEFAULT_BLOCK_THRESHOLD,
+    DEFAULT_REVIEW_THRESHOLD,
+    GAMBLING_MCCS,
+    HIGH_RISK_COUNTRIES,
+    MarbleDecision,
+    MarbleDecisionEngine,
+    MarbleDecisionResult,
+    MarbleList,
+    MarbleRule,
+    MarbleRuleOperator,
+    MarbleScenario,
+    MarbleScenarioResult,
+    MarbleScoreThreshold,
+    MarbleTriggerType,
+    create_marble_engine,
+    create_rule,
+)
 from .travel_rule import (
     BeneficiaryInfo,
     ManualTravelRuleProvider,
@@ -414,6 +432,23 @@ __all__ = [
     "classify_stablecoin",
     "create_mica_engine",
     "is_eu_country",
+    # Marble (CheckMarble) Evaluation Framework
+    "MarbleDecision",
+    "MarbleTriggerType",
+    "MarbleRuleOperator",
+    "MarbleScoreThreshold",
+    "MarbleRule",
+    "MarbleScenario",
+    "MarbleScenarioResult",
+    "MarbleDecisionResult",
+    "MarbleList",
+    "MarbleDecisionEngine",
+    "create_marble_engine",
+    "create_rule",
+    "DEFAULT_REVIEW_THRESHOLD",
+    "DEFAULT_BLOCK_THRESHOLD",
+    "GAMBLING_MCCS",
+    "HIGH_RISK_COUNTRIES",
     # Version
     "__version__",
 ]
