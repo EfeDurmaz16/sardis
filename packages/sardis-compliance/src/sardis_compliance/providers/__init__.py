@@ -18,6 +18,7 @@ except ImportError:
 
 from .chainalysis import ChainalysisOracleProvider
 from .ofac import OFACAddressProvider
+from .opensanctions import OpenSanctionsProvider
 from .watchman import WatchmanProvider
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "OFACAddressProvider",
     "ChainalysisOracleProvider",
     "WatchmanProvider",
+    "OpenSanctionsProvider",
 ]

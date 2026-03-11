@@ -838,12 +838,16 @@ def create_sanctions_service(
         provider = FailoverSanctionsProvider(primary=ofac, fallback=inner)
         return SanctionsService(provider=provider)
 
+    if provider_name == "opensanctions":
+        from sardis_compliance.providers.opensanctions import OpenSanctionsProvider
+        return SanctionsService(provider=OpenSanctionsProvider())
+
     # No provider configured
     if env in ("prod", "production"):
         raise RuntimeError(
             "Production requires a sanctions screening provider. "
             "Set SARDIS_COMPLIANCE_SCREENING_PROVIDER to 'circle', 'elliptic', "
-            "'ofac', 'chainalysis', 'watchman', or 'layered' "
+            "'ofac', 'chainalysis', 'watchman', 'opensanctions', or 'layered' "
             "and provide any required configuration."
         )
     logger.warning("No sanctions provider configured, using mock provider (dev/test only)")

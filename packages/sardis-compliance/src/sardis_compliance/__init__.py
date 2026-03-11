@@ -125,6 +125,7 @@ from .providers import (
     ChainalysisOracleProvider,
     IDenfyKYCProvider,
     OFACAddressProvider,
+    OpenSanctionsProvider,
     ScorechainProvider,
     WatchmanProvider,
 )
@@ -369,6 +370,7 @@ __all__ = [
     "OFACAddressProvider",
     "ChainalysisOracleProvider",
     "WatchmanProvider",
+    "OpenSanctionsProvider",
     # Version
     "__version__",
 ]
