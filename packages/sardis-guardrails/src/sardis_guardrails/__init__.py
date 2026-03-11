@@ -48,6 +48,20 @@ from sardis_guardrails.rate_limiter import (
     TransactionRecord,
 )
 
+try:
+    from sardis_guardrails.zen_engine import (
+        FraudAction,
+        FraudRuleResult,
+        ZenFraudEngine,
+        ZenFraudProvider,
+    )
+except ImportError:
+    # zen-engine optional dependency not installed
+    ZenFraudEngine = None  # type: ignore[assignment,misc]
+    ZenFraudProvider = None  # type: ignore[assignment,misc]
+    FraudAction = None  # type: ignore[assignment,misc]
+    FraudRuleResult = None  # type: ignore[assignment,misc]
+
 __version__ = "0.1.0"
 
 __all__ = [
@@ -88,4 +102,9 @@ __all__ = [
     "RiskAction",
     "RiskAssessment",
     "RiskSignal",
+    # Zen Fraud Engine
+    "ZenFraudEngine",
+    "ZenFraudProvider",
+    "FraudAction",
+    "FraudRuleResult",
 ]
