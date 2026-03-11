@@ -660,6 +660,70 @@ async def confirm_external_payment(
     )
 
 
+# ── Staging Test Session ─────────────────────────────────────────
+
+_SARDIS_ENVIRONMENT = os.getenv("SARDIS_ENVIRONMENT", "dev")
+
+
+class TestSessionResponse(BaseModel):
+    session_id: str
+    client_secret: str
+    checkout_url: str
+    settlement_address: str | None = None
+    expires_in_seconds: int = 1800
+
+
+@public_router.post("/create-test-session", response_model=TestSessionResponse)
+async def create_test_session(
+    deps: MerchantCheckoutDependencies = Depends(get_deps),
+):
+    """Create a test checkout session for staging/dev environments.
+
+    This endpoint is disabled in production. It creates a real session
+    against a test merchant so external parties (e.g. CDP review) can
+    test the full wallet connection and payment flow.
+    """
+    if _SARDIS_ENVIRONMENT == "prod":
+        raise HTTPException(
+            status_code=403,
+            detail="Test sessions are not available in production",
+        )
+
+    from datetime import datetime, timedelta
+
+    from sardis_checkout.models import CheckoutRequest
+
+    test_merchant_id = os.getenv("SARDIS_TEST_MERCHANT_ID", "merch_test_staging")
+    test_settlement_address = os.getenv(
+        "SARDIS_TEST_SETTLEMENT_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+
+    request = CheckoutRequest(
+        agent_id=f"merchant_{test_merchant_id}",
+        wallet_id="",
+        mandate_id="",
+        amount=Decimal("9.99"),
+        currency="USDC",
+        description="Sardis Checkout — Staging Test",
+        metadata={
+            "merchant_id": test_merchant_id,
+            "test_session": True,
+            "settlement_address": test_settlement_address,
+        },
+    )
+
+    response = await deps.sardis_connector.create_checkout_session(request)
+    client_secret = response.metadata.get("client_secret", "")
+
+    return TestSessionResponse(
+        session_id=response.checkout_id,
+        client_secret=client_secret,
+        checkout_url=f"{deps.checkout_base_url}/s/{client_secret}",
+        settlement_address=test_settlement_address,
+    )
+
+
 # ── SSE Streaming Endpoint ────────────────────────────────────────
 
 @public_router.get("/sessions/client/{client_secret}/stream")

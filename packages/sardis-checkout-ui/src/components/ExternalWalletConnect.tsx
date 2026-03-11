@@ -8,6 +8,21 @@ interface ExternalWalletConnectProps {
   onError: (message: string) => void;
 }
 
+const CONNECTOR_LABELS: Record<string, { label: string; subtitle: string }> = {
+  "Coinbase Wallet": {
+    label: "Coinbase Wallet / Smart Wallet",
+    subtitle: "Browser extension or passkey-based Smart Wallet",
+  },
+  WalletConnect: {
+    label: "WalletConnect",
+    subtitle: "MetaMask, Rainbow, and 300+ wallets",
+  },
+};
+
+function getConnectorInfo(name: string) {
+  return CONNECTOR_LABELS[name] ?? { label: `Connect ${name}`, subtitle: "" };
+}
+
 export default function ExternalWalletConnect({
   clientSecret,
   onConnected,
@@ -19,10 +34,12 @@ export default function ExternalWalletConnect({
   const { signMessageAsync } = useSignMessage();
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const verify = useCallback(async () => {
     if (!address || verified || verifying) return;
     setVerifying(true);
+    setError(null);
     try {
       const csPrefix = clientSecret.slice(0, 8);
       const message = `Sardis Checkout: connect ${address} to session ${csPrefix}`;
@@ -35,18 +52,19 @@ export default function ExternalWalletConnect({
       setVerified(true);
       onConnected(address);
     } catch (e) {
-      disconnect();
-      onError(e instanceof Error ? e.message : "Wallet verification failed");
+      const msg = e instanceof Error ? e.message : "Wallet verification failed";
+      setError(msg);
+      onError(msg);
     } finally {
       setVerifying(false);
     }
-  }, [address, clientSecret, verified, verifying, signMessageAsync, disconnect, onConnected, onError]);
+  }, [address, clientSecret, verified, verifying, signMessageAsync, onConnected, onError]);
 
   useEffect(() => {
-    if (isConnected && address && !verified && !verifying) {
+    if (isConnected && address && !verified && !verifying && !error) {
       verify();
     }
-  }, [isConnected, address, verified, verifying, verify]);
+  }, [isConnected, address, verified, verifying, error, verify]);
 
   if (verified && address) {
     return (
@@ -74,17 +92,56 @@ export default function ExternalWalletConnect({
     );
   }
 
+  // Error state: show message + retry/disconnect buttons
+  if (error && isConnected) {
+    return (
+      <div className="space-y-3">
+        <div className="px-3 py-2.5 rounded-lg bg-red-50 border border-red-200">
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setError(null);
+              verify();
+            }}
+            className="flex-1 py-2.5 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => {
+              setError(null);
+              disconnect();
+            }}
+            className="flex-1 py-2.5 px-4 border border-[var(--checkout-border)] text-[var(--checkout-secondary)] font-medium text-sm rounded-lg transition-colors hover:bg-[var(--checkout-bg)]"
+          >
+            Disconnect
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      {connectors.map((connector) => (
-        <button
-          key={connector.uid}
-          onClick={() => connect({ connector })}
-          className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors"
-        >
-          Connect {connector.name}
-        </button>
-      ))}
+      {connectors.map((connector) => {
+        const info = getConnectorInfo(connector.name);
+        return (
+          <button
+            key={connector.uid}
+            onClick={() => connect({ connector })}
+            className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors text-left"
+          >
+            <span className="block">{info.label}</span>
+            {info.subtitle && (
+              <span className="block text-[11px] font-normal opacity-75 mt-0.5">
+                {info.subtitle}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -138,8 +138,8 @@ export default function PayFromWallet({
         </p>
       )}
 
-      {/* Divider */}
-      {!externalAddress && (
+      {/* Sardis Wallet ID — hidden unless VITE_SHOW_SARDIS_WALLET=true */}
+      {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && !externalAddress && (
         <>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-[var(--checkout-border)]" />
@@ -147,7 +147,6 @@ export default function PayFromWallet({
             <div className="flex-1 h-px bg-[var(--checkout-border)]" />
           </div>
 
-          {/* Secondary: Sardis Wallet ID */}
           <button
             onClick={() => setShowSardisWallet(!showSardisWallet)}
             className="w-full text-left text-xs text-[var(--checkout-secondary)] hover:text-[var(--checkout-primary)] transition-colors"
@@ -157,7 +156,7 @@ export default function PayFromWallet({
         </>
       )}
 
-      {showSardisWallet && !externalAddress && (
+      {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && showSardisWallet && !externalAddress && (
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-[var(--checkout-secondary)] mb-1.5 uppercase tracking-wider">

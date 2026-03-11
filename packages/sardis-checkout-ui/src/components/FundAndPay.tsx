@@ -158,42 +158,46 @@ export default function FundAndPay({
           onError={onError}
         />
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-[var(--checkout-border)]" />
-          <span className="text-xs text-[var(--checkout-muted)]">or</span>
-          <div className="flex-1 h-px bg-[var(--checkout-border)]" />
-        </div>
-
-        <button
-          onClick={() => setShowSardisWallet(!showSardisWallet)}
-          className="w-full text-left text-xs text-[var(--checkout-secondary)] hover:text-[var(--checkout-primary)] transition-colors"
-        >
-          {showSardisWallet ? "Hide" : "Use Sardis Wallet ID"}
-        </button>
-
-        {showSardisWallet && (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-[var(--checkout-secondary)] mb-1.5 uppercase tracking-wider">
-                Wallet ID
-              </label>
-              <input
-                type="text"
-                placeholder="wal_..."
-                value={walletId}
-                onChange={(e) => setWalletId(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm border border-[var(--checkout-border)] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[var(--checkout-blue)] focus:border-transparent"
-                style={{ fontFamily: "var(--font-mono)" }}
-              />
+        {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[var(--checkout-border)]" />
+              <span className="text-xs text-[var(--checkout-muted)]">or</span>
+              <div className="flex-1 h-px bg-[var(--checkout-border)]" />
             </div>
+
             <button
-              onClick={handleSardisConnect}
-              disabled={connecting || !walletId.trim()}
-              className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setShowSardisWallet(!showSardisWallet)}
+              className="w-full text-left text-xs text-[var(--checkout-secondary)] hover:text-[var(--checkout-primary)] transition-colors"
             >
-              {connecting ? "Connecting..." : "Connect Wallet"}
+              {showSardisWallet ? "Hide" : "Use Sardis Wallet ID"}
             </button>
-          </div>
+
+            {showSardisWallet && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-[var(--checkout-secondary)] mb-1.5 uppercase tracking-wider">
+                    Wallet ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="wal_..."
+                    value={walletId}
+                    onChange={(e) => setWalletId(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-[var(--checkout-border)] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[var(--checkout-blue)] focus:border-transparent"
+                    style={{ fontFamily: "var(--font-mono)" }}
+                  />
+                </div>
+                <button
+                  onClick={handleSardisConnect}
+                  disabled={connecting || !walletId.trim()}
+                  className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {connecting ? "Connecting..." : "Connect Wallet"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     );

@@ -1,9 +1,12 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { CheckoutStep, PaymentResult } from "@/lib/types";
 import MerchantHeader from "@/components/MerchantHeader";
-import TabSwitcher from "@/components/TabSwitcher";
 import SuccessView from "@/components/SuccessView";
 import FundAndPay from "@/components/FundAndPay";
+import PayFromWallet from "@/components/PayFromWallet";
+import TabSwitcher from "@/components/TabSwitcher";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 
 const MOCK_SESSION = {
   session_id: "mcs_demo_preview",
@@ -15,39 +18,40 @@ const MOCK_SESSION = {
 
 export default function DemoPage() {
   const [step, setStep] = useState<CheckoutStep>("pay");
-  const [tab, setTab] = useState<"wallet" | "fund">("wallet");
-  const [walletId, setWalletId] = useState("");
+  const [tab, setTab] = useState<"wallet" | "fund">("fund");
   const [result, setResult] = useState<PaymentResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDemoPay = () => {
-    if (!walletId.trim()) return;
-    setStep("processing");
-    setTimeout(() => {
-      const r: PaymentResult = {
-        session_id: MOCK_SESSION.session_id,
-        status: "paid",
-        tx_hash: "0xdemo...preview",
-        amount: MOCK_SESSION.amount,
-        currency: MOCK_SESSION.currency,
-        merchant_id: "merch_demo",
-        platform_fee: null,
-        net_amount: null,
-      };
-      setResult(r);
-      setStep("success");
-    }, 2000);
-  };
+  // Try to create a staging test session for real wallet flows
+  const [liveSecret, setLiveSecret] = useState<string | null>(null);
+  const [liveSettlement, setLiveSettlement] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
 
-  const handleFundSuccess = useCallback((r: PaymentResult) => {
+  useEffect(() => {
+    fetch(`${API_BASE}/create-test-session`, { method: "POST" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.client_secret) {
+          setLiveSecret(data.client_secret);
+          setLiveSettlement(data.settlement_address ?? null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSession(false));
+  }, []);
+
+  const clientSecret = liveSecret ?? "demo_preview";
+
+  const handleSuccess = useCallback((r: PaymentResult) => {
     setResult(r);
     setStep("success");
   }, []);
 
-  const handleFundError = useCallback((msg: string) => {
-    console.error("Fund & Pay error:", msg);
+  const handleError = useCallback((msg: string) => {
+    setError(msg);
   }, []);
 
-  const handleFundProcessing = useCallback(() => {
+  const handleProcessing = useCallback(() => {
     setStep("processing");
   }, []);
 
@@ -57,7 +61,7 @@ export default function DemoPage() {
         {/* Demo banner */}
         <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
           <span className="text-xs font-medium text-amber-700">
-            Demo Mode — No real transactions
+            {liveSecret ? "Staging Mode — Testnet transactions" : "Demo Mode — No real transactions"}
           </span>
         </div>
 
@@ -73,43 +77,47 @@ export default function DemoPage() {
           <>
             <TabSwitcher active={tab} onChange={setTab} />
 
-            {tab === "wallet" ? (
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-[var(--checkout-muted)] mb-1.5">
-                    Wallet ID
-                  </label>
-                  <input
-                    type="text"
-                    value={walletId}
-                    onChange={(e) => setWalletId(e.target.value)}
-                    placeholder="wal_..."
-                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-[var(--checkout-border)] bg-[var(--checkout-bg)] outline-none focus:border-[var(--checkout-blue)] transition-colors"
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-xs text-red-700">{error}</p>
+              </div>
+            )}
+
+            {loadingSession ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-5 h-5 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin" />
+              </div>
+            ) : tab === "wallet" ? (
+              <div className="mt-4">
+                {liveSecret ? (
+                  <PayFromWallet
+                    clientSecret={clientSecret}
+                    amount={MOCK_SESSION.amount}
+                    currency={MOCK_SESSION.currency}
+                    settlementAddress={liveSettlement}
+                    onSuccess={handleSuccess}
+                    onError={handleError}
+                    onProcessing={handleProcessing}
                   />
-                </div>
-                <button
-                  onClick={handleDemoPay}
-                  disabled={!walletId.trim()}
-                  className="w-full py-3 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40"
-                  style={{
-                    background: walletId.trim()
-                      ? "var(--checkout-blue)"
-                      : "var(--checkout-border)",
-                  }}
-                >
-                  Pay {MOCK_SESSION.amount} {MOCK_SESSION.currency}
-                </button>
+                ) : (
+                  <div className="px-3 py-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                    <p className="text-xs text-blue-700">
+                      Wallet connection requires a live session. Switch to the
+                      staging environment or use the Fund &amp; Pay tab.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="mt-4">
                 <FundAndPay
-                  clientSecret="demo_preview"
+                  clientSecret={clientSecret}
                   amount={MOCK_SESSION.amount}
                   currency={MOCK_SESSION.currency}
-                  settlementAddress={null}
-                  onSuccess={handleFundSuccess}
-                  onError={handleFundError}
-                  onProcessing={handleFundProcessing}
+                  settlementAddress={liveSettlement}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  onProcessing={handleProcessing}
                 />
               </div>
             )}
