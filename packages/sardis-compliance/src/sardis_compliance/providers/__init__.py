@@ -16,8 +16,15 @@ try:
 except ImportError:
     ScorechainProvider = None  # type: ignore[assignment,misc]
 
+from .chainalysis import ChainalysisOracleProvider
+from .ofac import OFACAddressProvider
+from .watchman import WatchmanProvider
+
 __all__ = [
     "IdenfyKYCProvider",
     "IDenfyKYCProvider",
     "ScorechainProvider",
+    "OFACAddressProvider",
+    "ChainalysisOracleProvider",
+    "WatchmanProvider",
 ]

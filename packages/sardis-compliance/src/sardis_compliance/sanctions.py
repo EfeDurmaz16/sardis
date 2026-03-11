@@ -800,12 +800,51 @@ def create_sanctions_service(
 
         return SanctionsService(provider=provider)
 
+    # Free open-source providers (no API keys needed)
+
+    if provider_name == "ofac":
+        from sardis_compliance.providers.ofac import OFACAddressProvider
+        return SanctionsService(provider=OFACAddressProvider())
+
+    if provider_name == "chainalysis":
+        from sardis_compliance.providers.chainalysis import ChainalysisOracleProvider
+        rpc_urls = {}
+        for chain in ("ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche"):
+            env_key = f"SARDIS_{chain.upper()}_RPC_URL"
+            url = os.getenv(env_key)
+            if url:
+                rpc_urls[chain] = url
+        return SanctionsService(
+            provider=ChainalysisOracleProvider(rpc_urls=rpc_urls or None)
+        )
+
+    if provider_name == "watchman":
+        from sardis_compliance.providers.watchman import WatchmanProvider
+        return SanctionsService(provider=WatchmanProvider())
+
+    if provider_name == "layered":
+        # Compose all free providers: OFAC → Chainalysis Oracle → Watchman
+        # Each layer catches what the previous one misses.
+        from sardis_compliance.providers.chainalysis import ChainalysisOracleProvider
+        from sardis_compliance.providers.ofac import OFACAddressProvider
+        from sardis_compliance.providers.watchman import WatchmanProvider
+
+        ofac = OFACAddressProvider()
+        chainalysis = ChainalysisOracleProvider()
+        watchman = WatchmanProvider()
+
+        # Chain: OFAC primary → Chainalysis fallback → Watchman fallback
+        inner = FailoverSanctionsProvider(primary=chainalysis, fallback=watchman)
+        provider = FailoverSanctionsProvider(primary=ofac, fallback=inner)
+        return SanctionsService(provider=provider)
+
     # No provider configured
     if env in ("prod", "production"):
         raise RuntimeError(
             "Production requires a sanctions screening provider. "
-            "Set SARDIS_COMPLIANCE_SCREENING_PROVIDER to 'circle' or 'elliptic' "
-            "and provide the corresponding API keys."
+            "Set SARDIS_COMPLIANCE_SCREENING_PROVIDER to 'circle', 'elliptic', "
+            "'ofac', 'chainalysis', 'watchman', or 'layered' "
+            "and provide any required configuration."
         )
     logger.warning("No sanctions provider configured, using mock provider (dev/test only)")
     return SanctionsService(provider=MockSanctionsProvider())

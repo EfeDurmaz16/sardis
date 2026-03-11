@@ -121,7 +121,13 @@ from .pep import (
     PEPStatus,
     create_pep_service,
 )
-from .providers import IDenfyKYCProvider, ScorechainProvider
+from .providers import (
+    ChainalysisOracleProvider,
+    IDenfyKYCProvider,
+    OFACAddressProvider,
+    ScorechainProvider,
+    WatchmanProvider,
+)
 from .reports import (
     ComplianceReport,
     ComplianceReportService,
@@ -359,6 +365,10 @@ __all__ = [
     # Alternative Providers
     "IDenfyKYCProvider",
     "ScorechainProvider",
+    # Free Sanctions Providers
+    "OFACAddressProvider",
+    "ChainalysisOracleProvider",
+    "WatchmanProvider",
     # Version
     "__version__",
 ]
