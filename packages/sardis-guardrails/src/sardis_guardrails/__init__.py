@@ -66,6 +66,19 @@ from sardis_guardrails.fingerprint import (
     get_fingerprint_provider,
 )
 
+from sardis_guardrails.ml_fraud import (
+    FEATURE_SCHEMA,
+    FraudResult,
+    MLFraudScorer,
+    ModelStatus,
+    ScalerState,
+    TransactionFeatures,
+    extract_features,
+    get_ml_fraud_scorer,
+)
+# Alias to avoid conflict with zen_engine FraudAction
+from sardis_guardrails.ml_fraud import FraudAction as MLFraudAction
+
 try:
     from sardis_guardrails.zen_engine import (
         FraudAction,
@@ -140,4 +153,14 @@ __all__ = [
     "TamperingResult",
     "FingerprintError",
     "get_fingerprint_provider",
+    # ML Fraud Detection
+    "MLFraudScorer",
+    "MLFraudAction",
+    "FraudResult",
+    "TransactionFeatures",
+    "ScalerState",
+    "ModelStatus",
+    "FEATURE_SCHEMA",
+    "extract_features",
+    "get_ml_fraud_scorer",
 ]
