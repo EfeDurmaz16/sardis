@@ -16,6 +16,7 @@ Reference: https://www.fatf-gafi.org/en/publications/fatfrecommendations/documen
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -45,6 +46,7 @@ class TravelRuleStatus(str, Enum):
 class VASPProtocol(str, Enum):
     TRISA = "trisa"
     OPENVASP = "openvasp"
+    NOTABENE = "notabene"
     MANUAL = "manual"
 
 
@@ -243,9 +245,27 @@ class TravelRuleService:
 def create_travel_rule_service(
     dsn: str | None = None,
     threshold_usd: Decimal | None = None,
+    provider_name: str | None = None,
 ) -> TravelRuleService:
-    """Factory function to create Travel Rule service."""
+    """Factory function to create Travel Rule service.
+
+    Args:
+        dsn: Database connection string for persistence.
+        threshold_usd: Override USD threshold (default: $3,000).
+        provider_name: Provider to use: "notabene", "manual" (default: "manual").
+    """
+    provider: TravelRuleProvider
+
+    name = provider_name or os.getenv("SARDIS_TRAVEL_RULE_PROVIDER", "manual")
+
+    if name == "notabene":
+        from sardis_compliance.providers.notabene import NotabeneTravelRuleProvider
+        provider = NotabeneTravelRuleProvider()
+    else:
+        provider = ManualTravelRuleProvider()
+
     return TravelRuleService(
+        provider=provider,
         dsn=dsn,
         threshold_usd=threshold_usd or TRAVEL_RULE_THRESHOLD_USD,
     )

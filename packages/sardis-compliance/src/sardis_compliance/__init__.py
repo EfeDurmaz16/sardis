@@ -124,6 +124,7 @@ from .pep import (
 from .providers import (
     ChainalysisOracleProvider,
     IDenfyKYCProvider,
+    NotabeneTravelRuleProvider,
     OFACAddressProvider,
     OpenSanctionsProvider,
     ScorechainProvider,
@@ -371,6 +372,8 @@ __all__ = [
     "ChainalysisOracleProvider",
     "WatchmanProvider",
     "OpenSanctionsProvider",
+    # Notabene Travel Rule
+    "NotabeneTravelRuleProvider",
     # Version
     "__version__",
 ]

@@ -17,6 +17,7 @@ except ImportError:
     ScorechainProvider = None  # type: ignore[assignment,misc]
 
 from .chainalysis import ChainalysisOracleProvider
+from .notabene import NotabeneTravelRuleProvider
 from .ofac import OFACAddressProvider
 from .opensanctions import OpenSanctionsProvider
 from .watchman import WatchmanProvider
@@ -29,4 +30,5 @@ __all__ = [
     "ChainalysisOracleProvider",
     "WatchmanProvider",
     "OpenSanctionsProvider",
+    "NotabeneTravelRuleProvider",
 ]
