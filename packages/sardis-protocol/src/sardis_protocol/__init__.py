@@ -145,6 +145,27 @@ with contextlib.suppress(ImportError):
         verify_agent,
     )
 
+# Kleros dispute resolution
+with contextlib.suppress(ImportError):
+    from .kleros import (
+        ArbitrationCostEstimate,
+        CourtCategory,
+        Dispute as KlerosDispute,
+        DisputeParty,
+        DisputePartyRole,
+        DisputeRulingResult,
+        DisputeStatus,
+        Evidence as KlerosEvidence,
+        EvidenceType,
+        KlerosDisputeResolver,
+        Ruling,
+        build_appeal_calldata,
+        build_create_dispute_calldata,
+        build_rule_calldata,
+        build_submit_evidence_calldata,
+        create_dispute_resolver,
+    )
+
 # Protocol reason codes
 with contextlib.suppress(ImportError):
     from .reason_codes import (
@@ -273,6 +294,23 @@ __all__ = [
     "risk_score_to_normalized",
     "score_to_risk_band",
     "verify_agent",
+    # Kleros Dispute Resolution
+    "KlerosDisputeResolver",
+    "KlerosDispute",
+    "KlerosEvidence",
+    "DisputeStatus",
+    "DisputeParty",
+    "DisputePartyRole",
+    "DisputeRulingResult",
+    "Ruling",
+    "EvidenceType",
+    "CourtCategory",
+    "ArbitrationCostEstimate",
+    "build_create_dispute_calldata",
+    "build_submit_evidence_calldata",
+    "build_appeal_calldata",
+    "build_rule_calldata",
+    "create_dispute_resolver",
     # Protocol reason codes
     "ProtocolReasonCode",
     "ReasonCodeMapping",
