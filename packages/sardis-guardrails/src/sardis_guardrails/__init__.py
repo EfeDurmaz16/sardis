@@ -55,6 +55,17 @@ from sardis_guardrails.rate_limiter import (
     TransactionRecord,
 )
 
+from sardis_guardrails.fingerprint import (
+    BotResult,
+    DeviceIntelligence,
+    DeviceRisk,
+    FingerprintError,
+    FingerprintProvider,
+    TamperingResult,
+    VPNResult,
+    get_fingerprint_provider,
+)
+
 try:
     from sardis_guardrails.zen_engine import (
         FraudAction,
@@ -120,4 +131,13 @@ __all__ = [
     "ZenFraudProvider",
     "FraudAction",
     "FraudRuleResult",
+    # Fingerprint Device Intelligence
+    "FingerprintProvider",
+    "DeviceIntelligence",
+    "DeviceRisk",
+    "BotResult",
+    "VPNResult",
+    "TamperingResult",
+    "FingerprintError",
+    "get_fingerprint_provider",
 ]
