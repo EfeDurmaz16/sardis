@@ -91,6 +91,19 @@ from sardis_guardrails.graph_fraud import (
     create_graph_analyzer,
 )
 
+from sardis_guardrails.ft3_taxonomy import (
+    FT3Event,
+    FT3Mitigation,
+    FT3MitigationStatus,
+    FT3Severity,
+    FT3Tactic,
+    FT3TaxonomyRegistry,
+    FT3TaxonomyStats,
+    FT3Technique,
+    classify_event,
+    create_ft3_registry,
+)
+
 try:
     from sardis_guardrails.zen_engine import (
         FraudAction,
@@ -185,4 +198,15 @@ __all__ = [
     "TransactionGraph",
     "WalletNode",
     "create_graph_analyzer",
+    # FT3 Fraud Taxonomy
+    "FT3TaxonomyRegistry",
+    "FT3Tactic",
+    "FT3Technique",
+    "FT3Event",
+    "FT3Severity",
+    "FT3Mitigation",
+    "FT3MitigationStatus",
+    "FT3TaxonomyStats",
+    "create_ft3_registry",
+    "classify_event",
 ]
