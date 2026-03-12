@@ -294,8 +294,9 @@ contract RefundProtocol is EIP712 {
             uint256 withdrawalAmount = withdrawalAmounts[i];
 
             Payment memory payment = payments[paymentID];
+            uint256 remainingAmount = payment.amount - payment.withdrawnAmount;
 
-            if (withdrawalAmount > payment.amount) {
+            if (withdrawalAmount > remainingAmount) {
                 revert InvalidWithdrawalAmount(paymentID, withdrawalAmount);
             }
             if (payment.to != recipient) {
