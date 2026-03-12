@@ -1,4 +1,4 @@
-"""Solana RPC client wrapper."""
+"""Solana RPC client wrapper using solders for proper type safety."""
 from __future__ import annotations
 
 import logging
@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from solders.pubkey import Pubkey
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,12 @@ TOKEN_DECIMALS = {
     SOLANA_USDT_MINT: 6,
     SOLANA_PYUSD_MINT: 6,
 }
+
+# Well-known program IDs
+TOKEN_PROGRAM_ID = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+ASSOCIATED_TOKEN_PROGRAM_ID = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+SYSTEM_PROGRAM_ID = Pubkey.from_string("11111111111111111111111111111111")
+SYSVAR_RENT_PUBKEY = Pubkey.from_string("SysvarRent111111111111111111111111111111111")
 
 
 @dataclass
@@ -37,11 +44,24 @@ def get_solana_config() -> SolanaConfig:
     )
 
 
+def derive_ata(owner: Pubkey, mint: Pubkey) -> Pubkey:
+    """Derive the Associated Token Account address using PDA.
+
+    ATA = PDA([owner, TOKEN_PROGRAM_ID, mint], ASSOCIATED_TOKEN_PROGRAM_ID)
+    """
+    ata, _bump = Pubkey.find_program_address(
+        [bytes(owner), bytes(TOKEN_PROGRAM_ID), bytes(mint)],
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    return ata
+
+
 class SolanaClient:
     """Async Solana JSON-RPC client.
 
-    Uses raw httpx instead of solana-py to minimize dependencies.
-    All Solana RPC methods are called via JSON-RPC 2.0.
+    Uses raw httpx for JSON-RPC calls with solders types for
+    address/key operations. This avoids pulling in the full
+    solana-py async runtime while keeping type safety.
     """
 
     def __init__(self, config: SolanaConfig | None = None) -> None:
@@ -122,7 +142,6 @@ class SolanaClient:
         if status.get("err"):
             raise SolanaTransactionError(f"Transaction failed: {status['err']}", signature)
         target = commitment or self.config.commitment
-        # confirmed and finalized both satisfy "confirmed"
         confirmation = status.get("confirmationStatus", "")
         if target == "finalized":
             return confirmation == "finalized"
@@ -131,6 +150,18 @@ class SolanaClient:
     async def get_minimum_balance_for_rent_exemption(self, data_size: int) -> int:
         """Get minimum balance for rent exemption."""
         return await self._rpc("getMinimumBalanceForRentExemption", [data_size])
+
+    async def simulate_transaction(self, tx_base64: str) -> dict[str, Any]:
+        """Simulate a transaction without sending it."""
+        result = await self._rpc(
+            "simulateTransaction",
+            [tx_base64, {"encoding": "base64", "commitment": self.config.commitment}],
+        )
+        return result.get("value", {})
+
+    async def get_slot(self) -> int:
+        """Get the current slot."""
+        return await self._rpc("getSlot", [{"commitment": self.config.commitment}])
 
     async def close(self) -> None:
         """Close the HTTP client."""

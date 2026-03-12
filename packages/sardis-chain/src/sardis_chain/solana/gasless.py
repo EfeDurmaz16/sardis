@@ -53,7 +53,7 @@ class KoraGaslessClient:
         """Request Kora to co-sign as fee payer.
 
         Args:
-            transaction_data: The unsigned transaction details from build_spl_transfer.
+            transaction_data: Dict with message_base64 from build_spl_transfer.
 
         Returns:
             Dict with fee_payer pubkey and partially-signed transaction.
@@ -94,7 +94,16 @@ async def build_gasless_transfer(
     where the sender pays SOL for gas.
     """
     # Build the base transfer
-    tx_data = await build_spl_transfer(client, params)
+    prepared = await build_spl_transfer(client, params)
+    tx_data: dict[str, Any] = {
+        "message_base64": prepared.message_base64,
+        "blockhash": prepared.blockhash,
+        "sender": prepared.sender,
+        "recipient": prepared.recipient,
+        "mint": prepared.mint,
+        "amount": prepared.amount,
+        "create_recipient_ata": prepared.create_recipient_ata,
+    }
 
     # Try gasless via Kora
     kora = kora_client or KoraGaslessClient()

@@ -116,7 +116,10 @@ class SolanaX402Facilitator:
     async def build_settlement_tx(
         self, payment: X402SolanaPayment,
     ) -> dict[str, Any]:
-        """Build the settlement transaction for MPC signing."""
+        """Build the settlement transaction for MPC signing.
+
+        Returns a dict with message_base64 ready for Turnkey ed25519 signing.
+        """
         params = SolanaTransferParams(
             sender=payment.sender,
             recipient=payment.recipient,
@@ -128,7 +131,17 @@ class SolanaX402Facilitator:
             return await build_gasless_transfer(
                 self.client, params, self.kora_client
             )
-        return await build_spl_transfer(self.client, params)
+
+        prepared = await build_spl_transfer(self.client, params)
+        return {
+            "message_base64": prepared.message_base64,
+            "blockhash": prepared.blockhash,
+            "sender": prepared.sender,
+            "recipient": prepared.recipient,
+            "mint": prepared.mint,
+            "amount": prepared.amount,
+            "create_recipient_ata": prepared.create_recipient_ata,
+        }
 
     async def close(self) -> None:
         """Clean up resources."""
