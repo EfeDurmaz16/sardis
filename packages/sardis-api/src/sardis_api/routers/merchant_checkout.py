@@ -70,6 +70,8 @@ class SessionDetailsResponse(BaseModel):
     currency: str
     description: str | None = None
     status: str
+    payment_method: str | None = None
+    payer_wallet_address: str | None = None
     expires_at: str | None = None
     embed_origin: str | None = None
     settlement_address: str | None = None
@@ -246,6 +248,8 @@ async def get_session_details(
         currency=session.currency,
         description=session.description,
         status=session.status,
+        payment_method=session.payment_method,
+        payer_wallet_address=session.payer_wallet_address,
         expires_at=session.expires_at.isoformat() if session.expires_at else None,
         embed_origin=session.embed_origin,
         settlement_address=settlement_address,
@@ -879,7 +883,7 @@ async def get_onramp_token(
             status_code=400,
             detail="No wallet connected to session. Connect a wallet first.",
         )
-    if body.wallet_address != session.payer_wallet_address:
+    if body.wallet_address.lower() != session.payer_wallet_address.lower():
         raise HTTPException(
             status_code=400,
             detail="Wallet address does not match the connected wallet.",

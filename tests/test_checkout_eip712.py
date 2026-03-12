@@ -69,6 +69,14 @@ class FakeSession:
     )
 
 
+@dataclass
+class FakeMerchant:
+    merchant_id: str = "merch_001"
+    name: str = "Test Merchant"
+    logo_url: str | None = "https://example.com/logo.png"
+    settlement_wallet_id: str | None = "wal_settle_001"
+
+
 def _sign_eip712(
     private_key: str,
     session_id: str,
@@ -267,6 +275,7 @@ def mock_deps():
 
     mock_repo = AsyncMock()
     mock_repo.get_session_by_secret = AsyncMock(return_value=FakeSession())
+    mock_repo.get_merchant = AsyncMock(return_value=FakeMerchant())
     mock_repo.update_session = AsyncMock()
     mock_connector = AsyncMock()
 
@@ -535,3 +544,43 @@ class TestConnectParams:
             params={"address": TEST_ADDRESS},
         )
         assert resp.status_code == 400
+        assert "session status" in resp.json()["detail"].lower()
+
+
+class TestSessionDetails:
+    @patch.dict("os.environ", {"SARDIS_CHECKOUT_CHAIN": "base"})
+    def test_returns_connected_external_wallet_state(self, client, mock_deps):
+        session = FakeSession(
+            payment_method="external_wallet",
+            payer_wallet_address=TEST_ADDRESS,
+        )
+        mock_deps.merchant_repo.get_session_by_secret = AsyncMock(return_value=session)
+
+        resp = client.get(
+            f"/checkout/sessions/client/{TEST_CLIENT_SECRET}/details",
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["payment_method"] == "external_wallet"
+        assert data["payer_wallet_address"] == TEST_ADDRESS
+        assert data["merchant_name"] == "Test Merchant"
+
+    @patch.dict("os.environ", {"SARDIS_CHECKOUT_CHAIN": "base"})
+    def test_resolves_settlement_address(self, client, mock_deps):
+        class Wallet:
+            def get_address(self, chain):
+                assert chain == "base"
+                return "0xSettle1234567890abcdef1234567890abcdef1234"
+
+        wallet_manager = AsyncMock()
+        wallet_manager.get_wallet = AsyncMock(return_value=Wallet())
+        mock_deps.wallet_manager = wallet_manager
+
+        resp = client.get(
+            f"/checkout/sessions/client/{TEST_CLIENT_SECRET}/details",
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["settlement_address"] == "0xSettle1234567890abcdef1234567890abcdef1234"

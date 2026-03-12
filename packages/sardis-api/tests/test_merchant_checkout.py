@@ -7,7 +7,13 @@ from pathlib import Path
 
 # Ensure local packages are importable (mirrors conftest.py but avoids create_app)
 _packages = Path(__file__).parent.parent.parent
-for _pkg in ["sardis-core", "sardis-checkout", "sardis-api"]:
+for _pkg in [
+    "sardis-core",
+    "sardis-checkout",
+    "sardis-api",
+    "sardis-guardrails",
+    "sardis-protocol",
+]:
     _p = _packages / _pkg / "src"
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
