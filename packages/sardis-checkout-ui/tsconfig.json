@@ -19,5 +19,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "node_modules/vite/client.d.ts"]
+  "include": ["src", "node_modules/vite/client.d.ts"],
+  "exclude": ["src/**/*.test.ts"]
 }

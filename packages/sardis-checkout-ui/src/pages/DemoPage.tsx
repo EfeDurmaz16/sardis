@@ -1,5 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
-import type { CheckoutStep, PaymentResult } from "@/lib/types";
+import type { CheckoutStep, PaymentResult, SessionDetails } from "@/lib/types";
+import { getSessionDetails } from "@/lib/api";
+import {
+  buildDemoUrlWithClientSecret,
+  DEMO_CLIENT_SECRET_STORAGE_KEY,
+  getPreferredCheckoutTab,
+  resolvePersistedDemoClientSecret,
+  stripDemoClientSecret,
+} from "@/lib/checkout-session";
 import MerchantHeader from "@/components/MerchantHeader";
 import SuccessView from "@/components/SuccessView";
 import FundAndPay from "@/components/FundAndPay";
@@ -11,10 +19,55 @@ const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 const MOCK_SESSION = {
   session_id: "mcs_demo_preview",
   merchant_name: "Sardis Demo Store",
+  merchant_logo_url: null,
   amount: "49.99",
   currency: "USDC",
   description: "Premium Plan — Monthly",
+  status: "pending",
+  payment_method: null,
+  payer_wallet_address: null,
+  expires_at: null,
+  embed_origin: null,
+  settlement_address: null,
 };
+
+function getStepForStatus(status: string): CheckoutStep {
+  if (status === "paid" || status === "settled") return "success";
+  if (status === "expired") return "expired";
+  return "pay";
+}
+
+function getPersistedDemoClientSecret() {
+  if (typeof window === "undefined") return null;
+  return resolvePersistedDemoClientSecret(
+    window.location.search,
+    window.sessionStorage.getItem(DEMO_CLIENT_SECRET_STORAGE_KEY),
+  );
+}
+
+function persistDemoClientSecret(clientSecret: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(DEMO_CLIENT_SECRET_STORAGE_KEY, clientSecret);
+  window.history.replaceState(
+    {},
+    "",
+    buildDemoUrlWithClientSecret(
+      window.location.pathname,
+      window.location.search,
+      clientSecret,
+    ),
+  );
+}
+
+function clearPersistedDemoClientSecret() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(DEMO_CLIENT_SECRET_STORAGE_KEY);
+  window.history.replaceState(
+    {},
+    "",
+    stripDemoClientSecret(window.location.pathname, window.location.search),
+  );
+}
 
 export default function DemoPage() {
   const [step, setStep] = useState<CheckoutStep>("pay");
@@ -22,25 +75,71 @@ export default function DemoPage() {
   const [result, setResult] = useState<PaymentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Try to create a staging test session for real wallet flows
   const [liveSecret, setLiveSecret] = useState<string | null>(null);
-  const [liveSettlement, setLiveSettlement] = useState<string | null>(null);
+  const [liveSession, setLiveSession] = useState<SessionDetails | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/create-test-session`, { method: "POST" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.client_secret) {
-          setLiveSecret(data.client_secret);
-          setLiveSettlement(data.settlement_address ?? null);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingSession(false));
-  }, []);
+    let cancelled = false;
 
-  const clientSecret = liveSecret ?? "demo_preview";
+    const applySession = (clientSecret: string, session: SessionDetails) => {
+      if (cancelled) return;
+      setLiveSecret(clientSecret);
+      setLiveSession(session);
+      setTab(getPreferredCheckoutTab(session));
+      setStep(getStepForStatus(session.status));
+    };
+
+    const loadExistingSession = async (clientSecret: string) => {
+      const session = await getSessionDetails(clientSecret);
+      if (["expired", "paid", "settled", "failed"].includes(session.status)) {
+        return false;
+      }
+      applySession(clientSecret, session);
+      return true;
+    };
+
+    const createFreshSession = async () => {
+      const response = await fetch(`${API_BASE}/create-test-session`, {
+        method: "POST",
+      });
+      if (!response.ok) return;
+
+      const data = await response.json().catch(() => null);
+      if (!data?.client_secret) return;
+
+      persistDemoClientSecret(data.client_secret);
+      await loadExistingSession(data.client_secret);
+    };
+
+    const bootstrap = async () => {
+      setLoadingSession(true);
+      try {
+        const persistedClientSecret = getPersistedDemoClientSecret();
+        if (persistedClientSecret) {
+          try {
+            const restored = await loadExistingSession(persistedClientSecret);
+            if (restored) return;
+            clearPersistedDemoClientSecret();
+          } catch {
+            clearPersistedDemoClientSecret();
+          }
+        }
+
+        await createFreshSession();
+      } catch {
+        clearPersistedDemoClientSecret();
+      } finally {
+        if (!cancelled) setLoadingSession(false);
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSuccess = useCallback((r: PaymentResult) => {
     setResult(r);
@@ -55,22 +154,34 @@ export default function DemoPage() {
     setStep("processing");
   }, []);
 
+  const handleExternalWalletConnected = useCallback((address: string) => {
+    setLiveSession((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        payment_method: "external_wallet",
+        payer_wallet_address: address,
+      };
+    });
+  }, []);
+
+  const sessionData = liveSession ?? MOCK_SESSION;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--checkout-bg)]">
       <div className="w-full max-w-[420px] bg-white rounded-xl shadow-sm border border-[var(--checkout-border)] p-6">
-        {/* Demo banner */}
         <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
           <span className="text-xs font-medium text-amber-700">
-            {liveSecret ? "Staging Mode — Testnet transactions" : "Demo Mode — No real transactions"}
+            {liveSecret ? "Staging Mode — Testnet transactions" : "Demo Mode — Session unavailable"}
           </span>
         </div>
 
         <MerchantHeader
-          merchantName={MOCK_SESSION.merchant_name}
-          logoUrl={null}
-          amount={MOCK_SESSION.amount}
-          currency={MOCK_SESSION.currency}
-          description={MOCK_SESSION.description}
+          merchantName={sessionData.merchant_name}
+          logoUrl={sessionData.merchant_logo_url ?? null}
+          amount={sessionData.amount}
+          currency={sessionData.currency}
+          description={sessionData.description}
         />
 
         {step === "pay" && (
@@ -87,34 +198,36 @@ export default function DemoPage() {
               <div className="flex items-center justify-center py-6">
                 <div className="w-5 h-5 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin" />
               </div>
+            ) : !liveSecret || !liveSession ? (
+              <div className="px-3 py-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                <p className="text-xs text-blue-700">
+                  Staging checkout is temporarily unavailable. Please reload the
+                  page to create a new test session.
+                </p>
+              </div>
             ) : tab === "wallet" ? (
               <div className="mt-4">
-                {liveSecret ? (
-                  <PayFromWallet
-                    clientSecret={clientSecret}
-                    amount={MOCK_SESSION.amount}
-                    currency={MOCK_SESSION.currency}
-                    settlementAddress={liveSettlement}
-                    onSuccess={handleSuccess}
-                    onError={handleError}
-                    onProcessing={handleProcessing}
-                  />
-                ) : (
-                  <div className="px-3 py-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
-                    <p className="text-xs text-blue-700">
-                      Wallet connection requires a live session. Switch to the
-                      staging environment or use the Fund &amp; Pay tab.
-                    </p>
-                  </div>
-                )}
+                <PayFromWallet
+                  clientSecret={liveSecret}
+                  amount={liveSession.amount}
+                  currency={liveSession.currency}
+                  settlementAddress={liveSession.settlement_address}
+                  verifiedExternalAddress={liveSession.payer_wallet_address}
+                  onExternalWalletConnected={handleExternalWalletConnected}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  onProcessing={handleProcessing}
+                />
               </div>
             ) : (
               <div className="mt-4">
                 <FundAndPay
-                  clientSecret={clientSecret}
-                  amount={MOCK_SESSION.amount}
-                  currency={MOCK_SESSION.currency}
-                  settlementAddress={liveSettlement}
+                  clientSecret={liveSecret}
+                  amount={liveSession.amount}
+                  currency={liveSession.currency}
+                  settlementAddress={liveSession.settlement_address}
+                  verifiedExternalAddress={liveSession.payer_wallet_address}
+                  onExternalWalletConnected={handleExternalWalletConnected}
                   onSuccess={handleSuccess}
                   onError={handleError}
                   onProcessing={handleProcessing}
@@ -133,7 +246,6 @@ export default function DemoPage() {
 
         {step === "success" && result && <SuccessView result={result} />}
 
-        {/* Footer */}
         <div className="mt-8 pt-4 border-t border-[var(--checkout-border)] flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <svg

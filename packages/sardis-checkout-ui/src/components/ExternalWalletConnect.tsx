@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useConnect, useAccount, useDisconnect, useSignMessage } from "wagmi";
-import { connectExternalWallet } from "@/lib/api";
+import { useConnect, useAccount, useDisconnect, useSignTypedData } from "wagmi";
+import {
+  connectExternalWallet,
+  getExternalWalletConnectParams,
+} from "@/lib/api";
 
 interface ExternalWalletConnectProps {
   clientSecret: string;
+  connectedAddress?: string | null;
+  allowReconnect?: boolean;
   onConnected: (address: string) => void;
   onError: (message: string) => void;
 }
@@ -23,33 +28,63 @@ function getConnectorInfo(name: string) {
   return CONNECTOR_LABELS[name] ?? { label: `Connect ${name}`, subtitle: "" };
 }
 
+function normalizeAddress(address: string | null | undefined) {
+  return address?.toLowerCase() ?? null;
+}
+
 export default function ExternalWalletConnect({
   clientSecret,
+  connectedAddress,
+  allowReconnect = false,
   onConnected,
   onError,
 }: ExternalWalletConnectProps) {
   const { connectors, connect } = useConnect();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { signMessageAsync } = useSignMessage();
+  const { signTypedDataAsync } = useSignTypedData();
   const [verifying, setVerifying] = useState(false);
-  const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizedConnectedAddress = normalizeAddress(connectedAddress);
+  const normalizedAccountAddress = normalizeAddress(address);
+  const walletMatchesSession =
+    !!normalizedConnectedAddress &&
+    normalizedConnectedAddress === normalizedAccountAddress;
+  const shouldOfferReconnect =
+    !!connectedAddress && allowReconnect && !walletMatchesSession;
+
   const verify = useCallback(async () => {
-    if (!address || verified || verifying) return;
+    if (!address || verifying) return;
+    if (walletMatchesSession) {
+      onConnected(address);
+      return;
+    }
+
     setVerifying(true);
     setError(null);
     try {
-      const csPrefix = clientSecret.slice(0, 8);
-      const message = `Sardis Checkout: connect ${address} to session ${csPrefix}`;
-      const signature = await signMessageAsync({ message });
+      const params = await getExternalWalletConnectParams(clientSecret, address);
+      const { EIP712Domain: _domain, ...types } = params.typed_data.types;
+      const signature = await (signTypedDataAsync as (args: {
+        domain: Record<string, unknown>;
+        types: Record<string, Array<{ name: string; type: string }>>;
+        primaryType: string;
+        message: Record<string, unknown>;
+      }) => Promise<`0x${string}`>)({
+        domain: params.typed_data.domain,
+        types,
+        primaryType: params.typed_data.primaryType,
+        message: params.typed_data.message,
+      });
+
       await connectExternalWallet(clientSecret, {
         address,
         signature,
-        message,
+        session_id: params.session_id,
+        chain_id: params.chain_id,
+        nonce: params.nonce,
       });
-      setVerified(true);
       onConnected(address);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Wallet verification failed";
@@ -58,30 +93,43 @@ export default function ExternalWalletConnect({
     } finally {
       setVerifying(false);
     }
-  }, [address, clientSecret, verified, verifying, signMessageAsync, onConnected, onError]);
+  }, [
+    address,
+    clientSecret,
+    onConnected,
+    onError,
+    signTypedDataAsync,
+    verifying,
+    walletMatchesSession,
+  ]);
 
   useEffect(() => {
-    if (isConnected && address && !verified && !verifying && !error) {
+    if (isConnected && address && !verifying && !error && !walletMatchesSession) {
       verify();
     }
-  }, [isConnected, address, verified, verifying, error, verify]);
+  }, [isConnected, address, verifying, error, walletMatchesSession, verify]);
 
-  if (verified && address) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-[var(--checkout-bg)] rounded-lg">
-        <span className="w-2 h-2 rounded-full bg-green-500" />
-        <span className="text-xs text-[var(--checkout-secondary)]">
-          Connected
-        </span>
-        <span
-          className="ml-auto text-xs text-[var(--checkout-primary)] truncate max-w-[180px]"
-          style={{ fontFamily: "var(--font-mono)" }}
-        >
-          {address.slice(0, 6)}...{address.slice(-4)}
-        </span>
-      </div>
-    );
-  }
+  const renderConnectorButtons = () => (
+    <div className="space-y-2">
+      {connectors.map((connector) => {
+        const info = getConnectorInfo(connector.name);
+        return (
+          <button
+            key={connector.uid}
+            onClick={() => connect({ connector })}
+            className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors text-left"
+          >
+            <span className="block">{info.label}</span>
+            {info.subtitle && (
+              <span className="block text-[11px] font-normal opacity-75 mt-0.5">
+                {info.subtitle}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   if (verifying) {
     return (
@@ -92,8 +140,7 @@ export default function ExternalWalletConnect({
     );
   }
 
-  // Error state: show message + retry/disconnect buttons
-  if (error && isConnected) {
+  if (error && isConnected && !walletMatchesSession) {
     return (
       <div className="space-y-3">
         <div className="px-3 py-2.5 rounded-lg bg-red-50 border border-red-200">
@@ -123,25 +170,46 @@ export default function ExternalWalletConnect({
     );
   }
 
-  return (
-    <div className="space-y-2">
-      {connectors.map((connector) => {
-        const info = getConnectorInfo(connector.name);
-        return (
-          <button
-            key={connector.uid}
-            onClick={() => connect({ connector })}
-            className="w-full py-3 px-4 bg-[var(--checkout-blue)] hover:bg-[var(--checkout-blue-hover)] text-white font-medium text-sm rounded-lg transition-colors text-left"
+  if (connectedAddress) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-[var(--checkout-bg)] rounded-lg">
+          <span className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-xs text-[var(--checkout-secondary)]">
+            Wallet verified for this checkout
+          </span>
+          <span
+            className="ml-auto text-xs text-[var(--checkout-primary)] truncate max-w-[180px]"
+            style={{ fontFamily: "var(--font-mono)" }}
           >
-            <span className="block">{info.label}</span>
-            {info.subtitle && (
-              <span className="block text-[11px] font-normal opacity-75 mt-0.5">
-                {info.subtitle}
-              </span>
+            {connectedAddress.slice(0, 6)}...{connectedAddress.slice(-4)}
+          </span>
+        </div>
+
+        {shouldOfferReconnect && (
+          <div className="space-y-3">
+            <div className="px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200">
+              <p className="text-xs text-blue-700">
+                Reconnect this wallet to authorize the transfer, or connect a
+                different wallet to update this checkout session.
+              </p>
+            </div>
+
+            {isConnected && address && !walletMatchesSession ? (
+              <button
+                onClick={() => disconnect()}
+                className="w-full py-2.5 px-4 border border-[var(--checkout-border)] text-[var(--checkout-secondary)] font-medium text-sm rounded-lg transition-colors hover:bg-[var(--checkout-bg)]"
+              >
+                Disconnect {address.slice(0, 6)}...{address.slice(-4)}
+              </button>
+            ) : (
+              renderConnectorButtons()
             )}
-          </button>
-        );
-      })}
-    </div>
-  );
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return renderConnectorButtons();
 }

@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
-import { useWriteContract } from "wagmi";
+import { useState, useCallback, useEffect } from "react";
+import { useAccount, useWriteContract } from "wagmi";
 import { parseUnits, type Address } from "viem";
 import { connectWallet, paySession, getBalance, confirmExternalPayment } from "@/lib/api";
 import { USDC_ADDRESS, USDC_DECIMALS } from "@/lib/wallet-config";
+import { isInternalSardisWalletEnabled } from "@/lib/checkout-session";
 import ExternalWalletConnect from "./ExternalWalletConnect";
 import type { PaymentResult } from "@/lib/types";
 
@@ -31,6 +32,8 @@ interface PayFromWalletProps {
   amount: string;
   currency: string;
   settlementAddress: string | null;
+  verifiedExternalAddress?: string | null;
+  onExternalWalletConnected?: (address: string) => void;
   onSuccess: (result: PaymentResult) => void;
   onError: (message: string) => void;
   onProcessing: () => void;
@@ -41,11 +44,13 @@ export default function PayFromWallet({
   amount,
   currency,
   settlementAddress,
+  verifiedExternalAddress = null,
+  onExternalWalletConnected,
   onSuccess,
   onError,
   onProcessing,
 }: PayFromWalletProps) {
-  const [externalAddress, setExternalAddress] = useState<string | null>(null);
+  const [externalAddress, setExternalAddress] = useState<string | null>(verifiedExternalAddress);
   const [showSardisWallet, setShowSardisWallet] = useState(false);
   const [paying, setPaying] = useState(false);
 
@@ -54,12 +59,26 @@ export default function PayFromWallet({
   const [balance, setBalance] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  const showInternalSardisWallet = isInternalSardisWalletEnabled(
+    import.meta.env.VITE_ENABLE_INTERNAL_SARDIS_WALLET,
+  );
 
   // wagmi write contract for external wallet USDC transfer
+  const { address: connectedAccountAddress } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
+  useEffect(() => {
+    setExternalAddress(verifiedExternalAddress);
+  }, [verifiedExternalAddress]);
+
+  const canSubmitExternalPayment =
+    !!externalAddress &&
+    !!settlementAddress &&
+    !!connectedAccountAddress &&
+    connectedAccountAddress.toLowerCase() === externalAddress.toLowerCase();
+
   const handleExternalPay = useCallback(async () => {
-    if (!externalAddress || !settlementAddress) return;
+    if (!externalAddress || !settlementAddress || !connectedAccountAddress) return;
     setPaying(true);
     onProcessing();
     try {
@@ -82,7 +101,7 @@ export default function PayFromWallet({
       setPaying(false);
       onError(e instanceof Error ? e.message : "Payment failed");
     }
-  }, [externalAddress, settlementAddress, amount, clientSecret, writeContractAsync, onProcessing, onSuccess, onError]);
+  }, [externalAddress, settlementAddress, connectedAccountAddress, amount, clientSecret, writeContractAsync, onProcessing, onSuccess, onError]);
 
   // Sardis wallet handlers
   const handleSardisConnect = async () => {
@@ -118,11 +137,16 @@ export default function PayFromWallet({
       {/* Primary: External Wallet via WalletConnect / Coinbase Wallet */}
       <ExternalWalletConnect
         clientSecret={clientSecret}
-        onConnected={(addr) => setExternalAddress(addr)}
+        connectedAddress={externalAddress}
+        allowReconnect
+        onConnected={(addr) => {
+          setExternalAddress(addr);
+          onExternalWalletConnected?.(addr);
+        }}
         onError={onError}
       />
 
-      {externalAddress && settlementAddress && (
+      {externalAddress && settlementAddress && canSubmitExternalPayment && (
         <button
           onClick={handleExternalPay}
           disabled={paying}
@@ -132,14 +156,20 @@ export default function PayFromWallet({
         </button>
       )}
 
+      {externalAddress && settlementAddress && !canSubmitExternalPayment && (
+        <p className="text-xs text-center text-[var(--checkout-muted)]">
+          Reconnect the verified wallet to authorize the USDC transfer.
+        </p>
+      )}
+
       {externalAddress && !settlementAddress && (
         <p className="text-xs text-center text-[var(--checkout-muted)]">
           Merchant settlement address not configured. Use Sardis wallet instead.
         </p>
       )}
 
-      {/* Sardis Wallet ID — hidden unless VITE_SHOW_SARDIS_WALLET=true */}
-      {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && !externalAddress && (
+      {/* Internal Sardis wallet path — hidden on the CDP-facing review surface */}
+      {showInternalSardisWallet && !externalAddress && (
         <>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-[var(--checkout-border)]" />
@@ -156,7 +186,7 @@ export default function PayFromWallet({
         </>
       )}
 
-      {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && showSardisWallet && !externalAddress && (
+      {showInternalSardisWallet && showSardisWallet && !externalAddress && (
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-[var(--checkout-secondary)] mb-1.5 uppercase tracking-wider">

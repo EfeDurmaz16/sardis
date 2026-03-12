@@ -1,4 +1,10 @@
-import type { SessionDetails, ConnectResult, BalanceInfo, PaymentResult } from "./types";
+import type {
+  SessionDetails,
+  ConnectResult,
+  BalanceInfo,
+  PaymentResult,
+  ExternalWalletConnectParams,
+} from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 
@@ -43,9 +49,23 @@ export function getOnrampToken(clientSecret: string, walletAddress: string) {
   );
 }
 
+export function getExternalWalletConnectParams(clientSecret: string, walletAddress: string) {
+  const params = new URLSearchParams({ address: walletAddress });
+  return request<ExternalWalletConnectParams>(
+    `/sessions/client/${clientSecret}/connect-params?${params.toString()}`,
+  );
+}
+
 export function connectExternalWallet(
   clientSecret: string,
-  body: { address: string; signature: string; message: string },
+  body: {
+    address: string;
+    signature: string;
+    message?: string;
+    session_id?: string;
+    chain_id?: number;
+    nonce?: string;
+  },
 ) {
   return request<{ status: string; address: string; session_id: string }>(
     `/sessions/client/${clientSecret}/connect-external`,

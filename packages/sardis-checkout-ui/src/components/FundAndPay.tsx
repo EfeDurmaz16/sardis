@@ -4,6 +4,7 @@ import { parseUnits, type Address } from "viem";
 import { connectWallet, paySession, getOnrampToken, confirmExternalPayment } from "@/lib/api";
 import { useBalancePoll } from "@/hooks/useBalancePoll";
 import { USDC_ADDRESS, USDC_DECIMALS } from "@/lib/wallet-config";
+import { isInternalSardisWalletEnabled } from "@/lib/checkout-session";
 import ExternalWalletConnect from "./ExternalWalletConnect";
 import type { PaymentResult } from "@/lib/types";
 
@@ -25,6 +26,8 @@ interface FundAndPayProps {
   amount: string;
   currency: string;
   settlementAddress: string | null;
+  verifiedExternalAddress?: string | null;
+  onExternalWalletConnected?: (address: string) => void;
   onSuccess: (result: PaymentResult) => void;
   onError: (message: string) => void;
   onProcessing: () => void;
@@ -47,12 +50,14 @@ export default function FundAndPay({
   amount,
   currency,
   settlementAddress,
+  verifiedExternalAddress = null,
+  onExternalWalletConnected,
   onSuccess,
   onError,
   onProcessing,
 }: FundAndPayProps) {
   // External wallet state
-  const [externalAddress, setExternalAddress] = useState<string | null>(null);
+  const [externalAddress, setExternalAddress] = useState<string | null>(verifiedExternalAddress);
   const [showSardisWallet, setShowSardisWallet] = useState(false);
 
   // Sardis wallet state
@@ -65,6 +70,13 @@ export default function FundAndPay({
   const [autoPaying, setAutoPaying] = useState(false);
   const [onrampLoading, setOnrampLoading] = useState(false);
   const [onrampOpened, setOnrampOpened] = useState(false);
+  const showInternalSardisWallet = isInternalSardisWalletEnabled(
+    import.meta.env.VITE_ENABLE_INTERNAL_SARDIS_WALLET,
+  );
+
+  useEffect(() => {
+    setExternalAddress(verifiedExternalAddress);
+  }, [verifiedExternalAddress]);
 
   // Determine which wallet is connected
   const isConnected = !!externalAddress || sardisConnected;
@@ -115,6 +127,8 @@ export default function FundAndPay({
       const { onramp_url } = await getOnrampToken(clientSecret, activeAddress);
       if (popup && !popup.closed) {
         popup.location.href = onramp_url;
+      } else {
+        window.location.assign(onramp_url);
       }
       setOnrampOpened(true);
     } catch (e) {
@@ -154,11 +168,15 @@ export default function FundAndPay({
       <div className="space-y-4">
         <ExternalWalletConnect
           clientSecret={clientSecret}
-          onConnected={(addr) => setExternalAddress(addr)}
+          connectedAddress={externalAddress}
+          onConnected={(addr) => {
+            setExternalAddress(addr);
+            onExternalWalletConnected?.(addr);
+          }}
           onError={onError}
         />
 
-        {import.meta.env.VITE_SHOW_SARDIS_WALLET === "true" && (
+        {showInternalSardisWallet && (
           <>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-[var(--checkout-border)]" />

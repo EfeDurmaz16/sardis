@@ -6,6 +6,8 @@ export interface SessionDetails {
   currency: string;
   description: string | null;
   status: string;
+  payment_method: string | null;
+  payer_wallet_address: string | null;
   expires_at: string | null;
   embed_origin: string | null;
   settlement_address: string | null;
@@ -35,6 +37,18 @@ export interface PaymentResult {
   merchant_id: string;
   platform_fee: string | null;
   net_amount: string | null;
+}
+
+export interface ExternalWalletConnectParams {
+  typed_data: {
+    domain: Record<string, unknown>;
+    message: Record<string, unknown>;
+    primaryType: string;
+    types: Record<string, Array<{ name: string; type: string }>>;
+  };
+  chain_id: number;
+  nonce: string;
+  session_id: string;
 }
 
 export type CheckoutStep =

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --config vite.embed.config.ts && cp dist/embed/sardis-checkout.js dist/",
     "build:embed": "vite build --config vite.embed.config.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@coinbase/wallet-sdk": "^4.3.7",

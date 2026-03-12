@@ -10,6 +10,7 @@ import ProcessingView from "@/components/ProcessingView";
 import SuccessView from "@/components/SuccessView";
 import ErrorView from "@/components/ErrorView";
 import { useSessionStream } from "@/hooks/useSessionStream";
+import { getPreferredCheckoutTab } from "@/lib/checkout-session";
 
 export default function CheckoutPage() {
   const { clientSecret } = useParams<{ clientSecret: string }>();
@@ -26,6 +27,7 @@ export default function CheckoutPage() {
     getSessionDetails(clientSecret)
       .then((data) => {
         setSession(data);
+        setTab(getPreferredCheckoutTab(data));
         if (data.status === "paid" || data.status === "settled") {
           setStep("success");
         } else if (data.status === "expired") {
@@ -64,6 +66,17 @@ export default function CheckoutPage() {
   const handleRetry = () => {
     setError("");
     setStep("pay");
+  };
+
+  const handleExternalWalletConnected = (address: string) => {
+    setSession((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        payment_method: "external_wallet",
+        payer_wallet_address: address,
+      };
+    });
   };
 
   // SSE streaming: track session status in real-time while in an active state.
@@ -132,6 +145,8 @@ export default function CheckoutPage() {
               amount={session.amount}
               currency={session.currency}
               settlementAddress={session.settlement_address}
+              verifiedExternalAddress={session.payer_wallet_address}
+              onExternalWalletConnected={handleExternalWalletConnected}
               onSuccess={handleSuccess}
               onError={handleError}
               onProcessing={() => setStep("processing")}
@@ -142,6 +157,8 @@ export default function CheckoutPage() {
               amount={session.amount}
               currency={session.currency}
               settlementAddress={session.settlement_address}
+              verifiedExternalAddress={session.payer_wallet_address}
+              onExternalWalletConnected={handleExternalWalletConnected}
               onSuccess={handleSuccess}
               onError={handleError}
               onProcessing={() => setStep("processing")}
