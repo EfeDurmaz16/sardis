@@ -160,6 +160,16 @@ contract RefundProtocolTest is Test {
         assertEq(falseToken.balanceOf(address(falseProtocol)), 0);
     }
 
+    function test_pay_revertsWhenRecipientIsZeroAddress() public {
+        vm.expectRevert(RefundProtocol.PaymentRecipientIsZeroAddress.selector);
+        vm.prank(payer);
+        protocol.pay(address(0), 100e6, refundTo);
+
+        assertEq(protocol.nonce(), 0);
+        assertEq(protocol.balances(address(0)), 0);
+        assertEq(token.balanceOf(address(protocol)), 0);
+    }
+
     function test_earlyWithdraw_revertsWhenTokenTransferReturnsFalse() public {
         MockFalseERC20 falseToken = new MockFalseERC20();
         RefundProtocol falseProtocol = new RefundProtocol(arbiter, address(falseToken), "RefundProtocol", "1");

@@ -59,6 +59,7 @@ contract RefundProtocol is EIP712 {
     error CallerNotAllowed();
     error PaymentIsStillLocked(uint256 paymentID);
     error PaymentDoesNotBelongToRecipient();
+    error PaymentRecipientIsZeroAddress();
     error RefundToIsZeroAddress();
     error InsufficientFunds();
     error InvalidWithdrawalAmount(uint256 paymentID, uint256 withdrawalAmount);
@@ -100,6 +101,9 @@ contract RefundProtocol is EIP712 {
      * @param refundTo - address to refund to if triggered
      */
     function pay(address to, uint256 amount, address refundTo) external {
+        if (to == address(0)) {
+            revert PaymentRecipientIsZeroAddress();
+        }
         if (refundTo == address(0)) {
             revert RefundToIsZeroAddress();
         }
