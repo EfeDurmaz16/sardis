@@ -234,6 +234,7 @@ contract SardisJobManagerTest is Test {
 
         // Check escrow received funds
         uint256 fee = (JOB_AMOUNT * FEE_BPS) / 10000;
+        assertEq(manager.jobFees(jobId), fee);
         assertEq(token.balanceOf(address(manager)), JOB_AMOUNT + fee);
     }
 
@@ -302,6 +303,26 @@ contract SardisJobManagerTest is Test {
         assertEq(token.balanceOf(feeRecipient), feeBefore + expectedFee);
     }
 
+    function test_complete_usesFeeSnapshotAfterFeeIncrease() public {
+        uint256 jobId = _createJob();
+        _setBudgetAndFund(jobId);
+        _submitJob(jobId);
+
+        vm.prank(admin);
+        manager.setFeeBps(500);
+
+        uint256 providerBefore = token.balanceOf(provider);
+        uint256 feeRecipientBefore = token.balanceOf(feeRecipient);
+
+        vm.prank(evaluator);
+        manager.complete(jobId, keccak256("good work"), "");
+
+        uint256 fundedFee = (JOB_AMOUNT * FEE_BPS) / 10000;
+        assertEq(token.balanceOf(provider), providerBefore + JOB_AMOUNT);
+        assertEq(token.balanceOf(feeRecipient), feeRecipientBefore + fundedFee);
+        assertEq(token.balanceOf(address(manager)), 0);
+    }
+
     function test_complete_revert_notEvaluator() public {
         uint256 jobId = _createJob();
         _setBudgetAndFund(jobId);
@@ -357,6 +378,23 @@ contract SardisJobManagerTest is Test {
         assertEq(token.balanceOf(client), clientBefore + JOB_AMOUNT + fee);
     }
 
+    function test_reject_usesFeeSnapshotAfterFeeDecrease() public {
+        uint256 jobId = _createJob();
+        _setBudgetAndFund(jobId);
+
+        vm.prank(admin);
+        manager.setFeeBps(0);
+
+        uint256 clientBefore = token.balanceOf(client);
+
+        vm.prank(evaluator);
+        manager.reject(jobId, keccak256("bad spec"), "");
+
+        uint256 fundedFee = (JOB_AMOUNT * FEE_BPS) / 10000;
+        assertEq(token.balanceOf(client), clientBefore + JOB_AMOUNT + fundedFee);
+        assertEq(token.balanceOf(address(manager)), 0);
+    }
+
     function test_reject_revert_openJob_byNonClient() public {
         uint256 jobId = _createJob();
         vm.prank(evaluator);
@@ -410,6 +448,24 @@ contract SardisJobManagerTest is Test {
 
         IJob.Job memory job = manager.getJob(jobId);
         assertEq(uint256(job.status), uint256(IJob.JobStatus.Expired));
+    }
+
+    function test_claimRefund_usesFeeSnapshotAfterFeeIncrease() public {
+        uint256 jobId = _createJob();
+        _setBudgetAndFund(jobId);
+
+        vm.prank(admin);
+        manager.setFeeBps(500);
+
+        vm.warp(block.timestamp + 8 days);
+
+        uint256 clientBefore = token.balanceOf(client);
+
+        manager.claimRefund(jobId);
+
+        uint256 fundedFee = (JOB_AMOUNT * FEE_BPS) / 10000;
+        assertEq(token.balanceOf(client), clientBefore + JOB_AMOUNT + fundedFee);
+        assertEq(token.balanceOf(address(manager)), 0);
     }
 
     // ============ Full lifecycle ============

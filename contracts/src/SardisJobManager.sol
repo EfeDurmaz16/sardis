@@ -60,6 +60,9 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     /// @notice Deliverable hashes submitted by providers
     mapping(uint256 => bytes32) public deliverables;
 
+    /// @notice Snapshot of the protocol fee charged when a job was funded
+    mapping(uint256 => uint256) public jobFees;
+
     /// @notice Protocol fee in basis points
     uint256 public feeBps;
 
@@ -217,6 +220,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
 
         IERC20(job.token).safeTransferFrom(msg.sender, address(this), totalDeposit);
 
+        jobFees[jobId] = fee;
         job.status = JobStatus.Funded;
 
         emit JobFunded(jobId, msg.sender, job.budget);
@@ -260,7 +264,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
 
         _callBeforeHook(job.hook, jobId, IJob.complete.selector, abi.encode(reason, optParams));
 
-        uint256 fee = (job.budget * feeBps) / 10000;
+        uint256 fee = jobFees[jobId];
 
         job.status = JobStatus.Completed;
 
@@ -307,7 +311,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
 
         // Refund if funds were escrowed
         if (wasFunded) {
-            uint256 fee = (job.budget * feeBps) / 10000;
+            uint256 fee = jobFees[jobId];
             uint256 totalRefund = job.budget + fee;
             IERC20(job.token).safeTransfer(job.client, totalRefund);
             emit Refunded(jobId, job.client, totalRefund);
@@ -327,7 +331,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
         }
         if (block.timestamp < job.expiredAt) revert DeadlineNotReached();
 
-        uint256 fee = (job.budget * feeBps) / 10000;
+        uint256 fee = jobFees[jobId];
         uint256 totalRefund = job.budget + fee;
 
         job.status = JobStatus.Expired;
