@@ -545,6 +545,18 @@ def build_default_config() -> SardisChainConfig:
         is_testnet=True,
     )
 
+    # Tempo Presto Mainnet (Payment L1 — stablecoin gas fees)
+    chains["tempo"] = _build_chain_config(
+        chain_id=4217,
+        name="tempo",
+        display_name="Tempo",
+        default_rpc="https://rpc.tempo.xyz",
+        fallback_rpcs=[],
+        block_time=1.0,
+        native_token="NONE",
+        explorer_url="https://explore.tempo.xyz",
+    )
+
     # Solana Devnet
     chains["solana_devnet"] = _build_chain_config(
         chain_id=0,
@@ -638,7 +650,7 @@ CHAIN_ID_MAP: dict[str, int] = {
     "arbitrum_sepolia": 421614,
     "optimism_sepolia": 11155420,
     "tempo_testnet": 42431,
-    "tempo": 0,       # Mainnet not launched — update when known
+    "tempo": 4217,     # Presto mainnet
     "solana_devnet": 0,  # Solana doesn't use EVM chain IDs
     "solana": 0,
     "morph": 2818,

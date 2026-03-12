@@ -195,9 +195,9 @@ CHAIN_CONFIGS = {
         "is_tempo": True,
     },
     "tempo": {
-        "chain_id": 0,  # Mainnet not launched yet — update when known
-        "rpc_url": _rpc("SARDIS_TEMPO_RPC_URL", ""),
-        "explorer": "https://tempo.xyz",
+        "chain_id": 4217,  # Presto mainnet
+        "rpc_url": _rpc("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
+        "explorer": "https://explore.tempo.xyz",
         "native_token": "NONE",
         "block_time": 1,
         "is_tempo": True,
@@ -286,7 +286,7 @@ STABLECOIN_ADDRESSES = {
         "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato testnet
     },
     "tempo": {
-        # Mainnet token addresses TBD — update when Tempo launches mainnet
+        "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
     },
     # Morph (EVM L2 — Circle native USDC + CCTP)
     "morph": {
@@ -296,6 +296,33 @@ STABLECOIN_ADDRESSES = {
         "USDC": "0x7433b41C6c5e1d58D4Da99483609520255ab661B",
     },
 }
+
+# ── Tempo System Contracts ──────────────────────────────────────────────
+# Fixed addresses on both Moderato (testnet) and Presto (mainnet).
+# pathUSD is the native stablecoin; StablecoinDex provides on-chain swaps;
+# Fee Manager handles stablecoin-denominated gas fees.
+TEMPO_SYSTEM_CONTRACTS = {
+    "path_usd": "0x20c0000000000000000000000000000000000000",
+    "stablecoin_dex": "0xdec0000000000000000000000000000000000000",
+    "fee_manager": "0xfeec000000000000000000000000000000000000",
+}
+
+# TIP-20 extends ERC-20 with a `transferWithMemo` method that attaches a
+# bytes32 memo (e.g. Sardis payment ID) to the on-chain transfer event.
+# Standard ERC-20 `transfer` also works — memo is optional.
+TIP20_TRANSFER_WITH_MEMO_ABI = [
+    {
+        "name": "transferWithMemo",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+            {"name": "to", "type": "address"},
+            {"name": "amount", "type": "uint256"},
+            {"name": "memo", "type": "bytes32"},
+        ],
+        "outputs": [{"type": "bool"}],
+    },
+]
 
 # Safe Smart Account infrastructure (canonical, same on all EVM chains)
 # These are deployed by Safe Global via CREATE2 — no deployment needed.
@@ -384,17 +411,16 @@ SARDIS_CONTRACTS = {
         "policy_module": DEFAULT_EXTERNAL_POLICY_MODULE,
         "ledger_anchor": "",
     },
-    # Solana - uses Anchor programs instead of Solidity contracts
-    # NOTE: Solana integration is EXPERIMENTAL
+    # Solana — Anchor programs for on-chain policy enforcement.
+    # wallet_program: sardis_agent_wallet (spending limits, merchant/token rules).
+    # Override via SARDIS_SOLANA_DEVNET_WALLET_PROGRAM_ADDRESS / SARDIS_SOLANA_WALLET_PROGRAM_ADDRESS.
     "solana_devnet": {
         "wallet_program": "",
         "escrow_program": "",
-        "experimental": True,
     },
     "solana": {
         "wallet_program": "",
         "escrow_program": "",
-        "experimental": True,
     },
     # Tempo — EVM-compatible but uses TIP-20 fee model (no Safe/EAS infra yet)
     "tempo_testnet": {

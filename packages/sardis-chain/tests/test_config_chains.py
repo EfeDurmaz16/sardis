@@ -35,6 +35,9 @@ class TestChainIdMap:
     def test_tempo_testnet_chain_id(self):
         assert CHAIN_ID_MAP["tempo_testnet"] == 42431
 
+    def test_tempo_mainnet_chain_id(self):
+        assert CHAIN_ID_MAP["tempo"] == 4217
+
     def test_solana_devnet_chain_id(self):
         assert CHAIN_ID_MAP["solana_devnet"] == 0
 
@@ -50,6 +53,15 @@ class TestBuildDefaultConfig:
         assert chain.chain_id == 42431
         assert chain.is_testnet is True
         assert chain.native_token == "NONE"
+
+    def test_tempo_mainnet_in_default_config(self):
+        config = build_default_config()
+        assert "tempo" in config.chains
+        chain = config.chains["tempo"]
+        assert chain.chain_id == 4217
+        assert chain.is_testnet is False
+        assert chain.native_token == "NONE"
+        assert "rpc.tempo.xyz" in chain.get_primary_rpc_url()
 
     def test_solana_devnet_in_default_config(self):
         config = build_default_config()

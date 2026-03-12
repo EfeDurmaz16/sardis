@@ -140,10 +140,11 @@ class TestChainConfigs:
         assert config.get("is_tempo") is True
 
     def test_tempo_mainnet_config(self):
-        """Test Tempo mainnet configuration (placeholder)."""
+        """Test Tempo Presto mainnet configuration."""
         config = CHAIN_CONFIGS["tempo"]
 
-        assert config["chain_id"] == 0  # TBD — mainnet not launched yet
+        assert config["chain_id"] == 4217
+        assert "rpc.tempo.xyz" in config["rpc_url"]
         assert config.get("is_tempo") is True
 
 

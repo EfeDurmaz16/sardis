@@ -58,6 +58,7 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "solana": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "arc_testnet": "0x3600000000000000000000000000000000000000",
             "tempo_testnet": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato
+            "tempo": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
             "morph": "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
         },
     ),
