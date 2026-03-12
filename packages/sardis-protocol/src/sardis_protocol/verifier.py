@@ -64,7 +64,15 @@ class MandateVerifier:
         self._settings = settings
         self._replay_cache = replay_cache or ReplayCache()
         self._archive = archive
-        self._rate_limiter = rate_limiter or get_rate_limiter(rate_limit_config)
+        redis_url = (
+            os.getenv("SARDIS_REDIS_URL")
+            or os.getenv("REDIS_URL")
+            or os.getenv("UPSTASH_REDIS_URL")
+        )
+        self._rate_limiter = rate_limiter or get_rate_limiter(
+            rate_limit_config,
+            redis_url=redis_url,
+        )
         self._identity_registry = identity_registry
 
     @staticmethod
