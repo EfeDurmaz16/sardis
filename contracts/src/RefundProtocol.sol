@@ -289,6 +289,8 @@ contract RefundProtocol is EIP712 {
             revert MismatchedEarlyWithdrawalArrays();
         }
 
+        _settleDebt(recipient);
+
         for (uint256 i = 0; i < paymentIDs.length; ++i) {
             uint256 paymentID = paymentIDs[i];
             uint256 withdrawalAmount = withdrawalAmounts[i];

@@ -90,6 +90,29 @@ contract RefundProtocolTest is Test {
         assertEq(token.balanceOf(recipient), 60e6);
     }
 
+    function test_earlyWithdraw_settlesDebtBeforeReleasingFunds() public {
+        _pay(payer, recipient, 40e6, refundTo);
+        _earlyWithdrawSingle(0, 40e6, 0, ONE_DAY, 1);
+
+        token.mint(arbiter, 40e6);
+        vm.startPrank(arbiter);
+        token.approve(address(protocol), 40e6);
+        protocol.depositArbiterFunds(40e6);
+        protocol.refundByArbiter(0);
+        vm.stopPrank();
+
+        assertEq(protocol.debts(recipient), 40e6);
+        assertEq(token.balanceOf(refundTo), 40e6);
+
+        _pay(payer, recipient, 100e6, refundTo);
+        _earlyWithdrawSingle(1, 60e6, 0, ONE_DAY, 2);
+
+        assertEq(protocol.debts(recipient), 0);
+        assertEq(protocol.balances(recipient), 0);
+        assertEq(protocol.balances(arbiter), 40e6);
+        assertEq(token.balanceOf(recipient), 100e6);
+    }
+
     function _pay(address from, address to, uint256 amount, address refundAddress) internal {
         vm.prank(from);
         protocol.pay(to, amount, refundAddress);
