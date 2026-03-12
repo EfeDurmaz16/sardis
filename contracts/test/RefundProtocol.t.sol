@@ -17,25 +17,52 @@ contract MockERC20 {
         totalSupply += amount;
     }
 
-    function approve(address spender, uint256 amount) external returns (bool) {
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
 
-    function transfer(address to, uint256 amount) external returns (bool) {
+    function transfer(address to, uint256 amount) public virtual returns (bool) {
         require(balanceOf[msg.sender] >= amount, "insufficient balance");
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;
         return true;
     }
 
-    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public virtual returns (bool) {
         require(balanceOf[from] >= amount, "insufficient balance");
         require(allowance[from][msg.sender] >= amount, "insufficient allowance");
         allowance[from][msg.sender] -= amount;
         balanceOf[from] -= amount;
         balanceOf[to] += amount;
         return true;
+    }
+}
+
+contract MockFalseERC20 is MockERC20 {
+    bool internal failTransfer;
+    bool internal failTransferFrom;
+
+    function setFailTransfer(bool shouldFail) external {
+        failTransfer = shouldFail;
+    }
+
+    function setFailTransferFrom(bool shouldFail) external {
+        failTransferFrom = shouldFail;
+    }
+
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        if (failTransfer) {
+            return false;
+        }
+        return super.transfer(to, amount);
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        if (failTransferFrom) {
+            return false;
+        }
+        return super.transferFrom(from, to, amount);
     }
 }
 
@@ -113,6 +140,62 @@ contract RefundProtocolTest is Test {
         assertEq(token.balanceOf(recipient), 100e6);
     }
 
+    function test_pay_revertsWhenTokenTransferFromReturnsFalse() public {
+        MockFalseERC20 falseToken = new MockFalseERC20();
+        RefundProtocol falseProtocol = new RefundProtocol(arbiter, address(falseToken), "RefundProtocol", "1");
+
+        falseToken.mint(payer, 100e6);
+
+        vm.prank(payer);
+        falseToken.approve(address(falseProtocol), type(uint256).max);
+
+        falseToken.setFailTransferFrom(true);
+
+        vm.expectRevert();
+        vm.prank(payer);
+        falseProtocol.pay(recipient, 100e6, refundTo);
+
+        assertEq(falseProtocol.nonce(), 0);
+        assertEq(falseProtocol.balances(recipient), 0);
+        assertEq(falseToken.balanceOf(address(falseProtocol)), 0);
+    }
+
+    function test_earlyWithdraw_revertsWhenTokenTransferReturnsFalse() public {
+        MockFalseERC20 falseToken = new MockFalseERC20();
+        RefundProtocol falseProtocol = new RefundProtocol(arbiter, address(falseToken), "RefundProtocol", "1");
+
+        falseToken.mint(payer, 100e6);
+
+        vm.prank(payer);
+        falseToken.approve(address(falseProtocol), type(uint256).max);
+
+        vm.prank(payer);
+        falseProtocol.pay(recipient, 100e6, refundTo);
+
+        uint256[] memory paymentIDs = new uint256[](1);
+        paymentIDs[0] = 0;
+        uint256[] memory withdrawalAmounts = new uint256[](1);
+        withdrawalAmounts[0] = 60e6;
+        uint256 expiry = block.timestamp + ONE_DAY;
+        (uint8 v, bytes32 r, bytes32 s) = _signEarlyWithdrawalForProtocol(
+            falseProtocol, paymentIDs, withdrawalAmounts, 0, expiry, 3
+        );
+
+        falseToken.setFailTransfer(true);
+
+        vm.expectRevert();
+        vm.prank(arbiter);
+        falseProtocol.earlyWithdrawByArbiter(paymentIDs, withdrawalAmounts, 0, expiry, 3, recipient, v, r, s);
+
+        (, uint256 paymentAmount,, address paymentRefundTo, uint256 withdrawnAmount, bool refunded) = falseProtocol.payments(0);
+        assertEq(paymentAmount, 100e6);
+        assertEq(paymentRefundTo, refundTo);
+        assertEq(withdrawnAmount, 0);
+        assertFalse(refunded);
+        assertEq(falseProtocol.balances(recipient), 100e6);
+        assertEq(falseToken.balanceOf(recipient), 0);
+    }
+
     function _pay(address from, address to, uint256 amount, address refundAddress) internal {
         vm.prank(from);
         protocol.pay(to, amount, refundAddress);
@@ -153,7 +236,18 @@ contract RefundProtocolTest is Test {
         uint256 expiry,
         uint256 salt
     ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
-        bytes32 digest = protocol.hashEarlyWithdrawalInfo(paymentIDs, withdrawalAmounts, feeAmount, expiry, salt);
+        return _signEarlyWithdrawalForProtocol(protocol, paymentIDs, withdrawalAmounts, feeAmount, expiry, salt);
+    }
+
+    function _signEarlyWithdrawalForProtocol(
+        RefundProtocol targetProtocol,
+        uint256[] memory paymentIDs,
+        uint256[] memory withdrawalAmounts,
+        uint256 feeAmount,
+        uint256 expiry,
+        uint256 salt
+    ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
+        bytes32 digest = targetProtocol.hashEarlyWithdrawalInfo(paymentIDs, withdrawalAmounts, feeAmount, expiry, salt);
         return vm.sign(RECIPIENT_PK, digest);
     }
 }

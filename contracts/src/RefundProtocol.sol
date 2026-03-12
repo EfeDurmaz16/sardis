@@ -15,9 +15,12 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 contract RefundProtocol is EIP712 {
+    using SafeERC20 for IERC20;
+
     struct Payment {
         address to;
         uint256 amount;
@@ -103,7 +106,7 @@ contract RefundProtocol is EIP712 {
 
         uint256 recipientlockupSeconds = lockupSeconds[to];
 
-        fiatToken.transferFrom(msg.sender, address(this), amount);
+        fiatToken.safeTransferFrom(msg.sender, address(this), amount);
         payments[nonce] = Payment(to, amount, block.timestamp + recipientlockupSeconds, refundTo, 0, false);
         balances[to] += amount;
 
@@ -176,7 +179,7 @@ contract RefundProtocol is EIP712 {
      * @param amount amount to deposit
      */
     function depositArbiterFunds(uint256 amount) external onlyArbiter {
-        fiatToken.transferFrom(msg.sender, address(this), amount);
+        fiatToken.safeTransferFrom(msg.sender, address(this), amount);
         balances[arbiter] += amount;
     }
 
@@ -192,7 +195,7 @@ contract RefundProtocol is EIP712 {
         }
 
         balances[arbiter] = arbiterBalance - amount;
-        fiatToken.transfer(arbiter, amount);
+        fiatToken.safeTransfer(arbiter, amount);
     }
 
     /**
@@ -240,7 +243,7 @@ contract RefundProtocol is EIP712 {
             revert InsufficientFunds();
         }
         balances[msg.sender] = recipientBalance - totalAmount;
-        fiatToken.transfer(msg.sender, totalAmount);
+        fiatToken.safeTransfer(msg.sender, totalAmount);
         emit Withdrawal(msg.sender, totalAmount);
     }
 
@@ -320,7 +323,7 @@ contract RefundProtocol is EIP712 {
         balances[recipient] = recipientBalance - totalAmount;
         balances[arbiter] += feeAmount;
 
-        fiatToken.transfer(recipient, totalAmount - feeAmount);
+        fiatToken.safeTransfer(recipient, totalAmount - feeAmount);
         emit Withdrawal(recipient, totalAmount);
         emit WithdrawalFeePaid(recipient, feeAmount);
 
@@ -371,7 +374,7 @@ contract RefundProtocol is EIP712 {
         if (payment.refunded) {
             revert PaymentRefunded(paymentID);
         }
-        fiatToken.transfer(payment.refundTo, payment.amount);
+        fiatToken.safeTransfer(payment.refundTo, payment.amount);
 
         payments[paymentID].refunded = true;
 
