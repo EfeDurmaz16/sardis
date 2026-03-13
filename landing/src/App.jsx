@@ -1152,7 +1152,7 @@ function App() {
                 <ul className="space-y-2 text-muted-foreground">
                   <li><a href="/docs/blog" className="hover:text-[var(--sardis-orange)] transition-colors">Blog</a></li>
                   <li><a href="/docs/changelog" className="hover:text-[var(--sardis-orange)] transition-colors">Changelog</a></li>
-                  <li><a href="/docs/roadmap" className="hover:text-[var(--sardis-orange)] transition-colors">Roadmap</a></li>
+                  <li><a href="/docs/faq" className="hover:text-[var(--sardis-orange)] transition-colors">FAQ</a></li>
                   <li><a href="/docs/security" className="hover:text-[var(--sardis-orange)] transition-colors">Security</a></li>
                   <li><a href="https://context7.com/efedurmaz16/sardis" target="_blank" rel="noreferrer" className="hover:text-[var(--sardis-orange)] transition-colors">Context7 (AI Docs)</a></li>
                 </ul>

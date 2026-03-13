@@ -142,11 +142,11 @@ export default function DocsOverview() {
         </p>
         <div className="flex gap-3">
           <a href="https://github.com/EfeDurmaz16/sardis" target="_blank" rel="noreferrer"
-            className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-sm font-mono transition-colors">
+            className="px-4 py-2 border border-border hover:border-[var(--sardis-orange)] text-foreground text-sm font-mono transition-colors">
             GitHub
           </a>
-          <a href="mailto:efe@sardis.dev"
-            className="px-4 py-2 bg-[var(--sardis-orange)] text-white text-sm font-mono hover:bg-[var(--sardis-orange)]/90 transition-colors">
+          <a href="mailto:contact@sardis.sh"
+            className="px-4 py-2 bg-[var(--sardis-orange)] text-[#fff] text-sm font-mono hover:bg-[var(--sardis-orange)]/90 transition-colors">
             Contact
           </a>
         </div>

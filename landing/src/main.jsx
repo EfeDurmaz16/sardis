@@ -14,7 +14,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import { Analytics } from '@vercel/analytics/react'
-import App from './App.jsx'
 import DocsLayout from './docs/DocsLayout.jsx'
 import DocsOverview from './docs/pages/Overview.jsx'
 import DocsQuickstart from './docs/pages/Quickstart.jsx'
@@ -55,15 +54,12 @@ import DocsBlockchainInfrastructure from './docs/pages/BlockchainInfrastructure.
 import DocsArchitecture from './docs/pages/Architecture.jsx'
 import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
 import DocsSecurity from './docs/pages/Security.jsx'
-import DocsDeployment from './docs/pages/Deployment.jsx'
 import DocsFAQ from './docs/pages/FAQ.jsx'
 import DocsTroubleshooting from './docs/pages/Troubleshooting.jsx'
 import DocsComparison from './docs/pages/Comparison.jsx'
 import DocsBlog from './docs/pages/Blog.jsx'
 import DocsChangelog from './docs/pages/Changelog.jsx'
-import DocsRoadmap from './docs/pages/Roadmap.jsx'
 import DocsRuntimeGuardrails from './docs/pages/RuntimeGuardrails.jsx'
-import DocsProviderDiligence from './docs/pages/ProviderDiligence.jsx'
 // Legal
 import TermsOfService from './docs/pages/TermsOfService.jsx'
 import PrivacyPolicy from './docs/pages/PrivacyPolicy.jsx'
@@ -78,22 +74,11 @@ import SDKRelease from './docs/pages/blog/SDKRelease.jsx'
 import PolicyEngineDeepDive from './docs/pages/blog/PolicyEngineDeepDive.jsx'
 import SardisV05Protocols from './docs/pages/blog/SardisV05Protocols.jsx'
 import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
-import MCP36Tools from './docs/pages/blog/MCP36Tools.jsx'
-import WhySardis from './docs/pages/blog/WhySardis.jsx'
-import FiatRails from './docs/pages/blog/FiatRails.jsx'
-import SardisV07ProductionHardening from './docs/pages/blog/SardisV07ProductionHardening.jsx'
-import SardisV081ProtocolConformance from './docs/pages/blog/SardisV081ProtocolConformance.jsx'
-import SardisV082ReleaseReadiness from './docs/pages/blog/SardisV082ReleaseReadiness.jsx'
-import SardisV083DemoOpsCloudDeploy from './docs/pages/blog/SardisV083DemoOpsCloudDeploy.jsx'
 import SardisV084PackagesLive from './docs/pages/blog/SardisV084PackagesLive.jsx'
-import SardisV087LaunchHardening from './docs/pages/blog/SardisV087LaunchHardening.jsx'
-import SardisV09MultiProviderFiat from './docs/pages/blog/SardisV09MultiProviderFiat.jsx'
 import SardisAIAgentPayments from './docs/pages/blog/SardisAIAgentPayments.jsx'
-import SardisV095StrictLiveOps from './docs/pages/blog/SardisV095StrictLiveOps.jsx'
 // Standalone pages
 import Playground from './pages/Playground.jsx'
 import Demo from './pages/Demo.jsx'
-import Dashboard from './pages/Dashboard.jsx'
 import Enterprise from './pages/Enterprise.jsx'
 import LandingV2 from './pages/LandingV2.jsx'
 import Signup from './pages/Signup.jsx'
@@ -110,10 +95,9 @@ createRoot(document.getElementById('root')).render(
       <Analytics />
       <Routes>
         <Route path="/" element={<LandingV2 />} />
-        <Route path="/v1" element={<App />} />
+        {/* Hidden for prod: /v1 (legacy), /dashboard (mockup) */}
         <Route path="/playground" element={<Playground />} />
         <Route path="/demo" element={<Demo />} />
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/enterprise" element={<Enterprise />} />
         <Route path="/solutions/agent-platforms" element={<AgentPlatformsPage />} />
         <Route path="/solutions/procurement" element={<ProcurementPage />} />
@@ -161,11 +145,10 @@ createRoot(document.getElementById('root')).render(
           <Route path="architecture" element={<DocsArchitecture />} />
           <Route path="whitepaper" element={<DocsWhitepaper />} />
           <Route path="security" element={<DocsSecurity />} />
-          <Route path="deployment" element={<DocsDeployment />} />
+          {/* Hidden for prod: deployment (staging URLs), provider-diligence (internal GitHub links), roadmap (stale) */}
           <Route path="faq" element={<DocsFAQ />} />
           <Route path="troubleshooting" element={<DocsTroubleshooting />} />
           <Route path="comparison" element={<DocsComparison />} />
-          <Route path="provider-diligence" element={<DocsProviderDiligence />} />
           <Route path="runtime-guardrails" element={<DocsRuntimeGuardrails />} />
           <Route path="blog" element={<DocsBlog />} />
           <Route path="blog/introducing-sardis" element={<IntroducingSardis />} />
@@ -176,21 +159,10 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog/policy-engine-deep-dive" element={<PolicyEngineDeepDive />} />
           <Route path="blog/sardis-v0-5-protocols" element={<SardisV05Protocols />} />
           <Route path="blog/understanding-ap2" element={<UnderstandingAP2 />} />
-          <Route path="blog/mcp-46-tools" element={<MCP36Tools />} />
-          <Route path="blog/mcp-36-tools" element={<MCP36Tools />} />
-          <Route path="blog/why-sardis" element={<WhySardis />} />
-          <Route path="blog/fiat-rails" element={<FiatRails />} />
-          <Route path="blog/sardis-v0-7-production-hardening" element={<SardisV07ProductionHardening />} />
-          <Route path="blog/sardis-v0-8-1-protocol-conformance" element={<SardisV081ProtocolConformance />} />
-          <Route path="blog/sardis-v0-8-2-release-readiness" element={<SardisV082ReleaseReadiness />} />
-          <Route path="blog/sardis-v0-8-3-demo-ops-cloud-deploy" element={<SardisV083DemoOpsCloudDeploy />} />
+          {/* Hidden for prod: internal release notes, false Lithic claims, deployment details */}
           <Route path="blog/sardis-v0-8-4-packages-live" element={<SardisV084PackagesLive />} />
-          <Route path="blog/sardis-v0-8-7-launch-hardening" element={<SardisV087LaunchHardening />} />
-          <Route path="blog/sardis-v0-9-0-multi-provider-fiat" element={<SardisV09MultiProviderFiat />} />
           <Route path="blog/sardis-ai-agent-payments" element={<SardisAIAgentPayments />} />
-          <Route path="blog/sardis-v0-9-5-strict-live-ops-hardening" element={<SardisV095StrictLiveOps />} />
           <Route path="changelog" element={<DocsChangelog />} />
-          <Route path="roadmap" element={<DocsRoadmap />} />
           {/* Legal */}
           <Route path="terms" element={<TermsOfService />} />
           <Route path="privacy" element={<PrivacyPolicy />} />

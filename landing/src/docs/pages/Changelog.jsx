@@ -52,7 +52,7 @@ const releases = [
       {
         type: 'added',
         items: [
-          'Strict live-mode hardening lane documented across docs/roadmap/changelog with provider certification checklist',
+          'Strict live-mode hardening lane documented across docs/changelog with provider certification checklist',
           'PagerDuty alert routing configuration and DR metrics evidence capture pipeline for production incidents',
           'Secure checkout runtime posture surfaced in dashboard demo flow (checkout, ASA, A2A trust policy preflight)',
           'Release artifact docs expanded for idempotency/replay proof and compliance evidence manifests',
@@ -186,7 +186,7 @@ const releases = [
       {
         type: 'improved',
         items: [
-          'Landing and roadmap documentation aligned with zero-trust control plane rollout',
+          'Landing documentation aligned with zero-trust control plane rollout',
           'Operational controls clarified for approval escalation and auditable mutation history',
         ]
       },

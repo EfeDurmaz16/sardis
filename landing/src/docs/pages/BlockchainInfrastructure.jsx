@@ -232,7 +232,7 @@ contract SardisAgentWallet {
         </ul>
         <div className="not-prose p-4 border border-emerald-500/20 bg-emerald-500/5">
           <p className="text-sm text-muted-foreground">
-            <strong className="text-emerald-500">Supported:</strong> ERC-4337 account abstraction is available on Base via Circle Paymaster for gasless USDC transactions. See the <a href="/docs/roadmap" className="text-[var(--sardis-orange)] hover:underline">Roadmap</a> for multi-chain rollout.
+            <strong className="text-emerald-500">Supported:</strong> ERC-4337 account abstraction is available on Base via Circle Paymaster for gasless USDC transactions. Multi-chain rollout is in progress.
           </p>
         </div>
       </section>

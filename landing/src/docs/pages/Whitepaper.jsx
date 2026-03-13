@@ -155,7 +155,7 @@ export default function DocsWhitepaper() {
 
         <div className="not-prose grid md:grid-cols-2 gap-4">
           <div className="p-4 border border-emerald-500/30 bg-emerald-500/5">
-            <h4 className="font-bold font-display text-emerald-500 mb-2">Open Source (MIT)</h4>
+            <h4 className="font-bold font-display text-emerald-500 mb-2">Open Source</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Python SDK</li>
               <li>• TypeScript SDK</li>
