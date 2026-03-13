@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import WaitlistModal from '../components/WaitlistModal';
 
 import '@fontsource/space-grotesk/400.css';
 import '@fontsource/space-grotesk/500.css';
@@ -67,8 +68,8 @@ const PLANS = [
     tagline: 'Get started with no credit card.',
     highlighted: false,
     badge: null,
-    cta: 'Get Started Free',
-    ctaTo: '/signup',
+    cta: 'Join Waitlist',
+    ctaTo: null,
     features: [
       { label: '1,000 API calls / mo', included: true },
       { label: '2 agents', included: true },
@@ -88,8 +89,8 @@ const PLANS = [
     tagline: 'For small teams shipping fast.',
     highlighted: false,
     badge: null,
-    cta: 'Start Free Trial',
-    ctaTo: '/signup?plan=starter',
+    cta: 'Join Waitlist',
+    ctaTo: null,
     features: [
       { label: '50,000 API calls / mo', included: true },
       { label: '10 agents', included: true },
@@ -109,8 +110,8 @@ const PLANS = [
     tagline: 'Scale your agent fleet with confidence.',
     highlighted: true,
     badge: 'Most Popular',
-    cta: 'Start Free Trial',
-    ctaTo: '/signup?plan=growth',
+    cta: 'Join Waitlist',
+    ctaTo: null,
     features: [
       { label: '500,000 API calls / mo', included: true },
       { label: '100 agents', included: true },
@@ -212,7 +213,7 @@ function FAQItem({ q, a }) {
 }
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
-function PlanCard({ plan }) {
+function PlanCard({ plan, onOpenWaitlist }) {
   const borderColor = plan.highlighted
     ? '1px solid rgba(99,102,241,0.6)'
     : '1px solid rgba(255,255,255,0.08)';
@@ -274,36 +275,69 @@ function PlanCard({ plan }) {
       </p>
 
       {/* CTA */}
-      <Link
-        to={plan.ctaTo}
-        className="block w-full text-center rounded-lg py-2.5 text-sm font-medium mb-6 transition-colors"
-        style={{
-          fontFamily: "'Inter', sans-serif",
-          ...(plan.highlighted
-            ? { background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)', color: '#fff' }
-            : {
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#E0E0E0',
-              }),
-        }}
-        onMouseEnter={(e) => {
-          if (plan.highlighted) {
-            e.currentTarget.style.filter = 'brightness(1.12)';
-          } else {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (plan.highlighted) {
-            e.currentTarget.style.filter = 'brightness(1)';
-          } else {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-          }
-        }}
-      >
-        {plan.cta}
-      </Link>
+      {plan.ctaTo ? (
+        <Link
+          to={plan.ctaTo}
+          className="block w-full text-center rounded-lg py-2.5 text-sm font-medium mb-6 transition-colors"
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            ...(plan.highlighted
+              ? { background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)', color: '#fff' }
+              : {
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#E0E0E0',
+                }),
+          }}
+          onMouseEnter={(e) => {
+            if (plan.highlighted) {
+              e.currentTarget.style.filter = 'brightness(1.12)';
+            } else {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (plan.highlighted) {
+              e.currentTarget.style.filter = 'brightness(1)';
+            } else {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+            }
+          }}
+        >
+          {plan.cta}
+        </Link>
+      ) : (
+        <button
+          onClick={onOpenWaitlist}
+          className="block w-full text-center rounded-lg py-2.5 text-sm font-medium mb-6 transition-colors cursor-pointer"
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            ...(plan.highlighted
+              ? { background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)', color: '#fff', border: 'none' }
+              : {
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#E0E0E0',
+                }),
+          }}
+          onMouseEnter={(e) => {
+            if (plan.highlighted) {
+              e.currentTarget.style.filter = 'brightness(1.12)';
+            } else {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (plan.highlighted) {
+              e.currentTarget.style.filter = 'brightness(1)';
+            } else {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+            }
+          }}
+        >
+          {plan.cta}
+        </button>
+      )}
 
       {/* Divider */}
       <div className="w-full h-px mb-6" style={{ background: 'rgba(255,255,255,0.06)' }} />
@@ -371,13 +405,13 @@ function MinimalNav() {
               Pricing
             </a>
             <Link
-              to="/signup"
+              to="/"
               className="text-[14px] font-medium text-white rounded-lg transition-colors duration-200 px-4 py-2"
               style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#2563EB' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
             >
-              Get Started
+              Join Waitlist
             </Link>
           </div>
         </div>
@@ -388,6 +422,8 @@ function MinimalNav() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Pricing() {
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#050506' }}>
       <MinimalNav />
@@ -427,7 +463,7 @@ export default function Pricing() {
       <section className="max-w-[1200px] mx-auto px-5 md:px-10 pt-12 pb-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} />
+            <PlanCard key={plan.name} plan={plan} onOpenWaitlist={() => setWaitlistOpen(true)} />
           ))}
         </div>
 
@@ -480,15 +516,15 @@ export default function Pricing() {
             figure out the best fit.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              to="/signup"
-              className="rounded-lg py-3 px-6 text-sm font-medium text-white text-center transition-colors"
-              style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#2563EB' }}
+            <button
+              onClick={() => setWaitlistOpen(true)}
+              className="rounded-lg py-3 px-6 text-sm font-medium text-white text-center transition-colors cursor-pointer"
+              style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#2563EB', border: 'none' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
             >
-              Start for free
-            </Link>
+              Join the Waitlist
+            </button>
             <Link
               to="/enterprise"
               className="rounded-lg py-3 px-6 text-sm font-medium text-center transition-colors"
@@ -526,6 +562,8 @@ export default function Pricing() {
           </Link>
         </p>
       </footer>
+
+      <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
     </div>
   );
 }
