@@ -101,7 +101,8 @@ async def lifespan(app: FastAPI):
     ):
         try:
             from sardis_v2_core.database import init_database
-            await init_database()
+            db_init_timeout = float(os.getenv("SARDIS_DB_INIT_TIMEOUT_SECONDS", "10"))
+            await asyncio.wait_for(init_database(), timeout=db_init_timeout)
             logger.info("Database schema initialized")
         except Exception as e:  # noqa: BLE001
             env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
@@ -515,8 +516,10 @@ async def lifespan(app: FastAPI):
         # signing keys, so every request to a TAP-protected endpoint will be
         # rejected with a 401. Starting the API in this state would make it
         # appear healthy while refusing all authenticated traffic.
+        tap_default = "enabled" if env in ("prod", "production") else "disabled"
+        tap_enforcement = os.getenv("SARDIS_TAP_ENFORCEMENT", tap_default).strip().lower()
         tap_jwks_url = os.getenv("SARDIS_TAP_JWKS_URL")
-        if not tap_jwks_url:
+        if tap_enforcement == "enabled" and not tap_jwks_url:
             raise RuntimeError(
                 "PRODUCTION GUARD: SARDIS_TAP_JWKS_URL not set. "
                 "TAP signature verification cannot function without a JWKS "

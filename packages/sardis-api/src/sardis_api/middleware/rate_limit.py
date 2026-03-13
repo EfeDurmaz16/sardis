@@ -1,6 +1,7 @@
 """Rate limiting middleware for Sardis API."""
 from __future__ import annotations
 
+import asyncio
 import inspect
 import logging
 import os
@@ -15,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 _logger = logging.getLogger("sardis.api.rate_limit")
+_REDIS_TIMEOUT_SECONDS = 1.0
 
 # SECURITY: Only trust X-Forwarded-For from known reverse proxy IPs.
 # Without this, any client can spoof the header to bypass rate limits.
@@ -86,13 +88,20 @@ class RedisRateLimiter:
         self.config = config
         self._redis_url = redis_url
         self._redis = None
+        self._fallback = InMemoryRateLimiter(config)
 
     def _get_redis(self):
         """Lazy Redis connection."""
         if self._redis is None:
             try:
                 import redis.asyncio as redis
-                self._redis = redis.from_url(self._redis_url, decode_responses=True)
+                self._redis = redis.from_url(
+                    self._redis_url,
+                    decode_responses=True,
+                    socket_timeout=_REDIS_TIMEOUT_SECONDS,
+                    socket_connect_timeout=_REDIS_TIMEOUT_SECONDS,
+                    retry_on_timeout=False,
+                )
             except ImportError:
                 raise RuntimeError(
                     "redis package required for RedisRateLimiter. "
@@ -139,8 +148,17 @@ class RedisRateLimiter:
         pipe.zcard(hour_key)
         pipe.zadd(hour_key, {str(now): now})
         pipe.expire(hour_key, 7200)
-
-        results = await pipe.execute()
+        try:
+            results = await asyncio.wait_for(
+                pipe.execute(),
+                timeout=_REDIS_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            _logger.warning(
+                "Redis rate limiter unavailable; falling back to in-memory limiter: %s",
+                exc,
+            )
+            return self._fallback.check_rate_limit(request)
         minute_count = results[1]
         hour_count = results[5]
 

@@ -22,13 +22,17 @@ def _normalized_database_url(env_var: str = "DATABASE_URL") -> str:
 
 def _pool_kwargs(database_url: str) -> dict:
     """Build connection pool kwargs, auto-detecting Neon."""
-    min_size = int(os.getenv("SARDIS_DB_POOL_MIN", "5"))
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    default_min_size = "5" if env in {"prod", "production"} else "0"
+    min_size = int(os.getenv("SARDIS_DB_POOL_MIN", default_min_size))
     max_size = int(os.getenv("SARDIS_DB_POOL_MAX", "30"))
+    connect_timeout = float(os.getenv("SARDIS_DB_CONNECT_TIMEOUT_SECONDS", "5"))
 
     pool_kwargs: dict = {
         "min_size": min_size,
         "max_size": max_size,
         "command_timeout": 60,
+        "timeout": connect_timeout,
     }
 
     if "neon" in database_url:

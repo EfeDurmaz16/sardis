@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 _CHECKOUT_CHAIN = os.getenv("SARDIS_CHECKOUT_CHAIN", "base")
 from datetime import UTC
@@ -30,6 +31,179 @@ public_router = APIRouter()
 def _fmt_amount(d: Decimal) -> str:
     """Format Decimal to clean string (strip trailing zeros)."""
     return f"{d:.2f}"
+
+
+_DEMO_SESSION_PREFIX = "sardis:merchant-checkout:demo:"
+_DEMO_SESSION_TTL_SECONDS = 1800
+_DEMO_SESSION_REDIS_TIMEOUT_SECONDS = 1.0
+_DEMO_SESSIONS_FALLBACK: dict[str, str] = {}
+
+
+def _demo_session_key(client_secret: str) -> str:
+    return f"{_DEMO_SESSION_PREFIX}{client_secret}"
+
+
+def _demo_session_redis_url() -> str | None:
+    return (
+        os.getenv("SARDIS_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or os.getenv("UPSTASH_REDIS_URL")
+    )
+
+
+def _demo_session_ttl_seconds(session: Any) -> int:
+    ttl = _DEMO_SESSION_TTL_SECONDS
+    if session.expires_at:
+        ttl = max(
+            int((session.expires_at - datetime.now(UTC)).total_seconds()),
+            60,
+        )
+    return ttl
+
+
+def _get_demo_redis_client(redis_url: str):
+    import redis.asyncio as aioredis
+
+    return aioredis.from_url(
+        redis_url,
+        decode_responses=True,
+        socket_timeout=_DEMO_SESSION_REDIS_TIMEOUT_SECONDS,
+        socket_connect_timeout=_DEMO_SESSION_REDIS_TIMEOUT_SECONDS,
+        retry_on_timeout=False,
+    )
+
+
+async def _close_demo_redis_client(client: Any) -> None:
+    try:
+        await asyncio.wait_for(client.aclose(), timeout=_DEMO_SESSION_REDIS_TIMEOUT_SECONDS)
+    except Exception:
+        logger.debug("Ignoring demo Redis client close error", exc_info=True)
+
+
+def _is_demo_session(session: Any) -> bool:
+    metadata = getattr(session, "metadata", {}) or {}
+    return bool(metadata.get("test_session"))
+
+
+def _serialize_demo_session(session: Any) -> str:
+    payload = {
+        "session_id": session.session_id,
+        "client_secret": session.client_secret,
+        "merchant_id": session.merchant_id,
+        "payer_wallet_id": session.payer_wallet_id,
+        "payer_wallet_address": session.payer_wallet_address,
+        "amount": str(session.amount),
+        "currency": session.currency,
+        "description": session.description,
+        "status": session.status,
+        "payment_method": session.payment_method,
+        "tx_hash": session.tx_hash,
+        "settlement_tx_hash": session.settlement_tx_hash,
+        "settlement_status": session.settlement_status,
+        "offramp_id": session.offramp_id,
+        "success_url": session.success_url,
+        "cancel_url": session.cancel_url,
+        "metadata": session.metadata,
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+        "idempotency_key": session.idempotency_key,
+        "platform_fee_amount": str(session.platform_fee_amount),
+        "net_amount": str(session.net_amount) if session.net_amount is not None else None,
+        "embed_origin": session.embed_origin,
+        "created_at": session.created_at.isoformat(),
+        "updated_at": session.updated_at.isoformat(),
+    }
+    return json.dumps(payload)
+
+
+def _deserialize_demo_session(payload: str):
+    from sardis_v2_core.merchant import MerchantCheckoutSession
+
+    data = json.loads(payload)
+    return MerchantCheckoutSession(
+        session_id=data["session_id"],
+        client_secret=data["client_secret"],
+        merchant_id=data["merchant_id"],
+        payer_wallet_id=data.get("payer_wallet_id"),
+        payer_wallet_address=data.get("payer_wallet_address"),
+        amount=Decimal(data["amount"]),
+        currency=data["currency"],
+        description=data.get("description"),
+        status=data["status"],
+        payment_method=data.get("payment_method"),
+        tx_hash=data.get("tx_hash"),
+        settlement_tx_hash=data.get("settlement_tx_hash"),
+        settlement_status=data.get("settlement_status"),
+        offramp_id=data.get("offramp_id"),
+        success_url=data.get("success_url"),
+        cancel_url=data.get("cancel_url"),
+        metadata=data.get("metadata") or {},
+        expires_at=datetime.fromisoformat(data["expires_at"]) if data.get("expires_at") else None,
+        idempotency_key=data.get("idempotency_key"),
+        platform_fee_amount=Decimal(data["platform_fee_amount"]),
+        net_amount=Decimal(data["net_amount"]) if data.get("net_amount") is not None else None,
+        embed_origin=data.get("embed_origin"),
+        created_at=datetime.fromisoformat(data["created_at"]),
+        updated_at=datetime.fromisoformat(data["updated_at"]),
+    )
+
+
+async def _load_demo_session(client_secret: str):
+    redis_url = _demo_session_redis_url()
+    payload: str | None = None
+    if redis_url:
+        client = None
+        try:
+            client = _get_demo_redis_client(redis_url)
+            payload = await asyncio.wait_for(
+                client.get(_demo_session_key(client_secret)),
+                timeout=_DEMO_SESSION_REDIS_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.warning("Falling back to in-memory demo session lookup", exc_info=True)
+        finally:
+            if client is not None:
+                await _close_demo_redis_client(client)
+    if payload is None:
+        payload = _DEMO_SESSIONS_FALLBACK.get(client_secret)
+    if not payload:
+        return None
+    return _deserialize_demo_session(payload)
+
+
+async def _save_demo_session(session: Any) -> None:
+    payload = _serialize_demo_session(session)
+    redis_url = _demo_session_redis_url()
+    if redis_url:
+        client = None
+        try:
+            client = _get_demo_redis_client(redis_url)
+            await asyncio.wait_for(
+                client.set(
+                    _demo_session_key(session.client_secret),
+                    payload,
+                    ex=_demo_session_ttl_seconds(session),
+                ),
+                timeout=_DEMO_SESSION_REDIS_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.warning("Falling back to in-memory demo session persistence", exc_info=True)
+            _DEMO_SESSIONS_FALLBACK[session.client_secret] = payload
+            return
+        finally:
+            if client is not None:
+                await _close_demo_redis_client(client)
+    else:
+        _DEMO_SESSIONS_FALLBACK[session.client_secret] = payload
+
+
+async def _persist_session(session: Any, deps: "MerchantCheckoutDependencies", **updates: Any):
+    if _is_demo_session(session):
+        for key, value in updates.items():
+            setattr(session, key, value)
+        session.updated_at = datetime.now(UTC)
+        await _save_demo_session(session)
+        return
+    await deps.merchant_repo.update_session(session.session_id, **updates)
 
 
 # ── Request / Response Models ──────────────────────────────────────
@@ -212,6 +386,9 @@ async def get_session(
 
 async def _get_session_by_secret(client_secret: str, deps: MerchantCheckoutDependencies):
     """Helper to look up session by client_secret and raise 404 if not found."""
+    demo_session = await _load_demo_session(client_secret)
+    if demo_session:
+        return demo_session
     session = await deps.merchant_repo.get_session_by_secret(client_secret)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -225,25 +402,33 @@ async def get_session_details(
 ):
     """Get checkout info for the hosted checkout page (public, no auth)."""
     session = await _get_session_by_secret(client_secret, deps)
+    session_metadata = getattr(session, "metadata", {}) or {}
 
-    merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
-    if not merchant:
-        raise HTTPException(status_code=404, detail="Merchant not found")
+    merchant_name = session_metadata.get("merchant_name") or "Sardis Demo Store"
+    merchant_logo_url = session_metadata.get("merchant_logo_url")
+    settlement_address: str | None = session_metadata.get("settlement_address")
 
-    # Resolve merchant's settlement wallet address for external wallet payments
-    settlement_address: str | None = None
-    if merchant.settlement_wallet_id and deps.wallet_manager:
-        try:
-            wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
-            if wallet:
-                settlement_address = wallet.get_address(_CHECKOUT_CHAIN) or None
-        except Exception:
-            logger.warning("Failed to resolve settlement address for merchant %s", merchant.merchant_id)
+    if not _is_demo_session(session):
+        merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
+        if not merchant:
+            raise HTTPException(status_code=404, detail="Merchant not found")
+        merchant_name = merchant.name
+        merchant_logo_url = merchant.logo_url
+
+        # Resolve merchant's settlement wallet address for external wallet payments
+        settlement_address = None
+        if merchant.settlement_wallet_id and deps.wallet_manager:
+            try:
+                wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
+                if wallet:
+                    settlement_address = wallet.get_address(_CHECKOUT_CHAIN) or None
+            except Exception:
+                logger.warning("Failed to resolve settlement address for merchant %s", merchant.merchant_id)
 
     return SessionDetailsResponse(
         session_id=session.session_id,
-        merchant_name=merchant.name,
-        merchant_logo_url=merchant.logo_url,
+        merchant_name=merchant_name,
+        merchant_logo_url=merchant_logo_url,
         amount=_fmt_amount(session.amount),
         currency=session.currency,
         description=session.description,
@@ -269,7 +454,7 @@ async def connect_wallet(
 
     from datetime import datetime
     if session.expires_at and datetime.now(UTC) > session.expires_at:
-        await deps.merchant_repo.update_session(session.session_id, status="expired")
+        await _persist_session(session, deps, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
     # Look up the wallet's on-chain address
@@ -285,7 +470,7 @@ async def connect_wallet(
     update_kwargs: dict[str, Any] = {"payer_wallet_id": body.wallet_id}
     if wallet_address:
         update_kwargs["payer_wallet_address"] = wallet_address
-    await deps.merchant_repo.update_session(session.session_id, **update_kwargs)
+    await _persist_session(session, deps, **update_kwargs)
     return {
         "status": "connected",
         "session_id": session.session_id,
@@ -410,7 +595,7 @@ async def get_connect_params(
 
     from datetime import datetime
     if session.expires_at and datetime.now(UTC) > session.expires_at:
-        await deps.merchant_repo.update_session(session.session_id, status="expired")
+        await _persist_session(session, deps, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
     chain_id = get_checkout_chain_id()
@@ -456,7 +641,7 @@ async def connect_external_wallet(
 
     from datetime import datetime
     if session.expires_at and datetime.now(UTC) > session.expires_at:
-        await deps.merchant_repo.update_session(session.session_id, status="expired")
+        await _persist_session(session, deps, status="expired")
         raise HTTPException(status_code=400, detail="Session has expired")
 
     # Determine if this is an EIP-712 request (has session_id, chain_id, nonce)
@@ -532,8 +717,9 @@ async def connect_external_wallet(
                 detail="Signed message does not match this session",
             )
 
-    await deps.merchant_repo.update_session(
-        session.session_id,
+    await _persist_session(
+        session,
+        deps,
         payer_wallet_address=body.address,
         payment_method="external_wallet",
     )
@@ -587,15 +773,17 @@ async def confirm_external_payment(
 
     # On-chain verification: verify the tx actually transferred the correct
     # amount to the merchant's settlement address before marking as paid
-    merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
-    settlement_address: str | None = None
-    if merchant and merchant.settlement_wallet_id and deps.wallet_manager:
-        try:
-            wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
-            if wallet:
-                settlement_address = wallet.get_address(_CHECKOUT_CHAIN) or None
-        except Exception:
-            logger.warning("Failed to resolve settlement address for verification")
+    session_metadata = getattr(session, "metadata", {}) or {}
+    settlement_address: str | None = session_metadata.get("settlement_address")
+    if not settlement_address:
+        merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
+        if merchant and merchant.settlement_wallet_id and deps.wallet_manager:
+            try:
+                wallet = await deps.wallet_manager.get_wallet(merchant.settlement_wallet_id)
+                if wallet:
+                    settlement_address = wallet.get_address(_CHECKOUT_CHAIN) or None
+            except Exception:
+                logger.warning("Failed to resolve settlement address for verification")
 
     if not settlement_address:
         logger.error(
@@ -625,8 +813,9 @@ async def confirm_external_payment(
             detail=f"On-chain verification failed: {verification.error}",
         )
 
-    await deps.merchant_repo.update_session(
-        session.session_id,
+    await _persist_session(
+        session,
+        deps,
         status="paid",
         tx_hash=body.tx_hash,
     )
@@ -634,7 +823,7 @@ async def confirm_external_payment(
     # Fire webhook
     try:
         from sardis_checkout.merchant_webhooks import fire_webhook
-        merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
+        merchant = None if _is_demo_session(session) else await deps.merchant_repo.get_merchant(session.merchant_id)
         if merchant and merchant.webhook_url:
             await fire_webhook(
                 deps.merchant_repo,
@@ -693,37 +882,36 @@ async def create_test_session(
             detail="Test sessions are not available in production",
         )
 
-    from datetime import datetime, timedelta
-
-    from sardis_checkout.models import CheckoutRequest
-
     test_merchant_id = os.getenv("SARDIS_TEST_MERCHANT_ID", "merch_test_staging")
+    test_merchant_name = os.getenv("SARDIS_TEST_MERCHANT_NAME", "Sardis Demo Store")
+    test_description = os.getenv("SARDIS_TEST_SESSION_DESCRIPTION", "Premium Plan — Monthly")
     test_settlement_address = os.getenv(
         "SARDIS_TEST_SETTLEMENT_ADDRESS",
         "0x0000000000000000000000000000000000000000",
     )
+    from sardis_v2_core.merchant import MerchantCheckoutSession
 
-    request = CheckoutRequest(
-        agent_id=f"merchant_{test_merchant_id}",
-        wallet_id="",
-        mandate_id="",
-        amount=Decimal("9.99"),
+    session = MerchantCheckoutSession(
+        merchant_id=test_merchant_id,
+        amount=Decimal("49.99"),
         currency="USDC",
-        description="Sardis Checkout — Staging Test",
+        description=test_description,
+        status="pending",
+        expires_at=datetime.now(UTC) + timedelta(seconds=_DEMO_SESSION_TTL_SECONDS),
         metadata={
             "merchant_id": test_merchant_id,
+            "merchant_name": test_merchant_name,
+            "merchant_logo_url": None,
             "test_session": True,
             "settlement_address": test_settlement_address,
         },
     )
-
-    response = await deps.sardis_connector.create_checkout_session(request)
-    client_secret = response.metadata.get("client_secret", "")
+    await _save_demo_session(session)
 
     return TestSessionResponse(
-        session_id=response.checkout_id,
-        client_secret=client_secret,
-        checkout_url=f"{deps.checkout_base_url}/s/{client_secret}",
+        session_id=session.session_id,
+        client_secret=session.client_secret,
+        checkout_url=f"{deps.checkout_base_url}/s/{session.client_secret}",
         settlement_address=test_settlement_address,
     )
 

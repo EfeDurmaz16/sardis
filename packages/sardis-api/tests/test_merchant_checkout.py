@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
+import types
 from pathlib import Path
 
 # Ensure local packages are importable (mirrors conftest.py but avoids create_app)
@@ -518,6 +519,78 @@ class TestRequestValidation:
         from sardis_api.routers.merchants import CreateMerchantRequest
         with pytest.raises(Exception):
             CreateMerchantRequest(name="Test", platform_fee_bps=600)
+
+
+class _FakeRedisClient:
+    def __init__(self, *, get_result=None, get_exc: Exception | None = None, set_exc: Exception | None = None):
+        self.get_result = get_result
+        self.get_exc = get_exc
+        self.set_exc = set_exc
+
+    async def get(self, key):
+        if self.get_exc:
+            raise self.get_exc
+        return self.get_result
+
+    async def set(self, key, value, ex=None):
+        if self.set_exc:
+            raise self.set_exc
+        return True
+
+    async def aclose(self):
+        return None
+
+
+class TestDemoSessionPersistence:
+    @pytest.fixture(autouse=True)
+    def clear_demo_sessions(self):
+        from sardis_api.routers import merchant_checkout as merchant_checkout_router
+
+        merchant_checkout_router._DEMO_SESSIONS_FALLBACK.clear()
+        yield
+        merchant_checkout_router._DEMO_SESSIONS_FALLBACK.clear()
+
+    def _install_fake_redis(self, monkeypatch: pytest.MonkeyPatch, client: _FakeRedisClient):
+        redis_module = types.ModuleType("redis")
+        redis_async_module = types.ModuleType("redis.asyncio")
+        redis_async_module.from_url = lambda *args, **kwargs: client
+        redis_module.asyncio = redis_async_module
+        monkeypatch.setitem(sys.modules, "redis", redis_module)
+        monkeypatch.setitem(sys.modules, "redis.asyncio", redis_async_module)
+
+    @pytest.mark.asyncio
+    async def test_save_demo_session_falls_back_when_redis_write_times_out(self, monkeypatch: pytest.MonkeyPatch):
+        from sardis_api.routers import merchant_checkout as merchant_checkout_router
+
+        session = _make_session(metadata={"test_session": True})
+        self._install_fake_redis(
+            monkeypatch,
+            _FakeRedisClient(set_exc=TimeoutError("redis write timed out")),
+        )
+        monkeypatch.setenv("SARDIS_REDIS_URL", "redis://demo")
+
+        await merchant_checkout_router._save_demo_session(session)
+
+        assert session.client_secret in merchant_checkout_router._DEMO_SESSIONS_FALLBACK
+
+    @pytest.mark.asyncio
+    async def test_load_demo_session_falls_back_when_redis_read_times_out(self, monkeypatch: pytest.MonkeyPatch):
+        from sardis_api.routers import merchant_checkout as merchant_checkout_router
+
+        session = _make_session(metadata={"test_session": True})
+        payload = merchant_checkout_router._serialize_demo_session(session)
+        merchant_checkout_router._DEMO_SESSIONS_FALLBACK[session.client_secret] = payload
+
+        self._install_fake_redis(
+            monkeypatch,
+            _FakeRedisClient(get_exc=TimeoutError("redis read timed out")),
+        )
+        monkeypatch.setenv("SARDIS_REDIS_URL", "redis://demo")
+
+        loaded = await merchant_checkout_router._load_demo_session(session.client_secret)
+
+        assert loaded is not None
+        assert loaded.client_secret == session.client_secret
 
     def test_create_merchant_valid(self):
         from sardis_api.routers.merchants import CreateMerchantRequest
