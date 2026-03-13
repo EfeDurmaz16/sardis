@@ -63,6 +63,9 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     /// @notice Snapshot of the protocol fee charged when a job was funded
     mapping(uint256 => uint256) public jobFees;
 
+    /// @notice Snapshot of fee recipient at fund time
+    mapping(uint256 => address) public jobFeeRecipients;
+
     /// @notice Protocol fee in basis points
     uint256 public feeBps;
 
@@ -221,6 +224,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
         IERC20(job.token).safeTransferFrom(msg.sender, address(this), totalDeposit);
 
         jobFees[jobId] = fee;
+        jobFeeRecipients[jobId] = feeRecipient;
         job.status = JobStatus.Funded;
 
         emit JobFunded(jobId, msg.sender, job.budget);
@@ -272,9 +276,9 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
         IERC20(job.token).safeTransfer(job.provider, job.budget);
         emit PaymentReleased(jobId, job.provider, job.budget, fee);
 
-        // Pay fee
+        // Pay fee to snapshotted recipient
         if (fee > 0) {
-            IERC20(job.token).safeTransfer(feeRecipient, fee);
+            IERC20(job.token).safeTransfer(jobFeeRecipients[jobId], fee);
         }
 
         emit JobCompleted(jobId, msg.sender, reason);
@@ -325,6 +329,7 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     /// @inheritdoc IJob
     function claimRefund(uint256 jobId) external override whenNotPaused nonReentrant {
         Job storage job = _getJob(jobId);
+        if (msg.sender != job.client) revert NotClient();
         // Can only expire funded or submitted jobs
         if (job.status != JobStatus.Funded && job.status != JobStatus.Submitted) {
             revert InvalidJobStatus(job.status, JobStatus.Funded);
@@ -400,18 +405,26 @@ contract SardisJobManager is IJob, ReentrancyGuard, Pausable, Ownable {
     function _callBeforeHook(address hook, uint256 jobId, bytes4 selector, bytes memory data) internal {
         if (hook == address(0)) return;
 
+        uint256 gasBefore = gasleft();
         (bool success, bytes memory returnData) =
             hook.call{ gas: HOOK_GAS_LIMIT }(abi.encodeCall(IACPHook.beforeAction, (jobId, selector, data)));
 
         if (!success) {
-            // Distinguish between explicit revert (has return data) and gas exhaustion
-            // Explicit revert → propagate (hook is blocking the action)
-            // Gas exhaustion (empty returnData) → fail-open (continue)
-            if (returnData.length > 0) {
-                // Propagate the hook's revert reason
-                assembly {
-                    revert(add(returnData, 32), mload(returnData))
+            // Distinguish between explicit revert and gas exhaustion
+            uint256 gasAfter = gasleft();
+            uint256 gasUsed = gasBefore - gasAfter;
+
+            // If most of the allocated gas was consumed, it's likely gas exhaustion → fail-open
+            // Otherwise it's an explicit revert (including bare revert()) → propagate
+            if (gasUsed < HOOK_GAS_LIMIT * 9 / 10) {
+                // Explicit revert — propagate (bare revert or revert with reason)
+                if (returnData.length > 0) {
+                    assembly {
+                        revert(add(returnData, 32), mload(returnData))
+                    }
                 }
+                // Bare revert() — still propagate as it's an intentional block
+                revert("Hook rejected action");
             }
             // Gas exhaustion: fail-open, continue execution
         }

@@ -45,6 +45,9 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
 
     // ============ Errors ============
 
+    event AgentWalletSet(uint256 indexed agentId, address indexed wallet);
+    event AgentWalletUnset(uint256 indexed agentId);
+
     error NotAgentOwnerOrApproved();
     error ReservedMetadataKey();
     error InvalidSignature();
@@ -112,6 +115,7 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
         address recovered = digest.recover(signature);
         if (recovered == newWallet) {
             _agentWallets[agentId] = newWallet;
+            emit AgentWalletSet(agentId, newWallet);
             return;
         }
 
@@ -120,6 +124,7 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
             try IERC1271(newWallet).isValidSignature(digest, signature) returns (bytes4 magicValue) {
                 if (magicValue == IERC1271.isValidSignature.selector) {
                     _agentWallets[agentId] = newWallet;
+                    emit AgentWalletSet(agentId, newWallet);
                     return;
                 }
             } catch { }
@@ -138,6 +143,7 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
     function unsetAgentWallet(uint256 agentId) external override {
         _requireOwnerOrApproved(agentId);
         delete _agentWallets[agentId];
+        emit AgentWalletUnset(agentId);
     }
 
     // ============ Metadata ============
@@ -196,6 +202,8 @@ contract SardisIdentityRegistry is IIdentityRegistry, ERC721URIStorage, EIP712 {
 
     function _requireExists(uint256 agentId) internal view {
         if (agentId >= nextAgentId) revert AgentDoesNotExist();
+        // Also detect burned tokens — _ownerOf returns address(0) for burned tokens
+        if (_ownerOf(agentId) == address(0)) revert AgentDoesNotExist();
     }
 
     /**

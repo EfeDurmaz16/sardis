@@ -68,6 +68,7 @@ contract SardisReputationRegistry is IReputationRegistry {
     error NotFeedbackSubmitter();
     error AlreadyRevoked();
     error ZeroAddress();
+    error NotAgentOwnerOrApproved();
 
     // ============ Constructor ============
 
@@ -155,6 +156,9 @@ contract SardisReputationRegistry is IReputationRegistry {
         string calldata responseURI,
         bytes32 responseHash
     ) external override {
+        // Only agent owner or approved operator can respond
+        _requireAgentOwnerOrApproved(agentId);
+
         if (feedbackIndex >= _nextIndex[agentId][clientAddress]) {
             revert FeedbackDoesNotExist();
         }
@@ -331,6 +335,23 @@ contract SardisReputationRegistry is IReputationRegistry {
         }
         catch {
             revert AgentDoesNotExist();
+        }
+    }
+
+    function _requireAgentOwnerOrApproved(uint256 agentId) internal view {
+        address agentOwner;
+        try IERC721(identityRegistry).ownerOf(agentId) returns (address owner) {
+            agentOwner = owner;
+        } catch {
+            revert AgentDoesNotExist();
+        }
+
+        if (msg.sender != agentOwner) {
+            if (!IERC721(identityRegistry).isApprovedForAll(agentOwner, msg.sender)) {
+                if (IERC721(identityRegistry).getApproved(agentId) != msg.sender) {
+                    revert NotAgentOwnerOrApproved();
+                }
+            }
         }
     }
 }

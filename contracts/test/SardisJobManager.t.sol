@@ -421,6 +421,7 @@ contract SardisJobManagerTest is Test {
 
         uint256 clientBefore = token.balanceOf(client);
 
+        vm.prank(client);
         manager.claimRefund(jobId);
 
         IJob.Job memory job = manager.getJob(jobId);
@@ -434,6 +435,7 @@ contract SardisJobManagerTest is Test {
         uint256 jobId = _createJob();
         _setBudgetAndFund(jobId);
 
+        vm.prank(client);
         vm.expectRevert(SardisJobManager.DeadlineNotReached.selector);
         manager.claimRefund(jobId);
     }
@@ -444,6 +446,7 @@ contract SardisJobManagerTest is Test {
         _submitJob(jobId);
 
         vm.warp(block.timestamp + 8 days);
+        vm.prank(client);
         manager.claimRefund(jobId);
 
         IJob.Job memory job = manager.getJob(jobId);
@@ -461,6 +464,7 @@ contract SardisJobManagerTest is Test {
 
         uint256 clientBefore = token.balanceOf(client);
 
+        vm.prank(client);
         manager.claimRefund(jobId);
 
         uint256 fundedFee = (JOB_AMOUNT * FEE_BPS) / 10000;

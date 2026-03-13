@@ -50,7 +50,7 @@ contract SardisValidationRegistryTest is Test {
         assertEq(v, validator1);
         assertEq(aid, agentId);
         assertEq(resp, 0);
-        assertGt(lastUpdate, 0);
+        assertEq(lastUpdate, 0); // lastUpdate only set when validator responds
     }
 
     function testValidationRequestRevertsNotOwner() public {

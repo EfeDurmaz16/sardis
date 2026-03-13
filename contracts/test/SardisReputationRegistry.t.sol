@@ -165,18 +165,29 @@ contract SardisReputationRegistryTest is Test {
         vm.prank(client1);
         reputation.giveFeedback(agentId, 50, 0, "", "", "", "", bytes32(0));
 
-        vm.prank(responder);
+        // Only agent owner or approved can respond
+        vm.prank(agentOwner);
         reputation.appendResponse(agentId, client1, 0, "https://response.com", keccak256("resp"));
 
         address[] memory resp = new address[](1);
-        resp[0] = responder;
+        resp[0] = agentOwner;
         uint64 count = reputation.getResponseCount(agentId, client1, 0, resp);
         assertEq(count, 1);
     }
 
     function testAppendResponseRevertsNonexistent() public {
-        vm.prank(responder);
+        // Agent owner trying to respond to nonexistent feedback
+        vm.prank(agentOwner);
         vm.expectRevert(SardisReputationRegistry.FeedbackDoesNotExist.selector);
+        reputation.appendResponse(agentId, client1, 0, "", bytes32(0));
+    }
+
+    function testAppendResponseRevertsNotOwner() public {
+        vm.prank(client1);
+        reputation.giveFeedback(agentId, 50, 0, "", "", "", "", bytes32(0));
+
+        vm.prank(responder);
+        vm.expectRevert(SardisReputationRegistry.NotAgentOwnerOrApproved.selector);
         reputation.appendResponse(agentId, client1, 0, "", bytes32(0));
     }
 
@@ -184,9 +195,9 @@ contract SardisReputationRegistryTest is Test {
         vm.prank(client1);
         reputation.giveFeedback(agentId, 50, 0, "", "", "", "", bytes32(0));
 
-        vm.prank(responder);
+        vm.prank(agentOwner);
         vm.expectEmit(true, true, false, true);
-        emit IReputationRegistry.ResponseAppended(agentId, client1, 0, responder, "https://resp.com", keccak256("r"));
+        emit IReputationRegistry.ResponseAppended(agentId, client1, 0, agentOwner, "https://resp.com", keccak256("r"));
         reputation.appendResponse(agentId, client1, 0, "https://resp.com", keccak256("r"));
     }
 

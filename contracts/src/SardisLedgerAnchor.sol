@@ -60,13 +60,9 @@ contract SardisLedgerAnchor is Ownable {
 
         bytes32 current = leaf;
         for (uint256 i = 0; i < proof.length; i++) {
-            if (isLeft[i]) {
-                // Sibling is on the left: hash(sibling, current)
-                current = _hashPair(proof[i], current);
-            } else {
-                // Sibling is on the right: hash(current, sibling)
-                current = _hashPair(current, proof[i]);
-            }
+            // Use sorted hashing (consistent with _hashPair) — isLeft is ignored
+            // since _hashPair always sorts inputs for deterministic results
+            current = _hashPair(current, proof[i]);
         }
         return current == root;
     }

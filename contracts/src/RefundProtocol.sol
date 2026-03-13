@@ -68,6 +68,7 @@ contract RefundProtocol is EIP712 {
     error WithdrawalHashAlreadyUsed();
     error WithdrawalHashExpired();
     error PaymentRefunded(uint256 paymentID);
+    error PaymentAlreadyWithdrawn(uint256 paymentID);
     error LockupSecondsExceedsMax();
     error MismatchedEarlyWithdrawalArrays();
 
@@ -327,11 +328,12 @@ contract RefundProtocol is EIP712 {
         balances[recipient] = recipientBalance - totalAmount;
         balances[arbiter] += feeAmount;
 
-        fiatToken.safeTransfer(recipient, totalAmount - feeAmount);
-        emit Withdrawal(recipient, totalAmount);
-        emit WithdrawalFeePaid(recipient, feeAmount);
-
+        // CEI: set replay hash before external call
         withdrawalHashes[withdrawalInfoHash] = true;
+
+        fiatToken.safeTransfer(recipient, totalAmount - feeAmount);
+        emit Withdrawal(recipient, totalAmount - feeAmount);
+        emit WithdrawalFeePaid(recipient, feeAmount);
     }
 
     /**
@@ -378,9 +380,14 @@ contract RefundProtocol is EIP712 {
         if (payment.refunded) {
             revert PaymentRefunded(paymentID);
         }
-        fiatToken.safeTransfer(payment.refundTo, payment.amount);
+        if (payment.withdrawnAmount >= payment.amount) {
+            revert PaymentAlreadyWithdrawn(paymentID);
+        }
 
+        // CEI: update state before external call
         payments[paymentID].refunded = true;
+
+        fiatToken.safeTransfer(payment.refundTo, payment.amount);
 
         emit Refund(paymentID, payment.refundTo, payment.amount);
     }
@@ -415,8 +422,16 @@ contract RefundProtocol is EIP712 {
         uint256 expiry,
         uint256 salt
     ) internal view returns (bytes32) {
+        // EIP-712: dynamic arrays must be encoded as keccak256 of their packed encoding
         bytes32 structHash = keccak256(
-            abi.encode(EARLY_WITHDRAWAL_TYPEHASH, paymentIDs, withdrawalAmounts, feeAmount, expiry, salt)
+            abi.encode(
+                EARLY_WITHDRAWAL_TYPEHASH,
+                keccak256(abi.encodePacked(paymentIDs)),
+                keccak256(abi.encodePacked(withdrawalAmounts)),
+                feeAmount,
+                expiry,
+                salt
+            )
         );
         return _hashTypedDataV4(structHash);
     }

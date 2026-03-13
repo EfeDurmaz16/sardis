@@ -118,26 +118,52 @@ contract RefundProtocolTest is Test {
     }
 
     function test_earlyWithdraw_settlesDebtBeforeReleasingFunds() public {
+        // Payment 0: 40e6 — will be fully early-withdrawn, then refunded by arbiter (creating debt)
         _pay(payer, recipient, 40e6, refundTo);
+        // Early withdraw full amount from payment 0
         _earlyWithdrawSingle(0, 40e6, 0, ONE_DAY, 1);
+        // recipient balance now 0, recipient token balance 40e6
 
+        // Arbiter deposits funds and refunds payment 0 (fully withdrawn → blocked)
+        // So we need a second payment that hasn't been withdrawn
+        _pay(payer, recipient, 40e6, refundTo);
+        // recipient balance now 40e6
+
+        // Early withdraw all of payment 1 to drain balance
+        _earlyWithdrawSingle(1, 40e6, 0, ONE_DAY, 2);
+        // recipient balance = 0, token balance = 80e6
+
+        // Create payment 2 (the one that will be refunded via arbiter funds)
+        _pay(payer, recipient, 40e6, refundTo);
+        // recipient balance = 40e6
+
+        // Early withdraw from payment 2 to reduce balance below 40e6
+        _earlyWithdrawSingle(2, 30e6, 0, ONE_DAY, 3);
+        // recipient balance = 10e6
+
+        // Now arbiter refunds payment 2 (partially withdrawn, 30 of 40)
+        // payment.amount (40e6) > recipientBalance (10e6) → uses arbiter funds
         token.mint(arbiter, 40e6);
         vm.startPrank(arbiter);
         token.approve(address(protocol), 40e6);
         protocol.depositArbiterFunds(40e6);
-        protocol.refundByArbiter(0);
+        protocol.refundByArbiter(2);
         vm.stopPrank();
 
         assertEq(protocol.debts(recipient), 40e6);
         assertEq(token.balanceOf(refundTo), 40e6);
 
+        // New payment to create balance for debt settlement
         _pay(payer, recipient, 100e6, refundTo);
-        _earlyWithdrawSingle(1, 60e6, 0, ONE_DAY, 2);
+        // recipient balance = 110e6 (10 remaining + 100 new)
+
+        // Early withdraw from payment 3 — should settle debt first
+        _earlyWithdrawSingle(3, 60e6, 0, ONE_DAY, 4);
 
         assertEq(protocol.debts(recipient), 0);
-        assertEq(protocol.balances(recipient), 0);
+        assertEq(protocol.balances(recipient), 10e6);
         assertEq(protocol.balances(arbiter), 40e6);
-        assertEq(token.balanceOf(recipient), 100e6);
+        assertEq(token.balanceOf(recipient), 170e6); // 40+40+30+60
     }
 
     function test_pay_revertsWhenTokenTransferFromReturnsFalse() public {

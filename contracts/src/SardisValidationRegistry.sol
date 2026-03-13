@@ -89,7 +89,7 @@ contract SardisValidationRegistry is IValidationRegistry {
             response: 0,
             responseHash: bytes32(0),
             tag: "",
-            lastUpdate: block.timestamp,
+            lastUpdate: 0, // Only set when validator responds
             exists: true
         });
 
@@ -158,8 +158,8 @@ contract SardisValidationRegistry is IValidationRegistry {
         for (uint256 i = 0; i < hashes.length; ++i) {
             ValidationRecord storage record = _validations[hashes[i]];
 
-            // Filter by lastUpdate > 0 (has response)
-            if (record.response == 0 && record.lastUpdate == 0) continue;
+            // Skip records with no response (lastUpdate == 0 means no response yet)
+            if (record.lastUpdate == 0) continue;
 
             // Filter by validator addresses if provided
             if (validatorAddresses.length > 0) {
