@@ -868,6 +868,79 @@ class SardisClient:
         """True if running in local simulation mode."""
         return self._simulation
 
+    def quickstart(self) -> dict:
+        """Run a guided first-payment flow.
+
+        Creates a wallet, sets a spending policy, executes a test payment,
+        and prints actionable next steps. Great for verifying your setup.
+
+        Returns:
+            dict with 'wallet', 'transaction', and 'mode' keys.
+
+        Example::
+
+            >>> from sardis import SardisClient
+            >>> client = SardisClient()
+            >>> result = client.quickstart()
+            >>> print(result['transaction'].success)  # True
+        """
+        _print = builtins.print
+        mode = "simulation" if self._simulation else "production"
+        _print(f"\n{'='*52}")
+        _print(f"  Sardis Quickstart ({mode} mode)")
+        _print(f"{'='*52}\n")
+
+        # Step 1: Create wallet
+        _print("[1/4] Creating wallet with $1,000 balance...")
+        wallet = self.wallets.create(
+            name="quickstart-agent",
+            chain="base",
+            token="USDC",
+            policy="Max $100 per transaction. Only allow openai.com, anthropic.com, and google.com.",
+            initial_balance=1000,
+        )
+        _print(f"  ✓ Wallet created: {wallet.id}")
+        _print(f"  ✓ Balance: ${wallet.balance}\n")
+
+        # Step 2: Show policy
+        _print("[2/4] Spending policy set:")
+        _print("  • Max $100 per transaction")
+        _print("  • Allowed: openai.com, anthropic.com, google.com")
+        _print()
+
+        # Step 3: Execute payment
+        _print("[3/4] Sending $25.00 USDC to openai.com...")
+        result = wallet.pay(to="openai.com", amount=25, purpose="Quickstart test payment")
+
+        if result.success:
+            _print(f"  ✓ Payment successful!")
+            _print(f"  ✓ TX ID: {result.tx_id}")
+            _print(f"  ✓ TX Hash: {result.tx_hash}")
+            _print(f"  ✓ Remaining: ${wallet.balance}\n")
+        else:
+            _print(f"  ✗ Payment failed: {result.message}")
+            if result.suggestion:
+                _print(f"  → Suggestion: {result.suggestion}\n")
+
+        # Step 4: Next steps
+        _print("[4/4] What's next?\n")
+        _print("  # Try another payment:")
+        _print("  wallet.pay(to='anthropic.com', amount=10)")
+        _print()
+        _print("  # Check balance:")
+        _print("  print(wallet.balance)")
+        _print()
+        _print("  # View transaction history:")
+        _print("  for entry in client.ledger.list():")
+        _print("      print(entry)")
+        _print()
+        _print("  # Go to production:")
+        _print("  https://sardis.sh/docs/production-guide")
+        _print()
+        _print(f"{'='*52}\n")
+
+        return {"wallet": wallet, "transaction": result, "mode": mode}
+
     def __repr__(self) -> str:
         mode = "simulation" if self._simulation else "production"
         return f"SardisClient(mode={mode})"
