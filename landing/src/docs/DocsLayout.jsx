@@ -18,6 +18,7 @@ const navigation = [
       { name: 'Overview', href: '/docs/overview' },
       { name: 'Authentication', href: '/docs/authentication' },
       { name: 'Going to Production', href: '/docs/production-guide' },
+      { name: 'Trust & Security', href: '/docs/trust' },
     ],
   },
   {
