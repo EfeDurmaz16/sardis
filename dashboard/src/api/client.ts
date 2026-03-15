@@ -1575,3 +1575,41 @@ export const fallbackPoliciesApi = {
       body: JSON.stringify(data),
     }),
 }
+
+// ─── Sandbox API (no auth required) ──────────────────────────────────────
+// Sandbox endpoints use anonymous namespace isolation — no API key needed.
+export const sandboxApi = {
+  payment: (data: Record<string, unknown>) =>
+    fetch(`${API_V2_BASE}/sandbox/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.ok ? r.json() : null),
+
+  policyCheck: (data: Record<string, unknown>) =>
+    fetch(`${API_V2_BASE}/sandbox/policy-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.ok ? r.json() : null),
+
+  health: () =>
+    fetch(`${API_V2_BASE}/sandbox/demo-data`)
+      .then(r => r.ok)
+      .catch(() => false),
+}
+
+// ─── Chain Explorer Helpers ──────────────────────────────────────────────
+export const CHAIN_EXPLORERS: Record<string, string> = {
+  base: 'https://basescan.org',
+  base_sepolia: 'https://sepolia.basescan.org',
+  polygon: 'https://polygonscan.com',
+  arbitrum: 'https://arbiscan.io',
+  optimism: 'https://optimistic.etherscan.io',
+  ethereum: 'https://etherscan.io',
+}
+
+export function getExplorerTxUrl(chain: string, txHash: string): string | null {
+  const base = CHAIN_EXPLORERS[chain]
+  return base ? `${base}/tx/${txHash}` : null
+}

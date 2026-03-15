@@ -344,26 +344,53 @@ export default function PolicyPlaygroundPage() {
   const usedBudget = spendData.length > 0 ? spendData[spendData.length - 1].cumulative : 0
   const budgetPercent = Math.min(100, (usedBudget / totalBudget) * 100)
 
+  // Sandbox API connection status
+  const [sandboxConnected, setSandboxConnected] = useState<boolean | null>(null)
+  const [apiResult, setApiResult] = useState<Record<string, unknown> | null>(null)
+
+  // Check sandbox API connectivity on mount
+  useEffect(() => {
+    import('../api/client').then(({ sandboxApi }) => {
+      sandboxApi.health().then(ok => setSandboxConnected(ok)).catch(() => setSandboxConnected(false))
+    })
+  }, [])
+
   // Handlers
   const handleParsePolicy = useCallback(async () => {
     if (!policyText.trim()) return
     setIsParsing(true)
+    setApiResult(null)
 
-    await new Promise(r => setTimeout(r, 400))
+    // Local parse (always runs)
     const local = parseNaturalLanguagePolicy(policyText)
     setParsedPolicy(local)
+
+    // Try sandbox API in parallel (additive — never blocks local)
+    if (sandboxConnected) {
+      try {
+        const { sandboxApi } = await import('../api/client')
+        const result = await sandboxApi.policyCheck({
+          policy_text: policyText,
+          amount: 25,
+          destination: 'openai.com',
+        })
+        if (result) setApiResult(result)
+      } catch {
+        // Silently fall back to local-only
+      }
+    }
 
     setIsParsing(false)
     setSimResult(null)
     setBatchTxs([])
-  }, [policyText])
+  }, [policyText, sandboxConnected])
 
   const handleCheckTransaction = useCallback(async () => {
     if (!parsedPolicy) return
     setIsChecking(true)
+    setApiResult(null)
 
     // Always run local check for the detailed UI
-    await new Promise(r => setTimeout(r, 300))
     const result = checkTransaction(
       {
         amount: parseFloat(simAmount) || 0,
@@ -375,8 +402,26 @@ export default function PolicyPlaygroundPage() {
       usedBudget,
     )
     setSimResult(result)
+
+    // Try sandbox API check in parallel (additive)
+    if (sandboxConnected) {
+      try {
+        const { sandboxApi } = await import('../api/client')
+        const apiRes = await sandboxApi.payment({
+          amount: simAmount,
+          destination: simDestination,
+          token: simToken,
+          purpose: simPurpose,
+          policy_text: policyText,
+        })
+        if (apiRes) setApiResult(apiRes)
+      } catch {
+        // Silently fall back to local-only
+      }
+    }
+
     setIsChecking(false)
-  }, [parsedPolicy, simAmount, simDestination, simToken, simPurpose, usedBudget])
+  }, [parsedPolicy, simAmount, simDestination, simToken, simPurpose, usedBudget, sandboxConnected, policyText])
 
   const handleGenerateBatch = useCallback(() => {
     if (!parsedPolicy) return
@@ -398,8 +443,17 @@ export default function PolicyPlaygroundPage() {
         <div>
           <h1 className="text-3xl font-bold text-white font-display">Policy Lab</h1>
           <p className="text-gray-400 mt-1">
-            Legacy sandbox for local policy exploration. Use Policy Manager for draft testing and Live Dry Run for deployed-policy checks.
+            Interactive policy testing sandbox. Use Policy Manager for draft testing and Live Dry Run for deployed-policy checks.
           </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className={clsx(
+              'w-2 h-2 rounded-full',
+              sandboxConnected === true ? 'bg-green-500' : sandboxConnected === false ? 'bg-gray-500' : 'bg-yellow-500 animate-pulse'
+            )} />
+            <span className="text-xs text-gray-500">
+              {sandboxConnected === true ? 'Connected to Sandbox API' : sandboxConnected === false ? 'Local mode (API unavailable)' : 'Checking API...'}
+            </span>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               to="/policy-manager"
