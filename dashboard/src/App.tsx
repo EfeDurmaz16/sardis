@@ -41,6 +41,7 @@ import ProviderScorecardsPage from './pages/ProviderScorecards'
 import CheckoutControlsPage from './pages/CheckoutControls'
 import FallbackPoliciesPage from './pages/FallbackPolicies'
 import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
+import AgentObservabilityPage from './pages/AgentObservability'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -120,6 +121,7 @@ function AppRoutes() {
                 <Route path="/checkout-controls" element={<CheckoutControlsPage />} />
                 <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
                 <Route path="/environment-templates" element={<EnvironmentTemplatesPage />} />
+                <Route path="/agent-observability" element={<AgentObservabilityPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
