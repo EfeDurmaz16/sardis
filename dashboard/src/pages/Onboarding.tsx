@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { CheckCircle, ChevronRight, Loader2 } from 'lucide-react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { CheckCircle, ChevronRight, Loader2, Copy, Check, Terminal } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -47,28 +47,74 @@ function SkipLink({ onSkip }: { onSkip: () => void }) {
   )
 }
 
-// Step 1 — Welcome
-function StepWelcome({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+// Step 1 — Welcome (with API key display and quickstart code if coming from signup)
+function StepWelcome({ onNext, onSkip, apiKey }: { onNext: () => void; onSkip: () => void; apiKey?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="text-center">
-      <div className="w-20 h-20 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-        <span className="text-4xl">sardis</span>
+    <div>
+      <div className="text-center mb-6">
+        <div className="w-20 h-20 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">sardis</span>
+        </div>
+        <h1 className="text-3xl font-bold text-white font-display mb-3">Welcome to Sardis</h1>
+        <p className="text-gray-400 text-lg mb-2">
+          Let's set up your first agent in 3 steps
+        </p>
       </div>
-      <h1 className="text-3xl font-bold text-white font-display mb-3">Welcome to Sardis</h1>
-      <p className="text-gray-400 text-lg mb-2">
-        Let's set up your first agent in 3 steps
-      </p>
-      <p className="text-gray-500 text-sm mb-10">
-        Sardis is the Payment OS for the Agent Economy — enabling AI agents to make real financial transactions safely.
-      </p>
-      <button
-        onClick={onNext}
-        className="inline-flex items-center gap-2 px-8 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
-      >
-        Let's Go
-        <ChevronRight className="w-5 h-5" />
-      </button>
-      <SkipLink onSkip={onSkip} />
+
+      {apiKey && (
+        <div className="mb-6 space-y-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Terminal className="w-4 h-4 text-sardis-400" />
+              <span className="text-sm font-medium text-gray-300">Install the SDK</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-sardis-400 text-xs font-mono">
+                pip install sardis
+              </code>
+              <button onClick={() => handleCopy('pip install sardis')} className="shrink-0 p-2 bg-dark-300 border border-dark-100 rounded-lg text-gray-500 hover:text-white transition-colors">
+                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <span className="text-sm font-medium text-gray-300 mb-2 block">Quick start</span>
+            <pre className="px-3 py-3 bg-dark-300 border border-dark-100 rounded-lg text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre">{`from sardis import Sardis
+
+sardis = Sardis(api_key="${apiKey.slice(0, 12)}...")
+wallet = sardis.wallets.create(name="my-agent")
+sardis.policies.create(
+    wallet_id=wallet.id,
+    rules="Max $50/day. Only allow OpenAI."
+)
+payment = sardis.payments.create(
+    wallet_id=wallet.id,
+    amount=5.00,
+    currency="USDC",
+    recipient="openai:api"
+)`}</pre>
+          </div>
+        </div>
+      )}
+
+      <div className="text-center">
+        <button
+          onClick={onNext}
+          className="inline-flex items-center gap-2 px-8 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+        >
+          {apiKey ? 'Set Up My Agent' : "Let's Go"}
+          <ChevronRight className="w-5 h-5" />
+        </button>
+        <SkipLink onSkip={onSkip} />
+      </div>
     </div>
   )
 }
@@ -460,6 +506,8 @@ function StepDone() {
 export default function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [agentId, setAgentId] = useState('')
+  const location = useLocation()
+  const apiKey = (location.state as { apiKey?: string } | null)?.apiKey || ''
 
   const advance = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS))
   const skip = () => {
@@ -477,7 +525,7 @@ export default function OnboardingPage() {
           {step < TOTAL_STEPS && <ProgressBar step={step} />}
 
           {step === 1 && (
-            <StepWelcome onNext={advance} onSkip={() => setStep(TOTAL_STEPS)} />
+            <StepWelcome onNext={advance} onSkip={() => setStep(TOTAL_STEPS)} apiKey={apiKey} />
           )}
           {step === 2 && (
             <StepCreateAgent
