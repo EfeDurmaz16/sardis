@@ -22,7 +22,7 @@ const LOG_SEQUENCES = {
   INITIALIZING: [
     { text: `[Sardis-Core]: Initializing payment session...`, delay: 0 },
     { text: `[Sardis-Wallet]: Connecting to Turnkey MPC signer`, delay: 400 },
-    { text: `[Sardis-Chain]: RPC handshake with Base Sepolia (chainId: 84532)`, delay: 800 },
+    { text: `[Sardis-Chain]: RPC handshake with Base (chainId: 8453)`, delay: 800 },
     { text: `[Sardis-Chain]: ✓ Connected, latency 42ms`, delay: 1200 },
     { text: `[Sardis-Core]: Session ready. Agent: ${DEMO_AGENT_ID}`, delay: 1600 },
   ],
@@ -65,7 +65,7 @@ const LOG_SEQUENCES = {
     { text: `[Sardis-Wallet]: ✓ Signature obtained (2 of 3 shares)`, delay: 1500 },
   ],
   CONFIRMING: [
-    { text: `[Sardis-Chain]: Broadcasting tx to Base Sepolia...`, delay: 0 },
+    { text: `[Sardis-Chain]: Broadcasting tx to Base...`, delay: 0 },
     { text: `[Sardis-Chain]: tx: ${DEMO_TX_HASH}`, delay: 500 },
     { text: `[Sardis-Chain]: Waiting for confirmation (1/1 blocks)`, delay: 1000 },
     { text: `[Sardis-Chain]: ✓ Confirmed in block #${DEMO_BLOCK}`, delay: 2000 },
@@ -322,7 +322,7 @@ export function useSardisDemo() {
                 token: 'USD',
                 to: 'DataCorp',
                 block: DEMO_BLOCK,
-                chain: 'Virtual Card (Lithic)',
+                chain: 'Virtual Card (Stripe Issuing)',
                 url: null,
               })
               appendHistory({
@@ -330,7 +330,7 @@ export function useSardisDemo() {
                 to: 'DataCorp',
                 amount: '25.00',
                 token: 'USD',
-                chain: 'Virtual Card (Lithic)',
+                chain: 'Virtual Card (Stripe Issuing)',
                 hash: DEMO_TX_HASH,
                 url: null,
               })
@@ -472,7 +472,7 @@ export function useSardisDemo() {
           token: liveTx.token || 'USD',
           to: liveTx.to || 'DataCorp',
           block: liveTx.block || 'live',
-          chain: liveTx.chain || 'Card Rail (Lithic Sandbox)',
+          chain: liveTx.chain || 'Card Rail (Stripe Issuing Sandbox)',
           url: liveTx.url || null,
           providerTxId,
         })
@@ -481,14 +481,14 @@ export function useSardisDemo() {
           to: liveTx.to || 'DataCorp',
           amount: liveTx.amount || '25.00',
           token: liveTx.token || 'USD',
-          chain: liveTx.chain || 'Card Rail (Lithic Sandbox)',
+          chain: liveTx.chain || 'Card Rail (Stripe Issuing Sandbox)',
           hash: providerTxId || liveTx.hash || 'tx_live_demo',
           url: liveTx.url || null,
           providerTxId,
         })
 
         if (providerTxId) {
-          appendLog(`[Sardis-Live]: Lithic Authorization ID: ${providerTxId}`)
+          appendLog(`[Sardis-Live]: Card Authorization ID: ${providerTxId}`)
         }
         appendLog('[Sardis-Live]: ✓ Live payment flow completed')
         emitEvent('run_succeeded', { status: 'success', message: 'live_ok' })
