@@ -24,11 +24,12 @@ class UsageSummary:
 
 
 # Tier limits: plan -> {event_type -> monthly_limit}
+# Canonical plan names: free, starter, growth, enterprise (from billing/config.py)
 TIER_LIMITS: dict[str, dict[str, int]] = {
-    "free": {"transaction": 100, "card_issued": 1, "policy_check": 1000, "api_call": 10000},
-    "growth": {"transaction": 10000, "card_issued": 25, "policy_check": 100000, "api_call": 500000},
-    "scale": {"transaction": 100000, "card_issued": -1, "policy_check": -1, "api_call": -1},  # -1 = unlimited
-    "enterprise": {"transaction": -1, "card_issued": -1, "policy_check": -1, "api_call": -1},
+    "free": {"transaction": 100, "card_issued": 1, "policy_check": 1000, "api_call": 1000},
+    "starter": {"transaction": 10000, "card_issued": 10, "policy_check": 50000, "api_call": 50000},
+    "growth": {"transaction": 100000, "card_issued": 25, "policy_check": 500000, "api_call": 500000},
+    "enterprise": {"transaction": -1, "card_issued": -1, "policy_check": -1, "api_call": -1},  # -1 = unlimited
 }
 
 

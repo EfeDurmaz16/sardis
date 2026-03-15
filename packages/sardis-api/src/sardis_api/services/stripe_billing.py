@@ -3,11 +3,11 @@
 Handles customer creation, subscription lifecycle, usage reporting,
 and webhook processing for Stripe Billing.
 
-Tiers:
-  Free:       100 tx/mo, 1 agent, 1 card
-  Growth:     $49/mo — 10K tx/mo, 10 agents, 25 cards, 0.5% tx fee
-  Scale:      $299/mo — 100K tx/mo, unlimited agents/cards, 0.3% tx fee
-  Enterprise: custom
+Tiers (canonical names from billing/config.py):
+  Free:       $0/mo  — 1K API calls, 2 agents, 1.5% tx fee, $1K/mo volume
+  Starter:    $49/mo — 50K API calls, 10 agents, 1.0% tx fee, $25K/mo volume
+  Growth:     $249/mo — 500K API calls, 100 agents, 0.75% tx fee, $250K/mo volume
+  Enterprise: custom — unlimited, 0.5% tx fee
 """
 from __future__ import annotations
 
@@ -33,10 +33,10 @@ class BillingPlan:
 
 
 PLANS: dict[str, BillingPlan] = {
-    "free": BillingPlan("free", "Free", 0, 0, 100, 1, 1),
-    "growth": BillingPlan("growth", "Growth", 4900, 50, 10000, 10, 25),
-    "scale": BillingPlan("scale", "Scale", 29900, 30, 100000, -1, -1),
-    "enterprise": BillingPlan("enterprise", "Enterprise", 0, 0, -1, -1, -1),
+    "free": BillingPlan("free", "Free", 0, 150, 100, 2, 1),
+    "starter": BillingPlan("starter", "Starter", 4900, 100, 10000, 10, 25),
+    "growth": BillingPlan("growth", "Growth", 24900, 75, 100000, 100, -1),
+    "enterprise": BillingPlan("enterprise", "Enterprise", 0, 50, -1, -1, -1),
 }
 
 
