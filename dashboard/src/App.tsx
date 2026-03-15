@@ -42,6 +42,7 @@ import CheckoutControlsPage from './pages/CheckoutControls'
 import FallbackPoliciesPage from './pages/FallbackPolicies'
 import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
 import AgentObservabilityPage from './pages/AgentObservability'
+import SignupPage from './pages/Signup'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -69,6 +70,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route
         path="/onboarding"
         element={

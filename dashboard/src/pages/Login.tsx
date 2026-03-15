@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Shield } from 'lucide-react';
 
@@ -37,16 +37,9 @@ export default function Login() {
                 return;
             }
 
-            // Demo mode: allow login with demo credentials when API is unavailable
-            if (username === 'admin' && password === 'sardis') {
-                login('demo_token_sardis_dashboard');
-                navigate('/');
-                return;
-            }
-
             throw new Error('Invalid credentials');
         } catch (err) {
-            setError('Invalid username or password. Try admin / sardis for demo mode.');
+            setError('Invalid credentials');
         } finally {
             setIsLoading(false);
         }
@@ -61,7 +54,6 @@ export default function Login() {
                     </div>
                     <h1 className="text-3xl font-bold text-white font-display">Sardis Admin</h1>
                     <p className="text-gray-400 mt-2">Sign in to manage your payment network</p>
-                    <p className="text-gray-500 mt-1 text-xs">Demo: admin / sardis</p>
                 </div>
 
                 <div className="card p-8">
@@ -108,6 +100,15 @@ export default function Login() {
                             {isLoading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
+
+                    <div className="mt-6 text-center">
+                        <p className="text-sm text-gray-500">
+                            Don't have an account?{' '}
+                            <Link to="/signup" className="text-sardis-400 hover:text-sardis-300 transition-colors">
+                                Create one
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
