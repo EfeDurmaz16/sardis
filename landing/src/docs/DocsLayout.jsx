@@ -14,20 +14,10 @@ const navigation = [
   {
     title: 'Getting Started',
     items: [
-      { name: 'Overview', href: '/docs/overview' },
       { name: 'Quick Start', href: '/docs/quickstart' },
+      { name: 'Overview', href: '/docs/overview' },
       { name: 'Authentication', href: '/docs/authentication' },
-    ],
-  },
-  {
-    title: 'Protocols',
-    items: [
-      { name: 'Protocol Stack', href: '/docs/protocols' },
-      { name: 'AP2 (Payment)', href: '/docs/ap2' },
-      { name: 'UCP (Commerce)', href: '/docs/ucp' },
-      { name: 'A2A (Agent-to-Agent)', href: '/docs/a2a' },
-      { name: 'TAP (Trusted Agent)', href: '/docs/tap' },
-      { name: 'ACP (Commerce)', href: '/docs/acp' },
+      { name: 'Going to Production', href: '/docs/production-guide' },
     ],
   },
   {
@@ -42,12 +32,24 @@ const navigation = [
     ],
   },
   {
+    title: 'Protocols',
+    items: [
+      { name: 'Protocol Stack', href: '/docs/protocols' },
+      { name: 'AP2 (Payment)', href: '/docs/ap2' },
+      { name: 'UCP (Commerce)', href: '/docs/ucp' },
+      { name: 'A2A (Agent-to-Agent)', href: '/docs/a2a' },
+      { name: 'TAP (Trusted Agent)', href: '/docs/tap' },
+      { name: 'ACP (Commerce)', href: '/docs/acp' },
+    ],
+  },
+  {
     title: 'SDKs & Tools',
     items: [
       { name: 'Python SDK', href: '/docs/sdk-python' },
       { name: 'TypeScript SDK', href: '/docs/sdk-typescript' },
       { name: 'MCP Server', href: '/docs/mcp-server' },
       { name: 'API Reference', href: '/docs/api-reference' },
+      { name: 'Interactive API', href: '/docs/api-reference-interactive' },
     ],
   },
   {
@@ -56,8 +58,13 @@ const navigation = [
       { name: 'Overview', href: '/docs/integrations' },
       { name: 'LangChain', href: '/docs/integration-langchain' },
       { name: 'CrewAI', href: '/docs/integration-crewai' },
+      { name: 'OpenAI Agents', href: '/docs/integration-openai-agents' },
       { name: 'Google ADK', href: '/docs/integration-adk' },
       { name: 'Anthropic Agent SDK', href: '/docs/integration-agent-sdk' },
+      { name: 'Browser Use', href: '/docs/integration-browser-use' },
+      { name: 'AutoGPT', href: '/docs/integration-autogpt' },
+      { name: 'Composio', href: '/docs/integration-composio' },
+      { name: 'n8n', href: '/docs/integration-n8n' },
     ],
   },
   {
@@ -68,6 +75,8 @@ const navigation = [
       { name: 'Whitepaper', href: '/docs/whitepaper' },
       { name: 'Security', href: '/docs/security' },
       { name: 'Runtime Guardrails', href: '/docs/runtime-guardrails' },
+      { name: 'Deployment', href: '/docs/deployment' },
+      { name: 'Troubleshooting', href: '/docs/troubleshooting' },
       { name: 'Why Sardis', href: '/docs/comparison' },
       { name: 'FAQ', href: '/docs/faq' },
       { name: 'Blog', href: '/docs/blog' },
