@@ -36,7 +36,8 @@ import {
   GitBranch,
   LayoutTemplate,
   BookUser,
-  Eye
+  Eye,
+  ArrowRightLeft
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
@@ -52,6 +53,7 @@ const coreNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
+  { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
   { name: 'Cards', href: '/cards', icon: CreditCard },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
 ]

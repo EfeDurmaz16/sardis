@@ -42,6 +42,7 @@ import CheckoutControlsPage from './pages/CheckoutControls'
 import FallbackPoliciesPage from './pages/FallbackPolicies'
 import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
 import AgentObservabilityPage from './pages/AgentObservability'
+import TransactionsPage from './pages/Transactions'
 import SignupPage from './pages/Signup'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
@@ -124,6 +125,7 @@ function AppRoutes() {
                 <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
                 <Route path="/environment-templates" element={<EnvironmentTemplatesPage />} />
                 <Route path="/agent-observability" element={<AgentObservabilityPage />} />
+                <Route path="/transactions" element={<TransactionsPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
