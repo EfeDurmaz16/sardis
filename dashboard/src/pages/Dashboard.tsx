@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Users,
   ArrowRightLeft,
@@ -10,7 +11,12 @@ import {
   Shield,
   Clock,
   AlertTriangle,
-  BarChart2
+  BarChart2,
+  Rocket,
+  X,
+  Key,
+  FlaskConical,
+  ChevronRight
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -106,6 +112,53 @@ function deriveTransactionType(tx: Transaction): string {
   return 'payment'
 }
 
+function QuickStartCard({ transactionCount }: { transactionCount: number }) {
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('sardis_quickstart_dismissed') === '1');
+
+  if (dismissed || transactionCount >= 3) return null;
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    localStorage.setItem('sardis_quickstart_dismissed', '1');
+  };
+
+  const steps = [
+    { label: 'Create your first wallet', href: '/agents', icon: Wallet, color: '#818CF8' },
+    { label: 'Set a spending policy', href: '/policy-management', icon: Shield, color: '#22C55E' },
+    { label: 'Make a test payment', href: '/simulation', icon: FlaskConical, color: '#F59E0B' },
+    { label: 'View your API keys', href: '/api-keys', icon: Key, color: '#60A5FA' },
+  ];
+
+  return (
+    <div className="rounded-xl p-5 relative" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(79,70,229,0.04) 100%)', border: '1px solid rgba(99,102,241,0.2)' }}>
+      <button onClick={handleDismiss} className="absolute top-3 right-3 text-gray-500 hover:text-white transition-colors">
+        <X size={16} />
+      </button>
+      <div className="flex items-center gap-2 mb-3">
+        <Rocket size={18} color="#818CF8" />
+        <h3 className="text-sm font-semibold text-white">Quick Start</h3>
+      </div>
+      <p className="text-xs text-gray-400 mb-4">Get up and running in minutes. Complete these steps to start processing payments.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {steps.map((step, i) => (
+          <Link
+            key={step.label}
+            to={step.href}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: `${step.color}20` }}>
+              <span className="text-xs font-bold" style={{ color: step.color }}>{i + 1}</span>
+            </div>
+            <span className="text-xs text-gray-300 group-hover:text-white transition-colors flex-1">{step.label}</span>
+            <ChevronRight size={12} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { data: agents = [] } = useAgents()
   const { data: merchants = [] } = useMerchants()
@@ -139,6 +192,9 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* KYC verification banner */}
       <KYCBanner />
+
+      {/* Quick Start Card — shown for new users */}
+      <QuickStartCard transactionCount={transactions.length} />
 
       {/* Header with Live Indicator */}
       <div className="flex items-center justify-between">
