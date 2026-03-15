@@ -388,3 +388,42 @@ async def send_plan_upgrade_email(email: str, plan: str) -> None:
         subject=f"Your Sardis plan has been upgraded to {plan_label}",
         html_body=_plan_upgrade_html(plan),
     )
+
+
+def _password_reset_html(reset_url: str) -> str:
+    return f"""
+    <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <h2 style="color: #F5F5F5; font-size: 24px; margin-bottom: 16px;">Reset Your Password</h2>
+        <p style="color: #808080; font-size: 14px; line-height: 1.6;">
+            We received a request to reset your Sardis account password.
+            Click the button below to set a new password. This link expires in 1 hour.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+            <a href="{reset_url}"
+               style="background: #2563EB; color: #fff; padding: 12px 32px; border-radius: 8px;
+                      text-decoration: none; font-size: 14px; font-weight: 600; display: inline-block;">
+                Reset Password
+            </a>
+        </div>
+        <p style="color: #505460; font-size: 12px; line-height: 1.6;">
+            If you didn't request this reset, you can safely ignore this email.
+            Your password will not change unless you click the link above.
+        </p>
+        <hr style="border: none; border-top: 1px solid #1a1a2e; margin: 32px 0;" />
+        <p style="color: #3F3F4A; font-size: 11px;">
+            Sardis &mdash; Payment OS for the Agent Economy
+        </p>
+    </div>
+    """
+
+
+async def send_password_reset_email(email: str, reset_token: str) -> None:
+    """Send a password reset email with a one-time link."""
+    import os
+    dashboard_url = os.getenv("SARDIS_DASHBOARD_URL", "https://dashboard.sardis.sh")
+    reset_url = f"{dashboard_url}/reset-password?token={reset_token}"
+    await send_email(
+        to=email,
+        subject="Reset your Sardis password",
+        html_body=_password_reset_html(reset_url),
+    )

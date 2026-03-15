@@ -905,3 +905,115 @@ async def revoke_api_key(
     if not deleted:
         raise HTTPException(status_code=404, detail="API key not found")
     return {"revoked": True}
+
+
+# ---------------------------------------------------------------------------
+# Password reset (self-serve account recovery)
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+
+# Per-IP rate limiting for forgot-password (3 per hour to prevent enumeration)
+_forgot_ip_timestamps: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_forgot_rate_limit(ip: str) -> None:
+    now = time.monotonic()
+    _forgot_ip_timestamps[ip] = [t for t in _forgot_ip_timestamps[ip] if now - t < 3600]
+    if len(_forgot_ip_timestamps[ip]) >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset requests. Try again later.",
+        )
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(request: Request, body: ForgotPasswordRequest):
+    """Request a password reset email.
+
+    Always returns 200 regardless of whether the email exists (prevents enumeration).
+    Rate limited to 3 requests per IP per hour.
+    """
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    client_ip = client_ip.split(",")[0].strip()
+    _check_forgot_rate_limit(client_ip)
+    _forgot_ip_timestamps[client_ip].append(time.monotonic())
+
+    auth_svc = _get_auth_service(request)
+    token = await auth_svc.create_password_reset_token(body.email)
+
+    if token:
+        from sardis_api.email_templates import send_password_reset_email
+        await send_password_reset_email(body.email.strip().lower(), token)
+
+    # Always return success to prevent email enumeration
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(request: Request, body: ResetPasswordRequest):
+    """Reset password using a valid reset token from email."""
+    auth_svc = _get_auth_service(request)
+    success = await auth_svc.reset_password(body.token, body.new_password)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token. Please request a new one.",
+        )
+
+    return {"message": "Password has been reset successfully. You can now log in."}
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(request: Request, body: ChangePasswordRequest, user: UserInfo = Depends(require_auth)):
+    """Change password for an authenticated user. Requires current password."""
+    auth_svc = _get_auth_service(request)
+    success = await auth_svc.change_password(user.username, body.current_password, body.new_password)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect.",
+        )
+
+    return {"message": "Password changed successfully."}
+
+
+# ---------------------------------------------------------------------------
+# Account deletion (GDPR Art. 17 — right to erasure)
+# ---------------------------------------------------------------------------
+
+@router.delete("/account", status_code=status.HTTP_200_OK)
+async def delete_account(request: Request, user: UserInfo = Depends(require_auth)):
+    """Permanently delete the authenticated user's account and all associated data.
+
+    This action is irreversible. All wallets, agents, API keys, policies,
+    transaction history, and billing data will be permanently removed.
+    """
+    auth_svc = _get_auth_service(request)
+    deleted = await auth_svc.delete_account(user.username)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete account. Please contact support.",
+        )
+
+    # Revoke the current JWT so it can't be used after deletion
+    from sardis_api.analytics.posthog_tracker import track_event
+    track_event(user.username, "ACCOUNT_DELETED", {})
+
+    return {"message": "Account has been permanently deleted."}

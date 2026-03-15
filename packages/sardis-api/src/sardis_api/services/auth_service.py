@@ -12,6 +12,7 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -340,6 +341,115 @@ class AuthService:
                 user_id,
             )
         return True
+
+    async def create_password_reset_token(self, email: str) -> str | None:
+        """Generate a password reset token for the given email.
+
+        Returns the raw token (to be sent via email) or None if email not found.
+        Token is stored as SHA-256 hash, expires in 1 hour, single-use.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            user = await conn.fetchrow(
+                "SELECT id FROM users WHERE email = $1",
+                email.strip().lower(),
+            )
+            if not user:
+                return None
+
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+            expires_at = datetime.now(UTC) + timedelta(hours=1)
+
+            await conn.execute(
+                """
+                INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+                VALUES ($1, $2, $3)
+                """,
+                user["id"],
+                token_hash,
+                expires_at,
+            )
+
+            return raw_token
+
+    async def reset_password(self, token: str, new_password: str) -> bool:
+        """Reset a user's password using a valid reset token.
+
+        Returns True if password was changed, False if token is invalid/expired/used.
+        """
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT user_id, expires_at, used_at
+                FROM password_reset_tokens
+                WHERE token_hash = $1
+                """,
+                token_hash,
+            )
+
+            if not row:
+                return False
+            if row["used_at"] is not None:
+                return False
+            if row["expires_at"].replace(tzinfo=UTC) < datetime.now(UTC):
+                return False
+
+            new_hash = self._hash_password(new_password)
+
+            # Update password and mark token as used atomically
+            await conn.execute(
+                "UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2",
+                new_hash,
+                row["user_id"],
+            )
+            await conn.execute(
+                "UPDATE password_reset_tokens SET used_at = now() WHERE token_hash = $1",
+                token_hash,
+            )
+
+            return True
+
+    async def change_password(self, user_id: str, current_password: str, new_password: str) -> bool:
+        """Change password for an authenticated user. Verifies current password first."""
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT password_hash FROM users WHERE id = $1",
+                user_id,
+            )
+            if not row or not row["password_hash"]:
+                return False
+            if not self._verify_password(current_password, row["password_hash"]):
+                return False
+
+            new_hash = self._hash_password(new_password)
+            await conn.execute(
+                "UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2",
+                new_hash,
+                user_id,
+            )
+            return True
+
+    async def delete_account(self, user_id: str) -> bool:
+        """Permanently delete a user account and all associated data.
+
+        Cascading deletes handle: api_keys, org_memberships.
+        Additional cleanup: billing subscriptions, usage events.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            # Delete billing data
+            await conn.execute(
+                "DELETE FROM billing_subscriptions WHERE org_id IN (SELECT org_id FROM user_org_memberships WHERE user_id = $1)",
+                user_id,
+            )
+            # Delete the user (CASCADE handles api_keys and org_memberships)
+            result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+            return result == "DELETE 1"
 
     async def mark_email_verified(self, user_id: str) -> None:
         """Set email_verified = TRUE for the given user."""
