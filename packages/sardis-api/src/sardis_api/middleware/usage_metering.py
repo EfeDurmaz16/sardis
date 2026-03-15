@@ -5,9 +5,9 @@ plan-level monthly call limits from PLAN_LIMITS. When an org exceeds
 its plan limit the middleware returns HTTP 429 before the request
 reaches any route handler.
 
-Usage counters are currently held in-process memory (good enough for a
-single-process deployment and testing). Replace ``_usage_counters`` with
-a Redis/DB-backed store for multi-replica production deployments.
+Usage counters are stored in Redis (via the app's CacheService backend)
+for durability across deploys and multi-replica correctness. Falls back
+to in-memory counters if Redis is unavailable.
 """
 from __future__ import annotations
 
@@ -35,8 +35,7 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
     "/sandbox",
 )
 
-# In-memory usage counters: org_id -> call count this period.
-# TODO: replace with Redis/DB for multi-replica deployments (Task A5).
+# In-memory fallback counters (used only when Redis is unavailable).
 _usage_counters: dict[str, int] = defaultdict(int)
 
 # TTL cache for org plan lookups: org_id -> (plan_name, timestamp).
@@ -129,7 +128,11 @@ class UsageMeteringMiddleware(BaseHTTPMiddleware):
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         api_limit: int | None = limits.get("api_calls_per_month")
 
-        current = _usage_counters[org_id]
+        # Build the Redis key: usage:api_call:{org_id}:{YYYY-MM}
+        now = datetime.now(UTC)
+        period_key = f"usage:api_call:{org_id}:{now.year}-{now.month:02d}"
+
+        current = await self._get_counter(request, period_key, org_id, now)
 
         if api_limit is not None and current >= api_limit:
             logger.warning(
@@ -149,13 +152,47 @@ class UsageMeteringMiddleware(BaseHTTPMiddleware):
             )
 
         # Increment before calling downstream so the header reflects actual usage.
-        _usage_counters[org_id] += 1
+        new_count = await self._incr_counter(request, period_key, org_id, now)
         response: Response = await call_next(request)
 
         if api_limit is not None:
-            remaining = max(0, api_limit - _usage_counters[org_id])
+            remaining = max(0, api_limit - new_count)
             response.headers["X-RateLimit-Limit"] = str(api_limit)
             response.headers["X-RateLimit-Remaining"] = str(remaining)
             response.headers["X-RateLimit-Reset"] = str(_period_reset_epoch())
 
         return response
+
+    async def _get_counter(
+        self, request: Request, redis_key: str, org_id: str, now: datetime
+    ) -> int:
+        """Get current usage count from Redis, falling back to in-memory."""
+        cache = getattr(request.app.state, "cache_service", None)
+        if cache is not None:
+            try:
+                val = await cache._backend.get(redis_key)
+                if val is not None:
+                    return int(val)
+                return 0
+            except Exception:
+                pass
+        return _usage_counters[org_id]
+
+    async def _incr_counter(
+        self, request: Request, redis_key: str, org_id: str, now: datetime
+    ) -> int:
+        """Atomically increment usage counter in Redis, falling back to in-memory."""
+        cache = getattr(request.app.state, "cache_service", None)
+        if cache is not None:
+            try:
+                new_val = await cache._backend.incr(redis_key)
+                # Set TTL on first increment: expire at end of month + 1 day buffer
+                if new_val == 1:
+                    seconds_to_eol = _period_reset_epoch() - int(now.timestamp()) + 86400
+                    await cache._backend.expire(redis_key, max(seconds_to_eol, 3600))
+                return new_val
+            except Exception:
+                logger.debug("Redis incr failed for %s, using in-memory", redis_key, exc_info=True)
+
+        _usage_counters[org_id] += 1
+        return _usage_counters[org_id]
