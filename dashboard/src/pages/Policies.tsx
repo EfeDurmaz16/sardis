@@ -27,6 +27,7 @@ import {
   useApplyPolicy,
   useCheckPolicy,
 } from '../hooks/useApi'
+import PolicyTemplates from '../components/PolicyTemplates'
 
 /* ─── Types ─── */
 
@@ -418,6 +419,28 @@ export default function PoliciesPage() {
           </Link>
         </div>
       </div>
+
+      {/* Policy Templates */}
+      <details className="group">
+        <summary
+          className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-gray-300 hover:text-white transition-colors"
+        >
+          <Sparkles className="w-4 h-4 text-sardis-400" />
+          Start from Template
+          <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <PolicyTemplates
+            onSelectTemplate={(rules) => {
+              setPolicyText(rules)
+              setParsedResult(null)
+              setPreviewResult(null)
+              setApplySuccess(false)
+              setConfirmApply(false)
+            }}
+          />
+        </div>
+      </details>
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
