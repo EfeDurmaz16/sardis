@@ -340,20 +340,19 @@ export default function Hero({ onOpenWaitlist }) {
 
           {/* CTA Row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-            <button
-              onClick={onOpenWaitlist}
-              className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap text-center"
+            <a
+              href="https://dashboard.sardis.sh/signup"
+              className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap text-center inline-block"
               style={{
                 fontFamily: "'Inter', sans-serif",
                 backgroundColor: 'var(--landing-accent)',
-                border: 'none',
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent)'}
             >
-              Join the Waitlist
-            </button>
+              Get Started Free
+            </a>
           </div>
 
           {/* Install command */}

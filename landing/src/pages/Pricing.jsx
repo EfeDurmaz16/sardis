@@ -68,8 +68,8 @@ const PLANS = [
     tagline: 'Get started with no credit card.',
     highlighted: false,
     badge: null,
-    cta: 'Join Waitlist',
-    ctaTo: null,
+    cta: 'Get Started Free',
+    ctaTo: 'https://dashboard.sardis.sh/signup',
     features: [
       { label: '1,000 API calls / mo', included: true },
       { label: '2 agents', included: true },
@@ -89,8 +89,8 @@ const PLANS = [
     tagline: 'For small teams shipping fast.',
     highlighted: false,
     badge: null,
-    cta: 'Join Waitlist',
-    ctaTo: null,
+    cta: 'Start Free Trial',
+    ctaTo: 'https://dashboard.sardis.sh/signup?plan=starter',
     features: [
       { label: '50,000 API calls / mo', included: true },
       { label: '10 agents', included: true },
@@ -110,8 +110,8 @@ const PLANS = [
     tagline: 'Scale your agent fleet with confidence.',
     highlighted: true,
     badge: 'Most Popular',
-    cta: 'Join Waitlist',
-    ctaTo: null,
+    cta: 'Start Free Trial',
+    ctaTo: 'https://dashboard.sardis.sh/signup?plan=growth',
     features: [
       { label: '500,000 API calls / mo', included: true },
       { label: '100 agents', included: true },
@@ -404,15 +404,15 @@ function MinimalNav() {
             >
               Pricing
             </a>
-            <Link
-              to="/"
+            <a
+              href="https://dashboard.sardis.sh/signup"
               className="text-[14px] font-medium text-white rounded-lg transition-colors duration-200 px-4 py-2"
               style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#2563EB' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
             >
-              Join Waitlist
-            </Link>
+              Get Started
+            </a>
           </div>
         </div>
       </div>
@@ -516,15 +516,15 @@ export default function Pricing() {
             figure out the best fit.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setWaitlistOpen(true)}
-              className="rounded-lg py-3 px-6 text-sm font-medium text-white text-center transition-colors cursor-pointer"
+            <a
+              href="https://dashboard.sardis.sh/signup"
+              className="rounded-lg py-3 px-6 text-sm font-medium text-white text-center transition-colors cursor-pointer inline-block"
               style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#2563EB', border: 'none' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
             >
-              Join the Waitlist
-            </button>
+              Get Started Free
+            </a>
             <Link
               to="/enterprise"
               className="rounded-lg py-3 px-6 text-sm font-medium text-center transition-colors"

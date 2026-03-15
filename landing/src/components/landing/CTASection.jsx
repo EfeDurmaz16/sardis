@@ -1,4 +1,4 @@
-export default function CTASection({ onOpenWaitlist }) {
+export default function CTASection() {
   return (
     <section style={{ backgroundColor: 'var(--landing-bg)' }}>
       <div className="max-w-[1440px] mx-auto px-5 md:px-12 xl:px-20 pt-[120px] md:pt-40 pb-16 md:pb-20 flex flex-col items-center justify-center text-center gap-6">
@@ -13,16 +13,15 @@ export default function CTASection({ onOpenWaitlist }) {
           className="text-[16px] leading-[26px] font-light"
           style={{ fontFamily: "'Inter', sans-serif", color: 'var(--landing-text-tertiary)' }}
         >
-          Join the waitlist for early access. No credit card required.
+          Start building for free. No credit card required.
         </p>
 
-        <div className="pt-3">
-          <button
-            onClick={onOpenWaitlist}
-            className="text-white rounded-lg py-3.5 px-9 transition-colors text-center"
+        <div className="pt-3 flex flex-col sm:flex-row gap-3">
+          <a
+            href="https://dashboard.sardis.sh/signup"
+            className="text-white rounded-lg py-3.5 px-9 transition-colors text-center inline-block"
             style={{
               backgroundColor: 'var(--landing-accent)',
-              border: 'none',
               cursor: 'pointer',
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
@@ -32,9 +31,9 @@ export default function CTASection({ onOpenWaitlist }) {
               className="text-[15px] font-medium"
               style={{ fontFamily: "'Inter', sans-serif" }}
             >
-              Join the Waitlist
+              Get Started Free
             </span>
-          </button>
+          </a>
         </div>
       </div>
     </section>
