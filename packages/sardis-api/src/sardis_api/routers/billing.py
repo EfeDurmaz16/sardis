@@ -323,7 +323,7 @@ async def create_checkout_session(
             line_items=[{"price": price_id, "quantity": 1}],
             success_url=f"{dashboard_billing_url}?success=1",
             cancel_url=f"{dashboard_billing_url}?canceled=1",
-            metadata={"org_id": principal.organization_id},
+            metadata={"org_id": principal.organization_id, "plan": body.plan},
         )
     except Exception as exc:
         logger.error("Stripe checkout session creation failed: %s", exc)

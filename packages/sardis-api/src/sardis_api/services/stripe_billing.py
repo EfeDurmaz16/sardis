@@ -197,13 +197,59 @@ class StripeBillingService:
         except Exception:
             return False
 
+    def _resolve_plan_from_price(self, price_id: str) -> str | None:
+        """Map a Stripe price ID back to a plan name.
+
+        Reads SARDIS_BILLING_STRIPE_PRICE_STARTER / _GROWTH env vars.
+        Returns None if no match (caller should keep existing plan).
+        """
+        starter_price = os.getenv("SARDIS_BILLING_STRIPE_PRICE_STARTER", "")
+        growth_price = os.getenv("SARDIS_BILLING_STRIPE_PRICE_GROWTH", "")
+        if price_id and price_id == starter_price:
+            return "starter"
+        if price_id and price_id == growth_price:
+            return "growth"
+        return None
+
     async def handle_webhook_event(self, event_type: str, data: dict) -> None:
         """Process a Stripe webhook event."""
-        if event_type == "customer.subscription.updated":
+        if event_type == "checkout.session.completed":
+            session = data.get("object", {})
+            metadata = session.get("metadata", {})
+            org_id = metadata.get("org_id")
+            plan = metadata.get("plan")
+            stripe_customer_id = session.get("customer")
+            stripe_subscription_id = session.get("subscription")
+
+            if org_id and plan:
+                try:
+                    await self.create_subscription(
+                        org_id=org_id,
+                        plan=plan,
+                        stripe_customer_id=stripe_customer_id,
+                        stripe_subscription_id=stripe_subscription_id,
+                    )
+                    logger.info(
+                        "Checkout completed: org=%s plan=%s customer=%s",
+                        org_id, plan, stripe_customer_id,
+                    )
+                except Exception as e:
+                    logger.error("Failed to process checkout.session.completed: %s", e)
+            else:
+                logger.warning(
+                    "checkout.session.completed missing org_id or plan in metadata: %s",
+                    metadata,
+                )
+
+        elif event_type == "customer.subscription.updated":
             sub_data = data.get("object", {})
-            # Find org by stripe customer ID and update
             stripe_customer_id = sub_data.get("customer")
-            status = sub_data.get("status", "active")
+            sub_status = sub_data.get("status", "active")
+
+            # Try to resolve plan from the subscription's price
+            items = sub_data.get("items", {}).get("data", [])
+            price_id = items[0].get("price", {}).get("id", "") if items else ""
+            resolved_plan = self._resolve_plan_from_price(price_id)
 
             if stripe_customer_id:
                 try:
@@ -211,15 +257,27 @@ class StripeBillingService:
 
                     pool = await get_pool()
                     async with pool.acquire() as conn:
-                        await conn.execute(
-                            """
-                            UPDATE billing_subscriptions
-                            SET status = $1, updated_at = NOW()
-                            WHERE stripe_customer_id = $2
-                            """,
-                            status,
-                            stripe_customer_id,
-                        )
+                        if resolved_plan:
+                            await conn.execute(
+                                """
+                                UPDATE billing_subscriptions
+                                SET status = $1, plan = $2, updated_at = NOW()
+                                WHERE stripe_customer_id = $3
+                                """,
+                                sub_status,
+                                resolved_plan,
+                                stripe_customer_id,
+                            )
+                        else:
+                            await conn.execute(
+                                """
+                                UPDATE billing_subscriptions
+                                SET status = $1, updated_at = NOW()
+                                WHERE stripe_customer_id = $2
+                                """,
+                                sub_status,
+                                stripe_customer_id,
+                            )
                 except Exception as e:
                     logger.error("Failed to update subscription from webhook: %s", e)
 
@@ -245,7 +303,11 @@ class StripeBillingService:
                     logger.error("Failed to cancel subscription from webhook: %s", e)
 
         elif event_type == "invoice.payment_failed":
-            logger.warning("Invoice payment failed: %s", data.get("object", {}).get("id"))
+            inv = data.get("object", {})
+            logger.warning(
+                "Invoice payment failed: id=%s customer=%s",
+                inv.get("id"), inv.get("customer"),
+            )
 
         else:
             logger.debug("Unhandled Stripe billing webhook: %s", event_type)
