@@ -18,6 +18,7 @@ import DocsLayout from './docs/DocsLayout.jsx'
 import DocsOverview from './docs/pages/Overview.jsx'
 import DocsQuickstart from './docs/pages/Quickstart.jsx'
 import DocsAuthentication from './docs/pages/Authentication.jsx'
+import DocsProductionGuide from './docs/pages/ProductionGuide.jsx'
 // Protocols
 import DocsProtocols from './docs/pages/Protocols.jsx'
 import DocsAP2 from './docs/pages/AP2.jsx'
@@ -111,6 +112,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="overview" element={<DocsOverview />} />
           <Route path="quickstart" element={<DocsQuickstart />} />
           <Route path="authentication" element={<DocsAuthentication />} />
+          <Route path="production-guide" element={<DocsProductionGuide />} />
           {/* Protocols */}
           <Route path="protocols" element={<DocsProtocols />} />
           <Route path="ap2" element={<DocsAP2 />} />
