@@ -19,9 +19,7 @@ _logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# TODO: use DB (email_verification_tokens table from migration 066)
-# Keyed by token_hash -> {"user_id": str, "expires_at": datetime, "used_at": datetime | None}
-_token_store: dict[str, dict] = {}
+# DB-backed token storage using email_verification_tokens table (migration 066)
 
 _TOKEN_TTL_HOURS = 24
 
@@ -133,12 +131,20 @@ async def send_verification_email(
     token_hash = _hash_token(raw_token)
     expires_at = datetime.now(UTC) + timedelta(hours=_TOKEN_TTL_HOURS)
 
-    # TODO: use DB — INSERT INTO email_verification_tokens
-    _token_store[token_hash] = {
-        "user_id": user_id,
-        "expires_at": expires_at,
-        "used_at": None,
-    }
+    # Persist token to DB (email_verification_tokens table, migration 066)
+    try:
+        from sardis_v2_core.database import Database
+        pool = await Database.get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+                VALUES ($1, $2, $3)
+                """,
+                user_id, token_hash, expires_at,
+            )
+    except Exception as exc:
+        _logger.error("Failed to persist verification token for %s: %s", user_id, exc)
 
     base_url = os.getenv("SARDIS_API_BASE_URL", "https://api.sardis.sh")
     verification_link = f"{base_url}/api/v2/auth/verify-email/confirm?token={raw_token}"
@@ -167,8 +173,18 @@ async def confirm_verification_email(
     """
     token_hash = _hash_token(body.token)
 
-    # TODO: use DB — SELECT ... FROM email_verification_tokens WHERE token_hash = $1
-    record = _token_store.get(token_hash)
+    # Look up token from DB
+    try:
+        from sardis_v2_core.database import Database
+        pool = await Database.get_pool()
+        async with pool.acquire() as conn:
+            record = await conn.fetchrow(
+                "SELECT user_id, expires_at, used_at FROM email_verification_tokens WHERE token_hash = $1",
+                token_hash,
+            )
+    except Exception as exc:
+        _logger.error("Failed to query verification token: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Token lookup failed")
 
     if record is None:
         raise HTTPException(
@@ -183,27 +199,30 @@ async def confirm_verification_email(
         )
 
     now = datetime.now(UTC)
-    if now > record["expires_at"]:
+    expires_at = record["expires_at"]
+    if hasattr(expires_at, "replace"):
+        expires_at = expires_at.replace(tzinfo=UTC) if expires_at.tzinfo is None else expires_at
+    if now > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification token has expired",
         )
 
-    # Mark token as used
-    # TODO: use DB — UPDATE email_verification_tokens SET used_at = NOW() WHERE token_hash = $1
-    record["used_at"] = now
-
-    # Mark user email as verified
-    # TODO: use DB — UPDATE users SET email_verified = TRUE WHERE id = $1
+    # Mark token as used and user as verified atomically
     user_id = record["user_id"]
-    database_url = getattr(getattr(request.app, "state", None), "database_url", None)
-    if database_url and (database_url.startswith("postgresql://") or database_url.startswith("postgres://")):
-        try:
-            from sardis_api.services.auth_service import AuthService
-            auth_svc = AuthService(dsn=database_url)
-            await auth_svc.mark_email_verified(user_id=user_id)
-        except Exception as exc:
-            _logger.error("Failed to persist email_verified for user %s: %s", user_id, exc)
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE email_verification_tokens SET used_at = now() WHERE token_hash = $1",
+                token_hash,
+            )
+            await conn.execute(
+                "UPDATE users SET email_verified = TRUE, updated_at = now() WHERE id = $1",
+                user_id,
+            )
+    except Exception as exc:
+        _logger.error("Failed to confirm verification for user %s: %s", user_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Verification failed")
 
     _logger.info("Email verified for user %s", user_id)
     return ConfirmVerificationResponse(email_verified=True)
