@@ -470,7 +470,9 @@ class AuthService:
     ) -> str:
         import jwt as pyjwt
 
-        secret = os.getenv("JWT_SECRET_KEY", "dev-secret-do-not-use-in-production")
+        secret = os.getenv("JWT_SECRET_KEY", "")
+        if not secret:
+            raise RuntimeError("JWT_SECRET_KEY environment variable is required")
         now = int(time.time())
         payload = {
             "sub": user_id,

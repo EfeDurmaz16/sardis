@@ -253,78 +253,11 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    # Legacy shared admin password — DEPRECATED, will be removed Q3 2026.
-    # Blocked in production. Only allowed in dev/staging for backward compat.
-    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-    if env in ("production", "prod"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Shared admin login is disabled in production. Use a registered account.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    admin_password = os.getenv("SARDIS_ADMIN_PASSWORD", "")
-    allow_insecure_default = os.getenv("SARDIS_ALLOW_INSECURE_DEFAULT_ADMIN_PASSWORD", "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-
-    if not admin_password:
-        if allow_insecure_default and env in ("dev", "development", "local"):
-            admin_password = "change-me-immediately"  # nosecret — dev-only placeholder
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Authentication not configured. Set SARDIS_ADMIN_PASSWORD.",
-            )
-
-    valid_username = hmac.compare_digest(username, "admin")
-    valid_password = hmac.compare_digest(password, admin_password)
-
-    if not (valid_username and valid_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    _logger.warning(
-        "DEPRECATED: shared admin password login from env=%s. "
-        "Register a user account via POST /auth/register. "
-        "This path will be removed in Q3 2026.",
-        env,
-    )
-
-    now = datetime.now(UTC)
-    exp = now + timedelta(hours=JWT_EXPIRATION_HOURS)
-    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-    configured_org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "").strip()
-
-    if env in ("prod", "production", "staging") and not configured_org_id:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="JWT auth requires SARDIS_DEFAULT_ORG_ID in production/staging",
-        )
-
-    org_id = configured_org_id or ("org_demo" if env in ("dev", "test", "local") else "")
-
-    payload = {
-        "sub": username,
-        "role": "admin",
-        "exp": int(exp.timestamp()),
-        "iat": int(now.timestamp()),
-        "jti": secrets.token_hex(16),
-    }
-    if org_id:
-        payload["org_id"] = org_id
-
-    token = create_jwt_token(payload)
-
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        expires_in=JWT_EXPIRATION_HOURS * 3600,
+    # Shared admin password was removed. Use per-user accounts.
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid credentials. Register at POST /auth/register or reset password at POST /auth/forgot-password.",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
