@@ -149,6 +149,40 @@ def calculate_fee(
     )
 
 
+def calculate_fee_for_plan(
+    amount: Decimal,
+    plan: str,
+    *,
+    destination: str = "",
+) -> FeeCalculation:
+    """Calculate platform fee using the plan-specific tx_fee_bps.
+
+    Looks up the fee rate from billing/config.py PLAN_LIMITS for the
+    given plan name. Falls back to the env-var default if the plan
+    is unknown.
+
+    Args:
+        amount: Payment amount in token units (e.g. 50.00 USDC)
+        plan: Billing plan name (free, starter, growth, enterprise)
+        destination: Recipient address (checked against exempt list)
+
+    Returns:
+        FeeCalculation with plan-specific fee applied
+    """
+    try:
+        from sardis_api.billing.config import PLAN_LIMITS
+        plan_limits = PLAN_LIMITS.get(plan, {})
+        plan_fee_bps = plan_limits.get("tx_fee_bps")
+    except ImportError:
+        plan_fee_bps = None
+
+    return calculate_fee(
+        amount,
+        destination=destination,
+        fee_bps=plan_fee_bps,
+    )
+
+
 def get_treasury_address() -> str | None:
     """Get the Sardis treasury address for fee collection.
 
