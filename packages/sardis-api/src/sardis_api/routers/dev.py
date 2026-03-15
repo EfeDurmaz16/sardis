@@ -4,14 +4,17 @@ Provides:
 - Testnet faucet: Send testnet USDC from a funded EOA to any address
 - Only available in non-production environments
 - Gated by SARDIS_EOA_PRIVATE_KEY env var
+- Per-wallet rate limiting: 5 requests per wallet per hour
 """
 from __future__ import annotations
 
 import logging
 import os
+import time
+from collections import defaultdict
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sardis_chain.executor import (
     CHAIN_CONFIGS,
@@ -42,6 +45,37 @@ DEFAULT_FAUCET_AMOUNT = Decimal("10")
 # USDC has 6 decimals
 USDC_DECIMALS = 6
 
+# Per-wallet rate limiting: max 5 requests per wallet per hour
+_FAUCET_MAX_REQUESTS_PER_HOUR = 5
+_FAUCET_WINDOW_SECONDS = 3600
+_faucet_request_log: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_faucet_rate_limit(key: str, max_requests: int = _FAUCET_MAX_REQUESTS_PER_HOUR) -> None:
+    """Enforce rate limiting on faucet requests by key (wallet address or IP).
+
+    Raises HTTPException(429) if the key has exceeded the limit.
+    """
+    now = time.monotonic()
+    normalized = key.lower()
+
+    # Prune old entries outside the window
+    _faucet_request_log[normalized] = [
+        t for t in _faucet_request_log[normalized]
+        if now - t < _FAUCET_WINDOW_SECONDS
+    ]
+
+    if len(_faucet_request_log[normalized]) >= max_requests:
+        oldest = _faucet_request_log[normalized][0]
+        retry_after = int(_FAUCET_WINDOW_SECONDS - (now - oldest)) + 1
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Faucet rate limit exceeded ({max_requests}/hour). Retry after {retry_after}s.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    _faucet_request_log[normalized].append(now)
+
 
 class FaucetRequest(BaseModel):
     """Request to receive testnet tokens from the faucet."""
@@ -63,7 +97,7 @@ class FaucetResponse(BaseModel):
 
 
 @router.post("/faucet", response_model=FaucetResponse)
-async def dev_faucet(req: FaucetRequest):
+async def dev_faucet(req: FaucetRequest, request: Request):
     """
     Send testnet tokens from the Sardis faucet EOA to a wallet address.
 
@@ -132,6 +166,14 @@ async def dev_faucet(req: FaucetRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid wallet address format (expected 0x... with 42 chars)",
         )
+
+    # Rate limit: 5 requests per wallet per hour
+    _check_faucet_rate_limit(req.wallet_address)
+
+    # Also rate limit by IP (20 requests/hour per IP to prevent cycling wallets)
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    client_ip = client_ip.split(",")[0].strip()
+    _check_faucet_rate_limit(f"ip:{client_ip}", max_requests=20)
 
     # Convert amount to minor units (6 decimals for USDC)
     amount_minor = int(req.amount * (10**USDC_DECIMALS))
