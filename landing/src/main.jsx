@@ -83,6 +83,7 @@ import Enterprise from './pages/Enterprise.jsx'
 import LandingV2 from './pages/LandingV2.jsx'
 // Signup removed — using waitlist for now
 import Pricing from './pages/Pricing.jsx'
+import Status from './pages/Status.jsx'
 // Solution pages
 import AgentPlatformsPage from './pages/solutions/AgentPlatforms.jsx'
 import ProcurementPage from './pages/solutions/Procurement.jsx'
@@ -104,6 +105,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/solutions/payouts" element={<PayoutsPage />} />
         {/* Signup removed — using waitlist */}
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/status" element={<Status />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<DocsOverview />} />
           <Route path="overview" element={<DocsOverview />} />
