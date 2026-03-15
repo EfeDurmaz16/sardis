@@ -36,8 +36,13 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
 )
 
 # In-memory usage counters: org_id -> call count this period.
-# TODO: replace with Redis/DB for multi-replica deployments.
+# TODO: replace with Redis/DB for multi-replica deployments (Task A5).
 _usage_counters: dict[str, int] = defaultdict(int)
+
+# TTL cache for org plan lookups: org_id -> (plan_name, timestamp).
+# Avoids hitting the DB on every single API request.
+_PLAN_CACHE_TTL_SECONDS = 60
+_plan_cache: dict[str, tuple[str, float]] = {}
 
 
 def _period_reset_epoch() -> int:
@@ -48,6 +53,44 @@ def _period_reset_epoch() -> int:
         day=last_day, hour=23, minute=59, second=59, microsecond=0
     )
     return int(end_of_month.timestamp())
+
+
+async def _lookup_org_plan(org_id: str) -> str:
+    """Look up an org's billing plan from the DB with a TTL cache.
+
+    Returns the plan name (free, starter, growth, enterprise).
+    Falls back to "free" on any error.
+    """
+    now = time.monotonic()
+    cached = _plan_cache.get(org_id)
+    if cached is not None:
+        plan, cached_at = cached
+        if now - cached_at < _PLAN_CACHE_TTL_SECONDS:
+            return plan
+
+    try:
+        from sardis_v2_core.database import Database
+
+        pool = await Database.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT plan FROM billing_subscriptions WHERE org_id = $1 AND status = 'active'",
+                org_id,
+            )
+
+        plan = row["plan"] if row else "free"
+        # Validate the plan name exists in PLAN_LIMITS
+        if plan not in PLAN_LIMITS:
+            logger.warning("org=%s has unknown plan %r, defaulting to free", org_id, plan)
+            plan = "free"
+
+        _plan_cache[org_id] = (plan, now)
+        return plan
+
+    except Exception:
+        logger.debug("Could not look up plan for org=%s, defaulting to free", org_id, exc_info=True)
+        _plan_cache[org_id] = ("free", now)
+        return "free"
 
 
 class UsageMeteringMiddleware(BaseHTTPMiddleware):
@@ -82,8 +125,7 @@ class UsageMeteringMiddleware(BaseHTTPMiddleware):
         if not org_id:
             return await call_next(request)
 
-        # TODO: look up the org's actual plan from DB; default to "free" for now.
-        plan: str = "free"
+        plan = await _lookup_org_plan(org_id)
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         api_limit: int | None = limits.get("api_calls_per_month")
 
