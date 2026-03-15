@@ -791,7 +791,20 @@ class SardisClient:
         api_key: str | None = None,
         *,
         base_url: str | None = None,
+        mode: str | None = None,
     ):
+        """
+        Create a Sardis client.
+
+        Args:
+            api_key: API key for production mode (sk_...). Omit for simulation.
+            base_url: Override API base URL.
+            mode: Force mode — "simulation" or "production". None = auto-detect.
+                  Auto-detect uses production when sardis_sdk is installed and
+                  a real API key is provided; simulation otherwise.
+        """
+        import warnings
+
         self.api_key = api_key
         self.base_url = base_url
         self._simulation = True
@@ -802,8 +815,13 @@ class SardisClient:
         self._groups: dict[str, ManagedGroup] = {}
         self._ledger: list[LedgerEntry] = []
 
-        # Try to use production SDK if available and key looks real
-        if api_key and api_key.startswith("sk_") and not api_key.startswith(("sk_test", "sk_demo")):
+        # Mode resolution
+        if mode == "simulation":
+            self._simulation = True
+        elif mode == "production":
+            if not api_key:
+                from .errors import ConfigurationError
+                raise ConfigurationError("Production mode requires an API key (api_key='sk_...')")
             try:
                 from sardis_sdk import SardisClient as _ProdClient
                 client_kwargs: dict[str, Any] = {"api_key": api_key}
@@ -812,7 +830,31 @@ class SardisClient:
                 self._prod_client = _ProdClient(**client_kwargs)
                 self._simulation = False
             except ImportError:
-                pass
+                from .errors import ConfigurationError
+                raise ConfigurationError(
+                    "Production mode requires the sardis-sdk package. Install it: pip install sardis-sdk"
+                )
+        else:
+            # Auto-detect: try production if key looks real
+            if api_key and api_key.startswith("sk_") and not api_key.startswith(("sk_test", "sk_demo")):
+                try:
+                    from sardis_sdk import SardisClient as _ProdClient
+                    client_kwargs_auto: dict[str, Any] = {"api_key": api_key}
+                    if base_url:
+                        client_kwargs_auto["base_url"] = base_url
+                    self._prod_client = _ProdClient(**client_kwargs_auto)
+                    self._simulation = False
+                except ImportError:
+                    pass
+
+        # Warn when in simulation mode (suppressible with warnings.filterwarnings)
+        if self._simulation:
+            warnings.warn(
+                "SardisClient is running in simulation mode — payments are local and "
+                "do not execute on-chain. To go live, provide a production API key and "
+                "install sardis-sdk. See: https://sardis.sh/docs/production-guide",
+                stacklevel=2,
+            )
 
         # Resource managers
         self.agents = AgentManager(self)

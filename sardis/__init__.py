@@ -25,6 +25,14 @@ __version__ = "1.0.0"
 # ---------------------------------------------------------------------------
 from .agent import Agent
 from .client import LedgerEntry, ManagedGroup, ManagedWallet, SardisClient
+from .errors import (
+    ConfigurationError,
+    ErrorCode,
+    InsufficientFundsError,
+    PolicyViolationError,
+    SardisError,
+    WalletNotFoundError,
+)
 from .group import AgentGroup
 from .policy import Policy, PolicyResult
 from .transaction import Transaction, TransactionResult, TransactionStatus
@@ -58,6 +66,13 @@ __all__ = [
     "PolicyResult",
     "Agent",
     "AgentGroup",
+    # Errors
+    "SardisError",
+    "ErrorCode",
+    "PolicyViolationError",
+    "InsufficientFundsError",
+    "WalletNotFoundError",
+    "ConfigurationError",
 ]
 
 if _HAS_SDK:

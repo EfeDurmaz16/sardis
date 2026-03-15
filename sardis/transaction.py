@@ -11,6 +11,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import uuid4
 
+from .errors import ErrorCode, _get_suggestion
 from .policy import Policy, PolicyResult
 from .wallet import Wallet
 
@@ -25,9 +26,29 @@ class TransactionStatus(str, Enum):
     REJECTED = "rejected"
 
 
+# Map policy check failure names to error codes
+_POLICY_CHECK_TO_ERROR: dict[str, str] = {
+    "amount_limit": ErrorCode.POLICY_AMOUNT_EXCEEDED,
+    "token_allowed": ErrorCode.POLICY_TOKEN_NOT_ALLOWED,
+    "destination_blocked": ErrorCode.POLICY_MERCHANT_BLOCKED,
+    "destination_allowed": ErrorCode.POLICY_MERCHANT_NOT_ALLOWED,
+    "purpose_required": ErrorCode.POLICY_PURPOSE_REQUIRED,
+    "wallet_limit": ErrorCode.POLICY_WALLET_LIMIT,
+}
+
+
 @dataclass
 class TransactionResult:
-    """Result of a transaction execution."""
+    """Result of a transaction execution.
+
+    On failure, ``error_code`` and ``suggestion`` provide actionable
+    guidance for fixing the issue::
+
+        result = wallet.pay(to="openai.com", amount=500)
+        if not result.success:
+            print(result.error_code)   # "POLICY_AMOUNT_EXCEEDED"
+            print(result.suggestion)   # "Reduce amount below $100..."
+    """
     tx_id: str
     status: TransactionStatus
     amount: Decimal
@@ -39,6 +60,8 @@ class TransactionResult:
     message: str | None = None
     policy_result: PolicyResult | None = None
     approval_id: str | None = None
+    error_code: str | None = None
+    suggestion: str | None = None
 
     @property
     def success(self) -> bool:
@@ -116,6 +139,9 @@ class Transaction:
         )
 
         if not policy_result.approved:
+            # Resolve error code from the first failed policy check
+            failed_check = policy_result.checks_failed[0] if policy_result.checks_failed else ""
+            error_code = _POLICY_CHECK_TO_ERROR.get(failed_check, ErrorCode.TRANSACTION_FAILED)
             return TransactionResult(
                 tx_id=self.tx_id,
                 status=TransactionStatus.REJECTED,
@@ -126,6 +152,8 @@ class Transaction:
                 timestamp=timestamp,
                 message=policy_result.reason,
                 policy_result=policy_result,
+                error_code=error_code,
+                suggestion=_get_suggestion(error_code),
             )
 
         # Check if human approval is required
@@ -142,6 +170,8 @@ class Transaction:
                 message=policy_result.approval_reason or "Awaiting human approval",
                 policy_result=policy_result,
                 approval_id=approval_id,
+                error_code=ErrorCode.APPROVAL_REQUIRED,
+                suggestion=_get_suggestion(ErrorCode.APPROVAL_REQUIRED),
             )
 
         # Attempt to spend from wallet
@@ -156,6 +186,8 @@ class Transaction:
                 timestamp=timestamp,
                 message="Insufficient funds or limit exceeded",
                 policy_result=policy_result,
+                error_code=ErrorCode.INSUFFICIENT_FUNDS,
+                suggestion=_get_suggestion(ErrorCode.INSUFFICIENT_FUNDS),
             )
 
         # Generate simulated tx hash (in production, this is real on-chain hash)
