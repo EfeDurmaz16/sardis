@@ -12,6 +12,7 @@ from enum import Enum
 from uuid import uuid4
 
 from .errors import ErrorCode, _get_suggestion
+from .mandate import SpendingMandate
 from .policy import Policy, PolicyResult
 from .wallet import Wallet
 
@@ -102,6 +103,7 @@ class Transaction:
         currency: str = "USDC",
         purpose: str | None = None,
         policy: Policy | None = None,
+        mandate: SpendingMandate | None = None,
     ):
         """
         Create a new transaction.
@@ -113,6 +115,7 @@ class Transaction:
             currency: Token type (default: USDC)
             purpose: Optional description
             policy: Optional policy to enforce
+            mandate: Optional spending mandate to check before policy
         """
         self.from_wallet = from_wallet
         self.to = to
@@ -120,6 +123,7 @@ class Transaction:
         self.currency = currency
         self.purpose = purpose
         self.policy = policy or Policy()
+        self.mandate = mandate
         self.tx_id = f"tx_{uuid4().hex[:16]}"
 
     def execute(self) -> TransactionResult:
@@ -130,6 +134,42 @@ class Transaction:
         In production, this triggers on-chain settlement.
         """
         timestamp = datetime.now(UTC)
+
+        # Check mandate (if set) before policy
+        if self.mandate is not None:
+            mandate_result = self.mandate.check(
+                amount=self.amount,
+                merchant=self.to,
+            )
+            if not mandate_result.approved:
+                return TransactionResult(
+                    tx_id=self.tx_id,
+                    status=TransactionStatus.REJECTED,
+                    amount=self.amount,
+                    from_wallet=self.from_wallet.wallet_id,
+                    to=self.to,
+                    currency=self.currency,
+                    timestamp=timestamp,
+                    message=mandate_result.reason,
+                    error_code=mandate_result.error_code or "MANDATE_REJECTED",
+                    suggestion=_get_suggestion(ErrorCode.POLICY_AMOUNT_EXCEEDED),
+                )
+
+            if mandate_result.requires_approval:
+                approval_id = f"appr_{uuid4().hex[:16]}"
+                return TransactionResult(
+                    tx_id=self.tx_id,
+                    status=TransactionStatus.PENDING_APPROVAL,
+                    amount=self.amount,
+                    from_wallet=self.from_wallet.wallet_id,
+                    to=self.to,
+                    currency=self.currency,
+                    timestamp=timestamp,
+                    message=f"Mandate requires approval: {mandate_result.reason}",
+                    approval_id=approval_id,
+                    error_code=ErrorCode.APPROVAL_REQUIRED,
+                    suggestion=_get_suggestion(ErrorCode.APPROVAL_REQUIRED),
+                )
 
         # Check policy
         policy_result = self.policy.check(
@@ -189,6 +229,10 @@ class Transaction:
                 error_code=ErrorCode.INSUFFICIENT_FUNDS,
                 suggestion=_get_suggestion(ErrorCode.INSUFFICIENT_FUNDS),
             )
+
+        # Track spend on mandate
+        if self.mandate is not None:
+            self.mandate.record_spend(self.amount)
 
         # Generate simulated tx hash (in production, this is real on-chain hash)
         tx_hash = f"0x{uuid4().hex}"
