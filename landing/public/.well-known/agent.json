@@ -25,6 +25,10 @@
     "holds": {
       "description": "Pre-authorize payments without immediate execution",
       "features": ["partial-capture", "auto-release"]
+    },
+    "mandates": {
+      "description": "Machine-readable spending mandates — scoped, revocable, cross-rail payment authorization",
+      "features": ["merchant-scope", "amount-limits", "time-bounds", "approval-workflows", "instant-revocation", "cross-rail", "audit-trail"]
     }
   },
   "supported_protocols": [

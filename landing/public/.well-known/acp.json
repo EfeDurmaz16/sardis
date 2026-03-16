@@ -1,0 +1,62 @@
+{
+  "name": "Sardis",
+  "description": "Payment infrastructure for AI agents. Spending mandates, non-custodial wallets, policy enforcement, multi-rail execution.",
+  "version": "1.0",
+  "protocol": "acp/1.0",
+  "url": "https://sardis.sh",
+  "capabilities": [
+    {
+      "name": "payments",
+      "description": "Execute payments on behalf of AI agents with policy enforcement",
+      "operations": ["create", "get", "list", "simulate"]
+    },
+    {
+      "name": "mandates",
+      "description": "Create and manage spending mandates — scoped, revocable payment authorization",
+      "operations": ["create", "get", "list", "activate", "suspend", "resume", "revoke"]
+    },
+    {
+      "name": "wallets",
+      "description": "Create and manage non-custodial MPC wallets",
+      "operations": ["create", "get", "list", "balance"]
+    },
+    {
+      "name": "policies",
+      "description": "Define and enforce natural language spending policies",
+      "operations": ["create", "get", "check", "simulate"]
+    },
+    {
+      "name": "agents",
+      "description": "Register and manage AI agent identities",
+      "operations": ["create", "get", "list", "update"]
+    },
+    {
+      "name": "approvals",
+      "description": "Human-in-the-loop approval workflows for high-value transactions",
+      "operations": ["request", "approve", "reject", "list"]
+    },
+    {
+      "name": "cards",
+      "description": "Issue virtual cards for agent payments",
+      "operations": ["create", "get", "list", "freeze", "cancel"]
+    }
+  ],
+  "authentication": {
+    "type": "bearer",
+    "header": "Authorization",
+    "description": "API key (sk_test_ or sk_live_) as Bearer token"
+  },
+  "endpoints": {
+    "api_base": "https://api.sardis.sh/api/v2",
+    "openapi": "https://api.sardis.sh/api/v2/docs",
+    "documentation": "https://sardis.sh/docs",
+    "sandbox": "https://api.sardis.sh/api/v2/sandbox"
+  },
+  "sdks": {
+    "python": {"package": "sardis", "registry": "pypi"},
+    "typescript": {"package": "@sardis/sdk", "registry": "npm"},
+    "mcp": {"package": "@sardis/mcp-server", "registry": "npm"}
+  },
+  "supported_protocols": ["AP2", "TAP", "UCP", "A2A", "x402", "ACP"],
+  "contact": "support@sardis.sh"
+}
