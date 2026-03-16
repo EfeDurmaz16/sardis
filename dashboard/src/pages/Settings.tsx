@@ -481,7 +481,7 @@ function ProfileTab({ token }: { token: string | null }) {
     }
     setPwdSaving(true)
     try {
-      const res = await fetch(`${API_BASE}/api/v2/auth/password`, {
+      const res = await fetch(`${API_BASE}/api/v2/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...hdrs },
         body: JSON.stringify({ current_password: currentPwd, new_password: newPwd }),
