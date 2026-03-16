@@ -2,11 +2,25 @@
 
 > Virtual cards and stablecoins are a temporary solution. Payment tokens are the future.
 
+> **Prerequisite:** This document builds on the [Spending Mandate Specification](./spending-mandate-spec.md). The spending mandate is the off-chain authorization primitive that payment tokens will encode on-chain.
+
+## Relationship to Spending Mandates
+
+Payment tokens are the **on-chain evolution** of spending mandates:
+
+| Layer | Phase 1 (Now) | Phase 2 (6-12 months) | Phase 3 (12-18 months) |
+|-------|--------------|----------------------|----------------------|
+| Authorization | Off-chain spending mandate | Mandate → ERC-20 transfer hook | Native token mandate |
+| Enforcement | Sardis API policy pipeline | Transfer hook validates mandate | Token self-enforces |
+| Portability | API-scoped | Chain-scoped | Cross-chain |
+
+The spending mandate defines WHAT is allowed. The payment token defines HOW it's enforced on-chain. Same semantics, different enforcement layer.
+
 ## What Payment Tokens Are
 
 Sardis Payment Tokens (SPT) are **programmable digital value with embedded policy enforcement at the token level**. Unlike the current model — where policy is enforced at the API layer above static stablecoins — SPTs carry their spending rules on-chain. The token itself knows what it's allowed to buy, how much it can spend, and when it expires.
 
-Think of SPTs as "USDC with a built-in spending policy."
+Think of SPTs as "USDC with a built-in spending mandate."
 
 ## Why They Matter
 
