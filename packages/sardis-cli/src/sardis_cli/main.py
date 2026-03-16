@@ -118,6 +118,10 @@ cli.add_command(cards.cards)
 cli.add_command(spending.spending)
 cli.add_command(demo.demo)
 
+# Spending mandates
+from sardis_cli.commands import mandates
+cli.add_command(mandates.mandates)
+
 
 def main():
     """Main entry point."""
