@@ -52,6 +52,7 @@ interface LayoutProps {
 const coreNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Users },
+  { name: 'Spending Mandates', href: '/mandates', icon: Shield },
   { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
   { name: 'Cards', href: '/cards', icon: CreditCard },
