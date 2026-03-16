@@ -1886,6 +1886,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(billing_router.router)
     app.include_router(billing_router.webhook_router)
 
+    # Spending mandates
+    try:
+        from sardis_api.routers import spending_mandates as spending_mandates_router
+        app.include_router(
+            spending_mandates_router.router,
+            prefix="/api/v2/spending-mandates",
+            tags=["spending-mandates"],
+        )
+    except ImportError:
+        logger.warning("Spending mandates router not available")
+
     # SDK install metrics (public)
     app.include_router(sdk_metrics_router.router)
 
