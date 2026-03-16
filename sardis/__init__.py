@@ -34,6 +34,7 @@ from .errors import (
     WalletNotFoundError,
 )
 from .group import AgentGroup
+from .mandate import MandateCheckResult, MandateStatus, SpendingMandate
 from .policy import Policy, PolicyResult
 from .transaction import Transaction, TransactionResult, TransactionStatus
 from .wallet import Wallet
@@ -66,6 +67,10 @@ __all__ = [
     "PolicyResult",
     "Agent",
     "AgentGroup",
+    # Spending Mandates
+    "SpendingMandate",
+    "MandateStatus",
+    "MandateCheckResult",
     # Errors
     "SardisError",
     "ErrorCode",
