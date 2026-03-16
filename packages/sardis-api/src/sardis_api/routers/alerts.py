@@ -15,6 +15,7 @@ from sardis_v2_core.alert_channels import (
     EmailChannel,
     PagerDutyChannel,
     SlackChannel,
+    TelegramChannel,
     WebSocketChannel,
 )
 from sardis_v2_core.alert_rules import (

@@ -421,6 +421,76 @@ class PagerDutyChannel(AlertChannel):
             return False
 
 
+class TelegramChannel(AlertChannel):
+    """Telegram Bot API channel for alerts."""
+
+    def __init__(self, bot_token: str, chat_id: str) -> None:
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+
+    async def send(self, alert: Alert) -> bool:
+        """Send alert to Telegram via Bot API."""
+        try:
+            import aiohttp
+
+            severity_emoji = {
+                AlertSeverity.INFO: "ℹ️",
+                AlertSeverity.WARNING: "⚠️",
+                AlertSeverity.CRITICAL: "🚨",
+            }
+
+            emoji = severity_emoji.get(alert.severity, "📌")
+            alert_type = alert.alert_type.value.replace("_", " ").title()
+
+            lines = [
+                f"{emoji} *{alert_type}*",
+                f"Severity: `{alert.severity.value.upper()}`",
+                f"Message: {alert.message}",
+            ]
+
+            if alert.agent_id:
+                lines.append(f"Agent: `{alert.agent_id}`")
+
+            for key, value in alert.data.items():
+                if key in ["amount", "budget_used", "budget_total", "percentage", "merchant", "mandate_id"]:
+                    lines.append(f"{key.replace('_', ' ').title()}: `{value}`")
+
+            lines.append(f"\n_Alert ID: {alert.id}_")
+
+            text = "\n".join(lines)
+            url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+
+            payload = {
+                "chat_id": self.chat_id,
+                "text": text,
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
+            }
+
+            async with aiohttp.ClientSession() as session, session.post(
+                url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status == 200:
+                    logger.info(f"TelegramChannel: Sent alert {alert.id}")
+                    return True
+                else:
+                    body = await response.text()
+                    logger.error(
+                        f"TelegramChannel: Failed to send alert {alert.id}, "
+                        f"status={response.status}, body={body[:200]}"
+                    )
+                    return False
+
+        except ImportError:
+            logger.error("TelegramChannel: aiohttp not installed")
+            return False
+        except Exception as e:
+            logger.error(f"TelegramChannel send error: {e}")
+            return False
+
+
 class AlertDispatcher:
     """Routes alerts to configured channels based on severity and preferences."""
 
