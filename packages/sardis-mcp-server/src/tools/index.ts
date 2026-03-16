@@ -25,6 +25,7 @@ import { guardrailsToolDefinitions, guardrailsToolHandlers } from './guardrails.
 import { x402ToolDefinitions, x402ToolHandlers } from './x402.js';
 import { trustToolDefinitions, trustToolHandlers } from './trust.js';
 import { jobToolDefinitions, jobToolHandlers } from './jobs.js';
+import { mandateToolDefinitions, mandateToolHandlers } from './mandates.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -64,6 +65,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...x402ToolDefinitions,
   ...trustToolDefinitions,
   ...jobToolDefinitions,
+  ...mandateToolDefinitions,
 ];
 
 /**
@@ -87,6 +89,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...x402ToolHandlers,
   ...trustToolHandlers,
   ...jobToolHandlers,
+  ...mandateToolHandlers,
 };
 
 /**
@@ -217,6 +220,12 @@ export const toolCategories = {
     'sardis_get_job',
     'sardis_list_jobs',
     'sardis_dispute_job',
+  ],
+  mandate: [
+    'sardis_create_mandate',
+    'sardis_list_mandates',
+    'sardis_revoke_mandate',
+    'sardis_check_mandate',
   ],
 } as const;
 
