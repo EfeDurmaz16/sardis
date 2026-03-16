@@ -21,6 +21,7 @@ import DocsAuthentication from './docs/pages/Authentication.jsx'
 import DocsProductionGuide from './docs/pages/ProductionGuide.jsx'
 import DocsTrustCenter from './docs/pages/TrustCenter.jsx'
 import DocsSpendingMandates from './docs/pages/SpendingMandates.jsx'
+import DocsGetAPIKey from './docs/pages/GetAPIKey.jsx'
 // Protocols
 import DocsProtocols from './docs/pages/Protocols.jsx'
 import DocsAP2 from './docs/pages/AP2.jsx'
@@ -117,6 +118,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="production-guide" element={<DocsProductionGuide />} />
           <Route path="trust" element={<DocsTrustCenter />} />
           <Route path="spending-mandates" element={<DocsSpendingMandates />} />
+          <Route path="get-api-key" element={<DocsGetAPIKey />} />
           {/* Protocols */}
           <Route path="protocols" element={<DocsProtocols />} />
           <Route path="ap2" element={<DocsAP2 />} />

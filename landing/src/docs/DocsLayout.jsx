@@ -14,6 +14,7 @@ const navigation = [
   {
     title: 'Getting Started',
     items: [
+      { name: 'Get Your API Key', href: '/docs/get-api-key' },
       { name: 'Quick Start', href: '/docs/quickstart' },
       { name: 'Overview', href: '/docs/overview' },
       { name: 'Authentication', href: '/docs/authentication' },
