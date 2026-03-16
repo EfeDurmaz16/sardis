@@ -44,6 +44,8 @@ import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
 import AgentObservabilityPage from './pages/AgentObservability'
 import TransactionsPage from './pages/Transactions'
 import SignupPage from './pages/Signup'
+import ForgotPasswordPage from './pages/ForgotPassword'
+import ResetPasswordPage from './pages/ResetPassword'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -72,6 +74,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/onboarding"
         element={

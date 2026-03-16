@@ -101,7 +101,12 @@ export default function Login() {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 space-y-3 text-center">
+                        <p className="text-sm text-gray-500">
+                            <Link to="/forgot-password" className="text-gray-400 hover:text-sardis-300 transition-colors">
+                                Forgot password?
+                            </Link>
+                        </p>
                         <p className="text-sm text-gray-500">
                             Don't have an account?{' '}
                             <Link to="/signup" className="text-sardis-400 hover:text-sardis-300 transition-colors">
