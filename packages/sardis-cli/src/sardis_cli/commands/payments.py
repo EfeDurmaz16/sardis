@@ -51,6 +51,34 @@ def execute(
     # Convert amount to minor units (cents)
     amount_minor = int(amount * 100)
 
+    # Pre-check: look up active spending mandate for context
+    try:
+        mandates_data = client.get("/api/v2/spending-mandates", params={"status_filter": "active"})
+        if mandates_data and isinstance(mandates_data, list) and len(mandates_data) > 0:
+            active_mandate = mandates_data[0]
+            per_tx = active_mandate.get("amount_per_tx")
+            spent = active_mandate.get("spent_total", "0")
+            total = active_mandate.get("amount_total")
+            purpose_scope = active_mandate.get("purpose_scope", "")
+
+            console.print(f"\n[dim]Active mandate: {active_mandate.get('id')}[/dim]")
+            if purpose_scope:
+                console.print(f"[dim]  Purpose: {purpose_scope}[/dim]")
+            if per_tx:
+                if amount > float(per_tx):
+                    console.print(f"[red]⚠ Amount ${amount} exceeds mandate per-tx limit ${per_tx}[/red]")
+                    console.print("[red]  Payment will likely be rejected by mandate policy.[/red]")
+                else:
+                    console.print(f"[dim]  Per-tx limit: ${per_tx} (ok)[/dim]")
+            if total:
+                remaining = float(total) - float(spent)
+                if amount > remaining:
+                    console.print(f"[red]⚠ Amount ${amount} exceeds remaining mandate budget ${remaining:.2f}[/red]")
+                else:
+                    console.print(f"[dim]  Budget: ${spent} / ${total} ({remaining:.2f} remaining)[/dim]")
+    except Exception:
+        pass  # Don't block payment on mandate lookup failure
+
     mandate = {
         "mandate_id": f"cli_payment_{int(time.time())}",
         "issuer": "cli_user",
