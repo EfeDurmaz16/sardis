@@ -48,6 +48,10 @@ class ExecutionReceipt:
     amount: str = ""
     currency: str = ""
 
+    # Spending mandate reference
+    mandate_id: str = ""
+    mandate_version: int | None = None
+
     # HMAC signature for tamper detection
     signature: str = ""
 
@@ -76,6 +80,7 @@ class ExecutionReceipt:
             self.agent_id,
             self.amount,
             self.currency,
+            self.mandate_id,
         ])
         return hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
 
@@ -121,6 +126,8 @@ def build_receipt(
     agent_id: str = "",
     amount: str = "",
     currency: str = "",
+    mandate_id: str = "",
+    mandate_version: int | None = None,
 ) -> ExecutionReceipt:
     """Build and sign an execution receipt from pipeline artifacts."""
     receipt = ExecutionReceipt(
@@ -135,5 +142,7 @@ def build_receipt(
         agent_id=agent_id,
         amount=amount,
         currency=currency,
+        mandate_id=mandate_id,
+        mandate_version=mandate_version,
     )
     return receipt.sign()

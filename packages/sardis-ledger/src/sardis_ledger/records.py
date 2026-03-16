@@ -66,6 +66,10 @@ class ChainReceipt:
     proof_artifact_path: str | None = None
     proof_artifact_sha256: str | None = None
 
+    # Spending mandate reference (set by orchestrator when mandate validation passes)
+    mandate_id: str | None = None
+    mandate_version: int | None = None
+
     def __post_init__(self):
         if self.gas_price is not None:
             self.gas_price = to_ledger_decimal(self.gas_price)
@@ -85,6 +89,8 @@ class ChainReceipt:
             "user_op_hash": self.user_op_hash,
             "proof_artifact_path": self.proof_artifact_path,
             "proof_artifact_sha256": self.proof_artifact_sha256,
+            "mandate_id": self.mandate_id,
+            "mandate_version": self.mandate_version,
         }
 
 
@@ -426,6 +432,8 @@ class LedgerStore:
                 amount=amount,
                 currency=payment_mandate.token,
                 audit_anchor=chain_receipt.audit_anchor,
+                mandate_id=chain_receipt.mandate_id,
+                mandate_version=chain_receipt.mandate_version,
             )
             tx.add_on_chain_record(
                 OnChainRecord(
@@ -882,6 +890,8 @@ class LedgerStore:
             amount=amount,
             currency=payment_mandate.token,
             audit_anchor=chain_receipt.audit_anchor,
+            mandate_id=chain_receipt.mandate_id,
+            mandate_version=chain_receipt.mandate_version,
         )
         tx.add_on_chain_record(
             OnChainRecord(

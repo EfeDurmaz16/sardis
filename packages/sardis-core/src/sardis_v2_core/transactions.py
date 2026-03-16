@@ -51,6 +51,8 @@ class Transaction:
     settlement_batch_id: str | None = None
     audit_anchor: str | None = None
     idempotency_key: str | None = None
+    mandate_id: str | None = None
+    mandate_version: int | None = None
 
     def total_cost(self) -> Decimal:
         return self.amount + self.fee
@@ -86,6 +88,8 @@ class Transaction:
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
             "audit_anchor": self.audit_anchor,
+            "mandate_id": self.mandate_id,
+            "mandate_version": self.mandate_version,
             "is_on_chain": self.is_settled_on_chain,
             "chain_records": [
                 {
