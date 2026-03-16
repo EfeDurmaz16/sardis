@@ -2,9 +2,9 @@
 
 Before any payment intent reaches chain execution, it passes through an
 ordered pipeline of async hooks (AGIT policy, KYA trust scoring, FIDES
-identity, etc.).  The pipeline is fail-closed: a rejection or exception
-in any hook short-circuits the remaining hooks and returns a reject
-decision immediately.
+identity, mandate validation, etc.).  The pipeline is fail-closed: a
+rejection or exception in any hook short-circuits the remaining hooks
+and returns a reject decision immediately.
 
 Usage::
 
@@ -12,6 +12,7 @@ Usage::
         HookResult,
         PreExecutionHook,
         PreExecutionPipeline,
+        make_mandate_validation_hook,
     )
 
     async def spending_policy_hook(intent) -> HookResult:
@@ -21,6 +22,10 @@ Usage::
 
     pipeline = PreExecutionPipeline(hooks=[spending_policy_hook])
     result = await pipeline.evaluate(intent)
+
+    # Add mandate validation:
+    mandate_hook = make_mandate_validation_hook(mandate_lookup)
+    pipeline.add_hook(mandate_hook)
 """
 
 from __future__ import annotations
@@ -77,3 +82,95 @@ class PreExecutionPipeline:
                 return result
             # "skip" and "approve" both allow the pipeline to continue.
         return HookResult(decision="approve")
+
+
+def make_mandate_validation_hook(
+    mandate_lookup: Any,
+) -> PreExecutionHook:
+    """Create a pre-execution hook that validates payments against spending mandates.
+
+    The returned hook:
+    1. Looks up an active spending mandate for the intent's agent_id or wallet_id.
+    2. If a mandate exists, validates: status is active, merchant within scope,
+       amount within limits, rail permitted.
+    3. If the mandate check fails, rejects the payment.
+    4. If the mandate has an approval_threshold and amount exceeds it,
+       rejects with a ``requires_approval`` evidence flag.
+    5. Records ``mandate_id`` in the evidence dict for downstream use.
+    6. If no mandate exists, skips (backward compatible).
+
+    Args:
+        mandate_lookup: An object implementing ``get_active_mandate(agent_id, wallet_id)``
+            that returns a SpendingMandate or None.
+
+    Returns:
+        An async hook function suitable for ``PreExecutionPipeline.add_hook()``.
+    """
+
+    async def _mandate_validation_hook(intent: Any) -> HookResult:
+        agent_id = getattr(intent, "agent_id", None) or getattr(intent, "from_agent", None)
+        wallet_id = getattr(intent, "wallet_id", None) or getattr(intent, "subject", None)
+
+        mandate = await mandate_lookup.get_active_mandate(
+            agent_id=agent_id,
+            wallet_id=wallet_id,
+        )
+
+        if mandate is None:
+            # No mandate found — pass through for backward compatibility
+            return HookResult(
+                decision="skip",
+                reason="no_active_mandate",
+                evidence={"mandate_id": None},
+            )
+
+        from decimal import Decimal as _Dec
+
+        amount = getattr(intent, "amount", None) or getattr(intent, "amount_minor", 0)
+        merchant = getattr(intent, "merchant_id", None) or getattr(intent, "destination", None)
+        rail = getattr(intent, "rail", None)
+        chain = getattr(intent, "chain", None)
+        token = getattr(intent, "token", None)
+
+        check = mandate.check_payment(
+            amount=_Dec(str(amount)),
+            merchant=merchant,
+            rail=rail,
+            chain=chain,
+            token=token,
+        )
+
+        if not check.approved:
+            return HookResult(
+                decision="reject",
+                reason=check.reason,
+                evidence={
+                    "mandate_id": mandate.id,
+                    "error_code": check.error_code,
+                },
+            )
+
+        if check.requires_approval:
+            return HookResult(
+                decision="reject",
+                reason=(
+                    f"Payment of {amount} requires human approval "
+                    f"(threshold: {mandate.approval_threshold})"
+                ),
+                evidence={
+                    "mandate_id": mandate.id,
+                    "requires_approval": True,
+                    "approval_threshold": str(mandate.approval_threshold),
+                },
+            )
+
+        return HookResult(
+            decision="approve",
+            reason="mandate_check_passed",
+            evidence={
+                "mandate_id": mandate.id,
+                "mandate_version": check.mandate_version,
+            },
+        )
+
+    return _mandate_validation_hook
