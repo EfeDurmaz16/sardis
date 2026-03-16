@@ -27,6 +27,7 @@ const navigation = [
       { name: 'Wallets', href: '/docs/wallets' },
       { name: 'Payments', href: '/docs/payments' },
       { name: 'Holds', href: '/docs/holds' },
+      { name: 'Spending Mandates', href: '/docs/spending-mandates' },
       { name: 'Policies', href: '/docs/policies' },
       { name: 'Time-Based Policies', href: '/docs/time-based-policies' },
       { name: 'Merchant Categories', href: '/docs/merchant-categories' },
