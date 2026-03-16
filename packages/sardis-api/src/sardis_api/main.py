@@ -1897,6 +1897,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except ImportError:
         logger.warning("Spending mandates router not available")
 
+    # Polar.sh billing webhook (pre-incorporation MoR)
+    try:
+        from sardis_api.routers import polar_webhook as polar_webhook_router
+        app.include_router(
+            polar_webhook_router.router,
+            prefix="/api/v2/billing",
+            tags=["billing"],
+        )
+    except ImportError:
+        pass
+
     # SDK install metrics (public)
     app.include_router(sdk_metrics_router.router)
 
