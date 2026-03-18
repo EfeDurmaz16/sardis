@@ -46,7 +46,7 @@ const faqs = [
       },
       {
         q: 'Is Sardis custodial or non-custodial?',
-        a: 'For stablecoin wallets in live MPC mode (Turnkey/Fireblocks), Sardis operates in a non-custodial posture - Sardis never holds or has access to agent funds. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (Bridge, Stripe Issuing), so custody and settlement are partner-mediated for that portion of the flow.'
+        a: 'For stablecoin wallets in live MPC mode (Turnkey), Sardis operates in a non-custodial posture - Sardis never holds or has access to agent funds. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (Bridge, Stripe Issuing), so custody and settlement are partner-mediated for that portion of the flow.'
       },
       {
         q: 'What is the Unified Wallet Architecture?',

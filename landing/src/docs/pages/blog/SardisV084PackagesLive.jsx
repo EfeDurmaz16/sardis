@@ -66,9 +66,9 @@ export default function SardisV084PackagesLive() {
         <li><code>sardis-protocol</code> - AP2/TAP mandate verification pipeline</li>
         <li><code>sardis-chain</code> - On-chain execution (Base) with multi-chain funding via CCTP v2</li>
         <li><code>sardis-api</code> - FastAPI REST endpoints</li>
-        <li><code>sardis-wallet</code> - MPC wallet management (Turnkey, Fireblocks)</li>
+        <li><code>sardis-wallet</code> - MPC wallet management (Turnkey)</li>
         <li><code>sardis-ledger</code> - Append-only audit trail with Merkle anchoring</li>
-        <li><code>sardis-compliance</code> - KYC (Persona) + AML (Elliptic) integrations</li>
+        <li><code>sardis-compliance</code> - KYC (iDenfy) + AML (Elliptic) integrations</li>
         <li><code>sardis-cards</code> - Virtual card issuance (Lithic)</li>
         <li><code>sardis-cli</code> - Command-line tool</li>
         <li><code>sardis-checkout</code> - Merchant checkout flows</li>

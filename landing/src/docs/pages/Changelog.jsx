@@ -2,9 +2,92 @@ import { cn } from '@/lib/utils';
 
 const releases = [
   {
+    version: '0.11.0',
+    date: '2026-03-15',
+    tag: 'latest',
+    changes: [
+      {
+        type: 'added',
+        items: [
+          'Solana support: Anchor program for on-chain agent wallet spending policy enforcement with SolanaExecutor integration',
+          'New chains: Tempo L1 (Presto mainnet, chain ID 4217), Solana, and Morph added as supported chains — now 8 chains total',
+          'Zodiac Roles Modifier v2 integration for on-chain policy enforcement on EVM chains',
+          'ERC-8004 spec-compliant agent identity with calldata builders',
+          'ERC-8033 paymaster protocol for gasless agent transactions',
+          'ERC-8001 agent coordination and ERC-8122 agent registry protocols',
+          'ERC-8128 signed HTTP requests and ERC-8021 transaction attribution',
+          'ERC-8126 ZK risk scoring with four verification layers',
+          'zkPass Transgate for portable zero-knowledge KYC verification',
+          'Paladin privacy-preserving transaction framework',
+          'Kleros decentralized dispute resolution integration',
+          'MiCA regulation compliance engine for EU markets',
+          'Notabene Travel Rule provider with IVMS 101 support (FATF R.16)',
+          'OpenSanctions screening provider with yente API integration',
+          'Privado ID zero-knowledge identity verification',
+          'Free sanctions screening: OFAC SDN, Chainalysis Oracle, Watchman',
+          'Marble evaluation framework for fraud rule scoring',
+          'ML fraud detection with ONNX Runtime inference',
+          'Graph-based fraud detection for transaction networks',
+          'FT3 fraud taxonomy with agent-specific techniques',
+          'AI agent-specific threat detection engine',
+          'FingerprintJS device intelligence provider',
+          'GoRules Zen Engine for declarative fraud rule evaluation',
+          'Stripe Billing integration with usage metering and plan enforcement',
+          'Emergency freeze-all admin endpoint for incident response',
+          'GDPR data export endpoint',
+          'Per-developer sandbox isolation with LRU eviction',
+          'Public status page with Upptime monitoring',
+          'Grafana dashboard templates for Prometheus metrics',
+          'Interactive API reference and integration guide pages in docs',
+          'Real-time notification center with WebSocket alerts in dashboard',
+          'Onboarding wizard for new developers',
+          'SSE streaming wired to checkout UI for real-time payment status',
+          'Striga provider: vIBAN, SEPA, KYC, EURC swap, and card issuing',
+          'Lightspark Grid client with fiat rails, FX, UMA, and Plaid integration',
+          'Card routing engine and lifecycle manager',
+        ]
+      },
+      {
+        type: 'improved',
+        items: [
+          'Dashboard sidebar reorganized: 5 core items always visible, 4 collapsible sections (Control Plane, Monitoring, Payments, Settings) — down from 28 flat items',
+          'Dashboard login: removed hardcoded demo credentials, added clean "Explore Demo" button',
+          'Landing page: all CTAs now redirect to waitlist, removed signup/login flow',
+          'Actionable SDK error messages with usage examples',
+          'Trusted counterparty profiles with live trust scoring',
+          'Fallback rules and degraded mode routing for provider outages',
+          'Approval routing with SLA configuration',
+          'Policy lifecycle manager with draft/publish/archive workflow',
+          'Provider scorecards with SLO tracking',
+          'PostHog analytics integrated across landing and dashboard',
+        ]
+      },
+      {
+        type: 'security',
+        items: [
+          'Smart contract security audit: SafeERC20 for all token transfers, zero-address recipient rejection, fee snapshots at funding time, balance caps on early withdrawals, settled debt before withdrawals',
+          'Merchant checkout router hardened with rate limiting',
+          'Protocol verifier rate limiting added',
+          'Approval context binding: approved object must match executed object exactly',
+          'Origin binding wired through verifier and canonical payloads',
+          'FinCEN MSB registration documentation and SOC 2 audit readiness',
+        ]
+      },
+      {
+        type: 'fixed',
+        items: [
+          'CDP Onramp approval blockers resolved: wallet loop, labeling, test sessions',
+          'External wallet checkout flow improvements and session management fixes',
+          'All CI workflow failures resolved: lint, build, and deploy pipelines',
+          'EIP-712 checkout signature verification',
+        ]
+      },
+    ]
+  },
+  {
     version: '0.10.0',
     date: '2026-03-07',
-    tag: 'latest',
+    tag: '',
     changes: [
       {
         type: 'added',
