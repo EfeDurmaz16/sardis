@@ -52,10 +52,10 @@ const LOG_SEQUENCES = {
     { text: `[AI-Agent]: Intent: Purchase enterprise license from DataCorp`, delay: 500 },
     { text: `[Sardis-Protocol]: Constructing AP2 mandate chain`, delay: 900 },
     { text: `[Sardis-Protocol]:   → Intent verified (schema v2.1)`, delay: 1200 },
-    { text: `[Sardis-Protocol]:   → Cart: 1 item, total $2,500.00`, delay: 1500 },
+    { text: `[Sardis-Protocol]:   → Cart: 1 item, total $250.00`, delay: 1500 },
     { text: `[Sardis-Core]: Checking spending policy...`, delay: 1800 },
-    { text: `[Sardis-Core]:   → Approval threshold: $500.00`, delay: 2100 },
-    { text: `[Sardis-Core]:   → Requested amount: $2,500.00`, delay: 2400 },
+    { text: `[Sardis-Core]:   → Per-tx limit: $100.00 — ✓ override via approval`, delay: 2100 },
+    { text: `[Sardis-Core]:   → Requested amount: $250.00 exceeds auto-approve ($50.00)`, delay: 2400 },
     { text: `[Sardis-Core]:   → Amount exceeds approval threshold`, delay: 2700 },
   ],
   SIGNING: [
@@ -279,9 +279,9 @@ export function useSardisDemo() {
             setState(STATES.PENDING_APPROVAL)
             setBlockedAttempt({
               vendor: 'DataCorp',
-              amount: 2500,
-              reasonCode: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
-              reason: 'Amount exceeds approval threshold ($500.00), awaiting human approval',
+              amount: 250,
+              reasonCode: 'SARDIS.APPROVAL.REQUIRES_HUMAN',
+              reason: 'Amount $250 exceeds auto-approve threshold ($50). Requires human approval.',
               timestamp: new Date().toISOString(),
             })
             addLogs(LOG_SEQUENCES.PENDING_APPROVAL, () => {
@@ -290,10 +290,10 @@ export function useSardisDemo() {
             appendHistory({
               type: 'pending_approval',
               to: 'DataCorp',
-              amount: '2500.00',
+              amount: '250.00',
               token: 'USD',
               chain: 'Policy',
-              hash: 'SARDIS.APPROVAL.THRESHOLD_EXCEEDED',
+              hash: 'SARDIS.APPROVAL.REQUIRES_HUMAN',
               url: null,
             })
             setLiveStatus((prev) => ({
@@ -552,24 +552,24 @@ export function useSardisDemo() {
       addLogs(LOG_SEQUENCES.CONFIRMING, () => {
         setState(STATES.SUCCESS)
         setCardStatus('ACTIVE')
-        setCardBalance((prev) => Number(Math.max(0, prev - 2500).toFixed(2)))
-        setPolicyUsed((prev) => Number((prev + 2500).toFixed(2)))
+        setCardBalance((prev) => Number(Math.max(0, prev - 250).toFixed(2)))
+        setPolicyUsed((prev) => Number((prev + 250).toFixed(2)))
         setBlockedAttempt(null)
         setTransaction({
           hash: DEMO_TX_HASH,
           hashFull: DEMO_TX_HASH_FULL,
-          amount: '2500.00',
-          token: 'USD',
+          amount: '250.00',
+          token: 'USDC',
           to: 'DataCorp',
           block: DEMO_BLOCK,
-          chain: 'Virtual Card (Stripe Issuing)',
+          chain: 'Base Sepolia (Human Approved)',
           url: null,
         })
         appendHistory({
           type: 'approved',
           to: 'DataCorp',
-          amount: '2500.00',
-          token: 'USD',
+          amount: '250.00',
+          token: 'USDC',
           chain: 'Approved by human',
           hash: DEMO_TX_HASH,
           url: null,
@@ -597,7 +597,7 @@ export function useSardisDemo() {
     setCardStatus('ACTIVE')
     setBlockedAttempt({
       vendor: 'DataCorp',
-      amount: 2500,
+      amount: 250,
       reasonCode: 'SARDIS.APPROVAL.HUMAN_REJECTED',
       reason: 'Transaction rejected by human operator',
       timestamp: new Date().toISOString(),
@@ -605,8 +605,8 @@ export function useSardisDemo() {
     appendHistory({
       type: 'blocked',
       to: 'DataCorp',
-      amount: '2500.00',
-      token: 'USD',
+      amount: '250.00',
+      token: 'USDC',
       chain: 'Rejected by human',
       hash: 'SARDIS.APPROVAL.HUMAN_REJECTED',
       url: null,

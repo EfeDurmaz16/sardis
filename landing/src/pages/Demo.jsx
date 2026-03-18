@@ -309,7 +309,7 @@ export default function Demo() {
               {[
                 ['Per-tx limit', '$100.00'],
                 ['Daily limit', '$1,000.00'],
-                ['Approval above', '$500.00'],
+                ['Auto-approve below', '$50.00'],
                 ['Used today', `$${demo.policyUsed.toFixed(2)}`],
                 ['Allowed', 'SaaS, API, Compute'],
                 ['Blocked', 'Gambling, Crypto Ex.'],
