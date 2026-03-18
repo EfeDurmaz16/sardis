@@ -5,6 +5,24 @@ import SEO, { createBreadcrumbSchema } from '@/components/SEO';
 
 const posts = [
   {
+    title: 'Who Owns Accountability When an AI Agent Moves Money?',
+    excerpt: 'When an AI agent pays the wrong vendor, overspends, or gets exploited — who is responsible? The operator, the model provider, the framework, or the agent itself? We break down the accountability gap and how to close it.',
+    date: '2026-03-17',
+    readTime: '7 min read',
+    category: 'Opinion',
+    featured: true,
+    slug: 'agent-accountability',
+  },
+  {
+    title: 'How AI Agent Spending Rules Actually Work — A Plain-English Guide',
+    excerpt: 'No jargon, no code. A practical guide to how Sardis spending policies control what AI agents can and cannot do with money. Written for finance teams, engineering leads, and skeptical buyers.',
+    date: '2026-03-17',
+    readTime: '6 min read',
+    category: 'Explainer',
+    featured: true,
+    slug: 'spending-rules-explained',
+  },
+  {
     title: 'Sardis AI Agent Payments: What It Is and How It Works',
     excerpt: 'A practical guide to Sardis AI payments infrastructure for autonomous agents: deterministic policy enforcement, approval controls, virtual cards, and auditable execution.',
     date: '2026-02-25',
