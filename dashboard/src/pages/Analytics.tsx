@@ -26,7 +26,7 @@ import { AgentSpendingBar } from '../components/charts/AgentSpendingBar';
 import { CategoryPie } from '../components/charts/CategoryPie';
 
 // API base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // Demo data for when API is unavailable
 const DEMO_SUMMARY = {
