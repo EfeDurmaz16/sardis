@@ -293,21 +293,30 @@ export default function Demo() {
             </div>
           </div>
 
-          {/* Policy */}
+          {/* Spending Policy */}
           <div className="p-3 border-b" style={{ borderColor: '#1a1a1e' }}>
             <div className="text-[9px] uppercase tracking-[0.2em] mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>
-              Spending Policy
+              Active Policy
             </div>
+            {/* Natural language rule */}
+            <div className="mb-2 px-2 py-1.5" style={{ background: '#111113', border: '1px solid #1a1a1e' }}>
+              <div className="text-[9px] italic" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#808080' }}>
+                "Max $100/tx, $1,000/day. SaaS, API, and compute only. Require approval above $500. Block gambling and crypto exchanges."
+              </div>
+            </div>
+            {/* Parsed rules */}
             <div className="space-y-1">
               {[
                 ['Per-tx limit', '$100.00'],
                 ['Daily limit', '$1,000.00'],
+                ['Approval above', '$500.00'],
                 ['Used today', `$${demo.policyUsed.toFixed(2)}`],
-                ['Categories', 'SaaS, API, Compute'],
+                ['Allowed', 'SaaS, API, Compute'],
+                ['Blocked', 'Gambling, Crypto Ex.'],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>{label}</span>
-                  <span className="text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#e5e5e5' }}>{value}</span>
+                  <span className="text-[10px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: label === 'Blocked' ? '#f87171' : '#e5e5e5' }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -535,34 +544,109 @@ export default function Demo() {
             </div>
           )}
 
-          {/* 12-Check Pipeline */}
+          {/* 12-Check Policy Firewall */}
           <div className="p-3 border-b" style={{ borderColor: '#1a1a1e' }}>
-            <div className="text-[9px] uppercase tracking-[0.2em] mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>
-              12-Check Pipeline
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>
+                Policy Firewall
+              </span>
+              {demo.state !== 'IDLE' && (
+                <span className="text-[9px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: demo.state === 'POLICY_BLOCKED' ? '#f87171' : demo.state === 'SUCCESS' ? '#34d399' : '#60a5fa' }}>
+                  {demo.state === 'POLICY_BLOCKED' ? 'DENIED' : demo.state === 'SUCCESS' ? '12/12 PASS' : demo.state === 'PENDING_APPROVAL' ? 'ESCALATED' : 'CHECKING...'}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+            <div className="space-y-0.5">
               {[
-                'Kill Switch', 'Amount', 'Daily Cap', 'Monthly Cap',
-                'Merchant', 'Category', 'Time Window', 'First-Seen',
-                'Anomaly', 'Approval', 'Compliance', 'KYA',
+                { name: 'Kill Switch', desc: 'Global/agent/wallet freeze check', failAt: -1 },
+                { name: 'Amount Validation', desc: 'amount > 0, within tx limit', failAt: -1 },
+                { name: 'Scope Check', desc: 'Spending category allowed', failAt: -1 },
+                { name: 'MCC Verification', desc: 'Merchant category code check', failAt: 3 },
+                { name: 'Per-TX Limit', desc: `$100.00 max per transaction`, failAt: 4 },
+                { name: 'Daily Budget', desc: '$1,000/day rolling window', failAt: -1 },
+                { name: 'Monthly Budget', desc: '$10,000/month cap', failAt: -1 },
+                { name: 'Merchant Rules', desc: 'Allow/deny list + per-merchant caps', failAt: -1 },
+                { name: 'First-Seen Check', desc: 'New merchant → lower threshold', failAt: -1 },
+                { name: 'Anomaly Score', desc: '6-signal risk scoring', failAt: -1 },
+                { name: 'Approval Gate', desc: '4-eyes quorum above $500', failAt: 10 },
+                { name: 'KYA Attestation', desc: 'Agent identity verification', failAt: -1 },
               ].map((check, i) => {
-                const isActive = demo.state !== 'IDLE'
-                const isPassed = demo.state === 'SUCCESS' || (demo.state === 'POLICY_BLOCKED' && i < 3)
-                const isFailed = demo.state === 'POLICY_BLOCKED' && i === 3
+                const isIdle = demo.state === 'IDLE'
+                const isBlocked = demo.state === 'POLICY_BLOCKED'
+                const isApproval = demo.state === 'PENDING_APPROVAL'
+                const blockedScenario = demo.scenario
+                // For blocked: fail at check 4 (per-tx limit)
+                const failIndex = blockedScenario === 'blocked' ? 4 : blockedScenario === 'approval' ? 10 : -1
+                const isPassed = !isIdle && (
+                  demo.state === 'SUCCESS' ||
+                  (isBlocked && i < failIndex) ||
+                  (isApproval && i < failIndex) ||
+                  (!isBlocked && !isApproval && !isIdle)
+                )
+                const isFailed = !isIdle && isBlocked && i === failIndex
+                const isEscalated = !isIdle && isApproval && i === failIndex
+                const isSkipped = !isIdle && ((isBlocked && i > failIndex) || (isApproval && i > failIndex))
+
                 return (
-                  <div key={check} className="flex items-center gap-1">
-                    <span className="inline-block h-1 w-1 rounded-full" style={{
-                      background: !isActive ? '#222' : isFailed ? '#ef4444' : isPassed ? '#22c55e' : '#333',
+                  <div key={check.name} className="flex items-center gap-1.5 py-px">
+                    <span className="inline-block h-1.5 w-1.5 rounded-sm flex-shrink-0" style={{
+                      background: isIdle ? '#1a1a1e'
+                        : isFailed ? '#ef4444'
+                        : isEscalated ? '#f59e0b'
+                        : isPassed ? '#22c55e'
+                        : isSkipped ? '#1a1a1e'
+                        : '#3b82f6',
                     }} />
-                    <span className="text-[9px]" style={{
+                    <span className="text-[9px] flex-shrink-0 w-[80px]" style={{
                       fontFamily: "'JetBrains Mono', monospace",
-                      color: !isActive ? '#333' : isFailed ? '#f87171' : isPassed ? '#555' : '#333',
+                      color: isIdle ? '#333'
+                        : isFailed ? '#f87171'
+                        : isEscalated ? '#fbbf24'
+                        : isPassed ? '#6b7280'
+                        : isSkipped ? '#222'
+                        : '#60a5fa',
                     }}>
-                      {check}
+                      {check.name}
+                    </span>
+                    <span className="text-[8px] truncate" style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: isIdle ? '#222'
+                        : isFailed ? '#f87171'
+                        : isEscalated ? '#fbbf24'
+                        : isPassed ? '#333'
+                        : '#222',
+                    }}>
+                      {isFailed ? 'FAILED' : isEscalated ? 'ESCALATED' : isPassed ? (i < 3 ? '' : check.desc) : ''}
                     </span>
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Trust Layers */}
+          <div className="p-3 border-b" style={{ borderColor: '#1a1a1e' }}>
+            <div className="text-[9px] uppercase tracking-[0.2em] mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>
+              Trust Layers
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { name: 'Policy Engine', desc: 'Natural language → deterministic rules', status: 'active', color: '#34d399' },
+                { name: 'Approval Workflow', desc: '4-eyes quorum for high-value tx', status: demo.state === 'PENDING_APPROVAL' ? 'engaged' : 'standby', color: demo.state === 'PENDING_APPROVAL' ? '#fbbf24' : '#333' },
+                { name: 'Kill Switch', desc: '5 scopes: agent/wallet/rail/chain/global', status: demo.cardStatus === 'FROZEN' ? 'ACTIVE' : 'clear', color: demo.cardStatus === 'FROZEN' ? '#ef4444' : '#333' },
+                { name: 'Audit Trail', desc: 'HMAC receipts + Merkle proofs', status: demo.state === 'SUCCESS' ? 'sealed' : 'recording', color: demo.state === 'SUCCESS' ? '#34d399' : '#555' },
+                { name: 'Compliance', desc: 'KYC + sanctions + PEP screening', status: 'active', color: '#34d399' },
+              ].map((layer) => (
+                <div key={layer.name} className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[9px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#808080' }}>{layer.name}</div>
+                    <div className="text-[8px] truncate" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#333' }}>{layer.desc}</div>
+                  </div>
+                  <span className="text-[8px] uppercase ml-1 flex-shrink-0" style={{ fontFamily: "'JetBrains Mono', monospace", color: layer.color }}>
+                    {layer.status}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -589,30 +673,32 @@ export default function Demo() {
             </button>
           </div>
 
-          {/* Audit Trail */}
+          {/* Cryptographic Audit Evidence */}
           <div className="flex-1 p-3">
             <div className="text-[9px] uppercase tracking-[0.2em] mb-2" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>
-              Audit Evidence
+              Attestation Envelope
             </div>
             {demo.state === 'IDLE' ? (
               <div className="text-[10px] opacity-20" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                Run a scenario to generate audit trail
+                Run a scenario to generate cryptographic evidence
               </div>
             ) : (
               <div className="space-y-1">
                 {[
-                  ['Policy snapshot', demo.state !== 'IDLE' ? 'Captured' : 'Pending'],
-                  ['Evaluation log', demo.state !== 'IDLE' ? '12/12 checks' : 'Pending'],
-                  ['HMAC signature', demo.state === 'SUCCESS' ? 'Signed' : 'Pending'],
-                  ['Merkle proof', demo.state === 'SUCCESS' ? 'Anchored' : 'Pending'],
-                  ['Attestation', demo.state === 'SUCCESS' ? 'Sealed' : 'Pending'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-[9px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>{label}</span>
-                    <span className="text-[9px]" style={{
+                  { label: 'Policy version', value: demo.state !== 'IDLE' ? 'pol_v2.1.0_a3f8' : null, done: demo.state !== 'IDLE' },
+                  { label: 'Pipeline result', value: demo.state === 'SUCCESS' ? 'PASS (12/12)' : demo.state === 'POLICY_BLOCKED' ? 'DENY (check #5)' : demo.state === 'PENDING_APPROVAL' ? 'ESCALATE (check #11)' : 'Running...', done: demo.state !== 'IDLE' },
+                  { label: 'Agent DID', value: 'did:sardis:agent_demo_001', done: demo.state !== 'IDLE' },
+                  { label: 'HMAC-SHA256', value: demo.state === 'SUCCESS' ? '0xa3f8...c291 (signed)' : 'Pending execution', done: demo.state === 'SUCCESS' },
+                  { label: 'Merkle root', value: demo.state === 'SUCCESS' ? '0x7b2d...e891' : 'Pending', done: demo.state === 'SUCCESS' },
+                  { label: 'Block anchor', value: demo.state === 'SUCCESS' ? '#19284721 (Base)' : 'Pending', done: demo.state === 'SUCCESS' },
+                  { label: 'Tamper-evident', value: demo.state === 'SUCCESS' ? 'SEALED' : demo.state === 'POLICY_BLOCKED' ? 'SEALED (denial)' : 'Pending', done: demo.state === 'SUCCESS' || demo.state === 'POLICY_BLOCKED' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className="text-[9px]" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#555' }}>{item.label}</span>
+                    <span className="text-[9px] text-right max-w-[120px] truncate" style={{
                       fontFamily: "'JetBrains Mono', monospace",
-                      color: value === 'Pending' ? '#333' : value === 'Signed' || value === 'Anchored' || value === 'Sealed' ? '#34d399' : '#808080',
-                    }}>{value}</span>
+                      color: !item.done ? '#333' : item.value?.includes('PASS') || item.value?.includes('signed') || item.value?.includes('SEALED') ? '#34d399' : item.value?.includes('DENY') ? '#f87171' : item.value?.includes('ESCALATE') ? '#fbbf24' : '#808080',
+                    }}>{item.value || 'Pending'}</span>
                   </div>
                 ))}
               </div>
