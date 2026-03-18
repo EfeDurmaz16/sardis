@@ -56,7 +56,7 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "arbitrum": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             "optimism": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
             "solana": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-            "base_sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF5d",
+            "base_sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
             "arc_testnet": "0x3600000000000000000000000000000000000000",
             "tempo_testnet": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato
             "tempo": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
