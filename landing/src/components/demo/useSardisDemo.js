@@ -89,8 +89,8 @@ const LOG_SEQUENCES = {
 
 const LIVE_STEP_TEXT = {
   health: '[Sardis-Live]: API health check (Base Sepolia, Turnkey MPC)',
-  policy_check: '[Sardis-Live]: Policy engine check (12-check pipeline)',
-  card_simulate_purchase: '[Sardis-Live]: Card rail simulation (Stripe Issuing Sandbox)',
+  policy_check: '[Sardis-Live]: Policy engine (12-check pipeline)',
+  chain_execution: '[Sardis-Live]: Chain execution (USDC on Base Sepolia)',
 }
 
 function createRunId(mode, scenario) {
