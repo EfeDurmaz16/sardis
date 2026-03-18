@@ -313,7 +313,7 @@ export function useSardisDemo() {
             addLogs(LOG_SEQUENCES.CONFIRMING, () => {
               setState(STATES.SUCCESS)
               setCardStatus('ACTIVE')
-              setCardBalance((prev) => Number((prev - 25).toFixed(2)))
+              setCardBalance((prev) => Number(Math.max(0, prev - 25).toFixed(2)))
               setPolicyUsed((prev) => Number((prev + 25).toFixed(2)))
               setTransaction({
                 hash: DEMO_TX_HASH,
@@ -463,7 +463,7 @@ export function useSardisDemo() {
       addLogs(LOG_SEQUENCES.CONFIRMING, () => {
         setState(STATES.SUCCESS)
         setCardStatus('ACTIVE')
-        setCardBalance((prev) => Number((prev - 25).toFixed(2)))
+        setCardBalance((prev) => Number(Math.max(0, prev - 25).toFixed(2)))
         setPolicyUsed((prev) => Number((prev + 25).toFixed(2)))
 
         const liveTx = result.transaction || {}
@@ -552,7 +552,7 @@ export function useSardisDemo() {
       addLogs(LOG_SEQUENCES.CONFIRMING, () => {
         setState(STATES.SUCCESS)
         setCardStatus('ACTIVE')
-        setCardBalance((prev) => Number((prev - 2500).toFixed(2)))
+        setCardBalance((prev) => Number(Math.max(0, prev - 2500).toFixed(2)))
         setPolicyUsed((prev) => Number((prev + 2500).toFixed(2)))
         setBlockedAttempt(null)
         setTransaction({
