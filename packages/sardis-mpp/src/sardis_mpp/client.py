@@ -1,33 +1,59 @@
-"""MPP (Machine Payments Protocol) client with Sardis policy enforcement.
+"""Sardis MPP client — policy-governed Machine Payments Protocol for AI agents.
 
-Handles HTTP 402 challenges from MPP-enabled services.
-Supports one-time payments, pay-as-you-go sessions, and streamed payments.
+Wraps the official pympp SDK with Sardis policy enforcement.
+Every MPP payment (HTTP 402 challenge) passes through the Sardis
+12-check policy pipeline before funds move.
 
-Protocol flow:
-    1. Agent requests a resource
-    2. Service returns 402 with MPP challenge (payment details)
-    3. Sardis policy engine evaluates the payment
-    4. If approved: sign and submit payment, retry with credential
-    5. If denied: raise MPPPaymentDenied (no funds moved)
-    6. Audit trail records the decision
+Supports:
+- Tempo stablecoin payments (pathUSD, USDC)
+- Stripe card/wallet payments (SPT)
+- Lightning Network payments (BOLT11)
+- Any MPP-compatible payment method
+
+Usage:
+    from sardis_mpp import SardisMPPClient
+    from mpp.methods.tempo.client import TempoMethod
+    from mpp.methods.tempo.account import TempoAccount
+    from eth_account import Account
+
+    account = TempoAccount(Account.from_key("0x..."))
+    tempo = TempoMethod(account=account, rpc_url="https://rpc.tempo.xyz")
+
+    client = SardisMPPClient(
+        methods=[tempo],
+        policy_checker=sardis_policy_fn,
+    )
+
+    # Auto-handles 402, checks policy, pays, retries
+    response = await client.get("https://api.example.com/data")
 
 References:
-    - https://mpp.dev
-    - https://docs.stripe.com/payments/machine/mpp
-    - https://tempo.xyz/blog/mainnet
+    - https://mpp.dev (protocol spec)
+    - https://docs.stripe.com/payments/machine/mpp (Stripe integration)
+    - https://tempo.xyz/blog/mainnet (Tempo + MPP launch)
+    - https://paymentauth.org (IETF draft)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Sequence
 
 import httpx
 
+from mpp.client.transport import (
+    Challenge,
+    Client as MPPBaseClient,
+    Method,
+    PaymentTransport,
+)
+
 logger = logging.getLogger(__name__)
+
+# Policy checker: async fn(amount, merchant, payment_type, ...) -> (allowed, reason)
+PolicyChecker = Callable[..., Awaitable[tuple[bool, str]]]
 
 
 class MPPPaymentDenied(Exception):
@@ -35,199 +61,185 @@ class MPPPaymentDenied(Exception):
 
 
 @dataclass
-class MPPChallenge:
-    """Parsed MPP 402 challenge from a service."""
+class MPPPaymentRecord:
+    """Record of an MPP payment for audit trail."""
 
-    payment_method: str  # "tempo", "stripe", "lightning", "card"
-    amount: Decimal
-    currency: str  # "USD", "USDC", etc.
-    recipient: str  # Address or payment endpoint
-    network: str  # "tempo", "base", etc.
-    session_id: str | None = None
-    memo: str | None = None
-    expires_at: str | None = None
-    raw: dict = field(default_factory=dict)
-
-    @classmethod
-    def from_response(cls, response: httpx.Response) -> MPPChallenge:
-        """Parse an MPP challenge from a 402 response.
-
-        MPP challenges come via:
-        - WWW-Authenticate header with scheme "MPP"
-        - JSON body with payment details
-        """
-        body = {}
-        try:
-            body = response.json()
-        except (json.JSONDecodeError, ValueError):
-            pass
-
-        # Parse from body (primary)
-        payment = body.get("payment", body)
-        amount_raw = payment.get("amount", payment.get("price", "0"))
-
-        return cls(
-            payment_method=str(payment.get("method", payment.get("payment_method", "tempo"))),
-            amount=Decimal(str(amount_raw)),
-            currency=str(payment.get("currency", payment.get("token", "USD"))),
-            recipient=str(payment.get("recipient", payment.get("address", payment.get("to", "")))),
-            network=str(payment.get("network", payment.get("chain", "tempo"))),
-            session_id=payment.get("session_id"),
-            memo=payment.get("memo"),
-            expires_at=payment.get("expires_at"),
-            raw=body,
-        )
-
-
-@dataclass
-class MPPCredential:
-    """Payment credential to attach to retry request."""
-
-    tx_hash: str
-    network: str
+    url: str
+    method: str
+    challenge_id: str
+    amount: str
+    currency: str
     payment_method: str
-    session_id: str | None = None
-
-    def to_header(self) -> str:
-        """Format as Authorization header value."""
-        parts = [f"txHash={self.tx_hash}", f"network={self.network}"]
-        if self.session_id:
-            parts.append(f"sessionId={self.session_id}")
-        return f"MPP {','.join(parts)}"
+    network: str
+    policy_result: str  # "ALLOWED" or "DENIED"
+    policy_reason: str
+    tx_hash: str | None = None
+    error: str | None = None
 
 
-@dataclass
-class MPPSession:
-    """Active MPP pay-as-you-go session."""
+class SardisPolicyTransport(httpx.AsyncBaseTransport):
+    """httpx transport that intercepts MPP 402 challenges for policy enforcement.
 
-    session_id: str
-    service_url: str
-    budget_remaining: Decimal
-    payments_made: int = 0
-    total_spent: Decimal = field(default_factory=lambda: Decimal("0"))
-
-
-# Type alias for the policy checker callback
-PolicyChecker = Callable[..., Awaitable[tuple[bool, str]]]
-
-# Type alias for the payment signer callback
-PaymentSigner = Callable[..., Awaitable[str]]  # Returns tx_hash
-
-
-class MPPClient:
-    """HTTP client that auto-handles MPP 402 challenges with Sardis policy enforcement.
-
-    Args:
-        wallet_address: The agent's wallet address (for on-chain payments).
-        chain: Default chain for payments ("tempo", "base", etc.).
-        policy_checker: Async function(amount, merchant, payment_type) -> (allowed, reason).
-        signer: Async function(to, amount, token, chain) -> tx_hash.
-        max_retries: Maximum 402 retry attempts per request.
+    Wraps PaymentTransport but adds a policy check before any payment is made.
     """
 
     def __init__(
         self,
-        wallet_address: str,
-        chain: str = "tempo",
+        methods: Sequence[Method],
         policy_checker: PolicyChecker | None = None,
-        signer: PaymentSigner | None = None,
-        max_retries: int = 1,
-    ):
-        self.wallet_address = wallet_address
-        self.chain = chain
-        self.policy_checker = policy_checker
-        self.signer = signer
-        self.max_retries = max_retries
-        self._http = httpx.AsyncClient(timeout=30.0)
-        self._sessions: dict[str, MPPSession] = {}
+        on_payment: Callable[[MPPPaymentRecord], None] | None = None,
+        inner: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self._methods = list(methods)
+        self._policy_checker = policy_checker
+        self._on_payment = on_payment
+        self._inner = inner or httpx.AsyncHTTPTransport()
 
-    async def close(self) -> None:
-        await self._http.aclose()
-
-    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
-        return await self._request("GET", url, **kwargs)
-
-    async def post(self, url: str, **kwargs: Any) -> httpx.Response:
-        return await self._request("POST", url, **kwargs)
-
-    async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
-        """Make an HTTP request, handling 402 MPP challenges."""
-        response = await self._http.request(method, url, **kwargs)
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        # First request — no payment
+        response = await self._inner.handle_async_request(request)
 
         if response.status_code != 402:
             return response
 
-        for attempt in range(self.max_retries):
-            credential = await self._handle_challenge(url, response)
-            headers = dict(kwargs.get("headers", {}))
-            headers["Authorization"] = credential.to_header()
-            kwargs["headers"] = headers
-            response = await self._http.request(method, url, **kwargs)
-            if response.status_code != 402:
-                return response
+        # Parse 402 challenge
+        www_auth = response.headers.get("www-authenticate", "")
+        if not www_auth:
+            return response
 
-        return response
+        try:
+            challenge = Challenge.from_www_authenticate(www_auth)
+        except Exception as e:
+            logger.warning("Failed to parse MPP challenge: %s", e)
+            return response
 
-    async def _handle_challenge(self, url: str, response: httpx.Response) -> MPPCredential:
-        """Process a 402 challenge: policy check -> sign payment -> return credential."""
-        challenge = MPPChallenge.from_response(response)
-        logger.info(
-            "MPP challenge: %s %s %s to %s on %s",
-            challenge.amount,
-            challenge.currency,
-            challenge.payment_method,
-            challenge.recipient,
-            challenge.network,
-        )
+        # Extract payment details from challenge
+        req_data = challenge.request or {}
+        amount_raw = req_data.get("amount", "0")
+        currency = req_data.get("currency", "USD")
+        payment_method = challenge.method
+        network = req_data.get("network", "tempo")
+        merchant_url = str(request.url)
 
         # Policy check
-        if self.policy_checker:
-            allowed, reason = await self.policy_checker(
-                amount=challenge.amount,
-                merchant=url,
-                payment_type=f"mpp_{challenge.payment_method}",
-                currency=challenge.currency,
-                network=challenge.network,
+        if self._policy_checker:
+            allowed, reason = await self._policy_checker(
+                amount=Decimal(str(amount_raw)),
+                merchant=merchant_url,
+                payment_type=f"mpp_{payment_method}",
+                currency=currency,
+                network=network,
             )
+
+            record = MPPPaymentRecord(
+                url=merchant_url,
+                method=payment_method,
+                challenge_id=challenge.id,
+                amount=str(amount_raw),
+                currency=currency,
+                payment_method=payment_method,
+                network=network,
+                policy_result="ALLOWED" if allowed else "DENIED",
+                policy_reason=reason,
+            )
+
             if not allowed:
-                logger.warning("MPP payment blocked by policy: %s", reason)
-                raise MPPPaymentDenied(f"MPP payment to {url} blocked: {reason}")
-
-        # Sign and submit payment
-        if not self.signer:
-            raise MPPPaymentDenied("No payment signer configured")
-
-        tx_hash = await self.signer(
-            to=challenge.recipient,
-            amount=challenge.amount,
-            token=challenge.currency,
-            chain=challenge.network or self.chain,
-        )
-
-        logger.info("MPP payment submitted: tx=%s", tx_hash)
-
-        # Track session if applicable
-        if challenge.session_id:
-            session = self._sessions.get(challenge.session_id)
-            if session:
-                session.payments_made += 1
-                session.total_spent += challenge.amount
-            else:
-                self._sessions[challenge.session_id] = MPPSession(
-                    session_id=challenge.session_id,
-                    service_url=url,
-                    budget_remaining=Decimal("0"),
-                    payments_made=1,
-                    total_spent=challenge.amount,
+                logger.warning("MPP payment blocked by Sardis policy: %s", reason)
+                if self._on_payment:
+                    self._on_payment(record)
+                raise MPPPaymentDenied(
+                    f"Payment to {merchant_url} blocked: {reason}"
                 )
 
-        return MPPCredential(
-            tx_hash=tx_hash,
-            network=challenge.network or self.chain,
-            payment_method=challenge.payment_method,
-            session_id=challenge.session_id,
+            if self._on_payment:
+                self._on_payment(record)
+
+        # Find matching method and create credential
+        for method in self._methods:
+            if method.name == challenge.method:
+                credential = method.create_credential(challenge)
+                auth_header = credential.to_authorization()
+
+                # Retry with payment credential
+                retry_request = httpx.Request(
+                    method=request.method,
+                    url=request.url,
+                    headers={**dict(request.headers), "Authorization": auth_header},
+                    content=request.content,
+                )
+                return await self._inner.handle_async_request(retry_request)
+
+        logger.warning("No matching MPP method for: %s", challenge.method)
+        return response
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
+
+
+class SardisMPPClient:
+    """MPP client with Sardis policy enforcement.
+
+    Drop-in replacement for mpp.client.Client that adds:
+    - 12-check policy evaluation on every payment
+    - Payment audit records
+    - Configurable payment methods (Tempo, Stripe, Lightning)
+
+    Args:
+        methods: List of MPP payment methods (TempoMethod, etc.)
+        policy_checker: Sardis policy evaluation function
+        on_payment: Callback for payment audit records
+    """
+
+    def __init__(
+        self,
+        methods: Sequence[Method],
+        policy_checker: PolicyChecker | None = None,
+        on_payment: Callable[[MPPPaymentRecord], None] | None = None,
+    ) -> None:
+        self._methods = list(methods)
+        self._policy_checker = policy_checker
+        self._on_payment = on_payment
+        self._payment_records: list[MPPPaymentRecord] = []
+
+        def _record_payment(record: MPPPaymentRecord) -> None:
+            self._payment_records.append(record)
+            if on_payment:
+                on_payment(record)
+
+        transport = SardisPolicyTransport(
+            methods=methods,
+            policy_checker=policy_checker,
+            on_payment=_record_payment,
         )
+        self._http = httpx.AsyncClient(transport=transport)
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._http.get(url, **kwargs)
+
+    async def post(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._http.post(url, **kwargs)
+
+    async def put(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._http.put(url, **kwargs)
+
+    async def delete(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._http.delete(url, **kwargs)
+
+    async def request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._http.request(method, url, **kwargs)
+
+    async def close(self) -> None:
+        await self._http.aclose()
 
     @property
-    def active_sessions(self) -> dict[str, MPPSession]:
-        return dict(self._sessions)
+    def payment_records(self) -> list[MPPPaymentRecord]:
+        """All payment records from this client session."""
+        return list(self._payment_records)
+
+    @property
+    def total_spent(self) -> Decimal:
+        """Total amount spent across all payments."""
+        return sum(
+            (Decimal(r.amount) for r in self._payment_records if r.policy_result == "ALLOWED"),
+            Decimal("0"),
+        )

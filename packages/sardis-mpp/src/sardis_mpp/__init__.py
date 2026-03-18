@@ -1,26 +1,38 @@
-"""Sardis MPP (Machine Payments Protocol) client.
+"""Sardis MPP — Policy-governed Machine Payments Protocol for AI agents.
 
-Policy-governed HTTP 402 payment handling for AI agents.
-Agents can access paid APIs and services through MPP while Sardis
-enforces spending policies, approval workflows, and audit trails.
-
-MPP is an open standard co-authored by Stripe and Tempo for
-machine-to-machine payments.
+Built on the official pympp SDK (co-authored by Stripe and Tempo).
+Every HTTP 402 payment goes through Sardis policy enforcement before funds move.
 
 Usage:
-    from sardis_mpp import MPPClient
+    from sardis_mpp import SardisMPPClient, MPPPaymentDenied
+    from mpp.methods.tempo.client import TempoMethod
+    from mpp.methods.tempo.account import TempoAccount
+    from eth_account import Account
 
-    client = MPPClient(
-        wallet_address="0x...",
-        chain="tempo",
-        policy_checker=my_policy_fn,
-        signer=my_turnkey_signer,
+    # Set up Tempo payment method
+    account = TempoAccount(Account.from_key("0x..."))
+    tempo = TempoMethod(account=account, rpc_url="https://rpc.tempo.xyz")
+
+    # Create Sardis-governed MPP client
+    client = SardisMPPClient(
+        methods=[tempo],
+        policy_checker=my_policy_fn,  # 12-check pipeline
     )
 
-    # Automatically handles 402 challenges with policy enforcement
-    response = await client.get("https://api.example.com/data")
+    # Agent accesses paid API — 402 handled automatically with policy check
+    response = await client.get("https://api.example.com/premium-data")
 """
 
-from sardis_mpp.client import MPPClient, MPPPaymentDenied, MPPSession
+from sardis_mpp.client import (
+    MPPPaymentDenied,
+    MPPPaymentRecord,
+    SardisMPPClient,
+    SardisPolicyTransport,
+)
 
-__all__ = ["MPPClient", "MPPPaymentDenied", "MPPSession"]
+__all__ = [
+    "MPPPaymentDenied",
+    "MPPPaymentRecord",
+    "SardisMPPClient",
+    "SardisPolicyTransport",
+]
