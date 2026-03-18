@@ -88,9 +88,9 @@ const LOG_SEQUENCES = {
 }
 
 const LIVE_STEP_TEXT = {
-  health: '[Sardis-Live]: API health check',
-  policy_check: '[Sardis-Live]: Policy check request',
-  card_simulate_purchase: '[Sardis-Live]: Card rail simulation',
+  health: '[Sardis-Live]: API health check (Base Sepolia, Turnkey MPC)',
+  policy_check: '[Sardis-Live]: Policy engine check (12-check pipeline)',
+  card_simulate_purchase: '[Sardis-Live]: Card rail simulation (Stripe Issuing Sandbox)',
 }
 
 function createRunId(mode, scenario) {
@@ -365,7 +365,9 @@ export function useSardisDemo() {
     })
 
     setState(STATES.INITIALIZING)
-    appendLog('[Sardis-Live]: Starting live mode flow through secure demo proxy')
+    appendLog('[Sardis-Live]: Connecting to live API (Base Sepolia testnet)')
+    appendLog('[Sardis-Live]: MPC custody: Turnkey (non-custodial)')
+    appendLog('[Sardis-Live]: Chain ID: 84532 | RPC: sepolia.base.org')
 
     let payload
     try {
@@ -442,7 +444,8 @@ export function useSardisDemo() {
         hash: result.blockedAttempt?.reasonCode || 'SARDIS.POLICY.DENIED',
         url: null,
       })
-      appendLog(`[Sardis-Live]: ✗ Blocked: ${result.policy?.reason || 'policy_denied'}`)
+      appendLog(`[Sardis-Live]: ✗ BLOCKED by policy engine: ${result.policy?.reason || 'policy_denied'}`)
+      appendLog('[Sardis-Live]: No funds moved. Transaction denied before execution.')
       emitEvent('run_blocked', { status: 'blocked', message: result.policy?.reason || 'policy_denied' })
       setLiveStatus({
         loading: false,
@@ -490,7 +493,12 @@ export function useSardisDemo() {
         if (providerTxId) {
           appendLog(`[Sardis-Live]: Card Authorization ID: ${providerTxId}`)
         }
-        appendLog('[Sardis-Live]: ✓ Live payment flow completed')
+        const txHash = liveTx.hash || providerTxId || ''
+        if (txHash && txHash.startsWith('0x')) {
+          appendLog(`[Sardis-Live]: TX: ${txHash}`)
+          appendLog(`[Sardis-Live]: Verify: https://sepolia.basescan.org/tx/${txHash}`)
+        }
+        appendLog('[Sardis-Live]: ✓ Live payment completed on Base Sepolia testnet')
         emitEvent('run_succeeded', { status: 'success', message: 'live_ok' })
         setLiveStatus({
           loading: false,
@@ -533,6 +541,85 @@ export function useSardisDemo() {
       }
     }
   }, [])
+
+  const approveTransaction = useCallback(() => {
+    if (state !== STATES.PENDING_APPROVAL) return
+    appendLog('[Sardis-Approval]: Human operator approved transaction')
+    appendLog('[Sardis-Approval]: approval_id=appr_7f3a2b1e9c4d → APPROVED')
+    setState(STATES.SIGNING)
+    addLogs(LOG_SEQUENCES.SIGNING, () => {
+      setState(STATES.CONFIRMING)
+      addLogs(LOG_SEQUENCES.CONFIRMING, () => {
+        setState(STATES.SUCCESS)
+        setCardStatus('ACTIVE')
+        setCardBalance((prev) => Number((prev - 2500).toFixed(2)))
+        setPolicyUsed((prev) => Number((prev + 2500).toFixed(2)))
+        setBlockedAttempt(null)
+        setTransaction({
+          hash: DEMO_TX_HASH,
+          hashFull: DEMO_TX_HASH_FULL,
+          amount: '2500.00',
+          token: 'USD',
+          to: 'DataCorp',
+          block: DEMO_BLOCK,
+          chain: 'Virtual Card (Stripe Issuing)',
+          url: null,
+        })
+        appendHistory({
+          type: 'approved',
+          to: 'DataCorp',
+          amount: '2500.00',
+          token: 'USD',
+          chain: 'Approved by human',
+          hash: DEMO_TX_HASH,
+          url: null,
+        })
+        addLogs(LOG_SEQUENCES.SUCCESS, () => {
+          emitEvent('run_succeeded', { status: 'success', message: 'human_approved' })
+        })
+        setLiveStatus((prev) => ({
+          ...prev,
+          loading: false,
+          lastError: null,
+          lastOutcome: 'success',
+          lastRunAt: new Date().toISOString(),
+        }))
+      })
+    })
+  }, [state, addLogs, appendHistory, appendLog, emitEvent])
+
+  const rejectTransaction = useCallback(() => {
+    if (state !== STATES.PENDING_APPROVAL) return
+    appendLog('[Sardis-Approval]: Human operator REJECTED transaction')
+    appendLog('[Sardis-Approval]: approval_id=appr_7f3a2b1e9c4d → DENIED')
+    appendLog('[Sardis-Core]: Payment blocked by human decision')
+    setState(STATES.POLICY_BLOCKED)
+    setCardStatus('ACTIVE')
+    setBlockedAttempt({
+      vendor: 'DataCorp',
+      amount: 2500,
+      reasonCode: 'SARDIS.APPROVAL.HUMAN_REJECTED',
+      reason: 'Transaction rejected by human operator',
+      timestamp: new Date().toISOString(),
+    })
+    appendHistory({
+      type: 'blocked',
+      to: 'DataCorp',
+      amount: '2500.00',
+      token: 'USD',
+      chain: 'Rejected by human',
+      hash: 'SARDIS.APPROVAL.HUMAN_REJECTED',
+      url: null,
+    })
+    emitEvent('run_blocked', { status: 'blocked', message: 'human_rejected' })
+    setLiveStatus((prev) => ({
+      ...prev,
+      loading: false,
+      lastError: null,
+      lastOutcome: 'blocked',
+      lastRunAt: new Date().toISOString(),
+    }))
+  }, [state, appendHistory, appendLog, emitEvent])
 
   const runApprovedDemo = useCallback(() => runDemo('approved'), [runDemo])
   const runBlockedDemo = useCallback(() => runDemo('blocked'), [runDemo])
@@ -590,6 +677,8 @@ export function useSardisDemo() {
     runApprovalDemo,
     runLiveDemo,
     runRecordMode,
+    approveTransaction,
+    rejectTransaction,
     topUpCard,
     reset,
     clearHistory,
