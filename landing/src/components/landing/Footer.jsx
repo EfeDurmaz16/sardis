@@ -8,16 +8,33 @@ const footerColumns = [
       { label: 'API Reference', to: '/docs/api-reference' },
       { label: 'MCP Server', to: '/docs/mcp-server' },
       { label: 'Playground', to: '/playground' },
+      { label: 'Pricing', to: '/pricing' },
+      { label: 'Enterprise', to: '/enterprise' },
+      { label: 'Status', to: '/status' },
     ],
   },
   {
     header: 'Developers',
     links: [
       { label: 'GitHub', href: 'https://github.com/EfeDurmaz16/sardis', external: true },
+      { label: 'Quickstart', to: '/docs/quickstart' },
       { label: 'Python SDK', to: '/docs/sdk-python' },
       { label: 'TypeScript SDK', to: '/docs/sdk-typescript' },
+      { label: 'Integrations', to: '/docs/integrations' },
       { label: 'Blog', to: '/docs/blog' },
       { label: 'Changelog', to: '/docs/changelog' },
+    ],
+  },
+  {
+    header: 'Platform',
+    links: [
+      { label: 'Wallets', to: '/docs/wallets' },
+      { label: 'Payments', to: '/docs/payments' },
+      { label: 'Spending Policies', to: '/docs/policies' },
+      { label: 'Spending Mandates', to: '/docs/spending-mandates' },
+      { label: 'Security', to: '/docs/security' },
+      { label: 'Architecture', to: '/docs/architecture' },
+      { label: 'Whitepaper', to: '/docs/whitepaper' },
     ],
   },
   {
@@ -27,6 +44,7 @@ const footerColumns = [
       { label: 'Privacy Policy', to: '/docs/privacy' },
       { label: 'Acceptable Use', to: '/docs/acceptable-use' },
       { label: 'Risk Disclosures', to: '/docs/risk-disclosures' },
+      { label: 'Trust Center', to: '/docs/trust' },
     ],
   },
 ];

@@ -73,6 +73,12 @@ Allow: /
 Allow: /llms.txt
 Allow: /llms-full.txt
 
+# Brave Search
+User-agent: Brave
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
 # Common Crawl (used for training)
 User-agent: CCBot
 Allow: /

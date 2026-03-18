@@ -311,6 +311,16 @@ export default function Hero({ onOpenWaitlist }) {
       <div className="max-w-[1440px] mx-auto px-5 md:px-12 xl:px-20 pt-16 pb-12 lg:pt-[100px] lg:pb-16 flex flex-col lg:flex-row lg:items-center lg:gap-[60px]">
         {/* Left Column */}
         <div className="flex-shrink-0 lg:max-w-[540px] w-full">
+          <p
+            className="uppercase tracking-[0.15em] mb-4 font-medium"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '12px',
+              color: 'var(--landing-accent)',
+            }}
+          >
+            AI Agent Payment Infrastructure
+          </p>
           <h1
             className="font-bold tracking-[-0.04em] mb-6"
             style={{
@@ -324,7 +334,7 @@ export default function Hero({ onOpenWaitlist }) {
           </h1>
 
           <p
-            className="font-light mb-10"
+            className="hero-description font-light mb-10"
             style={{
               fontFamily: "'Inter', sans-serif",
               fontSize: "clamp(15px, 1.8vw, 17px)",

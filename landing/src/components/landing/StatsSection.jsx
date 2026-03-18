@@ -1,8 +1,8 @@
 const stats = [
-  { number: '5', label: 'Funding Chains' },
-  { number: '52', label: 'MCP Tools' },
-  { number: '8+', label: 'Stablecoins' },
-  { number: 'BSL', label: 'Source Available' },
+  { number: '50K+', label: 'SDK Installs', meta: '50,000+ downloads on PyPI and npm' },
+  { number: '52', label: 'MCP Tools', meta: '52 tools for Claude Desktop integration' },
+  { number: '12', label: 'Policy Checks', meta: '12-check enforcement pipeline on every transaction' },
+  { number: '6', label: 'Chains Supported', meta: 'Base, Ethereum, Polygon, Arbitrum, Optimism, and more' },
 ];
 
 export default function StatsSection() {
@@ -12,10 +12,11 @@ export default function StatsSection() {
       <div className="w-full max-w-7xl py-20 md:py-28">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
           {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
+            <div key={stat.label} className="text-center" title={stat.meta}>
               <div
                 className="text-[48px] md:text-[56px] leading-tight font-bold tracking-[-0.04em]"
                 style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", color: 'var(--landing-text-primary)' }}
+                aria-label={stat.meta}
               >
                 {stat.number}
               </div>

@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import posthog from 'posthog-js'
 
@@ -14,90 +14,97 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import { Analytics } from '@vercel/analytics/react'
-import DocsLayout from './docs/DocsLayout.jsx'
-import DocsOverview from './docs/pages/Overview.jsx'
-import DocsQuickstart from './docs/pages/Quickstart.jsx'
-import DocsAuthentication from './docs/pages/Authentication.jsx'
-import DocsProductionGuide from './docs/pages/ProductionGuide.jsx'
-import DocsTrustCenter from './docs/pages/TrustCenter.jsx'
-import DocsSpendingMandates from './docs/pages/SpendingMandates.jsx'
-import DocsGetAPIKey from './docs/pages/GetAPIKey.jsx'
-// Protocols
-import DocsProtocols from './docs/pages/Protocols.jsx'
-import DocsAP2 from './docs/pages/AP2.jsx'
-import DocsUCP from './docs/pages/UCP.jsx'
-import DocsA2A from './docs/pages/A2A.jsx'
-import DocsTAP from './docs/pages/TAP.jsx'
-import DocsACP from './docs/pages/ACP.jsx'
-// Core Features
-import DocsWallets from './docs/pages/Wallets.jsx'
-import DocsPayments from './docs/pages/Payments.jsx'
-import DocsHolds from './docs/pages/Holds.jsx'
-import DocsPolicies from './docs/pages/Policies.jsx'
-import DocsTimeBasedPolicies from './docs/pages/TimeBasedPolicies.jsx'
-import DocsMerchantCategories from './docs/pages/MerchantCategories.jsx'
-// SDKs & Tools
-import DocsSDKPython from './docs/pages/SDKPython.jsx'
-import DocsSDKTypeScript from './docs/pages/SDKTypeScript.jsx'
-import DocsMCPServer from './docs/pages/MCPServer.jsx'
-import DocsSDK from './docs/pages/SDK.jsx'
-import APIReference from './docs/pages/APIReference.jsx'
-// Framework Integrations
-import DocsIntegrations from './docs/pages/Integrations.jsx'
-import DocsIntegrationLangChain from './docs/pages/IntegrationLangChain.jsx'
-import DocsIntegrationCrewAI from './docs/pages/IntegrationCrewAI.jsx'
-import DocsIntegrationADK from './docs/pages/IntegrationADK.jsx'
-import DocsIntegrationAgentSDK from './docs/pages/IntegrationAgentSDK.jsx'
-import DocsIntegrationBrowserUse from './docs/pages/IntegrationBrowserUse.jsx'
-import DocsIntegrationOpenAIAgents from './docs/pages/IntegrationOpenAIAgents.jsx'
-import DocsIntegrationComposio from './docs/pages/IntegrationComposio.jsx'
-import DocsIntegrationAutogpt from './docs/pages/IntegrationAutogpt.jsx'
-import DocsIntegrationN8N from './docs/pages/IntegrationN8N.jsx'
-// Resources
-import DocsBlockchainInfrastructure from './docs/pages/BlockchainInfrastructure.jsx'
-import DocsArchitecture from './docs/pages/Architecture.jsx'
-import DocsWhitepaper from './docs/pages/Whitepaper.jsx'
-import DocsSecurity from './docs/pages/Security.jsx'
-import DocsFAQ from './docs/pages/FAQ.jsx'
-import DocsTroubleshooting from './docs/pages/Troubleshooting.jsx'
-import DocsComparison from './docs/pages/Comparison.jsx'
-import DocsBlog from './docs/pages/Blog.jsx'
-import DocsChangelog from './docs/pages/Changelog.jsx'
-import DocsRuntimeGuardrails from './docs/pages/RuntimeGuardrails.jsx'
-// Legal
-import TermsOfService from './docs/pages/TermsOfService.jsx'
-import PrivacyPolicy from './docs/pages/PrivacyPolicy.jsx'
-import AcceptableUse from './docs/pages/AcceptableUse.jsx'
-import RiskDisclosures from './docs/pages/RiskDisclosures.jsx'
-// Blog posts
-import IntroducingSardis from './docs/pages/blog/IntroducingSardis.jsx'
-import FinancialHallucination from './docs/pages/blog/FinancialHallucination.jsx'
-import MCPIntegration from './docs/pages/blog/MCPIntegration.jsx'
-import MPCWallets from './docs/pages/blog/MPCWallets.jsx'
-import SDKRelease from './docs/pages/blog/SDKRelease.jsx'
-import PolicyEngineDeepDive from './docs/pages/blog/PolicyEngineDeepDive.jsx'
-import SardisV05Protocols from './docs/pages/blog/SardisV05Protocols.jsx'
-import UnderstandingAP2 from './docs/pages/blog/UnderstandingAP2.jsx'
-import SardisV084PackagesLive from './docs/pages/blog/SardisV084PackagesLive.jsx'
-import SardisAIAgentPayments from './docs/pages/blog/SardisAIAgentPayments.jsx'
-// Standalone pages
-import Playground from './pages/Playground.jsx'
-import Demo from './pages/Demo.jsx'
-import Enterprise from './pages/Enterprise.jsx'
+
+// ── Critical path: landing page loaded eagerly (LCP) ──
 import LandingV2 from './pages/LandingV2.jsx'
+
+// ── Everything else: lazy-loaded (code splitting) ──
+const DocsLayout = lazy(() => import('./docs/DocsLayout.jsx'))
+const DocsOverview = lazy(() => import('./docs/pages/Overview.jsx'))
+const DocsQuickstart = lazy(() => import('./docs/pages/Quickstart.jsx'))
+const DocsAuthentication = lazy(() => import('./docs/pages/Authentication.jsx'))
+const DocsProductionGuide = lazy(() => import('./docs/pages/ProductionGuide.jsx'))
+const DocsTrustCenter = lazy(() => import('./docs/pages/TrustCenter.jsx'))
+const DocsSpendingMandates = lazy(() => import('./docs/pages/SpendingMandates.jsx'))
+const DocsGetAPIKey = lazy(() => import('./docs/pages/GetAPIKey.jsx'))
+// Protocols
+const DocsProtocols = lazy(() => import('./docs/pages/Protocols.jsx'))
+const DocsAP2 = lazy(() => import('./docs/pages/AP2.jsx'))
+const DocsUCP = lazy(() => import('./docs/pages/UCP.jsx'))
+const DocsA2A = lazy(() => import('./docs/pages/A2A.jsx'))
+const DocsTAP = lazy(() => import('./docs/pages/TAP.jsx'))
+const DocsACP = lazy(() => import('./docs/pages/ACP.jsx'))
+// Core Features
+const DocsWallets = lazy(() => import('./docs/pages/Wallets.jsx'))
+const DocsPayments = lazy(() => import('./docs/pages/Payments.jsx'))
+const DocsHolds = lazy(() => import('./docs/pages/Holds.jsx'))
+const DocsPolicies = lazy(() => import('./docs/pages/Policies.jsx'))
+const DocsTimeBasedPolicies = lazy(() => import('./docs/pages/TimeBasedPolicies.jsx'))
+const DocsMerchantCategories = lazy(() => import('./docs/pages/MerchantCategories.jsx'))
+// SDKs & Tools
+const DocsSDKPython = lazy(() => import('./docs/pages/SDKPython.jsx'))
+const DocsSDKTypeScript = lazy(() => import('./docs/pages/SDKTypeScript.jsx'))
+const DocsMCPServer = lazy(() => import('./docs/pages/MCPServer.jsx'))
+const DocsSDK = lazy(() => import('./docs/pages/SDK.jsx'))
+const APIReference = lazy(() => import('./docs/pages/APIReference.jsx'))
+// Framework Integrations
+const DocsIntegrations = lazy(() => import('./docs/pages/Integrations.jsx'))
+const DocsIntegrationLangChain = lazy(() => import('./docs/pages/IntegrationLangChain.jsx'))
+const DocsIntegrationCrewAI = lazy(() => import('./docs/pages/IntegrationCrewAI.jsx'))
+const DocsIntegrationADK = lazy(() => import('./docs/pages/IntegrationADK.jsx'))
+const DocsIntegrationAgentSDK = lazy(() => import('./docs/pages/IntegrationAgentSDK.jsx'))
+const DocsIntegrationBrowserUse = lazy(() => import('./docs/pages/IntegrationBrowserUse.jsx'))
+const DocsIntegrationOpenAIAgents = lazy(() => import('./docs/pages/IntegrationOpenAIAgents.jsx'))
+const DocsIntegrationComposio = lazy(() => import('./docs/pages/IntegrationComposio.jsx'))
+const DocsIntegrationAutogpt = lazy(() => import('./docs/pages/IntegrationAutogpt.jsx'))
+const DocsIntegrationN8N = lazy(() => import('./docs/pages/IntegrationN8N.jsx'))
+// Resources
+const DocsBlockchainInfrastructure = lazy(() => import('./docs/pages/BlockchainInfrastructure.jsx'))
+const DocsArchitecture = lazy(() => import('./docs/pages/Architecture.jsx'))
+const DocsWhitepaper = lazy(() => import('./docs/pages/Whitepaper.jsx'))
+const DocsSecurity = lazy(() => import('./docs/pages/Security.jsx'))
+const DocsFAQ = lazy(() => import('./docs/pages/FAQ.jsx'))
+const DocsTroubleshooting = lazy(() => import('./docs/pages/Troubleshooting.jsx'))
+const DocsComparison = lazy(() => import('./docs/pages/Comparison.jsx'))
+const DocsBlog = lazy(() => import('./docs/pages/Blog.jsx'))
+const DocsChangelog = lazy(() => import('./docs/pages/Changelog.jsx'))
+const DocsRuntimeGuardrails = lazy(() => import('./docs/pages/RuntimeGuardrails.jsx'))
+// Legal
+const TermsOfService = lazy(() => import('./docs/pages/TermsOfService.jsx'))
+const PrivacyPolicy = lazy(() => import('./docs/pages/PrivacyPolicy.jsx'))
+const AcceptableUse = lazy(() => import('./docs/pages/AcceptableUse.jsx'))
+const RiskDisclosures = lazy(() => import('./docs/pages/RiskDisclosures.jsx'))
+// Blog posts
+const IntroducingSardis = lazy(() => import('./docs/pages/blog/IntroducingSardis.jsx'))
+const FinancialHallucination = lazy(() => import('./docs/pages/blog/FinancialHallucination.jsx'))
+const MCPIntegration = lazy(() => import('./docs/pages/blog/MCPIntegration.jsx'))
+const MPCWallets = lazy(() => import('./docs/pages/blog/MPCWallets.jsx'))
+const SDKRelease = lazy(() => import('./docs/pages/blog/SDKRelease.jsx'))
+const PolicyEngineDeepDive = lazy(() => import('./docs/pages/blog/PolicyEngineDeepDive.jsx'))
+const SardisV05Protocols = lazy(() => import('./docs/pages/blog/SardisV05Protocols.jsx'))
+const UnderstandingAP2 = lazy(() => import('./docs/pages/blog/UnderstandingAP2.jsx'))
+const SardisV084PackagesLive = lazy(() => import('./docs/pages/blog/SardisV084PackagesLive.jsx'))
+const SardisAIAgentPayments = lazy(() => import('./docs/pages/blog/SardisAIAgentPayments.jsx'))
+const SpendingRulesExplainer = lazy(() => import('./docs/pages/blog/SpendingRulesExplainer.jsx'))
+const AgentAccountability = lazy(() => import('./docs/pages/blog/AgentAccountability.jsx'))
+// Standalone pages
+const Playground = lazy(() => import('./pages/Playground.jsx'))
+const Demo = lazy(() => import('./pages/Demo.jsx'))
+const Enterprise = lazy(() => import('./pages/Enterprise.jsx'))
 // Signup removed — using waitlist for now
-import Pricing from './pages/Pricing.jsx'
-import Status from './pages/Status.jsx'
+const Pricing = lazy(() => import('./pages/Pricing.jsx'))
+const Status = lazy(() => import('./pages/Status.jsx'))
 // Solution pages
-import AgentPlatformsPage from './pages/solutions/AgentPlatforms.jsx'
-import ProcurementPage from './pages/solutions/Procurement.jsx'
-import PayoutsPage from './pages/solutions/Payouts.jsx'
+const AgentPlatformsPage = lazy(() => import('./pages/solutions/AgentPlatforms.jsx'))
+const ProcurementPage = lazy(() => import('./pages/solutions/Procurement.jsx'))
+const PayoutsPage = lazy(() => import('./pages/solutions/Payouts.jsx'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <HelmetProvider>
     <BrowserRouter>
       <Analytics />
+      <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<LandingV2 />} />
         {/* Hidden for prod: /v1 (legacy), /dashboard (mockup) */}
@@ -172,6 +179,8 @@ createRoot(document.getElementById('root')).render(
           {/* Hidden for prod: internal release notes, false Lithic claims, deployment details */}
           <Route path="blog/sardis-v0-8-4-packages-live" element={<SardisV084PackagesLive />} />
           <Route path="blog/sardis-ai-agent-payments" element={<SardisAIAgentPayments />} />
+          <Route path="blog/spending-rules-explained" element={<SpendingRulesExplainer />} />
+          <Route path="blog/agent-accountability" element={<AgentAccountability />} />
           <Route path="changelog" element={<DocsChangelog />} />
           {/* Legal */}
           <Route path="terms" element={<TermsOfService />} />
@@ -180,6 +189,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="risk-disclosures" element={<RiskDisclosures />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
     </HelmetProvider>
   </StrictMode>,

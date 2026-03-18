@@ -3,7 +3,7 @@
   <!-- Main Pages -->
   <url>
     <loc>https://www.sardis.sh/</loc>
-    <lastmod>2026-02-25</lastmod>
+    <lastmod>2026-03-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -246,6 +246,18 @@
   <url>
     <loc>https://www.sardis.sh/docs/blog/sardis-ai-agent-payments</loc>
     <lastmod>2026-02-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/blog/spending-rules-explained</loc>
+    <lastmod>2026-03-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/blog/agent-accountability</loc>
+    <lastmod>2026-03-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

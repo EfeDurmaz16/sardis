@@ -34,10 +34,17 @@
 
     <!-- Additional SEO -->
     <meta name="keywords" content="Sardis, Sardis AI agent payments, Sardis AI payments, AI agent payments, agent economy, MPC wallets, spending policies, stablecoin payments, USDC, agent commerce, fintech infrastructure" />
-    <meta name="author" content="Sardis" />
+    <meta name="author" content="Efe Baran Durmaz" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
 
-    <!-- Structured Data: Organization -->
+    <!-- Content Freshness (Perplexity + ChatGPT) -->
+    <meta property="article:modified_time" content="2026-03-17T00:00:00Z" />
+    <meta name="revised" content="2026-03-17" />
+
+    <!-- Brave Search Discovery -->
+    <link rel="search" type="application/opensearchdescription+xml" title="Sardis" href="https://www.sardis.sh/opensearch.xml" />
+
+    <!-- Structured Data: Organization (E-E-A-T enhanced for Gemini) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -47,10 +54,28 @@
       "logo": "https://www.sardis.sh/favicon.svg",
       "description": "The Payment OS for the Agent Economy. Non-custodial MPC wallets with natural language spending policies for AI agents.",
       "foundingDate": "2024",
+      "founder": {
+        "@type": "Person",
+        "name": "Efe Baran Durmaz",
+        "jobTitle": "Founder & CEO",
+        "alumniOf": {
+          "@type": "CollegeOrUniversity",
+          "name": "Bilkent University"
+        },
+        "knowsAbout": ["AI agent infrastructure", "fintech", "blockchain", "MPC cryptography", "payment systems"],
+        "sameAs": [
+          "https://github.com/EfeDurmaz16",
+          "https://x.com/sardisHQ"
+        ]
+      },
+      "knowsAbout": ["AI agent payments", "MPC wallets", "spending policies", "stablecoin payments", "agent commerce"],
+      "areaServed": "Worldwide",
       "sameAs": [
         "https://x.com/sardisHQ",
         "https://github.com/EfeDurmaz16/sardis",
-        "https://discord.gg/XMA9JwDJ"
+        "https://discord.gg/XMA9JwDJ",
+        "https://pypi.org/project/sardis/",
+        "https://www.npmjs.com/package/@sardis/sdk"
       ],
       "contactPoint": {
         "@type": "ContactPoint",
@@ -175,15 +200,126 @@
             "@type": "Answer",
             "text": "AP2 (Agent Payment Protocol) is a consortium standard from Google, PayPal, Mastercard, and Visa with 60+ partners. It uses a three-phase mandate chain: Intent (user purchase intent) → Cart (merchant offer) → Payment (signed authorization). Sardis fully implements AP2 and verifies the complete mandate chain before executing any transaction, preventing unauthorized payments."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a financial hallucination?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A financial hallucination occurs when an AI agent makes incorrect, unauthorized, or nonsensical financial transactions — paying the wrong vendor, spending more than intended, making duplicate payments, or fabricating invoices. Sardis prevents financial hallucinations through its 12-check Policy Firewall, which validates every transaction against human-defined rules before execution. Every decision is logged with cryptographic evidence."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does Sardis cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sardis offers 0% merchant fees on USDC stablecoin checkout. The SDK and MCP server are free to install and use. Pricing for production API access is usage-based. The core engine is source-available under BSL (Business Source License). Contact the team for enterprise pricing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is accountable when an AI agent makes a bad payment?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Accountability is shared across the stack. The operator defines the spending policy (guardrails). The infrastructure (Sardis) enforces those rules at the protocol level. Every transaction produces a signed attestation envelope with the policy snapshot, evaluation results, and Merkle proof — providing courtroom-grade evidence of what was allowed and why. The agent cannot override or bypass policies."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does Sardis compare to Stripe or PayPal for AI agents?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Stripe and PayPal are designed for human-initiated payments. Sardis is designed for agent-initiated payments. Key differences: Sardis enforces spending policies at the protocol level (not just limits), provides agent-specific identity (KYA — Know Your Agent), supports stablecoin-native payments with 0% fees, includes kill switches with 5 scopes, and produces cryptographic audit trails. Sardis supports AP2, the industry standard for agent payments backed by Google, PayPal, Mastercard, and Visa."
+          }
         }
       ]
     }
     </script>
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Structured Data: Product (for rich snippets + AI visibility) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Sardis",
+      "description": "AI agent payment infrastructure — policy-controlled wallets, virtual cards, and stablecoin rails with deterministic guardrails for autonomous agents. 50,000+ SDK installs. Supports 6 chains, 8+ stablecoins, 52 MCP tools.",
+      "brand": {
+        "@type": "Brand",
+        "name": "Sardis"
+      },
+      "category": "Financial Software",
+      "url": "https://www.sardis.sh",
+      "image": "https://www.sardis.sh/og-image.png",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/PreOrder",
+        "description": "Free tier available. 0% merchant fee on USDC checkout. Usage-based pricing for production workloads."
+      }
+    }
+    </script>
+
+    <!-- Structured Data: HowTo (Gemini rich snippets) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Set Up AI Agent Payments with Sardis",
+      "description": "Get your AI agent making real payments in under 5 minutes with Sardis SDK.",
+      "totalTime": "PT5M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Install the SDK",
+          "text": "Run pip install sardis (Python) or npm install @sardis/sdk (TypeScript) to install the Sardis SDK."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Create a wallet with spending policy",
+          "text": "Create a non-custodial MPC wallet for your agent and define spending rules in plain English, such as 'Max $500/day, SaaS only, require approval above $200'."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Fund the wallet",
+          "text": "Fund the wallet with USDC via Coinbase Onramp (fiat) or direct stablecoin transfer on Base, Ethereum, Polygon, Arbitrum, or Optimism."
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Execute payments within guardrails",
+          "text": "Your agent can now make payments autonomously. Every transaction passes through a 12-check enforcement pipeline including amount limits, merchant verification, anomaly detection, and compliance screening."
+        }
+      ]
+    }
+    </script>
+
+    <!-- Structured Data: Speakable (AI/GEO — tells AI crawlers which content to cite) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Sardis — AI Agent Payment Infrastructure",
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": ["h1", ".hero-description", ".faq-section"]
+      },
+      "mainEntity": {
+        "@type": "SoftwareApplication",
+        "name": "Sardis",
+        "applicationCategory": "FinanceApplication",
+        "description": "Sardis is the Payment OS for the Agent Economy. It provides non-custodial MPC wallets with natural language spending policies, enabling AI agents to make real financial transactions safely within policy-defined guardrails."
+      }
+    }
+    </script>
+
+    <!-- Critical Font Preloads (LCP optimization — removed render-blocking Google Fonts, using @fontsource instead) -->
+    <link rel="preload" href="/fonts/geist/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>
