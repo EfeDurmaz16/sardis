@@ -447,6 +447,20 @@ class SardisSettings(BaseSettings):
             stablecoins=["USDC", "EURC"],
             settlement_vault="",
         ),
+        ChainConfig(
+            name="tempo_testnet",
+            rpc_url="https://rpc.testnet.tempo.xyz",
+            chain_id=42429,
+            stablecoins=["USDC"],
+            settlement_vault="",
+        ),
+        ChainConfig(
+            name="tempo",
+            rpc_url="https://rpc.tempo.xyz",
+            chain_id=4217,
+            stablecoins=["USDC"],
+            settlement_vault="",
+        ),
     ])
 
     # MPC provider - simulated by default for demo

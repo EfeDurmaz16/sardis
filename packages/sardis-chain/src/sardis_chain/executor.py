@@ -160,7 +160,7 @@ CHAIN_CONFIGS = {
         "block_time": 2,
     },
     # ── Solana ──────────────────────────────────────────────────────
-    # EXPERIMENTAL: Solana support via SPL token transfers.
+    # Sardis Agent Wallet Anchor program for on-chain policy enforcement.
     # Uses httpx JSON-RPC client + Kora gasless fee payer.
     # Signing via Turnkey MPC (ed25519).
     "solana_devnet": {
@@ -170,7 +170,6 @@ CHAIN_CONFIGS = {
         "native_token": "SOL",
         "block_time": 0.4,
         "is_solana": True,
-        "experimental": True,
     },
     "solana": {
         "chain_id": 0,
@@ -179,7 +178,6 @@ CHAIN_CONFIGS = {
         "native_token": "SOL",
         "block_time": 0.4,
         "is_solana": True,
-        "experimental": True,
     },
     # ── Tempo (Payment L1) ─────────────────────────────────────────
     # Tempo is EVM-compatible but has NO native gas token.
@@ -187,9 +185,9 @@ CHAIN_CONFIGS = {
     # Standard web3.py works for basic transfers.
     # Type 0x76 transactions enable explicit fee token, batching, sponsorship.
     "tempo_testnet": {
-        "chain_id": 42431,
-        "rpc_url": _rpc("SARDIS_TEMPO_TESTNET_RPC_URL", "https://rpc.moderato.tempo.xyz"),
-        "explorer": "https://moderato.tempo.xyz",
+        "chain_id": 42429,  # Andantino testnet
+        "rpc_url": _rpc("SARDIS_TEMPO_TESTNET_RPC_URL", "https://rpc.testnet.tempo.xyz"),
+        "explorer": "https://explore.tempo.xyz",
         "native_token": "NONE",  # No native gas token — fees in TIP-20
         "block_time": 1,
         "is_tempo": True,
@@ -415,11 +413,11 @@ SARDIS_CONTRACTS = {
     # wallet_program: sardis_agent_wallet (spending limits, merchant/token rules).
     # Override via SARDIS_SOLANA_DEVNET_WALLET_PROGRAM_ADDRESS / SARDIS_SOLANA_WALLET_PROGRAM_ADDRESS.
     "solana_devnet": {
-        "wallet_program": "",
+        "wallet_program": "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN",
         "escrow_program": "",
     },
     "solana": {
-        "wallet_program": "",
+        "wallet_program": "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN",
         "escrow_program": "",
     },
     # Tempo — EVM-compatible but uses TIP-20 fee model (no Safe/EAS infra yet)
@@ -555,9 +553,10 @@ def is_chain_configured(chain: str) -> bool:
     if chain_config.get("not_implemented"):
         return False
 
-    # Solana uses different infrastructure
-    if chain_config.get("experimental"):
-        return False
+    # Solana uses wallet_program instead of policy_module (Safe infra).
+    if chain in ("solana", "solana_devnet"):
+        wallet_program = get_sardis_contract_address(chain, "wallet_program")
+        return bool(wallet_program)
 
     # Safe infrastructure is always available on supported EVM chains.
     # We only need our policy_module deployed.

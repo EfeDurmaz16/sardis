@@ -1,0 +1,10 @@
+[project]
+name = "sardis-mpp"
+version = "0.1.0"
+description = "Sardis MPP (Machine Payments Protocol) client — policy-governed HTTP 402 payments for AI agents"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
