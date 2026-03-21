@@ -91,7 +91,8 @@ export async function executePayment(
   amount: number,
   purpose: string,
   vendorAddress?: string,
-  token: string = 'USDC'
+  token: string = 'USDC',
+  chain?: string
 ): Promise<PaymentResult> {
   const config = getConfig();
 
@@ -135,7 +136,7 @@ export async function executePayment(
     destination: vendorAddress,
     amount,
     token,
-    chain: config.chain,
+    chain: chain || config.chain,
     domain: vendor,
     memo: purpose,
   });
@@ -279,6 +280,10 @@ export const paymentToolDefinitions: ToolDefinition[] = [
           enum: ['USDC', 'USDT', 'PYUSD', 'EURC'],
           description: 'Token to use for payment. Defaults to USDC.',
         },
+        chain: {
+          type: 'string',
+          description: 'Chain to execute on (e.g., "base", "tempo", "polygon"). Defaults to configured chain.',
+        },
       },
       required: ['vendor', 'amount'],
     },
@@ -338,7 +343,7 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
       };
     }
 
-    const { vendor, amount, purpose, vendorAddress, token } = parsed.data;
+    const { vendor, amount, purpose, vendorAddress, token, chain } = parsed.data;
 
     // Check policy first (fail-closed)
     let policyResult;
@@ -416,7 +421,8 @@ export const paymentToolHandlers: Record<string, ToolHandler> = {
         amount,
         purpose || 'Service payment',
         vendorAddress,
-        token || 'USDC'
+        token || 'USDC',
+        chain
       );
       const decision = buildDecisionEnvelope({
         outcome: 'APPROVED',

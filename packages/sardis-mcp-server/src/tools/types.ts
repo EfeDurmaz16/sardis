@@ -104,6 +104,7 @@ export const PaymentRequestSchema = z.object({
   category: z.string().optional().describe('Merchant category'),
   vendorAddress: z.string().optional().describe('Wallet address of the vendor (0x...)'),
   token: z.enum(['USDC', 'USDT', 'PYUSD', 'EURC']).optional().describe('Token to use'),
+  chain: z.string().optional().describe('Chain to execute on (e.g., base, tempo, polygon)'),
 });
 
 export const PolicyCheckSchema = z.object({

@@ -26,6 +26,7 @@ import { x402ToolDefinitions, x402ToolHandlers } from './x402.js';
 import { trustToolDefinitions, trustToolHandlers } from './trust.js';
 import { jobToolDefinitions, jobToolHandlers } from './jobs.js';
 import { mandateToolDefinitions, mandateToolHandlers } from './mandates.js';
+import { mppToolDefinitions, mppToolHandlers } from './mpp.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -66,6 +67,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...trustToolDefinitions,
   ...jobToolDefinitions,
   ...mandateToolDefinitions,
+  ...mppToolDefinitions,
 ];
 
 /**
@@ -90,6 +92,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...trustToolHandlers,
   ...jobToolHandlers,
   ...mandateToolHandlers,
+  ...mppToolHandlers,
 };
 
 /**
@@ -165,6 +168,8 @@ export const toolCategories = {
     'sardis_offramp_usdc_to_fiat',
     'sardis_onramp_fiat_to_usdc',
     'sardis_get_ramp_quote',
+    'sardis_get_deposit_address',
+    'sardis_get_onramp_url',
   ],
   approval: [
     'sardis_request_approval',
@@ -226,6 +231,13 @@ export const toolCategories = {
     'sardis_list_mandates',
     'sardis_revoke_mandate',
     'sardis_check_mandate',
+  ],
+  mpp: [
+    'sardis_mpp_create_session',
+    'sardis_mpp_execute',
+    'sardis_mpp_close_session',
+    'sardis_mpp_get_session',
+    'sardis_mpp_evaluate_policy',
   ],
 } as const;
 

@@ -148,7 +148,60 @@ function validateLiveTreasuryArgs(
   return null;
 }
 
+const DepositAddressSchema = z.object({
+  chain: z.string().optional().default('tempo').describe('Chain to get deposit address for'),
+  wallet_id: z.string().optional().describe('Wallet ID (uses default if omitted)'),
+});
+
+const OnrampUrlSchema = z.object({
+  chain: z.string().optional().default('tempo').describe('Chain for on-ramp'),
+  amount_usd: z.number().positive().optional().describe('Pre-fill amount in USD'),
+  wallet_id: z.string().optional().describe('Wallet ID (uses default if omitted)'),
+});
+
 export const fiatToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'sardis_get_deposit_address',
+    description:
+      'Get the deposit address for direct stablecoin transfers to a Sardis wallet. Supports Tempo (pathUSD, USDC.e) and other chains.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        chain: {
+          type: 'string',
+          description: 'Chain to get deposit address for (default: tempo)',
+        },
+        wallet_id: {
+          type: 'string',
+          description: 'Wallet ID (uses default if omitted)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'sardis_get_onramp_url',
+    description:
+      'Get a fiat on-ramp URL for funding a Sardis wallet. For Tempo, returns wallet.tempo.xyz URL. For other chains, returns Onramper widget URL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        chain: {
+          type: 'string',
+          description: 'Chain for on-ramp (default: tempo)',
+        },
+        amount_usd: {
+          type: 'number',
+          description: 'Pre-fill amount in USD',
+        },
+        wallet_id: {
+          type: 'string',
+          description: 'Wallet ID (uses default if omitted)',
+        },
+      },
+      required: [],
+    },
+  },
   {
     name: 'sardis_sync_treasury_account_holder',
     description: 'Sync financial accounts from Lithic for an account holder token.',
@@ -764,6 +817,68 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
       }));
     } catch (error) {
       return { content: [{ type: 'text', text: `Failed to execute onramp: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
+  },
+
+  sardis_get_deposit_address: async (args: unknown): Promise<ToolResult> => {
+    const parsed = DepositAddressSchema.safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      const chain = parsed.data.chain || 'tempo';
+      const simAddress = chain === 'tempo'
+        ? '0x99085505f506576c5C5342cAFEf14d6be43e0E9C'
+        : '0x' + '1'.repeat(40);
+      const tokens = chain === 'tempo' ? ['pathUSD', 'USDC.e'] : ['USDC'];
+      return serialize({
+        address: simAddress,
+        chain,
+        tokens,
+        message: `Send stablecoins to this address on ${chain} to fund your Sardis wallet.`,
+      });
+    }
+
+    try {
+      const search = new URLSearchParams({ chain: parsed.data.chain || 'tempo' });
+      if (parsed.data.wallet_id) search.set('wallet_id', parsed.data.wallet_id);
+      return serialize(await apiRequest('GET', `/api/v2/ramp/deposit-address?${search.toString()}`));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to get deposit address: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
+    }
+  },
+
+  sardis_get_onramp_url: async (args: unknown): Promise<ToolResult> => {
+    const parsed = OnrampUrlSchema.safeParse(args);
+    if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      const chain = parsed.data.chain || 'tempo';
+      const address = '0x99085505f506576c5C5342cAFEf14d6be43e0E9C';
+      let url: string;
+      if (chain === 'tempo') {
+        url = `https://wallet.tempo.xyz/fund?address=${address}`;
+        if (parsed.data.amount_usd) url += `&amount=${parsed.data.amount_usd}`;
+      } else {
+        url = `https://buy.onramper.com?defaultCrypto=usdc&wallets=USDC:${address}`;
+        if (parsed.data.amount_usd) url += `&defaultAmount=${parsed.data.amount_usd}`;
+      }
+      return serialize({
+        url,
+        address,
+        chain,
+        message: `Open this URL to fund your Sardis wallet with fiat.`,
+      });
+    }
+
+    try {
+      const search = new URLSearchParams({ chain: parsed.data.chain || 'tempo' });
+      if (parsed.data.amount_usd) search.set('amount_usd', String(parsed.data.amount_usd));
+      if (parsed.data.wallet_id) search.set('wallet_id', parsed.data.wallet_id);
+      return serialize(await apiRequest('GET', `/api/v2/ramp/onramp-url?${search.toString()}`));
+    } catch (error) {
+      return { content: [{ type: 'text', text: `Failed to get onramp URL: ${error instanceof Error ? error.message : 'Unknown error'}` }], isError: true };
     }
   },
 
