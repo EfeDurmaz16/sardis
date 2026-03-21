@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi, walletsApi, retryPolicyApi } from '../api/client'
+import { agentApi, paymentApi, merchantApi, webhookApi, healthApi, enterpriseSupportApi, killSwitchApi, approvalsApi, evidenceApi, policiesApi, simulationApi, policyTestApi, exceptionsApi, anomalyApi, billingApi, walletsApi, retryPolicyApi, dashboardApi, spendingMandatesApi } from '../api/client'
 import type { ApprovalListResponse } from '../api/client'
 import type { WebhookSubscription } from '../types'
 
@@ -523,6 +523,53 @@ export function useDeleteRetryPolicy() {
     mutationFn: (id: string) => retryPolicyApi.deleteRetryPolicy(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['retry-policies'] })
+    },
+  })
+}
+
+// Dashboard Metrics
+export function useDashboardMetrics() {
+  return useQuery({
+    queryKey: ['dashboard-metrics'],
+    queryFn: dashboardApi.getMetrics,
+    refetchInterval: 30000, // Refresh every 30s
+  })
+}
+
+// Spending Mandates
+export function useMandates() {
+  return useQuery({
+    queryKey: ['mandates'],
+    queryFn: spendingMandatesApi.list,
+  })
+}
+
+export function useMandateTransitions(mandateId: string) {
+  return useQuery({
+    queryKey: ['mandate-transitions', mandateId],
+    queryFn: () => spendingMandatesApi.transitions(mandateId),
+    enabled: !!mandateId,
+  })
+}
+
+export function useCreateMandate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: spendingMandatesApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mandates'] })
+    },
+  })
+}
+
+export function useMandateAction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ mandateId, action, reason }: { mandateId: string; action: string; reason?: string }) =>
+      spendingMandatesApi.action(mandateId, action, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mandates'] })
+      queryClient.invalidateQueries({ queryKey: ['mandate-transitions'] })
     },
   })
 }

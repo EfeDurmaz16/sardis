@@ -36,7 +36,7 @@ import {
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import KYCBanner from '../components/KYCBanner'
-import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount } from '../hooks/useApi'
+import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount, useDashboardMetrics } from '../hooks/useApi'
 import type { Transaction } from '../types'
 
 // Static chart structure — populated with real data when available, empty-state otherwise
@@ -168,11 +168,12 @@ export default function DashboardPage() {
   const { data: pendingApprovals = [] } = usePendingApprovals()
   const { data: killSwitchStatus } = useKillSwitchStatus()
   const { data: billing, isError: billingError } = useBillingAccount()
+  const { data: metrics } = useDashboardMetrics()
 
-  const activeAgents = agents.filter((agent) => agent.is_active).length
+  const activeAgents = metrics?.active_agents ?? agents.filter((agent) => agent.is_active).length
 
-  // Compute real stats from transactions
-  const volume24h = compute24hVolume(transactions)
+  // Compute real stats from transactions — prefer metrics endpoint when available
+  const volume24h = metrics?.volume_24h ?? compute24hVolume(transactions)
   const volumeChartData = buildVolumeChartData(transactions)
 
   // Kill switch: check if global switch or any rail is active
@@ -269,7 +270,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Active Agents"
-          value={agents.length || 0}
+          value={metrics?.total_agents ?? agents.length ?? 0}
           change={`${activeAgents} online`}
           changeType="positive"
           icon={<Users className="w-6 h-6" />}
@@ -285,15 +286,19 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Transactions"
-          value={transactions.length > 0 ? transactions.length : '—'}
-          change={transactions.length > 0 ? `${transactions.filter(t => t.status === 'completed').length} completed` : 'no data yet'}
-          changeType={transactions.length > 0 ? 'positive' : 'neutral'}
+          value={(metrics?.total_transactions ?? transactions.length) > 0
+            ? (metrics?.total_transactions ?? transactions.length)
+            : '—'}
+          change={(metrics?.total_transactions ?? transactions.length) > 0
+            ? `${metrics?.completed_transactions ?? transactions.filter(t => t.status === 'completed').length} completed`
+            : 'no data yet'}
+          changeType={(metrics?.total_transactions ?? transactions.length) > 0 ? 'positive' : 'neutral'}
           icon={<ArrowRightLeft className="w-6 h-6" />}
         />
         <StatCard
           title="Merchants"
-          value={merchants.length || 0}
-          change={`${webhooks.length} webhooks`}
+          value={metrics?.total_merchants ?? merchants.length ?? 0}
+          change={`${metrics?.total_webhooks ?? webhooks.length} webhooks`}
           changeType="neutral"
           icon={<Wallet className="w-6 h-6" />}
         />

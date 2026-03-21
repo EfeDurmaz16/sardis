@@ -5,28 +5,24 @@
  * spending permissions for AI agents.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Shield,
   Plus,
   Loader2,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   PauseCircle,
   Clock,
   DollarSign,
   ChevronDown,
   ChevronRight,
-  Copy,
-  Check,
   Ban,
   Play,
   Pause,
 } from 'lucide-react';
 import clsx from 'clsx';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { useMandates, useMandateTransitions, useCreateMandate, useMandateAction } from '../hooks/useApi';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -48,15 +44,6 @@ interface Mandate {
   status: string;
   version: number;
   expires_at: string | null;
-  created_at: string;
-}
-
-interface Transition {
-  id: string;
-  from_status: string;
-  to_status: string;
-  changed_by: string;
-  reason: string | null;
   created_at: string;
 }
 
@@ -109,7 +96,8 @@ function BudgetBar({ spent, total }: { spent: string; total: string | null }) {
 
 // ── Create Mandate Form ───────────────────────────────────────────────
 
-function CreateMandateForm({ onCreated, authHeaders }: { onCreated: () => void; authHeaders: Record<string, string> }) {
+function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
+  const createMandate = useCreateMandate();
   const [purpose, setPurpose] = useState('');
   const [perTx, setPerTx] = useState('100');
   const [daily, setDaily] = useState('');
@@ -119,12 +107,10 @@ function CreateMandateForm({ onCreated, authHeaders }: { onCreated: () => void; 
   const [approvalThreshold, setApprovalThreshold] = useState('');
   const [approvalMode, setApprovalMode] = useState('auto');
   const [rails, setRails] = useState(['card', 'usdc', 'bank']);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     const body: Record<string, unknown> = {
@@ -145,24 +131,16 @@ function CreateMandateForm({ onCreated, authHeaders }: { onCreated: () => void; 
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/v2/spending-mandates`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.detail || 'Failed to create mandate');
-      }
+      await createMandate.mutateAsync(body as Parameters<typeof createMandate.mutateAsync>[0]);
       onCreated();
       setPurpose(''); setPerTx('100'); setDaily(''); setMonthly(''); setTotal('');
       setMerchants(''); setApprovalThreshold(''); setApprovalMode('auto');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create mandate');
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  const isLoading = createMandate.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -230,73 +208,48 @@ function CreateMandateForm({ onCreated, authHeaders }: { onCreated: () => void; 
   );
 }
 
+// ── Transition History (lazy-loaded per mandate) ─────────────────────
+
+function TransitionHistory({ mandateId }: { mandateId: string }) {
+  const { data: transitions, isLoading } = useMandateTransitions(mandateId);
+
+  if (isLoading) return <Loader2 size={14} className="text-gray-500 animate-spin" />;
+
+  if (!transitions || transitions.length === 0) {
+    return <p className="text-xs text-gray-500">No transitions yet</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {transitions.map(t => (
+        <div key={t.id} className="text-xs">
+          <span className="text-gray-500">{new Date(t.created_at).toLocaleString()}</span>
+          <span className="text-gray-400 mx-1">&middot;</span>
+          <span className="text-white">{t.from_status} → {t.to_status}</span>
+          {t.reason && <span className="text-gray-500 ml-1">({t.reason})</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function MandatesPage() {
-  const [mandates, setMandates] = useState<Mandate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: mandates = [], isLoading: loading, isError } = useMandates();
+  const mandateAction = useMandateAction();
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [transitions, setTransitions] = useState<Record<string, Transition[]>>({});
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  const token = sessionStorage.getItem('sardis_token');
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-
-  const fetchMandates = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/v2/spending-mandates`, { headers: authHeaders });
-      if (res.ok) {
-        setMandates(await res.json());
-      } else {
-        setMandates([]);
-      }
-    } catch {
-      setError('Failed to load mandates');
-      setMandates([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchMandates(); }, [fetchMandates]);
-
-  const fetchTransitions = async (mandateId: string) => {
-    try {
-      const res = await fetch(`${API_URL}/api/v2/spending-mandates/${mandateId}/transitions`, { headers: authHeaders });
-      if (res.ok) {
-        const data = await res.json();
-        setTransitions(prev => ({ ...prev, [mandateId]: data }));
-      }
-    } catch { /* silent */ }
-  };
 
   const handleAction = async (mandateId: string, action: string, reason?: string) => {
-    setActionLoading(mandateId);
-    try {
-      const res = await fetch(`${API_URL}/api/v2/spending-mandates/${mandateId}/${action}`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason || `${action} from dashboard` }),
-      });
-      if (res.ok) {
-        fetchMandates();
-        if (expandedId === mandateId) fetchTransitions(mandateId);
-      }
-    } catch { /* silent */ }
-    setActionLoading(null);
+    await mandateAction.mutateAsync({ mandateId, action, reason });
   };
 
   const toggleExpand = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(id);
-      if (!transitions[id]) fetchTransitions(id);
-    }
+    setExpandedId(expandedId === id ? null : id);
   };
+
+  const actionLoading = mandateAction.isPending ? mandateAction.variables?.mandateId ?? null : null;
 
   const activeMandates = mandates.filter(m => m.status === 'active').length;
   const totalBudget = mandates.reduce((s, m) => s + (m.amount_total ? parseFloat(m.amount_total) : 0), 0);
@@ -345,8 +298,7 @@ export default function MandatesPage() {
             <Plus size={18} className="text-sardis-400" /> Create Spending Mandate
           </h2>
           <CreateMandateForm
-            authHeaders={authHeaders}
-            onCreated={() => { fetchMandates(); setShowCreate(false); }}
+            onCreated={() => { setShowCreate(false); }}
           />
         </div>
       )}
@@ -359,8 +311,15 @@ export default function MandatesPage() {
         </div>
       )}
 
+      {/* Error */}
+      {isError && !loading && (
+        <div className="card p-6 border-red-500/30">
+          <p className="text-red-400 text-sm">Failed to load mandates</p>
+        </div>
+      )}
+
       {/* Mandate List */}
-      {!loading && mandates.length === 0 && (
+      {!loading && !isError && mandates.length === 0 && (
         <div className="card p-12 text-center">
           <Shield className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400 mb-2">No spending mandates yet</p>
@@ -470,21 +429,7 @@ export default function MandatesPage() {
                     {/* History */}
                     <div>
                       <h4 className="text-xs font-medium text-gray-400 uppercase mb-2">State History</h4>
-                      {transitions[m.id] ? (
-                        <div className="space-y-2">
-                          {transitions[m.id].length === 0 && <p className="text-xs text-gray-500">No transitions yet</p>}
-                          {transitions[m.id].map(t => (
-                            <div key={t.id} className="text-xs">
-                              <span className="text-gray-500">{new Date(t.created_at).toLocaleString()}</span>
-                              <span className="text-gray-400 mx-1">&middot;</span>
-                              <span className="text-white">{t.from_status} → {t.to_status}</span>
-                              {t.reason && <span className="text-gray-500 ml-1">({t.reason})</span>}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <Loader2 size={14} className="text-gray-500 animate-spin" />
-                      )}
+                      <TransitionHistory mandateId={m.id} />
                     </div>
                   </div>
                 </div>

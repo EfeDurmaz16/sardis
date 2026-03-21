@@ -1599,6 +1599,106 @@ export const sandboxApi = {
       .catch(() => false),
 }
 
+// Dashboard Metrics API (V2)
+export const dashboardApi = {
+  getMetrics: () => requestV2<{
+    active_agents: number
+    total_agents: number
+    volume_24h: number
+    total_transactions: number
+    completed_transactions: number
+    total_merchants: number
+    total_webhooks: number
+  }>('/dashboard/metrics'),
+}
+
+// Spending Mandates APIs (V2)
+export const spendingMandatesApi = {
+  list: () => requestV2<{
+    id: string
+    org_id: string
+    agent_id: string | null
+    purpose_scope: string | null
+    merchant_scope: Record<string, unknown> | null
+    amount_per_tx: string | null
+    amount_daily: string | null
+    amount_monthly: string | null
+    amount_total: string | null
+    currency: string
+    spent_total: string
+    allowed_rails: string[]
+    approval_threshold: string | null
+    approval_mode: string
+    status: string
+    version: number
+    expires_at: string | null
+    created_at: string
+  }[]>('/spending-mandates'),
+
+  get: (mandateId: string) => requestV2<JsonObject>(`/spending-mandates/${mandateId}`),
+
+  create: (data: {
+    purpose_scope?: string
+    amount_per_tx?: number
+    amount_daily?: number
+    amount_monthly?: number
+    amount_total?: number
+    allowed_rails?: string[]
+    approval_mode?: string
+    approval_threshold?: number
+    merchant_scope?: Record<string, unknown>
+  }) => requestV2<JsonObject>('/spending-mandates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  transitions: (mandateId: string) =>
+    requestV2<{
+      id: string
+      from_status: string
+      to_status: string
+      changed_by: string
+      reason: string | null
+      created_at: string
+    }[]>(`/spending-mandates/${mandateId}/transitions`),
+
+  action: (mandateId: string, action: string, reason?: string) =>
+    requestV2<JsonObject>(`/spending-mandates/${mandateId}/${action}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || `${action} from dashboard` }),
+    }),
+}
+
+// MPP Sessions APIs (V2)
+export const mppApi = {
+  listSessions: () => requestV2<{
+    session_id: string
+    status: 'active' | 'closed' | 'expired' | 'exhausted'
+    spending_limit: string
+    remaining: string
+    payment_count: number
+    created_at: string
+    updated_at?: string
+    agent_id?: string
+    description?: string
+  }[]>('/mpp/sessions'),
+
+  getSession: (sessionId: string) => requestV2<JsonObject>(`/mpp/sessions/${sessionId}`),
+}
+
+// Faucet API (V2 - testnet only)
+export const faucetApi = {
+  drip: () => requestV2<{
+    success: boolean
+    amount: string
+    token: string
+    tx_hash?: string
+  }>('/faucet/drip', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }),
+}
+
 // ─── Chain Explorer Helpers ──────────────────────────────────────────────
 export const CHAIN_EXPLORERS: Record<string, string> = {
   base: 'https://basescan.org',
