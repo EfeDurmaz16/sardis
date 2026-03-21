@@ -32,6 +32,23 @@ class APIKey:
     expires_at: datetime | None
     created_at: datetime
     last_used_at: datetime | None
+    environment: str = "test"
+
+    @property
+    def default_chain(self) -> str:
+        """Resolve the default chain based on environment.
+
+        - test → Base Sepolia (testnet)
+        - live → Tempo (mainnet)
+        """
+        return _ENVIRONMENT_CHAIN_MAP.get(self.environment, "base_sepolia")
+
+
+# Maps API key environment to the default chain for transaction routing.
+_ENVIRONMENT_CHAIN_MAP: dict[str, str] = {
+    "test": "base_sepolia",
+    "live": "tempo",
+}
 
 
 @dataclass
@@ -41,6 +58,8 @@ class AuthContext:
     organization_id: str
     scopes: list[str]
     is_authenticated: bool = True
+    environment: str = "test"
+    default_chain: str = "base_sepolia"
 
 
 class APIKeyManager:
@@ -117,6 +136,18 @@ class APIKeyManager:
         """Get the prefix of an API key."""
         return key[:12] if len(key) >= 12 else key
 
+    @staticmethod
+    def resolve_environment(key_or_prefix: str) -> str:
+        """Derive the environment from an API key or its stored prefix.
+
+        Convention:
+        - Keys starting with ``sk_live_`` → ``"live"``
+        - Everything else (including ``sk_test_``) → ``"test"``
+        """
+        if key_or_prefix.startswith("sk_live_"):
+            return "live"
+        return "test"
+
     async def create_key(
         self,
         organization_id: str,
@@ -137,6 +168,7 @@ class APIKeyManager:
         """
         full_key, prefix, key_hash = self.generate_api_key(test=test)
         scopes = scopes or ["read", "write"]
+        key_env = self.resolve_environment(full_key)
 
         key_id = f"key_{secrets.token_hex(8)}"
 
@@ -152,6 +184,7 @@ class APIKeyManager:
             expires_at=expires_at,
             created_at=datetime.now(UTC),
             last_used_at=None,
+            environment=key_env,
         )
 
         if self._use_postgres:
@@ -162,8 +195,8 @@ class APIKeyManager:
                     """
                     INSERT INTO api_keys (
                         key_prefix, key_hash, organization_id, name,
-                        scopes, rate_limit, is_active, expires_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        scopes, rate_limit, is_active, expires_at, environment
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,
                     prefix,
                     key_hash,
@@ -173,6 +206,7 @@ class APIKeyManager:
                     rate_limit,
                     True,
                     expires_at,
+                    key_env,
                 )
         else:
             self._keys[key_id] = api_key
@@ -218,6 +252,7 @@ class APIKeyManager:
                         prefix,
                     )
 
+                    env = self.resolve_environment(row["key_prefix"])
                     return APIKey(
                         key_id=str(row["id"]),
                         key_prefix=row["key_prefix"],
@@ -230,6 +265,7 @@ class APIKeyManager:
                         expires_at=row["expires_at"],
                         created_at=row["created_at"],
                         last_used_at=row["last_used_at"],
+                        environment=env,
                     )
 
                 # Fallback: check user_api_keys table (Phase 2 user auth)
@@ -248,6 +284,7 @@ class APIKeyManager:
                         "UPDATE user_api_keys SET last_used_at = NOW() WHERE id = $1",
                         user_row["id"],
                     )
+                    user_env = self.resolve_environment(user_row["key_prefix"] or "")
                     return APIKey(
                         key_id=str(user_row["id"]),
                         key_prefix=user_row["key_prefix"],
@@ -260,6 +297,7 @@ class APIKeyManager:
                         expires_at=user_row["expires_at"],
                         created_at=user_row["created_at"],
                         last_used_at=user_row["last_used_at"],
+                        environment=user_env,
                     )
 
                 return None
@@ -353,6 +391,7 @@ class APIKeyManager:
                         expires_at=row["expires_at"],
                         created_at=row["created_at"],
                         last_used_at=row["last_used_at"],
+                        environment=self.resolve_environment(row["key_prefix"]),
                     )
                     for row in rows
                 ]
@@ -390,6 +429,7 @@ class APIKeyManager:
                     expires_at=row["expires_at"],
                     created_at=row["created_at"],
                     last_used_at=row["last_used_at"],
+                    environment=self.resolve_environment(row["key_prefix"]),
                 )
         else:
             return self._keys.get(key_id)
@@ -433,6 +473,7 @@ async def get_api_key(
         if test_key and env in {"dev", "test", "local"} and api_key == test_key:
             # Dev/test convenience key to keep local and CI integration tests
             # deterministic without explicit bootstrap.
+            bootstrap_env = APIKeyManager.resolve_environment(test_key)
             return APIKey(
                 key_id="key_test_bootstrap",
                 key_prefix=test_key[:12],
@@ -445,6 +486,7 @@ async def get_api_key(
                 expires_at=None,
                 created_at=datetime.now(UTC),
                 last_used_at=datetime.now(UTC),
+                environment=bootstrap_env,
             )
 
         raise HTTPException(

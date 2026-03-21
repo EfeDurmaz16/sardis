@@ -16,7 +16,7 @@ from typing import Literal
 
 from fastapi import Depends, HTTPException, Request, status
 
-from .middleware.auth import APIKey, get_api_key
+from .middleware.auth import APIKey, APIKeyManager, get_api_key
 from .routers.auth import UserInfo, get_current_user
 
 _logger = logging.getLogger("sardis.api.authz")
@@ -29,6 +29,8 @@ class Principal:
     scopes: list[str]
     user: UserInfo | None = None
     api_key: APIKey | None = None
+    environment: str = "test"
+    default_chain: str = "base_sepolia"
 
     @property
     def is_admin(self) -> bool:
@@ -83,20 +85,26 @@ async def require_principal(
             )
         _logger.debug("Anonymous access granted from %s (dev/test mode)", client_ip)
         org_id = os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
-        return Principal(
+        principal = Principal(
             kind="api_key",
             organization_id=org_id,
             scopes=["*"],
             api_key=None,
         )
+        _set_chain_state(request, principal)
+        return principal
 
     if api_key is not None:
-        return Principal(
+        principal = Principal(
             kind="api_key",
             organization_id=api_key.organization_id,
             scopes=list(api_key.scopes),
             api_key=api_key,
+            environment=api_key.environment,
+            default_chain=api_key.default_chain,
         )
+        _set_chain_state(request, principal)
+        return principal
 
     if user is not None:
         token_org_id = (user.organization_id or "").strip()
@@ -115,18 +123,31 @@ async def require_principal(
                 detail="JWT is missing organization scope",
             )
         scopes = ["*"] if user.role == "admin" else ["read"]
-        return Principal(
+        principal = Principal(
             kind="jwt",
             organization_id=org_id,
             scopes=scopes,
             user=user,
         )
+        _set_chain_state(request, principal)
+        return principal
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
         headers={"WWW-Authenticate": "ApiKey, Bearer"},
     )
+
+
+def _set_chain_state(request: Request, principal: Principal) -> None:
+    """Propagate environment and default chain to ``request.state``.
+
+    This allows ASGI middleware and other non-dependency code to inspect
+    the resolved chain/environment without requiring the ``Principal``
+    dependency directly.
+    """
+    request.state.environment = principal.environment
+    request.state.default_chain = principal.default_chain
 
 
 async def require_admin_principal(
