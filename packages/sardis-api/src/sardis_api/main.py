@@ -1879,6 +1879,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(swap_router.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
     app.include_router(ws_alerts_router.router, prefix="/api/v2")
 
+    # SSE event stream for real-time dashboard updates
+    app.include_router(event_stream_router.router, prefix="/api/v2/events", tags=["events"])
+
     # Analytics routes
     app.include_router(analytics_router.router)
     app.include_router(metrics_router.router)
