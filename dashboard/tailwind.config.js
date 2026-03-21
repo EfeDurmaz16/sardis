@@ -33,7 +33,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['JetBrains Mono', 'Menlo', 'monospace'],
+        sans: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'monospace'],
         display: ['Space Grotesk', 'system-ui', 'sans-serif'],
       },
       animation: {
