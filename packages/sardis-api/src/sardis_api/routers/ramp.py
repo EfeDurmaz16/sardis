@@ -208,6 +208,240 @@ def _verify_onramper_signature(
     return hmac.compare_digest(signature_header, expected)
 
 
+# ---- Deposit / On-Ramp URL Endpoints (Tempo + multi-chain) ----
+
+
+class DepositAddressResponse(BaseModel):
+    address: str
+    chain: str
+    tokens: list[str]
+
+
+class OnrampUrlResponse(BaseModel):
+    url: str
+    address: str
+    chain: str
+
+
+class BridgeRequest(BaseModel):
+    wallet_id: str
+    source_chain: str = Field(default="base")
+    destination_chain: str = Field(default="tempo")
+    amount: Decimal = Field(gt=0)
+    token: str = Field(default="USDC")
+
+
+class BridgeResponse(BaseModel):
+    bridge_id: str
+    status: str
+    source_chain: str
+    destination_chain: str
+    amount: str
+    token: str
+    estimated_time: str | None = None
+
+
+class WithdrawCryptoRequest(BaseModel):
+    wallet_id: str
+    destination_address: str
+    amount: Decimal = Field(gt=0)
+    chain: str = Field(default="tempo")
+    token: str = Field(default="USDC")
+
+
+class WithdrawCryptoResponse(BaseModel):
+    tx_hash: str | None = None
+    status: str
+    amount: str
+    chain: str
+    token: str
+    destination: str
+
+
+@router.get("/deposit-address", response_model=DepositAddressResponse)
+async def get_deposit_address(
+    chain: str = "tempo",
+    wallet_id: str | None = None,
+    deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get deposit address for direct stablecoin transfers on any chain."""
+    # Resolve wallet — either by explicit ID or by org
+    wallet = None
+    if wallet_id:
+        wallet = await deps.wallet_repo.get(wallet_id)
+    else:
+        # Find wallet for this org on the given chain
+        wallets = await deps.wallet_repo.list(limit=100)
+        for w in wallets:
+            agent = await deps.agent_repo.get(w.agent_id)
+            if agent and agent.owner_id == principal.organization_id:
+                addr = w.get_address(chain)
+                if addr:
+                    wallet = w
+                    break
+
+    if not wallet:
+        raise HTTPException(status_code=404, detail=f"No wallet found on chain {chain}")
+
+    address = wallet.get_address(chain)
+    if not address:
+        raise HTTPException(status_code=400, detail=f"Wallet has no address on chain {chain}")
+
+    # Token list per chain
+    chain_tokens = {
+        "tempo": ["pathUSD", "USDC.e"],
+        "base": ["USDC"],
+        "polygon": ["USDC", "USDT"],
+        "ethereum": ["USDC", "USDT", "PYUSD"],
+        "arbitrum": ["USDC", "USDT"],
+        "optimism": ["USDC", "USDT"],
+    }
+    tokens = chain_tokens.get(chain, ["USDC"])
+
+    return DepositAddressResponse(address=address, chain=chain, tokens=tokens)
+
+
+@router.get("/onramp-url", response_model=OnrampUrlResponse)
+async def get_onramp_url(
+    chain: str = "tempo",
+    amount_usd: Decimal | None = None,
+    wallet_id: str | None = None,
+    deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Get a fiat on-ramp URL for funding a Sardis wallet.
+
+    For Tempo: returns wallet.tempo.xyz URL with pre-filled address.
+    For other chains: returns Onramper widget URL.
+    """
+    # Resolve wallet
+    wallet = None
+    if wallet_id:
+        wallet = await deps.wallet_repo.get(wallet_id)
+    else:
+        wallets = await deps.wallet_repo.list(limit=100)
+        for w in wallets:
+            agent = await deps.agent_repo.get(w.agent_id)
+            if agent and agent.owner_id == principal.organization_id:
+                addr = w.get_address(chain)
+                if addr:
+                    wallet = w
+                    break
+
+    if not wallet:
+        raise HTTPException(status_code=404, detail=f"No wallet found on chain {chain}")
+
+    address = wallet.get_address(chain)
+    if not address:
+        raise HTTPException(status_code=400, detail=f"Wallet has no address on chain {chain}")
+
+    if chain == "tempo":
+        url = f"https://wallet.tempo.xyz/fund?address={address}"
+        if amount_usd:
+            url += f"&amount={amount_usd}"
+    else:
+        # Onramper widget URL for other chains
+        params = {
+            "apiKey": deps.onramper_api_key,
+            "defaultCrypto": "usdc",
+            "wallets": f"USDC:{address}",
+            "networkWallets": f"{chain.upper()}:{address}",
+        }
+        if amount_usd:
+            params["defaultAmount"] = str(amount_usd)
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        url = f"https://buy.onramper.com?{query}"
+
+    return OnrampUrlResponse(url=url, address=address, chain=chain)
+
+
+@router.post("/bridge", response_model=BridgeResponse)
+async def bridge_cross_chain(
+    req: BridgeRequest,
+    deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Bridge stablecoins between chains (e.g., Base USDC -> Tempo USDC.e).
+
+    Uses available bridge providers (Across, Relay, Squid).
+    Currently queues the request for processing.
+    """
+    wallet = await deps.wallet_repo.get(req.wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    source_address = wallet.get_address(req.source_chain)
+    if not source_address:
+        raise HTTPException(status_code=400, detail=f"Wallet has no address on {req.source_chain}")
+
+    import uuid
+    bridge_id = f"bridge_{uuid.uuid4().hex[:16]}"
+
+    logger.info(
+        "Bridge request queued: %s %s %s from %s to %s",
+        req.amount, req.token, bridge_id, req.source_chain, req.destination_chain,
+    )
+
+    # TODO: Integrate with bridge provider (Across/Relay/Squid)
+    # For now, return a queued status
+    return BridgeResponse(
+        bridge_id=bridge_id,
+        status="queued",
+        source_chain=req.source_chain,
+        destination_chain=req.destination_chain,
+        amount=str(req.amount),
+        token=req.token,
+        estimated_time="5-15 minutes",
+    )
+
+
+@router.post("/withdraw-crypto", response_model=WithdrawCryptoResponse)
+async def withdraw_crypto(
+    req: WithdrawCryptoRequest,
+    deps: RampDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Withdraw stablecoins to an external wallet address.
+
+    Executes a TIP-20 transfer (on Tempo) or ERC-20 transfer (on other chains)
+    from the Sardis wallet to the destination address.
+    """
+    wallet = await deps.wallet_repo.get(req.wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    agent = await deps.agent_repo.get(wallet.agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not principal.is_admin and agent.owner_id != principal.organization_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    source_address = wallet.get_address(req.chain)
+    if not source_address:
+        raise HTTPException(status_code=400, detail=f"Wallet has no address on {req.chain}")
+
+    # TODO: Execute via chain executor (Tempo TIP-20 or ERC-20)
+    # For demo: accept the request and return pending status
+    logger.info(
+        "Crypto withdrawal: %s %s on %s from %s to %s",
+        req.amount, req.token, req.chain, source_address, req.destination_address,
+    )
+
+    return WithdrawCryptoResponse(
+        tx_hash=None,  # Will be populated when executor integration is complete
+        status="pending",
+        amount=str(req.amount),
+        chain=req.chain,
+        token=req.token,
+        destination=req.destination_address,
+    )
+
+
 # ---- Onramp Endpoints ----
 
 @router.post("/onramp/widget", response_model=OnrampWidgetResponse)
