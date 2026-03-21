@@ -83,6 +83,7 @@ class MPPSessionResponse(BaseModel):
     created_at: str
     closed_at: str | None
     expires_at: str | None
+    next_steps: list[str] = []
 
 
 class ExecutePaymentRequest(BaseModel):
@@ -102,6 +103,7 @@ class ExecutePaymentResponse(BaseModel):
     tx_hash: str | None
     chain: str
     remaining: str
+    next_steps: list[str] = []
 
 
 class PolicyEvaluateRequest(BaseModel):
@@ -222,6 +224,9 @@ async def create_session(
         created_at=now_iso,
         closed_at=None,
         expires_at=expires_at,
+        next_steps=[
+            "POST /api/v2/mpp/sessions/{session_id}/execute — Execute payment",
+        ],
     )
 
 
@@ -373,6 +378,10 @@ async def execute_payment(
         tx_hash=None,
         chain=session["chain"],
         remaining=str(new_remaining),
+        next_steps=[
+            "GET /api/v2/ledger/entries — Check audit trail",
+            "POST /api/v2/mpp/sessions/{session_id}/close — Close session",
+        ],
     )
 
 

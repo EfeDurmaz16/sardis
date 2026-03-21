@@ -94,9 +94,10 @@ class AgentResponse(BaseModel):
     metadata: dict
     created_at: str
     updated_at: str
+    next_steps: list[str] = []
 
     @classmethod
-    def from_agent(cls, agent: Agent) -> AgentResponse:
+    def from_agent(cls, agent: Agent, next_steps: list[str] | None = None) -> AgentResponse:
         return cls(
             agent_id=agent.agent_id,
             name=agent.name,
@@ -113,6 +114,7 @@ class AgentResponse(BaseModel):
             metadata=agent.metadata,
             created_at=agent.created_at.isoformat(),
             updated_at=agent.updated_at.isoformat(),
+            next_steps=next_steps or [],
         )
 
 
@@ -547,7 +549,10 @@ async def create_agent(
     from sardis_api.analytics.posthog_tracker import FIRST_AGENT_CREATED, track_event
     track_event(principal.user_id, FIRST_AGENT_CREATED, {"agent_name": agent.name})
 
-    return AgentResponse.from_agent(agent)
+    return AgentResponse.from_agent(agent, next_steps=[
+        "POST /api/v2/mpp/sessions — Start MPP payment session",
+        "POST /api/v2/spending-mandates — Set spending policy",
+    ])
 
 
 @router.get("", response_model=list[AgentResponse])

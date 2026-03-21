@@ -70,6 +70,7 @@ class MandateResponse(BaseModel):
     expires_at: str | None = None
     created_at: str
     updated_at: str
+    next_steps: list[str] = []
 
 
 class TransitionRequest(BaseModel):
@@ -174,6 +175,10 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
         approval_mode=body.approval_mode, status=body.initial_status,
         version=1, policy_hash=ph, expires_at=body.expires_at,
         created_at=now.isoformat(), updated_at=now.isoformat(),
+        next_steps=[
+            "POST /api/v2/agents — Create an AI agent",
+            "POST /api/v2/mpp/sessions — Start MPP payment session",
+        ],
     )
 
 
