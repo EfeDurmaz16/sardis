@@ -48,6 +48,12 @@ function errorResult(message: string): ToolResult {
   return { content: [{ type: 'text', text: message }], isError: true };
 }
 
+const IssueCardSchema = z.object({
+  amount: z.number().min(5).max(1000).describe('Card amount in USD ($5-$1,000)'),
+  currency: z.string().optional().default('USD'),
+  session_id: z.string().optional().describe('MPP session to charge against'),
+});
+
 export const mppToolDefinitions: ToolDefinition[] = [
   {
     name: 'sardis_mpp_create_session',
@@ -150,6 +156,29 @@ export const mppToolDefinitions: ToolDefinition[] = [
         },
       },
       required: ['session_id'],
+    },
+  },
+  {
+    name: 'sardis_mpp_issue_card',
+    description:
+      'Issue a virtual prepaid Visa card via Laso Finance MPP service. Cards are single-use, $5-$1,000, funded with USDC. Can be charged against an MPP session budget.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        amount: {
+          type: 'number',
+          description: 'Card amount in USD ($5-$1,000). Must match checkout total exactly.',
+        },
+        currency: {
+          type: 'string',
+          description: 'Card currency (default: USD)',
+        },
+        session_id: {
+          type: 'string',
+          description: 'MPP session ID to charge the card against (optional)',
+        },
+      },
+      required: ['amount'],
     },
   },
   {
@@ -324,6 +353,40 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
       return serialize(result);
     } catch (error) {
       return errorResult(`Failed to get MPP session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  sardis_mpp_issue_card: async (args: unknown): Promise<ToolResult> => {
+    const parsed = IssueCardSchema.safeParse(args);
+    if (!parsed.success) return errorResult(`Invalid request: ${parsed.error.message}`);
+
+    const config = getConfig();
+
+    if (!config.apiKey || config.mode === 'simulated') {
+      const cardId = `card_sim_${Date.now().toString(36)}`;
+      return serialize({
+        card_id: cardId,
+        card_number: '4111XXXXXXXX' + Math.floor(1000 + Math.random() * 9000),
+        cvv: '***',
+        expiry: '12/27',
+        amount: parsed.data.amount.toFixed(2),
+        currency: parsed.data.currency,
+        status: 'issued',
+        card_type: 'single_use',
+        provider: 'laso_finance',
+        message: `Virtual Visa card issued for $${parsed.data.amount.toFixed(2)} via Laso Finance MPP`,
+      });
+    }
+
+    try {
+      const result = await apiRequest('POST', '/api/v2/mpp/cards/issue', {
+        amount: parsed.data.amount,
+        currency: parsed.data.currency,
+        session_id: parsed.data.session_id,
+      });
+      return serialize(result);
+    } catch (error) {
+      return errorResult(`Failed to issue card: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 

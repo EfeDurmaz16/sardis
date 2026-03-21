@@ -237,6 +237,7 @@ export const toolCategories = {
     'sardis_mpp_execute',
     'sardis_mpp_close_session',
     'sardis_mpp_get_session',
+    'sardis_mpp_issue_card',
     'sardis_mpp_evaluate_policy',
   ],
 } as const;

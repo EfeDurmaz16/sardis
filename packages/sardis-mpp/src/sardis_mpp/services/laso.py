@@ -31,6 +31,7 @@ Restrictions:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from decimal import Decimal
@@ -143,10 +144,9 @@ class LasoMPPService:
         card_id = data.get("card_id") or data.get("id", "")
 
         # Card may need polling — typically ready in 7-10 seconds
-        if data.get("status") == "processing":
-            logger.info("Laso: card %s is processing, poll for readiness", card_id)
-            # In production: poll /get-card-data every 2-3 seconds
-            # For now, return the processing status
+        if data.get("status") == "processing" and card_id:
+            logger.info("Laso: card %s is processing, polling for readiness...", card_id)
+            data = await self._poll_card_ready(card_id, max_attempts=5, interval=3.0)
 
         return LasoCard(
             card_id=card_id,
@@ -157,6 +157,26 @@ class LasoMPPService:
             currency=data.get("currency", currency),
             status=data.get("status", "processing"),
         )
+
+    async def _poll_card_ready(
+        self,
+        card_id: str,
+        max_attempts: int = 5,
+        interval: float = 3.0,
+    ) -> dict:
+        """Poll until card is ready or max attempts reached."""
+        for attempt in range(1, max_attempts + 1):
+            await asyncio.sleep(interval)
+            data = await self._request("POST", "/get-card-data", json_data={
+                "card_id": card_id,
+            })
+            status = data.get("status", "processing")
+            if status != "processing":
+                logger.info("Laso: card %s ready after %d polls (status=%s)", card_id, attempt, status)
+                return data
+            logger.debug("Laso: card %s still processing (attempt %d/%d)", card_id, attempt, max_attempts)
+        logger.warning("Laso: card %s still processing after %d polls", card_id, max_attempts)
+        return data  # Return last response even if still processing
 
     async def get_card_data(self, card_id: str) -> dict:
         """Get card details (free endpoint, no payment required)."""
