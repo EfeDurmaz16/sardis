@@ -1098,6 +1098,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if hasattr(ramp_router, "public_router"):
         app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
+    # --- MPP (Machine Payments Protocol) routes ---
+    from .routers import mpp as mpp_router
+    app.include_router(mpp_router.router, prefix="/api/v2/mpp", tags=["mpp"])
+    logger.info("MPP routes enabled")
+
     # --- Striga routes (EEA cards, vIBAN, SEPA) ---
     if settings.striga.enabled:
         from .routers import striga as striga_router
