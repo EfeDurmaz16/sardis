@@ -10,8 +10,11 @@ import {
   AlertTriangle,
   Users,
   Target,
+  Trash2,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useEventStream } from '../hooks/useEventStream'
+import type { LiveEvent as SSEEvent } from '../hooks/useEventStream'
 
 /* ─── Types ─── */
 
@@ -26,44 +29,44 @@ interface LiveEvent {
   amount?: number
   status: 'success' | 'warning' | 'error' | 'info'
   message: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 /* ─── Constants ─── */
 
-const EVENT_TYPES = {
+const EVENT_TYPES: Record<string, { category: EventCategory; label: string; status: 'success' | 'warning' | 'error' | 'info' }> = {
   // Policy
-  'policy.created': { category: 'policy' as EventCategory, label: 'Policy Created', status: 'info' as const },
-  'policy.updated': { category: 'policy' as EventCategory, label: 'Policy Updated', status: 'info' as const },
-  'policy.violated': { category: 'policy' as EventCategory, label: 'Policy Violated', status: 'error' as const },
-  'policy.check.passed': { category: 'policy' as EventCategory, label: 'Policy Check', status: 'success' as const },
+  'policy.created': { category: 'policy', label: 'Policy Created', status: 'info' },
+  'policy.updated': { category: 'policy', label: 'Policy Updated', status: 'info' },
+  'policy.violated': { category: 'policy', label: 'Policy Violated', status: 'error' },
+  'policy.check.passed': { category: 'policy', label: 'Policy Check', status: 'success' },
 
   // Spend
-  'spend.threshold.warning': { category: 'spend' as EventCategory, label: 'Threshold Warning', status: 'warning' as const },
-  'spend.threshold.reached': { category: 'spend' as EventCategory, label: 'Limit Reached', status: 'error' as const },
-  'spend.daily.summary': { category: 'spend' as EventCategory, label: 'Daily Summary', status: 'info' as const },
-  'payment.initiated': { category: 'spend' as EventCategory, label: 'Payment Started', status: 'info' as const },
-  'payment.completed': { category: 'spend' as EventCategory, label: 'Payment Complete', status: 'success' as const },
-  'payment.failed': { category: 'spend' as EventCategory, label: 'Payment Failed', status: 'error' as const },
+  'spend.threshold.warning': { category: 'spend', label: 'Threshold Warning', status: 'warning' },
+  'spend.threshold.reached': { category: 'spend', label: 'Limit Reached', status: 'error' },
+  'spend.daily.summary': { category: 'spend', label: 'Daily Summary', status: 'info' },
+  'payment.initiated': { category: 'spend', label: 'Payment Started', status: 'info' },
+  'payment.completed': { category: 'spend', label: 'Payment Complete', status: 'success' },
+  'payment.failed': { category: 'spend', label: 'Payment Failed', status: 'error' },
 
   // Approval
-  'approval.requested': { category: 'approval' as EventCategory, label: 'Approval Requested', status: 'warning' as const },
-  'approval.granted': { category: 'approval' as EventCategory, label: 'Approval Granted', status: 'success' as const },
-  'approval.denied': { category: 'approval' as EventCategory, label: 'Approval Denied', status: 'error' as const },
+  'approval.requested': { category: 'approval', label: 'Approval Requested', status: 'warning' },
+  'approval.granted': { category: 'approval', label: 'Approval Granted', status: 'success' },
+  'approval.denied': { category: 'approval', label: 'Approval Denied', status: 'error' },
 
   // Card
-  'card.created': { category: 'card' as EventCategory, label: 'Card Created', status: 'success' as const },
-  'card.transaction': { category: 'card' as EventCategory, label: 'Card Transaction', status: 'info' as const },
-  'card.declined': { category: 'card' as EventCategory, label: 'Card Declined', status: 'error' as const },
+  'card.created': { category: 'card', label: 'Card Created', status: 'success' },
+  'card.transaction': { category: 'card', label: 'Card Transaction', status: 'info' },
+  'card.declined': { category: 'card', label: 'Card Declined', status: 'error' },
 
   // Compliance
-  'compliance.check.passed': { category: 'compliance' as EventCategory, label: 'Compliance Check', status: 'success' as const },
-  'compliance.check.failed': { category: 'compliance' as EventCategory, label: 'Compliance Failed', status: 'error' as const },
-  'compliance.alert': { category: 'compliance' as EventCategory, label: 'Compliance Alert', status: 'warning' as const },
+  'compliance.check.passed': { category: 'compliance', label: 'Compliance Check', status: 'success' },
+  'compliance.check.failed': { category: 'compliance', label: 'Compliance Failed', status: 'error' },
+  'compliance.alert': { category: 'compliance', label: 'Compliance Alert', status: 'warning' },
 
   // Group
-  'group.budget.warning': { category: 'group' as EventCategory, label: 'Group Budget Warning', status: 'warning' as const },
-  'group.budget.exceeded': { category: 'group' as EventCategory, label: 'Group Budget Exceeded', status: 'error' as const },
+  'group.budget.warning': { category: 'group', label: 'Group Budget Warning', status: 'warning' },
+  'group.budget.exceeded': { category: 'group', label: 'Group Budget Exceeded', status: 'error' },
 }
 
 const AGENT_POOL = [
@@ -82,7 +85,7 @@ const MERCHANTS = ['OpenAI', 'Anthropic', 'AWS', 'Vercel', 'Stripe', 'GitHub']
 function generateMockEvent(): LiveEvent {
   const eventTypeKeys = Object.keys(EVENT_TYPES)
   const randomType = eventTypeKeys[Math.floor(Math.random() * eventTypeKeys.length)]
-  const eventConfig = EVENT_TYPES[randomType as keyof typeof EVENT_TYPES]
+  const eventConfig = EVENT_TYPES[randomType]
 
   const agentId = AGENT_POOL[Math.floor(Math.random() * AGENT_POOL.length)]
   const amount = eventConfig.category === 'spend' || eventConfig.category === 'card'
@@ -140,6 +143,25 @@ function generateMockEvent(): LiveEvent {
   }
 }
 
+/** Convert an SSE event from useEventStream into a LiveEvent for display */
+function sseToLiveEvent(sse: SSEEvent): LiveEvent {
+  const data = sse.data || {}
+  const eventConfig = EVENT_TYPES[sse.type]
+  const category = eventConfig?.category || (data.category as EventCategory) || 'spend'
+  const status = eventConfig?.status || (data.status as LiveEvent['status']) || 'info'
+  return {
+    id: (data.id as string) || `sse_${Math.random().toString(36).substring(2, 10)}`,
+    timestamp: new Date(sse.timestamp),
+    type: sse.type,
+    category,
+    agentId: (data.agent_id as string) || (data.agentId as string) || 'unknown',
+    amount: typeof data.amount === 'number' ? data.amount : undefined,
+    status,
+    message: (data.message as string) || eventConfig?.label || sse.type,
+    metadata: data,
+  }
+}
+
 function getCategoryIcon(category: EventCategory) {
   switch (category) {
     case 'policy': return ShieldCheck
@@ -179,9 +201,68 @@ export default function LiveEventsPage() {
   const [events, setEvents] = useState<LiveEvent[]>([])
   const [isPaused, setIsPaused] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<EventCategory>('all')
-  const [isConnected, setIsConnected] = useState(true)
   const eventsEndRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
+
+  // SSE hook — connects to real event stream
+  const { events: sseEvents, connected: sseConnected, clearEvents: clearSSE } = useEventStream()
+
+  // Track whether SSE has ever received a real event
+  const hasReceivedSSE = useRef(false)
+
+  // When SSE events arrive, convert and prepend them
+  useEffect(() => {
+    if (sseEvents.length > 0 && !isPaused) {
+      hasReceivedSSE.current = true
+      const converted = sseEvents.map(sseToLiveEvent)
+      setEvents(converted)
+    }
+  }, [sseEvents, isPaused])
+
+  // Mock fallback: if SSE is not connected after a brief period, generate mock events
+  useEffect(() => {
+    if (isPaused) return
+    if (sseConnected && hasReceivedSSE.current) return // SSE is working, no mock needed
+
+    // Give SSE 3 seconds to connect before falling back to mock
+    const fallbackTimeout = setTimeout(() => {
+      if (hasReceivedSSE.current) return
+
+      // Initial burst
+      const initialEvents = Array.from({ length: 10 }, () => generateMockEvent())
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      setEvents(initialEvents)
+
+      // Generate events at random intervals (1-4 seconds)
+      let timeoutId: ReturnType<typeof setTimeout>
+
+      const scheduleNext = () => {
+        const delay = Math.random() * 3000 + 1000
+        timeoutId = setTimeout(() => {
+          if (hasReceivedSSE.current) return
+          setEvents(prev => {
+            const newEvents = [...prev, generateMockEvent()]
+            return newEvents.slice(-200)
+          })
+          scheduleNext()
+        }, delay)
+      }
+
+      scheduleNext()
+
+      // Store cleanup for the inner timeout
+      ;(fallbackTimeout as unknown as Record<string, ReturnType<typeof setTimeout>>).__inner = timeoutId
+    }, 3000)
+
+    return () => {
+      clearTimeout(fallbackTimeout)
+      const inner = (fallbackTimeout as unknown as Record<string, ReturnType<typeof setTimeout>>).__inner
+      if (inner) clearTimeout(inner)
+    }
+  }, [isPaused, sseConnected])
+
+  // Connection state: prefer SSE status, fall back to "connected" if using mock
+  const isConnected = sseConnected || !hasReceivedSSE.current
 
   // Stats
   const stats = useMemo(() => {
@@ -210,50 +291,12 @@ export default function LiveEventsPage() {
     }
   }, [filteredEvents, isPaused])
 
-  // Simulate WebSocket with setInterval
-  useEffect(() => {
-    if (isPaused) return
+  const handleClear = () => {
+    setEvents([])
+    clearSSE()
+  }
 
-    // Initial burst
-    const initialEvents = Array.from({ length: 10 }, () => generateMockEvent())
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-    setEvents(initialEvents)
-
-    // Generate events at random intervals (1-4 seconds)
-    let timeoutId: NodeJS.Timeout
-
-    const scheduleNext = () => {
-      const delay = Math.random() * 3000 + 1000 // 1-4 seconds
-      timeoutId = setTimeout(() => {
-        setEvents(prev => {
-          const newEvents = [...prev, generateMockEvent()]
-          // Keep last 200 events
-          return newEvents.slice(-200)
-        })
-        scheduleNext()
-      }, delay)
-    }
-
-    scheduleNext()
-
-    return () => {
-      clearTimeout(timeoutId)
-    }
-  }, [isPaused])
-
-  // Simulate occasional disconnection
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.95) {
-        setIsConnected(false)
-        setTimeout(() => setIsConnected(true), 2000)
-      }
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const categories: { value: EventCategory; label: string; icon: any }[] = [
+  const categories: { value: EventCategory; label: string; icon: typeof Activity }[] = [
     { value: 'all', label: 'All Events', icon: Activity },
     { value: 'policy', label: 'Policy', icon: ShieldCheck },
     { value: 'spend', label: 'Spend', icon: DollarSign },
@@ -271,6 +314,9 @@ export default function LiveEventsPage() {
           <h1 className="text-3xl font-bold text-white font-display">Live Events</h1>
           <p className="text-gray-400 mt-1">
             Real-time event stream from the Sardis platform
+            {hasReceivedSSE.current && (
+              <span className="ml-2 text-xs text-sardis-400">(SSE)</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -287,6 +333,15 @@ export default function LiveEventsPage() {
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
+
+          {/* Clear */}
+          <button
+            onClick={handleClear}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium bg-dark-200 text-gray-400 border border-dark-100 hover:text-white"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear
+          </button>
 
           {/* Pause/Resume */}
           <button
@@ -405,7 +460,7 @@ export default function LiveEventsPage() {
                 {filteredEvents.map(event => {
                   const CategoryIcon = getCategoryIcon(event.category)
                   const categoryColor = getCategoryColor(event.category)
-                  const eventConfig = EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]
+                  const eventConfig = EVENT_TYPES[event.type]
 
                   return (
                     <div

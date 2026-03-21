@@ -47,6 +47,7 @@ import SignupPage from './pages/Signup'
 import ForgotPasswordPage from './pages/ForgotPassword'
 import ResetPasswordPage from './pages/ResetPassword'
 import MandatesPage from './pages/Mandates'
+import MPPSessionsPage from './pages/MPPSessions'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 
 // Requires auth only — used for the onboarding route itself to avoid redirect loops
@@ -132,6 +133,7 @@ function AppRoutes() {
                 <Route path="/agent-observability" element={<AgentObservabilityPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/mandates" element={<MandatesPage />} />
+                <Route path="/mpp-sessions" element={<MPPSessionsPage />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

@@ -36,6 +36,8 @@ import {
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import KYCBanner from '../components/KYCBanner'
+import { FaucetButton } from '../components/FaucetButton'
+import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount, useDashboardMetrics } from '../hooks/useApi'
 import type { Transaction } from '../types'
 
@@ -194,6 +196,9 @@ export default function DashboardPage() {
       {/* KYC verification banner */}
       <KYCBanner />
 
+      {/* Onboarding Checklist — shown for test environments */}
+      <OnboardingChecklist />
+
       {/* Quick Start Card — shown for new users */}
       <QuickStartCard transactionCount={transactions.length} />
 
@@ -221,6 +226,7 @@ export default function DashboardPage() {
               {transactions.length > 0 ? `${transactions.length} tx` : '— tx'}
             </span>
           </div>
+          <FaucetButton />
         </div>
       </div>
 

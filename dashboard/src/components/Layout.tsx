@@ -89,6 +89,7 @@ const navSections = [
     items: [
       { name: 'Merchants', href: '/merchants', icon: Store },
       { name: 'Counterparties', href: '/counterparties', icon: BookUser },
+      { name: 'MPP Sessions', href: '/mpp-sessions', icon: Activity },
       { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
     ],
   },
