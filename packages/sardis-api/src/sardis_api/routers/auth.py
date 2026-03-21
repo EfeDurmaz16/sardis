@@ -950,3 +950,63 @@ async def delete_account(request: Request, user: UserInfo = Depends(require_auth
     track_event(user.username, "ACCOUNT_DELETED", {})
 
     return {"message": "Account has been permanently deleted."}
+
+
+# ---------------------------------------------------------------------------
+# Environment info — chain details for the caller's API key
+# ---------------------------------------------------------------------------
+
+
+class EnvironmentResponse(BaseModel):
+    environment: str
+    chain: str
+    chain_id: int
+    explorer: str
+    usdc_address: str
+    faucet_available: bool
+
+
+async def _resolve_principal(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    """Resolve the authenticated principal, lazily importing authz to avoid circular imports."""
+    from sardis_api.authz import require_principal
+    from sardis_api.middleware.auth import get_api_key
+
+    api_key = await get_api_key(
+        api_key=request.headers.get("X-API-Key", ""),
+    )
+    user = await get_current_user(request, credentials=credentials)
+    return await require_principal(request, api_key=api_key, user=user)
+
+
+@router.get("/environment", response_model=EnvironmentResponse)
+async def get_environment(
+    principal=Depends(_resolve_principal),
+):
+    """Get current environment info based on API key.
+
+    Returns chain details, explorer URL, and token addresses
+    for the environment associated with the caller's API key.
+    """
+    env = getattr(principal, "environment", "test")
+
+    if env == "live":
+        return EnvironmentResponse(
+            environment="live",
+            chain="tempo",
+            chain_id=4217,
+            explorer="https://explorer.tempo.xyz",
+            usdc_address="0x20C000000000000000000000b9537d11c60E8b50",
+            faucet_available=False,
+        )
+
+    return EnvironmentResponse(
+        environment="test",
+        chain="base_sepolia",
+        chain_id=84532,
+        explorer="https://sepolia.basescan.org",
+        usdc_address="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        faucet_available=True,
+    )
