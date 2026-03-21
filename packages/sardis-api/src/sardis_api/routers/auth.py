@@ -427,6 +427,12 @@ class SignupResponse(BaseModel):
     scopes: list[str]
     rate_limit: int
     mode: str = "test"
+    # Auto-provisioned wallet
+    wallet_id: str | None = None
+    wallet_address: str | None = None
+    chain: str = "base_sepolia"
+    environment: str = "test"
+    next_steps: list[str] = []
 
 
 # IP-based rate limiter: tracks (ip -> list of timestamps)
@@ -523,14 +529,44 @@ async def signup(request: Request, body: SignupRequest):
     # Record the signup for rate limiting
     _signup_ip_timestamps[client_ip].append(time.monotonic())
 
+    # Auto-create Base Sepolia wallet (non-blocking)
+    wallet_id = None
+    wallet_address = None
+    try:
+        from sardis_api.dependencies import get_container
+        container = get_container()
+        # Try to create wallet via wallet service
+        if hasattr(container, 'wallet_service'):
+            wallet = await container.wallet_service.create_wallet(
+                org_id=org_id,
+                chain="base_sepolia",
+                label="default-testnet",
+            )
+            wallet_id = getattr(wallet, 'wallet_id', None) or getattr(wallet, 'id', None)
+            if hasattr(wallet, 'get_address'):
+                wallet_address = wallet.get_address("base_sepolia")
+            elif hasattr(wallet, 'addresses'):
+                wallet_address = wallet.addresses.get("base_sepolia")
+    except Exception as e:
+        _logger.warning("Auto-wallet creation failed (non-blocking): %s", e)
+
     return SignupResponse(
         key=full_key,
         key_id=api_key.key_id,
         key_prefix=api_key.key_prefix,
-        organization_id=api_key.organization_id,
+        organization_id=org_id,
         scopes=api_key.scopes,
         rate_limit=api_key.rate_limit,
         mode="test",
+        wallet_id=wallet_id,
+        wallet_address=wallet_address,
+        chain="base_sepolia",
+        environment="test",
+        next_steps=[
+            "POST /api/v2/faucet/drip — Get 100 test USDC",
+            "POST /api/v2/spending-mandates — Set spending policy (required before payments)",
+            "POST /api/v2/agents — Create an AI agent",
+        ],
     )
 
 
