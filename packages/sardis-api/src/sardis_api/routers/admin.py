@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
 
 from sardis_api.audit_log import log_admin_action
+from sardis_api.authz import Principal, require_admin_principal
 from sardis_api.middleware.mfa import require_mfa_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -665,3 +666,84 @@ async def get_kill_switch_status(
         "rails": {k: _serialize(v) for k, v in active.get("rails", {}).items()},
         "chains": {k: _serialize(v) for k, v in active.get("chains", {}).items()},
     }
+
+
+# ============================================================================
+# Promote to Live Endpoint
+# ============================================================================
+
+class PromoteToLiveRequest(BaseModel):
+    """Request to promote an organization from test to live environment."""
+    org_id: str = Field(..., description="Organization ID to promote")
+
+
+class PromoteToLiveResponse(BaseModel):
+    """Response after promoting an organization to live."""
+    key: str
+    key_prefix: str
+    environment: str
+    chain: str
+    wallet_id: str | None = None
+    wallet_address: str | None = None
+    org_id: str
+
+
+@router.post("/promote-to-live", response_model=PromoteToLiveResponse)
+async def promote_to_live(
+    request: Request,
+    req: PromoteToLiveRequest,
+    _rl: None = Depends(require_admin_rate_limit(is_sensitive=True)),
+    principal: Principal = Depends(require_admin_principal),
+):
+    """Promote an organization from test to live environment.
+
+    Creates a sk_live_ API key and a Tempo mainnet wallet.
+    Admin only.  Rate limited as a sensitive action.
+    """
+    from sardis_api.middleware.auth import get_api_key_manager
+
+    manager = get_api_key_manager()
+    full_key, api_key = await manager.create_key(
+        organization_id=req.org_id,
+        name=f"Live key for {req.org_id}",
+        scopes=["read", "write"],
+        rate_limit=60,
+        test=False,  # Creates sk_live_ prefix
+    )
+
+    # Attempt to create a Tempo mainnet wallet for the org
+    wallet_id: str | None = None
+    wallet_address: str | None = None
+    try:
+        from sardis_api.dependencies import get_container
+
+        container = get_container()
+        if hasattr(container, "wallet_service"):
+            wallet = await container.wallet_service.create_wallet(
+                org_id=req.org_id,
+                chain="tempo",
+                label="tempo-mainnet",
+            )
+            wallet_id = getattr(wallet, "wallet_id", None) or getattr(wallet, "id", None)
+            if hasattr(wallet, "get_address"):
+                wallet_address = wallet.get_address("tempo")
+    except Exception as e:
+        logger.warning("Tempo wallet creation failed for org %s: %s", req.org_id, e)
+
+    await log_admin_action(
+        request,
+        principal.user_id,
+        req.org_id,
+        "promote_to_live",
+        {"key_prefix": api_key.key_prefix, "wallet_id": wallet_id},
+    )
+
+    return PromoteToLiveResponse(
+        key=full_key,
+        key_prefix=api_key.key_prefix,
+        environment="live",
+        chain="tempo",
+        wallet_id=wallet_id,
+        wallet_address=wallet_address,
+        org_id=req.org_id,
+    )
