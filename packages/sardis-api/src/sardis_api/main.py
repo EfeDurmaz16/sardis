@@ -111,12 +111,14 @@ from .routers import compliance as compliance_router
 from .routers import counterparties as counterparties_router
 from .routers import cpn as cpn_router
 from .routers import credentials as credentials_router
+from .routers import dashboard_metrics as dashboard_metrics_router
 from .routers import data_export as data_export_router
 from .routers import dev as dev_router
 from .routers import email_verification as email_verification_router
 from .routers import emergency as emergency_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import environment_templates as environment_templates_router
+from .routers import event_stream as event_stream_router
 from .routers import evidence as evidence_router
 from .routers import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
@@ -2028,6 +2030,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     logger.info("Fallback policies router registered at /api/v2/fallback")
     app.include_router(checkout_controls_router.router, prefix="/api/v2/checkout-controls", tags=["checkout-controls"])
     app.include_router(counterparties_router.router, prefix="/api/v2/counterparties", tags=["counterparties"])
+    app.include_router(dashboard_metrics_router.router, prefix="/api/v2/dashboard", tags=["dashboard"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
