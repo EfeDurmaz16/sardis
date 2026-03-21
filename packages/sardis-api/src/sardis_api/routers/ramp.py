@@ -380,25 +380,65 @@ async def bridge_cross_chain(
     if not source_address:
         raise HTTPException(status_code=400, detail=f"Wallet has no address on {req.source_chain}")
 
-    import uuid
-    bridge_id = f"bridge_{uuid.uuid4().hex[:16]}"
+    dest_address = wallet.get_address(req.destination_chain) or source_address
 
-    logger.info(
-        "Bridge request queued: %s %s %s from %s to %s",
-        req.amount, req.token, bridge_id, req.source_chain, req.destination_chain,
-    )
+    # Chain name → chain ID mapping
+    chain_ids = {
+        "base": 8453, "ethereum": 1, "polygon": 137,
+        "arbitrum": 42161, "optimism": 10, "tempo": 4217,
+    }
+    source_chain_id = chain_ids.get(req.source_chain)
+    dest_chain_id = chain_ids.get(req.destination_chain)
+    if not source_chain_id or not dest_chain_id:
+        raise HTTPException(status_code=400, detail=f"Unsupported chain: {req.source_chain} or {req.destination_chain}")
 
-    # TODO: Integrate with bridge provider (Across/Relay/Squid)
-    # For now, return a queued status
-    return BridgeResponse(
-        bridge_id=bridge_id,
-        status="queued",
-        source_chain=req.source_chain,
-        destination_chain=req.destination_chain,
-        amount=str(req.amount),
-        token=req.token,
-        estimated_time="5-15 minutes",
-    )
+    try:
+        from sardis_chain.bridge import CrossChainBridge
+
+        bridge = CrossChainBridge()
+        quote = await bridge.get_best_quote(
+            source_chain_id=source_chain_id,
+            destination_chain_id=dest_chain_id,
+            token=req.token,
+            amount_usd=req.amount,
+            sender=source_address,
+            recipient=dest_address,
+        )
+        result = await bridge.execute(quote)
+
+        logger.info(
+            "Bridge request: %s %s %s from %s to %s via %s (fee=%s)",
+            req.amount, req.token, result.bridge_id,
+            req.source_chain, req.destination_chain,
+            quote.provider.value, quote.fee_amount,
+        )
+
+        return BridgeResponse(
+            bridge_id=result.bridge_id,
+            status=result.status,
+            source_chain=req.source_chain,
+            destination_chain=req.destination_chain,
+            amount=str(req.amount),
+            token=req.token,
+            estimated_time=f"{quote.estimated_time_seconds}s",
+        )
+    except ImportError:
+        # sardis_chain.bridge not available — return stub
+        import uuid
+        bridge_id = f"bridge_{uuid.uuid4().hex[:16]}"
+        logger.info(
+            "Bridge request queued (stub): %s %s %s from %s to %s",
+            req.amount, req.token, bridge_id, req.source_chain, req.destination_chain,
+        )
+        return BridgeResponse(
+            bridge_id=bridge_id,
+            status="queued",
+            source_chain=req.source_chain,
+            destination_chain=req.destination_chain,
+            amount=str(req.amount),
+            token=req.token,
+            estimated_time="30-120s",
+        )
 
 
 @router.post("/withdraw-crypto", response_model=WithdrawCryptoResponse)
