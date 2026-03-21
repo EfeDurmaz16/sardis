@@ -122,6 +122,7 @@ from .routers import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
 from .routers import fallback_policies as fallback_policies_router
+from .routers import faucet as faucet_router
 from .routers import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
 from .routers import holds as holds_router
@@ -1102,6 +1103,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from .routers import mpp as mpp_router
     app.include_router(mpp_router.router, prefix="/api/v2/mpp", tags=["mpp"])
     logger.info("MPP routes enabled")
+
+    # --- Testnet faucet ---
+    app.include_router(faucet_router.router, prefix="/api/v2/faucet", tags=["faucet"])
 
     # --- Striga routes (EEA cards, vIBAN, SEPA) ---
     if settings.striga.enabled:
