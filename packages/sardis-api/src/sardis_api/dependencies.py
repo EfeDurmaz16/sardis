@@ -40,6 +40,7 @@ class DependencyConfig:
     persona_enabled: bool = False
     elliptic_enabled: bool = False
     lithic_enabled: bool = False
+    didit_enabled: bool = False
 
     @classmethod
     def from_environment(cls) -> DependencyConfig:
@@ -56,6 +57,7 @@ class DependencyConfig:
             persona_enabled=bool(os.getenv("PERSONA_API_KEY")),
             elliptic_enabled=bool(os.getenv("ELLIPTIC_API_KEY")),
             lithic_enabled=bool(os.getenv("LITHIC_API_KEY")),
+            didit_enabled=bool(os.getenv("DIDIT_CLIENT_ID") and os.getenv("DIDIT_CLIENT_SECRET")),
         )
 
 
@@ -313,6 +315,28 @@ class DependencyContainer:
     def has_lithic(self) -> bool:
         """Check if Lithic cards is configured."""
         return self._config.lithic_enabled
+
+    @property
+    def has_didit(self) -> bool:
+        """Check if Didit KYC is configured."""
+        return self._config.didit_enabled
+
+    @cached_property
+    def didit_kyc_provider(self) -> Any:
+        """Get Didit KYC provider (raises if not configured)."""
+        if not self.has_didit:
+            raise SardisDependencyNotConfiguredError(
+                "didit",
+                "Didit KYC is not configured. Set DIDIT_CLIENT_ID and DIDIT_CLIENT_SECRET.",
+            )
+        from sardis_compliance.providers.didit import DiditKYCProvider
+
+        return DiditKYCProvider(
+            client_id=os.getenv("DIDIT_CLIENT_ID", ""),
+            client_secret=os.getenv("DIDIT_CLIENT_SECRET", ""),
+            webhook_secret=os.getenv("DIDIT_WEBHOOK_SECRET"),
+            environment="production" if os.getenv("SARDIS_ENVIRONMENT", "").strip().lower() in ("prod", "production") else "sandbox",
+        )
 
     @cached_property
     def stripe_connector(self) -> Any:
