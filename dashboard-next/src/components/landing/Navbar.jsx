@@ -126,7 +126,7 @@ export default function Navbar() {
               </button>
 
               <a
-                href="https://dashboard.sardis.sh/signup"
+                href="/signup"
                 className="text-[14px] font-medium text-white rounded-lg transition-colors duration-200 px-4 py-2 inline-block"
                 style={{
                   fontFamily: "'Inter', sans-serif",
@@ -234,7 +234,7 @@ export default function Navbar() {
               ))}
 
               <motion.a
-                href="https://dashboard.sardis.sh/signup"
+                href="/signup"
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.05 + navLinks.length * 0.06, duration: 0.2 }}

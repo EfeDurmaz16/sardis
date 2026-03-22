@@ -18,7 +18,7 @@ export default function CTASection() {
 
         <div className="pt-3 flex flex-col sm:flex-row gap-3">
           <a
-            href="https://dashboard.sardis.sh/signup"
+            href="/signup"
             className="text-white rounded-lg py-3.5 px-9 transition-colors text-center inline-block"
             style={{
               backgroundColor: 'var(--landing-accent)',

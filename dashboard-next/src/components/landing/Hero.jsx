@@ -351,7 +351,7 @@ export default function Hero() {
           {/* CTA Row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
             <a
-              href="https://dashboard.sardis.sh/signup"
+              href="/signup"
               className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap text-center inline-block"
               style={{
                 fontFamily: "'Inter', sans-serif",
