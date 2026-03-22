@@ -58,7 +58,10 @@ function StepWelcome({ onNext, onSkip, apiKey }: { onNext: () => void; onSkip: (
     <div>
       <div className="text-center mb-6">
         <div className="w-20 h-20 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl">sardis</span>
+          <svg width="48" height="48" viewBox="0 0 28 28" fill="none">
+            <path d="M20 5H10a7 7 0 000 14h2" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M8 23h10a7 7 0 000-14h-2" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" fill="none" />
+          </svg>
         </div>
         <h1 className="text-3xl font-bold text-white font-display mb-3">Welcome to Sardis</h1>
         <p className="text-gray-400 text-lg mb-2">

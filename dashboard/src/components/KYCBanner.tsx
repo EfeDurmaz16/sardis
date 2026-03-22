@@ -79,10 +79,30 @@ export default function KYCBanner() {
 
     fetchStatus()
 
+    // Poll every 3s while status is pending (waiting for webhook)
+    const pollId = setInterval(async () => {
+      if (kycStatus?.status !== 'pending' && kycStatus?.status !== 'not_started') return
+      try {
+        const res = await fetch(`${API_BASE}/api/v2/kyc/status`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (res.ok) {
+          const data: KYCStatusResponse = await res.json()
+          if (data.status !== kycStatus?.status) {
+            setKycStatus(data)
+            if (data.status === 'approved') {
+              autoDismissRef.current = setTimeout(() => setVisible(false), 5000)
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    }, 3000)
+
     return () => {
+      clearInterval(pollId)
       if (autoDismissRef.current) clearTimeout(autoDismissRef.current)
     }
-  }, [token])
+  }, [token, kycStatus?.status])
 
   function dismiss() {
     sessionStorage.setItem(DISMISS_KEY, '1')

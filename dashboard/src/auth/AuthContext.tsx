@@ -22,25 +22,14 @@ export function getCurrentToken(): string | null {
   return _currentToken;
 }
 
-async function checkNeedsOnboarding(token: string): Promise<boolean> {
-  // If user has already completed onboarding, skip the check
+async function checkNeedsOnboarding(_token: string): Promise<boolean> {
+  // Onboarding is opt-in, not blocking. Users can always access the dashboard.
+  // The onboarding checklist component shows progress without forcing a redirect.
   if (localStorage.getItem('sardis_onboarding_complete') === 'true') {
     return false;
   }
-
-  try {
-    const res = await fetch(`${API_URL}/api/v2/agents`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    // If the API returns an empty agents array the user has no agents yet
-    const agents = Array.isArray(data) ? data : (data?.agents ?? data?.items ?? []);
-    return agents.length === 0;
-  } catch {
-    // Network unavailable (demo mode) — do not redirect to onboarding
-    return false;
-  }
+  // Don't block dashboard access — agents are created during onboarding, not before.
+  return false;
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

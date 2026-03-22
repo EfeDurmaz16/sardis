@@ -63,7 +63,7 @@ def _hash_api_key(raw_key: str) -> str:
 
 def _generate_api_key() -> tuple[str, str]:
     """Generate a new API key. Returns (raw_key, key_prefix)."""
-    raw = f"sk_live_{secrets.token_urlsafe(32)}"
+    raw = f"sk_test_{secrets.token_urlsafe(32)}"
     prefix = raw[:12]
     return raw, prefix
 

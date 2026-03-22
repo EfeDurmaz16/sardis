@@ -315,9 +315,15 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json();
         window.open(data.checkout_url, '_blank');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const detail = (errData as { detail?: string }).detail || `Upgrade failed (${res.status})`;
+        setBillingError(true);
+        alert(detail);
       }
     } catch {
-      // silent — user sees button re-enable
+      setBillingError(true);
+      alert('Network error — could not start checkout. Please try again.');
     } finally {
       setUpgrading(null);
     }

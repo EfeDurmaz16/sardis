@@ -186,7 +186,7 @@ function CreateKeyModal({ token, onClose, onCreated }: CreateKeyModalProps) {
         body.expires_in_days = parseInt(expiration, 10);
       }
 
-      const res = await fetch(`${API_BASE}/api/v2/api-keys`, {
+      const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(body),
@@ -413,7 +413,7 @@ export default function APIKeysPage() {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v2/api-keys`, { headers: authHeaders });
+      const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { headers: authHeaders });
       if (!res.ok) {
         setFetchError(`Failed to load API keys (${res.status})`);
         return;
