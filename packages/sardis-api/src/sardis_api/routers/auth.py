@@ -535,7 +535,7 @@ async def signup(request: Request, body: SignupRequest):
 
     # Derive org external_id from email
     sanitized = re.sub(r"[^a-z0-9]", "_", email)
-    org_id = f"org_{sanitized}"
+    org_id = f"org_{sanitized}"[:64]
 
     # Create org with email in settings (if postgres)
     if manager._use_postgres:
