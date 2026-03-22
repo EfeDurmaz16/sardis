@@ -39,6 +39,13 @@ JWT_SECRET = _jwt_secret_env
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
+# JWKS client for validating better-auth EdDSA tokens
+_jwks_url = os.getenv("BETTER_AUTH_JWKS_URL", "")
+_jwks_client: "pyjwt.PyJWKClient | None" = None
+if _jwks_url:
+    _jwks_client = pyjwt.PyJWKClient(_jwks_url, cache_jwk_set=True, lifespan=3600)
+    _logger.info("JWKS validation enabled: %s", _jwks_url)
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -92,11 +99,14 @@ def verify_jwt_token(token: str) -> dict | None:
 
     Returns None if token is invalid or expired.
 
+    Supports two token types:
+    1. HS256 tokens issued by the FastAPI auth service (legacy + SDK/CLI)
+    2. EdDSA/ES256 tokens issued by better-auth (dashboard), validated via JWKS
+
     SECURITY: PyJWT's decode() enforces algorithm pinning via the
-    `algorithms` parameter, preventing algorithm confusion attacks
-    (e.g. alg:none, RS256 key confusion). Expiration is checked
-    automatically when "exp" claim is present.
+    `algorithms` parameter, preventing algorithm confusion attacks.
     """
+    # Path 1: Try HS256 (internal JWTs from FastAPI auth service)
     try:
         payload = pyjwt.decode(
             token,
@@ -115,7 +125,34 @@ def verify_jwt_token(token: str) -> dict | None:
 
         return payload
     except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, TypeError, ValueError):
-        return None
+        pass
+
+    # Path 2: Try JWKS (better-auth EdDSA/ES256 tokens from dashboard)
+    if _jwks_client is not None:
+        try:
+            signing_key = _jwks_client.get_signing_key_from_jwt(token)
+            payload = pyjwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["EdDSA", "ES256", "RS256"],
+                audience="sardis-api",
+                options={
+                    "require": ["sub", "exp"],
+                },
+            )
+
+            if not isinstance(payload.get("sub"), str) or not payload["sub"]:
+                return None
+
+            # Normalize: better-auth tokens may not have jti, synthesize one
+            if "jti" not in payload:
+                payload["jti"] = f"ba_{payload['sub']}_{payload.get('iat', 0)}"
+
+            return payload
+        except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, TypeError, ValueError, Exception):
+            pass
+
+    return None
 
 
 async def get_current_user(
