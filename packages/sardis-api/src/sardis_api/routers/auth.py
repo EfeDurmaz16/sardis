@@ -567,45 +567,8 @@ async def signup(request: Request, body: SignupRequest):
     # Record the signup for rate limiting
     _signup_ip_timestamps[client_ip].append(time.monotonic())
 
-    # Auto-create agent + Base Sepolia wallet (non-blocking)
-    agent_id = None
-    wallet_id = None
-    wallet_address = None
-    try:
-        from sardis_api.dependencies import get_container
-        container = get_container()
-
-        # 1. Create default agent
-        if hasattr(container, 'agent_repository'):
-            agent = await container.agent_repository.create(
-                name="default-agent",
-                org_id=org_id,
-                description="Auto-provisioned agent",
-            )
-            agent_id = getattr(agent, 'agent_id', None) or getattr(agent, 'id', None)
-            _logger.info("Auto-created agent %s for org %s", agent_id, org_id)
-
-        # 2. Create wallet and bind to agent
-        if hasattr(container, 'wallet_service'):
-            wallet = await container.wallet_service.create_wallet(
-                org_id=org_id,
-                chain="base_sepolia",
-                label="default-testnet",
-            )
-            wallet_id = getattr(wallet, 'wallet_id', None) or getattr(wallet, 'id', None)
-            if hasattr(wallet, 'get_address'):
-                wallet_address = wallet.get_address("base_sepolia")
-            elif hasattr(wallet, 'addresses'):
-                wallet_address = wallet.addresses.get("base_sepolia")
-
-            # Bind wallet to agent
-            if agent_id and wallet_id and hasattr(container, 'agent_repository'):
-                try:
-                    await container.agent_repository.bind_wallet(agent_id, wallet_id)
-                except Exception as bind_err:
-                    _logger.warning("Agent-wallet binding failed (non-blocking): %s", bind_err)
-    except Exception as e:
-        _logger.warning("Auto-provisioning failed (non-blocking): %s", e)
+    # Auto-provisioning deferred to first dashboard login (via onboarding flow)
+    # Prevents signup from failing if agent/wallet services are unavailable
 
     return SignupResponse(
         key=full_key,
@@ -615,9 +578,9 @@ async def signup(request: Request, body: SignupRequest):
         scopes=api_key.scopes,
         rate_limit=api_key.rate_limit,
         mode="test",
-        agent_id=agent_id,
-        wallet_id=wallet_id,
-        wallet_address=wallet_address,
+        agent_id=None,
+        wallet_id=None,
+        wallet_address=None,
         chain="base_sepolia",
         environment="test",
         next_steps=[
@@ -743,42 +706,7 @@ async def register_user(request: Request, body: RegisterRequest):
     identify_user(result.user_id, {"email": result.email, "plan": "free"})
     track_event(result.user_id, SIGNUP_COMPLETED, {"method": "email"})
 
-    # Auto-provision agent + wallet (non-blocking, same as /signup)
-    agent_id = None
-    wallet_id = None
-    wallet_address = None
-    try:
-        from sardis_api.dependencies import get_container
-        container = get_container()
-
-        if hasattr(container, 'agent_repository'):
-            agent = await container.agent_repository.create(
-                name="default-agent",
-                org_id=result.org_id,
-                description="Auto-provisioned agent",
-            )
-            agent_id = getattr(agent, 'agent_id', None) or getattr(agent, 'id', None)
-            _logger.info("Auto-created agent %s for org %s", agent_id, result.org_id)
-
-        if hasattr(container, 'wallet_service'):
-            wallet = await container.wallet_service.create_wallet(
-                org_id=result.org_id,
-                chain="base_sepolia",
-                label="default-testnet",
-            )
-            wallet_id = getattr(wallet, 'wallet_id', None) or getattr(wallet, 'id', None)
-            if hasattr(wallet, 'get_address'):
-                wallet_address = wallet.get_address("base_sepolia")
-            elif hasattr(wallet, 'addresses'):
-                wallet_address = wallet.addresses.get("base_sepolia")
-
-            if agent_id and wallet_id and hasattr(container, 'agent_repository'):
-                try:
-                    await container.agent_repository.bind_wallet(agent_id, wallet_id)
-                except Exception as bind_err:
-                    _logger.warning("Agent-wallet binding failed (non-blocking): %s", bind_err)
-    except Exception as e:
-        _logger.warning("Auto-provisioning failed (non-blocking): %s", e)
+    # Auto-provisioning deferred to first dashboard login (via onboarding flow)
 
     return RegisterResponse(
         user_id=result.user_id,
@@ -786,9 +714,9 @@ async def register_user(request: Request, body: RegisterRequest):
         org_id=result.org_id,
         access_token=result.access_token,
         api_key=result.api_key,
-        agent_id=agent_id,
-        wallet_id=wallet_id,
-        wallet_address=wallet_address,
+        agent_id=None,
+        wallet_id=None,
+        wallet_address=None,
     )
 
 
