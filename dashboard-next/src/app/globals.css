@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base styles ──────────────────────────────────── */
+
+body {
+  @apply bg-dark-400 text-gray-200 antialiased;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+/* ── Card component ───────────────────────────────── */
+
+.card {
+  @apply bg-dark-300 border border-dark-100 rounded-xl;
+}
+
+/* ── Glow hover effect ────────────────────────────── */
+
+.glow-green-hover:hover {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), 0 0 30px rgba(34, 197, 94, 0.1);
+}
+
+/* ── driver.js product tour (dark theme) ──────────── */
+
+.sardis-tour {
+  background: rgb(21 29 41) !important;
+  color: #e0e0e0 !important;
+  border: 1px solid rgb(30 41 59) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.sardis-tour .driver-popover-title {
+  color: #fff !important;
+  font-family: "Space Grotesk", system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+
+.sardis-tour .driver-popover-description {
+  color: #a0a0aa !important;
+  font-family: "Inter", system-ui, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.sardis-tour .driver-popover-progress-text {
+  color: #606070 !important;
+}
+
+.sardis-tour .driver-popover-next-btn {
+  background: rgb(34 197 94) !important;
+  color: rgb(17 24 39) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+}
+
+.sardis-tour .driver-popover-next-btn:hover {
+  background: rgb(74 222 128) !important;
+}
+
+.sardis-tour .driver-popover-prev-btn {
+  background: transparent !important;
+  color: #a0a0aa !important;
+  border: 1px solid rgb(30 41 59) !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+}
+
+.sardis-tour .driver-popover-close-btn {
+  color: #606070 !important;
+}
+
+.driver-overlay {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
