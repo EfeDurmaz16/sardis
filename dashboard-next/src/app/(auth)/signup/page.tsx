@@ -52,8 +52,8 @@ export default function SignupPage() {
         const data = await response.json();
         // Store JWT for API client + middleware
         if (data.access_token) {
-          sessionStorage.setItem("sardis_session", data.access_token);
-          document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
+          localStorage.setItem("sardis_session", data.access_token);
+          document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax`;
         }
         if (data.agent_id) setAgentId(data.agent_id);
         if (data.api_key) {

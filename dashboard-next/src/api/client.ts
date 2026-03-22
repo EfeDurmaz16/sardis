@@ -11,7 +11,7 @@ let _cachedToken: string | null = null;
 function getCurrentToken(): string | null {
   if (_cachedToken) return _cachedToken;
   if (typeof window !== "undefined") {
-    _cachedToken = sessionStorage.getItem("sardis_session");
+    _cachedToken = localStorage.getItem("sardis_session");
   }
   return _cachedToken;
 }
@@ -19,7 +19,7 @@ function getCurrentToken(): string | null {
 export async function refreshToken(): Promise<string | null> {
   // Primary: read from sessionStorage (set by login/signup)
   if (typeof window !== "undefined") {
-    const stored = sessionStorage.getItem("sardis_session");
+    const stored = localStorage.getItem("sardis_session");
     if (stored) {
       _cachedToken = stored;
       return stored;
