@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react'
-import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check } from 'lucide-react'
+import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check, Lock } from 'lucide-react'
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '@/api/client'
+import { useWallets } from '@/hooks/useApi'
 import type { Agent } from '@/types'
 
 type AgentOption = Pick<Agent, 'agent_id' | 'name' | 'wallet_id'>
@@ -50,44 +51,16 @@ type SimulatePurchaseResult = {
   }
 }
 
-const SEED_AGENTS = [
-  { agent_id: 'agent_shopping_001', name: 'shopping_agent', wallet_id: 'wallet_demo_001' },
-  { agent_id: 'agent_research_002', name: 'research_analyst', wallet_id: 'wallet_demo_002' },
-]
-
-const SEED_CARDS: CardRecord[] = [
-  {
-    card_id: 'card_demo_001',
-    provider_card_id: 'lith_sandbox_a1b2c3',
-    status: 'active',
-    card_number_last4: '4242',
-    limit_per_tx: 100,
-    limit_daily: 500,
-    limit_monthly: 2000,
-    wallet_id: 'wallet_demo_001',
-    currency: 'USD',
-  },
-  {
-    card_id: 'card_demo_002',
-    provider_card_id: 'lith_sandbox_d4e5f6',
-    status: 'frozen',
-    card_number_last4: '8888',
-    limit_per_tx: 50,
-    limit_daily: 200,
-    limit_monthly: 1000,
-    wallet_id: 'wallet_demo_001',
-    currency: 'EUR',
-  },
-]
-
 export default function CardsPage() {
   const queryClient = useQueryClient()
   const { data: apiAgents = [], isLoading: agentsLoading } = useQuery({
     queryKey: ['agents'],
     queryFn: agentApi.list,
   })
+  const { data: wallets = [], isLoading: walletsLoading } = useWallets()
 
-  const agents: AgentOption[] = apiAgents.length > 0 ? apiAgents : SEED_AGENTS
+  // Only show agents that have wallets
+  const agents: AgentOption[] = apiAgents.length > 0 ? apiAgents : []
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>('')
   const [showIssue, setShowIssue] = useState(false)
@@ -111,8 +84,7 @@ export default function CardsPage() {
     enabled: !!walletId,
   })
 
-  // Use seed cards if API returns empty and using seed agents
-  const cards: CardRecord[] = apiCards.length > 0 ? apiCards : (apiAgents.length === 0 ? SEED_CARDS : [])
+  const cards: CardRecord[] = apiCards
 
   const cardCurrency = (card: CardRecord) => card.currency || 'USD'
 
@@ -151,6 +123,9 @@ export default function CardsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cards', walletId] }),
   })
 
+  const isLoading = agentsLoading || walletsLoading;
+  const noAgents = !isLoading && agents.length === 0;
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -169,125 +144,153 @@ export default function CardsPage() {
         </button>
       </div>
 
-      {/* Agent Selector */}
-      <div className="card p-4">
-        <label className="block text-sm font-medium text-gray-400 mb-2">Select Agent</label>
-        <div className="relative">
-          <select
-            value={selectedAgentId}
-            onChange={(e) => setSelectedAgentId(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-          >
-            <option value="">Select an agent...</option>
-            {agents.filter((agent) => agent.wallet_id).map((agent) => (
-              <option key={agent.agent_id} value={agent.agent_id}>
-                {agent.name} ({agent.agent_id})
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sardis-500 mx-auto mb-4" />
+            <p className="text-gray-400 text-sm">Loading...</p>
+          </div>
         </div>
-        {selectedAgent && !selectedAgent.wallet_id && (
-          <p className="text-yellow-400 text-sm mt-2">This agent has no wallet. Create one first.</p>
-        )}
-      </div>
+      )}
 
-      {/* Currency Filter + Balance Summary */}
-      {cards.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">Currency:</span>
-            <div className="flex gap-1">
-              {(['All', 'USD', 'EUR'] as CurrencyFilter[]).map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setCurrencyFilter(opt)}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                    currencyFilter === opt
-                      ? 'bg-sardis-500 text-dark-400'
-                      : 'bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-200',
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
+      {/* Coming Soon / Empty State */}
+      {noAgents && (
+        <div className="card p-12 text-center">
+          <Lock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">Virtual Cards</h3>
+          <p className="text-gray-400 mb-2">
+            Coming soon. Complete Go Live to enable virtual cards for your agents.
+          </p>
+          <p className="text-gray-500 text-sm">
+            Create an agent with a wallet first to get started.
+          </p>
+        </div>
+      )}
+
+      {!isLoading && !noAgents && (
+        <>
+          {/* Agent Selector */}
+          <div className="card p-4">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Select Agent</label>
+            <div className="relative">
+              <select
+                value={selectedAgentId}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
+              >
+                <option value="">Select an agent...</option>
+                {agents.filter((agent) => agent.wallet_id).map((agent) => (
+                  <option key={agent.agent_id} value={agent.agent_id}>
+                    {agent.name} ({agent.agent_id})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
             </div>
+            {selectedAgent && !selectedAgent.wallet_id && (
+              <p className="text-yellow-400 text-sm mt-2">This agent has no wallet. Create one first.</p>
+            )}
           </div>
 
-          {hasMultipleCurrencies && (
-            <div className="flex items-center gap-3">
-              {Object.entries(balanceByCurrency).map(([cur, total]) => (
-                <div key={cur} className="flex items-center gap-2 px-3 py-1.5 bg-dark-300 rounded-lg">
-                  <CurrencyBadge currency={cur} />
-                  <span className="text-sm text-gray-300 font-mono">{total.toFixed(2)} daily</span>
+          {/* Currency Filter + Balance Summary */}
+          {cards.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Currency:</span>
+                <div className="flex gap-1">
+                  {(['All', 'USD', 'EUR'] as CurrencyFilter[]).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setCurrencyFilter(opt)}
+                      className={clsx(
+                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                        currencyFilter === opt
+                          ? 'bg-sardis-500 text-dark-400'
+                          : 'bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-200',
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {hasMultipleCurrencies && (
+                <div className="flex items-center gap-3">
+                  {Object.entries(balanceByCurrency).map(([cur, total]) => (
+                    <div key={cur} className="flex items-center gap-2 px-3 py-1.5 bg-dark-300 rounded-lg">
+                      <CurrencyBadge currency={cur} />
+                      <span className="text-sm text-gray-300 font-mono">{total.toFixed(2)} daily</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cards Grid */}
+          {cardsLoading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-56 rounded-2xl bg-dark-200 animate-pulse" />
+              ))}
+            </div>
+          ) : cards.length === 0 ? (
+            <div className="card p-12 text-center">
+              <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No cards yet</h3>
+              <p className="text-gray-400 mb-4">
+                {walletId ? 'Issue your first virtual card to get started' : 'Select an agent with a wallet first'}
+              </p>
+              {walletId && (
+                <button
+                  onClick={() => setShowIssue(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Issue Card
+                </button>
+              )}
+            </div>
+          ) : filteredCards.length === 0 ? (
+            <div className="card p-12 text-center">
+              <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No {currencyFilter} cards</h3>
+              <p className="text-gray-400">No cards match the selected currency filter.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredCards.map((card) => (
+                <div key={card.card_id} className="space-y-4">
+                  <SardisCard
+                    card={card}
+                    agentName={selectedAgent?.name}
+                    onFreeze={() => freezeMutation.mutate(card.card_id)}
+                    onUnfreeze={() => unfreezeMutation.mutate(card.card_id)}
+                    onCancel={() => cancelMutation.mutate(card.card_id)}
+                    onSimulate={() => setShowPurchase(card.card_id)}
+                    isExpanded={expandedCard === card.card_id}
+                    onToggleExpand={() => setExpandedCard(expandedCard === card.card_id ? null : card.card_id)}
+                  />
                 </div>
               ))}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Cards Grid */}
-      {agentsLoading || cardsLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-56 rounded-2xl bg-dark-200 animate-pulse" />
-          ))}
-        </div>
-      ) : cards.length === 0 ? (
-        <div className="card p-12 text-center">
-          <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No cards yet</h3>
-          <p className="text-gray-400 mb-4">
-            {walletId ? 'Issue your first virtual card to get started' : 'Select an agent with a wallet first'}
-          </p>
-          {walletId && (
-            <button
-              onClick={() => setShowIssue(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Issue Card
-            </button>
-          )}
-        </div>
-      ) : filteredCards.length === 0 ? (
-        <div className="card p-12 text-center">
-          <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No {currencyFilter} cards</h3>
-          <p className="text-gray-400">No cards match the selected currency filter.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredCards.map((card) => (
-            <div key={card.card_id} className="space-y-4">
-              <SardisCard
-                card={card}
-                agentName={selectedAgent?.name}
-                onFreeze={() => freezeMutation.mutate(card.card_id)}
-                onUnfreeze={() => unfreezeMutation.mutate(card.card_id)}
-                onCancel={() => cancelMutation.mutate(card.card_id)}
-                onSimulate={() => setShowPurchase(card.card_id)}
-                isExpanded={expandedCard === card.card_id}
-                onToggleExpand={() => setExpandedCard(expandedCard === card.card_id ? null : card.card_id)}
-              />
+          {/* Refresh */}
+          {cards.length > 0 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => refetchCards()}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Refresh */}
-      {cards.length > 0 && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => refetchCards()}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-        </div>
+          )}
+        </>
       )}
 
       {/* Issue Card Modal */}
@@ -314,7 +317,7 @@ export default function CardsPage() {
 }
 
 
-/* ─── Currency Badge ─── */
+/* --- Currency Badge --- */
 
 function CurrencyBadge({ currency }: { currency: string }) {
   const isEUR = currency === 'EUR'
@@ -331,7 +334,7 @@ function CurrencyBadge({ currency }: { currency: string }) {
 }
 
 
-/* ─── Visual Card Component ─── */
+/* --- Visual Card Component --- */
 
 function SardisCard({
   card,
@@ -407,11 +410,11 @@ function SardisCard({
         {/* Card number */}
         <div className="relative mb-6">
           <p className="text-xl font-mono text-white tracking-[0.2em]">
-            <span className="text-gray-500">••••</span>
+            <span className="text-gray-500">----</span>
             {' '}
-            <span className="text-gray-500">••••</span>
+            <span className="text-gray-500">----</span>
             {' '}
-            <span className="text-gray-500">••••</span>
+            <span className="text-gray-500">----</span>
             {' '}
             <span>{last4}</span>
           </p>
@@ -504,7 +507,7 @@ function SardisCard({
 }
 
 
-/* ─── Card Transactions ─── */
+/* --- Card Transactions --- */
 
 function CardTransactions({ cardId }: { cardId: string }) {
   const { data: transactions = [], isLoading } = useQuery<CardTransaction[]>({
@@ -552,7 +555,7 @@ function CardTransactions({ cardId }: { cardId: string }) {
 }
 
 
-/* ─── Copyable Text ─── */
+/* --- Copyable Text --- */
 
 function CopyableText({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -572,7 +575,7 @@ function CopyableText({ text }: { text: string }) {
 }
 
 
-/* ─── Issue Card Modal ─── */
+/* --- Issue Card Modal --- */
 
 function IssueCardModal({
   walletId,
@@ -661,7 +664,7 @@ function IssueCardModal({
 }
 
 
-/* ─── Simulate Purchase Modal ─── */
+/* --- Simulate Purchase Modal --- */
 
 function SimulatePurchaseModal({
   cardId,

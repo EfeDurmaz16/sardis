@@ -161,8 +161,7 @@ export default function AgentObservability() {
 
   // Build daily spending data from transactions
   const dailySpend = useMemo(() => {
-    const txs = agentTransactions as Array<Record<string, unknown>>;
-    if (!txs.length) return [];
+    if (!agentTransactions.length) return [];
 
     const byDate: Record<string, number> = {};
     const now = new Date();
@@ -172,8 +171,8 @@ export default function AgentObservability() {
       byDate[d.toISOString().slice(0, 10)] = 0;
     }
 
-    txs.forEach((tx) => {
-      const date = (tx.created_at as string || '').slice(0, 10);
+    agentTransactions.forEach((tx) => {
+      const date = (tx.created_at || '').slice(0, 10);
       if (date in byDate) {
         byDate[date] += Number(tx.amount || 0);
       }
@@ -189,14 +188,14 @@ export default function AgentObservability() {
   const isLoading = agentsLoading;
   const noData = !agentsLoading && agents.length === 0;
 
-  // Derive transactions as a typed array
-  const transactions = (agentTransactions as Array<Record<string, unknown>>).map((tx, i) => ({
-    id: (tx.id as string) || (tx.tx_id as string) || `tx_${i}`,
+  // Derive transactions as a display-friendly array
+  const transactions = agentTransactions.map((tx, i) => ({
+    id: tx.tx_id || `tx_${i}`,
     amount: Number(tx.amount || 0),
-    recipient: (tx.recipient as string) || (tx.merchant_name as string) || (tx.destination as string) || 'Unknown',
-    status: (tx.status as string) || 'completed',
-    created_at: (tx.created_at as string) || new Date().toISOString(),
-    type: (tx.type as string) || 'payment',
+    recipient: tx.to_wallet || tx.purpose || 'Unknown',
+    status: tx.status || 'completed',
+    created_at: tx.created_at || new Date().toISOString(),
+    type: 'payment',
   }));
 
   return (
@@ -224,7 +223,7 @@ export default function AgentObservability() {
           >
             {agents.map((a) => (
               <option key={a.agent_id} value={a.agent_id}>
-                {a.name || a.agent_id} {a.status === 'frozen' ? '(frozen)' : ''}
+                {a.name || a.agent_id} {!a.is_active ? '(inactive)' : ''}
               </option>
             ))}
           </select>
