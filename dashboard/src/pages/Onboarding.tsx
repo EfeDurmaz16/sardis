@@ -5,23 +5,21 @@ import { useAuth } from '../auth/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
-const TOTAL_STEPS = 5
-
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, total = 5 }: { step: number; total?: number }) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-400">Step {step} of {TOTAL_STEPS}</span>
-        <span className="text-sm text-gray-500">{Math.round((step / TOTAL_STEPS) * 100)}% complete</span>
+        <span className="text-sm text-gray-400">Step {step} of {total}</span>
+        <span className="text-sm text-gray-500">{Math.round((step / total) * 100)}% complete</span>
       </div>
       <div className="w-full h-1.5 bg-dark-200 rounded-full overflow-hidden">
         <div
           className="h-full bg-sardis-500 rounded-full transition-all duration-500"
-          style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+          style={{ width: `${(step / total) * 100}%` }}
         />
       </div>
       <div className="flex mt-3 gap-2">
-        {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+        {Array.from({ length: total }).map((_, i) => (
           <div
             key={i}
             className={`flex-1 h-0.5 rounded-full transition-colors duration-300 ${
@@ -504,15 +502,26 @@ function StepDone() {
 }
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1)
-  const [agentId, setAgentId] = useState('')
   const location = useLocation()
-  const apiKey = (location.state as { apiKey?: string } | null)?.apiKey || ''
+  const locationState = location.state as { apiKey?: string; agentId?: string } | null
+  const apiKey = locationState?.apiKey || ''
+  const preProvisionedAgentId = locationState?.agentId || ''
 
-  const advance = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS))
+  // If agent was auto-provisioned at signup, skip the "Create Agent" step
+  const hasAgent = !!preProvisionedAgentId
+  const steps = hasAgent
+    ? [1, 3, 4, 5] // Welcome → Policy → Test → Done (skip Create Agent)
+    : [1, 2, 3, 4, 5]
+  const totalSteps = steps.length
+
+  const [stepIndex, setStepIndex] = useState(0)
+  const [agentId, setAgentId] = useState(preProvisionedAgentId)
+
+  const currentStep = steps[stepIndex]
+  const advance = () => setStepIndex((s) => Math.min(s + 1, totalSteps - 1))
   const skip = () => {
-    if (step === TOTAL_STEPS - 1) {
-      setStep(TOTAL_STEPS)
+    if (stepIndex >= totalSteps - 2) {
+      setStepIndex(totalSteps - 1)
     } else {
       advance()
     }
@@ -522,25 +531,25 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         <div className="bg-gray-900 rounded-2xl border border-dark-100 p-8 shadow-2xl">
-          {step < TOTAL_STEPS && <ProgressBar step={step} />}
+          {currentStep < 5 && <ProgressBar step={stepIndex + 1} total={totalSteps} />}
 
-          {step === 1 && (
-            <StepWelcome onNext={advance} onSkip={() => setStep(TOTAL_STEPS)} apiKey={apiKey} />
+          {currentStep === 1 && (
+            <StepWelcome onNext={advance} onSkip={() => setStepIndex(totalSteps - 1)} apiKey={apiKey} />
           )}
-          {step === 2 && (
+          {currentStep === 2 && (
             <StepCreateAgent
               onNext={advance}
               onSkip={skip}
               onAgentCreated={(id) => setAgentId(id)}
             />
           )}
-          {step === 3 && (
+          {currentStep === 3 && (
             <StepSetPolicy agentId={agentId} onNext={advance} onSkip={skip} />
           )}
-          {step === 4 && (
+          {currentStep === 4 && (
             <StepTestPayment agentId={agentId} onNext={advance} onSkip={skip} />
           )}
-          {step === 5 && <StepDone />}
+          {currentStep === 5 && <StepDone />}
         </div>
 
         <p className="text-center text-gray-600 text-xs mt-6">

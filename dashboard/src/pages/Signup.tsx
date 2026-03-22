@@ -13,6 +13,7 @@ export default function Signup() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [apiKey, setApiKey] = useState('');
+    const [agentId, setAgentId] = useState('');
     const [copied, setCopied] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -47,10 +48,13 @@ export default function Signup() {
             if (response.ok) {
                 const data = await response.json();
                 login(data.access_token);
+                if (data.agent_id) {
+                    setAgentId(data.agent_id);
+                }
                 if (data.api_key) {
                     setApiKey(data.api_key);
                 } else {
-                    navigate('/onboarding');
+                    navigate('/onboarding', { state: { agentId: data.agent_id } });
                 }
                 return;
             }
@@ -81,7 +85,7 @@ export default function Signup() {
     };
 
     const handleContinue = () => {
-        navigate('/onboarding', { state: { apiKey } });
+        navigate('/onboarding', { state: { apiKey, agentId } });
     };
 
     // Show API key screen after successful registration
