@@ -3,12 +3,14 @@
 const nextConfig = {
   reactStrictMode: true,
   typescript: {
-    // Pre-existing type mismatches from Vite dashboard migration.
-    // Will fix incrementally — does not affect runtime behavior.
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // Auth pages use useSearchParams — render them dynamically, not statically
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
   },
   // Proxy API calls to FastAPI backend
   async rewrites() {
