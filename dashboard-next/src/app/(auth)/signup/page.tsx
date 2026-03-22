@@ -37,58 +37,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Try better-auth signup
-      const { error: authError } = await signUp.email({
-        email: email.trim().toLowerCase(),
-        password,
-        name: displayName.trim() || email.trim().toLowerCase(),
-      });
-
-      if (authError) {
-        // Fallback: try legacy API registration
-        const response = await fetch(`${API_URL}/api/v2/auth/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password,
-            display_name: displayName.trim() || undefined,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // Sign in via better-auth after legacy registration
-          await signIn.email({ email: email.trim().toLowerCase(), password });
-          if (data.agent_id) {
-            setAgentId(data.agent_id);
-          }
-          if (data.api_key) {
-            setApiKey(data.api_key);
-          } else {
-            router.push(
-              `/onboarding?agentId=${encodeURIComponent(data.agent_id || "")}`
-            );
-          }
-          return;
-        }
-
-        if (response.status === 409) {
-          setError("An account with this email already exists. Try logging in.");
-          return;
-        }
-
-        if (response.status === 429) {
-          setError("Too many signup attempts. Please try again later.");
-          return;
-        }
-
-        const errData = await response.json().catch(() => null);
-        setError(errData?.detail || "Registration failed. Please try again.");
-        return;
-      }
-
-      // better-auth signup succeeded -- now try legacy register for API key + agent provisioning
+      // Register via FastAPI
       const response = await fetch(`${API_URL}/api/v2/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,26 +46,35 @@ export default function SignupPage() {
           password,
           display_name: displayName.trim() || undefined,
         }),
-      }).catch(() => null);
+      });
 
-      if (response && response.ok) {
+      if (response.ok) {
         const data = await response.json();
-        // Store session token so middleware allows dashboard access
+        // Store JWT for API client + middleware
         if (data.access_token) {
           sessionStorage.setItem("sardis_session", data.access_token);
           document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
         }
-        if (data.agent_id) {
-          setAgentId(data.agent_id);
-        }
+        if (data.agent_id) setAgentId(data.agent_id);
         if (data.api_key) {
           setApiKey(data.api_key);
           return;
         }
+        router.push("/onboarding");
+        return;
       }
 
-      // No API key returned -- go straight to onboarding
-      router.push("/onboarding");
+      if (response.status === 409) {
+        setError("An account with this email already exists. Try logging in.");
+        return;
+      }
+      if (response.status === 429) {
+        setError("Too many signup attempts. Please try again later.");
+        return;
+      }
+
+      const errData = await response.json().catch(() => null);
+      setError(errData?.detail || "Registration failed. Please try again.");
     } catch {
       setError("Network error. Please check your connection.");
     } finally {

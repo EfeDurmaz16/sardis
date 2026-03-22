@@ -21,49 +21,34 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Try better-auth email sign-in first
-      let authed = false;
-      try {
-        const { error: authError } = await signIn.email({
-          email: username,
-          password,
-        });
-        if (!authError) authed = true;
-      } catch {
-        // better-auth not available, fall through to legacy
+      // Login via FastAPI JWT endpoint
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("password", password);
+
+      const response = await fetch(`${API_URL}/api/v2/auth/login`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Invalid credentials");
       }
 
-      if (!authed) {
-        // Fallback: legacy API login (FastAPI JWT)
-        const formData = new FormData();
-        formData.append("username", username);
-        formData.append("password", password);
+      const data = await response.json();
 
-        const response = await fetch(`${API_URL}/api/v2/auth/login`, {
-          method: "POST",
-          body: formData,
-        }).catch(() => null);
-
-        if (response && response.ok) {
-          const data = await response.json();
-          // Store JWT in sessionStorage for API client
-          if (data.access_token) {
-            sessionStorage.setItem("sardis_session", data.access_token);
-            // Set a cookie so middleware sees the session
-            document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
-          }
-          authed = true;
-        }
-      }
-
-      if (authed) {
+      if (data.access_token) {
+        // Store JWT for API client + middleware
+        sessionStorage.setItem("sardis_session", data.access_token);
+        document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
         router.push("/overview");
         return;
       }
 
-      throw new Error("Invalid credentials");
-    } catch {
-      setError("Invalid email or password");
+      throw new Error("No access token received");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid email or password");
     } finally {
       setIsLoading(false);
     }
