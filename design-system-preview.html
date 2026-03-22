@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sardis Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* ── Base ── */
+    --bg-root:       #09090B;
+    --bg-surface:    #18181B;
+    --bg-elevated:   #1F1F23;
+    --bg-hover:      #27272A;
+    --bg-active:     #2E2E33;
+
+    /* ── Borders ── */
+    --border-subtle:    rgba(255, 255, 255, 0.06);
+    --border-default:   rgba(255, 255, 255, 0.08);
+    --border-prominent: rgba(255, 255, 255, 0.12);
+    --border-focus:     rgba(255, 255, 255, 0.20);
+
+    /* ── Text ── */
+    --text-primary:   #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-tertiary:  #71717A;
+    --text-disabled:  #52525B;
+
+    /* ── Semantic ── */
+    --success:     #22C55E;
+    --success-dim: rgba(34, 197, 94, 0.12);
+    --error:       #EF4444;
+    --error-dim:   rgba(239, 68, 68, 0.12);
+    --warning:     #EAB308;
+    --warning-dim: rgba(234, 179, 8, 0.10);
+    --info:        #A1A1AA;
+    --info-dim:    rgba(161, 161, 170, 0.10);
+
+    /* ── Shadows ── */
+    --shadow-sm:   0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md:   0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-lg:   0 4px 16px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+    --inset-top:   inset 0 1px 0 rgba(255,255,255,0.04);
+
+    /* ── Radius ── */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* ── Fonts ── */
+    --font-sans: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  html { font-size: 15px; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-root);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 1120px; margin: 0 auto; padding: 80px 40px 120px; }
+
+  .page-header {
+    margin-bottom: 80px;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .page-header h1 {
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+    max-width: 520px;
+  }
+
+  .section {
+    margin-bottom: 80px;
+  }
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 32px;
+  }
+
+  /* ── Color Swatches ── */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 2px;
+  }
+  .swatch {
+    aspect-ratio: 1.4;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+    position: relative;
+  }
+  .swatch-name {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .swatch-value {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+  }
+  .swatch.light-text .swatch-name,
+  .swatch.light-text .swatch-value { color: var(--text-primary); }
+  .swatch.dark-text .swatch-name { color: #18181B; }
+  .swatch.dark-text .swatch-value { color: #3F3F46; }
+
+  /* ── Type Scale ── */
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 32px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .type-meta {
+    flex-shrink: 0;
+    width: 120px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+  }
+  .type-sample {
+    letter-spacing: -0.02em;
+  }
+
+  /* ── Component Showcase ── */
+  .component-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .component-label {
+    width: 100%;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    line-height: 1;
+  }
+  .btn-primary {
+    background: var(--text-primary);
+    color: var(--bg-root);
+    border-color: var(--text-primary);
+  }
+  .btn-primary:hover { background: #E4E4E7; }
+
+  .btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border-prominent);
+    box-shadow: var(--inset-top);
+  }
+  .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-focus); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .btn-danger {
+    background: var(--error-dim);
+    color: var(--error);
+    border-color: rgba(239, 68, 68, 0.15);
+  }
+  .btn-danger:hover { background: rgba(239, 68, 68, 0.18); }
+
+  .btn-sm { font-size: 0.73rem; padding: 5px 10px; }
+  .btn-lg { font-size: 0.87rem; padding: 10px 20px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--inset-top), var(--shadow-sm);
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 0.87rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .card-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  /* ── Inputs ── */
+  .input-field {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    background: var(--bg-root);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+    width: 280px;
+  }
+  .input-field::placeholder { color: var(--text-disabled); }
+  .input-field:focus { border-color: var(--border-focus); }
+
+  .input-with-label { display: flex; flex-direction: column; gap: 6px; }
+  .input-label {
+    font-size: 0.73rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* ── Badges / Status ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .badge-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .badge-success { background: var(--success-dim); color: var(--success); }
+  .badge-success .badge-dot { background: var(--success); }
+  .badge-error { background: var(--error-dim); color: var(--error); }
+  .badge-error .badge-dot { background: var(--error); }
+  .badge-warning { background: var(--warning-dim); color: var(--warning); }
+  .badge-warning .badge-dot { background: var(--warning); }
+  .badge-neutral { background: var(--info-dim); color: var(--info); }
+  .badge-neutral .badge-dot { background: var(--info); }
+
+  /* ── Table ── */
+  .table-wrap {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--bg-surface); }
+  th {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  td {
+    font-size: 0.8rem;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  td:first-child { color: var(--text-primary); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-surface); }
+  .td-mono { font-family: var(--font-mono); font-size: 0.73rem; color: var(--text-tertiary); }
+
+  /* ── Code Block ── */
+  .code-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    overflow-x: auto;
+  }
+  .code-block .kw { color: var(--text-tertiary); }
+  .code-block .str { color: #A1A1AA; }
+  .code-block .cm { color: #52525B; font-style: italic; }
+  .code-block .fn { color: var(--text-primary); }
+
+  /* ── Icons Grid ── */
+  .icons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 2px;
+  }
+  .icon-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 8px;
+    border-radius: var(--radius-sm);
+    transition: background 0.1s ease;
+  }
+  .icon-cell:hover { background: var(--bg-hover); }
+  .icon-cell i { font-size: 20px; color: var(--text-secondary); }
+  .icon-cell:hover i { color: var(--text-primary); }
+  .icon-cell span {
+    font-size: 0.6rem;
+    color: var(--text-disabled);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Metric Card ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .metric-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--inset-top);
+  }
+  .metric-label {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .metric-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-sub {
+    font-size: 0.7rem;
+    color: var(--text-disabled);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Sidebar Nav Preview ── */
+  .nav-preview {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    width: 240px;
+    padding: 12px 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s ease;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .nav-item i { font-size: 16px; width: 18px; text-align: center; }
+  .nav-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 6px 12px;
+  }
+  .nav-section-label {
+    font-size: 0.63rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-disabled);
+    padding: 10px 12px 4px;
+  }
+
+  /* ── Borders Preview ── */
+  .border-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .border-sample {
+    height: 80px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    background: var(--bg-surface);
+  }
+
+  /* ── Two Col Layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-prominent);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    box-shadow: var(--shadow-lg);
+    font-size: 0.8rem;
+  }
+  .toast i { font-size: 16px; }
+  .toast-success i { color: var(--success); }
+  .toast-error i { color: var(--error); }
+
+  /* ── Kbd ── */
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-prominent);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--text-tertiary);
+    box-shadow: 0 1px 0 var(--border-default);
+  }
+
+  /* ── Separator ── */
+  .sep {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 24px 0;
+  }
+
+  @media (max-width: 768px) {
+    .page { padding: 40px 20px 80px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .border-grid { grid-template-columns: repeat(2, 1fr); }
+    .swatch-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="page-header">
+    <h1>Sardis Design System</h1>
+    <p>Visual language for the Payment OS for the Agent Economy. Monochrome, technical, infrastructure-grade.</p>
+  </header>
+
+  <!-- ════════════════ COLORS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Color &mdash; Base Palette</h2>
+    <div class="swatch-grid">
+      <div class="swatch light-text" style="background:#09090B"><span class="swatch-name">Root</span><span class="swatch-value">#09090B</span></div>
+      <div class="swatch light-text" style="background:#18181B"><span class="swatch-name">Surface</span><span class="swatch-value">#18181B</span></div>
+      <div class="swatch light-text" style="background:#1F1F23"><span class="swatch-name">Elevated</span><span class="swatch-value">#1F1F23</span></div>
+      <div class="swatch light-text" style="background:#27272A"><span class="swatch-name">Hover</span><span class="swatch-value">#27272A</span></div>
+      <div class="swatch light-text" style="background:#2E2E33"><span class="swatch-name">Active</span><span class="swatch-value">#2E2E33</span></div>
+      <div class="swatch light-text" style="background:#3F3F46"><span class="swatch-name">Border</span><span class="swatch-value">#3F3F46</span></div>
+      <div class="swatch dark-text" style="background:#A1A1AA"><span class="swatch-name">Text 2</span><span class="swatch-value">#A1A1AA</span></div>
+      <div class="swatch dark-text" style="background:#FAFAFA"><span class="swatch-name">Text 1</span><span class="swatch-value">#FAFAFA</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Color &mdash; Semantic</h2>
+    <div class="swatch-grid">
+      <div class="swatch light-text" style="background:#22C55E20; outline: 1px solid #22C55E30;"><span class="swatch-name" style="color:#22C55E">Success bg</span><span class="swatch-value" style="color:#22C55E80">12% opacity</span></div>
+      <div class="swatch light-text" style="background:#22C55E"><span class="swatch-name" style="color:#fff">Success</span><span class="swatch-value" style="color:#fff9">#22C55E</span></div>
+      <div class="swatch light-text" style="background:#EF444420; outline: 1px solid #EF444430;"><span class="swatch-name" style="color:#EF4444">Error bg</span><span class="swatch-value" style="color:#EF444480">12% opacity</span></div>
+      <div class="swatch light-text" style="background:#EF4444"><span class="swatch-name" style="color:#fff">Error</span><span class="swatch-value" style="color:#fff9">#EF4444</span></div>
+      <div class="swatch light-text" style="background:#EAB30818; outline: 1px solid #EAB30828;"><span class="swatch-name" style="color:#EAB308">Warning bg</span><span class="swatch-value" style="color:#EAB30880">10% opacity</span></div>
+      <div class="swatch light-text" style="background:#EAB308"><span class="swatch-name" style="color:#000">Warning</span><span class="swatch-value" style="color:#0008">#EAB308</span></div>
+      <div class="swatch light-text" style="background:#A1A1AA18; outline: 1px solid #A1A1AA28;"><span class="swatch-name" style="color:#A1A1AA">Info bg</span><span class="swatch-value" style="color:#A1A1AA80">10% opacity</span></div>
+      <div class="swatch light-text" style="background:#71717A"><span class="swatch-name" style="color:#fff">Info</span><span class="swatch-value" style="color:#fff9">#71717A</span></div>
+    </div>
+  </section>
+
+  <!-- ════════════════ TYPOGRAPHY ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Typography</h2>
+
+    <div class="type-row">
+      <div class="type-meta">Display<br>2.2rem / 600</div>
+      <div class="type-sample" style="font-size:2.2rem; font-weight:600;">Payment OS</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">H1<br>1.6rem / 500</div>
+      <div class="type-sample" style="font-size:1.6rem; font-weight:500;">Agent Wallets</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">H2<br>1.2rem / 500</div>
+      <div class="type-sample" style="font-size:1.2rem; font-weight:500;">Spending Mandates</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">H3<br>0.93rem / 600</div>
+      <div class="type-sample" style="font-size:0.93rem; font-weight:600;">Transaction Details</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">Body<br>0.87rem / 400</div>
+      <div class="type-sample" style="font-size:0.87rem; font-weight:400; color:var(--text-secondary);">Every transaction must pass the spending mandate before execution. Policy enforcement is fail-closed by default.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">Caption<br>0.73rem / 500</div>
+      <div class="type-sample" style="font-size:0.73rem; font-weight:500; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.06em;">Section Label</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">Mono<br>0.8rem / 400</div>
+      <div class="type-sample" style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-secondary);">wal_0x99085505f506576c5C53</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta">Mono sm<br>0.7rem / 400</div>
+      <div class="type-sample" style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-tertiary);">0x787f86e0...454f64f5</div>
+    </div>
+
+    <div style="margin-top:32px; display:flex; gap:40px;">
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-disabled); margin-bottom:8px; font-weight:500;">HEADING FONT</div>
+        <div style="font-size:1.4rem; font-weight:500; letter-spacing:-0.02em;">Space Grotesk</div>
+        <div style="font-size:0.8rem; color:var(--text-tertiary); margin-top:4px;">Geometric sans. Technical precision without coldness.</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-disabled); margin-bottom:8px; font-weight:500;">MONOSPACE FONT</div>
+        <div style="font-family:var(--font-mono); font-size:1.4rem; font-weight:500;">JetBrains Mono</div>
+        <div style="font-size:0.8rem; color:var(--text-tertiary); margin-top:4px;">Code, addresses, hashes, tabular data.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ BORDERS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Borders &amp; Elevation</h2>
+    <div class="border-grid">
+      <div class="border-sample" style="border:1px solid var(--border-subtle);">subtle<br>6% white</div>
+      <div class="border-sample" style="border:1px solid var(--border-default);">default<br>8% white</div>
+      <div class="border-sample" style="border:1px solid var(--border-prominent);">prominent<br>12% white</div>
+      <div class="border-sample" style="border:1px solid var(--border-focus);">focus<br>20% white</div>
+    </div>
+    <div class="border-grid" style="margin-top:16px;">
+      <div class="border-sample" style="border:1px solid var(--border-default); box-shadow:var(--shadow-sm);">shadow-sm</div>
+      <div class="border-sample" style="border:1px solid var(--border-default); box-shadow:var(--shadow-md);">shadow-md</div>
+      <div class="border-sample" style="border:1px solid var(--border-default); box-shadow:var(--shadow-lg);">shadow-lg</div>
+      <div class="border-sample" style="border:1px solid var(--border-default); box-shadow:var(--inset-top);">inset-top</div>
+    </div>
+  </section>
+
+  <!-- ════════════════ ICONS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Icons &mdash; Phosphor (Regular weight)</h2>
+    <div class="icons-grid">
+      <div class="icon-cell"><i class="ph ph-wallet"></i><span>wallet</span></div>
+      <div class="icon-cell"><i class="ph ph-shield-check"></i><span>shield-check</span></div>
+      <div class="icon-cell"><i class="ph ph-key"></i><span>key</span></div>
+      <div class="icon-cell"><i class="ph ph-lock-simple"></i><span>lock-simple</span></div>
+      <div class="icon-cell"><i class="ph ph-arrow-up-right"></i><span>arrow-up-right</span></div>
+      <div class="icon-cell"><i class="ph ph-arrow-down-left"></i><span>arrow-down-left</span></div>
+      <div class="icon-cell"><i class="ph ph-credit-card"></i><span>credit-card</span></div>
+      <div class="icon-cell"><i class="ph ph-robot"></i><span>robot</span></div>
+      <div class="icon-cell"><i class="ph ph-code"></i><span>code</span></div>
+      <div class="icon-cell"><i class="ph ph-terminal"></i><span>terminal</span></div>
+      <div class="icon-cell"><i class="ph ph-chart-line-up"></i><span>chart-line-up</span></div>
+      <div class="icon-cell"><i class="ph ph-list-checks"></i><span>list-checks</span></div>
+      <div class="icon-cell"><i class="ph ph-pulse"></i><span>pulse</span></div>
+      <div class="icon-cell"><i class="ph ph-plugs-connected"></i><span>plugs</span></div>
+      <div class="icon-cell"><i class="ph ph-gear"></i><span>gear</span></div>
+      <div class="icon-cell"><i class="ph ph-clipboard-text"></i><span>clipboard</span></div>
+    </div>
+    <div style="margin-top:20px; font-size:0.76rem; color:var(--text-tertiary);">
+      <strong style="color:var(--text-secondary);">Phosphor Icons</strong> &mdash; Regular weight only. Consistent stroke width. 1,300+ icons.
+      <span style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-disabled); margin-left:8px;">unpkg.com/@phosphor-icons/web</span>
+    </div>
+  </section>
+
+  <!-- ════════════════ BUTTONS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Buttons</h2>
+    <div class="component-row">
+      <button class="btn btn-primary"><i class="ph ph-plus" style="font-size:14px"></i> Create Wallet</button>
+      <button class="btn btn-secondary"><i class="ph ph-funnel" style="font-size:14px"></i> Filter</button>
+      <button class="btn btn-ghost">Cancel</button>
+      <button class="btn btn-danger"><i class="ph ph-shield-slash" style="font-size:14px"></i> Revoke</button>
+    </div>
+    <div class="component-row">
+      <button class="btn btn-primary btn-sm">Small</button>
+      <button class="btn btn-primary">Default</button>
+      <button class="btn btn-primary btn-lg">Large</button>
+    </div>
+  </section>
+
+  <!-- ════════════════ INPUTS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Inputs</h2>
+    <div class="component-row" style="gap:24px">
+      <div class="input-with-label">
+        <label class="input-label">Wallet Address</label>
+        <input class="input-field" type="text" placeholder="0x..." style="font-family:var(--font-mono); font-size:0.76rem;">
+      </div>
+      <div class="input-with-label">
+        <label class="input-label">Spending Limit (USD)</label>
+        <input class="input-field" type="text" value="1,000.00">
+      </div>
+      <div class="input-with-label">
+        <label class="input-label">Agent Name</label>
+        <input class="input-field" type="text" placeholder="e.g. procurement-agent">
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ BADGES ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Status Badges</h2>
+    <div class="component-row">
+      <span class="badge badge-success"><span class="badge-dot"></span>Completed</span>
+      <span class="badge badge-error"><span class="badge-dot"></span>Blocked</span>
+      <span class="badge badge-warning"><span class="badge-dot"></span>Pending</span>
+      <span class="badge badge-neutral"><span class="badge-dot"></span>Inactive</span>
+    </div>
+  </section>
+
+  <!-- ════════════════ TOASTS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Toasts</h2>
+    <div style="display:flex; flex-direction:column; gap:12px; align-items:flex-start;">
+      <div class="toast toast-success"><i class="ph ph-check-circle"></i> Payment of $10.00 USDC to openai.com completed.</div>
+      <div class="toast toast-error"><i class="ph ph-shield-slash"></i> Policy violation: merchant not in allowlist.</div>
+    </div>
+  </section>
+
+  <!-- ════════════════ METRICS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Metric Cards</h2>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label"><i class="ph ph-wallet" style="font-size:14px"></i> Balance</div>
+        <div class="metric-value">$12,480<span style="font-size:0.87rem; color:var(--text-tertiary)">.00</span></div>
+        <div class="metric-sub">USDC on Tempo</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label"><i class="ph ph-arrow-up-right" style="font-size:14px"></i> Volume (24h)</div>
+        <div class="metric-value">$3,210<span style="font-size:0.87rem; color:var(--text-tertiary)">.50</span></div>
+        <div class="metric-sub">14 transactions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label"><i class="ph ph-shield-check" style="font-size:14px"></i> Policy Pass Rate</div>
+        <div class="metric-value">98.2<span style="font-size:0.87rem; color:var(--text-tertiary)">%</span></div>
+        <div class="metric-sub">3 blocked / 164 total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label"><i class="ph ph-robot" style="font-size:14px"></i> Active Agents</div>
+        <div class="metric-value">7</div>
+        <div class="metric-sub">2 sessions active</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ TABLE ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Transaction Table</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Transaction</th>
+            <th>Amount</th>
+            <th>Merchant</th>
+            <th>Chain</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-mono">mpp_pay_8f3a...c91d</td>
+            <td>$10.00</td>
+            <td>openai.com</td>
+            <td class="td-mono">tempo</td>
+            <td><span class="badge badge-success"><span class="badge-dot"></span>Completed</span></td>
+            <td class="td-mono">12s ago</td>
+          </tr>
+          <tr>
+            <td class="td-mono">mpp_pay_2e7b...a44f</td>
+            <td>$15.00</td>
+            <td>anthropic.com</td>
+            <td class="td-mono">tempo</td>
+            <td><span class="badge badge-success"><span class="badge-dot"></span>Completed</span></td>
+            <td class="td-mono">2m ago</td>
+          </tr>
+          <tr>
+            <td class="td-mono">mpp_pay_9c1d...f882</td>
+            <td>$200.00</td>
+            <td>gambling.com</td>
+            <td class="td-mono">tempo</td>
+            <td><span class="badge badge-error"><span class="badge-dot"></span>Blocked</span></td>
+            <td class="td-mono">5m ago</td>
+          </tr>
+          <tr>
+            <td class="td-mono">bridge_4a8f...12ce</td>
+            <td>$500.00</td>
+            <td>&mdash;</td>
+            <td class="td-mono">base &rarr; tempo</td>
+            <td><span class="badge badge-warning"><span class="badge-dot"></span>Pending</span></td>
+            <td class="td-mono">8m ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════ SIDEBAR NAV ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Sidebar Navigation</h2>
+    <div class="two-col">
+      <nav class="nav-preview">
+        <div class="nav-item active"><i class="ph ph-house-simple"></i> Overview</div>
+        <div class="nav-item"><i class="ph ph-wallet"></i> Wallets</div>
+        <div class="nav-item"><i class="ph ph-robot"></i> Agents</div>
+        <div class="nav-item"><i class="ph ph-list-checks"></i> Mandates</div>
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">Payments</div>
+        <div class="nav-item"><i class="ph ph-arrow-up-right"></i> Transactions</div>
+        <div class="nav-item"><i class="ph ph-credit-card"></i> Cards</div>
+        <div class="nav-item"><i class="ph ph-plugs-connected"></i> MPP Sessions</div>
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item"><i class="ph ph-shield-check"></i> Policies</div>
+        <div class="nav-item"><i class="ph ph-clipboard-text"></i> Audit Trail</div>
+        <div class="nav-item"><i class="ph ph-key"></i> API Keys</div>
+        <div class="nav-item"><i class="ph ph-gear"></i> Settings</div>
+      </nav>
+
+      <div>
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-title">Navigation Pattern</div>
+          <div class="card-desc">Left sidebar, always visible. Icon + label. Active state uses elevated background. Sections separated by divider + uppercase label. Phosphor regular weight, 16px.</div>
+        </div>
+        <div class="code-block"><span class="cm">// Keyboard shortcuts</span>
+<span class="kw">const</span> <span class="fn">shortcuts</span> = {
+  <span class="str">'g o'</span>: <span class="str">'Overview'</span>,
+  <span class="str">'g w'</span>: <span class="str">'Wallets'</span>,
+  <span class="str">'g t'</span>: <span class="str">'Transactions'</span>,
+  <span class="str">'g a'</span>: <span class="str">'Audit Trail'</span>,
+};  <span class="cm">// vim-style: press g then letter</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ CARDS ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Cards</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title"><i class="ph ph-wallet" style="font-size:14px; color:var(--text-tertiary); margin-right:6px;"></i>MPC Wallet</div>
+        <div class="card-desc">Non-custodial wallet backed by Turnkey MPC. Private keys never leave the secure enclave.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ph ph-shield-check" style="font-size:14px; color:var(--text-tertiary); margin-right:6px;"></i>Spending Mandate</div>
+        <div class="card-desc">Natural language policies enforced before every transaction. Fail-closed by default.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ph ph-clipboard-text" style="font-size:14px; color:var(--text-tertiary); margin-right:6px;"></i>Audit Trail</div>
+        <div class="card-desc">Merkle-anchored append-only ledger. Every payment decision is cryptographically verifiable.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ CODE ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Code Block</h2>
+    <div class="code-block"><span class="cm"># Create a wallet and execute payment on Tempo</span>
+<span class="kw">from</span> sardis <span class="kw">import</span> <span class="fn">Sardis</span>
+
+client = <span class="fn">Sardis</span>(api_key=<span class="str">"sk_live_..."</span>)
+wallet = client.<span class="fn">wallets.create</span>(chain=<span class="str">"tempo"</span>)
+
+payment = client.<span class="fn">payments.execute</span>(
+    wallet_id=wallet.id,
+    amount=<span class="str">10.00</span>,
+    merchant=<span class="str">"openai.com"</span>,
+    token=<span class="str">"USDC"</span>,
+)
+<span class="cm"># payment.status == "completed"</span>
+<span class="cm"># payment.tx_hash == "0x787f86e0..."</span></div>
+  </section>
+
+  <!-- ════════════════ KEYBOARD ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Keyboard Shortcuts</h2>
+    <div style="display:flex; gap:24px; font-size:0.8rem; color:var(--text-secondary);">
+      <span><kbd>G</kbd> <kbd>O</kbd> Overview</span>
+      <span><kbd>G</kbd> <kbd>W</kbd> Wallets</span>
+      <span><kbd>G</kbd> <kbd>T</kbd> Transactions</span>
+      <span><kbd>/</kbd> Search</span>
+      <span><kbd>N</kbd> New payment</span>
+      <span><kbd>?</kbd> All shortcuts</span>
+    </div>
+  </section>
+
+  <!-- ════════════════ RULES ════════════════ -->
+  <section class="section">
+    <h2 class="section-title">Design Rules</h2>
+    <div class="card" style="max-width:600px;">
+      <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.8;">
+        <div style="margin-bottom:12px;"><strong style="color:var(--text-primary);">Color is signal.</strong> Green = passed. Red = blocked. No other colors. Everything else is zinc.</div>
+        <div style="margin-bottom:12px;"><strong style="color:var(--text-primary);">No gradients.</strong> Hierarchy through shade, border weight, and typography alone.</div>
+        <div style="margin-bottom:12px;"><strong style="color:var(--text-primary);">Mono for data.</strong> Addresses, hashes, IDs, amounts &mdash; always JetBrains Mono.</div>
+        <div style="margin-bottom:12px;"><strong style="color:var(--text-primary);">Inset top highlight.</strong> Cards get <span style="font-family:var(--font-mono); font-size:0.7rem;">inset 0 1px 0 rgba(255,255,255,0.04)</span> for depth.</div>
+        <div><strong style="color:var(--text-primary);">Phosphor Regular only.</strong> Single icon weight across the entire product.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
