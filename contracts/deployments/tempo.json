@@ -1,0 +1,51 @@
+{
+  "chain": "tempo",
+  "chainId": 4217,
+  "status": "deployed",
+  "deployer": "0x99085505f506576c5C5342cAFEf14d6be43e0E9C",
+  "contracts": {
+    "ledgerAnchor": {
+      "address": "0x9a5D2a6c81414FD1E6a2c9b55306c6D0b954b98B",
+      "lifecycle": "canonical_live",
+      "source": "custom"
+    },
+    "refundProtocol": {
+      "address": "0x801ea29ca523ea16475e3def938002d6be985e9d",
+      "lifecycle": "canonical_live",
+      "source": "custom"
+    },
+    "identityRegistry": {
+      "address": "0xc5a3eb812bef4b883a2e890865de9d51818ac90a",
+      "lifecycle": "canonical_live",
+      "source": "custom",
+      "notes": "ERC-8183 agent identity registry"
+    },
+    "jobRegistry": {
+      "address": "0x19eeeb6b349cfd4025cc75fa99bb36f6b8bec62d",
+      "lifecycle": "canonical_live",
+      "source": "custom",
+      "notes": "ERC-8183 on-chain reputation store"
+    },
+    "jobManager": {
+      "address": "0x758114d2229d3da2a8629b96b0394a3e8319fbb0",
+      "lifecycle": "canonical_live",
+      "source": "custom",
+      "notes": "ERC-8183 job escrow and lifecycle"
+    },
+    "reputationRegistry": {
+      "address": "0x127ac64f6ddf7292e8dee43e39f4e66af859e704",
+      "lifecycle": "canonical_live",
+      "source": "custom",
+      "notes": "ERC-8183 auto reputation on lifecycle events"
+    },
+    "validationRegistry": {
+      "address": "0xc95e58f9e1df9c3df4593632846eb2a02cf73d6b",
+      "lifecycle": "canonical_live",
+      "source": "custom",
+      "notes": "ERC-8183 validation registry for trust-gated transitions"
+    }
+  },
+  "blockNumber": null,
+  "timestamp": "2026-03-20T00:00:00Z",
+  "notes": "All 7 Sardis contracts deployed on Tempo Presto mainnet (chain ID 4217). Deployer wallet: 0x99085505f506576c5C5342cAFEf14d6be43e0E9C. No Safe/EAS infrastructure — Tempo uses TIP-20 fee model."
+}
