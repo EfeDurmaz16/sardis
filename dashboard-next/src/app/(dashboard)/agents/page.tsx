@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react'
-import { Plus, Search, User, Wallet, ArrowRight } from 'lucide-react'
+import { Plus, Search, User, Wallet, ArrowRight, X, Calendar, Shield } from 'lucide-react'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '@/hooks/useApi'
 import ChatInterface from '@/components/ChatInterface'
@@ -19,20 +19,15 @@ type CreateAgentInput = {
   create_wallet?: boolean
 }
 
-const SEED_AGENTS = [
-  { agent_id: 'agent_shopping_001', name: 'shopping_agent', description: 'Purchases API credits and cloud resources within budget.', is_active: true, wallet_id: 'wallet_demo_001', owner_id: 'demo', spending_limits: { per_transaction: '50.00', total: '500.00' } },
-  { agent_id: 'agent_research_002', name: 'research_analyst', description: 'Data acquisition agent. Buys datasets and API access.', is_active: true, wallet_id: 'wallet_demo_002', owner_id: 'demo', spending_limits: { per_transaction: '100.00', total: '1000.00' } },
-  { agent_id: 'agent_ops_003', name: 'devops_automator', description: 'Infrastructure agent managing cloud spend.', is_active: false, wallet_id: 'wallet_demo_003', owner_id: 'demo', spending_limits: { per_transaction: '200.00', total: '2000.00' } },
-]
-
 export default function AgentsPage() {
   const { data: apiAgents = [], isLoading } = useAgents()
   const createAgent = useCreateAgent()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const [activeChatAgent, setActiveChatAgent] = useState<AgentListItem | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<AgentListItem | null>(null)
 
-  const agents: AgentListItem[] = (apiAgents as AgentListItem[]).length > 0 ? (apiAgents as AgentListItem[]) : SEED_AGENTS
+  const agents: AgentListItem[] = apiAgents as AgentListItem[]
   const filteredAgents = agents.filter((agent) =>
     agent.name?.toLowerCase().includes(search.toLowerCase()) || agent.agent_id?.toLowerCase().includes(search.toLowerCase())
   )
@@ -50,17 +45,18 @@ export default function AgentsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[1, 2, 3].map((i) => (<div key={i} className="card p-6 animate-pulse"><div className="h-4 bg-dark-100 rounded w-3/4 mb-4" /><div className="h-3 bg-dark-100 rounded w-1/2 mb-2" /><div className="h-3 bg-dark-100 rounded w-1/4" /></div>))}</div>
       ) : filteredAgents.length === 0 ? (
-        <div className="card p-12 text-center"><User className="w-12 h-12 text-gray-600 mx-auto mb-4" /><h3 className="text-lg font-medium text-white mb-2">No agents found</h3><p className="text-gray-400 mb-4">{search ? 'Try a different search term' : 'Create your first AI agent to get started'}</p>{!search && (<button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"><Plus className="w-4 h-4" />Create Agent</button>)}</div>
+        <div className="card p-12 text-center"><User className="w-12 h-12 text-gray-600 mx-auto mb-4" /><h3 className="text-lg font-medium text-white mb-2">{search ? 'No agents found' : 'No agents yet'}</h3><p className="text-gray-400 mb-4">{search ? 'Try a different search term' : 'Create your first AI agent to get started'}</p>{!search && (<button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"><Plus className="w-4 h-4" />Create Agent</button>)}</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredAgents.map((agent) => (<AgentCard key={agent.agent_id} agent={agent} onChat={() => setActiveChatAgent(agent)} />))}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredAgents.map((agent) => (<AgentCard key={agent.agent_id} agent={agent} onChat={() => setActiveChatAgent(agent)} onView={() => setSelectedAgent(agent)} />))}</div>
       )}
       {showCreate && <CreateAgentModal onClose={() => setShowCreate(false)} onSubmit={async (data) => { await createAgent.mutateAsync(data); setShowCreate(false) }} isLoading={createAgent.isPending} />}
       {activeChatAgent && <ChatInterface agentId={activeChatAgent.agent_id} agentName={activeChatAgent.name} onClose={() => setActiveChatAgent(null)} />}
+      {selectedAgent && <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedAgent(null)} />}
     </div>
   )
 }
 
-function AgentCard({ agent, onChat }: { agent: AgentListItem; onChat: () => void }) {
+function AgentCard({ agent, onChat, onView }: { agent: AgentListItem; onChat: () => void; onView: () => void }) {
   return (
     <div className="card card-hover p-6">
       <div className="flex items-start justify-between mb-4">
@@ -75,7 +71,7 @@ function AgentCard({ agent, onChat }: { agent: AgentListItem; onChat: () => void
         <div className="flex items-center gap-2 text-gray-400"><Wallet className="w-4 h-4" /><span className="text-sm">Wallet</span></div>
         <div className="flex gap-2">
           <button onClick={onChat} className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20">Chat</button>
-          <button onClick={() => alert(`Agent Details:\n\nID: ${agent.agent_id}\nName: ${agent.name}\nOwner: ${agent.owner_id}\nStatus: ${agent.is_active ? 'Active' : 'Inactive'}`)} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">View <ArrowRight className="w-4 h-4" /></button>
+          <button onClick={onView} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">View <ArrowRight className="w-4 h-4" /></button>
         </div>
       </div>
     </div>
@@ -100,6 +96,119 @@ function CreateAgentModal({ onClose, onSubmit, isLoading }: { onClose: () => voi
             <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50">{isLoading ? 'Creating...' : 'Create Agent'}</button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function AgentDetailPanel({ agent, onClose }: { agent: AgentListItem; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      {/* Slide-over panel */}
+      <div className="absolute top-0 right-0 h-full w-full max-w-md bg-dark-300 border-l border-dark-100 shadow-2xl overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-dark-100">
+          <h2 className="text-xl font-bold text-white font-display">Agent Details</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-dark-200 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Name + ID */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-sardis-500/10 rounded-lg flex items-center justify-center">
+                <User className="w-6 h-6 text-sardis-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">{agent.name}</h3>
+                <p className="text-xs text-gray-500 font-mono">{agent.agent_id}</p>
+              </div>
+            </div>
+            {agent.description && (
+              <p className="text-sm text-gray-400 mt-2">{agent.description}</p>
+            )}
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center gap-3">
+            <Shield className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-gray-400">Status</span>
+            <span className={clsx(
+              'ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+              agent.is_active
+                ? 'bg-sardis-500/10 text-sardis-400'
+                : 'bg-red-500/10 text-red-400'
+            )}>
+              {agent.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+
+          {/* Wallet Info */}
+          <div className="bg-dark-200 rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-sardis-400" />
+              Wallet Information
+            </h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Wallet ID</span>
+                <span className="text-sm text-gray-300 font-mono">{agent.wallet_id || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Chain</span>
+                <span className="text-sm text-gray-300">Base</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Spending Limits */}
+          <div className="bg-dark-200 rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-medium text-white flex items-center gap-2">
+              <Shield className="w-4 h-4 text-sardis-400" />
+              Spending Limits
+            </h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Per Transaction</span>
+                <span className="text-sm text-white font-mono">
+                  {agent.spending_limits?.per_transaction ? `$${agent.spending_limits.per_transaction}` : 'Not set'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Total</span>
+                <span className="text-sm text-white font-mono">
+                  {agent.spending_limits?.total ? `$${agent.spending_limits.total}` : 'Not set'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Created Date */}
+          {agent.created_at && (
+            <div className="flex items-center gap-3">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-400">Created</span>
+              <span className="ml-auto text-sm text-gray-300">
+                {new Date(agent.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
+            </div>
+          )}
+
+          {/* Owner */}
+          <div className="flex items-center gap-3">
+            <User className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-gray-400">Owner</span>
+            <span className="ml-auto text-sm text-gray-300 font-mono">{agent.owner_id}</span>
+          </div>
+        </div>
       </div>
     </div>
   )
