@@ -77,6 +77,7 @@ def init_cmd(ctx):
 
     agent_id = click.prompt("Agent ID for initial wallet", default="default-agent")
 
+    wallet_id = "N/A"
     try:
         # Create wallet
         wallet_result = client.post("/api/v2/wallets", {
@@ -98,26 +99,66 @@ def init_cmd(ctx):
     except APIError as e:
         console.print(f"[yellow]Warning: {e.message}[/yellow]")
         console.print("[dim]You can create wallets and policies later with 'sardis wallets create' and 'sardis policies set'[/dim]")
-    finally:
-        client.close()
+
+    # Step 5: Test payment (sandbox)
+    console.print("\n[bold]Step 5:[/bold] Making a test payment...\n")
+
+    tx_id = None
+    try:
+        # Request testnet USDC from faucet first
+        try:
+            client.post("/api/v2/faucet/drip", {
+                "wallet_id": wallet_id,
+                "amount": 100,
+            })
+            console.print("[green]Faucet: 100 test USDC credited[/green]")
+        except APIError:
+            console.print("[dim]Faucet unavailable — skipping (you can fund manually)[/dim]")
+
+        # Run sandbox policy check to verify everything works
+        check_result = client.post("/api/v2/sandbox/policy-check", {
+            "agent_id": agent_id,
+            "amount": 10.0,
+            "currency": "USDC",
+            "recipient": "merchant_demo",
+            "memo": "sardis init test",
+        })
+        decision = check_result.get("decision", "unknown")
+        tx_id = check_result.get("transaction_id") or check_result.get("check_id")
+
+        if decision in ("allow", "approved"):
+            console.print(f"[bold green]Test payment approved![/bold green] Transaction: {tx_id or 'N/A'}")
+        else:
+            console.print(f"[yellow]Policy check returned: {decision}[/yellow]")
+
+    except APIError as e:
+        console.print(f"[yellow]Test payment skipped: {e.message}[/yellow]")
+    except Exception:
+        console.print("[dim]Test payment skipped (sandbox endpoint unavailable)[/dim]")
+
+    client.close()
 
     # Save configuration
     save_config(config)
 
     # Success summary
-    console.print(Panel(
+    summary = (
         "[bold green]Setup Complete[/bold green]\n\n"
         f"API URL:        {api_url}\n"
         f"Default Chain:  {default_chain}\n"
         f"Agent:          {agent_id}\n"
+        f"Wallet:         {wallet_id}\n"
         f"Policy:         {policy_text}\n"
         f"Per-TX Limit:   ${max_per_tx}\n"
-        f"Total Limit:    ${max_total}\n\n"
-        "[bold]Next steps:[/bold]\n"
-        "  sardis status          - Verify your configuration\n"
-        "  sardis wallets list    - View your wallets\n"
-        "  sardis policies list   - View your policies\n"
-        "  sardis payments execute - Make your first payment",
-        title="Sardis CLI",
-        expand=False,
-    ))
+        f"Total Limit:    ${max_total}\n"
+    )
+    if tx_id:
+        summary += f"Test Payment:   {tx_id}\n"
+    summary += (
+        "\n[bold]Next steps:[/bold]\n"
+        "  sardis status            - Verify your configuration\n"
+        "  sardis wallets list      - View your wallets\n"
+        "  sardis policies list     - View your policies\n"
+        "  sardis payments execute  - Make a real payment"
+    )
+    console.print(Panel(summary, title="Sardis CLI", expand=False))
