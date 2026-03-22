@@ -82,23 +82,127 @@
   --mono-accent: #22c55e;
 }
 
-/* ── Base styles ──────────────────────────────────── */
+/* ── Base styles (monokrom) ────────────────────────── */
 
 body {
-  @apply bg-dark-400 text-gray-200 antialiased;
+  background-color: #0a0a0f;
+  color: #e4e4e7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
-/* ── Card component ───────────────────────────────── */
+/* ── Card component (monokrom) ────────────────────── */
 
 .card {
-  @apply bg-dark-300 border border-dark-100 rounded-xl;
+  background-color: #141419;
+  border: 1px solid #1f1f28;
+  border-radius: 8px;
 }
 
-/* ── Glow hover effect ────────────────────────────── */
+.card:hover {
+  border-color: #2a2a36;
+}
+
+/* ── Monokrom utility classes ─────────────────────── */
+
+.mono-surface { background-color: #141419; }
+.mono-surface-elevated { background-color: #1c1c24; }
+.mono-border { border-color: #1f1f28; }
+.mono-text { color: #e4e4e7; }
+.mono-text-muted { color: #71717a; }
+.mono-text-ghost { color: #52525b; }
+.mono-accent { color: #22c55e; }
+
+/* ── Monokrom buttons ─────────────────────────────── */
+
+.btn-primary {
+  background-color: #22c55e;
+  color: #0a0a0f;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background-color 150ms;
+}
+.btn-primary:hover { background-color: #16a34a; }
+
+.btn-ghost {
+  background: transparent;
+  color: #71717a;
+  border: 1px solid #1f1f28;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 150ms;
+}
+.btn-ghost:hover {
+  color: #e4e4e7;
+  border-color: #2a2a36;
+  background-color: #141419;
+}
+
+/* ── Monokrom badges ──────────────────────────────── */
+
+.badge-active {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.badge-inactive {
+  background-color: rgba(113, 113, 122, 0.1);
+  color: #71717a;
+  border: 1px solid rgba(113, 113, 122, 0.2);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* ── Monokrom inputs ──────────────────────────────── */
+
+input[type="text"], input[type="email"], input[type="password"], textarea, select {
+  background-color: #0a0a0f;
+  border: 1px solid #1f1f28;
+  color: #e4e4e7;
+  border-radius: 6px;
+  transition: border-color 150ms;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: #22c55e;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+
+/* ── Monokrom tables ──────────────────────────────── */
+
+table { border-collapse: collapse; }
+th {
+  color: #52525b;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+td { color: #e4e4e7; }
+tr + tr { border-top: 1px solid #1f1f28; }
+tr:hover { background-color: rgba(20, 20, 25, 0.5); }
+
+/* ── Monokrom scrollbar ───────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: #1f1f28; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2a2a36; }
+
+/* ── Glow hover (subtle for monokrom) ─────────────── */
 
 .glow-green-hover:hover {
-  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3), 0 0 30px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
 }
 
 /* ── driver.js product tour (dark theme) ──────────── */
