@@ -41,28 +41,22 @@ def _get_didit_provider():
     if _didit_provider is not None:
         return _didit_provider
 
-    client_id = os.getenv("DIDIT_CLIENT_ID", "").strip()
-    client_secret = os.getenv("DIDIT_CLIENT_SECRET", "").strip()
+    api_key = os.getenv("DIDIT_API_KEY", "").strip()
     webhook_secret = os.getenv("DIDIT_WEBHOOK_SECRET", "").strip()
-    environment = os.getenv("SARDIS_ENVIRONMENT", "sandbox").strip().lower()
-    didit_env = "production" if environment in ("prod", "production") else "sandbox"
+    workflow_id = os.getenv("DIDIT_WORKFLOW_ID", "").strip() or None
 
-    if not client_id or not client_secret:
+    if not api_key:
         raise HTTPException(
             status_code=503,
-            detail=(
-                "KYC provider not configured. "
-                "Set DIDIT_CLIENT_ID and DIDIT_CLIENT_SECRET."
-            ),
+            detail="KYC provider not configured. Set DIDIT_API_KEY.",
         )
 
     from sardis_compliance.providers.didit import DiditKYCProvider
 
     _didit_provider = DiditKYCProvider(
-        client_id=client_id,
-        client_secret=client_secret,
+        api_key=api_key,
         webhook_secret=webhook_secret or None,
-        environment=didit_env,
+        workflow_id=workflow_id,
     )
     return _didit_provider
 
@@ -246,7 +240,7 @@ async def handle_kyc_webhook(request: Request) -> dict:
 
     This endpoint is **public** (no ``require_principal``) because Didit
     calls it server-to-server.  Authenticity is verified via HMAC-SHA256
-    signature in the ``X-Didit-Signature`` header.
+    signature in the ``X-Signature-V2`` header.
 
     On ``approved`` status the user's ``kyc_status`` is updated in the
     ``ba_user`` table and a production API key is generated.
@@ -255,7 +249,7 @@ async def handle_kyc_webhook(request: Request) -> dict:
 
     # ---- Signature verification ----
     body_bytes = await request.body()
-    signature = request.headers.get("X-Didit-Signature", "")
+    signature = request.headers.get("X-Signature-V2", "")
 
     if not signature:
         logger.warning("Didit webhook received without signature header")

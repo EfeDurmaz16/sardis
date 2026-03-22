@@ -1,23 +1,18 @@
 """
 Didit KYC provider implementation.
 
-Didit provides decentralized identity verification with reusable credentials,
-offering privacy-preserving KYC through zero-knowledge proofs.
+Didit provides identity verification with ID document scanning,
+liveness detection, face matching, and AML screening.
 
-Features:
-- Government ID verification
-- Liveness detection / selfie matching
-- AML screening
-- Reusable verification credentials (users verify once, reuse across services)
-- GDPR-compliant data handling
-
-API Reference: https://docs.didit.me/
-Auth: OAuth2 client_credentials flow (client_id + client_secret)
+API Reference: https://docs.didit.me/api-reference/overview
+Auth: x-api-key header (simple API key, no OAuth2)
+Base URL: https://verification.didit.me
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 import time
@@ -31,12 +26,6 @@ from sardis_compliance.kyc import (
     KYCStatus,
     VerificationRequest,
 )
-from sardis_compliance.retry import (
-    CircuitBreakerConfig,
-    RateLimitConfig,
-    RetryConfig,
-    create_retryable_client,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -45,72 +34,43 @@ class DiditKYCProvider(KYCProvider):
     """
     Didit KYC provider implementation.
 
-    Uses OAuth2 client_credentials for authentication and provides
-    identity verification through Didit's decentralized identity platform.
+    Uses simple API key authentication (x-api-key header).
+    Creates verification sessions with a workflow_id that defines
+    which checks to run (ID, liveness, face match, AML, etc.).
 
     Environment variables:
-        DIDIT_CLIENT_ID: OAuth2 client ID
-        DIDIT_CLIENT_SECRET: OAuth2 client secret
+        DIDIT_API_KEY: API key from Didit Console
         DIDIT_WEBHOOK_SECRET: HMAC-SHA256 secret for webhook verification
+        DIDIT_WORKFLOW_ID: Workflow ID defining verification checks
 
-    API Reference: https://docs.didit.me/
+    API Reference: https://docs.didit.me/api-reference/overview
     """
 
-    BASE_URL = "https://api.didit.me/v2"
-    AUTH_URL = "https://api.didit.me/auth/token"
+    BASE_URL = "https://verification.didit.me"
 
     def __init__(
         self,
-        client_id: str | None = None,
-        client_secret: str | None = None,
+        api_key: str | None = None,
         webhook_secret: str | None = None,
-        environment: str = "sandbox",
+        workflow_id: str | None = None,
     ):
-        """
-        Initialize Didit provider.
-
-        Args:
-            client_id: Didit OAuth2 client ID (falls back to DIDIT_CLIENT_ID env var)
-            client_secret: Didit OAuth2 client secret (falls back to DIDIT_CLIENT_SECRET env var)
-            webhook_secret: Secret for HMAC-SHA256 webhook signature verification
-                            (falls back to DIDIT_WEBHOOK_SECRET env var)
-            environment: 'sandbox' or 'production'
-        """
-        self._client_id = client_id or os.getenv("DIDIT_CLIENT_ID", "")
-        self._client_secret = client_secret or os.getenv("DIDIT_CLIENT_SECRET", "")
+        self._api_key = api_key or os.getenv("DIDIT_API_KEY", "")
         self._webhook_secret = webhook_secret or os.getenv("DIDIT_WEBHOOK_SECRET", "")
-        self._environment = environment
+        self._workflow_id = workflow_id or os.getenv(
+            "DIDIT_WORKFLOW_ID",
+            "5851a693-9276-4d7e-ae87-d5f348b5f0bd",  # Custom KYC default
+        )
 
-        if not self._client_id or not self._client_secret:
+        if not self._api_key:
             raise ValueError(
-                "Didit client_id and client_secret are required. "
-                "Set DIDIT_CLIENT_ID and DIDIT_CLIENT_SECRET environment variables "
-                "or pass them directly."
+                "Didit API key is required. "
+                "Set DIDIT_API_KEY environment variable or pass api_key directly."
             )
 
         self._http_client = None
-        self._access_token: str | None = None
-        self._token_expires_at: float = 0.0
-
-        self._retry_client = create_retryable_client(
-            name="didit_kyc",
-            retry_config=RetryConfig(
-                max_retries=3,
-                initial_delay_seconds=1.0,
-                max_delay_seconds=30.0,
-            ),
-            circuit_config=CircuitBreakerConfig(
-                failure_threshold=5,
-                timeout_seconds=120.0,
-            ),
-            rate_config=RateLimitConfig(
-                requests_per_second=10.0,
-                burst_size=20,
-            ),
-        )
 
     async def _get_client(self):
-        """Get or create HTTP client."""
+        """Get or create HTTP client with API key header."""
         if self._http_client is None:
             import httpx
 
@@ -119,136 +79,35 @@ class DiditKYCProvider(KYCProvider):
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
+                    "x-api-key": self._api_key,
                 },
                 timeout=30,
             )
         return self._http_client
 
-    async def _ensure_access_token(self) -> str:
-        """
-        Obtain or refresh the OAuth2 access token via client_credentials grant.
-
-        Tokens are cached until 60 seconds before expiry to avoid
-        clock-skew issues.
-
-        Returns:
-            Valid access token string.
-
-        Raises:
-            RuntimeError: If token exchange fails.
-        """
-        # Return cached token if still valid (with 60s buffer)
-        if self._access_token and time.monotonic() < (self._token_expires_at - 60):
-            return self._access_token
+    async def _request(self, method: str, path: str, **kwargs) -> Any:
+        """Make an authenticated API request."""
+        client = await self._get_client()
 
         import httpx
 
-        client = await self._get_client()
-
         try:
-            response = await client.post(
-                self.AUTH_URL,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": self._client_id,
-                    "client_secret": self._client_secret,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
+            response = await getattr(client, method)(path, **kwargs)
             response.raise_for_status()
-            token_data = response.json()
+            if response.status_code == 204:
+                return {}
+            return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(
-                "Didit OAuth2 token exchange failed: %s %s",
-                e.response.status_code,
+                "Didit API error: %s %s → %s",
+                method.upper(),
+                path,
                 e.response.text[:200],
             )
-            raise RuntimeError(
-                f"Didit OAuth2 token exchange failed with status {e.response.status_code}"
-            ) from e
+            raise
         except httpx.HTTPError as e:
-            logger.error("Didit OAuth2 token request failed: %s", e)
-            raise RuntimeError("Didit OAuth2 token request failed") from e
-
-        self._access_token = token_data.get("access_token")
-        if not self._access_token:
-            raise RuntimeError(
-                "Didit OAuth2 response missing access_token. "
-                f"Response keys: {list(token_data.keys())}"
-            )
-
-        # Cache expiry based on expires_in (default 3600s if not provided)
-        expires_in = token_data.get("expires_in", 3600)
-        self._token_expires_at = time.monotonic() + expires_in
-
-        logger.debug(
-            "Didit OAuth2 token acquired, expires in %ds", expires_in
-        )
-        return self._access_token
-
-    async def _request(self, method: str, path: str, **kwargs) -> Any:
-        """
-        Make an authenticated HTTP request with retry and circuit breaker.
-
-        Automatically injects a valid Bearer token. On 401, forces a token
-        refresh and retries once.
-
-        Args:
-            method: HTTP method (get, post, patch, delete)
-            path: API path relative to BASE_URL
-            **kwargs: Passed through to httpx request
-
-        Returns:
-            Parsed JSON response.
-
-        Raises:
-            Exception from the underlying HTTP call or retry logic.
-        """
-        client = await self._get_client()
-        token = await self._ensure_access_token()
-
-        async def _do_request():
-            headers = {
-                **(kwargs.pop("headers", {}) or {}),
-                "Authorization": f"Bearer {token}",
-            }
-            response = await getattr(client, method)(
-                path, headers=headers, **kwargs
-            )
-            response.raise_for_status()
-            return response.json()
-
-        result = await self._retry_client.execute(_do_request)
-
-        if not result.success:
-            # If we got a 401, force token refresh and retry once
-            error = result.error
-            import httpx
-
-            if isinstance(error, httpx.HTTPStatusError) and error.response.status_code == 401:
-                logger.info("Didit API returned 401, refreshing access token")
-                self._access_token = None
-                self._token_expires_at = 0.0
-                refreshed_token = await self._ensure_access_token()
-
-                async def _retry_request():
-                    headers_retry = {
-                        "Authorization": f"Bearer {refreshed_token}",
-                    }
-                    resp = await getattr(client, method)(
-                        path, headers=headers_retry, **kwargs
-                    )
-                    resp.raise_for_status()
-                    return resp.json()
-
-                retry_result = await self._retry_client.execute(_retry_request)
-                if not retry_result.success:
-                    raise retry_result.error
-                return retry_result.value
-
-            raise error
-
-        return result.value
+            logger.error("Didit API request failed: %s %s → %s", method.upper(), path, e)
+            raise
 
     async def create_inquiry(
         self,
@@ -257,66 +116,60 @@ class DiditKYCProvider(KYCProvider):
         """
         Create a new Didit verification session.
 
-        Calls POST /v2/verifications to start an identity verification flow.
-        Returns an InquirySession with a session URL for frontend integration.
-
-        Args:
-            request: Verification request with user details.
-
-        Returns:
-            InquirySession with redirect URL and session token.
+        POST /v3/session/ with workflow_id.
+        Returns session with verification URL for the user.
         """
         data: dict[str, Any] = {
-            "reference_id": request.reference_id,
-            "type": self._map_verification_type(request.verification_type),
+            "workflow_id": self._workflow_id,
+            "vendor_data": request.reference_id,
         }
 
-        # Add optional user details
-        if request.name_first:
-            data["first_name"] = request.name_first
-        if request.name_last:
-            data["last_name"] = request.name_last
-        if request.email:
-            data["email"] = request.email
-        if request.phone:
-            data["phone"] = request.phone
-        if request.address_street:
-            data["address"] = {
-                "street": request.address_street,
-                "city": request.address_city or "",
-                "country": request.address_country or "",
-                "postal_code": request.address_postal_code or "",
-            }
+        # Add callback URL if configured
+        callback_url = os.getenv("DIDIT_CALLBACK_URL", "")
+        if callback_url:
+            data["callback"] = callback_url
 
-        # Include metadata
+        # Add optional user details
         if request.metadata:
             data["metadata"] = request.metadata
 
-        result = await self._request("post", "/verifications", json=data)
+        contact = {}
+        if request.email:
+            contact["email"] = request.email
+            contact["send_notification_emails"] = True
+        if contact:
+            data["contact_details"] = contact
 
-        # Didit response: { id, session_token, session_url, status, expires_at, ... }
-        verification_id = result.get("id", "")
+        expected = {}
+        if request.name_first:
+            expected["first_name"] = request.name_first
+        if request.name_last:
+            expected["last_name"] = request.name_last
+        if expected:
+            data["expected_details"] = expected
+
+        result = await self._request("post", "/v3/session/", json=data)
+
+        session_id = result.get("session_id", "")
         session_token = result.get("session_token", "")
-        session_url = result.get("session_url", "")
-        status = result.get("status", "pending")
-        expires_at_str = result.get("expires_at")
-
-        expires_at = self._parse_datetime(expires_at_str)
+        verification_url = result.get("url", "")
+        status = result.get("status", "Not Started")
 
         logger.info(
-            "Didit verification created: id=%s ref=%s status=%s",
-            verification_id,
+            "Didit session created: id=%s ref=%s status=%s url=%s",
+            session_id,
             request.reference_id,
             status,
+            verification_url,
         )
 
         return InquirySession(
-            inquiry_id=verification_id,
+            inquiry_id=session_id,
             session_token=session_token,
-            template_id="didit_default",
+            template_id=self._workflow_id,
             status=self._map_status(status),
-            redirect_url=session_url,
-            expires_at=expires_at,
+            redirect_url=verification_url,
+            expires_at=None,
         )
 
     async def get_inquiry_status(
@@ -324,63 +177,44 @@ class DiditKYCProvider(KYCProvider):
         inquiry_id: str,
     ) -> KYCResult:
         """
-        Get the status of a Didit verification.
+        Get the status/decision of a Didit verification session.
 
-        Calls GET /v2/verifications/{id} and maps the response to KYCResult.
-
-        Args:
-            inquiry_id: The Didit verification ID.
-
-        Returns:
-            KYCResult with mapped status, timestamps, and metadata.
+        GET /v3/session/{session_id}/decision/
         """
-        result = await self._request("get", f"/verifications/{inquiry_id}")
+        result = await self._request("get", f"/v3/session/{inquiry_id}/decision/")
 
-        # Didit verification response:
-        # {
-        #   "id": "...",
-        #   "reference_id": "...",
-        #   "status": "approved" | "declined" | "pending" | "expired" | "review",
-        #   "decision": { "reason": "...", "risk_level": "..." },
-        #   "verified_at": "ISO-8601",
-        #   "expires_at": "ISO-8601",
-        #   "created_at": "ISO-8601",
-        #   "checks": [ { "type": "...", "status": "...", "details": {...} } ],
-        #   "metadata": {...}
-        # }
-
-        status_str = result.get("status", "pending")
+        status_str = result.get("status", "Not Started")
         status = self._map_status(status_str)
 
-        decision = result.get("decision", {})
-        reason = decision.get("reason")
-        risk_level = decision.get("risk_level")
+        # Extract check results
+        id_verifications = result.get("id_verifications")
+        liveness_checks = result.get("liveness_checks")
+        face_matches = result.get("face_matches")
+        aml_screenings = result.get("aml_screenings")
 
-        checks = result.get("checks", [])
-
-        verified_at = self._parse_datetime(result.get("verified_at"))
-        expires_at = self._parse_datetime(result.get("expires_at"))
+        created_at_str = result.get("created_at")
+        verified_at = None
+        if status == KYCStatus.APPROVED and created_at_str:
+            verified_at = self._parse_datetime(created_at_str)
 
         return KYCResult(
             status=status,
             verification_id=inquiry_id,
             provider="didit",
             verified_at=verified_at,
-            expires_at=expires_at,
-            reason=reason,
+            expires_at=None,
+            reason=None,
             metadata={
-                "reference_id": result.get("reference_id"),
                 "didit_status": status_str,
-                "risk_level": risk_level,
-                "checks": [
-                    {
-                        "type": c.get("type"),
-                        "status": c.get("status"),
-                        "details": c.get("details", {}),
-                    }
-                    for c in checks
-                ],
-                "created_at": result.get("created_at"),
+                "workflow_id": result.get("workflow_id"),
+                "vendor_data": result.get("vendor_data"),
+                "features": result.get("features"),
+                "id_verifications": id_verifications,
+                "liveness_checks": liveness_checks,
+                "face_matches": face_matches,
+                "aml_screenings": aml_screenings,
+                "ip_analyses": result.get("ip_analyses"),
+                "reviews": result.get("reviews"),
             },
         )
 
@@ -389,24 +223,16 @@ class DiditKYCProvider(KYCProvider):
         inquiry_id: str,
     ) -> bool:
         """
-        Cancel an ongoing Didit verification.
+        Delete/cancel a Didit verification session.
 
-        Calls POST /v2/verifications/{id}/cancel.
-
-        Args:
-            inquiry_id: The Didit verification ID to cancel.
-
-        Returns:
-            True if cancellation succeeded, False otherwise.
+        DELETE /v3/session/{session_id}/
         """
         try:
-            await self._request(
-                "post", f"/verifications/{inquiry_id}/cancel", json={}
-            )
-            logger.info("Didit verification cancelled: %s", inquiry_id)
+            await self._request("delete", f"/v3/session/{inquiry_id}/")
+            logger.info("Didit session deleted: %s", inquiry_id)
             return True
         except Exception as e:
-            logger.error("Didit cancel_inquiry failed for %s: %s", inquiry_id, e)
+            logger.error("Didit cancel failed for %s: %s", inquiry_id, e)
             return False
 
     async def verify_webhook(
@@ -415,29 +241,27 @@ class DiditKYCProvider(KYCProvider):
         signature: str,
     ) -> bool:
         """
-        Verify Didit webhook signature using HMAC-SHA256.
+        Verify Didit webhook signature using HMAC-SHA256 (X-Signature-V2).
 
-        Didit signs webhook payloads with the webhook secret configured in
-        the dashboard. The signature is sent as a hex-encoded HMAC-SHA256 digest.
-
-        Args:
-            payload: Raw webhook request body bytes.
-            signature: Hex-encoded HMAC-SHA256 signature from the webhook header.
-
-        Returns:
-            True if signature is valid, False otherwise.
+        Didit signs webhooks with canonicalized JSON (sorted keys, compact separators).
+        The signature header is X-Signature-V2.
         """
         if not self._webhook_secret:
-            logger.warning(
-                "Didit webhook secret not configured. "
-                "Set DIDIT_WEBHOOK_SECRET environment variable."
-            )
+            logger.warning("Didit webhook secret not configured (DIDIT_WEBHOOK_SECRET)")
             return False
 
         try:
+            # For X-Signature-V2: canonical JSON of the parsed body
+            body_dict = json.loads(payload)
+            canonical = json.dumps(
+                body_dict,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            )
             expected = hmac.new(
                 self._webhook_secret.encode("utf-8"),
-                payload,
+                canonical.encode("utf-8"),
                 hashlib.sha256,
             ).hexdigest()
 
@@ -445,8 +269,7 @@ class DiditKYCProvider(KYCProvider):
 
             if not is_valid:
                 logger.warning(
-                    "Didit webhook signature mismatch. "
-                    "Expected: %s..., Got: %s...",
+                    "Didit webhook sig mismatch. Expected: %s..., Got: %s...",
                     expected[:8],
                     signature[:8],
                 )
@@ -461,79 +284,33 @@ class DiditKYCProvider(KYCProvider):
         """
         Map Didit verification status to KYCStatus.
 
-        Didit statuses:
-        - created: Verification session created, user hasn't started
-        - pending: User has started but verification is in progress
-        - approved: Verification passed all checks
-        - declined: Verification failed checks
-        - expired: Verification session timed out
-        - review: Flagged for manual review
-        - cancelled: Verification was cancelled
-
-        Args:
-            didit_status: Raw status string from Didit API.
-
-        Returns:
-            Mapped KYCStatus enum value.
+        Didit uses Title Case with spaces:
+        "Not Started", "In Progress", "Approved", "Declined",
+        "In Review", "Resubmitted", "Expired", "Abandoned", "Kyc Expired"
         """
+        normalized = didit_status.lower().strip()
         status_map = {
-            "created": KYCStatus.NOT_STARTED,
-            "pending": KYCStatus.PENDING,
-            "processing": KYCStatus.PENDING,
+            "not started": KYCStatus.NOT_STARTED,
+            "in progress": KYCStatus.PENDING,
             "approved": KYCStatus.APPROVED,
-            "verified": KYCStatus.APPROVED,
             "declined": KYCStatus.DECLINED,
-            "rejected": KYCStatus.DECLINED,
-            "failed": KYCStatus.DECLINED,
+            "in review": KYCStatus.NEEDS_REVIEW,
+            "resubmitted": KYCStatus.PENDING,
             "expired": KYCStatus.EXPIRED,
-            "review": KYCStatus.NEEDS_REVIEW,
-            "manual_review": KYCStatus.NEEDS_REVIEW,
-            "cancelled": KYCStatus.EXPIRED,
+            "abandoned": KYCStatus.EXPIRED,
+            "kyc expired": KYCStatus.EXPIRED,
         }
-        mapped = status_map.get(didit_status.lower(), KYCStatus.PENDING)
+        mapped = status_map.get(normalized, KYCStatus.PENDING)
 
-        if didit_status.lower() not in status_map:
+        if normalized not in status_map:
             logger.warning(
                 "Unknown Didit status '%s', defaulting to PENDING", didit_status
             )
 
         return mapped
 
-    @staticmethod
-    def _map_verification_type(verification_type) -> str:
-        """
-        Map internal VerificationType to Didit's verification type string.
-
-        Args:
-            verification_type: VerificationType enum value.
-
-        Returns:
-            Didit-compatible verification type string.
-        """
-        from sardis_compliance.kyc import VerificationType
-
-        type_map = {
-            VerificationType.IDENTITY: "identity",
-            VerificationType.DOCUMENT: "document",
-            VerificationType.SELFIE: "selfie",
-            VerificationType.ADDRESS: "address",
-            VerificationType.PHONE: "phone",
-            VerificationType.EMAIL: "email",
-        }
-        return type_map.get(verification_type, "identity")
-
     def _parse_datetime(self, value: str | None) -> datetime | None:
-        """
-        Parse ISO-8601 datetime string to datetime object.
-
-        Handles both 'Z' suffix and explicit timezone offsets.
-
-        Args:
-            value: ISO-8601 datetime string, or None.
-
-        Returns:
-            Parsed datetime with UTC timezone, or None.
-        """
+        """Parse ISO-8601 datetime string."""
         if not value:
             return None
         try:
@@ -543,9 +320,7 @@ class DiditKYCProvider(KYCProvider):
             return None
 
     async def close(self) -> None:
-        """Close HTTP client and clear cached token."""
-        self._access_token = None
-        self._token_expires_at = 0.0
+        """Close HTTP client."""
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None

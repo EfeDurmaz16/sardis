@@ -57,7 +57,7 @@ class DependencyConfig:
             persona_enabled=bool(os.getenv("PERSONA_API_KEY")),
             elliptic_enabled=bool(os.getenv("ELLIPTIC_API_KEY")),
             lithic_enabled=bool(os.getenv("LITHIC_API_KEY")),
-            didit_enabled=bool(os.getenv("DIDIT_CLIENT_ID") and os.getenv("DIDIT_CLIENT_SECRET")),
+            didit_enabled=bool(os.getenv("DIDIT_API_KEY")),
         )
 
 
@@ -327,15 +327,14 @@ class DependencyContainer:
         if not self.has_didit:
             raise SardisDependencyNotConfiguredError(
                 "didit",
-                "Didit KYC is not configured. Set DIDIT_CLIENT_ID and DIDIT_CLIENT_SECRET.",
+                "Didit KYC is not configured. Set DIDIT_API_KEY environment variable.",
             )
         from sardis_compliance.providers.didit import DiditKYCProvider
 
         return DiditKYCProvider(
-            client_id=os.getenv("DIDIT_CLIENT_ID", ""),
-            client_secret=os.getenv("DIDIT_CLIENT_SECRET", ""),
-            webhook_secret=os.getenv("DIDIT_WEBHOOK_SECRET"),
-            environment="production" if os.getenv("SARDIS_ENVIRONMENT", "").strip().lower() in ("prod", "production") else "sandbox",
+            api_key=os.getenv("DIDIT_API_KEY", ""),
+            webhook_secret=os.getenv("DIDIT_WEBHOOK_SECRET", ""),
+            workflow_id=os.getenv("DIDIT_WORKFLOW_ID"),
         )
 
     @cached_property
