@@ -101,6 +101,11 @@ export default function SignupPage() {
 
       if (response && response.ok) {
         const data = await response.json();
+        // Store session token so middleware allows dashboard access
+        if (data.access_token) {
+          sessionStorage.setItem("sardis_session", data.access_token);
+          document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
+        }
         if (data.agent_id) {
           setAgentId(data.agent_id);
         }
