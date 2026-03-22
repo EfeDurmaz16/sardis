@@ -104,7 +104,7 @@ class PolarBillingAdapter:
 
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
-                f"{POLAR_API_URL}/v1/checkouts/sessions",
+                f"{POLAR_API_URL}/v1/checkouts/",
                 headers=self._headers,
                 json={
                     "product_id": product_id,

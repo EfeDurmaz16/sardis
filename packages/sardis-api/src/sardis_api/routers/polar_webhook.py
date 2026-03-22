@@ -21,7 +21,7 @@ async def polar_webhook(request: Request):
     - order.created — one-time payment
     """
     body = await request.body()
-    signature = request.headers.get("x-polar-signature", "")
+    signature = request.headers.get("webhook-signature", "")
 
     from sardis_api.billing.polar_adapter import PolarBillingAdapter
 

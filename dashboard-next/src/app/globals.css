@@ -82,127 +82,148 @@
   --mono-accent: #22c55e;
 }
 
-/* ── Base styles (monokrom) ────────────────────────── */
+/* ── Base styles (premium monokrom) ────────────────── */
+/* Inspired by Linear, Vercel Geist, Stripe, Mercury */
 
 body {
-  background-color: #0a0a0f;
-  color: #e4e4e7;
+  background-color: #09090b;
+  color: #ececee;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
-/* ── Card component (monokrom) ────────────────────── */
+/* ── Card (depth through border, not shadow) ──────── */
 
 .card {
-  background-color: #141419;
+  background-color: #131316;
   border: 1px solid #1f1f28;
   border-radius: 8px;
+  transition: border-color 150ms;
 }
+.card:hover { border-color: #2a2a36; }
 
-.card:hover {
-  border-color: #2a2a36;
-}
-
-/* ── Monokrom utility classes ─────────────────────── */
-
-.mono-surface { background-color: #141419; }
-.mono-surface-elevated { background-color: #1c1c24; }
-.mono-border { border-color: #1f1f28; }
-.mono-text { color: #e4e4e7; }
-.mono-text-muted { color: #71717a; }
-.mono-text-ghost { color: #52525b; }
-.mono-accent { color: #22c55e; }
-
-/* ── Monokrom buttons ─────────────────────────────── */
+/* ── Buttons ──────────────────────────────────────── */
 
 .btn-primary {
   background-color: #22c55e;
-  color: #0a0a0f;
+  color: #09090b;
   font-weight: 600;
+  font-size: 14px;
   padding: 8px 16px;
   border-radius: 6px;
   transition: background-color 150ms;
 }
 .btn-primary:hover { background-color: #16a34a; }
+.btn-primary:active { background-color: #15803d; }
 
 .btn-ghost {
   background: transparent;
-  color: #71717a;
+  color: #a0a0aa;
   border: 1px solid #1f1f28;
+  font-size: 14px;
   padding: 8px 16px;
   border-radius: 6px;
   transition: all 150ms;
 }
 .btn-ghost:hover {
-  color: #e4e4e7;
+  color: #ececee;
   border-color: #2a2a36;
-  background-color: #141419;
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
-/* ── Monokrom badges ──────────────────────────────── */
+/* ── Badges (10% opacity bg, 20% border — Linear pattern) */
 
 .badge-active {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  display: inline-flex; align-items: center;
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
   border: 1px solid rgba(34, 197, 94, 0.2);
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
 }
-
 .badge-inactive {
-  background-color: rgba(113, 113, 122, 0.1);
+  display: inline-flex; align-items: center;
+  background: rgba(113, 113, 122, 0.1);
   color: #71717a;
   border: 1px solid rgba(113, 113, 122, 0.2);
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+}
+.badge-warning {
+  display: inline-flex; align-items: center;
+  background: rgba(234, 179, 8, 0.1);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+}
+.badge-error {
+  display: inline-flex; align-items: center;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
 }
 
-/* ── Monokrom inputs ──────────────────────────────── */
+/* ── Inputs (green focus ring) ────────────────────── */
 
 input[type="text"], input[type="email"], input[type="password"], textarea, select {
-  background-color: #0a0a0f;
+  background-color: #09090b;
   border: 1px solid #1f1f28;
-  color: #e4e4e7;
+  color: #ececee;
   border-radius: 6px;
   transition: border-color 150ms;
 }
-
+input::placeholder, textarea::placeholder { color: #52525b; }
 input:focus, textarea:focus, select:focus {
   border-color: #22c55e;
   outline: none;
   box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
 }
 
-/* ── Monokrom tables ──────────────────────────────── */
+/* ── Tables (subtle, tight) ───────────────────────── */
 
-table { border-collapse: collapse; }
+table { border-collapse: collapse; width: 100%; }
 th {
   color: #52525b;
   font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
 }
-td { color: #e4e4e7; }
+td { color: #ececee; font-size: 14px; }
 tr + tr { border-top: 1px solid #1f1f28; }
-tr:hover { background-color: rgba(20, 20, 25, 0.5); }
+tr:hover { background-color: rgba(255, 255, 255, 0.02); }
 
-/* ── Monokrom scrollbar ───────────────────────────── */
+/* ── Scrollbar ────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1f1f28; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #2a2a36; }
 
-/* ── Glow hover (subtle for monokrom) ─────────────── */
+/* ── Subtle hover glow ────────────────────────────── */
 
 .glow-green-hover:hover {
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.12);
+}
+
+/* ── Section labels (uppercase, tracked) ──────────── */
+
+.section-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Monospace data (hashes, IDs, amounts) ─────────── */
+
+.mono-data {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 12px;
+  color: #71717a;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── driver.js product tour (dark theme) ──────────── */
