@@ -35,7 +35,6 @@ env/
 .DS_Store
 
 # Environment
-.env
 .env.local
 .env.production
 .env.sardis
@@ -219,3 +218,42 @@ gv-team.md
 
 # Git worktrees
 .worktrees/
+
+# AI tool configs (not ours)
+.adal/
+.agent/
+.agents/
+.augment/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.cursor/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills/
+skills-lock.json
+AGENTS.md
+
+.projects/*
+!.projects/state.json
+.env
